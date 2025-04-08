@@ -1,0 +1,5 @@
+Flask>=2.0
+python-docx>=1.0
+google-cloud-firestore>=2.0
+pytest>=7.0 # Testing framework
+pytest-mock>=3.0 # For mocking dependencies 

@@ -4,8 +4,8 @@
 
 ## Overall Progress
 
-*   **Current Phase:** Refactoring & Foundation (Manual Flow)
-*   **Next Major Goal:** Implement the Database Service module.
+*   **Current Phase:** UI/UX Enhancements (Edit/Delete)
+*   **Next Major Goal:** Implement inline editing and deletion of records.
 
 ## Milestones (Revised Plan)
 
@@ -15,10 +15,10 @@
     *   [X] Create `PROJECT_OVERVIEW.md`
     *   [X] Create `STATUS.md`
     *   [X] Define initial milestones.
-    *   [X] **Refine architecture:** Separate DB logic, define new endpoints, emphasize TDD.
+    *   [X] Refine architecture: Separate DB logic, define new endpoints, emphasize TDD.
 2.  **[X] Basic Flask Application Setup**
     *   [X] Initialize Flask project structure.
-    *   [X] Create `requirements.txt`.
+    *   [X] Create `requirements.txt` (incl. testing deps).
     *   [X] Set up basic Flask routing for `/`.
     *   [X] Create basic `index.html` template.
 3.  **[X] UI Mockup - Input Areas**
@@ -32,63 +32,46 @@
 
 --- (Refactoring Point) ---
 
-5.  **[->] Database Service Module**
-    *   [ ] Create a new module (e.g., `database_service.py`).
-    *   [ ] Move Firestore client initialization into this module.
-    *   [ ] Implement `save_course(course_data)` function (adds timestamp, saves to Firestore).
-    *   [ ] Implement `get_all_courses()` function (retrieves all, orders by timestamp).
-    *   [ ] Add basic unit tests for these functions (requires mocking Firestore client).
-6.  **[ ] Base Adapter Implementation**
-    *   [ ] Create `adapters/base_adapter.py`.
-    *   [ ] Define `BaseAdapter` class.
-    *   [ ] Implement `parse_and_validate(form_data)` method:
-        *   Takes form data (dictionary).
-        *   Performs type checking/conversion (e.g., year/students to int).
-        *   Validates required fields.
-        *   Returns standardized, validated data dictionary on success, or raises/returns error indication on failure.
-    *   [ ] Add unit tests for `parse_and_validate`.
-7.  **[ ] Integrate Manual Flow (/add_course_manual)**
-    *   [ ] Rename `/add` route in `app.py` to `/add_course_manual` (ensure method is POST).
-    *   [ ] Update the route handler:
-        *   Instantiate `BaseAdapter`.
-        *   Call `adapter.parse_and_validate(request.form)`.
-        *   If successful, call `database_service.save_course(validated_data)`.
-        *   Handle errors from adapter or DB service (e.g., print, flash message later).
-        *   Redirect to index.
-    *   [ ] Update `/` route handler in `app.py` to use `database_service.get_all_courses()`.
-    *   [ ] Update `index.html` form action to point to `/add_course_manual`.
-    *   [ ] Add integration tests for the manual add workflow.
+5.  **[X] Database Service Module**
+    *   [X] Create `database_service.py`.
+    *   [X] Move Firestore client initialization into this module.
+    *   [X] Implement `save_course(course_data)` function.
+    *   [X] Implement `get_all_courses()` function.
+    *   [X] Add basic unit tests for these functions (mocking Firestore).
+    *   [X] Remove old Firestore code from `app.py`.
+6.  **[X] Base Adapter Implementation**
+    *   [X] Create `adapters/base_adapter.py`.
+    *   [X] Define `BaseAdapter` class.
+    *   [X] Implement `parse_and_validate(form_data)` method.
+    *   [X] Add unit tests for `parse_and_validate`.
+7.  **[X] Integrate Manual Flow (/add_course_manual)**
+    *   [X] Rename `/add` route in `app.py` to `/add_course_manual`.
+    *   [X] Update the route handler to use `BaseAdapter` and `database_service`.
+    *   [X] Update `/` route handler to use `database_service`.
+    *   [X] Update `index.html` form action.
+    *   [ ] Add integration tests for the manual add workflow (Skipped for now).
 
 --- (Manual Flow Complete) ---
 
-8.  **[ ] File Adapter Interface/Dispatcher**
-    *   [ ] Create `adapters/file_adapter_interface.py` (or similar).
-    *   [ ] Define class (e.g., `FileAdapterDispatcher`) maybe inheriting/using `BaseAdapter` for common validation.
-    *   [ ] Implement logic to discover specific file adapters (e.g., in `adapters/` dir).
-    *   [ ] Implement `process_file(document, adapter_name)` method:
-        *   Dynamically load the specific adapter module based on `adapter_name`.
-        *   Call the specific adapter's `parse(document)` function.
-        *   Potentially call common validation from `BaseAdapter`.
-        *   Return validated data or error.
-    *   [ ] Add unit tests for discovery and dispatching (mocking specific adapters).
-9.  **[ ] Dummy File Adapter (`dummy_adapter.py`)**
-    *   [ ] Re-create/Verify `adapters/dummy_adapter.py`.
-    *   [ ] Ensure it has the `parse(document)` function.
-    *   [ ] Returns a dictionary matching expected fields.
-    *   [ ] Add unit tests for the dummy parser.
-10. **[ ] Integrate Automatic Flow (/add_course_automatic)**
-    *   [ ] Rename `/upload` route to `/add_course_automatic` (ensure method is POST).
-    *   [ ] Update the route handler:
-        *   Perform file validation (presence, type).
-        *   Instantiate `FileAdapterDispatcher`.
-        *   Call `dispatcher.process_file(docx.Document(file.stream), adapter_name)`.
-        *   If successful, call `database_service.save_course(validated_data)`.
-        *   Handle errors.
-        *   Redirect to index.
-    *   [ ] Update `index.html` file upload form action.
-    *   [ ] Add integration tests for the dummy file upload workflow.
-11. **[ ] UI - Edit/Delete Functionality**
-    *   [ ] Implement JavaScript for actions.
+8.  **[X] File Adapter Interface/Dispatcher**
+    *   [X] Create `adapters/file_adapter_dispatcher.py`.
+    *   [X] Define `FileAdapterDispatcher` class.
+    *   [X] Implement adapter discovery logic.
+    *   [X] Implement `process_file(document, adapter_name)` method with dynamic loading.
+    *   [X] Add unit tests for discovery and dispatching.
+9.  **[X] Dummy File Adapter (`dummy_adapter.py`)**
+    *   [X] Re-create/Verify `adapters/dummy_adapter.py`.
+    *   [X] Ensure it has the `parse(document)` function.
+    *   [X] Returns a dictionary matching expected fields (strings for validation).
+    *   [X] Add unit tests for the dummy parser.
+10. **[X] Integrate Automatic Flow (/add_course_automatic)**
+    *   [X] Rename `/upload` route to `/add_course_automatic`.
+    *   [X] Update the route handler to use `FileAdapterDispatcher` and `database_service`.
+    *   [X] Update `index.html` file upload form action.
+    *   [ ] Add integration tests for the dummy file upload workflow (Skipped for now).
+11. **[->] UI - Edit/Delete Functionality**
+    *   [ ] Implement JavaScript for inline editing.
+    *   [ ] Implement JavaScript for delete confirmation prompt.
     *   [ ] Create Flask endpoints for Update/Delete.
     *   [ ] Implement corresponding functions in `database_service.py`.
     *   [ ] Integrate endpoints with DB service.
@@ -105,16 +88,33 @@
 
 ---
 
-## Current Focus: Milestone 5 - Database Service Module
+## Current Focus: Milestone 11 - UI - Edit/Delete Functionality
 
-**Objective:** Create a dedicated module (`database_service.py`) to encapsulate all Firestore interactions, improving separation of concerns and testability.
+**Objective:** Implement the client-side (JavaScript) and backend (Flask routes, DB service functions) logic needed to allow users to edit course records inline and delete them with confirmation.
 
 **Tasks:**
-*   Create `database_service.py`.
-*   Move Firestore client initialization from `app.py` to `database_service.py`.
-*   Implement `save_course(course_data)` function in the service.
-*   Implement `get_all_courses()` function in the service.
-*   Write initial unit tests for these service functions (mocking the Firestore client is essential here).
-*   Remove Firestore-specific code from `app.py` (it will call the service later).
+*   **Database Service:**
+    *   Implement `update_course(course_id: str, updated_data: dict)` in `database_service.py`.
+    *   Implement `delete_course(course_id: str)` in `database_service.py`.
+    *   Add unit tests for these new DB service functions (mocking Firestore).
+*   **Flask Backend:**
+    *   Create a new route `/edit_course/<string:course_id>` (e.g., method PUT or POST) in `app.py`.
+    *   Handler should receive updated data (likely JSON from JS), validate it (perhaps using `BaseAdapter`), and call `database_service.update_course()`.
+    *   Create a new route `/delete_course/<string:course_id>` (e.g., method DELETE or POST) in `app.py`.
+    *   Handler should call `database_service.delete_course()`.
+    *   Return appropriate JSON responses (success/error) from these endpoints.
+    *   Add tests for these routes (likely integration tests mocking the DB service).
+*   **Frontend JavaScript:**
+    *   Create a `static/script.js` file and link it in `index.html`.
+    *   Add event listeners to the "Edit" buttons:
+        *   On click, make the table row's cells editable (e.g., replace `<td>` content with `<input>`).
+        *   Add a "Save" and "Cancel" button to the row.
+        *   On "Save", collect data from inputs, send an asynchronous request (e.g., `fetch` API) to the `/edit_course/...` endpoint.
+        *   Handle success/error response (update UI, revert inputs on error).
+        *   On "Cancel", revert changes.
+    *   Add event listeners to the "Delete" buttons:
+        *   On click, show a confirmation dialog (e.g., `window.confirm` or custom modal) maybe asking to type the course number (as originally requested).
+        *   If confirmed, send an asynchronous request to the `/delete_course/...` endpoint.
+        *   Handle success/error (remove row from table on success).
 
-**Testing Note:** Rigorous testing (unit & integration) is critical. Confirm changes by running tests after each modification. 
+**Testing Note:** Unit test DB functions. Integration test Flask routes. Manually test the UI interactions thoroughly. 

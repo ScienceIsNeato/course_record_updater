@@ -1,3 +1,5 @@
 .cursorrules
 .cursor
 .envrc
+.venv
+*.pyc
