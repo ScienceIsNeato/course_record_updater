@@ -48,7 +48,9 @@
     *   [X] Rename `/add` route in `app.py` to `/add_course_manual`.
     *   [X] Update the route handler to use `BaseAdapter` and `database_service`.
     *   [X] Update `/` route handler to use `database_service`.
-    *   [X] Update `index.html` form action.
+    *   [X] Update `index.html` form action and integrate base validation handling.
+    *   [X] Refined validation logic (Term field, optional grades, sum validation) in `BaseAdapter`.
+    *   [X] Improved form validation error display (red list, HTML) and repopulation in `app.py` and `index.html`.
     *   [ ] Add integration tests for the manual add workflow (Skipped for now).
 
 --- (Manual Flow Complete) ---

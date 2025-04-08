@@ -2,16 +2,34 @@
 """Module to handle all interactions with Google Cloud Firestore."""
 
 import datetime
+import os # Import os to check environment variables
 from google.cloud import firestore
 
 # --- Firestore Client Initialization ---
 
+db = None
+emulator_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
+
 try:
-    # Assumes GOOGLE_APPLICATION_CREDENTIALS environment variable is set.
+    # The client library automatically uses FIRESTORE_EMULATOR_HOST if set.
+    # No special arguments needed here for emulator detection.
     db = firestore.Client()
-    print("Firestore client initialized successfully in database_service.")
+    if emulator_host:
+        print(f"Firestore client initialized, attempting to connect to emulator at: {emulator_host}")
+        # Add a simple check to see if connection works (optional, might add overhead)
+        # try:
+        #    db.collection('_emulator_check').document('_ping').set({'status':'ok'})
+        #    print("Emulator connection successful.")
+        # except Exception as e:
+        #    print(f"WARNING: Emulator host is set, but connection failed: {e}")
+        #    db = None # Force db to None if emulator connection fails?
+    else:
+        print("Firestore client initialized for cloud connection.")
+
 except Exception as e:
-    print(f"Error initializing Firestore client in database_service: {e}")
+    print(f"Error initializing Firestore client: {e}")
+    if emulator_host:
+        print(f"Ensure the Firestore emulator is running and accessible at {emulator_host}")
     db = None # Ensure db is None if initialization fails
 
 COURSES_COLLECTION = 'courses' # Define collection name
@@ -29,24 +47,27 @@ def save_course(course_data: dict):
     Returns:
         The new document ID if successful, None otherwise.
     """
+    print("[DB Service] ENTERING save_course")
+    print("[DB Service] save_course called.")
     if not db:
-        print("Firestore client not available. Cannot save course.")
+        print("[DB Service] Firestore client not available. Cannot save course.")
         return None
     if not isinstance(course_data, dict):
-        print("Error: Invalid data type provided to save_course.")
+        print("[DB Service] Error: Invalid data type provided to save_course.")
         return None
 
     try:
-        # Prepare data for Firestore (add timestamp)
         data_to_save = course_data.copy()
+        print("[DB Service] Accessing firestore.SERVER_TIMESTAMP...")
         data_to_save['timestamp'] = firestore.SERVER_TIMESTAMP
-
-        # Add document to the collection. Firestore auto-generates the ID.
-        _, doc_ref = db.collection(COURSES_COLLECTION).add(data_to_save)
-        print(f"Course data saved with ID: {doc_ref.id}")
+        print(f"[DB Service] Getting collection: {COURSES_COLLECTION}")
+        collection_ref = db.collection(COURSES_COLLECTION)
+        print(f"[DB Service] Calling collection.add() with data: {data_to_save}")
+        _, doc_ref = collection_ref.add(data_to_save)
+        print(f"[DB Service] Course data saved with ID: {doc_ref.id}")
         return doc_ref.id
     except Exception as e:
-        print(f"Error saving course to Firestore: {e}")
+        print(f"[DB Service] Error saving course to Firestore: {e}")
         return None
 
 def get_all_courses():
@@ -57,26 +78,95 @@ def get_all_courses():
         A list of course dictionaries, each including its Firestore document ID.
         Returns an empty list if the client is unavailable or an error occurs.
     """
+    print("[DB Service] get_all_courses called.")
     if not db:
-        print("Firestore client not available. Cannot retrieve courses.")
+        print("[DB Service] Firestore client not available. Cannot retrieve courses.")
         return []
 
     try:
+        print(f"[DB Service] Getting collection: {COURSES_COLLECTION}")
         courses_ref = db.collection(COURSES_COLLECTION)
-        # Order by timestamp, newest first
+        print("[DB Service] Ordering query by timestamp DESC.")
         query = courses_ref.order_by('timestamp', direction=firestore.Query.DESCENDING)
+        print("[DB Service] Calling query.stream()...")
         docs = query.stream()
-
+        print("[DB Service] Query stream obtained. Iterating...")
+        
         courses_list = []
+        count = 0
         for doc in docs:
+            count += 1
             course = doc.to_dict()
-            course['id'] = doc.id # Add the document ID to the dictionary
+            course['id'] = doc.id 
             courses_list.append(course)
-        print(f"Retrieved {len(courses_list)} courses from Firestore via service.")
+        print(f"[DB Service] Finished iterating stream. Found {count} documents.")
+        print(f"[DB Service] Retrieved {len(courses_list)} courses from Firestore via service.")
         return courses_list
     except Exception as e:
-        print(f"Error getting courses from Firestore: {e}")
+        print(f"[DB Service] Error getting courses from Firestore: {e}")
         return []
+
+def update_course(course_id: str, update_data: dict):
+    """
+    Updates an existing course document in Firestore.
+
+    Args:
+        course_id: The ID of the Firestore document to update.
+        update_data: A dictionary containing the fields to update.
+                     Should not contain 'id'. Can include a new timestamp.
+
+    Returns:
+        True if update was successful, False otherwise.
+    """
+    print(f"[DB Service] update_course called for ID: {course_id}")
+    if not db:
+        print("[DB Service] Firestore client not available. Cannot update course.")
+        return False
+    if not course_id or not isinstance(update_data, dict):
+        print("[DB Service] Error: Invalid arguments provided to update_course.")
+        return False
+
+    try:
+        print(f"[DB Service] Getting document reference for ID: {course_id}")
+        doc_ref = db.collection(COURSES_COLLECTION).document(course_id)
+        update_data_with_ts = update_data.copy()
+        update_data_with_ts['last_modified'] = firestore.SERVER_TIMESTAMP
+        print(f"[DB Service] Calling doc_ref.update() with data: {update_data_with_ts}")
+        doc_ref.update(update_data_with_ts)
+        print(f"[DB Service] Course data updated for ID: {course_id}")
+        return True
+    except Exception as e:
+        print(f"[DB Service] Error updating course {course_id} in Firestore: {e}")
+        return False
+
+def delete_course(course_id: str):
+    """
+    Deletes a course document from Firestore.
+
+    Args:
+        course_id: The ID of the Firestore document to delete.
+
+    Returns:
+        True if deletion was successful, False otherwise.
+    """
+    print(f"[DB Service] delete_course called for ID: {course_id}")
+    if not db:
+        print("[DB Service] Firestore client not available. Cannot delete course.")
+        return False
+    if not course_id:
+        print("[DB Service] Error: Invalid course_id provided to delete_course.")
+        return False
+
+    try:
+        print(f"[DB Service] Getting document reference for ID: {course_id}")
+        doc_ref = db.collection(COURSES_COLLECTION).document(course_id)
+        print(f"[DB Service] Calling doc_ref.delete() for ID: {course_id}")
+        doc_ref.delete()
+        print(f"[DB Service] Course data deleted for ID: {course_id}")
+        return True
+    except Exception as e:
+        print(f"[DB Service] Error deleting course {course_id} from Firestore: {e}")
+        return False
 
 # --- Other potential functions (for future milestones) ---
 
