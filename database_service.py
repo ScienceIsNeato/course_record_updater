@@ -34,20 +34,67 @@ except Exception as e:
 
 COURSES_COLLECTION = 'courses' # Define collection name
 
+# Define unique key fields
+UNIQUE_FIELDS = ['term', 'course_number', 'instructor_name']
+
 # --- Service Functions ---
+
+def check_course_exists(course_data: dict):
+    """
+    Checks if a course with the same unique fields already exists.
+
+    Args:
+        course_data: Dictionary containing at least the UNIQUE_FIELDS.
+
+    Returns:
+        The ID of the existing course if found, None otherwise.
+        Returns None if DB is unavailable or an error occurs.
+    """
+    if not db:
+        print("[DB Service] check_course_exists: DB unavailable.")
+        return None
+    
+    # Ensure all unique fields are present
+    if not all(field in course_data for field in UNIQUE_FIELDS):
+        print(f"[DB Service] check_course_exists: Missing one or more unique fields ({UNIQUE_FIELDS}) in input.")
+        # This case should ideally be caught by validation before calling DB
+        return None 
+        
+    try:
+        query = db.collection(COURSES_COLLECTION)
+        # Build the query dynamically based on unique fields
+        for field in UNIQUE_FIELDS:
+            query = query.where(filter=firestore.FieldFilter(field, "==", course_data[field]))
+            
+        # Limit to 1 as we only need to know if *any* exist
+        docs = query.limit(1).stream()
+        
+        # Attempt to get the first document
+        first_doc = next(docs, None)
+        
+        if first_doc:
+            print(f"[DB Service] check_course_exists: Found existing course with ID: {first_doc.id}")
+            return first_doc.id
+        else:
+            print("[DB Service] check_course_exists: No existing course found.")
+            return None
+            
+    except Exception as e:
+        print(f"[DB Service] check_course_exists: Error querying Firestore: {e}")
+        return None # Indicate error or uncertainty
 
 def save_course(course_data: dict):
     """
-    Saves validated course data dictionary to Firestore.
+    Saves validated course data dictionary to Firestore, checking for duplicates first.
 
     Args:
         course_data: A dictionary containing the validated course data.
-                     It should NOT contain the 'id' or 'timestamp' yet.
 
     Returns:
-        The new document ID if successful, None otherwise.
+        The new document ID if successful.
+        "DUPLICATE:{id}" if a duplicate is found (where {id} is the existing doc ID).
+        None if saving fails for other reasons (DB unavailable, error).
     """
-    print("[DB Service] ENTERING save_course")
     print("[DB Service] save_course called.")
     if not db:
         print("[DB Service] Firestore client not available. Cannot save course.")
@@ -56,13 +103,20 @@ def save_course(course_data: dict):
         print("[DB Service] Error: Invalid data type provided to save_course.")
         return None
 
+    # --- Check for Duplicates --- 
+    existing_id = check_course_exists(course_data)
+    if existing_id:
+        print(f"[DB Service] Duplicate detected. Existing ID: {existing_id}")
+        return f"DUPLICATE:{existing_id}" # Return special indicator string
+    if existing_id is None and not db: # Check if check_course_exists failed due to DB issue
+         print("[DB Service] Cannot save course, DB unavailable during duplicate check.")
+         return None
+         
+    # --- Proceed with Saving --- 
     try:
         data_to_save = course_data.copy()
-        print("[DB Service] Accessing firestore.SERVER_TIMESTAMP...")
         data_to_save['timestamp'] = firestore.SERVER_TIMESTAMP
-        print(f"[DB Service] Getting collection: {COURSES_COLLECTION}")
         collection_ref = db.collection(COURSES_COLLECTION)
-        print(f"[DB Service] Calling collection.add() with data: {data_to_save}")
         _, doc_ref = collection_ref.add(data_to_save)
         print(f"[DB Service] Course data saved with ID: {doc_ref.id}")
         return doc_ref.id

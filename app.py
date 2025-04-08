@@ -150,24 +150,34 @@ def allowed_file(filename):
 
 @app.route('/add_course_automatic', methods=['POST'])
 def add_course_automatic():
-    """Handles file upload, dispatches to adapter, and saves data."""
+    """Handles file upload, dispatches, validates, checks duplicates, and saves data."""
+    selected_adapter_name = request.form.get('adapter_name')
+    courses = []
+    upload_results = {"success": [], "duplicate": [], "failed": []} # Store results
+    
     if database_client is None:
         flash("Error: Database service unavailable, cannot process upload.", "error")
         return redirect(url_for('index'))
 
-    selected_adapter_name = request.form.get('adapter_name')
+    try:
+        courses = get_all_courses()
+    except Exception as fetch_e:
+        flash(f"Error fetching courses: {fetch_e}", "error")
+
     file = request.files.get('course_document')
 
-    # Basic checks
+    # Basic checks - re-render template on error
+    error_message = None
     if not file or file.filename == '':
-        flash("Error: No file selected.", "error")
-        return redirect(url_for('index'))
-    if not selected_adapter_name:
-        flash("Error: No document format/adapter selected.", "error")
-        return redirect(url_for('index'))
-    if not allowed_file(file.filename):
-        flash(f"Error: File type not allowed ('{file.filename}'). Only .docx is permitted.", "error")
-        return redirect(url_for('index'))
+        error_message = "No file selected."
+    elif not selected_adapter_name:
+        error_message = "No document format/adapter selected."
+    elif not allowed_file(file.filename):
+        error_message = f"File type not allowed ('{file.filename}'). Only .docx is permitted."
+
+    if error_message:
+        flash(f"Please fix the following issues:<br><ul><li>{error_message}</li></ul>", "danger")
+        return render_template('index.html', courses=courses, allowed_terms=ALLOWED_TERMS, form_data={}, selected_adapter_name=selected_adapter_name, upload_results=None)
 
     # --- Processing Logic ---
     try:
@@ -175,24 +185,50 @@ def add_course_automatic():
         document = docx.Document(file.stream)
 
         dispatcher = FileAdapterDispatcher(use_base_validation=True)
-        validated_data = dispatcher.process_file(document, selected_adapter_name)
+        validated_data_list = dispatcher.process_file(document, selected_adapter_name)
+        
+        if not validated_data_list:
+             flash(f"Warning: Adapter '{selected_adapter_name}' parsed 0 records from {file.filename}.", "warning")
+             # Render with empty results instead of redirecting
+             return render_template('index.html', courses=courses, allowed_terms=ALLOWED_TERMS, form_data={}, selected_adapter_name=selected_adapter_name, upload_results=upload_results)
+             
+        # --- Save multiple courses --- 
+        for course_data in validated_data_list:
+            course_identifier = f"{course_data.get('course_number', 'N/A')} ({course_data.get('term', 'N/A')})"
+            save_result = save_course(course_data)
+            
+            if isinstance(save_result, str) and save_result.startswith("DUPLICATE:"):
+                existing_id = save_result.split(":", 1)[1]
+                upload_results["duplicate"].append(f"{course_identifier} (Already exists: ID {existing_id})")
+            elif save_result: # Successfully saved, got new ID
+                upload_results["success"].append(f"{course_identifier} (New ID: {save_result})")
+            else: # Failed to save for other reasons
+                upload_results["failed"].append(f"{course_identifier}")
+        
+        # Flash summary messages (optional, as detailed results are passed)
+        # if upload_results["success"]: flash(f"Successfully saved {len(upload_results['success'])} new course(s).", "success")
+        # if upload_results["duplicate"]: flash(f"Skipped {len(upload_results['duplicate'])} duplicate course(s).", "warning")
+        # if upload_results["failed"]: flash(f"Failed to save {len(upload_results['failed'])} course(s).", "danger")
+        
+        # Re-fetch courses to show updated list
+        courses = get_all_courses() 
+        # Render template with results
+        return render_template('index.html', courses=courses, allowed_terms=ALLOWED_TERMS, form_data={}, selected_adapter_name=selected_adapter_name, upload_results=upload_results)
 
-        # Call the imported save function
-        course_id = save_course(validated_data)
-        if course_id:
-            flash(f"Successfully processed and saved course '{validated_data.get("course_title", "N/A")}' from {file.filename}. ID: {course_id}", "success")
-        else:
-             flash(f"Error: Processed file {file.filename}, but failed to save course data.", "error")
-
-    except DispatcherError as e:
-        flash(f"Processing Error for {file.filename}: {e}", "error")
-    except ValidationError as e: # Catch base validation errors if use_base_validation=True
-        flash(f"Validation Error for {file.filename}: {e}", "error")
+    # --- Error Handling (Re-render with results/errors) ---
+    except (DispatcherError, ValidationError) as e:
+        error_list = str(e).split('; ')
+        formatted_message = "Processing Error:<br><ul>"
+        for error in error_list:
+            formatted_message += f"<li>{error}</li>"
+        formatted_message += "</ul>"
+        flash(formatted_message, "danger")
+        return render_template('index.html', courses=courses, allowed_terms=ALLOWED_TERMS, form_data={}, selected_adapter_name=selected_adapter_name, upload_results=None)
+    
     except Exception as e:
-        flash(f"Unexpected Error processing file {file.filename}: {e}", "error")
-        print(f"Unexpected Error details: {e}") # Log for debugging
-
-    return redirect(url_for('index'))
+        flash(f"Unexpected Error processing file {file.filename}:<br><ul><li>{e}</li></ul>", "danger")
+        print(f"Unexpected Error details: {e}")
+        return render_template('index.html', courses=courses, allowed_terms=ALLOWED_TERMS, form_data={}, selected_adapter_name=selected_adapter_name, upload_results=None)
 
 if __name__ == '__main__':
     # Use PORT environment variable if available (common in deployment), otherwise default to 8080

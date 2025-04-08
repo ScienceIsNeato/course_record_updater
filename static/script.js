@@ -1,9 +1,10 @@
 // static/script.js
+console.log("script.js loaded");
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM fully loaded and parsed");
 
-    const courseTableBody = document.querySelector('#display-section table tbody');
+    const courseTableBody = document.querySelector('.table tbody'); // Target tbody directly
 
     if (!courseTableBody) {
         console.error("Course table body not found!");
@@ -14,8 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const row = target.closest('tr');
-        if (!row) return;
-        const courseId = target.dataset.id;
+        if (!row || !row.dataset.courseId) {
+            // Ignore clicks that aren't on a button within a valid course row
+            return; 
+        }
+        const courseId = row.dataset.courseId; // Correctly get ID from row
 
         // --- EDIT Button Click --- 
         if (target.classList.contains('edit-btn')) {
@@ -25,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- DELETE Button Click --- 
         else if (target.classList.contains('delete-btn')) {
             console.log(`Delete clicked for ID: ${courseId}`);
-            const courseNumber = target.dataset.number; 
+            const courseNumber = row.cells[0].textContent; // Get course number from first cell
             handleDelete(row, courseId, courseNumber);
         }
         // --- SAVE Button Click --- 
@@ -45,10 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function makeRowEditable(row) {
         // Store original values & switch action buttons
         const originalValues = {};
-        const actionCell = row.querySelector('.actions-cell');
+        const actionCellIndex = 10; // Updated index for 'Actions' cell
+        const courseId = row.dataset.courseId;
         
         row.querySelectorAll('td').forEach((cell, index) => {
-            if (cell === actionCell) return; // Skip actions cell
+            if (index === actionCellIndex) return; // Skip actions cell
 
             const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
             if (!fieldName) return; 
@@ -56,12 +61,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalValue = cell.textContent.trim();
             originalValues[fieldName] = originalValue;
             
-            // Replace cell content with input field
-            const input = document.createElement('input');
-            input.type = (fieldName === 'year' || fieldName === 'num_students') ? 'number' : 'text';
+            // Replace cell content with appropriate input field
+            let input;
+            if (fieldName === 'term') {
+                input = document.createElement('select');
+                input.classList.add('form-select', 'form-select-sm', 'inline-edit-input'); // Bootstrap classes
+                // Add options (ideally passed from server or hardcoded if static)
+                const allowedTerms = ['FA2024', 'SP2024', 'SU2024', 'FA2025', 'SP2025', 'SU2025']; // Match adapter/template
+                allowedTerms.forEach(term => {
+                    const option = document.createElement('option');
+                    option.value = term;
+                    option.text = term;
+                    if (term === originalValue) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else {
+                input = document.createElement('input');
+                input.type = (fieldName === 'num_students' || fieldName.startsWith('grade_')) ? 'number' : 'text';
+                if (input.type === 'number') {
+                    input.min = '0'; // Set min for number inputs
+                }
+                input.value = (originalValue === 'N/A' || originalValue === '-') ? '' : originalValue; // Handle placeholder display values
+                input.classList.add('form-control', 'form-control-sm', 'inline-edit-input'); // Bootstrap classes
+            }
             input.name = fieldName;
-            input.value = originalValue;
-            input.classList.add('inline-edit-input'); // Add class for styling/selection
             cell.innerHTML = ''; // Clear cell
             cell.appendChild(input);
         });
@@ -69,39 +94,98 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store original values on the row for cancel functionality
         row.dataset.originalValues = JSON.stringify(originalValues);
 
-        // Change buttons
+        // Change buttons in the action cell
+        const actionCell = row.cells[actionCellIndex];
         actionCell.innerHTML = `
-            <button class="save-btn" data-id="${row.cells[0].textContent.trim()}">Save</button>
-            <button class="cancel-btn" data-id="${row.cells[0].textContent.trim()}">Cancel</button>
+            <button class="btn btn-sm btn-success save-btn">Save</button>
+            <button class="btn btn-sm btn-secondary cancel-btn">Cancel</button>
         `;
     }
 
     async function handleSave(row, courseId) {
-        const inputs = row.querySelectorAll('input.inline-edit-input');
+        const inputs = row.querySelectorAll('.inline-edit-input');
         const updatedData = {};
         let hasError = false;
+        let validationErrorMsg = "Please fill in all required fields correctly."; // Default message
+
+        // References to specific inputs for validation feedback
+        let numStudentsInput = null;
+        const gradeInputs = [];
 
         inputs.forEach(input => {
-            updatedData[input.name] = input.value.trim();
-            // Basic client-side validation example (can be expanded)
-            if (!input.value.trim() && isFieldRequired(input.name)) { 
-                input.style.borderColor = 'red'; 
+            const fieldName = input.name;
+            const value = input.value.trim();
+            updatedData[fieldName] = value; // Send trimmed string value
+            
+            // Store references
+            if (fieldName === 'num_students') numStudentsInput = input;
+            if (fieldName.startsWith('grade_')) gradeInputs.push(input);
+
+            // --- Basic client-side validation --- 
+            input.classList.remove('is-invalid'); // Reset border first
+
+            if (!value && isFieldRequired(fieldName)) { 
+                input.classList.add('is-invalid');
                 hasError = true;
-            } else {
-                input.style.borderColor = ''; // Reset border
+            }
+            // Check number types (including grades)
+            if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
+                 input.classList.add('is-invalid');
+                 validationErrorMsg = "Numeric fields must contain valid non-negative numbers.";
+                 hasError = true;
             }
         });
-        
+
+        // --- Grade Sum vs Num Students Validation --- 
+        const numStudentsValue = updatedData['num_students'] ? Number(updatedData['num_students']) : NaN;
+        let gradeSum = 0;
+        let anyGradeEntered = false;
+        const gradeValues = {};
+
+        gradeInputs.forEach(input => {
+            const gradeValue = updatedData[input.name] ? Number(updatedData[input.name]) : 0;
+            if (!isNaN(gradeValue) && gradeValue > 0) {
+                anyGradeEntered = true;
+                gradeValues[input.name] = gradeValue;
+                gradeSum += gradeValue;
+            } else if (isNaN(gradeValue)) {
+                // If a grade field has invalid number, error is already caught above
+            }
+            // Store 0 even if empty for sum logic consistency if needed, but anyGradeEntered tracks actual input
+            if (!updatedData[input.name]) gradeValues[input.name] = 0; 
+        });
+
+        // Only validate sum if num_students is a valid number AND at least one grade > 0 was entered
+        if (!isNaN(numStudentsValue) && numStudentsValue >= 0 && anyGradeEntered) {
+            if (gradeSum !== numStudentsValue) {
+                hasError = true;
+                validationErrorMsg = `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`;
+                // Mark relevant fields as invalid
+                if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+                gradeInputs.forEach(input => input.classList.add('is-invalid'));
+            }
+        }
+        // Also check: if any grade was entered, num_students MUST be provided and valid
+        else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
+             hasError = true;
+             validationErrorMsg = "Number of Students is required and must be a valid non-negative number when entering grades.";
+             if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+             // Keep grades marked invalid if they individually failed conversion earlier
+        }
+
+        // --- Stop if errors found --- 
         if (hasError) {
-            alert("Please fill in all required fields.");
+            alert(validationErrorMsg); // Show specific error
             return; // Prevent saving
         }
 
+        // --- Proceed with saving --- 
         console.log("Saving data:", updatedData);
 
         try {
+            // Use POST and rely on backend route allowing POST for updates
             const response = await fetch(`/edit_course/${courseId}`, {
-                method: 'POST', // Or PUT, matching backend route
+                method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
@@ -116,14 +200,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update cell text content and revert row state
                 inputs.forEach(input => {
                     const cell = input.closest('td');
-                    cell.textContent = input.value.trim(); // Update display
+                    let displayValue = input.value.trim();
+                    // Handle display for empty optional numbers
+                    if (input.type === 'number' && !displayValue) {
+                        if (input.name === 'num_students') displayValue = 'N/A';
+                        else if (input.name.startsWith('grade_')) displayValue = '-';
+                    }
+                    cell.textContent = displayValue; // Update display
                 });
-                revertRowToActionButtons(row, courseId);
+                revertRowToActionButtons(row);
             } else {
                 console.error("Update failed:", result.error || `HTTP ${response.status}`);
-                alert(`Error updating course: ${result.error || 'Server error'}`);
-                // Optionally revert changes on failure, or leave editable
-                // cancelEdit(row); // Example: revert on failure
+                // Try to show backend validation error if available
+                let backendError = result.error || 'Server error';
+                if (backendError.includes("Sum of grades") || backendError.includes("Number of students is required")){
+                    // If backend caught the sum error, highlight fields
+                    validationErrorMsg = backendError;
+                    if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+                    gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
+                }
+                alert(`Error updating course: ${backendError}`);
+                // Leave editable on failure
             }
         } catch (error) {
             console.error("Network or fetch error during save:", error);
@@ -135,39 +232,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalValues = JSON.parse(row.dataset.originalValues || '{}');
         
         row.querySelectorAll('td').forEach((cell, index) => {
-            const input = cell.querySelector('input.inline-edit-input');
+            const input = cell.querySelector('.inline-edit-input');
             if (input) {
                 const fieldName = input.name;
                 cell.textContent = originalValues[fieldName] !== undefined ? originalValues[fieldName] : '';
             }
         });
 
-        revertRowToActionButtons(row, row.cells[0].textContent.trim());
+        revertRowToActionButtons(row);
     }
 
     function handleDelete(row, courseId, courseNumber) {
-        // Simple confirmation for now - enhance as needed
-        const confirmation = prompt(`To delete course ${courseNumber}, please type its number below:`);
-        
-        if (confirmation === null) { // User pressed cancel
+        // Use simple confirm for now, prompt was complex
+        const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
+            
+        if (!window.confirm(confirmationMessage)) { 
             console.log("Delete cancelled by user.");
-            return;
-        }
-
-        if (confirmation.trim() !== courseNumber) {
-            alert("Incorrect course number entered. Deletion cancelled.");
             return;
         }
 
         // Proceed with deletion
         console.log(`Attempting to delete ID: ${courseId}`);
+        // Use POST and rely on backend route allowing POST for delete
         fetch(`/delete_course/${courseId}`, {
-            method: 'POST' // Or DELETE, matching backend
+            method: 'POST' 
         })
         .then(response => {
             if (!response.ok) {
-                // Try to get error message from JSON response
-                return response.json().then(err => { throw new Error(err.error || `HTTP ${response.status}`) });
+                 return response.json().then(err => { 
+                     throw new Error(err.error || `Server responded with status ${response.status}`);
+                 }).catch(() => {
+                      throw new Error(`Server responded with status ${response.status}`);
+                 });
             }
             return response.json(); // Expect success JSON
         })
@@ -175,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 console.log("Delete successful");
                 row.remove(); // Remove row from table
+                alert(`Course ${courseNumber} deleted successfully.`);
             } else {
                  console.error("Delete failed on server:", result.error);
                  alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
@@ -186,13 +283,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function revertRowToActionButtons(row, courseId) {
-        const actionCell = row.querySelector('.actions-cell');
+    function revertRowToActionButtons(row) {
+        const actionCellIndex = 10; // Updated index for 'Actions' cell
+        const actionCell = row.cells[actionCellIndex];
+        const courseId = row.dataset.courseId;
         if (actionCell) {
             actionCell.innerHTML = `
-                <button class="edit-btn" data-id="${courseId}">Edit</button>
-                <button class="delete-btn" data-id="${courseId}" data-number="${row.cells[2].textContent.trim()}">Delete</button>
-            `; // Assumes course number is in the 3rd cell (index 2)
+                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
+                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+            `; 
         }
          // Clean up dataset
         delete row.dataset.originalValues;
@@ -201,21 +300,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function getFieldNameByIndex(index) {
         // Map table column index to field name (must match table structure in index.html)
         const fieldMap = [
-            'id', // 0 - Assuming ID is first, not editable
-            'course_title', // 1
-            'course_number', // 2
-            'semester', // 3
-            'year', // 4
-            'professor', // 5
-            'num_students' // 6
+            'course_number',   // 0
+            'course_title',    // 1
+            'instructor_name', // 2
+            'term',            // 3
+            'num_students',    // 4
+            'grade_a',         // 5 
+            'grade_b',         // 6
+            'grade_c',         // 7
+            'grade_d',         // 8
+            'grade_f',         // 9
+            null               // 10 Actions
         ];
         return fieldMap[index] || null;
     }
     
     function isFieldRequired(fieldName) {
         // Mirror required fields from BaseAdapter (adjust if needed)
-         const requiredFields = ['course_title', 'course_number', 'semester', 'year', 'professor'];
+         const requiredFields = ['course_title', 'course_number', 'instructor_name', 'term'];
          return requiredFields.includes(fieldName);
     }
+
+    // Remove the duplicate direct event listener attachment block
+    /* 
+    // --- Delete Button Logic --- 
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    ...
+    // --- Edit Button Logic (Placeholder) --- 
+    const editButtons = document.querySelectorAll('.edit-btn');
+    ...
+    */
 
 }); 

@@ -80,51 +80,53 @@ class FileAdapterDispatcher:
             DispatcherError: If the adapter cannot be found/imported, lacks a parse function,
                              or if parsing/validation fails.
         """
-        module_name = f"adapters.{adapter_name}"
         try:
-            print(f"Attempting to import adapter module: {module_name}")
-            adapter_module = importlib.import_module(module_name)
-            print(f"Successfully imported {module_name}")
-        except ImportError as e:
-            print(f"ImportError for {module_name}: {e}")
-            raise DispatcherError(f"Adapter module '{module_name}' not found or failed to import.") from e
+            # Dynamically import the adapter module
+            module_path = f"adapters.{adapter_name}"
+            module = importlib.import_module(module_path)
 
-        if not hasattr(adapter_module, 'parse') or not callable(adapter_module.parse):
-            raise DispatcherError(f"Adapter '{adapter_name}' does not have a callable 'parse' function.")
-
-        try:
-            print(f"Calling parse function for adapter: {adapter_name}")
-            # Call the specific adapter's parse function
-            parsed_data = adapter_module.parse(document)
-            print(f"Adapter {adapter_name} returned: {parsed_data}")
+            # Convert adapter_name (snake_case) to ClassName (CamelCase)
+            class_name = "".join(word.capitalize() for word in adapter_name.split('_'))
             
-            if not isinstance(parsed_data, dict):
-                 raise DispatcherError(f"Adapter '{adapter_name}' did not return a dictionary.")
+            # Get the class from the imported module
+            if hasattr(module, class_name):
+                adapter_class = getattr(module, class_name)
+                # Instantiate the adapter class
+                adapter_instance = adapter_class()
 
+                # Check if the instance has a callable 'parse' method
+                if hasattr(adapter_instance, 'parse') and callable(adapter_instance.parse):
+                    print(f"Parsing document with {class_name}...")
+                    # Call parse on the instance
+                    parsed_data_list = adapter_instance.parse(document)
+                    print(f"Raw parsed data count: {len(parsed_data_list)}")
+
+                    # Apply base validation if requested
+                    validated_data_list = []
+                    validation_errors = []
+                    if self._use_base_validation and self._base_validator:
+                        print("Applying base validation...")
+                        for i, course_data in enumerate(parsed_data_list):
+                            try:
+                                validated = self._base_validator.parse_and_validate(course_data)
+                                validated_data_list.append(validated)
+                            except ValidationError as e:
+                                validation_errors.append(f"Record {i+1}: {e}")
+                        
+                        if validation_errors:
+                            # Raise a single error summarizing all validation issues for the file
+                            raise ValidationError("; ".join(validation_errors))
+                        print(f"Base validation passed for {len(validated_data_list)} records.")
+                        return validated_data_list # Return validated data
+                    else:
+                        return parsed_data_list # Return raw parsed data
+                else:
+                    raise DispatcherError(f"Adapter '{adapter_name}' (class {class_name}) does not have a callable 'parse' method.")
+            else:
+                raise DispatcherError(f"Adapter class '{class_name}' not found in module '{module_path}'.")
+
+        except ImportError:
+            raise DispatcherError(f"Adapter module '{module_path}' not found.")
         except Exception as e:
-            # Catch broad exceptions from the parse function itself
-            print(f"Error during {adapter_name}.parse(): {e}")
-            raise DispatcherError(f"Error during parsing with adapter '{adapter_name}': {e}") from e
-
-        # Optional: Post-parsing validation using BaseAdapter
-        if self._use_base_validation and self._base_validator:
-            try:
-                print(f"Performing base validation on data from {adapter_name}")
-                # Validate the data structure and types using BaseAdapter logic
-                # Note: BaseAdapter.parse_and_validate expects form-like string data.
-                # We might need a different validation method or adapt BaseAdapter
-                # if parsed_data contains non-string types already.
-                # For now, assume it can handle the dictionary from parse.
-                validated_data = self._base_validator.parse_and_validate(parsed_data) # This might need adjustment!
-                print(f"Base validation successful for {adapter_name}")
-                return validated_data
-            except ValidationError as e:
-                print(f"Base validation failed for data from {adapter_name}: {e}")
-                raise DispatcherError(f"Validation failed for data parsed by '{adapter_name}': {e}") from e
-            except Exception as e:
-                 print(f"Unexpected error during base validation for {adapter_name}: {e}")
-                 raise DispatcherError(f"Unexpected validation error for '{adapter_name}': {e}") from e
-        else:
-            # If not using base validation, return the directly parsed data
-            print(f"Skipping base validation for {adapter_name}")
-            return parsed_data 
+            # Catch other potential errors during instantiation or parsing
+            raise DispatcherError(f"Error processing with adapter '{adapter_name}': {e}") 
