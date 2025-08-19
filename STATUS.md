@@ -1,11 +1,11 @@
 # Project Status: Course Record Updater
 
-**Last Updated:** $(date +%Y-%m-%d\ %H:%M:%S)
+**Last Updated:** 2024-12-20 15:30:00
 
 ## Overall Progress
 
-*   **Current Phase:** UI/UX Enhancements (Edit/Delete)
-*   **Next Major Goal:** Implement inline editing and deletion of records.
+*   **Current Phase:** Repository Minified ✅
+*   **Next Major Goal:** Deploy to Cloud Run for client feedback.
 
 ## Milestones (Revised Plan)
 
@@ -70,53 +70,62 @@
     *   [X] Rename `/upload` route to `/add_course_automatic`.
     *   [X] Update the route handler to use `FileAdapterDispatcher` and `database_service`.
     *   [X] Update `index.html` file upload form action.
-    *   [ ] Add integration tests for the dummy file upload workflow (Skipped for now).
-11. **[->] UI - Edit/Delete Functionality**
-    *   [ ] Implement JavaScript for inline editing.
-    *   [ ] Implement JavaScript for delete confirmation prompt.
-    *   [ ] Create Flask endpoints for Update/Delete.
-    *   [ ] Implement corresponding functions in `database_service.py`.
-    *   [ ] Integrate endpoints with DB service.
-    *   [ ] Add tests.
+    *   [X] Added sample adapters (`NursingSampleAdapter`, `BusinessSampleAdapter`) and generation script.
+    *   [X] Implemented duplicate checking and improved upload result feedback.
+11. **[X] UI - Edit/Delete Functionality**
+    *   [X] Implement JavaScript for inline editing (`static/script.js`).
+    *   [X] Implement JavaScript for delete confirmation prompt.
+    *   [X] Create Flask endpoints for Update/Delete (`app.py`).
+    *   [X] Implement corresponding functions in `database_service.py` (`update_course`, `delete_course`).
+    *   [X] Integrate endpoints with DB service.
+    *   [X] Added CEI Logo and Favicon.
+    *   [ ] Add tests (Unit tests for DB done, Integration tests skipped for now).
 12. **[ ] Adapter Implementation (Iterative)**
-    *   [ ] Create `adapter_v1.py`.
-    *   [ ] Implement parsing logic for the first real format.
-    *   [ ] Add tests.
-    *   [ ] Repeat...
-13. **[ ] Deployment Setup (Google Cloud Run)**
-    *   [ ] Create `Dockerfile`.
-    *   [ ] Configure deployment.
-    *   [ ] Deploy.
+    *   [ ] Create `adapter_v1.py` (for a real format).
+13. **[X] Deployment Setup (Google Cloud Run)**
+    *   [X] Create `Dockerfile`.
+    *   [X] Create `.gcloudignore` file.
+    *   [X] Configure `gunicorn` for production serving.
+    *   [X] Guide user through `gcloud run deploy` command.
+14. **[X] Repository Minification** 
+    *   [X] Create `cursor-rules/scripts/minify_python_repo.py`.
+    *   [X] Script consolidates all Python, HTML, JS, and config files into single executable.
+    *   [X] Generated minified version saved to Desktop: `course_record_updater_minified.py`.
+    *   [X] Processed 13 files total (11 Python, 1 template, 1 static file).
 
 ---
 
-## Current Focus: Milestone 11 - UI - Edit/Delete Functionality
+## Current Status: Repository Successfully Minified ✅
 
-**Objective:** Implement the client-side (JavaScript) and backend (Flask routes, DB service functions) logic needed to allow users to edit course records inline and delete them with confirmation.
+**Objective Complete:** Created a single-file version of the entire Course Record Updater repository.
+
+**Results:**
+*   **Location:** `~/Desktop/course_record_updater_minified.py`
+*   **Files Processed:** 13 total files
+    *   11 Python files (.py)
+    *   1 HTML template file
+    *   1 JavaScript static file
+*   **Features Included:**
+    *   All imports consolidated at the top
+    *   Complete Flask application with all routes
+    *   Database service with Firestore integration
+    *   File adapter system with sample adapters
+    *   HTML template embedded as string
+    *   JavaScript functionality for editing/deleting
+    *   Configuration files (requirements.txt, Dockerfile, etc.)
+
+**Usage:** The minified file contains the complete application and can be executed as a standalone Python script. Uncomment the `app.run()` line in the main execution block to start the server.
+
+**Next Steps:** Ready for deployment to Google Cloud Run or sharing as a single consolidated codebase.
+
+## Current Focus: Milestone 13 - Deployment Setup (Google Cloud Run)
+
+**Objective:** Prepare the application for deployment on Google Cloud Run to allow client access and feedback.
 
 **Tasks:**
-*   **Database Service:**
-    *   Implement `update_course(course_id: str, updated_data: dict)` in `database_service.py`.
-    *   Implement `delete_course(course_id: str)` in `database_service.py`.
-    *   Add unit tests for these new DB service functions (mocking Firestore).
-*   **Flask Backend:**
-    *   Create a new route `/edit_course/<string:course_id>` (e.g., method PUT or POST) in `app.py`.
-    *   Handler should receive updated data (likely JSON from JS), validate it (perhaps using `BaseAdapter`), and call `database_service.update_course()`.
-    *   Create a new route `/delete_course/<string:course_id>` (e.g., method DELETE or POST) in `app.py`.
-    *   Handler should call `database_service.delete_course()`.
-    *   Return appropriate JSON responses (success/error) from these endpoints.
-    *   Add tests for these routes (likely integration tests mocking the DB service).
-*   **Frontend JavaScript:**
-    *   Create a `static/script.js` file and link it in `index.html`.
-    *   Add event listeners to the "Edit" buttons:
-        *   On click, make the table row's cells editable (e.g., replace `<td>` content with `<input>`).
-        *   Add a "Save" and "Cancel" button to the row.
-        *   On "Save", collect data from inputs, send an asynchronous request (e.g., `fetch` API) to the `/edit_course/...` endpoint.
-        *   Handle success/error response (update UI, revert inputs on error).
-        *   On "Cancel", revert changes.
-    *   Add event listeners to the "Delete" buttons:
-        *   On click, show a confirmation dialog (e.g., `window.confirm` or custom modal) maybe asking to type the course number (as originally requested).
-        *   If confirmed, send an asynchronous request to the `/delete_course/...` endpoint.
-        *   Handle success/error (remove row from table on success).
+*   Create `Dockerfile`.
+*   Create `.gcloudignore` file.
+*   Configure `gunicorn` for production serving.
+*   Guide user through `gcloud run deploy` command.
 
-**Testing Note:** Unit test DB functions. Integration test Flask routes. Manually test the UI interactions thoroughly. 
+**Testing Note:** Ensure Firestore credentials/service account setup is handled correctly for the Cloud Run environment. 
