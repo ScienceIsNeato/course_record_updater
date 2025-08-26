@@ -19,6 +19,23 @@ A simple Flask web application to manage course records, intended to replace man
 │   ├── base_adapter.py     # Base validation/parsing logic
 │   ├── dummy_adapter.py    # Example file adapter
 │   └── file_adapter_dispatcher.py # Handles loading specific file adapters
+├── planning/             # 📋 PROJECT PLANNING & DOCUMENTATION
+│   ├── documentation/      # Technical specifications and requirements
+│   │   ├── AUTH_REQUIREMENTS.md    # Authentication and authorization design
+│   │   ├── DATA_MODEL.md           # Database entities and relationships  
+│   │   ├── DATA_ENTRY_STRATEGY.md  # Data input and validation approach
+│   │   ├── EXECUTION_PLAN.md       # Development milestones and timeline
+│   │   ├── PERMISSION_MATRIX.md    # User role permissions checklist
+│   │   ├── PRICING_STRATEGY.md     # Business model and pricing tiers
+│   │   └── STAKEHOLDER_QUESTIONS.md # Questions for client meetings
+│   └── meetings/           # Meeting notes and decisions
+├── research/             # 🔍 STAKEHOLDER RESEARCH & ANALYSIS
+│   └── CEI/                # College of Eastern Idaho pilot research
+│       ├── README.md                 # CEI contact info and materials
+│       ├── VIDEO_ANALYSIS.md         # Analysis of stakeholder video
+│       ├── SPREADSHEET_ANALYSIS.md   # Analysis of current data structure
+│       ├── BRIDGE_STRATEGY.md        # Migration approach and Access export
+│       └── SESSION_SUMMARY.md        # Key insights and discoveries
 ├── static/               # Static files (CSS, JavaScript)
 │   └── script.js
 ├── templates/            # Flask HTML templates
@@ -38,6 +55,20 @@ A simple Flask web application to manage course records, intended to replace man
 ├── STATUS.md             # Current development status and milestones
 └── venv/                 # Python virtual environment (if created)
 ```
+
+### 📁 Documentation Organization Rules
+
+**IMPORTANT:** All project documentation follows this structure:
+
+- **`planning/documentation/`** - Technical specifications, requirements, and design documents
+- **`research/`** - Stakeholder analysis, data analysis, and external research materials
+- **Root level** - Only core project files (README, STATUS, PROJECT_OVERVIEW)
+- **NO `docs/` folder** - This was removed to prevent confusion
+
+When adding new documentation:
+- Technical specs → `planning/documentation/`
+- Stakeholder research → `research/[client_name]/`
+- Meeting notes → `planning/meetings/`
 
 ## Setup and Running
 
