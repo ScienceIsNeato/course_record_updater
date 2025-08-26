@@ -28,6 +28,11 @@ A simple Flask web application to manage course records, intended to replace man
 │   │   ├── PERMISSION_MATRIX.md    # User role permissions checklist
 │   │   ├── PRICING_STRATEGY.md     # Business model and pricing tiers
 │   │   └── STAKEHOLDER_QUESTIONS.md # Questions for client meetings
+│   ├── user_stories/       # User workflows by role
+│   │   ├── site_admin/           # Global admin user stories
+│   │   ├── institution_administrator/ # Institution-level user stories
+│   │   ├── program_administrator/     # Program-level user stories
+│   │   └── regular_user/             # Faculty/instructor user stories
 │   └── meetings/           # Meeting notes and decisions
 ├── research/             # 🔍 STAKEHOLDER RESEARCH & ANALYSIS
 │   └── CEI/                # College of Eastern Idaho pilot research
@@ -67,6 +72,7 @@ A simple Flask web application to manage course records, intended to replace man
 
 When adding new documentation:
 - Technical specs → `planning/documentation/`
+- User workflows → `planning/user_stories/[user_role]/`
 - Stakeholder research → `research/[client_name]/`
 - Meeting notes → `planning/meetings/`
 
