@@ -29,13 +29,14 @@
 - Full course management within their program
 - Program-level reporting and analytics
 - Email support
-- Export capabilities
+- Export capabilities (Excel, CSV)
+- Access database export (basic format)
 
-**Value Proposition:**
-- Risk-free 30-day trial
-- Perfect for single departments or small programs
-- Scales with actual usage (per-course pricing)
-- Can grow team without per-user fees
+**Features:**
+- 30-day trial period
+- Single program management
+- Usage-based pricing (per-course)
+- No per-user fees
 
 ### Institution Tier - INSTITUTION_ADMINISTRATOR
 **Target:** Academic deans, institutional research offices
@@ -50,15 +51,16 @@
 - Assign Program Administrators
 - Institution-wide reporting and analytics
 - Priority support
-- Advanced export and integration options
-- Custom branding options
+- Advanced export options (Excel, CSV, SQL)
+- Access database export (advanced format + bulk operations)
+- Custom branding options (CSS upload)
 - Bulk operations and data management
 
-**Value Proposition:**
-- Risk-free 30-day trial
-- Volume discount on per-course pricing
-- Centralized management across departments
-- Institution-wide visibility and reporting
+**Features:**
+- 30-day trial period
+- Volume discount on per-course pricing (25% off)
+- Multi-program management
+- Institution-wide reporting
 
 ## Pricing Variables to Determine
 

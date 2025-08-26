@@ -79,6 +79,38 @@
 
 40. **Program-Specific Data Requirements:** Are there specific data fields that vary by accrediting body that we should plan for?
 
+## CEI-Specific Questions (From Video & Spreadsheet Analysis)
+
+### **Hierarchy & Structure**
+41. **Learning Outcome Hierarchy:** How do CLOs (Course Learning Outcomes) roll up to Program Learning Outcomes (PLOs)?
+42. **Institutional Outcomes:** Are there Institutional Learning Outcomes (ILOs) that programs contribute to?
+43. **NWCCU Structure:** What's the complete hierarchy from course level up to NWCCU submission?
+44. **Assessment Cycles:** What are the different reporting cycles (annual, 3-year, 7-year)?
+
+### **Current System Pain Points**
+45. **Access Database Issues:** How severe are the multi-user concurrency problems?
+46. **Data Integrity:** How often do records end up in wrong rows or get corrupted?
+47. **Form Usability:** What specific problems do faculty have with current Access forms?
+48. **Manual Reconciliation:** How much time is spent on manual math validation?
+
+### **Reporting Requirements**
+49. **Required Reports:** What specific reports does NWCCU require for your accreditation?
+50. **Report Formats:** Do final submissions need to be PDF, Word, Excel, or other formats?
+51. **Approval Workflow:** Who reviews and approves reports before submission?
+52. **Submission Timeline:** When are reports due and how long does compilation take?
+
+### **Views & Dashboards**
+53. **Faculty Views:** What data do instructors need to see about their courses?
+54. **Program Views:** What cross-course data do program administrators need?
+55. **Institution Views:** What institution-wide data is needed for reporting?
+56. **Real-time vs Static:** Do you need live dashboards or are periodic reports sufficient?
+
+### **Migration & Integration**
+57. **Access Export:** Would exporting web data to Access format help during transition?
+58. **Parallel Operation:** Could you run both systems simultaneously during evaluation?
+59. **Data Migration:** How important is importing your existing 1,543 CLO records?
+60. **Custom Branding:** Would CSS upload for university styling be valuable?
+
 ---
 
 ## Question Categories for Meeting Agenda

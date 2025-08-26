@@ -122,7 +122,45 @@
 - Institution administrators automatically get 'administrator' access to all programs in their institution
 - Site admins bypass this table entirely (global access)
 
-### 6. **CourseInstructor**
+### 6. **CourseOutcome (CLO)**
+**Purpose:** Course Learning Outcomes - specific assessments within each course
+**Key Attributes:**
+- `course_outcome_id` (UUID, primary key)
+- `course_id` (foreign key → Course)
+- `program_id` (foreign key → Program, denormalized)
+- `institution_id` (foreign key → Institution, denormalized)
+- `created_by_user_id` (foreign key → User)
+- `last_modified_by_user_id` (foreign key → User)
+
+**CLO Identification:**
+- `clo_number` (string, e.g., "1", "2", "3")
+- `clo_code` (string, e.g., "ACC-201.1", "BIOL-101.2")
+- `clo_description` (text, full outcome description)
+
+**Assessment Data:**
+- `assessment_tool` (text, how this CLO was measured)
+- `students_took_assessment` (integer)
+- `students_passed_assessment` (integer)
+- `pass_rate_percentage` (calculated: passed ÷ took × 100)
+- `pass_threshold` (integer, default 75)
+- `result_status` (enum: 'S', 'U' based on threshold)
+
+**Narrative Fields:**
+- `celebrations` (text, what went well)
+- `challenges` (text, what was difficult)
+- `changes` (text, planned improvements)
+
+**Metadata:**
+- `created_at`, `updated_at`
+- `is_active` (boolean)
+
+**Business Rules:**
+- Multiple CLOs per course (1:many relationship)
+- Each CLO assessed independently
+- S/U determination based on pass_threshold (default 75%)
+- CLO codes follow pattern: COURSE-###.# (e.g., ACC-201.1)
+
+### 7. **CourseInstructor**
 **Purpose:** Many-to-many relationship between courses and instructors
 **Key Attributes:**
 - `course_instructor_id` (UUID, primary key)
@@ -141,7 +179,7 @@
 - Multiple instructors allowed per course
 - One instructor can be marked as `is_primary` for reporting purposes
 
-### 7. **CourseInvitation**
+### 8. **CourseInvitation**
 **Purpose:** Secure invitation system for sharing individual courses
 **Key Attributes:**
 - `course_invitation_id` (UUID, primary key)
@@ -163,7 +201,7 @@
 - Can be revoked by the inviter or course owner
 - Email verification required before acceptance
 
-### 8. **ProgramInvitation**
+### 9. **ProgramInvitation**
 **Purpose:** Secure invitation system for adding users to programs
 **Key Attributes:**
 - `invitation_id` (UUID, primary key)
@@ -185,7 +223,7 @@
 - Can be revoked by the inviter
 - Email verification required before acceptance
 
-### 9. **Report** (Future)
+### 10. **Report** (Future)
 **Purpose:** Generated accreditation reports and templates
 **Key Attributes:**
 - `report_id` (UUID, primary key)
@@ -210,7 +248,8 @@ User → Course (via created_by_user_id or shared_with_user_ids)
 
 ### Data Hierarchy
 ```
-Institution (1) → (many) Programs (1) → (many) Courses (1) → (many) CourseInstructors
+Institution (1) → (many) Programs (1) → (many) Courses (1) → (many) CourseOutcomes (CLOs)
+                                                        (1) → (many) CourseInstructors
 ```
 
 ### Invitation Flows

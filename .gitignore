@@ -3,3 +3,4 @@
 .envrc
 .venv
 *.pyc
+cursor-rules/

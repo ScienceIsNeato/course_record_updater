@@ -1,0 +1,30 @@
+# .gcloudignore
+# This file specifies directories and files that should NOT be uploaded to
+# Google Cloud when deploying.
+
+.gcloudignore
+.git
+.gitignore
+
+# Python virtual environment
+venv/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Sample documents (if not needed in production image)
+*.docx
+
+# Local environment variables
+.envrc
+.env
+
+# IDE/Editor specific files
+.vscode/
+.idea/
+*.sublime-*
+
+# OS generated files
+.DS_Store
+Thumbs.db 
