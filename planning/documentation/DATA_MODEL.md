@@ -9,7 +9,7 @@
 - `email` (unique, used for login)
 - `full_name`
 - `role` (enum: 'site_admin', 'multi_program_administrator', 'program_administrator', 'regular_user')
-- `primary_institution_id` (foreign key → Institution, optional for site_admin)
+- `primary_institution_id` (foreign key → Institution, optional for site_admin, used for default context)
 - `account_status` (enum: 'active', 'pending', 'suspended')
 - `created_at`, `updated_at`
 - `last_login_at`
@@ -31,6 +31,8 @@
 - `account_status = 'active'`: User has completed registration and can log in
 - `account_status = 'suspended'`: Account temporarily disabled
 - Pending users cannot log in until they complete registration
+- Users can have access to multiple institutions via UserProgramAccess records
+- `primary_institution_id` determines default institution context in UI
 
 ### 2. **Institution**
 **Purpose:** Top-level organizational unit (college, university)

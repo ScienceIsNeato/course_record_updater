@@ -43,11 +43,22 @@
 **Who:** Faculty, teaching assistants, program staff
 **Scope:** Courses they have access to within their assigned program(s)
 **Pricing:** Free
+**Multi-Institution Support:** Users can belong to multiple institutions with separate access controls
 **Abilities:**
-- **Data Entry:** Input course information via multiple methods
+- **Data Entry:** Input course information via web forms
 - **Course Management:** Create/edit courses they have access to
 - **Basic Reporting:** Generate reports for their own courses
 - **Profile Management:** Update their own account settings
+- **Institution Switching:** Toggle between institutions if they have multi-institutional access
+
+## Multi-Institution Design Assumptions
+
+### Core Assumption
+**Users can work at multiple institutions** - Faculty commonly teach at multiple schools, so the system must support:
+- Single user account with access to multiple institutions
+- Clear data isolation between institutions
+- Institution context switching in the UI
+- Separate billing and permissions per institution
 
 ## Data Entry Strategy
 

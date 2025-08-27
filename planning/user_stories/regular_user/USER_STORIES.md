@@ -235,10 +235,11 @@
 **As a regular user (faculty), I want to:**
 
 30. **Teach at multiple institutions** when I have adjunct appointments
-    - Maintain separate course data for different schools
-    - Use different assessment standards per institution
-    - Keep institutional data properly isolated
-    - Manage multiple logins and accounts efficiently
+- Switch between institutions using institution selector in UI
+- Maintain separate course data for different schools
+- Use different assessment standards per institution
+- Keep institutional data properly isolated
+- Access all my institutions with single login account
 
 31. **Handle visiting appointments** when teaching temporarily elsewhere
     - Access guest instructor privileges quickly
