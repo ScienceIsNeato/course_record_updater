@@ -8,7 +8,7 @@
 - `user_id` (UUID, primary key)
 - `email` (unique, used for login)
 - `full_name`
-- `role` (enum: 'site_admin', 'institution_administrator', 'program_administrator', 'regular_user')
+- `role` (enum: 'site_admin', 'multi_program_administrator', 'program_administrator', 'regular_user')
 - `primary_institution_id` (foreign key → Institution, optional for site_admin)
 - `account_status` (enum: 'active', 'pending', 'suspended')
 - `created_at`, `updated_at`
@@ -119,7 +119,8 @@
 **Business Rules:**
 - `access_type = 'administrator'`: User can manage the program (invite others, manage courses)
 - `access_type = 'member'`: User can create/edit courses in the program
-- Institution administrators automatically get 'administrator' access to all programs in their institution
+- Multi-program administrators get 'administrator' access only to programs they are explicitly assigned
+- No automatic institution-wide access - each program assignment is explicit
 - Site admins bypass this table entirely (global access)
 
 ### 6. **CourseOutcome (CLO)**

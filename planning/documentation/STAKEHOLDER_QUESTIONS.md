@@ -1,115 +1,74 @@
-# Stakeholder Questions List
+# Stakeholder Questions List (Internal)
 
-**Purpose:** Running list of questions to ask during stakeholder meetings to validate assumptions and gather requirements.
+**Purpose:** Internal reference document for stakeholder meetings. Generic questions with feedback notes.  
+**Note:** For client-specific versions, see `research/[client_name]/[CLIENT]_STAKEHOLDER_QUESTIONS.md`
+
+**Feedback Integration:** This document has been updated based on CEI feedback to show what works/doesn't work.
 
 ## Data Requirements
 
 ### Accreditation Bodies
-1. **Program-Specific Requirements:** Do different programs within the same institution use different accrediting bodies? (e.g., Nursing might use a different accreditor than Biology)
-2. **Data Field Variations:** Are there accreditor-specific data fields required beyond the standard course information?
-3. **Reporting Formats:** What specific report formats does each accrediting body require? (Word templates, PDF formats, Excel spreadsheets)
+1. **Governing Body Requirements:** What specific report formats does [SPECIFIC GOVERNING BODY] require? (Word templates, PDF formats, Excel spreadsheets)
 
 ### Course Data
-4. **Grade Distribution Detail:** Do you need letter grades (A, B, C, D, F) or percentage ranges? Both?
-5. **Learning Outcomes:** How detailed should learning outcomes assessment be? Just pass/fail rates or specific rubric scores?
-6. **Student Data:** Do you need demographic data about students, or just enrollment numbers?
-7. **Assessment Methods:** How detailed should the description of assessment methods be?
+2. **Grade Format Support:** Which grade formats need to be recognized/supported? Just letter grades, or grades as numbers as well? Any other formats? What about special codes for withdrawals/dropouts? Need full list of all possible selections.
+3. **Assessment Method Detail:** Use existing stakeholder data as examples - how detailed should assessment method descriptions be?
 
 ### Historical Data
-8. **Data Retention:** How many years of historical data do you need to maintain for accreditation purposes?
-9. **Comparison Requirements:** Do accreditors require year-over-year comparisons or trend analysis?
-10. **Archive vs Active:** When does course data become "historical" vs "current"?
+4. **Annual Report Requirements:** Can you provide a full list of all reports needed each year? (Better than asking about random specific requirements)
 
 ## Workflow & Process
 
 ### User Roles & Permissions
-11. **Department Structure:** Do you have sub-departments within programs? (e.g., Molecular Biology within Biology Department)
-12. **Multi-Program Faculty:** Do instructors commonly teach across multiple programs/departments?
-13. **Approval Workflows:** Do course reports need approval before submission to accreditors?
-14. **Data Entry Responsibility:** Who typically enters course data - instructors themselves or administrative staff?
+5. **Approval Process:** What, if any, points along the process should require explicit approval by a specific user, and which user should be making the approval at that point? (E.g., final report generation - but we're just generating reports for them, not submitting)
+6. **Data Entry Responsibility:** Who typically enters course data - instructors themselves or administrative staff?
 
 ### Reporting Cycles
-15. **Reporting Frequency:** How often do you submit reports to accreditors? (Annual, bi-annual, on-demand)
-16. **Deadlines:** What are typical deadlines for report submission?
-17. **Review Process:** Who reviews reports before submission? How long does review take?
+7. **Reporting Frequency:** How often do you submit reports to accreditors? (Annual, bi-annual, on-demand)
+8. **Deadlines:** What are typical deadlines for report submission?
+9. **Review Process:** Who reviews reports before submission? How long does review take?
 
 ### Data Sources
-18. **Current Tools:** What systems do you currently use? (LMS, SIS, Excel, Word documents)
-19. **Data Export:** Can you export data from existing systems? In what formats?
-20. **Manual vs Automated:** What percentage of your current process is manual data entry vs automated?
+10. **Current Tools:** What systems do you currently use? (LMS, SIS, Excel, Word documents)
+11. **Data Export:** Can you export data from existing systems? In what formats?
+12. **Manual vs Automated:** What percentage of your current process is manual data entry vs automated?
 
 ## Technical Requirements
 
 ### Integration Needs
-21. **LMS Integration:** Do you need to pull data directly from your Learning Management System?
-22. **SIS Integration:** Should we integrate with your Student Information System?
-23. **Export Requirements:** What file formats do you need for exports? (PDF, Word, Excel, CSV)
+13. **LMS Integration:** Do you need to pull data directly from your Learning Management System?
+14. **SIS Integration:** Should we integrate with your Student Information System?
+15. **Export Requirements:** What file formats do you need for exports? (PDF, Word, Excel, CSV)
 
 ### Access & Security
-24. **Multi-Institution Users:** Do you have faculty/staff who work at multiple institutions?
-25. **External Access:** Do accreditors need direct access to the system, or do you always export reports?
-26. **Audit Requirements:** Do you need detailed audit logs of who changed what and when?
+16. **Multi-Institution Users:** Do you have faculty/staff who work at multiple institutions?
+17. **External Access:** Do accreditors need direct access to the system, or do you always export reports?
+18. **Audit Requirements:** Do you need detailed audit logs of who changed what and when?
 
 ## Business Model Validation
 
 ### Pricing & Value
-27. **Budget Authority:** Who has authority to purchase software tools for your department/institution?
-28. **Current Costs:** What do you currently spend on accreditation reporting (staff time, consultant fees, software)?
-29. **ROI Calculation:** How do you typically calculate return on investment for new tools?
-30. **Procurement Process:** What's your typical process for evaluating and purchasing new software?
+19. **Budget Authority:** Who has authority to purchase software tools for your department/institution?
+20. **Current Costs:** What do you currently spend on accreditation reporting (staff time, consultant fees, software)?
+21. **ROI Calculation:** How do you typically calculate return on investment for new tools?
+22. **Procurement Process:** What's your typical process for evaluating and purchasing new software?
 
 ### Feature Priorities
-31. **Must-Have vs Nice-to-Have:** Which features are absolutely critical vs nice-to-have?
-32. **Pain Points:** What's the biggest frustration with your current process?
-33. **Success Metrics:** How would you measure success of a new system?
+23. **Must-Have vs Nice-to-Have:** Which features are absolutely critical vs nice-to-have?
+24. **Pain Points:** What's the biggest frustration with your current process?
+25. **Success Metrics:** How would you measure success of a new system?
 
 ## Implementation & Adoption
 
 ### Change Management
-34. **User Training:** How much training time is realistic for your users?
-35. **Rollout Strategy:** Would you prefer to pilot with one program or roll out institution-wide?
-36. **Support Needs:** What level of ongoing support would you expect?
+26. **User Training:** How much training time is realistic for your users?
+27. **Rollout Strategy:** Would you prefer to pilot with one program or roll out institution-wide?
+28. **Support Needs:** What level of ongoing support would you expect?
 
 ### Timeline & Urgency
-37. **Implementation Timeline:** When would you ideally want a new system in place?
-38. **Upcoming Deadlines:** Do you have any critical accreditation deadlines coming up?
-39. **Current System Limitations:** What problems with your current process need immediate attention?
-
-## Questions Added During Development
-
-40. **Program-Specific Data Requirements:** Are there specific data fields that vary by accrediting body that we should plan for?
-
-## CEI-Specific Questions (From Video & Spreadsheet Analysis)
-
-### **Hierarchy & Structure**
-41. **Learning Outcome Hierarchy:** How do CLOs (Course Learning Outcomes) roll up to Program Learning Outcomes (PLOs)?
-42. **Institutional Outcomes:** Are there Institutional Learning Outcomes (ILOs) that programs contribute to?
-43. **NWCCU Structure:** What's the complete hierarchy from course level up to NWCCU submission?
-44. **Assessment Cycles:** What are the different reporting cycles (annual, 3-year, 7-year)?
-
-### **Current System Pain Points**
-45. **Access Database Issues:** How severe are the multi-user concurrency problems?
-46. **Data Integrity:** How often do records end up in wrong rows or get corrupted?
-47. **Form Usability:** What specific problems do faculty have with current Access forms?
-48. **Manual Reconciliation:** How much time is spent on manual math validation?
-
-### **Reporting Requirements**
-49. **Required Reports:** What specific reports does NWCCU require for your accreditation?
-50. **Report Formats:** Do final submissions need to be PDF, Word, Excel, or other formats?
-51. **Approval Workflow:** Who reviews and approves reports before submission?
-52. **Submission Timeline:** When are reports due and how long does compilation take?
-
-### **Views & Dashboards**
-53. **Faculty Views:** What data do instructors need to see about their courses?
-54. **Program Views:** What cross-course data do program administrators need?
-55. **Institution Views:** What institution-wide data is needed for reporting?
-56. **Real-time vs Static:** Do you need live dashboards or are periodic reports sufficient?
-
-### **Migration & Integration**
-57. **Access Export:** Would exporting web data to Access format help during transition?
-58. **Parallel Operation:** Could you run both systems simultaneously during evaluation?
-59. **Data Migration:** How important is importing your existing 1,543 CLO records?
-60. **Custom Branding:** Would CSS upload for university styling be valuable?
+29. **Implementation Timeline:** When would you ideally want a new system in place?
+30. **Upcoming Deadlines:** Do you have any critical accreditation deadlines coming up?
+31. **Current System Limitations:** What problems with your current process need immediate attention?
 
 ---
 

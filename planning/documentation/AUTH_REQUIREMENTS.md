@@ -12,21 +12,21 @@
 - Billing/subscription management oversight
 - Analytics and reporting across all tenants
 
-### 2. INSTITUTION_ADMINISTRATOR
-**Who:** Oversees multiple programs within an institution
-**Scope:** All programs they manage + all courses within those programs
+### 2. MULTI_PROGRAM_ADMINISTRATOR
+**Who:** Manages multiple programs within an institution (e.g., department head overseeing Biology, Chemistry, Physics)
+**Scope:** Only the programs they are explicitly assigned to + all courses within those programs
 **Pricing:** $39.99/month + $X * 0.75 per course
 **Abilities:**
-- **Program Management:** Create/edit/delete multiple programs
+- **Program Management:** Create/edit programs they manage (not institution-wide)
 - **User Management:** 
-  - Assign Program Administrators to programs
-  - Invite Regular Users to any of their programs
-  - Manage user roles across their programs
-- **Course Management:** Full CRUD on courses across all their programs
-- **Reporting:** Generate reports across all their programs
-- **Account Management:** Manage billing, usage statistics, export data
+  - Invite Program Administrators to their programs
+  - Invite Regular Users to their programs
+  - Manage access only within their assigned programs
+- **Course Management:** Full CRUD on courses within their assigned programs only
+- **Reporting:** Generate reports across their assigned programs
+- **Account Management:** Manage billing and settings for their programs
 
-### 3. PROGRAM_ADMINISTRATOR
+### 3. PROGRAM_ADMINISTRATOR  
 **Who:** Manages a single academic program/department
 **Scope:** One program + all courses within that program
 **Pricing:** $19.99/month + $X per course
@@ -34,7 +34,7 @@
 - **Program Management:** Edit their single program settings
 - **User Management:**
   - Invite Regular Users to their program
-  - Assign themselves as default administrator
+  - Manage faculty assignments within their program
 - **Course Management:** Full CRUD on courses within their program
 - **Reporting:** Generate reports for their program
 - **Account Management:** Manage their program's billing and settings
