@@ -49,25 +49,29 @@
 - **Basic Reporting:** Generate reports for their own courses
 - **Profile Management:** Update their own account settings
 
-## AI-Powered Data Entry Strategy
+## Data Entry Strategy
 
 ### Core Philosophy
-**Minimize user effort, maximize accuracy** - Accept any input format and use AI to extract structured data.
+**Simple, reliable web forms** - Provide intuitive forms that adapt to institutional needs.
 
-### Expected Input Variability
-- **Photos of documents** (handwritten notes, printed reports)
-- **Excel spreadsheets** (various formats and layouts)
-- **Email screenshots** (grade reports, enrollment summaries)
-- **PDF reports** from LMS systems
-- **Word documents** (syllabi, assessment reports)
-- **Manual form entry** (traditional web forms as fallback)
+### Primary Input Method
+- **Web Forms** - Clean, responsive forms for all data entry
+- **Dynamic Dropdowns** - Type-ahead fields that learn from existing data
+- **Flexible Fields** - Institution-customizable form fields
+- **Validation** - Real-time validation with helpful error messages
+- **Auto-save** - Prevent data loss during long entry sessions
 
-### AI Processing Pipeline
-1. **Input Classification:** Determine input type (image, document, structured data)
-2. **Content Extraction:** OCR for images, parsing for documents
-3. **Data Structure Recognition:** Identify key fields (course number, semester, grades, etc.)
-4. **Validation & Confirmation:** Present extracted data to user for verification
-5. **Learning Loop:** Improve extraction based on user corrections
+### Data Migration Support
+- **One-time Import Service** - Professional data migration for new clients
+- **Excel Import** - Simple spreadsheet upload for bulk course data
+- **Manual Entry** - Always available as primary method
+- **Export Tools** - Easy export to Excel, CSV, Access formats
+
+### Form Customization
+- **Institution-Level** - Admins can customize required/optional fields
+- **Program-Level** - Program-specific field requirements
+- **Field Types** - Text, number, dropdown, multi-select, date
+- **Validation Rules** - Custom validation per institution needs
 
 ### Required Data Fields
 **Core Fields:**

@@ -1,36 +1,29 @@
-# Data Entry Strategy & AI Integration
+# Data Entry Strategy
 
 ## Core Philosophy
-**Minimize user effort, maximize accuracy** - Accept any input format and use AI to extract structured data.
+**Simple, reliable web forms** - Provide intuitive forms that adapt to institutional needs while maintaining data consistency.
 
-## MVP Approach: Traditional Forms + Smart Adapters
+## Primary Approach: Customizable Web Forms
 
-### Primary Interface
-- **Traditional web forms** - point and click system
-- **File upload capability** - for document processing
-- **Manual data entry** as reliable fallback
+### Core Interface
+- **Responsive web forms** - Clean, mobile-friendly forms for all data entry
+- **Dynamic dropdowns** - Type-ahead fields that learn from existing institutional data
+- **Real-time validation** - Immediate feedback on data entry errors
+- **Auto-save functionality** - Prevent data loss during long entry sessions
+- **Progress indicators** - Clear visual feedback on completion status
 
-### Smart Adapter System
-- **Document upload** - Accept various file formats
-- **AI-powered parsing** - Extract structured data from documents
-- **User validation** - Present extracted data for confirmation
-- **Learning capability** - Improve over time based on corrections
+### Form Customization System
+- **Institution-level customization** - Admins configure required/optional fields
+- **Program-specific fields** - Different programs can have specialized requirements
+- **Field types** - Text, number, dropdown, multi-select, date, boolean
+- **Custom validation rules** - Institution-specific validation requirements
+- **Conditional fields** - Show/hide fields based on other selections
 
-## Expected Input Variability (Future Phases)
-
-### Document Types
-- **Photos of documents** (handwritten notes, printed reports)
-- **Excel spreadsheets** (various formats and layouts)
-- **Email screenshots** (grade reports, enrollment summaries)
-- **PDF reports** from LMS systems
-- **Word documents** (syllabi, assessment reports)
-
-### AI Processing Pipeline (Future)
-1. **Input Classification:** Determine input type (image, document, structured data)
-2. **Content Extraction:** OCR for images, parsing for documents
-3. **Data Structure Recognition:** Identify key fields (course number, semester, grades, etc.)
-4. **Validation & Confirmation:** Present extracted data to user for verification
-5. **Learning Loop:** Improve extraction based on user corrections
+### Data Migration & Import
+- **Professional migration service** - One-time data import for new institutions (fee-based)
+- **Excel/CSV import** - Simple bulk upload for course data
+- **Data validation** - Comprehensive validation during import process
+- **Error reporting** - Clear feedback on import issues and corrections needed
 
 ## Required Data Fields
 
@@ -49,14 +42,22 @@
 - Withdrawal rates
 - Course modality (online, in-person, hybrid)
 
-## Implementation Notes
+## Implementation Strategy
 
 ### Phase 1 (MVP)
-- Traditional forms with validation
-- Basic file upload (manual processing)
-- Simple document adapters (like current dummy adapter)
+- **Core web forms** - Essential fields for course and CLO data entry
+- **Basic customization** - Institution admins can configure required fields
+- **Excel import** - Simple spreadsheet upload for bulk data
+- **Export functionality** - Excel, CSV, Access format exports
 
-### Phase 2 (AI Enhancement)
-- AI-powered document processing
-- Smart field extraction and validation
-- Machine learning improvements based on user feedback
+### Phase 2 (Enhanced Customization)
+- **Advanced form builder** - Drag-and-drop form customization
+- **Conditional logic** - Complex field dependencies and validation
+- **Integration APIs** - Connect with LMS and SIS systems
+- **Advanced reporting** - Custom report builders and dashboards
+
+### Migration Services
+- **Professional data migration** - Fee-based service for complex data imports
+- **Template creation** - Custom import templates for specific institutions
+- **Data validation services** - Quality assurance for migrated data
+- **Training and support** - User training as part of migration package

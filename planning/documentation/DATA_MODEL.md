@@ -91,7 +91,7 @@
 - `students_completed` (integer, optional)
 - `students_withdrawn` (integer, optional)
 - `grade_distribution` (JSON: {"A": 12, "B": 8, "C": 5, "D": 2, "F": 1})
-- `learning_outcomes_data` (JSON: flexible structure for different accreditors)
+- `custom_fields` (JSON: institution-defined additional fields)
 - `assessment_methods` (text, optional)
 - `improvement_actions` (text, optional)
 
@@ -145,10 +145,12 @@
 - `pass_threshold` (integer, default 75)
 - `result_status` (enum: 'S', 'U' based on threshold)
 
-**Narrative Fields:**
-- `celebrations` (text, what went well)
-- `challenges` (text, what was difficult)
-- `changes` (text, planned improvements)
+**Flexible Assessment Fields:**
+- `assessment_tool` (text, how this CLO was measured)
+- `narrative_data` (JSON, flexible structure for institution-specific fields)
+  - Default: `{"celebrations": "", "challenges": "", "changes": ""}`
+  - Customizable: institutions can define their own narrative categories
+- `custom_fields` (JSON, institution-defined additional fields)
 
 **Metadata:**
 - `created_at`, `updated_at`
@@ -223,7 +225,62 @@
 - Can be revoked by the inviter
 - Email verification required before acceptance
 
-### 10. **Report** (Future)
+### 10. **FormConfiguration**
+**Purpose:** Institution and program-level form customization
+**Key Attributes:**
+- `form_config_id` (UUID, primary key)
+- `institution_id` (foreign key → Institution)
+- `program_id` (foreign key → Program, optional - null for institution-wide)
+- `form_type` (enum: 'course', 'clo', 'assessment')
+- `created_by_user_id` (foreign key → User)
+- `last_modified_by_user_id` (foreign key → User)
+
+**Form Structure:**
+- `field_definitions` (JSON array of field configurations)
+- `field_order` (array, defines field display order)
+- `validation_rules` (JSON, custom validation logic)
+- `conditional_logic` (JSON, show/hide field dependencies)
+
+**Metadata:**
+- `created_at`, `updated_at`
+- `is_active` (boolean)
+- `version` (integer, for form versioning)
+
+**Business Rules:**
+- Program-level configs override institution-level configs
+- Form versioning maintains historical data integrity
+- Institution admins can create/modify form configs
+- Program admins can only modify program-specific configs
+
+### 11. **CustomField**
+**Purpose:** Dynamic field definitions for flexible data collection
+**Key Attributes:**
+- `custom_field_id` (UUID, primary key)
+- `institution_id` (foreign key → Institution)
+- `program_id` (foreign key → Program, optional)
+- `entity_type` (enum: 'course', 'clo', 'assessment')
+- `field_name` (string, unique within scope)
+- `field_type` (enum: 'text', 'number', 'dropdown', 'multi_select', 'date', 'boolean')
+- `field_label` (string, display name)
+- `is_required` (boolean)
+- `default_value` (text, optional)
+- `validation_rules` (JSON, field-specific validation)
+- `dropdown_options` (JSON array, for dropdown/multi_select types)
+- `help_text` (text, optional)
+- `display_order` (integer)
+- `created_by_user_id` (foreign key → User)
+
+**Metadata:**
+- `created_at`, `updated_at`
+- `is_active` (boolean)
+
+**Business Rules:**
+- Custom fields are institution or program scoped
+- Field names must be unique within scope and entity type
+- Dropdown options stored as JSON array
+- Validation rules stored as JSON for flexibility
+
+### 12. **Report** (Future)
 **Purpose:** Generated accreditation reports and templates
 **Key Attributes:**
 - `report_id` (UUID, primary key)
@@ -250,6 +307,8 @@ User → Course (via created_by_user_id or shared_with_user_ids)
 ```
 Institution (1) → (many) Programs (1) → (many) Courses (1) → (many) CourseOutcomes (CLOs)
                                                         (1) → (many) CourseInstructors
+                (1) → (many) FormConfigurations
+                (1) → (many) CustomFields
 ```
 
 ### Invitation Flows
