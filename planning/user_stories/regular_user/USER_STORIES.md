@@ -80,15 +80,15 @@
     - Review and approve TA-entered information
     - Maintain final responsibility for all course data
 
-### Reporting & Documentation
+### Data Views & Export
 
 **As a regular user (faculty), I want to:**
 
-11. **Generate course reports** so I can document my teaching effectiveness
-    - Create individual course assessment reports
-    - Export data for annual faculty reviews
-    - Generate reports for tenure/promotion portfolios
-    - Produce summaries for department meetings
+11. **Access live course data views** so I can see my teaching effectiveness in real-time
+    - View individual course assessment data
+    - Export current data for annual faculty reviews
+    - Generate exports for tenure/promotion portfolios
+    - Create summaries for department meetings
 
 12. **Export my data** so I can use it in other systems
     - Download course data to Excel for analysis
@@ -97,10 +97,10 @@
     - Create backups of my course information
 
 13. **Track improvement over time** so I can demonstrate teaching growth
-    - Compare CLO results across semesters
-    - Identify trends in student performance
+    - Compare CLO results across semesters in live views
+    - Identify trends in student performance through dashboards
     - Document effectiveness of teaching changes
-    - Generate longitudinal reports for review
+    - Export longitudinal data for review
 
 ### User Account & Profile
 

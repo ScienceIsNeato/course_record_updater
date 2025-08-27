@@ -23,7 +23,7 @@
   - Invite Regular Users to their programs
   - Manage access only within their assigned programs
 - **Course Management:** Full CRUD on courses within their assigned programs only
-- **Reporting:** Generate reports across their assigned programs
+- **Data Views:** Access live views across their assigned programs with export capabilities
 - **Account Management:** Manage billing and settings for their programs
 
 ### 3. PROGRAM_ADMINISTRATOR  
@@ -36,7 +36,7 @@
   - Invite Regular Users to their program
   - Manage faculty assignments within their program
 - **Course Management:** Full CRUD on courses within their program
-- **Reporting:** Generate reports for their program
+- **Data Views:** Access live views for their program with export capabilities
 - **Account Management:** Manage their program's billing and settings
 
 ### 4. REGULAR_USER
@@ -47,7 +47,7 @@
 **Abilities:**
 - **Data Entry:** Input course information via web forms
 - **Course Management:** Create/edit courses they have access to
-- **Basic Reporting:** Generate reports for their own courses
+- **Data Views:** Access live views of their course data with export capabilities
 - **Profile Management:** Update their own account settings
 - **Institution Switching:** Toggle between institutions if they have multi-institutional access
 
@@ -59,6 +59,23 @@
 - Clear data isolation between institutions
 - Institution context switching in the UI
 - Separate billing and permissions per institution
+
+## Live Data Views Philosophy
+
+### Core Approach
+**Live data, not static reports** - All "reports" are live views of current data that can be exported at any time:
+- Data is always current and reflects real-time state
+- Users access live dashboards and views, not generated reports  
+- Export capabilities (PDF, Excel, CSV, Access) available from any view
+- No "report generation" process - data views are always available
+- Historical data maintained for trend analysis and comparisons
+
+### Export Capabilities
+- **PDF Export** - For formal submissions and printing
+- **Excel Export** - For analysis and manipulation
+- **CSV Export** - For integration with other systems
+- **Access Export** - For legacy system compatibility
+- **SQL Export** - For advanced users and migrations
 
 ## Data Entry Strategy
 

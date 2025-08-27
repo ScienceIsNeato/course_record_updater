@@ -12,7 +12,7 @@
 
 ---
 
-## Top Priority Questions (18 Total)
+## Top Priority Questions (13 Total)
 
 ### **1. NWCCU Requirements & Hierarchy**
 1. **Complete Reporting Structure:** How do CLOs roll up to Program Learning Outcomes (PLOs) and then to Institutional Learning Outcomes (ILOs) for NWCCU submissions?
@@ -29,32 +29,26 @@
 6. **S/U Threshold Validation:** Is 75% the standard pass threshold for all programs, or does this vary by program or CLO?
 
 ### **3. Current System Pain Points**
-7. **Concurrency Issues:** How severe are the multi-user problems? How often do records end up in wrong rows?
-
-8. **Time Spent on Manual Fixes:** How much time do you spend fixing data that went into wrong places or doing manual validation?
-
-9. **Faculty Form Experience:** What specific problems do faculty have with the current Access forms that we should solve?
+7. **Faculty Form Experience:** What specific problems do faculty have with the current Access forms that we should solve?
 
 ### **4. Workflow & Process**
-10. **Data Entry Responsibility:** Who typically enters CLO data - instructors themselves or administrative staff?
+8. **Data Entry Responsibility:** Who typically enters CLO data - instructors themselves or administrative staff?
 
-11. **Approval Requirements:** Are there any points in the process that require explicit approval before data is included in reports?
-
-12. **Timeline Pressure:** When are NWCCU reports due and how long does compilation currently take?
+9. **Timeline Pressure:** When are NWCCU reports due and how long does compilation currently take?
 
 ### **5. System Integration & Migration**
-13. **Access Export Value:** Would the ability to export our web data to Access format help during evaluation and transition?
+10. **Access Export Value:** Would the ability to export our web data to Access format help during evaluation and transition?
 
-14. **Parallel Operation:** Could you run both systems simultaneously during evaluation to build confidence?
+11. **Parallel Operation:** Could you run both systems simultaneously during evaluation to build confidence?
 
-15. **Historical Data:** How important is importing your existing 1,543 CLO records vs. starting fresh for new semesters?
+### **6. User Experience & Data Views**
+12. **Faculty Dashboard Needs:** What data do instructors need to see about their own courses? For example:
+    - Just their own course data vs. comparative program data
+    - CLO completion status and deadlines
+    - Historical performance trends
+    - Different permissions than program administrators?
 
-### **6. User Experience & Views**
-16. **Faculty Dashboard Needs:** What data do instructors need to see about their own courses?
-
-17. **Administrative Views:** What cross-course data do you need for program management and NWCCU preparation?
-
-18. **Real-time vs. Periodic:** Do you need live dashboards or are periodic reports sufficient for your workflow?
+13. **Administrative Views:** What cross-course data do you need for program management and NWCCU preparation?
 
 
 
