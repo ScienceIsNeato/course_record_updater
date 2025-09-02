@@ -17,12 +17,14 @@
 ### **1. NWCCU Requirements & Hierarchy**
 1. **Complete Reporting Structure:** How do CLOs roll up to Program Learning Outcomes (PLOs) and then to Institutional Learning Outcomes (ILOs) for NWCCU submissions?
 
+1.5. Do you foresee a need for any roles other than instructor and administrator?
+
+
 2. **Required Reports List:** Can you provide the complete list of reports you submit to NWCCU each year? We want to ensure our system generates exactly what you need.
 
 3. **Report Formats:** Do NWCCU submissions need to be PDF, Word, Excel, or other specific formats?
 
-### **2. Data Validation & Formats**
-4. **Grade Format Comprehensive List:** Looking at your spreadsheet, what's the complete list of grade formats we need to support? (Letter grades, numbers, withdrawal codes, etc.)
+### **2. Data Validation & Formats**What's the complete list of grade formats we need to support? (pass/fail,Letter grades, numbers, withdrawal codes, etc.)
 
 5. **Assessment Method Detail:** Are your current assessment tool descriptions (like those in your spreadsheet) sufficient for NWCCU requirements?
 
