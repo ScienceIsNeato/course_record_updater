@@ -46,38 +46,32 @@
 ### 13. Receive Submission Confirmation
 **As an instructor, I want to** receive confirmation that my submission was successful **so that** I know my assessment data has been properly recorded.
 
-### 14. Make Corrections After Validation
-**As an instructor, I want to** make corrections if validation issues are found **so that** I can fix any data problems and resubmit accurate information.
-
-### 15. Edit Previously Submitted Courses
+### 14. Edit Previously Submitted Courses
 **As an instructor, I want to** access previously submitted course data for editing **so that** I can make updates when circumstances change or errors are discovered.
 
-### 16. Track Changes to Submitted Data
+### 15. Track Changes to Submitted Data
 **As an instructor, I want to** see clear indication that a course was previously submitted and have change tracking on resubmissions **so that** both I and the program administrator understand what modifications were made.
 
-### 17. View Course Dashboard
-**As an instructor, I want to** view all assigned courses with completion status **so that** I can manage my assessment workload and prioritize urgent tasks.
+### 16. View Course Dashboard
+**As an instructor, I want to** view all assigned courses with completion status **so that** I can manage my assessment workload and track my progress.
 
-### 18. See Deadlines and Priority
-**As an instructor, I want to** see deadlines and prioritize urgent courses **so that** I can focus on the most time-sensitive assessments first.
+### 17. See Course Completion Progress
+**As an instructor, I want to** see which courses are complete, in progress, or not yet started **so that** I can efficiently manage my time and ensure all assessments are finished by the term deadline.
 
-### 19. Export Course Data
+### 18. Export Course Data
 **As an instructor, I want to** export completed assessments per course in Access or PDF format **so that** I can maintain personal records for annual reviews or portfolio documentation.
 
-### 20. Use Mobile/Tablet Devices
+### 19. Use Mobile/Tablet Devices
 **As an instructor, I want to** use the same responsive website on mobile/tablet devices **so that** I can complete assessments efficiently regardless of what device I have available.
 
-### 21. Contact Program Administrator
+### 20. Contact Program Administrator
 **As an instructor, I want to** contact my program administrator via simple email link **so that** I can get help with course-specific questions or issues.
 
-### 22. Contact Technical Support
+### 21. Contact Technical Support
 **As an instructor, I want to** contact technical support via simple email link **so that** I can resolve system issues that prevent me from completing assessments.
 
-### 23. Access Help Documentation
+### 22. Access Help Documentation
 **As an instructor, I want to** access built-in help documentation specific to my institution **so that** I can find answers to common questions without waiting for personal assistance.
 
-### 24. Handle Co-instructor Situations
-**As an instructor, I want to** handle co-instructor situations with shared course access **so that** team-taught courses can be managed collaboratively with proper coordination.
-
-### 25. Manage Multiple Course Sections
-**As an instructor, I want to** manage multiple sections of the same course efficiently **so that** I can handle my full teaching load without duplicating effort unnecessarily.
+### 23. View All Course Sections in One Place
+**As an instructor, I want to** see all my assigned course sections (including multiple sections of the same course) in one dashboard **so that** I can manage my complete assessment workload without having to navigate between different views or duplicate any work.
