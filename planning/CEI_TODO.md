@@ -10,7 +10,7 @@
 
 ### Meeting Follow-up
 - [ ] **Ask if they have a copy of the zoom recording** - Need to review meeting details and capture any missed requirements
-- [ ] **Get them user stories** - Share the concise instructor and program admin user stories for validation
+- [x] **Get them user stories** - Share the concise instructor and program admin user stories for validation
 - [ ] **Get them milestones** - Present the 14-week timeline for feedback and approval
 
 ### Documentation Status

@@ -54,27 +54,30 @@
 
 ## Viewing Data
 
-### 14. Monitor Data Quality
-**As a program administrator, I want to** see automatic error checking flags for submitted assessments **so that** I can identify data problems and address them with instructors.
-
-### 15. Access Course Section as Instructor
+### 14. Access Course Section as Instructor
 **As a program administrator, I want to** view any course section exactly as the assigned instructor sees it **so that** I can understand their experience and provide better support.
 
 ---
 
 ## Modifying Data
 
-### 16. Create New Course Template
+### 15. Create New Course Template
 **As a program administrator, I want to** create a new course (like "Accounting 101") with CLO templates **so that** I can establish the assessment structure that will be used across all sections of that course.
 
-### 17. Create Course Section
+### 16. Create Course Section
 **As a program administrator, I want to** create a course section under an existing course with specific term and year **so that** instructors can be assigned to teach specific instances of the course.
 
-### 18. Manage Terms and Years
+### 17. Manage Terms and Years
 **As a program administrator, I want to** add and edit academic terms and years in a dedicated management view **so that** I can maintain the academic calendar structure for course section creation.
 
-### 19. Edit Course Section Data as Instructor
+### 18. Manage Course Learning Outcomes (CLOs)
+**As a program administrator, I want to** add, edit, and organize CLOs in a dedicated management view **so that** I can create a library of learning outcomes to assign to courses.
+
+### 19. Assign CLOs to Courses
+**As a program administrator, I want to** select CLOs from a dropdown and assign them to courses **so that** I can reuse standardized learning outcomes across multiple course sections without recreating them.
+
+### 20. Edit Course Section Data as Instructor
 **As a program administrator, I want to** edit enrollment numbers, CLO assessments, and narratives for any course section **so that** I can make corrections or complete data entry when instructors are unavailable.
 
-### 20. Export Course Data
+### 21. Export Course Data
 **As a program administrator, I want to** export course data in Access-compatible format **so that** I can integrate with existing institutional workflows and reporting systems.

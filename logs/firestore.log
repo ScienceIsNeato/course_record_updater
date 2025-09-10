@@ -1,0 +1,21 @@
+(node:46109) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+i  emulators: Starting emulators: firestore
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+⚠  emulators: The Emulator UI is not starting, either because none of the running emulators have a UI component or the Emulator UI cannot determine the Project ID. Pass the --project flag to specify a project.
+
+[90m┌─────────────────────────────────────────────────────────────┐[39m
+[90m│[39m ✔  All emulators ready! It is now safe to connect your app. [90m│[39m
+[90m└─────────────────────────────────────────────────────────────┘[39m
+
+[90m┌───────────[39m[90m┬──────────────┐[39m
+[90m│[39m[33m Emulator  [39m[90m│[39m[33m Host:Port    [39m[90m│[39m
+[90m├───────────[39m[90m┼──────────────┤[39m
+[90m│[39m Firestore [90m│[39m 0.0.0.0:8086 [90m│[39m
+[90m└───────────[39m[90m┴──────────────┘[39m
+  Emulator Hub not running.
+  Other reserved ports: 4500, 9150
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

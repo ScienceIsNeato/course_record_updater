@@ -6,13 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const courseTableBody = document.querySelector('.table tbody'); // Target tbody directly
 
-    if (!courseTableBody) {
-        console.error("Course table body not found!");
-        return;
-    }
-
-    // --- Event Delegation for Edit/Delete/Save/Cancel --- 
-    courseTableBody.addEventListener('click', async (event) => {
+    // Only set up table event listeners if the table exists (legacy functionality)
+    if (courseTableBody) {
+        console.log("✅ Course table found, setting up event listeners");
+        // --- Event Delegation for Edit/Delete/Save/Cancel --- 
+        courseTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const row = target.closest('tr');
         if (!row || !row.dataset.courseId) {
@@ -42,7 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Cancel clicked for ID: ${courseId}`);
             cancelEdit(row);
         }
-    });
+        });
+    } else {
+        console.log("ℹ️ No course table found - skipping table event listeners (expected in cleaned UI)");
+    }
 
     // --- Helper Functions --- 
 
@@ -331,4 +332,350 @@ document.addEventListener('DOMContentLoaded', () => {
     ...
     */
 
-}); 
+    // --- Excel Import Form Functionality ---
+    initializeImportForm();
+
+});
+
+function initializeImportForm() {
+    console.log("🔧 Initializing import form...");
+    const importForm = document.getElementById('excelImportForm');
+    const validateBtn = document.getElementById('validateImportBtn');
+    const executeBtn = document.getElementById('executeImportBtn');
+    const importBtnText = document.getElementById('importBtnText');
+    const dryRunCheckbox = document.getElementById('dry_run');
+    const progressDiv = document.getElementById('importProgress');
+    const resultsDiv = document.getElementById('importResults');
+
+    console.log("📋 Form elements found:", {
+        importForm: !!importForm,
+        validateBtn: !!validateBtn,
+        executeBtn: !!executeBtn,
+        importBtnText: !!importBtnText,
+        dryRunCheckbox: !!dryRunCheckbox
+    });
+
+    if (!importForm) {
+        console.error("❌ Import form not found!");
+        return; // Exit if import form doesn't exist
+    }
+
+    // Update button text based on dry run checkbox
+    function updateButtonText() {
+        if (dryRunCheckbox && dryRunCheckbox.checked) {
+            importBtnText.textContent = 'Test Import (Dry Run)';
+        } else {
+            importBtnText.textContent = 'Execute Import';
+        }
+    }
+
+    // Initialize button text
+    updateButtonText();
+
+    // Update button text when dry run checkbox changes
+    if (dryRunCheckbox) {
+        dryRunCheckbox.addEventListener('change', updateButtonText);
+    }
+
+    // Validate file only
+    if (validateBtn) {
+        console.log("✅ Adding click event listener to validate button");
+        validateBtn.addEventListener('click', async function() {
+            console.log("🔍 Validate button clicked!");
+            const fileInput = document.getElementById('excel_file');
+            const adapterSelect = document.getElementById('import_adapter');
+
+            if (!fileInput.files[0]) {
+                alert('Please select an Excel file first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('adapter_name', adapterSelect.value);
+
+            showProgress('Validating file...');
+
+            try {
+                const response = await fetch('/api/import/validate', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                hideProgress();
+
+                if (result.success && result.validation) {
+                    showValidationResults(result.validation);
+                } else {
+                    showError('Validation failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                hideProgress();
+                showError('Network error during validation: ' + error.message);
+            }
+        });
+    }
+
+    // Execute import
+    if (importForm) {
+        console.log("✅ Adding submit event listener to import form");
+        importForm.addEventListener('submit', async function(e) {
+            console.log("🚀 Form submit event triggered!");
+            e.preventDefault();
+
+            const fileInput = document.getElementById('excel_file');
+            const adapterSelect = document.getElementById('import_adapter');
+            const conflictStrategy = document.querySelector('input[name="conflict_strategy"]:checked');
+            const dryRun = document.getElementById('dry_run');
+            const verbose = document.getElementById('verbose_output');
+            const deleteExistingDb = document.getElementById('delete_existing_db');
+
+            if (!fileInput.files[0]) {
+                alert('Please select an Excel file first.');
+                return;
+            }
+
+            if (!conflictStrategy) {
+                alert('Please select a conflict resolution strategy.');
+                return;
+            }
+
+            // Confirm execution if not dry run
+            if (!dryRun.checked) {
+                let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
+                
+                if (deleteExistingDb && deleteExistingDb.checked) {
+                    confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
+                }
+                
+                confirmMsg += ' Are you sure?';
+                
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('conflict_strategy', conflictStrategy.value);
+            formData.append('dry_run', dryRun.checked ? 'true' : 'false');
+            formData.append('adapter_name', adapterSelect.value);
+            formData.append('delete_existing_db', deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false');
+
+            const actionText = dryRun.checked ? 'Testing import' : 'Executing import';
+            showProgress(actionText + '...');
+
+            try {
+                console.log("📤 Sending import request...");
+                const response = await fetch('/api/import/excel', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log("📥 Received response:", response.status, response.statusText);
+                const result = await response.json();
+                console.log("📊 Import result:", result);
+                
+                hideProgress();
+
+                if (result.success) {
+                    console.log("✅ Import successful, showing results...");
+                    showImportResults(result, true);
+                    // Refresh page if actual import was successful
+                    if (!result.dry_run && result.statistics.records_created > 0) {
+                        setTimeout(() => {
+                            if (confirm('Import completed successfully! Refresh page to see new data?')) {
+                                window.location.reload();
+                            }
+                        }, 2000);
+                    }
+                } else {
+                    console.log("❌ Import failed, showing error results...");
+                    showImportResults(result, false);
+                }
+            } catch (error) {
+                console.log("💥 Network error:", error);
+                hideProgress();
+                showError('Network error during import: ' + error.message);
+            }
+        });
+    }
+
+    function showProgress(message) {
+        if (progressDiv) {
+            progressDiv.style.display = 'block';
+            document.getElementById('importStatus').innerHTML = `
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <p class="mt-2">${message}</p>
+            `;
+        }
+        if (resultsDiv) {
+            resultsDiv.style.display = 'none';
+        }
+    }
+
+    function hideProgress() {
+        if (progressDiv) {
+            progressDiv.style.display = 'none';
+        }
+    }
+
+    function showValidationResults(validation) {
+        if (!resultsDiv) return;
+
+        const isValid = validation.valid;
+        const alertClass = isValid ? 'alert-success' : 'alert-warning';
+        const icon = isValid ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+
+        let html = `
+            <div class="alert ${alertClass}">
+                <h5><i class="${icon}"></i> File Validation Results</h5>
+                <p><strong>File:</strong> ${validation.file_info.filename}</p>
+                <p><strong>Format:</strong> ${validation.file_info.adapter}</p>
+                <p><strong>Records Found:</strong> ${validation.records_found}</p>
+                <p><strong>Potential Conflicts:</strong> ${validation.potential_conflicts}</p>
+            </div>
+        `;
+
+        if (validation.errors && validation.errors.length > 0) {
+            html += `
+                <div class="alert alert-danger">
+                    <h6>Errors:</h6>
+                    <ul>
+                        ${validation.errors.map(error => `<li>${error}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (validation.warnings && validation.warnings.length > 0) {
+            html += `
+                <div class="alert alert-warning">
+                    <h6>Warnings:</h6>
+                    <ul>
+                        ${validation.warnings.map(warning => `<li>${warning}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        resultsDiv.innerHTML = html;
+        resultsDiv.style.display = 'block';
+    }
+
+    function showImportResults(result, success) {
+        console.log("🎯 showImportResults called:", { result, success, resultsDiv: !!resultsDiv });
+        if (!resultsDiv) {
+            console.error("❌ Results div not found!");
+            return;
+        }
+
+        const stats = result.statistics;
+        const alertClass = success ? 'alert-success' : 'alert-danger';
+        const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+        const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
+
+        let html = `
+            <div class="alert ${alertClass}">
+                <h5><i class="${icon}"></i> Import Results (${mode})</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Records Processed:</strong> ${stats.records_processed}</p>
+                        <p><strong>Records Created:</strong> ${stats.records_created}</p>
+                        <p><strong>Records Updated:</strong> ${stats.records_updated}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Records Skipped:</strong> ${stats.records_skipped}</p>
+                        <p><strong>Conflicts Detected:</strong> ${stats.conflicts_detected}</p>
+                        <p><strong>Execution Time:</strong> ${stats.execution_time.toFixed(2)}s</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (result.errors && result.errors.length > 0) {
+            html += `
+                <div class="alert alert-danger">
+                    <h6>Errors (${result.errors.length}):</h6>
+                    <ul>
+                        ${result.errors.slice(0, 10).map(error => `<li>${error}</li>`).join('')}
+                        ${result.errors.length > 10 ? `<li><em>... and ${result.errors.length - 10} more errors</em></li>` : ''}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (result.warnings && result.warnings.length > 0) {
+            html += `
+                <div class="alert alert-warning">
+                    <h6>Warnings (${result.warnings.length}):</h6>
+                    <ul>
+                        ${result.warnings.slice(0, 5).map(warning => `<li>${warning}</li>`).join('')}
+                        ${result.warnings.length > 5 ? `<li><em>... and ${result.warnings.length - 5} more warnings</em></li>` : ''}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (result.conflicts && result.conflicts.length > 0) {
+            html += `
+                <div class="alert alert-info">
+                    <h6>Conflicts Resolved (${result.conflicts.length}):</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Entity</th>
+                                    <th>Key</th>
+                                    <th>Field</th>
+                                    <th>Existing</th>
+                                    <th>Import</th>
+                                    <th>Resolution</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.conflicts.slice(0, 20).map(conflict => `
+                                    <tr>
+                                        <td>${conflict.entity_type}</td>
+                                        <td>${conflict.entity_key}</td>
+                                        <td>${conflict.field_name}</td>
+                                        <td>${conflict.existing_value}</td>
+                                        <td>${conflict.import_value}</td>
+                                        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
+                                    </tr>
+                                `).join('')}
+                                ${result.conflicts.length > 20 ? `
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <em>... and ${result.conflicts.length - 20} more conflicts</em>
+                                        </td>
+                                    </tr>
+                                ` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        console.log("📝 Setting results HTML:", html.substring(0, 100) + "...");
+        resultsDiv.innerHTML = html;
+        resultsDiv.style.display = 'block';
+        console.log("✅ Results displayed successfully");
+    }
+
+    function showError(message) {
+        if (resultsDiv) {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5><i class="fas fa-exclamation-circle"></i> Error</h5>
+                    <p>${message}</p>
+                </div>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+    }
+} 

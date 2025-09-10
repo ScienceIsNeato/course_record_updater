@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CEI Course Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/cei_logo.jpg') }}" type="image/jpeg">
     <style>
@@ -79,142 +80,191 @@
             {% endif %}
         {% endwith %}
 
-        <!-- File Upload Form -->
-        <div class="card mb-4">
-            <div class="card-header">Upload Course Document (.docx)</div>
-            <div class="card-body">
-                <form action="{{ url_for('add_course_automatic') }}" method="post" enctype="multipart/form-data">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-6">
-                            <label for="course_document" class="form-label">Select Word Document:</label>
-                            <input type="file" class="form-control" id="course_document" name="course_document" accept=".docx" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="adapter_name" class="form-label">Select Document Format:</label>
-                            <select class="form-select" id="adapter_name" name="adapter_name" required>
-                                <option value="" {% if not selected_adapter_name %}selected{% endif %} disabled>-- Choose Format --</option>
-                                {# Manually add sample adapters for now - use selected_adapter_name to reselect #}
-                                <option value="nursing_sample_adapter" {% if selected_adapter_name == 'nursing_sample_adapter' %}selected{% endif %}>Nursing Format Sample</option> 
-                                <option value="business_sample_adapter" {% if selected_adapter_name == 'business_sample_adapter' %}selected{% endif %}>Business Format Sample</option>
-                                {# Original dummy adapter #}
-                                <option value="dummy_adapter" {% if selected_adapter_name == 'dummy_adapter' %}selected{% endif %}>Dummy Format (Testing)</option>
-                                <!-- TODO: Dynamically populate adapters based on discovery later -->
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-secondary w-100">Upload</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
 
-        <!-- Manual Entry Form -->
-        <div class="card mb-4">
-            <div class="card-header">Add New Course Manually</div>
+        <!-- Excel Import Form (Advanced) -->
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-file-excel"></i> Excel Data Import (Advanced)
+            </div>
             <div class="card-body">
-                <form action="{{ url_for('add_course') }}" method="post">
+                <p class="text-muted mb-3">
+                    Import course data from Excel files with conflict resolution and safety features.
+                </p>
+                
+                <form id="excelImportForm" enctype="multipart/form-data">
                     <div class="row g-3">
+                        <!-- File Selection -->
                         <div class="col-md-6">
-                            <label for="course_number" class="form-label">Course Number*</label>
-                            <input type="text" class="form-control" id="course_number" name="course_number" value="{{ form_data.get('course_number', '') }}" required>
+                            <label for="excel_file" class="form-label">Select Excel File (.xlsx, .xls):</label>
+                            <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
                         </div>
+                        
+                        <!-- Import Adapter -->
                         <div class="col-md-6">
-                            <label for="course_title" class="form-label">Course Title*</label>
-                            <input type="text" class="form-control" id="course_title" name="course_title" value="{{ form_data.get('course_title', '') }}" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="num_students" class="form-label">Number of Students</label>
-                            <input type="number" class="form-control" id="num_students" name="num_students" value="{{ form_data.get('num_students', '') }}" min="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="instructor_name" class="form-label">Instructor Name*</label>
-                            <input type="text" class="form-control" id="instructor_name" name="instructor_name" value="{{ form_data.get('instructor_name', '') }}" required>
-                        </div>
-                        <!-- Term Dropdown -->
-                        <div class="col-md-4">
-                            <label for="term" class="form-label">Term*</label>
-                            <select class="form-select" id="term" name="term" required>
-                                <option value="" {% if not form_data.get('term') %}selected{% endif %} disabled>Select Term</option>
-                                {% for term_option in allowed_terms %}
-                                <option value="{{ term_option }}" {% if form_data.get('term') == term_option %}selected{% endif %}>{{ term_option }}</option>
-                                {% endfor %}
+                            <label for="import_adapter" class="form-label">Import Format:</label>
+                            <select class="form-select" id="import_adapter" name="import_adapter" required>
+                                <option value="cei_excel_adapter" selected>CEI Excel Format</option>
+                                <option value="generic_excel_adapter">Generic Excel Format</option>
                             </select>
                         </div>
-                        <!-- Grade Distribution Fields (Optional) -->
-                        <h5 class="mt-4">Grade Distribution (Optional)</h5>
-                        <div class="col-md-2">
-                            <label for="grade_a" class="form-label">Grade A</label>
-                            <input type="number" class="form-control" id="grade_a" name="grade_a" value="{{ form_data.get('grade_a', '') }}" min="0">
-                        </div>
-                         <div class="col-md-2">
-                            <label for="grade_b" class="form-label">Grade B</label>
-                            <input type="number" class="form-control" id="grade_b" name="grade_b" value="{{ form_data.get('grade_b', '') }}" min="0">
-                        </div>
-                         <div class="col-md-2">
-                            <label for="grade_c" class="form-label">Grade C</label>
-                            <input type="number" class="form-control" id="grade_c" name="grade_c" value="{{ form_data.get('grade_c', '') }}" min="0">
-                        </div>
-                         <div class="col-md-2">
-                            <label for="grade_d" class="form-label">Grade D</label>
-                            <input type="number" class="form-control" id="grade_d" name="grade_d" value="{{ form_data.get('grade_d', '') }}" min="0">
-                        </div>
-                         <div class="col-md-2">
-                            <label for="grade_f" class="form-label">Grade F</label>
-                            <input type="number" class="form-control" id="grade_f" name="grade_f" value="{{ form_data.get('grade_f', '') }}" min="0">
-                        </div>
-                         <div class="col-md-2"> <!-- Spacer/Alignment --> </div>
                     </div>
-                    <button type="submit" class="btn btn-primary mt-3">Add Course</button>
+                    
+                    <!-- Conflict Resolution Strategy -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-12">
+                            <label class="form-label">Conflict Resolution Strategy:</label>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="use_theirs" value="use_theirs" checked>
+                                        <label class="form-check-label" for="use_theirs">
+                                            <strong>Use Import Data</strong><br>
+                                            <small class="text-muted">Overwrite existing with imported values</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="use_mine" value="use_mine">
+                                        <label class="form-check-label" for="use_mine">
+                                            <strong>Keep Existing</strong><br>
+                                            <small class="text-muted">Skip conflicts, keep database data</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="merge" value="merge">
+                                        <label class="form-check-label" for="merge">
+                                            <strong>Merge Data</strong><br>
+                                            <small class="text-muted">Intelligently combine both</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="manual_review" value="manual_review">
+                                        <label class="form-check-label" for="manual_review">
+                                            <strong>Manual Review</strong><br>
+                                            <small class="text-muted">Flag conflicts for review</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Options -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run" checked>
+                                <label class="form-check-label" for="dry_run">
+                                    <strong>Dry Run (Recommended)</strong><br>
+                                    <small class="text-muted">Test import without making changes</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="verbose_output" name="verbose_output">
+                                <label class="form-check-label" for="verbose_output">
+                                    <strong>Detailed Output</strong><br>
+                                    <small class="text-muted">Show detailed progress information</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="delete_existing_db" name="delete_existing_db">
+                                <label class="form-check-label" for="delete_existing_db">
+                                    <strong>⚠️ Delete Existing Database</strong><br>
+                                    <small class="text-muted">Clear all data before import (DESTRUCTIVE)</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="row g-3 mt-3">
+                        <div class="col-md-6">
+                            <button type="button" class="btn btn-outline-info w-100" id="validateImportBtn">
+                                <i class="fas fa-check-circle"></i> Validate File Only
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit" class="btn btn-info w-100" id="executeImportBtn">
+                                <i class="fas fa-upload"></i> <span id="importBtnText">Run Import</span>
+                            </button>
+                        </div>
+                    </div>
                 </form>
+                
+                <!-- Progress and Results -->
+                <div id="importProgress" class="mt-4" style="display: none;">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div id="importStatus" class="text-center">
+                        <div class="spinner-border text-info" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <p class="mt-2">Processing import...</p>
+                    </div>
+                </div>
+                
+                <!-- Results Display -->
+                <div id="importResults" class="mt-4" style="display: none;"></div>
             </div>
         </div>
 
-        <!-- Course List -->
+
+        <!-- Course Dashboard -->
         <div class="card">
-            <div class="card-header">Existing Courses</div>
+            <div class="card-header">Course Management Dashboard</div>
             <div class="card-body">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Course Number</th>
-                            <th>Title</th>
-                            <th>Instructor</th>
-                            <th>Term</th>
-                            <th># Students</th>
-                            <th>Grade A</th>
-                            <th>Grade B</th>
-                            <th>Grade C</th>
-                            <th>Grade D</th>
-                            <th>Grade F</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for course in courses %}
-                        <tr data-course-id="{{ course.id }}">
-                            <td>{{ course.course_number }}</td>
-                            <td>{{ course.course_title }}</td>
-                            <td>{{ course.instructor_name }}</td>
-                            <td>{{ course.term }}</td>
-                            <td>{{ course.num_students | default('N/A', true) }}</td>
-                            <td>{{ course.grade_a | default('-', true) }}</td>
-                            <td>{{ course.grade_b | default('-', true) }}</td>
-                            <td>{{ course.grade_c | default('-', true) }}</td>
-                            <td>{{ course.grade_d | default('-', true) }}</td>
-                            <td>{{ course.grade_f | default('-', true) }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
-                                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="11" class="text-center">No courses found.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <p class="text-muted">
+                    After importing your Excel data, you can manage courses, terms, sections, and instructors through the API endpoints.
+                    A comprehensive dashboard interface will be added in future updates.
+                </p>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Courses</h5>
+                                <p class="card-text">Manage course catalog</p>
+                                <small class="text-muted">Coming soon</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Instructors</h5>
+                                <p class="card-text">Manage faculty</p>
+                                <small class="text-muted">Coming soon</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Sections</h5>
+                                <p class="card-text">Manage course sections</p>
+                                <small class="text-muted">Coming soon</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Terms</h5>
+                                <p class="card-text">Manage academic terms</p>
+                                <small class="text-muted">Coming soon</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

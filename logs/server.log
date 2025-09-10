@@ -1,0 +1,18 @@
+Firestore client initialized, attempting to connect to emulator at: localhost:8086
+2025-09-10 00:48:21,509 - app - INFO - Database connection established successfully
+INFO: Starting Course Record Updater on port 3001 with debug mode: False
+INFO: Access the application at http://localhost:3001
+INFO: To use a different port, set PORT environment variable: PORT=3002 python app.py
+ * Serving Flask app 'app'
+ * Debug mode: off
+2025-09-10 00:48:21,516 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:3001
+ * Running on http://192.168.4.37:3001
+2025-09-10 00:48:21,516 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-10 00:48:22,886 - werkzeug - INFO - 127.0.0.1 - - [10/Sep/2025 00:48:22] "GET / HTTP/1.1" 200 -
+ Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:3001
+ * Running on http://192.168.4.37:3001
+2025-09-10 00:48:21,516 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-09-10 00:48:22,886 - werkzeug - INFO - 127.0.0.1 - - [10/Sep/2025 00:48:22] "GET / HTTP/1.1" 200 -
