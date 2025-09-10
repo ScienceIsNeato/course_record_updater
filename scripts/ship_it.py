@@ -378,6 +378,23 @@ class QualityGateExecutor:
         failed_count = len([r for r in all_results if r.status == CheckStatus.FAILED])
         return 1 if failed_count > 0 else 0
 
+    def _extract_slow_tests(self, output: str) -> List[str]:
+        """Extract slow tests (>0.5s) from pytest output with --durations=0."""
+        import re
+        slow_tests = []
+        
+        # Look for duration lines in format: "0.52s call     tests/test_example.py::test_slow"
+        duration_pattern = r"(\d+\.\d+)s\s+\w+\s+(tests/[^:]+::[^\s]+)"
+        
+        for match in re.finditer(duration_pattern, output):
+            duration = float(match.group(1))
+            test_name = match.group(2)
+            
+            if duration > 0.5:  # Threshold for slow tests
+                slow_tests.append(f"{duration:.2f}s {test_name}")
+        
+        return sorted(slow_tests, key=lambda x: float(x.split('s')[0]), reverse=True)
+
 
 def main():
     """Main entry point for the parallel quality gate executor."""

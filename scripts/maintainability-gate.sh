@@ -247,9 +247,9 @@ fi
 if [[ "$RUN_TESTS" == "true" ]]; then
   echo "🧪 Test Suite & Coverage (80% threshold)"
   
-  # First run tests to check for failures
-  echo "  🔍 Running test suite..."
-  TEST_OUTPUT=$(python -m pytest -v 2>&1) || TEST_FAILED=true
+  # First run UNIT tests only (fast tests, no integration/selenium)
+  echo "  🔍 Running UNIT test suite with performance monitoring..."
+  TEST_OUTPUT=$(python -m pytest -v --durations=0 -m "not integration" 2>&1) || TEST_FAILED=true
   
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -284,9 +284,32 @@ if [[ "$RUN_TESTS" == "true" ]]; then
   else
     echo "✅ Tests: PASSED"
     
-    # Now run coverage analysis with 80% threshold
-    echo "  📊 Running coverage analysis (80% threshold)..."
-    COVERAGE_OUTPUT=$(python -m pytest --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
+    # Check for slow tests (>0.5 seconds)
+    echo "  ⚡ Checking test performance..."
+    SLOW_TESTS=$(echo "$TEST_OUTPUT" | grep -E "^\s*[0-9.]+s\s+" | awk '$1 > 0.5 {print $0}' || true)
+    
+    if [[ -n "$SLOW_TESTS" ]]; then
+      echo "⚠️  Slow Tests Found (>0.5s each):"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$SLOW_TESTS" | head -10 | sed 's/^/  /'
+      SLOW_COUNT=$(echo "$SLOW_TESTS" | wc -l)
+      if [[ $SLOW_COUNT -gt 10 ]]; then
+        echo "  ... and $(($SLOW_COUNT - 10)) more slow tests"
+      fi
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "💡 Unit tests should complete in <0.5s. Consider:"
+      echo "   • Moving slow tests to integration test suite"
+      echo "   • Using mocks/stubs instead of real I/O operations"
+      echo "   • Optimizing test setup/teardown"
+      add_failure "Test Performance" "$SLOW_COUNT tests exceed 0.5s limit" "Optimize slow tests or mark as integration tests"
+    else
+      echo "✅ Test Performance: All tests complete in <0.5s"
+      add_success "Test Performance" "All unit tests complete quickly (<0.5s each)"
+    fi
+    
+    # Now run coverage analysis with 80% threshold (unit tests only)
+    echo "  📊 Running coverage analysis (80% threshold, unit tests only)..."
+    COVERAGE_OUTPUT=$(python -m pytest --cov=. --cov-report=term-missing --cov-fail-under=80 -m "not integration" 2>&1) || COVERAGE_FAILED=true
     
     if [[ "$COVERAGE_FAILED" != "true" ]]; then
       # Extract coverage percentage

@@ -2,16 +2,23 @@
 # 80% coverage threshold for enterprise quality gate
 
 [run]
+branch = True
 source = .
 omit = 
+    # Virtual environments and dependencies
     venv/*
     */venv/*
+    .venv/*
+    */.venv/*
+    */site-packages/*
+    
+    # Test files themselves
     tests/*
     */tests/*
+    
+    # Build and development files
     setup.py
     */migrations/*
-    */site-packages/*
-    scripts/*
     cursor-rules/*
     logs/*
     __pycache__/*
@@ -19,6 +26,14 @@ omit =
     *.pyc
     .git/*
     .pytest_cache/*
+    htmlcov/*
+    
+    # Utility scripts (not core application logic)
+    scripts/*
+    generate_sample_docx.py
+    
+    # CLI entry points (tested via integration)
+    import_cli.py
 
 [report]
 # 80% coverage threshold - enterprise quality gate

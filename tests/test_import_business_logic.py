@@ -1,5 +1,5 @@
 """
-Test Import Business Logic
+Test Import Business Logic - INTEGRATION TESTS
 
 Tests for the comprehensive business logic scenarios:
 1. Happy path (first data import) - 1:1 copy
@@ -8,6 +8,8 @@ Tests for the comprehensive business logic scenarios:
 4. Empty file import - does nothing
 5. Data deletion protection - can't delete via import
 6. Delete existing database option
+
+⚠️  These tests involve file I/O and database mocking - should run as integration tests
 """
 
 import os
@@ -18,6 +20,9 @@ import pandas as pd
 import pytest
 
 from import_service import ConflictStrategy, ImportService
+
+# Mark as integration tests (involves file I/O, database operations)
+pytestmark = pytest.mark.integration
 
 
 class TestImportBusinessLogic:

@@ -1,8 +1,10 @@
 """
-Frontend Smoke Tests
+Frontend Smoke Tests - INTEGRATION TESTS
 
 These tests verify that the basic UI functionality works without requiring manual interaction.
 They catch JavaScript errors, missing elements, and basic functionality issues.
+
+⚠️  IMPORTANT: These are INTEGRATION tests that use Selenium and should NOT run in unit test suite
 """
 
 import json
@@ -16,6 +18,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
+# Mark ALL tests in this file as integration tests (slow, requires browser)
+pytestmark = pytest.mark.integration
 
 
 class TestFrontendSmoke:
