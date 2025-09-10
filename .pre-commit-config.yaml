@@ -54,6 +54,16 @@ repos:
       - id: check-docstring-first
         exclude: ^(venv/|cursor-rules/|logs/)
 
+  # Unit tests (fast feedback only - integration tests run in CI)
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: pytest (unit tests only)
+        entry: python -m pytest tests/unit/ --tb=short
+        language: system
+        pass_filenames: false
+        always_run: true
+
   # Type checking (optional, can be slow)
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.8.0

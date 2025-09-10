@@ -42,9 +42,15 @@ jobs:
       env:
         PYTHONPATH: .
     
-    - name: Run Tests with Coverage
+    - name: Run Unit Tests with Coverage
       run: |
         python scripts/ship_it.py --checks tests
+      env:
+        PYTHONPATH: .
+    
+    - name: Run Integration Tests
+      run: |
+        python -m pytest tests/integration/ -v --tb=short
       env:
         PYTHONPATH: .
     
