@@ -247,9 +247,9 @@ fi
 if [[ "$RUN_TESTS" == "true" ]]; then
   echo "🧪 Test Suite & Coverage (80% threshold)"
   
-  # First run UNIT tests only (fast tests, no integration/selenium)
+  # First run UNIT tests only (fast tests, separate directory)
   echo "  🔍 Running UNIT test suite with performance monitoring..."
-  TEST_OUTPUT=$(python -m pytest -v --durations=0 -m "not integration" 2>&1) || TEST_FAILED=true
+  TEST_OUTPUT=$(python -m pytest tests/unit/ -v --durations=0 2>&1) || TEST_FAILED=true
   
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -309,7 +309,7 @@ if [[ "$RUN_TESTS" == "true" ]]; then
     
     # Now run coverage analysis with 80% threshold (unit tests only)
     echo "  📊 Running coverage analysis (80% threshold, unit tests only)..."
-    COVERAGE_OUTPUT=$(python -m pytest --cov=. --cov-report=term-missing --cov-fail-under=80 -m "not integration" 2>&1) || COVERAGE_FAILED=true
+    COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
     
     if [[ "$COVERAGE_FAILED" != "true" ]]; then
       # Extract coverage percentage
