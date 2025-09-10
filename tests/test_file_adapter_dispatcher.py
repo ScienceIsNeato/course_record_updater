@@ -1,66 +1,81 @@
 # tests/test_file_adapter_dispatcher.py
-import pytest
-import os
 import importlib
+import os
 import re
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, call, patch
+
 import docx
+import pytest
+
+# Also import BaseAdapter for validation mocking
+from adapters.base_adapter import BaseAdapter, ValidationError
 
 # Import the class and exception we intend to test (will fail initially)
-from adapters.file_adapter_dispatcher import FileAdapterDispatcher, DispatcherError
-# Also import BaseAdapter for validation mocking
-from adapters.base_adapter import BaseAdapter, ValidationError 
+from adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDispatcher
 
-# --- Test Setup --- 
+# --- Test Setup ---
 
 # Create dummy adapter files for discovery tests
 # Use pytest fixtures to manage temporary files/directories if preferred
 ADAPTERS_DIR = "adapters"
+
 
 # Mock the docx.Document object
 @pytest.fixture
 def mock_docx_document():
     return MagicMock(spec=docx.document.Document)
 
-# --- Tests for discover_adapters --- 
+
+# --- Tests for discover_adapters ---
+
 
 def test_discover_adapters_success(mocker):
     """Test finding adapter files in the directory."""
     # Mock os.listdir to simulate finding files
-    mock_files = ['__init__.py', 'base_adapter.py', 'dummy_adapter.py', 'adapter_v1.py', 'invalid.txt']
-    mocker.patch('os.listdir', return_value=mock_files)
-    mocker.patch('os.path.isfile', return_value=True) # Assume they are all files
+    mock_files = [
+        "__init__.py",
+        "base_adapter.py",
+        "dummy_adapter.py",
+        "adapter_v1.py",
+        "invalid.txt",
+    ]
+    mocker.patch("os.listdir", return_value=mock_files)
+    mocker.patch("os.path.isfile", return_value=True)  # Assume they are all files
 
     dispatcher = FileAdapterDispatcher()
     adapters = dispatcher.discover_adapters()
 
     # Expect only .py files, excluding __init__ and base_adapter
-    assert sorted(adapters) == sorted(['dummy_adapter', 'adapter_v1'])
+    assert sorted(adapters) == sorted(["dummy_adapter", "adapter_v1"])
     os.listdir.assert_called_once_with(ADAPTERS_DIR)
+
 
 def test_discover_adapters_no_adapters(mocker):
     """Test when only non-adapter files are present."""
-    mock_files = ['__init__.py', 'base_adapter.py', 'notes.txt']
-    mocker.patch('os.listdir', return_value=mock_files)
-    mocker.patch('os.path.isfile', return_value=True)
+    mock_files = ["__init__.py", "base_adapter.py", "notes.txt"]
+    mocker.patch("os.listdir", return_value=mock_files)
+    mocker.patch("os.path.isfile", return_value=True)
 
     dispatcher = FileAdapterDispatcher()
     adapters = dispatcher.discover_adapters()
     assert adapters == []
 
+
 def test_discover_adapters_directory_not_found(mocker):
     """Test when the adapters directory doesn't exist."""
-    mocker.patch('os.listdir', side_effect=FileNotFoundError)
+    mocker.patch("os.listdir", side_effect=FileNotFoundError)
 
     dispatcher = FileAdapterDispatcher()
     adapters = dispatcher.discover_adapters()
-    assert adapters == [] # Should handle gracefully and return empty list
+    assert adapters == []  # Should handle gracefully and return empty list
 
-# --- Tests for process_file --- 
+
+# --- Tests for process_file ---
+
 
 def test_process_file_success(mocker, mock_docx_document):
     """Test successfully dispatching to a valid adapter."""
-    adapter_name = 'dummy_adapter'
+    adapter_name = "dummy_adapter"
     module_to_import = f"adapters.{adapter_name}"
 
     # Mock the dynamic import within the dispatcher module
@@ -69,23 +84,28 @@ def test_process_file_success(mocker, mock_docx_document):
     mock_adapter_instance = MagicMock()
 
     # Mock the module import and capture the mock object
-    mock_import = mocker.patch('adapters.file_adapter_dispatcher.importlib.import_module', return_value=mock_module)
+    mock_import = mocker.patch(
+        "adapters.file_adapter_dispatcher.importlib.import_module",
+        return_value=mock_module,
+    )
     # Mock hasattr and getattr to return the mock class
-    mocker.patch.object(mock_module, 'DummyAdapter', mock_adapter_class, create=True)
+    mocker.patch.object(mock_module, "DummyAdapter", mock_adapter_class, create=True)
     # mocker.patch('hasattr', return_value=True) # Assume class exists
     # mocker.patch('getattr', return_value=mock_adapter_class) # Return mock class
     # Mock class instantiation to return the mock instance
     mock_adapter_class.return_value = mock_adapter_instance
 
     # Define the raw data the adapter's parse method should return (as a list)
-    mock_parsed_data_from_adapter = [{
-        'course_title': 'Parsed Title',
-        'course_number': 'PARSED101',
-        'semester': 'Parsed Semester',
-        'year': '2025', # String initially
-        'professor': 'Prof. Parsed',
-        'num_students': '55' # String initially
-    }]
+    mock_parsed_data_from_adapter = [
+        {
+            "course_title": "Parsed Title",
+            "course_number": "PARSED101",
+            "semester": "Parsed Semester",
+            "year": "2025",  # String initially
+            "professor": "Prof. Parsed",
+            "num_students": "55",  # String initially
+        }
+    ]
     # Explicitly create the parse attribute as a MagicMock
     mock_adapter_instance.parse = MagicMock(return_value=mock_parsed_data_from_adapter)
     # mock_adapter_instance.parse.return_value = mock_parsed_data_from_adapter # Becomes redundant
@@ -93,41 +113,51 @@ def test_process_file_success(mocker, mock_docx_document):
     # mock_adapter_instance.parse.__call__ = MagicMock() # Becomes redundant
 
     # Define the final expected data after successful base validation (list containing dict)
-    expected_validated_data = [{
-        'course_title': 'Parsed Title',
-        'course_number': 'PARSED101',
-        'semester': 'Parsed Semester',
-        'year': 2025,
-        'professor': 'Prof. Parsed',
-        'num_students': 55
-    }]
+    expected_validated_data = [
+        {
+            "course_title": "Parsed Title",
+            "course_number": "PARSED101",
+            "semester": "Parsed Semester",
+            "year": 2025,
+            "professor": "Prof. Parsed",
+            "num_students": 55,
+        }
+    ]
 
     # Instantiate the REAL dispatcher
     dispatcher = FileAdapterDispatcher(use_base_validation=True)
     # Patch the validation method on the instance of BaseAdapter within the dispatcher
     mock_validation_method = mocker.patch.object(
         dispatcher._base_validator,
-        'parse_and_validate',
-        return_value=expected_validated_data[0] # Validator gets the dict, returns the validated dict
+        "parse_and_validate",
+        return_value=expected_validated_data[
+            0
+        ],  # Validator gets the dict, returns the validated dict
     )
 
     # Act
     result = dispatcher.process_file(mock_docx_document, adapter_name)
 
     # Assertions
-    assert result == expected_validated_data # Expect a list containing the validated dict
+    assert (
+        result == expected_validated_data
+    )  # Expect a list containing the validated dict
     # Revert to asserting on the captured mock object
     mock_import.assert_called_once_with(module_to_import)
     mock_adapter_instance.parse.assert_called_once_with(mock_docx_document)
     # Check that the validation method was called with the raw data dict
     mock_validation_method.assert_called_once_with(mock_parsed_data_from_adapter[0])
 
+
 def test_process_file_adapter_not_found(mocker, mock_docx_document):
     """Test when the requested adapter module cannot be imported."""
-    adapter_name = 'non_existent'
+    adapter_name = "non_existent"
     module_path = f"adapters.{adapter_name}"
     # Mock importlib.import_module to raise ImportError for the specific path
-    mocker.patch('adapters.file_adapter_dispatcher.importlib.import_module', side_effect=ImportError(f"No module named '{module_path}'"))
+    mocker.patch(
+        "adapters.file_adapter_dispatcher.importlib.import_module",
+        side_effect=ImportError(f"No module named '{module_path}'"),
+    )
 
     dispatcher = FileAdapterDispatcher()
 
@@ -136,20 +166,26 @@ def test_process_file_adapter_not_found(mocker, mock_docx_document):
     with pytest.raises(DispatcherError, match=expected_error_msg):
         dispatcher.process_file(mock_docx_document, adapter_name)
 
+
 def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document):
     """Test when the adapter module exists but lacks a callable parse function."""
-    adapter_name = 'missing_parse'
+    adapter_name = "missing_parse"
     module_to_import = f"adapters.{adapter_name}"
-    class_name = "MissingParse" # Calculate class name
+    class_name = "MissingParse"  # Calculate class name
 
     # Mock the module, class, and instance structure
     mock_module = MagicMock()
     mock_class = MagicMock()
     mock_instance = MagicMock()
     # Configure mocks
-    mock_import = mocker.patch('adapters.file_adapter_dispatcher.importlib.import_module', return_value=mock_module)
-    mocker.patch.object(mock_module, class_name, mock_class, create=True) # Mock the class lookup
-    mock_class.return_value = mock_instance # Mock instantiation
+    mock_import = mocker.patch(
+        "adapters.file_adapter_dispatcher.importlib.import_module",
+        return_value=mock_module,
+    )
+    mocker.patch.object(
+        mock_module, class_name, mock_class, create=True
+    )  # Mock the class lookup
+    mock_class.return_value = mock_instance  # Mock instantiation
 
     # Make the 'parse' attribute present but not callable
     # del mock_instance.parse # Removing completely also works
@@ -163,10 +199,11 @@ def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document)
     with pytest.raises(DispatcherError, match=expected_error_msg):
         dispatcher.process_file(mock_docx_document, adapter_name)
 
+
 def test_process_file_adapter_parse_error(mocker, mock_docx_document):
     """Test when the adapter's parse function raises an error."""
-    adapter_name = 'parse_error_adapter'
-    class_name = "ParseErrorAdapter" # Calculate class name
+    adapter_name = "parse_error_adapter"
+    class_name = "ParseErrorAdapter"  # Calculate class name
     error_message = "Specific parsing failed"
 
     # Mock the module, class, and instance structure
@@ -174,57 +211,68 @@ def test_process_file_adapter_parse_error(mocker, mock_docx_document):
     mock_class = MagicMock()
     mock_instance = MagicMock()
     # Configure mocks
-    mocker.patch('adapters.file_adapter_dispatcher.importlib.import_module', return_value=mock_module)
+    mocker.patch(
+        "adapters.file_adapter_dispatcher.importlib.import_module",
+        return_value=mock_module,
+    )
     mocker.patch.object(mock_module, class_name, mock_class, create=True)
     mock_class.return_value = mock_instance
 
     # Make the parse method callable but raise an error
     mock_instance.parse.side_effect = ValueError(error_message)
-     # Ensure the parse method is seen as callable before the error
+    # Ensure the parse method is seen as callable before the error
     mock_instance.parse.__call__ = MagicMock(side_effect=ValueError(error_message))
 
     dispatcher = FileAdapterDispatcher()
 
     # Update expected error message based on the generic exception handler, escape regex
-    expected_error_msg = f"Error processing with adapter '{adapter_name}': {error_message}"
+    expected_error_msg = (
+        f"Error processing with adapter '{adapter_name}': {error_message}"
+    )
     with pytest.raises(DispatcherError, match=expected_error_msg):
         dispatcher.process_file(mock_docx_document, adapter_name)
+
 
 # Add test for post-parse validation failure if implemented
 def test_process_file_base_validation_error(mocker, mock_docx_document):
     """Test when base validation fails after successful parsing."""
-    adapter_name = 'valid_parse_adapter'
+    adapter_name = "valid_parse_adapter"
     module_to_import = f"adapters.{adapter_name}"
     class_name = "ValidParseAdapter"
 
     mock_module = MagicMock()
     mock_class = MagicMock()
-    mock_instance = MagicMock() # Define mock_instance here
+    mock_instance = MagicMock()  # Define mock_instance here
 
-    mock_import = mocker.patch('adapters.file_adapter_dispatcher.importlib.import_module', return_value=mock_module)
+    mock_import = mocker.patch(
+        "adapters.file_adapter_dispatcher.importlib.import_module",
+        return_value=mock_module,
+    )
     mocker.patch.object(mock_module, class_name, mock_class, create=True)
-    mock_class.return_value = mock_instance # Ensure mock_instance is assigned
+    mock_class.return_value = mock_instance  # Ensure mock_instance is assigned
 
     # Adapter parse succeeds, returning a list of dicts
-    mock_parsed_data_from_adapter = [{
-        'course_title': 'Valid Title',
-        'course_number': 'VALID101',
-        'semester': 'Valid Semester',
-        'year': '2025',
-        'professor': 'Prof. Valid',
-        'num_students': 'bad_number' # Invalid data for base validation
-    }]
+    mock_parsed_data_from_adapter = [
+        {
+            "course_title": "Valid Title",
+            "course_number": "VALID101",
+            "semester": "Valid Semester",
+            "year": "2025",
+            "professor": "Prof. Valid",
+            "num_students": "bad_number",  # Invalid data for base validation
+        }
+    ]
     # Assign return value and callable mock to the now defined mock_instance
     mock_instance.parse.return_value = mock_parsed_data_from_adapter
-    mock_instance.parse.__call__ = MagicMock() # Make callable
+    mock_instance.parse.__call__ = MagicMock()  # Make callable
 
     dispatcher = FileAdapterDispatcher(use_base_validation=True)
     # Mock the base validator to raise ValidationError
     validation_error_msg = "Invalid literal for int() with base 10: 'bad_number'"
     mocker.patch.object(
         dispatcher._base_validator,
-        'parse_and_validate',
-        side_effect=ValidationError(validation_error_msg)
+        "parse_and_validate",
+        side_effect=ValidationError(validation_error_msg),
     )
 
     # Expect the dispatcher to catch the ValidationError and re-raise as DispatcherError
@@ -232,4 +280,4 @@ def test_process_file_base_validation_error(mocker, mock_docx_document):
     # Escape the error message for regex matching
     expected_error_msg_regex = re.escape(raw_error_msg)
     with pytest.raises(DispatcherError, match=expected_error_msg_regex):
-        dispatcher.process_file(mock_docx_document, adapter_name) 
+        dispatcher.process_file(mock_docx_document, adapter_name)
