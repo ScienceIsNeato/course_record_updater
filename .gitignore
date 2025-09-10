@@ -5,4 +5,12 @@
 *.pyc
 cursor-rules/
 
+# Coverage files
+.coverage
+coverage.xml
+htmlcov/
+
+# Test artifacts
+.pytest_cache/
+
 .DS_Store

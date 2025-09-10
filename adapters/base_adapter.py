@@ -1,14 +1,11 @@
 # adapters/base_adapter.py
 
+from term_utils import get_allowed_terms, is_valid_term
+
 
 # Define a custom exception for validation errors
 class ValidationError(ValueError):
     pass
-
-
-# --- Allowed Terms ---
-# Define allowed terms here or load from config/db later
-ALLOWED_TERMS = ["FA2024", "SP2024", "SU2024", "FA2025", "SP2025", "SU2025"]
 
 
 class BaseAdapter:
@@ -24,7 +21,7 @@ class BaseAdapter:
         "course_number": (True, str, None),
         # 'semester': (True, str, None), # Replaced by term
         # 'year': (True, int, lambda y: y >= 2000), # Replaced by term
-        "term": (True, str, lambda t: t in ALLOWED_TERMS),  # Added term
+        "term": (True, str, is_valid_term),  # Dynamic term validation
         "instructor_name": (True, str, None),  # Corrected field name
         "num_students": (
             False,

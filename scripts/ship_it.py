@@ -116,7 +116,7 @@ class QualityGateExecutor:
     def run_checks_parallel(
         self,
         checks: List[Tuple[str, str]],
-        max_workers: int = 3,  # Reduced for faster execution
+        max_workers: int = None,  # Use all available CPU cores
         fail_fast: bool = False,
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""

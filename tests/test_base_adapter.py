@@ -2,11 +2,12 @@
 import pytest
 
 # Import the class we intend to test
-from adapters.base_adapter import ALLOWED_TERMS, BaseAdapter, ValidationError
+from adapters.base_adapter import BaseAdapter, ValidationError
+from term_utils import get_allowed_terms
 
 # --- Test Data ---
 
-VALID_TERM = ALLOWED_TERMS[0]  # Use the first allowed term
+VALID_TERM = get_allowed_terms()[0]  # Use the first allowed term
 
 VALID_FORM_DATA = {
     "course_title": "Valid Title",
@@ -75,7 +76,7 @@ def test_parse_and_validate_missing_required_field():
 
 
 def test_parse_and_validate_invalid_term():
-    """Test failure when term is not in ALLOWED_TERMS."""
+    """Test failure when term is not in allowed terms."""
     adapter = BaseAdapter()
     with pytest.raises(ValidationError, match="Invalid value for term"):
         adapter.parse_and_validate(INVALID_TERM_DATA)
