@@ -1,0 +1,82 @@
+# Course Record Updater - Pre-commit Configuration
+# Mirrors the quality gate checks for consistent local development
+
+repos:
+  # Code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        args: [--line-length=88]
+        exclude: ^(venv/|cursor-rules/|logs/)
+  
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black]
+        exclude: ^(venv/|cursor-rules/|logs/)
+
+  # Linting - critical errors only for speed
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [
+          --max-line-length=88,
+          --extend-ignore=E203,W503,
+          --select=E9,F63,F7,F82
+        ]
+        exclude: ^(venv/|cursor-rules/|logs/)
+
+  # Security scanning
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, ., -x, venv,cursor-rules,.venv,logs]
+        exclude: ^(venv/|cursor-rules/|logs/|tests/)
+
+  # General code quality
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(venv/|cursor-rules/|logs/)
+      - id: end-of-file-fixer
+        exclude: ^(venv/|cursor-rules/|logs/)
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: debug-statements
+        exclude: ^(venv/|cursor-rules/|logs/)
+      - id: check-docstring-first
+        exclude: ^(venv/|cursor-rules/|logs/)
+
+  # Type checking (optional, can be slow)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --no-strict-optional]
+        exclude: ^(venv/|cursor-rules/|logs/|tests/)
+        additional_dependencies: [types-requests, types-python-dateutil]
+
+# Configuration
+default_language_version:
+  python: python3.11
+
+default_stages: [commit]
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    venv/.*|
+    cursor-rules/.*|
+    logs/.*|
+    \.git/.*|
+    \.pytest_cache/.*|
+    __pycache__/.*|
+    .*\.pyc
+  )$

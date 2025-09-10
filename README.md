@@ -1,6 +1,10 @@
 # Course Record Updater
 
-A simple Flask web application to manage course records, intended to replace manual entry from Word documents.
+[![Quality Gate](https://github.com/ScienceIsNeato/course_record_updater/workflows/Quality%20Gate/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/quality-gate.yml)
+[![Security Scan](https://github.com/ScienceIsNeato/course_record_updater/workflows/Security%20Scan/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/security-scan.yml)
+[![Pre-commit](https://github.com/ScienceIsNeato/course_record_updater/workflows/Pre-commit%20Hooks/badge.svg)](https://github.com/ScienceIsNeato/course_record_updater/actions/workflows/pre-commit.yml)
+
+A enterprise-grade Flask web application for managing course records with comprehensive quality gates and 80% test coverage.
 
 ## Features
 
@@ -9,6 +13,33 @@ A simple Flask web application to manage course records, intended to replace man
 *   Display of course records in a table.
 *   Inline editing and deletion of records.
 *   Persistence using Google Cloud Firestore.
+*   **Enterprise-grade quality gates** with 80% test coverage threshold
+*   **Automated security scanning** and dependency vulnerability checks
+*   **CI/CD integration** with GitHub Actions
+
+## 🚀 Quality & CI/CD
+
+This project maintains enterprise-grade quality standards:
+
+- **80% Test Coverage Threshold**: Enforced locally and in CI
+- **Automated Quality Gates**: Format, lint, security, type checking
+- **Pre-commit Hooks**: Consistent code quality across contributors  
+- **Security Scanning**: Daily vulnerability checks with automatic issue creation
+- **Multi-Python Support**: Tested on Python 3.9, 3.11, and 3.13
+
+### Quick Start - Quality Checks
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
+
+# Run essential quality checks (2-3 minutes)
+python scripts/ship_it.py
+
+# Install pre-commit hooks
+pre-commit install
+```
+
+See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
 ## Project Structure
 
