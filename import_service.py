@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 
 from database_service import get_user_by_email
-from database_service_extended import (
+from database_service import (
     create_course,
     create_course_section,
     create_term,

@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from database_service_extended import create_course
+from database_service import create_course
 from import_service import ConflictStrategy, ImportService
 
 

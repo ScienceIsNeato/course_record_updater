@@ -9,7 +9,7 @@ from flask import Flask, render_template
 from api_routes import api
 from auth_service import get_current_user, is_authenticated
 from database_service import db as database_client
-from database_service_extended import get_courses_by_department
+from database_service import get_courses_by_department
 
 app = Flask(__name__)
 

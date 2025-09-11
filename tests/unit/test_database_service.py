@@ -9,6 +9,17 @@ import database_service
 from database_service import (
     create_user,
     get_user_by_email,
+    get_users_by_role,
+    update_user_extended,
+    create_course,
+    get_course_by_number,
+    get_courses_by_department,
+    create_term,
+    get_term_by_name,
+    get_active_terms,
+    create_course_section,
+    get_sections_by_instructor,
+    get_sections_by_term,
     USERS_COLLECTION,
     COURSES_COLLECTION,
     TERMS_COLLECTION,
@@ -422,3 +433,95 @@ class TestDatabaseServiceIntegration:
             with patch('builtins.print') as mock_print:
                 get_user_by_email("test@example.com")
                 mock_print.assert_called()
+
+
+class TestExtendedDatabaseFunctions:
+    """Test extended database functions that were consolidated from database_service_extended."""
+
+    @patch('database_service.db')
+    def test_get_users_by_role_success(self, mock_db):
+        """Test get_users_by_role function."""
+        # Setup mock
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+        mock_doc.id = "user123"
+        mock_doc.to_dict.return_value = {"email": "test@example.com", "role": "instructor"}
+        
+        mock_query.stream.return_value = [mock_doc]
+        mock_query.where.return_value = mock_query
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        result = get_users_by_role("instructor")
+        
+        assert len(result) == 1
+        assert result[0]["user_id"] == "user123"
+        assert result[0]["role"] == "instructor"
+
+    @patch('database_service.db')
+    def test_create_course_success(self, mock_db):
+        """Test create_course function."""
+        # Setup mock
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "course123"
+        mock_collection.add.return_value = (None, mock_doc_ref)
+        mock_db.collection.return_value = mock_collection
+        
+        course_data = {"course_number": "MATH-101", "course_title": "Algebra"}
+        result = create_course(course_data)
+        
+        assert result == "course123"
+        mock_collection.add.assert_called_once_with(course_data)
+
+    @patch('database_service.db')
+    def test_get_course_by_number_success(self, mock_db):
+        """Test get_course_by_number function."""
+        # Setup mock
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+        mock_doc.id = "course123"
+        mock_doc.to_dict.return_value = {"course_number": "MATH-101", "course_title": "Algebra"}
+        
+        mock_query.stream.return_value = [mock_doc]
+        mock_query.limit.return_value = mock_query
+        mock_collection.where.return_value = mock_query
+        mock_db.collection.return_value = mock_collection
+        
+        result = get_course_by_number("MATH-101")
+        
+        assert result["course_id"] == "course123"
+        assert result["course_number"] == "MATH-101"
+
+    def test_extended_functions_no_db_client(self):
+        """Test that extended functions handle missing db client gracefully."""
+        with patch('database_service.db', None):
+            # All these should return empty lists or None
+            assert get_users_by_role("instructor") == []
+            assert update_user_extended("user123", {}) is False
+            assert create_course({"course_number": "TEST-101"}) is None
+            assert get_course_by_number("TEST-101") is None
+            assert get_courses_by_department("MATH") == []
+            assert create_term({"term_name": "FA24"}) is None
+            assert get_term_by_name("FA24") is None
+            assert get_active_terms() == []
+            assert create_course_section({"course_id": "123"}) is None
+            assert get_sections_by_instructor("instructor123") == []
+            assert get_sections_by_term("term123") == []
+
+    def test_all_extended_functions_exist(self):
+        """Test that all extended functions are properly imported."""
+        # Verify all functions exist and are callable
+        assert callable(get_users_by_role)
+        assert callable(update_user_extended)
+        assert callable(create_course)
+        assert callable(get_course_by_number)
+        assert callable(get_courses_by_department)
+        assert callable(create_term)
+        assert callable(get_term_by_name)
+        assert callable(get_active_terms)
+        assert callable(create_course_section)
+        assert callable(get_sections_by_instructor)
+        assert callable(get_sections_by_term)

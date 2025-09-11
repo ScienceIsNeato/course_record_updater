@@ -17,7 +17,7 @@ from auth_service import (
     login_required,
     permission_required,
 )
-from database_service_extended import (
+from database_service import (
     create_course,
     create_course_section,
     create_term,
