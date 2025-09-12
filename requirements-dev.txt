@@ -1,4 +1,3 @@
--i https://pkgs.safetycli.com/repository/ganglia/project/course_record_updater/pypi/simple/
 # Course Record Updater - Development Dependencies
 # Quality assurance and development tools
 

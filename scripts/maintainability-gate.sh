@@ -290,12 +290,21 @@ if [[ "$RUN_TESTS" == "true" ]]; then
       echo ""
     fi
 
-    # Show error summary
+    # Show error summary - try multiple approaches to extract useful failure info
     SUMMARY_SECTION=$(echo "$TEST_OUTPUT" | grep -A 20 "short test summary info" | head -20)
     if [[ -n "$SUMMARY_SECTION" ]]; then
       echo "$SUMMARY_SECTION" | sed 's/^/  /'
     else
-      echo "  Unable to extract specific test failures - run 'python -m pytest -v' for details"
+      # If no short summary, show FAILED test lines and any assertion errors
+      FAILED_TESTS=$(echo "$TEST_OUTPUT" | grep -E "(FAILED|ERROR|AssertionError|assert)" | head -10)
+      if [[ -n "$FAILED_TESTS" ]]; then
+        echo "  Test failure details:"
+        echo "$FAILED_TESTS" | sed 's/^/    /'
+      else
+        # Last resort: show last 10 lines of output which usually contain the error
+        echo "  Last lines of test output:"
+        echo "$TEST_OUTPUT" | tail -10 | sed 's/^/    /'
+      fi
     fi
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
