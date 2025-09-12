@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from google.cloud import firestore
 
 # Import our data models
-from models import User, validate_course_number, validate_email
+from models import User, validate_course_number, validate_email  # noqa: F401
 
 # --- Firestore Client Initialization ---
 
