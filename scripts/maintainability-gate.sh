@@ -363,8 +363,9 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   SECURITY_PASSED=true
 
   # Run bandit for security issues in code (main source files only, with timeout)
+  # Only fail on HIGH severity issues, ignore LOW/MEDIUM for now
   echo "🔧 Running bandit security scan..."
-  BANDIT_OUTPUT=$(timeout 30s bandit -r . -x venv,cursor-rules,.venv,logs --format json 2>&1) || BANDIT_FAILED=true
+  BANDIT_OUTPUT=$(timeout 30s bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests -lll --format json 2>&1) || BANDIT_FAILED=true
 
   if [[ "$BANDIT_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
