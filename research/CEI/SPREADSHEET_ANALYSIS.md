@@ -10,7 +10,7 @@
 
 ### Data Scale
 - **173 unique courses** across all programs
-- **312 unique course-instructor combinations** 
+- **312 unique course-instructor combinations**
 - **145 unique faculty members**
 - **1,543 CLO records** (multiple CLOs per course)
 
@@ -50,7 +50,7 @@ Institution (CEI)
 ### 3. CLO Assessment Data (New Entity Needed!)
 - **`cllo_text`** → CLO description (e.g., "ACC-201.1: Complete the accounting cycle...")
 - **`passed_c`** → Students who passed this CLO assessment
-- **`took_c`** → Students who took this CLO assessment  
+- **`took_c`** → Students who took this CLO assessment
 - **`%`** → Pass rate percentage (passed_c ÷ took_c)
 - **`result`** → S/U based on 75% threshold
 
@@ -78,7 +78,7 @@ CourseInstance (1) → CLOs (Many)
 - **Enrollment:** 14 students, 1 withdrawal
 - **CLOs:** 3 different learning outcomes
   1. "Complete the accounting cycle using double entry framework"
-  2. "Work effectively in team setting for accounting cycle" 
+  2. "Work effectively in team setting for accounting cycle"
   3. "Demonstrate Excel spreadsheets in accounting transactions"
 
 ### CLO Assessment Process:
@@ -93,7 +93,7 @@ CourseInstance (1) → CLOs (Many)
 ### Course Distribution
 **Most CLO-heavy courses:**
 - ENGL-101: 77 CLO records
-- ENGL-102: 49 CLO records  
+- ENGL-102: 49 CLO records
 - HCT-101: 40 CLO records
 - PSYC-101: 36 CLO records
 
@@ -131,7 +131,7 @@ CourseInstance (1) → CLOs (Many)
 **Their Problems → Our Solutions:**
 - **Multi-user issues** → Web-based concurrent access
 - **Poor forms** → Modern, intuitive web UI
-- **Data integrity** → Proper relational database with constraints  
+- **Data integrity** → Proper relational database with constraints
 - **Export/import cycle** → Real-time web application
 - **Manual calculations** → Automatic pass rate calculations
 - **Access limitations** → Scalable cloud architecture
@@ -157,7 +157,7 @@ CourseOutcome:
 - pass_threshold (default 75%)
 - result_status (S/U based on threshold)
 - celebrations (text)
-- challenges (text)  
+- challenges (text)
 - changes (text)
 ```
 

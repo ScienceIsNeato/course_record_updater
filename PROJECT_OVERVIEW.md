@@ -87,4 +87,4 @@ A web application built with Python (Flask) that allows:
 *   **No Authentication:** The initial version will be publicly accessible without login.
 *   **Single Data Store:** All data resides in one Firestore database.
 *   **Adapter Focus:** Build the framework first, then specific adapters iteratively.
-*   **Deployment:** Target platform is Google Cloud Run. 
+*   **Deployment:** Target platform is Google Cloud Run.

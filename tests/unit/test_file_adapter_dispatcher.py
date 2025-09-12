@@ -1,14 +1,14 @@
 # tests/test_file_adapter_dispatcher.py
-import importlib
+# Unused imports removed
 import os
 import re
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import docx
 import pytest
 
 # Also import BaseAdapter for validation mocking
-from adapters.base_adapter import BaseAdapter, ValidationError
+from adapters.base_adapter import ValidationError
 
 # Import the class and exception we intend to test (will fail initially)
 from adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDispatcher
@@ -289,22 +289,22 @@ class TestFileAdapterDispatcherExtended:
     def test_init_without_base_validation(self):
         """Test initialization without base validation."""
         dispatcher = FileAdapterDispatcher(use_base_validation=False)
-        
+
         assert dispatcher._base_validator is None
         assert dispatcher._use_base_validation is False
 
     def test_init_with_base_validation(self):
         """Test initialization with base validation."""
         dispatcher = FileAdapterDispatcher(use_base_validation=True)
-        
+
         assert dispatcher._base_validator is not None
         assert dispatcher._use_base_validation is True
 
     def test_discover_adapters_directory_not_found(self):
         """Test discover_adapters when adapters directory doesn't exist."""
         dispatcher = FileAdapterDispatcher()
-        
-        with patch('os.path.isdir', return_value=False):
+
+        with patch("os.path.isdir", return_value=False):
             adapters = dispatcher.discover_adapters()
             # Should return empty list gracefully
             assert adapters == []
@@ -312,8 +312,8 @@ class TestFileAdapterDispatcherExtended:
     def test_discover_adapters_file_not_directory(self):
         """Test discover_adapters when adapters path is a file, not directory."""
         dispatcher = FileAdapterDispatcher()
-        
-        with patch('os.path.isdir', return_value=False):
+
+        with patch("os.path.isdir", return_value=False):
             adapters = dispatcher.discover_adapters()
             # Should return empty list gracefully
             assert adapters == []
@@ -321,9 +321,10 @@ class TestFileAdapterDispatcherExtended:
     def test_discover_adapters_general_exception(self):
         """Test discover_adapters with general exception."""
         dispatcher = FileAdapterDispatcher()
-        
-        with patch('os.path.isdir', return_value=True), \
-             patch('os.listdir', side_effect=OSError("Permission denied")):
+
+        with patch("os.path.isdir", return_value=True), patch(
+            "os.listdir", side_effect=OSError("Permission denied")
+        ):
             adapters = dispatcher.discover_adapters()
             # Should return empty list gracefully
             assert adapters == []
@@ -331,16 +332,21 @@ class TestFileAdapterDispatcherExtended:
     def test_discover_adapters_with_various_file_types(self):
         """Test discover_adapters with various file types in directory."""
         dispatcher = FileAdapterDispatcher()
-        
+
         # Mock directory with various files
-        mock_files = ['__init__.py', 'valid_adapter.py', 'README.md', '.hidden_file', 'test_file.py']
-        
-        with patch('os.path.isdir', return_value=True), \
-             patch('os.listdir', return_value=mock_files), \
-             patch('os.path.isfile', return_value=True):
-            
+        mock_files = [
+            "__init__.py",
+            "valid_adapter.py",
+            "README.md",
+            ".hidden_file",
+            "test_file.py",
+        ]
+
+        with patch("os.path.isdir", return_value=True), patch(
+            "os.listdir", return_value=mock_files
+        ), patch("os.path.isfile", return_value=True):
             adapters = dispatcher.discover_adapters()
-            
+
             # Should only include .py files that aren't excluded
-            expected_adapters = ['valid_adapter', 'test_file']
+            expected_adapters = ["valid_adapter", "test_file"]
             assert set(adapters) == set(expected_adapters)

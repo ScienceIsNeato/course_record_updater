@@ -11,30 +11,20 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
-from database_service import get_user_by_email
 from database_service import (
     create_course,
     create_course_section,
     create_term,
     get_course_by_number,
-    get_term_by_name,
+    get_user_by_email,
 )
 
 # Import our models and services
-from models import (
-    Course,
-    CourseOutcome,
-    CourseSection,
-    Term,
-    User,
-    validate_course_number,
-    validate_email,
-    validate_term_name,
-)
+from models import validate_course_number, validate_term_name
 
 
 class ConflictStrategy(Enum):
@@ -119,7 +109,7 @@ class ImportService:
         elif self.verbose:
             print(f"[Import] {message}")
         # Otherwise, skip debug-level messages in non-verbose mode
-        self.entity_cache = {
+        self.entity_cache: Dict[str, Dict] = {
             "courses": {},  # course_number -> course_data
             "terms": {},  # term_name -> term_data
             "users": {},  # email -> user_data
@@ -138,7 +128,7 @@ class ImportService:
         Returns:
             List of detected conflicts
         """
-        conflicts = []
+        conflicts: List[ConflictRecord] = []
         course_number = import_course.get("course_number")
 
         if not course_number:
@@ -191,7 +181,7 @@ class ImportService:
         Returns:
             List of detected conflicts
         """
-        conflicts = []
+        conflicts: List[ConflictRecord] = []
         email = import_user.get("email")
 
         if not email:

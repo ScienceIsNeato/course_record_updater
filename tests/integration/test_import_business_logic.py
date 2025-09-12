@@ -14,7 +14,7 @@ Tests for the comprehensive business logic scenarios:
 
 import os
 import tempfile
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -396,7 +396,6 @@ class TestImportBusinessLogic:
                 patch("import_service.get_course_by_number") as mock_get_course,
                 patch("import_service.create_course") as mock_create,
             ):
-
                 mock_get_course.return_value = None  # Empty after deletion
                 mock_create.return_value = "new_id"
 

@@ -57,7 +57,7 @@ python scripts/ship_it.py --fail-fast
 ### ⏱️ **Performance Results:**
 
 - **Format Check**: ~5-10 seconds
-- **Lint Check**: ~5-30 seconds  
+- **Lint Check**: ~5-30 seconds
 - **Test Suite**: ~60-180 seconds (depends on coverage)
 - **Total (essential checks)**: ~2-3 minutes
 

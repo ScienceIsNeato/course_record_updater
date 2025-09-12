@@ -1,7 +1,7 @@
 # CEI Stakeholder Meeting Agenda
 
-**Date:** [TBD]  
-**Duration:** 60 minutes  
+**Date:** [TBD]
+**Duration:** 60 minutes
 **Attendees:** Dr. Leslie Jernberg (Assessment Champion), Dean Matthew R. Taylor, [Development Team]
 
 ---
@@ -67,7 +67,7 @@
 - **Mobile-responsive design** (access from any device)
 
 ### User Experience Transformation
-**Before:** Faculty struggle with Access forms, data gets corrupted, manual reconciliation  
+**Before:** Faculty struggle with Access forms, data gets corrupted, manual reconciliation
 **After:** Faculty use intuitive web forms, data is always accurate, live views available
 
 ### Live Demo

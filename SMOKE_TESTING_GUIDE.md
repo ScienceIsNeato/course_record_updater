@@ -7,7 +7,7 @@ Smoke testing ensures that your current feature works end-to-end without running
 ## When to Smoke Test
 
 ✅ **Before committing feature work**
-✅ **After making significant changes to core functionality**  
+✅ **After making significant changes to core functionality**
 ✅ **When working on import/export flows**
 ✅ **After updating database schemas or API endpoints**
 
@@ -75,7 +75,7 @@ python -c "from term_utils import get_allowed_terms; print('✅ Terms:', len(get
    - Check validation results
    - Verify conflict resolution options
 
-### Working on Database Features  
+### Working on Database Features
 1. **Test your specific database functions**:
    ```bash
    python -m pytest tests/unit/test_models.py::TestYourModel -v

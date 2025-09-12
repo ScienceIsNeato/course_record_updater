@@ -1,7 +1,7 @@
 # CEI Stakeholder Meeting Questions
 
-**Meeting Purpose:** Validate requirements and gather specific implementation details for College of Eastern Idaho pilot  
-**Contacts:** Dr. Leslie Jernberg (Assessment Champion), Dean Matthew R. Taylor  
+**Meeting Purpose:** Validate requirements and gather specific implementation details for College of Eastern Idaho pilot
+**Contacts:** Dr. Leslie Jernberg (Assessment Champion), Dean Matthew R. Taylor
 **Governing Body:** NWCCU (Northwest Commission on Colleges and Universities)
 
 **Our Understanding:** Based on your video and spreadsheet analysis, we understand you have:
@@ -77,6 +77,6 @@
 
 ### **Key Validation Points:**
 - Confirm CLO → PLO → ILO hierarchy structure
-- Validate S/U threshold and narrative workflow requirements  
+- Validate S/U threshold and narrative workflow requirements
 - Understand NWCCU submission requirements and formats
 - Confirm value of Access export for migration strategy

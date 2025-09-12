@@ -10,7 +10,7 @@
 ### `/planning/` - Project Planning
 - **`documentation/`** - All planning docs (moved from `/docs/`)
   - `AUTH_REQUIREMENTS.md`
-  - `DATA_MODEL.md` 
+  - `DATA_MODEL.md`
   - `PRICING_STRATEGY.md`
   - `STAKEHOLDER_QUESTIONS.md`
   - `PERMISSION_MATRIX.md`
@@ -35,7 +35,7 @@
 
 ### Priority 1: CEI Stakeholder Research
 1. **Analyze CEI video** - understand current workflow
-2. **Review CEI data files** - map to our data model  
+2. **Review CEI data files** - map to our data model
 3. **Prepare stakeholder meeting** - use planning docs
 4. **Validate assumptions** - test our planning against reality
 
@@ -51,7 +51,7 @@
 - **Research** data organized by stakeholder/source
 - Easy to find relevant documents
 
-### Stakeholder Ready  
+### Stakeholder Ready
 - All planning docs in one place
 - Research materials easily shareable
 - Meeting materials organized and accessible

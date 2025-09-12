@@ -14,18 +14,14 @@ Usage:
 import argparse
 import os
 import sys
-from typing import Optional
+
+# Unused imports removed
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-from import_service import (
-    ConflictStrategy,
-    ImportResult,
-    create_import_report,
-    import_excel,
-)
+from import_service import ImportResult, create_import_report, import_excel
 
 
 def parse_arguments():

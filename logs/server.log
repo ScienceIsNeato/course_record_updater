@@ -16,3 +16,4 @@ INFO: To use a different port, set PORT environment variable: PORT=3002 python a
  * Running on http://192.168.4.37:3001
 2025-09-10 00:48:21,516 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
 2025-09-10 00:48:22,886 - werkzeug - INFO - 127.0.0.1 - - [10/Sep/2025 00:48:22] "GET / HTTP/1.1" 200 -
+2025-09-11 01:09:56,669 - app - INFO - Database connection established successfully

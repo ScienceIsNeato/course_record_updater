@@ -11,11 +11,11 @@ The bug is in detect_course_conflict() method which only checks for field differ
 not for the existence of the course itself.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from database_service import create_course
+# create_course import removed
 from import_service import ConflictStrategy, ImportService
 
 

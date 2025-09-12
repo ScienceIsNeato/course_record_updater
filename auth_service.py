@@ -8,10 +8,10 @@ Full implementation is a separate task to avoid blocking current progress.
 from functools import wraps
 from typing import Any, Dict, Optional
 
-from flask import flash, redirect, request, session, url_for
+# Unused Flask imports removed
 
 # Import our models
-from models import ROLES
+# ROLES import removed
 
 
 class AuthService:

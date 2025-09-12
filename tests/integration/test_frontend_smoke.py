@@ -7,7 +7,7 @@ They catch JavaScript errors, missing elements, and basic functionality issues.
 ⚠️  IMPORTANT: These are INTEGRATION tests that use Selenium and should NOT run in unit test suite
 """
 
-import json
+# Unused imports removed
 import time
 
 import pytest

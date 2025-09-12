@@ -24,4 +24,4 @@ EXPOSE 8080
 # Use Gunicorn to serve the application
 # The timeout is set higher to handle potentially long-running adapter parsing
 # Adjust the number of workers (-w) based on expected traffic and instance size
-CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"] 
+CMD ["gunicorn", "--bind", ":8080", "--workers", "1", "--threads", "8", "--timeout", "120", "app:app"]

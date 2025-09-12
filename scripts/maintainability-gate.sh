@@ -97,7 +97,7 @@ add_failure() {
   local check_name="$1"
   local failure_reason="$2"
   local fix_suggestion="$3"
-  
+
   ((FAILED_CHECKS++))
   FAILED_CHECKS_DETAILS+=("$check_name|$failure_reason|$fix_suggestion")
 }
@@ -106,7 +106,7 @@ add_failure() {
 add_success() {
   local check_name="$1"
   local success_message="$2"
-  
+
   PASSED_CHECKS+=("$check_name|$success_message")
 }
 
@@ -136,34 +136,34 @@ check_venv
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_FORMAT" == "true" ]]; then
   echo "🎨 Python Format Check & Auto-Fix (black + isort)"
-  
+
   # First, try to auto-fix formatting issues with black (main source files only)
   echo "🔧 Auto-fixing code formatting with black..."
   if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
     echo "   ✅ Black formatting applied"
   fi
-  
+
   # Then auto-fix import organization with isort (main source files only)
   echo "🔧 Auto-fixing import organization with isort..."
   if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
     echo "   ✅ Import organization applied"
   fi
-  
+
   # Verify everything is properly formatted
   FORMAT_CHECK_PASSED=true
-  
+
   # Check black formatting (main source files only)
   if ! black --check --line-length 88 --target-version py39 *.py adapters/ tests/ > /dev/null 2>&1; then
     FORMAT_CHECK_PASSED=false
     echo "❌ Black formatting check failed"
   fi
-  
+
   # Check isort formatting (main source files only)
   if ! isort --check-only --profile black *.py adapters/ tests/ > /dev/null 2>&1; then
     FORMAT_CHECK_PASSED=false
     echo "❌ Import organization check failed"
   fi
-  
+
   if [[ "$FORMAT_CHECK_PASSED" == "true" ]]; then
     echo "✅ Format Check: PASSED (black + isort auto-fixed)"
     add_success "Format Check" "All Python files properly formatted with black and isort"
@@ -179,11 +179,11 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_LINT" == "true" ]]; then
   echo "🔍 Python Lint Check (flake8 critical errors)"
-  
+
   # Run flake8 for critical errors only (much faster)
   echo "🔧 Running flake8 critical error check..."
   FLAKE8_OUTPUT=$(timeout 30s flake8 --max-line-length=88 --select=E9,F63,F7,F82 --exclude=venv,cursor-rules,.venv,logs,htmlcov *.py adapters/ tests/ 2>/dev/null) || FLAKE8_FAILED=true
-  
+
   if [[ "$FLAKE8_FAILED" == "true" ]]; then
     echo "❌ Flake8 critical errors found"
     echo "📋 Critical Issues:"
@@ -203,24 +203,24 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_TYPES" == "true" ]]; then
   echo "🔧 Type Check (mypy strict mode)"
-  
+
   # Run mypy type checking (main files only, with timeout)
   TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" | head -15 | xargs mypy --ignore-missing-imports --no-strict-optional 2>&1) || TYPE_FAILED=true
-  
+
   if [[ "$TYPE_FAILED" != "true" ]]; then
     echo "✅ Type Check: PASSED (strict mypy type checking)"
     add_success "Type Check" "All type annotations valid in strict mode"
   else
     echo "❌ Type Check: FAILED (strict mypy type checking)"
     echo ""
-    
+
     # Show detailed type errors
     echo "📋 Type Error Details:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     if [[ -n "$TYPE_OUTPUT" ]]; then
       echo "$TYPE_OUTPUT" | head -20 | sed 's/^/  /'
-      
+
       # Check if there are more errors
       TOTAL_LINES=$(echo "$TYPE_OUTPUT" | wc -l)
       if [[ $TOTAL_LINES -gt 20 ]]; then
@@ -230,10 +230,10 @@ if [[ "$RUN_TYPES" == "true" ]]; then
     else
       echo "  Unable to extract type error details"
     fi
-    
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
     # Extract error count from output for summary
     ERROR_COUNT=$(echo "$TYPE_OUTPUT" | grep -c "error:" || echo "unknown")
     add_failure "Type Check" "$ERROR_COUNT type errors found" "See detailed output above and run 'mypy --strict *.py **/*.py' for full details"
@@ -246,19 +246,19 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_TESTS" == "true" ]]; then
   echo "🧪 Test Suite & Coverage (80% threshold)"
-  
+
   # First run UNIT tests only (fast tests, separate directory)
   echo "  🔍 Running UNIT test suite with performance monitoring..."
   TEST_OUTPUT=$(python -m pytest tests/unit/ -v --durations=0 2>&1) || TEST_FAILED=true
-  
+
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
     echo ""
-    
+
     # Show detailed test output with failures
     echo "📋 Test Failure Details:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
+
     # Extract and show failing tests
     FAILING_TESTS=$(echo "$TEST_OUTPUT" | grep "FAILED " | head -10)
     if [[ -n "$FAILING_TESTS" ]]; then
@@ -266,7 +266,7 @@ if [[ "$RUN_TESTS" == "true" ]]; then
       echo "$FAILING_TESTS" | sed 's/^/  /'
       echo ""
     fi
-    
+
     # Show error summary
     SUMMARY_SECTION=$(echo "$TEST_OUTPUT" | grep -A 20 "short test summary info" | head -20)
     if [[ -n "$SUMMARY_SECTION" ]]; then
@@ -274,20 +274,20 @@ if [[ "$RUN_TESTS" == "true" ]]; then
     else
       echo "  Unable to extract specific test failures - run 'python -m pytest -v' for details"
     fi
-    
+
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    
+
     # Extract summary stats for the failure record
     FAILED_TESTS=$(echo "$TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
     add_failure "Tests" "Test failures: $FAILED_TESTS" "See detailed output above and run 'python -m pytest -v' for full details"
   else
     echo "✅ Tests: PASSED"
-    
+
     # Check for slow tests (>0.5 seconds)
     echo "  ⚡ Checking test performance..."
     SLOW_TESTS=$(echo "$TEST_OUTPUT" | grep -E "^\s*[0-9.]+s\s+" | awk '$1 > 0.5 {print $0}' || true)
-    
+
     if [[ -n "$SLOW_TESTS" ]]; then
       echo "⚠️  Slow Tests Found (>0.5s each):"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -306,11 +306,11 @@ if [[ "$RUN_TESTS" == "true" ]]; then
       echo "✅ Test Performance: All tests complete in <0.5s"
       add_success "Test Performance" "All unit tests complete quickly (<0.5s each)"
     fi
-    
+
     # Now run coverage analysis with 80% threshold (unit tests only)
     echo "  📊 Running coverage analysis (80% threshold, unit tests only)..."
     COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
-    
+
     if [[ "$COVERAGE_FAILED" != "true" ]]; then
       # Extract coverage percentage
       COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
@@ -319,25 +319,25 @@ if [[ "$RUN_TESTS" == "true" ]]; then
     else
       # Extract coverage percentage from output
       COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
-      
+
       # Check if this is a coverage threshold failure
       if echo "$COVERAGE_OUTPUT" | grep -q "coverage.*fail\|TOTAL.*[0-9]\+%"; then
         echo "❌ Coverage: THRESHOLD NOT MET ($COVERAGE)"
         echo ""
-        
+
         # Show coverage details
         echo "📋 Coverage Details:"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        
+
         # Show lines missing coverage
         MISSING_COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep "Missing" | head -10)
         if [[ -n "$MISSING_COVERAGE" ]]; then
           echo "$MISSING_COVERAGE" | sed 's/^/  /'
         fi
-        
+
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        
+
         add_failure "Test Coverage" "Coverage at $COVERAGE (below 80% threshold)" "Add more unit tests to increase coverage above 80%"
       else
         echo "❌ Coverage: ANALYSIS FAILED ($COVERAGE)"
@@ -353,17 +353,17 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_SECURITY" == "true" ]]; then
   echo "🔒 Security Audit (bandit + safety)"
-  
+
   SECURITY_PASSED=true
-  
+
   # Run bandit for security issues in code (main source files only, with timeout)
   echo "🔧 Running bandit security scan..."
   BANDIT_OUTPUT=$(timeout 30s bandit -r . -x venv,cursor-rules,.venv,logs --format json 2>&1) || BANDIT_FAILED=true
-  
+
   if [[ "$BANDIT_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
     echo "❌ Bandit security scan failed"
-    
+
     # Try to extract meaningful security issues
     SECURITY_ISSUES=$(echo "$BANDIT_OUTPUT" | grep -E "(HIGH|MEDIUM)" | head -5)
     if [[ -n "$SECURITY_ISSUES" ]]; then
@@ -375,11 +375,11 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   else
     echo "   ✅ Bandit security scan passed"
   fi
-  
+
   # Run safety check for known vulnerabilities in dependencies (with timeout)
   echo "🔧 Running safety dependency check..."
   SAFETY_OUTPUT=$(timeout 60s safety check --short-report 2>&1) || SAFETY_FAILED=true
-  
+
   if [[ "$SAFETY_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
     echo "❌ Safety dependency check failed"
@@ -390,7 +390,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   else
     echo "   ✅ Safety dependency check passed"
   fi
-  
+
   if [[ "$SECURITY_PASSED" == "true" ]]; then
     echo "✅ Security Check: PASSED (bandit + safety)"
     add_success "Security Check" "No security vulnerabilities found"
@@ -406,10 +406,10 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_IMPORTS" == "true" ]]; then
   echo "📦 Import Organization Check"
-  
+
   # Check import organization with isort
   IMPORT_OUTPUT=$(isort --check-only --diff --profile black --skip venv --skip .venv --skip-glob="**/venv/*" --skip-glob="**/.venv/*" . 2>&1) || IMPORT_FAILED=true
-  
+
   if [[ "$IMPORT_FAILED" != "true" ]]; then
     echo "✅ Import Organization: PASSED"
     add_success "Import Organization" "All imports properly organized"
@@ -429,14 +429,14 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_DUPLICATION" == "true" ]]; then
   echo "🔄 Code Duplication Check"
-  
+
   # Use a simple approach for Python duplication detection
   # This is a basic implementation - could be enhanced with tools like jscpd
   echo "🔧 Checking for code duplication..."
-  
+
   # Simple duplication check using basic patterns
   DUPLICATE_FUNCTIONS=$(grep -r "def " *.py **/*.py | cut -d: -f2 | sort | uniq -d | wc -l)
-  
+
   if [[ "$DUPLICATE_FUNCTIONS" -eq 0 ]]; then
     echo "✅ Duplication Check: PASSED (no obvious duplicates)"
     add_success "Duplication Check" "No obvious code duplication detected"

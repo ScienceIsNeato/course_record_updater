@@ -4,18 +4,18 @@
 [run]
 branch = True
 source = .
-omit = 
+omit =
     # Virtual environments and dependencies
     venv/*
     */venv/*
     .venv/*
     */.venv/*
     */site-packages/*
-    
+
     # Test files themselves
     tests/*
     */tests/*
-    
+
     # Build and development files
     setup.py
     */migrations/*
@@ -27,11 +27,11 @@ omit =
     .git/*
     .pytest_cache/*
     htmlcov/*
-    
+
     # Utility scripts (not core application logic)
     scripts/*
     generate_sample_docx.py
-    
+
     # CLI entry points (tested via integration)
     import_cli.py
 

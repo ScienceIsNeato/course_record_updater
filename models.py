@@ -116,7 +116,7 @@ class User(DataModel):
     @staticmethod
     def get_permissions(role: str) -> List[str]:
         """Get permissions for a given role"""
-        return ROLES.get(role, {}).get("permissions", [])
+        return list(ROLES.get(role, {}).get("permissions", []))
 
 
 class Course(DataModel):

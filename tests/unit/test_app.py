@@ -1,11 +1,12 @@
 """Unit tests for Flask application setup and configuration."""
 
 import os
-import tempfile
-import unittest.mock as mock
-from unittest.mock import patch, MagicMock
 
-import pytest
+# Unused imports removed
+# mock import removed
+from unittest.mock import patch
+
+# pytest import removed
 from flask import Flask
 
 # Import the app module for testing
@@ -31,6 +32,7 @@ class TestFlaskAppSetup:
         """Test secret key is loaded from environment variable."""
         # Reload the module to pick up env var
         import importlib
+
         importlib.reload(app_module)
         assert app_module.app.secret_key == "test-secret"
 
@@ -46,18 +48,22 @@ class TestLoggingSetup:
 
     @patch("os.makedirs")
     @patch("logging.basicConfig")
-    def test_setup_logging_creates_logs_directory(self, mock_basic_config, mock_makedirs):
+    def test_setup_logging_creates_logs_directory(
+        self, mock_basic_config, mock_makedirs
+    ):
         """Test that setup_logging creates logs directory."""
         app_module.setup_logging()
         mock_makedirs.assert_called_once_with("logs", exist_ok=True)
 
     @patch("os.makedirs")
     @patch("logging.basicConfig")
-    def test_setup_logging_configures_basic_logging(self, mock_basic_config, mock_makedirs):
+    def test_setup_logging_configures_basic_logging(
+        self, mock_basic_config, mock_makedirs
+    ):
         """Test that setup_logging configures basic logging."""
         app_module.setup_logging()
         mock_basic_config.assert_called_once()
-        
+
         # Check that handlers are configured
         call_args = mock_basic_config.call_args
         assert "handlers" in call_args.kwargs
@@ -69,7 +75,9 @@ class TestIndexRoute:
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_renders_template(self, mock_is_authenticated, mock_get_current_user):
+    def test_index_route_renders_template(
+        self, mock_is_authenticated, mock_get_current_user
+    ):
         """Test that index route renders the correct template."""
         mock_get_current_user.return_value = {"email": "test@example.com"}
         mock_is_authenticated.return_value = True
@@ -82,7 +90,9 @@ class TestIndexRoute:
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_handles_unauthenticated_user(self, mock_is_authenticated, mock_get_current_user):
+    def test_index_route_handles_unauthenticated_user(
+        self, mock_is_authenticated, mock_get_current_user
+    ):
         """Test that index route handles unauthenticated users."""
         mock_get_current_user.return_value = None
         mock_is_authenticated.return_value = False
@@ -100,12 +110,15 @@ class TestDatabaseConnection:
         """Test that database connection failures are logged."""
         # This test verifies the logging behavior when database_client is None
         # The actual logging happens at module import time, so we test the condition
-        assert app_module.database_client is None or app_module.database_client is not None
+        assert (
+            app_module.database_client is None or app_module.database_client is not None
+        )
 
     def test_database_client_import(self):
         """Test that database client is imported correctly."""
         # Test that the import doesn't fail
-        from app import database_client
+        from app import database_client  # noqa: F401
+
         # database_client could be None or a valid client, both are acceptable
 
 
@@ -116,19 +129,25 @@ class TestPortConfiguration:
     def test_port_from_port_env_var(self):
         """Test port configuration from PORT environment variable."""
         # Test the port resolution logic
-        port = int(os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)))
+        port = int(
+            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
+        )
         assert port == 5000
 
     @patch.dict(os.environ, {"COURSE_RECORD_UPDATER_PORT": "8080"}, clear=True)
     def test_port_from_course_record_updater_port(self):
         """Test port configuration from COURSE_RECORD_UPDATER_PORT."""
-        port = int(os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)))
+        port = int(
+            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
+        )
         assert port == 8080
 
     @patch.dict(os.environ, {}, clear=True)
     def test_port_default_value(self):
         """Test default port value when no environment variables are set."""
-        port = int(os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)))
+        port = int(
+            os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
+        )
         assert port == 3001
 
     @patch.dict(os.environ, {"FLASK_DEBUG": "true"})
@@ -156,10 +175,14 @@ class TestMainExecution:
     def test_main_execution_logic(self):
         """Test the main execution logic without actually running the server."""
         # Test the logic that would run in if __name__ == "__main__":
-        
+
         # Test port resolution
         with patch.dict(os.environ, {"PORT": "4000"}):
-            port = int(os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)))
+            port = int(
+                os.environ.get(
+                    "PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001)
+                )
+            )
             assert port == 4000
 
         # Test debug flag resolution

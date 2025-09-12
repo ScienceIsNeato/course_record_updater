@@ -55,21 +55,21 @@ check_chromedriver() {
 # Function to start test server
 start_test_server() {
     echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
-    
+
     # Load environment variables
     if [ -f ".envrc" ]; then
         source .envrc
     fi
-    
+
     # Activate virtual environment if it exists
     if [ -d "venv" ]; then
         source venv/bin/activate
     fi
-    
+
     # Start server on test port in background
     PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
     SERVER_PID=$!
-    
+
     # Wait for server to start
     echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
     for i in {1..30}; do
@@ -79,7 +79,7 @@ start_test_server() {
         fi
         sleep 1
     done
-    
+
     echo -e "${RED}❌ Test server failed to start${NC}"
     kill $SERVER_PID 2>/dev/null || true
     return 1
@@ -90,7 +90,7 @@ stop_test_server() {
     if [ ! -z "$SERVER_PID" ]; then
         echo -e "${BLUE}🛑 Stopping test server...${NC}"
         kill $SERVER_PID 2>/dev/null || true
-        
+
         # Wait for process to terminate
         for i in {1..10}; do
             if ! kill -0 $SERVER_PID 2>/dev/null; then
@@ -98,7 +98,7 @@ stop_test_server() {
             fi
             sleep 1
         done
-        
+
         # Force kill if still running
         kill -9 $SERVER_PID 2>/dev/null || true
         echo -e "${GREEN}✅ Test server stopped${NC}"
@@ -108,10 +108,10 @@ stop_test_server() {
 # Function to run smoke tests
 run_tests() {
     echo -e "${BLUE}🧪 Running smoke tests...${NC}"
-    
+
     # Install test dependencies if needed
     pip install -q pytest selenium requests chromedriver-autoinstaller 2>/dev/null || true
-    
+
     # Auto-install ChromeDriver if needed
     python -c "
 try:
@@ -121,17 +121,17 @@ try:
 except ImportError:
     print('⚠️ chromedriver-autoinstaller not available')
 " 2>/dev/null || true
-    
+
     # Run the tests
     pytest tests/test_frontend_smoke.py -v --tb=short
     TEST_EXIT_CODE=$?
-    
+
     if [ $TEST_EXIT_CODE -eq 0 ]; then
         echo -e "${GREEN}✅ All smoke tests passed!${NC}"
     else
         echo -e "${RED}❌ Some smoke tests failed${NC}"
     fi
-    
+
     return $TEST_EXIT_CODE
 }
 
@@ -148,21 +148,21 @@ trap cleanup EXIT
 main() {
     # Create logs directory
     mkdir -p logs
-    
+
     # Check prerequisites
     echo -e "${BLUE}🔍 Checking prerequisites...${NC}"
-    
+
     if ! check_chrome; then
         exit 1
     fi
-    
+
     # Start Firestore emulator if not running
     if ! lsof -i :8086 > /dev/null 2>&1; then
         echo -e "${BLUE}🚀 Starting Firestore emulator...${NC}"
         firebase emulators:start --only firestore > logs/test_firestore.log 2>&1 &
         FIRESTORE_PID=$!
         sleep 5
-        
+
         if ! lsof -i :8086 > /dev/null 2>&1; then
             echo -e "${RED}❌ Failed to start Firestore emulator${NC}"
             exit 1
@@ -171,16 +171,16 @@ main() {
     else
         echo -e "${GREEN}✅ Firestore emulator already running${NC}"
     fi
-    
+
     # Start test server
     if ! start_test_server; then
         exit 1
     fi
-    
+
     # Run tests
     run_tests
     TEST_RESULT=$?
-    
+
     # Report results
     if [ $TEST_RESULT -eq 0 ]; then
         echo -e "${GREEN}🎉 All smoke tests completed successfully!${NC}"
@@ -194,7 +194,7 @@ main() {
         echo -e "${YELLOW}   - API endpoints not responding${NC}"
         echo -e "${YELLOW}   - Static assets not loading${NC}"
     fi
-    
+
     return $TEST_RESULT
 }
 

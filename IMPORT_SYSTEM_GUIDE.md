@@ -10,7 +10,7 @@ The Import System provides a robust, flexible solution for importing course data
 
 ### Key Features
 - ✅ **Multiple Conflict Resolution Strategies**
-- ✅ **Dry-run Simulation** 
+- ✅ **Dry-run Simulation**
 - ✅ **Comprehensive Validation**
 - ✅ **Detailed Reporting**
 - ✅ **CLI and API Interfaces**
@@ -32,7 +32,7 @@ The Import System provides a robust, flexible solution for importing course data
 python import_cli.py --file data.xlsx --use-mine --dry-run
 ```
 
-### `--use-theirs` (Overwrite with Import) 
+### `--use-theirs` (Overwrite with Import)
 **When to use:** Import file is the authoritative source
 - Overwrites existing data with import values
 - Updates conflicting fields
@@ -159,7 +159,7 @@ formData.append('file', excelFile);
 formData.append('adapter_name', 'cei_excel_adapter');
 
 fetch('/api/import/validate', {
-    method: 'POST', 
+    method: 'POST',
     body: formData
 })
 .then(response => response.json())
@@ -238,7 +238,7 @@ COLUMN_MAPPING = {
 # Automatic department assignment from course prefix
 DEPARTMENT_MAPPING = {
     'ACC': 'Business',
-    'BUS': 'Business', 
+    'BUS': 'Business',
     'ECON': 'Business',
     'NURS': 'Nursing',
     'BIOL': 'Science',
@@ -291,7 +291,7 @@ DEPARTMENT_MAPPING = {
 # Error types and handling
 ERRORS = {
     'validation_error': 'Invalid data format or business rules',
-    'conflict_error': 'Data conflicts requiring resolution', 
+    'conflict_error': 'Data conflicts requiring resolution',
     'database_error': 'Database connection or operation failure',
     'file_error': 'File access or format issues',
     'adapter_error': 'Import adapter configuration problems'
@@ -317,7 +317,7 @@ ERRORS = {
   "conflicts": [
     {
       "entity_type": "course",
-      "entity_key": "ACC-201", 
+      "entity_key": "ACC-201",
       "field_name": "course_title",
       "existing_value": "Accounting Principles",
       "import_value": "Principles of Accounting",
@@ -342,7 +342,7 @@ class CustomSchoolAdapter:
             'user': self.extract_instructor_data(row),
             'term': self.extract_term_data(row)
         }
-    
+
     def extract_course_data(self, row):
         # Custom business logic for this school
         return {
@@ -412,7 +412,7 @@ ls -la path/to/file.xlsx
 python import_cli.py --file "$(pwd)/data.xlsx" --dry-run
 ```
 
-#### "No records processed" 
+#### "No records processed"
 ```bash
 # Validate file format
 python import_cli.py --file data.xlsx --validate-only --verbose

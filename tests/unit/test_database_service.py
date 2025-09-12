@@ -1,88 +1,93 @@
 """Unit tests for database_service.py."""
 
 import os
-from unittest.mock import patch, MagicMock, Mock
-import pytest
+from unittest.mock import Mock, patch
 
 # Import the module under test
 import database_service
 from database_service import (
+    COURSE_OUTCOMES_COLLECTION,
+    COURSE_SECTIONS_COLLECTION,
+    COURSES_COLLECTION,
+    TERMS_COLLECTION,
+    USERS_COLLECTION,
+    create_course,
+    create_course_section,
+    create_term,
     create_user,
+    get_active_terms,
+    get_course_by_number,
+    get_courses_by_department,
+    get_sections_by_instructor,
+    get_sections_by_term,
+    get_term_by_name,
     get_user_by_email,
     get_users_by_role,
     update_user_extended,
-    create_course,
-    get_course_by_number,
-    get_courses_by_department,
-    create_term,
-    get_term_by_name,
-    get_active_terms,
-    create_course_section,
-    get_sections_by_instructor,
-    get_sections_by_term,
-    USERS_COLLECTION,
-    COURSES_COLLECTION,
-    TERMS_COLLECTION,
-    COURSE_SECTIONS_COLLECTION,
-    COURSE_OUTCOMES_COLLECTION,
 )
+
+# pytest import removed
 
 
 class TestFirestoreClientInitialization:
     """Test Firestore client initialization."""
 
     @patch.dict(os.environ, {"FIRESTORE_EMULATOR_HOST": "localhost:8086"})
-    @patch('database_service.firestore.Client')
+    @patch("database_service.firestore.Client")
     def test_client_initialization_with_emulator(self, mock_client):
         """Test client initialization with emulator."""
         mock_client_instance = Mock()
         mock_client.return_value = mock_client_instance
-        
+
         # Reload the module to trigger initialization
         import importlib
+
         importlib.reload(database_service)
-        
+
         # Verify client was created
         mock_client.assert_called_once()
         assert database_service.db is not None
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch('database_service.firestore.Client')
+    @patch("database_service.firestore.Client")
     def test_client_initialization_without_emulator(self, mock_client):
         """Test client initialization without emulator."""
         mock_client_instance = Mock()
         mock_client.return_value = mock_client_instance
-        
+
         # Reload the module to trigger initialization
         import importlib
+
         importlib.reload(database_service)
-        
+
         # Verify client was created
         mock_client.assert_called_once()
         assert database_service.db is not None
 
-    @patch('database_service.firestore.Client')
+    @patch("database_service.firestore.Client")
     def test_client_initialization_failure(self, mock_client):
         """Test client initialization failure."""
         mock_client.side_effect = Exception("Connection failed")
-        
+
         # Reload the module to trigger initialization
         import importlib
+
         importlib.reload(database_service)
-        
+
         # Verify db is None when initialization fails
         assert database_service.db is None
 
     @patch.dict(os.environ, {"FIRESTORE_EMULATOR_HOST": "localhost:8086"})
-    @patch('database_service.firestore.Client')
+    @patch("database_service.firestore.Client")
     def test_client_initialization_emulator_failure(self, mock_client):
         """Test client initialization failure with emulator."""
         mock_client.side_effect = Exception("Emulator connection failed")
-        
+
         # Reload the module to trigger initialization
         import importlib
+
         importlib.reload(database_service)
-        
+
         # Verify db is None when initialization fails
         assert database_service.db is None
 
@@ -107,7 +112,7 @@ class TestCollectionConstants:
             COURSE_SECTIONS_COLLECTION,
             COURSE_OUTCOMES_COLLECTION,
         ]
-        
+
         for collection in collections:
             assert isinstance(collection, str)
             assert len(collection) > 0
@@ -116,7 +121,7 @@ class TestCollectionConstants:
 class TestCreateUser:
     """Test create_user function."""
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_create_user_success(self, mock_db):
         """Test successful user creation."""
         # Setup mock
@@ -125,17 +130,17 @@ class TestCreateUser:
         mock_doc_ref.id = "user123"
         mock_collection.add.return_value = (None, mock_doc_ref)
         mock_db.collection.return_value = mock_collection
-        
+
         user_data = {
             "email": "test@example.com",
             "role": "instructor",
             "first_name": "Test",
-            "last_name": "User"
+            "last_name": "User",
         }
-        
+
         # Call function
         result = create_user(user_data)
-        
+
         # Verify results
         assert result == "user123"
         mock_db.collection.assert_called_once_with(USERS_COLLECTION)
@@ -146,30 +151,30 @@ class TestCreateUser:
         # Temporarily set db to None
         original_db = database_service.db
         database_service.db = None
-        
+
         try:
             user_data = {"email": "test@example.com", "role": "instructor"}
             result = create_user(user_data)
-            
+
             assert result is None
         finally:
             # Restore original db
             database_service.db = original_db
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_create_user_firestore_exception(self, mock_db):
         """Test user creation when Firestore throws exception."""
         # Setup mock to raise exception
         mock_collection = Mock()
         mock_collection.add.side_effect = Exception("Firestore error")
         mock_db.collection.return_value = mock_collection
-        
+
         user_data = {"email": "test@example.com", "role": "instructor"}
         result = create_user(user_data)
-        
+
         assert result is None
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_create_user_with_complex_data(self, mock_db):
         """Test user creation with complex user data."""
         # Setup mock
@@ -178,7 +183,7 @@ class TestCreateUser:
         mock_doc_ref.id = "complex_user_456"
         mock_collection.add.return_value = (None, mock_doc_ref)
         mock_db.collection.return_value = mock_collection
-        
+
         complex_user_data = {
             "email": "complex@example.com",
             "role": "administrator",
@@ -188,12 +193,12 @@ class TestCreateUser:
             "permissions": ["read", "write", "admin"],
             "metadata": {
                 "created_by": "system",
-                "preferences": {"theme": "dark", "notifications": True}
-            }
+                "preferences": {"theme": "dark", "notifications": True},
+            },
         }
-        
+
         result = create_user(complex_user_data)
-        
+
         assert result == "complex_user_456"
         mock_collection.add.assert_called_once_with(complex_user_data)
 
@@ -201,7 +206,7 @@ class TestCreateUser:
 class TestGetUserByEmail:
     """Test get_user_by_email function."""
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_user_by_email_success(self, mock_db):
         """Test successful user retrieval by email."""
         # Setup mock
@@ -213,29 +218,29 @@ class TestGetUserByEmail:
             "email": "test@example.com",
             "role": "instructor",
             "first_name": "Test",
-            "last_name": "User"
+            "last_name": "User",
         }
-        
+
         mock_query.stream.return_value = [mock_doc]
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         # Call function
         result = get_user_by_email("test@example.com")
-        
+
         # Verify results
         expected_result = {
             "email": "test@example.com",
             "role": "instructor",
             "first_name": "Test",
             "last_name": "User",
-            "user_id": "user123"
+            "user_id": "user123",
         }
         assert result == expected_result
         mock_db.collection.assert_called_once_with(USERS_COLLECTION)
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_user_by_email_not_found(self, mock_db):
         """Test user retrieval when user not found."""
         # Setup mock
@@ -245,10 +250,10 @@ class TestGetUserByEmail:
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         # Call function
         result = get_user_by_email("nonexistent@example.com")
-        
+
         # Verify results
         assert result is None
 
@@ -257,7 +262,7 @@ class TestGetUserByEmail:
         # Temporarily set db to None
         original_db = database_service.db
         database_service.db = None
-        
+
         try:
             result = get_user_by_email("test@example.com")
             assert result is None
@@ -265,69 +270,69 @@ class TestGetUserByEmail:
             # Restore original db
             database_service.db = original_db
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_user_by_email_firestore_exception(self, mock_db):
         """Test user retrieval when Firestore throws exception."""
         # Setup mock to raise exception
         mock_collection = Mock()
         mock_collection.where.side_effect = Exception("Firestore query error")
         mock_db.collection.return_value = mock_collection
-        
+
         result = get_user_by_email("test@example.com")
-        
+
         assert result is None
 
-    @patch('database_service.db')
-    @patch('database_service.firestore.FieldFilter')
+    @patch("database_service.db")
+    @patch("database_service.firestore.FieldFilter")
     def test_get_user_by_email_query_construction(self, mock_field_filter, mock_db):
         """Test that the Firestore query is constructed correctly."""
         # Setup mocks
         mock_filter = Mock()
         mock_field_filter.return_value = mock_filter
-        
+
         mock_collection = Mock()
         mock_query = Mock()
         mock_query.stream.return_value = []
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         # Call function
         get_user_by_email("test@example.com")
-        
+
         # Verify query construction
         mock_field_filter.assert_called_once_with("email", "==", "test@example.com")
         mock_collection.where.assert_called_once_with(filter=mock_filter)
         mock_query.limit.assert_called_once_with(1)
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_user_by_email_multiple_docs_returns_first(self, mock_db):
         """Test that only the first user is returned when multiple exist."""
         # Setup mock with multiple documents
         mock_collection = Mock()
         mock_query = Mock()
-        
+
         mock_doc1 = Mock()
         mock_doc1.id = "user123"
         mock_doc1.to_dict.return_value = {"email": "test@example.com", "name": "First"}
-        
+
         mock_doc2 = Mock()
         mock_doc2.id = "user456"
         mock_doc2.to_dict.return_value = {"email": "test@example.com", "name": "Second"}
-        
+
         mock_query.stream.return_value = [mock_doc1, mock_doc2]
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         # Call function
         result = get_user_by_email("test@example.com")
-        
+
         # Verify only first user is returned
         assert result["user_id"] == "user123"
         assert result["name"] == "First"
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_user_by_email_preserves_original_data(self, mock_db):
         """Test that original user data is preserved and user_id is added."""
         # Setup mock
@@ -335,27 +340,27 @@ class TestGetUserByEmail:
         mock_query = Mock()
         mock_doc = Mock()
         mock_doc.id = "user789"
-        
+
         original_data = {
             "email": "preserve@example.com",
             "role": "student",
             "metadata": {"complex": {"nested": "data"}},
-            "list_field": [1, 2, 3]
+            "list_field": [1, 2, 3],
         }
         mock_doc.to_dict.return_value = original_data.copy()
-        
+
         mock_query.stream.return_value = [mock_doc]
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         # Call function
         result = get_user_by_email("preserve@example.com")
-        
+
         # Verify all original data is preserved
         for key, value in original_data.items():
             assert result[key] == value
-        
+
         # Verify user_id is added
         assert result["user_id"] == "user789"
         assert len(result) == len(original_data) + 1
@@ -367,31 +372,31 @@ class TestModuleImports:
     def test_required_imports_available(self):
         """Test that all required imports are available."""
         import database_service
-        
+
         # Test that key imports are available
-        assert hasattr(database_service, 'firestore')
-        assert hasattr(database_service, 'User')
-        assert hasattr(database_service, 'validate_email')
-        assert hasattr(database_service, 'os')
+        assert hasattr(database_service, "firestore")
+        assert hasattr(database_service, "User")
+        assert hasattr(database_service, "validate_email")
+        assert hasattr(database_service, "os")
 
     def test_functions_exported(self):
         """Test that key functions are exported."""
         import database_service
-        
-        assert hasattr(database_service, 'create_user')
-        assert hasattr(database_service, 'get_user_by_email')
+
+        assert hasattr(database_service, "create_user")
+        assert hasattr(database_service, "get_user_by_email")
         assert callable(database_service.create_user)
         assert callable(database_service.get_user_by_email)
 
     def test_constants_exported(self):
         """Test that collection constants are exported."""
         import database_service
-        
-        assert hasattr(database_service, 'USERS_COLLECTION')
-        assert hasattr(database_service, 'COURSES_COLLECTION')
-        assert hasattr(database_service, 'TERMS_COLLECTION')
-        assert hasattr(database_service, 'COURSE_SECTIONS_COLLECTION')
-        assert hasattr(database_service, 'COURSE_OUTCOMES_COLLECTION')
+
+        assert hasattr(database_service, "USERS_COLLECTION")
+        assert hasattr(database_service, "COURSES_COLLECTION")
+        assert hasattr(database_service, "TERMS_COLLECTION")
+        assert hasattr(database_service, "COURSE_SECTIONS_COLLECTION")
+        assert hasattr(database_service, "COURSE_OUTCOMES_COLLECTION")
 
 
 class TestDatabaseServiceIntegration:
@@ -400,22 +405,22 @@ class TestDatabaseServiceIntegration:
     def test_db_variable_initialization(self):
         """Test that db variable is properly initialized."""
         import database_service
-        
+
         # db should either be a client instance or None
-        assert database_service.db is None or hasattr(database_service.db, 'collection')
+        assert database_service.db is None or hasattr(database_service.db, "collection")
 
     @patch.dict(os.environ, {"FIRESTORE_EMULATOR_HOST": "localhost:8086"})
     def test_emulator_host_detection(self):
         """Test that emulator host is properly detected."""
-        import database_service
-        
+        import database_service  # noqa: F401
+
         emulator_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
         assert emulator_host == "localhost:8086"
 
     def test_error_handling_patterns(self):
         """Test that functions follow consistent error handling patterns."""
         # Both functions should return None on error
-        with patch('database_service.db', None):
+        with patch("database_service.db", None):
             assert create_user({"email": "test@example.com"}) is None
             assert get_user_by_email("test@example.com") is None
 
@@ -423,14 +428,14 @@ class TestDatabaseServiceIntegration:
         """Test that functions include proper logging."""
         # This test verifies that functions call print statements for logging
         # In a real implementation, you might want to use proper logging
-        
-        with patch('database_service.db', None):
-            with patch('builtins.print') as mock_print:
+
+        with patch("database_service.db", None):
+            with patch("builtins.print") as mock_print:
                 create_user({"email": "test@example.com"})
                 mock_print.assert_called()
-                
-        with patch('database_service.db', None):
-            with patch('builtins.print') as mock_print:
+
+        with patch("database_service.db", None):
+            with patch("builtins.print") as mock_print:
                 get_user_by_email("test@example.com")
                 mock_print.assert_called()
 
@@ -438,7 +443,7 @@ class TestDatabaseServiceIntegration:
 class TestExtendedDatabaseFunctions:
     """Test extended database functions that were consolidated from database_service_extended."""
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_get_users_by_role_success(self, mock_db):
         """Test get_users_by_role function."""
         # Setup mock
@@ -446,20 +451,23 @@ class TestExtendedDatabaseFunctions:
         mock_query = Mock()
         mock_doc = Mock()
         mock_doc.id = "user123"
-        mock_doc.to_dict.return_value = {"email": "test@example.com", "role": "instructor"}
-        
+        mock_doc.to_dict.return_value = {
+            "email": "test@example.com",
+            "role": "instructor",
+        }
+
         mock_query.stream.return_value = [mock_doc]
         mock_query.where.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         result = get_users_by_role("instructor")
-        
+
         assert len(result) == 1
         assert result[0]["user_id"] == "user123"
         assert result[0]["role"] == "instructor"
 
-    @patch('database_service.db')
+    @patch("database_service.db")
     def test_create_course_success(self, mock_db):
         """Test create_course function."""
         # Setup mock
@@ -468,14 +476,253 @@ class TestExtendedDatabaseFunctions:
         mock_doc_ref.id = "course123"
         mock_collection.add.return_value = (None, mock_doc_ref)
         mock_db.collection.return_value = mock_collection
-        
+
         course_data = {"course_number": "MATH-101", "course_title": "Algebra"}
         result = create_course(course_data)
-        
+
         assert result == "course123"
         mock_collection.add.assert_called_once_with(course_data)
 
-    @patch('database_service.db')
+    @patch("database_service.db")
+    def test_get_users_by_role_exception(self, mock_db):
+        """Test exception handling in get_users_by_role - lines 149-151."""
+        mock_db.collection.side_effect = Exception("Database connection failed")
+
+        result = get_users_by_role("instructor")
+
+        assert result == []
+
+    @patch("database_service.db")
+    def test_update_user_extended_success(self, mock_db):
+        """Test successful user update."""
+        mock_doc_ref = Mock()
+        mock_collection = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+
+        update_data = {"first_name": "Updated", "last_name": "Name"}
+        result = update_user_extended("user123", update_data)
+
+        assert result is True
+        mock_db.collection.assert_called_once_with(USERS_COLLECTION)
+        mock_collection.document.assert_called_once_with("user123")
+        mock_doc_ref.update.assert_called_once_with(update_data)
+
+    @patch("database_service.db")
+    def test_update_user_extended_exception(self, mock_db):
+        """Test exception handling in update_user_extended - lines 176-178."""
+        mock_db.collection.side_effect = Exception("Update failed")
+
+        result = update_user_extended("user123", {"first_name": "Test"})
+
+        assert result is False
+
+    @patch("database_service.db")
+    def test_get_course_by_number_not_found(self, mock_db):
+        """Test get_course_by_number when course not found - lines 253-254."""
+        mock_collection = Mock()
+        mock_query = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = []  # No documents found
+
+        result = get_course_by_number("NONEXISTENT-999")
+
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_course_by_number_exception(self, mock_db):
+        """Test exception handling in get_course_by_number - lines 256-258."""
+        mock_db.collection.side_effect = Exception("Database error")
+
+        result = get_course_by_number("MATH-101")
+
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_courses_by_department_success(self, mock_db):
+        """Test get_courses_by_department function - lines 276-294."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "course123"
+        mock_doc.to_dict.return_value = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+            "department": "MATH",
+        }
+
+        result = get_courses_by_department("MATH")
+
+        assert len(result) == 1
+        assert result[0]["course_id"] == "course123"
+        assert result[0]["department"] == "MATH"
+
+    @patch("database_service.db")
+    def test_create_term_success(self, mock_db):
+        """Test create_term function - lines 317-333."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "term123"
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.add.return_value = (None, mock_doc_ref)
+
+        term_data = {
+            "term_name": "Fall 2024",
+            "start_date": "2024-08-01",
+            "end_date": "2024-12-15",
+        }
+
+        result = create_term(term_data)
+
+        assert result == "term123"
+        mock_collection.add.assert_called_once_with(term_data)
+
+    @patch("database_service.db")
+    def test_create_term_missing_field(self, mock_db):
+        """Test create_term with missing required field - lines 320-323."""
+        term_data = {
+            "term_name": "Fall 2024",
+            "start_date": "2024-08-01",
+            # Missing end_date
+        }
+
+        result = create_term(term_data)
+
+        assert result is None
+
+    @patch("database_service.db")
+    def test_create_term_exception(self, mock_db):
+        """Test create_term exception handling - lines 331-333."""
+        mock_db.collection.side_effect = Exception("Database error")
+
+        term_data = {
+            "term_name": "Fall 2024",
+            "start_date": "2024-08-01",
+            "end_date": "2024-12-15",
+        }
+
+        result = create_term(term_data)
+
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_term_by_name_success(self, mock_db):
+        """Test get_term_by_name function - lines 351-371."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "term123"
+        mock_doc.to_dict.return_value = {
+            "term_name": "Fall 2024",
+            "start_date": "2024-08-01",
+            "end_date": "2024-12-15",
+        }
+
+        result = get_term_by_name("Fall 2024")
+
+        assert result is not None
+        assert result["term_id"] == "term123"
+        assert result["term_name"] == "Fall 2024"
+
+    @patch("database_service.db")
+    def test_get_term_by_name_not_found(self, mock_db):
+        """Test get_term_by_name when term not found - lines 365-367."""
+        mock_collection = Mock()
+        mock_query = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_query.stream.return_value = []  # No documents found
+
+        result = get_term_by_name("Nonexistent Term")
+
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_active_terms_success(self, mock_db):
+        """Test get_active_terms function - lines 386-404."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "term123"
+        mock_doc.to_dict.return_value = {
+            "term_name": "Fall 2024",
+            "active": True,
+            "start_date": "2024-08-01",
+        }
+
+        result = get_active_terms()
+
+        assert len(result) == 1
+        assert result[0]["term_id"] == "term123"
+        assert result[0]["active"] is True
+
+    @patch("database_service.db")
+    def test_get_active_terms_exception(self, mock_db):
+        """Test get_active_terms exception handling - lines 402-404."""
+        mock_db.collection.side_effect = Exception("Database error")
+
+        result = get_active_terms()
+
+        assert result == []
+
+    @patch("database_service.db")
+    def test_create_course_section_success(self, mock_db):
+        """Test create_course_section function - lines 427-443."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "section123"
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.add.return_value = (None, mock_doc_ref)
+
+        section_data = {
+            "course_id": "course123",
+            "term_id": "term123",
+            "section_number": "001",
+            "instructor_id": "instructor123",
+        }
+
+        result = create_course_section(section_data)
+
+        assert result == "section123"
+        mock_collection.add.assert_called_once_with(section_data)
+
+    @patch("database_service.db")
+    def test_create_course_section_missing_field(self, mock_db):
+        """Test create_course_section with missing field - lines 430-433."""
+        section_data = {
+            "course_id": "course123",
+            "term_id": "term123",
+            # Missing section_number
+        }
+
+        result = create_course_section(section_data)
+
+        assert result is None
+
+    @patch("database_service.db")
     def test_get_course_by_number_success(self, mock_db):
         """Test get_course_by_number function."""
         # Setup mock
@@ -483,21 +730,24 @@ class TestExtendedDatabaseFunctions:
         mock_query = Mock()
         mock_doc = Mock()
         mock_doc.id = "course123"
-        mock_doc.to_dict.return_value = {"course_number": "MATH-101", "course_title": "Algebra"}
-        
+        mock_doc.to_dict.return_value = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+        }
+
         mock_query.stream.return_value = [mock_doc]
         mock_query.limit.return_value = mock_query
         mock_collection.where.return_value = mock_query
         mock_db.collection.return_value = mock_collection
-        
+
         result = get_course_by_number("MATH-101")
-        
+
         assert result["course_id"] == "course123"
         assert result["course_number"] == "MATH-101"
 
     def test_extended_functions_no_db_client(self):
         """Test that extended functions handle missing db client gracefully."""
-        with patch('database_service.db', None):
+        with patch("database_service.db", None):
             # All these should return empty lists or None
             assert get_users_by_role("instructor") == []
             assert update_user_extended("user123", {}) is False

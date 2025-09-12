@@ -130,19 +130,19 @@ def test_parse_and_validate_empty_dict():
 def test_parse_and_validate_boundary_students_values():
     """Test parse_and_validate with boundary students values."""
     adapter = BaseAdapter()
-    
+
     # Test with zero students (edge case)
     data_zero_students = {
-        'Course Number': 'TEST-101',
-        'Course Title': 'Test Course',
-        'Instructor First Name': 'John',
-        'Instructor Last Name': 'Doe',
-        'Instructor Email': 'john@example.com',
-        'Term': VALID_TERM,
-        'Students': '0',  # Zero students
-        'Department': 'TEST'
+        "Course Number": "TEST-101",
+        "Course Title": "Test Course",
+        "Instructor First Name": "John",
+        "Instructor Last Name": "Doe",
+        "Instructor Email": "john@example.com",
+        "Term": VALID_TERM,
+        "Students": "0",  # Zero students
+        "Department": "TEST",
     }
-    
+
     # This might be valid or invalid depending on business rules
     try:
         result = adapter.parse_and_validate(data_zero_students)
@@ -155,56 +155,56 @@ def test_parse_and_validate_boundary_students_values():
 def test_parse_and_validate_whitespace_handling():
     """Test parse_and_validate handles whitespace correctly."""
     adapter = BaseAdapter()
-    
+
     # Test with whitespace in fields
     data_with_whitespace = {
-        'course_number': '  TEST-101  ',  # Leading/trailing spaces
-        'course_title': '  Test Course  ',
-        'instructor_name': '  John Doe  ',
-        'term': f'  {VALID_TERM}  ',
-        'num_students': '  25  '
+        "course_number": "  TEST-101  ",  # Leading/trailing spaces
+        "course_title": "  Test Course  ",
+        "instructor_name": "  John Doe  ",
+        "term": f"  {VALID_TERM}  ",
+        "num_students": "  25  ",
     }
-    
+
     result = adapter.parse_and_validate(data_with_whitespace)
     assert isinstance(result, dict)
     # Should handle whitespace appropriately - the method strips whitespace internally
-    assert 'course_number' in result
+    assert "course_number" in result
 
 
 def test_parse_and_validate_multiple_records_with_errors():
     """Test parse_and_validate with multiple records where some have errors."""
     adapter = BaseAdapter()
-    
+
     # Mix of valid and invalid records
     mixed_data = [
         {  # Valid record
-            'Course Number': 'TEST-101',
-            'Course Title': 'Test Course 1',
-            'Instructor First Name': 'John',
-            'Instructor Last Name': 'Doe',
-            'Instructor Email': 'john@example.com',
-            'Term': VALID_TERM,
-            'Students': '25',
-            'Department': 'TEST'
+            "Course Number": "TEST-101",
+            "Course Title": "Test Course 1",
+            "Instructor First Name": "John",
+            "Instructor Last Name": "Doe",
+            "Instructor Email": "john@example.com",
+            "Term": VALID_TERM,
+            "Students": "25",
+            "Department": "TEST",
         },
         {  # Invalid record - bad email
-            'Course Number': 'TEST-102',
-            'Course Title': 'Test Course 2',
-            'Instructor First Name': 'Jane',
-            'Instructor Last Name': 'Smith',
-            'Instructor Email': 'invalid_email',  # Bad email
-            'Term': VALID_TERM,
-            'Students': '30',
-            'Department': 'TEST'
-        }
+            "Course Number": "TEST-102",
+            "Course Title": "Test Course 2",
+            "Instructor First Name": "Jane",
+            "Instructor Last Name": "Smith",
+            "Instructor Email": "invalid_email",  # Bad email
+            "Term": VALID_TERM,
+            "Students": "30",
+            "Department": "TEST",
+        },
     ]
-    
+
     # Test with one valid record
     valid_data = {
-        'course_title': 'Valid Course',
-        'course_number': 'VALID-101',
-        'term': VALID_TERM,  # Use the valid term constant
-        'instructor_name': 'Valid Instructor'
+        "course_title": "Valid Course",
+        "course_number": "VALID-101",
+        "term": VALID_TERM,  # Use the valid term constant
+        "instructor_name": "Valid Instructor",
     }
     result = adapter.parse_and_validate(valid_data)
     assert isinstance(result, dict)
@@ -213,17 +213,17 @@ def test_parse_and_validate_multiple_records_with_errors():
 def test_base_adapter_constants_and_attributes():
     """Test BaseAdapter constants and attributes."""
     adapter = BaseAdapter()
-    
+
     # Test that expected fields are defined
-    assert hasattr(adapter, 'EXPECTED_FIELDS')
+    assert hasattr(adapter, "EXPECTED_FIELDS")
     assert isinstance(adapter.EXPECTED_FIELDS, dict)
     assert len(adapter.EXPECTED_FIELDS) > 0
-    
+
     # Test that grade fields are defined
-    assert hasattr(adapter, 'GRADE_FIELDS')
+    assert hasattr(adapter, "GRADE_FIELDS")
     assert isinstance(adapter.GRADE_FIELDS, list)
     assert len(adapter.GRADE_FIELDS) > 0
-    
+
     # All grade fields should be in expected fields
     for field in adapter.GRADE_FIELDS:
         assert field in adapter.EXPECTED_FIELDS

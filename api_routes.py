@@ -6,8 +6,6 @@ These routes provide a proper REST API structure while maintaining backward comp
 with the existing single-page application.
 """
 
-from typing import Any, Dict, List, Optional
-
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 # Import our services
@@ -26,10 +24,9 @@ from database_service import (
     get_courses_by_department,
     get_sections_by_instructor,
     get_sections_by_term,
-    get_term_by_name,
     get_users_by_role,
 )
-from import_service import create_import_report, import_excel
+from import_service import import_excel
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -212,7 +209,7 @@ def list_courses():
 
 @api.route("/courses", methods=["POST"])
 @permission_required("manage_courses")
-def create_course():
+def create_course_api():
     """
     Create a new course
 

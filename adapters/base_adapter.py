@@ -1,6 +1,8 @@
 # adapters/base_adapter.py
 
-from term_utils import get_allowed_terms, is_valid_term
+from typing import Any
+
+from term_utils import is_valid_term
 
 
 # Define a custom exception for validation errors
@@ -109,7 +111,7 @@ class BaseAdapter:
                     continue
 
                 # Attempt type conversion
-                processed_value = None
+                processed_value: Any = None
                 conversion_error = False
                 if expected_type:
                     try:

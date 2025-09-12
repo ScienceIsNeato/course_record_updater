@@ -3,7 +3,8 @@ import sys
 
 try:
     from docx import Document
-    from docx.shared import Pt
+
+    # Unused imports removed
 except ImportError:
     print("Error: python-docx library not found.")
     print("Please install it using: pip install python-docx")

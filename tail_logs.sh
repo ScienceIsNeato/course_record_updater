@@ -76,7 +76,7 @@ colorize_logs() {
             timestamp=$(date '+%Y-%m-%d %H:%M:%S')
             line="[$timestamp] $line"
         fi
-        
+
         # Colorize based on content
         if [[ $line == *"ERROR"* ]] || [[ $line == *"Error"* ]] || [[ $line == *"error"* ]] || [[ $line == *"Exception"* ]] || [[ $line == *"Traceback"* ]]; then
             echo -e "${RED}$line${NC}"

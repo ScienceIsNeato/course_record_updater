@@ -348,7 +348,8 @@ class QualityGateExecutor:
         if checks is None:
             # Default: run the most important checks for development
             checks_to_run = [
-                check for check in self.all_checks 
+                check
+                for check in self.all_checks
                 if check[0] in ["format", "lint", "tests"]
             ]
         else:
@@ -381,19 +382,20 @@ class QualityGateExecutor:
     def _extract_slow_tests(self, output: str) -> List[str]:
         """Extract slow tests (>0.5s) from pytest output with --durations=0."""
         import re
+
         slow_tests = []
-        
+
         # Look for duration lines in format: "0.52s call     tests/test_example.py::test_slow"
         duration_pattern = r"(\d+\.\d+)s\s+\w+\s+(tests/[^:]+::[^\s]+)"
-        
+
         for match in re.finditer(duration_pattern, output):
             duration = float(match.group(1))
             test_name = match.group(2)
-            
+
             if duration > 0.5:  # Threshold for slow tests
                 slow_tests.append(f"{duration:.2f}s {test_name}")
-        
-        return sorted(slow_tests, key=lambda x: float(x.split('s')[0]), reverse=True)
+
+        return sorted(slow_tests, key=lambda x: float(x.split("s")[0]), reverse=True)
 
 
 def main():
@@ -407,9 +409,9 @@ Examples:
   python scripts/ship_it.py --fail-fast                  # All checks, exit on first failure
   python scripts/ship_it.py --checks format lint tests  # Run only specific checks
   python scripts/ship_it.py --checks tests --fail-fast  # Quick test-only check
-  
+
 Available checks: format, lint, tests, security, types, imports, duplication
-  
+
 By default, runs the essential checks (format, lint, tests) for fast development.
 Use specific --checks for comprehensive validation before major commits.
         """,

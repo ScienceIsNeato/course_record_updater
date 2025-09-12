@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from google.cloud import firestore
 
 # Import our data models
-from models import User, Course, CourseSection, Term, validate_email, validate_course_number
+from models import User, validate_course_number, validate_email
 
 # --- Firestore Client Initialization ---
 
@@ -206,7 +206,9 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
 
         # Validate course number format
         if not validate_course_number(course_data["course_number"]):
-            print(f"[DB Service] Invalid course number format: {course_data['course_number']}")
+            print(
+                f"[DB Service] Invalid course number format: {course_data['course_number']}"
+            )
             return None
 
         # Create course document
@@ -471,7 +473,9 @@ def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
             section["section_id"] = doc.id
             sections.append(section)
 
-        print(f"[DB Service] Found {len(sections)} sections for instructor: {instructor_id}")
+        print(
+            f"[DB Service] Found {len(sections)} sections for instructor: {instructor_id}"
+        )
         return sections
 
     except Exception as e:

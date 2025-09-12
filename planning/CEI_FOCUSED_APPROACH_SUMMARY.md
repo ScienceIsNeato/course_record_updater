@@ -1,7 +1,7 @@
 # CEI Focused Approach: Executive Summary
 
-**Date:** December 20, 2024  
-**Strategic Pivot:** From generic course record system to focused instructor management platform  
+**Date:** December 20, 2024
+**Strategic Pivot:** From generic course record system to focused instructor management platform
 **Key Insight:** Leslie's need to "push out the data and pull it back" efficiently
 
 ---

@@ -5,4 +5,4 @@ gunicorn>=20.1 # Production WSGI server
 
 # Testing Dependencies (not strictly needed in production image, but often included)
 pytest>=7.0 # Testing framework
-pytest-mock>=3.0 # For mocking dependencies 
+pytest-mock>=3.0 # For mocking dependencies

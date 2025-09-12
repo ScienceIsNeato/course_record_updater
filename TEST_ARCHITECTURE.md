@@ -12,7 +12,7 @@ tests/
 ├── unit/                    # Fast unit tests (3.04s)
 │   ├── __init__.py
 │   ├── test_base_adapter.py         # Adapter logic
-│   ├── test_business_sample_adapter.py  # Parsing logic  
+│   ├── test_business_sample_adapter.py  # Parsing logic
 │   ├── test_dummy_adapter.py        # Simple logic
 │   ├── test_file_adapter_dispatcher.py  # Dispatcher logic
 │   ├── test_import_service_conflict_bug.py  # Conflict resolution
@@ -35,7 +35,7 @@ tests/
 - **Instant feedback for developers**
 
 ### Integration Tests (`tests/integration/`)
-- **18 tests** in **14.09 seconds** 
+- **18 tests** in **14.09 seconds**
 - **File I/O, database operations, browser automation**
 - **Comprehensive end-to-end validation**
 - **Run separately or in CI parallel workers**
@@ -89,7 +89,7 @@ pytest tests/integration/
 
 ### Unit Tests (`tests/unit/`)
 - ✅ Pure business logic
-- ✅ Data model validation  
+- ✅ Data model validation
 - ✅ Algorithm testing
 - ✅ Mocked external dependencies
 - ✅ <0.5 seconds execution time

@@ -23,7 +23,7 @@ This project maintains enterprise-grade quality standards:
 
 - **80% Test Coverage Threshold**: Enforced locally and in CI
 - **Automated Quality Gates**: Format, lint, security, type checking
-- **Pre-commit Hooks**: Consistent code quality across contributors  
+- **Pre-commit Hooks**: Consistent code quality across contributors
 - **Security Scanning**: Daily vulnerability checks with automatic issue creation
 - **Multi-Python Support**: Tested on Python 3.9, 3.11, and 3.13
 
@@ -53,7 +53,7 @@ See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation
 ├── planning/             # 📋 PROJECT PLANNING & DOCUMENTATION
 │   ├── documentation/      # Technical specifications and requirements
 │   │   ├── AUTH_REQUIREMENTS.md    # Authentication and authorization design
-│   │   ├── DATA_MODEL.md           # Database entities and relationships  
+│   │   ├── DATA_MODEL.md           # Database entities and relationships
 │   │   ├── DATA_ENTRY_STRATEGY.md  # Data input and validation approach
 │   │   ├── EXECUTION_PLAN.md       # Development milestones and timeline
 │   │   ├── PERMISSION_MATRIX.md    # User role permissions checklist
@@ -123,7 +123,7 @@ When adding new documentation:
 3.  **Create and activate a virtual environment:**
     ```bash
     python3 -m venv venv
-    source venv/bin/activate 
+    source venv/bin/activate
     # On Windows use `venv\Scripts\activate`
     ```
 
@@ -163,16 +163,16 @@ When adding new documentation:
     *   **Run Emulator:** In a **separate terminal window**, navigate to your project directory (optional but good practice) and start the emulator. Note the host and port it outputs (usually `localhost:8086` or similar).
         ```bash
         # In Terminal 1 (Leave this running):
-        gcloud beta emulators firestore start --host-port=localhost:8086 
+        gcloud beta emulators firestore start --host-port=localhost:8086
         ```
     *   **Set Environment Variable & Run Tests:** In the **original terminal** (where your venv is active), set the `FIRESTORE_EMULATOR_HOST` variable and run pytest. The tests should automatically connect to the running emulator.
         ```bash
         # In Terminal 2 (Your testing terminal):
         export FIRESTORE_EMULATOR_HOST="localhost:8086"
-        python -m pytest 
+        python -m pytest
         # Or, combining the export and run:
         # FIRESTORE_EMULATOR_HOST="localhost:8086" python -m pytest
-        
+
         # Optionally run only integration tests if tagged:
         # FIRESTORE_EMULATOR_HOST="localhost:8086" python -m pytest -m integration
         ```
@@ -184,4 +184,4 @@ When adding new documentation:
 *   Follow TDD principles where possible.
 *   Run tests after any code changes.
 *   See `PROJECT_OVERVIEW.md` for architecture details.
-*   See `STATUS.md` for current development progress. 
+*   See `STATUS.md` for current development progress.
