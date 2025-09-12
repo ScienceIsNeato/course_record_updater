@@ -1,3 +1,4 @@
+-i https://pkgs.safetycli.com/repository/ganglia/project/course_record_updater/pypi/simple/
 Flask>=2.0
 python-docx>=1.0
 google-cloud-firestore>=2.0

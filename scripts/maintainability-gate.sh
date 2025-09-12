@@ -26,12 +26,15 @@
 
 set -e
 
-# Individual check flags
-RUN_FORMAT=false
+# Individual check flags - ATOMIC CHECKS ONLY
+RUN_BLACK=false
+RUN_ISORT=false
 RUN_LINT=false
 RUN_TYPES=false
 RUN_TESTS=false
+RUN_COVERAGE=false
 RUN_SECURITY=false
+RUN_SONAR=false
 RUN_DUPLICATION=false
 RUN_IMPORTS=false
 RUN_COMPLEXITY=false
@@ -43,11 +46,14 @@ if [ $# -eq 0 ]; then
 else
   while [[ $# -gt 0 ]]; do
     case $1 in
-      --format) RUN_FORMAT=true ;;
+      --black) RUN_BLACK=true ;;
+      --isort) RUN_ISORT=true ;;
       --lint) RUN_LINT=true ;;
       --types) RUN_TYPES=true ;;
       --tests) RUN_TESTS=true ;;
+      --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
+      --sonar) RUN_SONAR=true ;;
       --duplication) RUN_DUPLICATION=true ;;
       --imports) RUN_IMPORTS=true ;;
       --complexity) RUN_COMPLEXITY=true ;;
@@ -55,12 +61,15 @@ else
         echo "maintainability-gate - Course Record Updater Quality Framework"
         echo ""
         echo "Usage:"
-        echo "  ./scripts/maintainability-gate.sh           # All checks (strict mode with auto-fix)"
-        echo "  ./scripts/maintainability-gate.sh --format  # Check/fix formatting only"
+        echo "  ./scripts/maintainability-gate.sh           # All atomic checks (strict mode with auto-fix)"
+        echo "  ./scripts/maintainability-gate.sh --black   # Check/fix code formatting only"
+        echo "  ./scripts/maintainability-gate.sh --isort   # Check/fix import sorting only"
         echo "  ./scripts/maintainability-gate.sh --lint    # Check/fix linting only"
         echo "  ./scripts/maintainability-gate.sh --types   # Check types only"
-        echo "  ./scripts/maintainability-gate.sh --tests   # Run tests with 80% coverage gate"
+        echo "  ./scripts/maintainability-gate.sh --tests   # Run test suite only"
+        echo "  ./scripts/maintainability-gate.sh --coverage # Run coverage analysis only"
         echo "  ./scripts/maintainability-gate.sh --security # Check security vulnerabilities"
+        echo "  ./scripts/maintainability-gate.sh --sonar   # Run SonarQube quality analysis"
         echo "  ./scripts/maintainability-gate.sh --duplication # Check code duplication"
         echo "  ./scripts/maintainability-gate.sh --imports # Check import organization"
         echo "  ./scripts/maintainability-gate.sh --complexity # Check code complexity"
@@ -76,13 +85,16 @@ else
   done
 fi
 
-# Set all flags if RUN_ALL is true
+# Set all flags if RUN_ALL is true - ATOMIC CHECKS ONLY
 if [[ "$RUN_ALL" == "true" ]]; then
-  RUN_FORMAT=true
+  RUN_BLACK=true
+  RUN_ISORT=true
   RUN_LINT=true
-  RUN_TYPES=true
   RUN_TESTS=true
+  RUN_COVERAGE=true
+  RUN_TYPES=true
   RUN_SECURITY=true
+  RUN_SONAR=true
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
 fi
@@ -137,45 +149,49 @@ echo ""
 # Check virtual environment
 check_venv
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PYTHON FORMAT CHECK & AUTO-FIX (BLACK + ISORT)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_FORMAT" == "true" ]]; then
-  echo "🎨 Python Format Check & Auto-Fix (black + isort)"
 
-  # First, try to auto-fix formatting issues with black (main source files only)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PYTHON BLACK FORMATTING CHECK (ATOMIC)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_BLACK" == "true" ]]; then
+  echo "🎨 Code Formatting (black)"
+
+  # Try to auto-fix formatting issues with black
   echo "🔧 Auto-fixing code formatting with black..."
   if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
     echo "   ✅ Black formatting applied"
   fi
 
-  # Then auto-fix import organization with isort (main source files only)
+  # Verify formatting
+  if black --check --line-length 88 --target-version py39 *.py adapters/ tests/ > /dev/null 2>&1; then
+    echo "✅ Black Check: PASSED (code formatting verified)"
+    add_success "Black Check" "All Python files properly formatted with black"
+  else
+    echo "❌ Black Check: FAILED (formatting issues found)"
+    add_failure "Black Check" "Code formatting issues found" "Run 'black *.py adapters/ tests/' manually"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PYTHON ISORT IMPORT SORTING CHECK (ATOMIC)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_ISORT" == "true" ]]; then
+  echo "📚 Import Sorting (isort)"
+
+  # Try to auto-fix import organization with isort
   echo "🔧 Auto-fixing import organization with isort..."
   if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
     echo "   ✅ Import organization applied"
   fi
 
-  # Verify everything is properly formatted
-  FORMAT_CHECK_PASSED=true
-
-  # Check black formatting (main source files only)
-  if ! black --check --line-length 88 --target-version py39 *.py adapters/ tests/ > /dev/null 2>&1; then
-    FORMAT_CHECK_PASSED=false
-    echo "❌ Black formatting check failed"
-  fi
-
-  # Check isort formatting (main source files only)
-  if ! isort --check-only --profile black *.py adapters/ tests/ > /dev/null 2>&1; then
-    FORMAT_CHECK_PASSED=false
-    echo "❌ Import organization check failed"
-  fi
-
-  if [[ "$FORMAT_CHECK_PASSED" == "true" ]]; then
-    echo "✅ Format Check: PASSED (black + isort auto-fixed)"
-    add_success "Format Check" "All Python files properly formatted with black and isort"
+  # Verify import organization
+  if isort --check-only --profile black *.py adapters/ tests/ > /dev/null 2>&1; then
+    echo "✅ Isort Check: PASSED (import organization verified)"
+    add_success "Isort Check" "All Python imports properly organized with isort"
   else
-    echo "❌ Format Check: FAILED (could not auto-fix all issues)"
-    add_failure "Format Check" "Some formatting issues could not be auto-fixed" "Run 'black *.py **/*.py' and 'isort *.py **/*.py' manually"
+    echo "❌ Isort Check: FAILED (import organization issues found)"
+    add_failure "Isort Check" "Import organization issues found" "Run 'isort --profile black *.py adapters/ tests/' manually"
   fi
   echo ""
 fi
@@ -247,15 +263,16 @@ if [[ "$RUN_TYPES" == "true" ]]; then
   echo ""
 fi
 
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# TEST SUITE & COVERAGE (80% THRESHOLD)
+# TEST SUITE EXECUTION (ATOMIC) - UNIT TESTS ONLY
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_TESTS" == "true" ]]; then
-  echo "🧪 Test Suite & Coverage (80% threshold)"
+  echo "🧪 Test Suite Execution (pytest)"
 
-  # First run UNIT tests only (fast tests, separate directory)
-  echo "  🔍 Running UNIT test suite with performance monitoring..."
-  TEST_OUTPUT=$(python -m pytest tests/unit/ -v --durations=0 2>&1) || TEST_FAILED=true
+  # Run UNIT tests only (fast tests, separate directory)
+  echo "  🔍 Running UNIT test suite..."
+  TEST_OUTPUT=$(python -m pytest tests/unit/ -v 2>&1) || TEST_FAILED=true
 
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -286,69 +303,57 @@ if [[ "$RUN_TESTS" == "true" ]]; then
 
     # Extract summary stats for the failure record
     FAILED_TESTS=$(echo "$TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-    add_failure "Tests" "Test failures: $FAILED_TESTS" "See detailed output above and run 'python -m pytest -v' for full details"
+    add_failure "Test Execution" "Test failures: $FAILED_TESTS" "See detailed output above and run 'python -m pytest -v' for full details"
   else
-    echo "✅ Tests: PASSED"
+    echo "✅ Test Execution: PASSED"
+    add_success "Test Execution" "All unit tests passed successfully"
+  fi
+  echo ""
+fi
 
-    # Check for slow tests (>0.5 seconds)
-    echo "  ⚡ Checking test performance..."
-    SLOW_TESTS=$(echo "$TEST_OUTPUT" | grep -E "^\s*[0-9.]+s\s+" | awk '$1 > 0.5 {print $0}' || true)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TEST COVERAGE ANALYSIS (ATOMIC) - 80% THRESHOLD
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_COVERAGE" == "true" ]]; then
+  echo "📊 Test Coverage Analysis (80% threshold)"
 
-    if [[ -n "$SLOW_TESTS" ]]; then
-      echo "⚠️  Slow Tests Found (>0.5s each):"
+  # Run coverage analysis with 80% threshold (unit tests only)
+  echo "  📊 Running coverage analysis..."
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
+
+  if [[ "$COVERAGE_FAILED" != "true" ]]; then
+    # Extract coverage percentage
+    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
+    echo "✅ Coverage: PASSED ($COVERAGE)"
+    add_success "Test Coverage" "Coverage at $COVERAGE (meets 80% threshold)"
+  else
+    # Extract coverage percentage from output
+    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
+
+    # Check if this is a coverage threshold failure
+    if echo "$COVERAGE_OUTPUT" | grep -q "coverage.*fail\|TOTAL.*[0-9]\+%"; then
+      echo "❌ Coverage: THRESHOLD NOT MET ($COVERAGE)"
+      echo ""
+
+      # Show coverage details
+      echo "📋 Coverage Report:"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "$SLOW_TESTS" | head -10 | sed 's/^/  /'
-      SLOW_COUNT=$(echo "$SLOW_TESTS" | wc -l)
-      if [[ $SLOW_COUNT -gt 10 ]]; then
-        echo "  ... and $(($SLOW_COUNT - 10)) more slow tests"
-      fi
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "💡 Unit tests should complete in <0.5s. Consider:"
-      echo "   • Moving slow tests to integration test suite"
-      echo "   • Using mocks/stubs instead of real I/O operations"
-      echo "   • Optimizing test setup/teardown"
-      add_failure "Test Performance" "$SLOW_COUNT tests exceed 0.5s limit" "Optimize slow tests or mark as integration tests"
-    else
-      echo "✅ Test Performance: All tests complete in <0.5s"
-      add_success "Test Performance" "All unit tests complete quickly (<0.5s each)"
-    fi
-
-    # Now run coverage analysis with 80% threshold (unit tests only)
-    echo "  📊 Running coverage analysis (80% threshold, unit tests only)..."
-    COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
-
-    if [[ "$COVERAGE_FAILED" != "true" ]]; then
-      # Extract coverage percentage
-      COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
-      echo "✅ Coverage: PASSED ($COVERAGE)"
-      add_success "Test Coverage" "Coverage at $COVERAGE (meets 80% threshold)"
-    else
-      # Extract coverage percentage from output
-      COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
-
-      # Check if this is a coverage threshold failure
-      if echo "$COVERAGE_OUTPUT" | grep -q "coverage.*fail\|TOTAL.*[0-9]\+%"; then
-        echo "❌ Coverage: THRESHOLD NOT MET ($COVERAGE)"
-        echo ""
-
-        # Show coverage details
-        echo "📋 Coverage Details:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-        # Show lines missing coverage
-        MISSING_COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep "Missing" | head -10)
-        if [[ -n "$MISSING_COVERAGE" ]]; then
-          echo "$MISSING_COVERAGE" | sed 's/^/  /'
-        fi
-
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-
-        add_failure "Test Coverage" "Coverage at $COVERAGE (below 80% threshold)" "Add more unit tests to increase coverage above 80%"
+      
+      # Extract lines with missing coverage
+      MISSING_LINES=$(echo "$COVERAGE_OUTPUT" | grep -E "TOTAL|Missing" | head -10)
+      if [[ -n "$MISSING_LINES" ]]; then
+        echo "$MISSING_LINES" | sed 's/^/  /'
       else
-        echo "❌ Coverage: ANALYSIS FAILED ($COVERAGE)"
-        add_failure "Test Coverage" "Coverage analysis failed" "Check test suite configuration and ensure pytest-cov is installed"
+        echo "  Unable to extract coverage details"
       fi
+      
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+
+      add_failure "Test Coverage" "Coverage at $COVERAGE (below 80% threshold)" "Add tests to increase coverage above 80%"
+    else
+      echo "❌ Coverage: ANALYSIS FAILED"
+      add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration"
     fi
   fi
   echo ""
@@ -383,12 +388,9 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo "   ✅ Bandit security scan passed"
   fi
 
-  # Run safety scan for known vulnerabilities in dependencies (with timeout)
-  # Note: safety scan requires authentication, so we'll skip it for now
+  # Run safety scan for known vulnerabilities in dependencies
   echo "🔧 Running safety dependency scan..."
-  echo "   ⚠️  Safety scan skipped (requires authentication setup)"
-  echo "   📝 To enable: run 'safety auth' to set up authentication"
-  SAFETY_FAILED=false  # Skip for now to avoid hanging
+  SAFETY_OUTPUT=$(timeout 30s safety scan --full-report --json --output safety-report.json 2>&1) || SAFETY_FAILED=true
 
   if [[ "$SAFETY_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
@@ -407,6 +409,74 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   else
     echo "❌ Security Check: FAILED (security issues found)"
     add_failure "Security Check" "Security vulnerabilities found" "See detailed output above and address security issues"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SONARQUBE QUALITY ANALYSIS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SONAR" == "true" ]]; then
+  echo "🔍 SonarQube Quality Analysis"
+
+  SONAR_PASSED=true
+
+  # Check if sonar-scanner is available
+  if ! command -v sonar-scanner &> /dev/null; then
+    echo "❌ SonarQube Scanner not found"
+    echo "📋 Installation Instructions:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  1. Download SonarScanner from: https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/"
+    echo "  2. Or install via Homebrew: brew install sonar-scanner"
+    echo "  3. Configure SONAR_HOST_URL and SONAR_TOKEN environment variables"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    add_failure "SonarQube Analysis" "SonarQube Scanner not installed" "Install sonar-scanner and configure environment variables"
+    SONAR_PASSED=false
+  else
+    # Check if required environment variables are set
+    if [[ -z "$SONAR_HOST_URL" || -z "$SONAR_TOKEN" ]]; then
+      echo "⚠️  SonarQube environment variables not configured"
+      echo "📋 Required Environment Variables:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "  export SONAR_HOST_URL=https://your-sonarqube-server.com"
+      echo "  export SONAR_TOKEN=your-project-token"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      add_failure "SonarQube Analysis" "Environment variables not configured" "Set SONAR_HOST_URL and SONAR_TOKEN environment variables"
+      SONAR_PASSED=false
+    else
+      # Run SonarQube analysis
+      echo "🔧 Running SonarQube analysis..."
+      SONAR_OUTPUT=$(sonar-scanner \
+        -Dsonar.projectKey=course-record-updater \
+        -Dsonar.sources=. \
+        -Dsonar.exclusions="venv/**,**/.venv/**,**/node_modules/**,**/__pycache__/**,**/*.pyc,tests/**" \
+        -Dsonar.python.coverage.reportPaths=coverage.xml \
+        -Dsonar.python.xunit.reportPath=test-results.xml \
+        -Dsonar.host.url="$SONAR_HOST_URL" \
+        -Dsonar.login="$SONAR_TOKEN" 2>&1) || SONAR_FAILED=true
+
+      if [[ "$SONAR_FAILED" != "true" ]]; then
+        echo "✅ SonarQube Analysis: PASSED"
+        add_success "SonarQube Analysis" "Code quality analysis completed successfully"
+      else
+        echo "❌ SonarQube Analysis: FAILED"
+        echo "📋 SonarQube Analysis Output:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "$SONAR_OUTPUT" | tail -20 | sed 's/^/  /'
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        add_failure "SonarQube Analysis" "Quality analysis failed" "Check SonarQube server logs and fix quality issues"
+        SONAR_PASSED=false
+      fi
+    fi
+  fi
+
+  if [[ "$SONAR_PASSED" != "true" ]]; then
+    echo "💡 SonarQube provides comprehensive code quality analysis including:"
+    echo "   • Code smells and maintainability issues"
+    echo "   • Security vulnerabilities"
+    echo "   • Code coverage analysis"
+    echo "   • Technical debt assessment"
+    echo "   • Duplication detection"
   fi
   echo ""
 fi

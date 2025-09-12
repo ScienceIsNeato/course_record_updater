@@ -60,12 +60,15 @@ class QualityGateExecutor:
         self.script_path = "./scripts/maintainability-gate.sh"
 
         # Define all quality checks - adapted for Python/Flask
-        # Ordered by importance and speed
+        # Ordered by importance and speed, broken down into atomic checks
         self.all_checks = [
-            ("format", "🎨 Python Format Check & Auto-Fix (black, isort)"),
+            ("black", "🎨 Code Formatting (black)"),
+            ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
-            ("tests", "🧪 Test Suite & Coverage (pytest)"),
+            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
+            ("sonar", "🔍 SonarQube Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
@@ -360,7 +363,7 @@ class QualityGateExecutor:
             checks_to_run = [
                 check
                 for check in self.all_checks
-                if check[0] in ["format", "lint", "tests"]
+                if check[0] in ["black", "isort", "lint", "tests", "coverage"]
             ]
         else:
             # Run only specified checks
@@ -415,22 +418,22 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/ship_it.py                              # All checks in parallel
-  python scripts/ship_it.py --fail-fast                  # All checks, exit on first failure
-  python scripts/ship_it.py --checks format lint tests  # Run only specific checks
-  python scripts/ship_it.py --checks tests --fail-fast  # Quick test-only check
+  python scripts/ship_it.py                                    # All essential checks in parallel
+  python scripts/ship_it.py --fail-fast                        # All essential checks, exit on first failure
+  python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
+  python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
-Available checks: format, lint, tests, security, types, imports, duplication
+Available checks: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication
 
-By default, runs the essential checks (format, lint, tests) for fast development.
-Use specific --checks for comprehensive validation before major commits.
+By default, runs the essential checks (black, isort, lint, tests, coverage) for fast development.
+Use specific --checks for targeted validation or comprehensive pre-commit checks.
         """,
     )
 
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks format lint tests). Available: format, lint, tests, security, types, imports, duplication",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication",
     )
 
     parser.add_argument(

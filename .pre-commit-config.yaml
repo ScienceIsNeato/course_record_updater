@@ -5,9 +5,16 @@ repos:
   # Use our centralized quality gate script for all checks
   - repo: local
     hooks:
-      - id: format-check
-        name: Code Formatting (black, isort)
-        entry: python scripts/ship_it.py --checks format
+      - id: black-check
+        name: Code Formatting (black)
+        entry: python scripts/ship_it.py --checks black
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: isort-check
+        name: Import Sorting (isort)
+        entry: python scripts/ship_it.py --checks isort
         language: system
         pass_filenames: false
         always_run: true
@@ -19,9 +26,16 @@ repos:
         pass_filenames: false
         always_run: true
 
-      - id: unit-tests-coverage
-        name: Unit Tests + 80% Coverage Gate
+      - id: unit-tests
+        name: Unit Tests
         entry: python scripts/ship_it.py --checks tests
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: coverage-check
+        name: Coverage Analysis (80% threshold)
+        entry: python scripts/ship_it.py --checks coverage
         language: system
         pass_filenames: false
         always_run: true
