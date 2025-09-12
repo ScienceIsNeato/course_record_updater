@@ -191,15 +191,44 @@ jobs:
         key: ${{ needs.setup.outputs.cache-key }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: Install dependencies
+    - name: Install Chrome for Selenium
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+    - name: Setup Firestore Emulator
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: test-project
+    - name: Start Firestore Emulator
+      run: |
+        gcloud components install cloud-firestore-emulator --quiet
+        gcloud emulators firestore start --host-port=localhost:8080 &
+        # Wait for emulator to be ready
+        sleep 10
+    - name: Start Flask Application
+      run: |
+        # Start Flask app in background
+        python app.py &
+        # Wait for Flask app to be ready
+        sleep 5
+        # Test if app is responding
+        curl -f http://localhost:3001/api/health || echo "Health endpoint not ready yet"
+        sleep 5
+      env:
+        PYTHONPATH: .
+        COURSE_RECORD_UPDATER_PORT: 3001
+        FIRESTORE_EMULATOR_HOST: localhost:8080
+        FLASK_DEBUG: false
     - name: Run Smoke Tests
       run: python -m pytest tests/integration/ -v
       env:
         PYTHONPATH: .
+        FIRESTORE_EMULATOR_HOST: localhost:8080
 
   security-check:
     runs-on: ubuntu-latest
