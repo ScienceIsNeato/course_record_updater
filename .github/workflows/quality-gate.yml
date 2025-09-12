@@ -193,42 +193,53 @@ jobs:
           ${{ runner.os }}-pip-
     - name: Install Chrome for Selenium
       run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
+        # Use pre-installed Chrome in GitHub Actions
+        google-chrome --version || {
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+        }
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Setup Firestore Emulator
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: test-project
-    - name: Start Firestore Emulator
+    - name: Start Firestore Emulator (using Docker)
       run: |
-        gcloud components install cloud-firestore-emulator --quiet
-        gcloud emulators firestore start --host-port=localhost:8080 &
-        # Wait for emulator to be ready
-        sleep 10
+        # Use Docker for faster Firestore emulator startup
+        docker run -d --name firestore-emulator \
+          -p 8080:8080 \
+          gcr.io/google.com/cloudsdktool/cloud-sdk:alpine \
+          gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --project=test-project
+        # Wait for emulator to be ready (faster than gcloud setup)
+        timeout 30s bash -c 'until curl -f http://localhost:8080; do sleep 1; done' || echo "Emulator startup may be slow"
     - name: Start Flask Application
       run: |
-        # Start Flask app in background
-        python app.py &
-        # Wait for Flask app to be ready
-        sleep 5
-        # Test if app is responding
-        curl -f http://localhost:3001/api/health || echo "Health endpoint not ready yet"
-        sleep 5
+        # Start Flask app in background with timeout
+        timeout 60s python app.py &
+        # Quick health check with shorter wait
+        timeout 30s bash -c 'until curl -f http://localhost:3001/api/health; do sleep 1; done' || {
+          echo "Flask app startup timeout - continuing anyway"
+          ps aux | grep python || echo "No Python processes found"
+        }
       env:
         PYTHONPATH: .
         COURSE_RECORD_UPDATER_PORT: 3001
         FIRESTORE_EMULATOR_HOST: localhost:8080
         FLASK_DEBUG: false
     - name: Run Smoke Tests
-      run: python -m pytest tests/integration/ -v
+      run: |
+        # Run tests with optimizations for CI environment
+        python -m pytest tests/integration/ -v \
+          --tb=short \
+          --disable-warnings \
+          --maxfail=3 \
+          -x
       env:
         PYTHONPATH: .
         FIRESTORE_EMULATOR_HOST: localhost:8080
+        # Optimize Selenium for CI
+        SELENIUM_IMPLICIT_WAIT: 5
+        SELENIUM_PAGE_LOAD_TIMEOUT: 10
 
   security-check:
     runs-on: ubuntu-latest

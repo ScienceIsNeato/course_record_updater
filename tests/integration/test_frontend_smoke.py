@@ -29,6 +29,8 @@ class TestFrontendSmoke:
     @pytest.fixture(scope="class")
     def driver(self):
         """Setup Chrome driver with headless option"""
+        import os
+
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # Run in headless mode
         chrome_options.add_argument("--no-sandbox")
@@ -36,8 +38,23 @@ class TestFrontendSmoke:
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
 
+        # CI optimizations
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        chrome_options.add_argument("--disable-features=TranslateUI")
+        chrome_options.add_argument("--disable-ipc-flooding-protection")
+
         driver = webdriver.Chrome(options=chrome_options)
-        driver.implicitly_wait(10)
+
+        # Use environment variables for timeouts (CI can override)
+        implicit_wait = int(os.environ.get("SELENIUM_IMPLICIT_WAIT", "10"))
+        page_load_timeout = int(os.environ.get("SELENIUM_PAGE_LOAD_TIMEOUT", "30"))
+
+        driver.implicitly_wait(implicit_wait)
+        driver.set_page_load_timeout(page_load_timeout)
+
         yield driver
         driver.quit()
 
