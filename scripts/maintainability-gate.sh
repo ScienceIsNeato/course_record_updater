@@ -414,6 +414,9 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   set +e  # Don't exit on error
   SAFETY_OUTPUT=$(timeout 60s safety scan --output json 2>&1)
   SAFETY_EXIT_CODE=$?
+  
+  # Also write to file to bypass GitHub truncation
+  echo "$SAFETY_OUTPUT" > /tmp/safety_output.txt
   set -e  # Re-enable exit on error
   
   echo "📋 Debug: Safety command completed with exit code: $SAFETY_EXIT_CODE"
@@ -431,7 +434,15 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     
     # Show complete output for debugging (no truncation)
     if [[ ${#SAFETY_OUTPUT} -gt 0 ]]; then
-      echo "$SAFETY_OUTPUT" | sed 's/^/  /'
+      echo "📋 SAFETY OUTPUT (character by character to avoid truncation):"
+      # Print each line with line numbers to force visibility
+      echo "$SAFETY_OUTPUT" | nl -ba | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📋 OUTPUT FROM FILE (to bypass GitHub truncation):"
+      cat /tmp/safety_output.txt | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📋 RAW OUTPUT (hexdump to see hidden characters):"
+      echo "$SAFETY_OUTPUT" | hexdump -C | head -20 | sed 's/^/  /'
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "📋 Output analysis:"
       echo "  Total characters: ${#SAFETY_OUTPUT}"
