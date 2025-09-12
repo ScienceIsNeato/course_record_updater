@@ -75,8 +75,8 @@ class TestAPIErrorHandling:
 
     def test_create_course_database_failure(self):
         """Test course creation when database fails."""
-        # Test lines 260-263 - course creation failure
-        with patch("database_service.create_course", return_value=None):
+        # Test lines 274-288 - course creation failure when create_course returns None
+        with patch("api_routes.create_course", return_value=None):
             course_data = {
                 "course_number": "TEST-101",
                 "course_title": "Test Course",
@@ -85,10 +85,11 @@ class TestAPIErrorHandling:
 
             response = self.client.post("/api/courses", json=course_data)
 
-            # API currently uses stub implementation that always succeeds
-            assert response.status_code == 201
+            # When create_course returns None, API should return 500 error
+            assert response.status_code == 500
             data = response.get_json()
-            assert data["success"] is True
+            assert data["success"] is False
+            assert "Failed to create course" in data["error"]
 
     def test_get_course_by_number_not_found(self):
         """Test getting course by number when not found."""
