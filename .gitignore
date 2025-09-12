@@ -16,4 +16,7 @@ htmlcov/
 # Log files and directories
 logs/
 
+# SonarCloud analysis artifacts
+.scannerwork/
+
 .DS_Store
