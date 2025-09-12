@@ -429,27 +429,41 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo "📋 Full Safety Output for Debugging:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
-    # Show more complete output for debugging
+    # Show complete output for debugging (no truncation)
     if [[ ${#SAFETY_OUTPUT} -gt 0 ]]; then
       echo "$SAFETY_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "📋 Output analysis:"
+      echo "  Total characters: ${#SAFETY_OUTPUT}"
+      echo "  Total lines: $(echo "$SAFETY_OUTPUT" | wc -l)"
+      echo "  Contains 'vulnerabilities': $(echo "$SAFETY_OUTPUT" | grep -q "vulnerabilities" && echo "YES" || echo "NO")"
+      echo "  Contains 'error': $(echo "$SAFETY_OUTPUT" | grep -qi "error" && echo "YES" || echo "NO")"
+      echo "  Contains 'exception': $(echo "$SAFETY_OUTPUT" | grep -qi "exception" && echo "YES" || echo "NO")"
     else
       echo "  No output captured from safety command"
     fi
     
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📋 Debug: Trying safety scan without JSON output..."
-    timeout 10s safety scan 2>&1 | head -10 | sed 's/^/  /' || echo "  Alternative safety scan also failed"
-    
-    echo "📋 Debug: Trying safety check (deprecated but might work)..."
-    timeout 10s safety check 2>&1 | head -5 | sed 's/^/  /' || echo "  Legacy safety check also failed"
-    
-    echo "📋 Debug: Testing safety with explicit requirements file..."
-    if [[ -f "requirements.txt" ]]; then
-      timeout 10s safety check -r requirements.txt 2>&1 | head -5 | sed 's/^/  /' || echo "  Safety with -r requirements.txt failed"
+    SAFETY_PLAIN_OUTPUT=$(timeout 10s safety scan 2>&1)
+    if [[ $? -eq 0 ]]; then
+      echo "  SUCCESS: Safety scan without JSON works!"
+      echo "$SAFETY_PLAIN_OUTPUT" | sed 's/^/  /'
+    else
+      echo "  FAILED: Safety scan without JSON also failed"
+      echo "$SAFETY_PLAIN_OUTPUT" | sed 's/^/  /'
     fi
     
-    echo "📋 Debug: Testing if safety can read from pip freeze..."
-    timeout 10s pip freeze | timeout 10s safety check --stdin 2>&1 | head -5 | sed 's/^/  /' || echo "  Safety with pip freeze input failed"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Debug: Trying safety check (deprecated but might work)..."
+    SAFETY_CHECK_OUTPUT=$(timeout 10s safety check 2>&1)
+    if [[ $? -eq 0 ]]; then
+      echo "  SUCCESS: Legacy safety check works!"
+      echo "$SAFETY_CHECK_OUTPUT" | sed 's/^/  /'
+    else
+      echo "  FAILED: Legacy safety check also failed"
+      echo "$SAFETY_CHECK_OUTPUT" | sed 's/^/  /'
+    fi
     
     echo "📋 Debug: Environment information:"
     echo "  PWD: $(pwd)"
