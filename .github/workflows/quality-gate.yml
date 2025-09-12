@@ -210,17 +210,17 @@ jobs:
         docker run -d --name firestore-emulator \
           -p 8086:8086 \
           gcr.io/google.com/cloudsdktool/cloud-sdk:alpine \
-          gcloud beta emulators firestore start --host-port=0.0.0.0:8086 --project=test-project
+          sh -c "gcloud components install beta --quiet && gcloud beta emulators firestore start --host-port=0.0.0.0:8086 --project=test-project"
         
         echo "Waiting for Firestore emulator to be ready..."
-        # Wait for emulator with better diagnostics
-        for i in {1..60}; do
+        # Wait for emulator with better diagnostics (longer timeout for component installation)
+        for i in {1..120}; do
           if curl -f http://localhost:8086 2>/dev/null; then
             echo "Firestore emulator is ready after ${i} seconds"
             break
           fi
-          if [ $i -eq 60 ]; then
-            echo "ERROR: Firestore emulator failed to start after 60 seconds"
+          if [ $i -eq 120 ]; then
+            echo "ERROR: Firestore emulator failed to start after 120 seconds"
             echo "Docker container status:"
             docker ps -a | grep firestore-emulator
             echo "Docker logs:"
