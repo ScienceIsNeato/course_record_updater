@@ -443,6 +443,14 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo "📋 Debug: Trying safety check (deprecated but might work)..."
     timeout 10s safety check 2>&1 | head -5 | sed 's/^/  /' || echo "  Legacy safety check also failed"
     
+    echo "📋 Debug: Testing safety with explicit requirements file..."
+    if [[ -f "requirements.txt" ]]; then
+      timeout 10s safety check -r requirements.txt 2>&1 | head -5 | sed 's/^/  /' || echo "  Safety with -r requirements.txt failed"
+    fi
+    
+    echo "📋 Debug: Testing if safety can read from pip freeze..."
+    timeout 10s pip freeze | timeout 10s safety check --stdin 2>&1 | head -5 | sed 's/^/  /' || echo "  Safety with pip freeze input failed"
+    
     echo "📋 Debug: Environment information:"
     echo "  PWD: $(pwd)"
     echo "  PATH: $PATH" | head -c 200
@@ -450,18 +458,15 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo "  Python executable: $(which python)"
     echo "  Safety executable: $(which safety)"
     
-    # Check if this is a CI environment and safety is fundamentally broken
-    if [[ "${CI:-false}" == "true" && $SAFETY_EXIT_CODE -eq 124 ]]; then
-      echo "⚠️  WARNING: Safety scan timed out in CI environment"
-      echo "⚠️  This may be due to network connectivity or authentication issues"
-      echo "⚠️  Continuing with build but security scan is incomplete"
-      SECURITY_PASSED=true  # Allow CI to continue
-    elif [[ "${CI:-false}" == "true" && ${#SAFETY_OUTPUT} -eq 0 ]]; then
-      echo "⚠️  WARNING: Safety scan produced no output in CI environment"
-      echo "⚠️  This may indicate a configuration or environment issue"
-      echo "⚠️  Continuing with build but security scan is incomplete"
-      SECURITY_PASSED=true  # Allow CI to continue
-    fi
+    echo "🔍 DIAGNOSIS REQUIRED: Safety scan failed with no output"
+    echo "🔍 Exit code $SAFETY_EXIT_CODE indicates:"
+    case $SAFETY_EXIT_CODE in
+      124) echo "   - Command timed out after 60 seconds" ;;
+      127) echo "   - Command not found or not executable" ;;
+      1) echo "   - General error or vulnerabilities found" ;;
+      2) echo "   - Misuse of shell builtins" ;;
+      *) echo "   - Unknown error condition" ;;
+    esac
     
     # Extract vulnerability details from JSON output if possible
     if echo "$SAFETY_OUTPUT" | grep -q "vulnerabilities"; then
