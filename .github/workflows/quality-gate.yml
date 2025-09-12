@@ -213,8 +213,8 @@ jobs:
           sh -c "gcloud components install beta --quiet && gcloud beta emulators firestore start --host-port=0.0.0.0:8086 --project=test-project"
         
         echo "Waiting for Firestore emulator to be ready..."
-        # Create a simple Python health check script
-        cat > firestore_health_check.py << 'EOF'
+        # Use Python inline to check Firestore health with exponential backoff
+        python -c "
 import os
 import sys
 import time
@@ -222,40 +222,30 @@ from google.cloud import firestore
 
 def check_firestore_health():
     try:
-        # Initialize client with emulator
         os.environ['FIRESTORE_EMULATOR_HOST'] = 'localhost:8086'
         db = firestore.Client(project='test-project')
-        
-        # Try a simple operation
         test_doc = db.collection('health_check').document('test')
         test_doc.set({'status': 'ready', 'timestamp': time.time()})
-        
-        # Read it back
         doc = test_doc.get()
         if doc.exists:
-            print("✅ Firestore emulator is ready and functional")
+            print('✅ Firestore emulator is ready and functional')
             return True
         return False
     except Exception as e:
-        print(f"❌ Firestore emulator not ready: {e}")
+        print(f'❌ Firestore emulator not ready: {e}')
         return False
 
-# Wait up to 60 seconds with exponential backoff
 max_attempts = 20
 for attempt in range(max_attempts):
     if check_firestore_health():
         sys.exit(0)
-    
-    wait_time = min(2 ** (attempt // 3), 5)  # Exponential backoff, max 5s
-    print(f"Waiting {wait_time}s before retry ({attempt + 1}/{max_attempts})...")
+    wait_time = min(2 ** (attempt // 3), 5)
+    print(f'Waiting {wait_time}s before retry ({attempt + 1}/{max_attempts})...')
     time.sleep(wait_time)
 
-print("ERROR: Firestore emulator failed to become ready after 60 seconds")
+print('ERROR: Firestore emulator failed to become ready after 60 seconds')
 sys.exit(1)
-EOF
-
-        # Run the health check
-        python firestore_health_check.py || {
+        " || {
           echo "Firestore emulator health check failed. Diagnostics:"
           echo "Docker container status:"
           docker ps -a | grep firestore-emulator
