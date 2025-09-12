@@ -206,12 +206,32 @@ jobs:
     - name: Start Firestore Emulator (using Docker)
       run: |
         # Use Docker for faster Firestore emulator startup
+        echo "Starting Firestore emulator container..."
         docker run -d --name firestore-emulator \
-          -p 8080:8080 \
+          -p 8086:8086 \
           gcr.io/google.com/cloudsdktool/cloud-sdk:alpine \
-          gcloud beta emulators firestore start --host-port=0.0.0.0:8080 --project=test-project
-        # Wait for emulator to be ready (faster than gcloud setup)
-        timeout 30s bash -c 'until curl -f http://localhost:8080; do sleep 1; done' || echo "Emulator startup may be slow"
+          gcloud beta emulators firestore start --host-port=0.0.0.0:8086 --project=test-project
+        
+        echo "Waiting for Firestore emulator to be ready..."
+        # Wait for emulator with better diagnostics
+        for i in {1..60}; do
+          if curl -f http://localhost:8086 2>/dev/null; then
+            echo "Firestore emulator is ready after ${i} seconds"
+            break
+          fi
+          if [ $i -eq 60 ]; then
+            echo "ERROR: Firestore emulator failed to start after 60 seconds"
+            echo "Docker container status:"
+            docker ps -a | grep firestore-emulator
+            echo "Docker logs:"
+            docker logs firestore-emulator
+            echo "Network status:"
+            netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
+            exit 1
+          fi
+          echo "Waiting for emulator... (${i}/60)"
+          sleep 1
+        done
     - name: Start Flask Application
       run: |
         # Start Flask app in background with timeout
@@ -224,8 +244,9 @@ jobs:
       env:
         PYTHONPATH: .
         COURSE_RECORD_UPDATER_PORT: 3001
-        FIRESTORE_EMULATOR_HOST: localhost:8080
+        FIRESTORE_EMULATOR_HOST: localhost:8086
         FLASK_DEBUG: false
+        FIRESTORE_CLIENT_TIMEOUT: 30
     - name: Run Smoke Tests with Timestamps
       run: |
         # Add timestamped logging to identify hanging tests
@@ -248,6 +269,18 @@ jobs:
         
         print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Starting smoke tests with CI optimizations...')
         
+        # Verify Firestore emulator is accessible before running tests
+        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Verifying Firestore emulator accessibility...')
+        import requests
+        try:
+            response = requests.get('http://localhost:8086', timeout=5)
+            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Firestore emulator accessible (status: {response.status_code})')
+        except Exception as e:
+            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - ERROR: Firestore emulator not accessible: {e}')
+            subprocess.run(['docker', 'ps', '-a'], check=False)
+            subprocess.run(['docker', 'logs', 'firestore-emulator'], check=False)
+            sys.exit(1)
+        
         cmd = ['python', '-m', 'pytest', 'tests/integration/', '-v', '-s', '--tb=short', '--disable-warnings', '--maxfail=3', '-x']
         
         print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Running: {\" \".join(cmd)}')
@@ -261,7 +294,8 @@ jobs:
         "
       env:
         PYTHONPATH: .
-        FIRESTORE_EMULATOR_HOST: localhost:8080
+        FIRESTORE_EMULATOR_HOST: localhost:8086
+        FIRESTORE_CLIENT_TIMEOUT: 30
         # Optimize Selenium for CI
         SELENIUM_IMPLICIT_WAIT: 3
         SELENIUM_PAGE_LOAD_TIMEOUT: 8
