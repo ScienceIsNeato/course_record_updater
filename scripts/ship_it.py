@@ -360,10 +360,11 @@ class QualityGateExecutor:
         # Determine which checks to run
         if checks is None:
             # Default: run the most important checks for development
+            # Note: coverage is separate from tests to avoid parallel pytest conflicts
             checks_to_run = [
                 check
                 for check in self.all_checks
-                if check[0] in ["black", "isort", "lint", "tests", "coverage"]
+                if check[0] in ["black", "isort", "lint", "tests"]
             ]
         else:
             # Run only specified checks
@@ -425,7 +426,7 @@ Examples:
 
 Available checks: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication
 
-By default, runs the essential checks (black, isort, lint, tests, coverage) for fast development.
+By default, runs the essential checks (black, isort, lint, tests) for fast development.
 Use specific --checks for targeted validation or comprehensive pre-commit checks.
         """,
     )
