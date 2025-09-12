@@ -323,12 +323,12 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
 
   if [[ "$COVERAGE_FAILED" != "true" ]]; then
     # Extract coverage percentage
-    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
+    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
     echo "✅ Coverage: PASSED ($COVERAGE)"
     add_success "Test Coverage" "Coverage at $COVERAGE (meets 80% threshold)"
   else
     # Extract coverage percentage from output
-    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+%' | grep -o '[0-9]\+%' | head -1 || echo "unknown")
+    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
 
     # Check if this is a coverage threshold failure
     if echo "$COVERAGE_OUTPUT" | grep -q "coverage.*fail\|TOTAL.*[0-9]\+%"; then
@@ -390,14 +390,30 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
 
   # Run safety scan for known vulnerabilities in dependencies
   echo "🔧 Running safety dependency scan..."
-  SAFETY_OUTPUT=$(timeout 30s safety scan --full-report --output json 2>&1) || SAFETY_FAILED=true
+  SAFETY_OUTPUT=$(timeout 30s safety scan --output json 2>&1) || SAFETY_FAILED=true
 
   if [[ "$SAFETY_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
     echo "❌ Safety dependency check failed"
     echo "📋 Vulnerable Dependencies:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$SAFETY_OUTPUT" | head -10 | sed 's/^/  /'
+    
+    # Extract vulnerability details from JSON output if possible
+    if echo "$SAFETY_OUTPUT" | grep -q "vulnerabilities"; then
+      # Try to extract package names and CVEs from JSON
+      VULN_SUMMARY=$(echo "$SAFETY_OUTPUT" | grep -o '"package_name":"[^"]*"' | sed 's/"package_name":"//g' | sed 's/"//g' | head -5)
+      if [[ -n "$VULN_SUMMARY" ]]; then
+        echo "  Vulnerable packages found:"
+        echo "$VULN_SUMMARY" | sed 's/^/    • /'
+        echo "  Run 'safety scan' for full details"
+      else
+        echo "  $SAFETY_OUTPUT" | head -5 | sed 's/^/  /'
+      fi
+    else
+      # Fallback: show first few lines of output
+      echo "$SAFETY_OUTPUT" | head -5 | sed 's/^/  /'
+    fi
+    
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   else
     echo "   ✅ Safety dependency check passed"
@@ -511,9 +527,46 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_DUPLICATION" == "true" ]]; then
   echo "🔄 Code Duplication Check"
-  echo "📋 Note: Comprehensive duplication analysis is handled by SonarCloud"
-  echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
-  add_success "Duplication Check" "Duplication analysis delegated to SonarCloud for comprehensive detection"
+
+  # Check if npx is available for jscpd
+  if ! command -v npx &> /dev/null; then
+    echo "⚠️  npx not found, delegating to SonarCloud"
+    echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
+    add_success "Duplication Check" "npx unavailable, duplication analysis delegated to SonarCloud"
+  else
+    echo "🔧 Running jscpd code duplication analysis..."
+    
+    # Run jscpd with appropriate settings for Python project
+    # - min-lines 3: Detect duplications of 3+ lines (sensitive)
+    # - threshold 5: Fail if >5% duplication (reasonable for Python)
+    # - Focus on Python files with comprehensive exclusions
+    DUPLICATION_OUTPUT=$(npx jscpd . \
+      --min-lines 3 \
+      --threshold 5 \
+      --reporters console \
+      --ignore '**/__tests__/**,**/*.test.*,**/tests/**,**/venv/**,**/.venv/**,**/__pycache__/**,**/*.pyc,**/node_modules/**,**/.git/**,**/logs/**,**/.scannerwork/**,**/python-database/**,**/codeql-**,**/cursor-rules/**' \
+      --format python \
+      --silent 2>&1) || DUPLICATION_FAILED=true
+
+    if [[ "$DUPLICATION_FAILED" != "true" ]]; then
+      # Extract duplication percentage from output
+      DUPLICATION_PERCENT=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+\.[0-9]\+%' | tail -1 || echo "0.0%")
+      CLONES_FOUND=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+ clones' | grep -o '[0-9]\+' || echo "0")
+      
+      echo "✅ Code Duplication: PASSED ($DUPLICATION_PERCENT duplication, $CLONES_FOUND clones)"
+      add_success "Code Duplication" "Duplication at $DUPLICATION_PERCENT with $CLONES_FOUND clones (below 5% threshold)"
+    else
+      echo "❌ Code Duplication: FAILED"
+      echo "📋 Duplication Analysis Results:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$DUPLICATION_OUTPUT" | head -20 | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Extract duplication percentage for failure message
+      DUPLICATION_PERCENT=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+\.[0-9]\+%' | tail -1 || echo "unknown")
+      add_failure "Code Duplication" "Excessive duplication detected ($DUPLICATION_PERCENT)" "Review and refactor duplicated code blocks shown above"
+    fi
+  fi
   echo ""
 fi
 

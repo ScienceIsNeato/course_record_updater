@@ -133,7 +133,7 @@ class TestTermEndpoints:
         assert response.status_code == 500  # API returns 500 for missing JSON data
         data = response.get_json()
         assert data["success"] is False
-        assert "400 Bad Request" in data["error"]
+        assert data["error"] == "Failed to create term"  # Secure error message
 
     def test_create_term_missing_fields(self):
         """Test term creation with missing required fields."""
@@ -266,7 +266,7 @@ class TestSectionEndpoints:
         assert response.status_code == 500  # API returns 500 for missing JSON data
         data = response.get_json()
         assert data["success"] is False
-        assert "400 Bad Request" in data["error"]
+        assert data["error"] == "Failed to create section"  # Secure error message
 
     def test_create_section_missing_fields(self):
         """Test section creation with missing required fields."""

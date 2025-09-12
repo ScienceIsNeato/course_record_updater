@@ -171,9 +171,15 @@ class QualityGateExecutor:
                         
                         # Cancel all remaining futures and shutdown immediately
                         for f in future_to_check:
-                            f.cancel()
+                            if not f.done():
+                                f.cancel()
+                        
+                        # Force immediate shutdown without waiting
                         executor.shutdown(wait=False)
-                        sys.exit(1)
+                        
+                        # Exit immediately - don't let finally block wait
+                        import os
+                        os._exit(1)
 
                 except (concurrent.futures.TimeoutError, RuntimeError) as exc:
                     # Handle any exceptions from the future
@@ -189,8 +195,11 @@ class QualityGateExecutor:
                     self.logger.error(f"❌ {check_name} failed with exception: {exc}")
 
         finally:
-            # Ensure executor is properly cleaned up
-            executor.shutdown(wait=True)
+            # Ensure executor is properly cleaned up (but don't wait if we're in fail-fast mode)
+            try:
+                executor.shutdown(wait=False)
+            except:
+                pass  # Ignore cleanup errors
             
         return results
 
@@ -337,6 +346,68 @@ class QualityGateExecutor:
 
         return "Test suite execution failed"
 
+    def run_checks_with_pytest_sequencing(
+        self,
+        checks: List[Tuple[str, str]],
+        max_workers: int = None,
+        fail_fast: bool = False,
+    ) -> List[CheckResult]:
+        """Run checks in parallel, but sequence pytest-dependent checks to avoid cache conflicts."""
+        # Separate pytest-dependent checks from others
+        pytest_checks = []
+        other_checks = []
+        
+        for check_flag, check_name in checks:
+            if check_flag in ["tests", "coverage"]:
+                pytest_checks.append((check_flag, check_name))
+            else:
+                other_checks.append((check_flag, check_name))
+        
+        all_results = []
+        
+        # Run non-pytest checks in parallel
+        if other_checks:
+            try:
+                other_results = self.run_checks_parallel(other_checks, max_workers, fail_fast)
+                all_results.extend(other_results)
+                
+                # If fail_fast and we have failures, exit immediately
+                if fail_fast and any(r.status == CheckStatus.FAILED for r in other_results):
+                    # The run_checks_parallel should have already called sys.exit(1) for fail_fast
+                    # But if we get here, ensure we exit immediately
+                    sys.exit(1)
+            except SystemExit:
+                # run_checks_parallel called sys.exit(1) - let it propagate
+                raise
+        
+        # Run pytest checks sequentially to avoid cache conflicts
+        # Order: tests first (faster), then coverage (slower with coverage analysis)
+        pytest_order = ["tests", "coverage"]
+        for check_flag in pytest_order:
+            for flag, name in pytest_checks:
+                if flag == check_flag:
+                    result = self.run_single_check(flag, name)
+                    all_results.append(result)
+                    
+                    # Print real-time status updates (same as parallel execution)
+                    status_icon = "✅" if result.status == CheckStatus.PASSED else "❌"
+                    self.logger.info(
+                        f"{status_icon} {result.name} completed in {result.duration:.1f}s"
+                    )
+                    
+                    # If fail_fast and this check failed, exit immediately
+                    if fail_fast and result.status == CheckStatus.FAILED:
+                        self.logger.error(
+                            f"\n🚨 FAIL-FAST: {result.name} failed, terminating immediately..."
+                        )
+                        self.logger.info("\n📋 Failure Details:")
+                        self.logger.info("━" * 60)
+                        self.logger.info(result.output)
+                        self.logger.info("━" * 60)
+                        sys.exit(1)
+        
+        return all_results
+
     def format_results(self, results: List[CheckResult], total_duration: float) -> str:
         """Format the results into a comprehensive report."""
         passed_checks = [r for r in results if r.status == CheckStatus.PASSED]
@@ -377,9 +448,9 @@ class QualityGateExecutor:
 
         start_time = time.time()
 
-        # Run all checks in parallel
+        # Run all checks in parallel, but handle pytest conflicts
         self.logger.info("🚀 Running all quality checks in parallel...")
-        all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
+        all_results = self.run_checks_with_pytest_sequencing(checks_to_run, fail_fast=fail_fast)
 
         total_duration = time.time() - start_time
 

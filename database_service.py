@@ -20,6 +20,43 @@ from models import User, validate_course_number, validate_email  # noqa: F401
 # Get standardized logger
 logger = get_database_logger()
 
+
+def sanitize_for_logging(value: Any, max_length: int = 100) -> str:
+    """
+    Sanitize user input for safe logging to prevent log injection attacks.
+
+    Args:
+        value: The value to sanitize (will be converted to string)
+        max_length: Maximum length of the sanitized string
+
+    Returns:
+        Sanitized string safe for logging
+    """
+    if value is None:
+        return "None"
+
+    # Convert to string and limit length
+    str_value = str(value)[:max_length]
+
+    # Remove/replace dangerous characters that could be used for log injection
+    # Replace newlines, carriage returns, and other control characters
+    sanitized = (
+        str_value.replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("\x00", "\\x00")  # null bytes
+        .replace("\x1b", "\\x1b")  # escape sequences
+    )
+
+    # Remove any remaining control characters (ASCII 0-31 except tab, newline, carriage return)
+    sanitized = "".join(
+        char if ord(char) >= 32 or char in ["\t"] else f"\\x{ord(char):02x}"
+        for char in sanitized
+    )
+
+    return sanitized
+
+
 # --- Firestore Client Initialization ---
 
 db = None
@@ -91,7 +128,9 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     Returns:
         User data if found, None otherwise
     """
-    logger.info(f"[DB Service] get_user_by_email called for: {email}")
+    logger.info(
+        "[DB Service] get_user_by_email called for: %s", sanitize_for_logging(email)
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return None
@@ -108,10 +147,15 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         for doc in docs:
             user_data = doc.to_dict()
             user_data["user_id"] = doc.id
-            logger.info(f"[DB Service] Found user: {user_data.get('email')}")
+            logger.info(
+                "[DB Service] Found user: %s",
+                sanitize_for_logging(user_data.get("email")),
+            )
             return user_data
 
-        logger.info(f"[DB Service] No user found with email: {email}")
+        logger.info(
+            "[DB Service] No user found with email: %s", sanitize_for_logging(email)
+        )
         return None
 
     except Exception as e:
@@ -129,7 +173,9 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
     Returns:
         List of user dictionaries
     """
-    logger.info(f"[DB Service] get_users_by_role called for role: {role}")
+    logger.info(
+        "[DB Service] get_users_by_role called for role: %s", sanitize_for_logging(role)
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return []
@@ -149,7 +195,11 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
             user["user_id"] = doc.id
             users.append(user)
 
-        logger.info(f"[DB Service] Found {len(users)} users with role: {role}")
+        logger.info(
+            "[DB Service] Found %d users with role: %s",
+            len(users),
+            sanitize_for_logging(role),
+        )
         return users
 
     except Exception as e:
@@ -168,7 +218,10 @@ def update_user_extended(user_id: str, update_data: Dict[str, Any]) -> bool:
     Returns:
         True if successful, False otherwise
     """
-    logger.info(f"[DB Service] update_user_extended called for user: {user_id}")
+    logger.info(
+        "[DB Service] update_user_extended called for user: %s",
+        sanitize_for_logging(user_id),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return False
@@ -176,7 +229,9 @@ def update_user_extended(user_id: str, update_data: Dict[str, Any]) -> bool:
     try:
         doc_ref = db.collection(USERS_COLLECTION).document(user_id)
         doc_ref.update(update_data)
-        logger.info(f"[DB Service] User {user_id} updated successfully")
+        logger.info(
+            "[DB Service] User %s updated successfully", sanitize_for_logging(user_id)
+        )
         return True
 
     except Exception as e:
@@ -200,7 +255,8 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
         Course ID if successful, None otherwise
     """
     logger.info(
-        f"[DB Service] create_course called for: {course_data.get('course_number')}"
+        "[DB Service] create_course called for: %s",
+        sanitize_for_logging(course_data.get("course_number")),
     )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
@@ -215,7 +271,8 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
         # Validate course number format
         if not validate_course_number(course_data["course_number"]):
             logger.info(
-                f"[DB Service] Invalid course number format: {course_data['course_number']}"
+                "[DB Service] Invalid course number format: %s",
+                sanitize_for_logging(course_data["course_number"]),
             )
             return None
 
@@ -240,7 +297,10 @@ def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
     Returns:
         Course data if found, None otherwise
     """
-    logger.info(f"[DB Service] get_course_by_number called for: {course_number}")
+    logger.info(
+        "[DB Service] get_course_by_number called for: %s",
+        sanitize_for_logging(course_number),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return None
@@ -262,7 +322,10 @@ def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
             )
             return course_data
 
-        logger.info(f"[DB Service] No course found with number: {course_number}")
+        logger.info(
+            "[DB Service] No course found with number: %s",
+            sanitize_for_logging(course_number),
+        )
         return None
 
     except Exception as e:
@@ -280,7 +343,10 @@ def get_courses_by_department(department: str) -> List[Dict[str, Any]]:
     Returns:
         List of course dictionaries
     """
-    logger.info(f"[DB Service] get_courses_by_department called for: {department}")
+    logger.info(
+        "[DB Service] get_courses_by_department called for: %s",
+        sanitize_for_logging(department),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return []
@@ -299,7 +365,9 @@ def get_courses_by_department(department: str) -> List[Dict[str, Any]]:
             courses.append(course)
 
         logger.info(
-            f"[DB Service] Found {len(courses)} courses in department: {department}"
+            "[DB Service] Found %d courses in department: %s",
+            len(courses),
+            sanitize_for_logging(department),
         )
         return courses
 
@@ -323,7 +391,10 @@ def create_term(term_data: Dict[str, Any]) -> Optional[str]:
     Returns:
         Term ID if successful, None otherwise
     """
-    logger.info(f"[DB Service] create_term called for: {term_data.get('term_name')}")
+    logger.info(
+        "[DB Service] create_term called for: %s",
+        sanitize_for_logging(term_data.get("term_name")),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return None
@@ -333,7 +404,10 @@ def create_term(term_data: Dict[str, Any]) -> Optional[str]:
         required_fields = ["term_name", "start_date", "end_date"]
         for field in required_fields:
             if field not in term_data:
-                logger.info(f"[DB Service] Missing required field: {field}")
+                logger.info(
+                    "[DB Service] Missing required field: %s",
+                    sanitize_for_logging(field),
+                )
                 return None
 
         # Create term document
@@ -357,7 +431,9 @@ def get_term_by_name(name: str) -> Optional[Dict[str, Any]]:
     Returns:
         Term data if found, None otherwise
     """
-    logger.info(f"[DB Service] get_term_by_name called for: {name}")
+    logger.info(
+        "[DB Service] get_term_by_name called for: %s", sanitize_for_logging(name)
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return None
@@ -374,10 +450,15 @@ def get_term_by_name(name: str) -> Optional[Dict[str, Any]]:
         for doc in docs:
             term_data = doc.to_dict()
             term_data["term_id"] = doc.id
-            logger.info(f"[DB Service] Found term: {term_data.get('term_name')}")
+            logger.info(
+                "[DB Service] Found term: %s",
+                sanitize_for_logging(term_data.get("term_name")),
+            )
             return term_data
 
-        logger.info(f"[DB Service] No term found with name: {name}")
+        logger.info(
+            "[DB Service] No term found with name: %s", sanitize_for_logging(name)
+        )
         return None
 
     except Exception as e:
@@ -433,7 +514,7 @@ def create_course_section(section_data: Dict[str, Any]) -> Optional[str]:
     Returns:
         Section ID if successful, None otherwise
     """
-    logger.info(f"[DB Service] create_course_section called")
+    logger.info("[DB Service] create_course_section called")
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return None
@@ -443,7 +524,10 @@ def create_course_section(section_data: Dict[str, Any]) -> Optional[str]:
         required_fields = ["course_id", "term_id", "section_number"]
         for field in required_fields:
             if field not in section_data:
-                logger.info(f"[DB Service] Missing required field: {field}")
+                logger.info(
+                    "[DB Service] Missing required field: %s",
+                    sanitize_for_logging(field),
+                )
                 return None
 
         # Create section document
@@ -467,7 +551,10 @@ def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
     Returns:
         List of section dictionaries
     """
-    logger.info(f"[DB Service] get_sections_by_instructor called for: {instructor_id}")
+    logger.info(
+        "[DB Service] get_sections_by_instructor called for: %s",
+        sanitize_for_logging(instructor_id),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return []
@@ -486,7 +573,9 @@ def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
             sections.append(section)
 
         logger.info(
-            f"[DB Service] Found {len(sections)} sections for instructor: {instructor_id}"
+            "[DB Service] Found %d sections for instructor: %s",
+            len(sections),
+            sanitize_for_logging(instructor_id),
         )
         return sections
 
@@ -505,7 +594,10 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
     Returns:
         List of section dictionaries
     """
-    logger.info(f"[DB Service] get_sections_by_term called for: {term_id}")
+    logger.info(
+        "[DB Service] get_sections_by_term called for: %s",
+        sanitize_for_logging(term_id),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return []
@@ -523,7 +615,11 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
             section["section_id"] = doc.id
             sections.append(section)
 
-        logger.info(f"[DB Service] Found {len(sections)} sections for term: {term_id}")
+        logger.info(
+            "[DB Service] Found %d sections for term: %s",
+            len(sections),
+            sanitize_for_logging(term_id),
+        )
         return sections
 
     except Exception as e:

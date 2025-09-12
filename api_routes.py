@@ -6,6 +6,8 @@ These routes provide a proper REST API structure while maintaining backward comp
 with the existing single-page application.
 """
 
+import traceback
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 # Import our services
@@ -27,9 +29,38 @@ from database_service import (
     get_users_by_role,
 )
 from import_service import import_excel
+from logging_config import get_logger
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
+
+# Get logger for this module
+logger = get_logger(__name__)
+
+
+def handle_api_error(
+    e, operation_name="API operation", user_message="An error occurred"
+):
+    """
+    Securely handle API errors by logging full details while returning sanitized responses.
+
+    Args:
+        e: The exception that occurred
+        operation_name: Description of what operation failed (for logging)
+        user_message: Safe message to return to the user
+
+    Returns:
+        tuple: (JSON response, HTTP status code)
+    """
+    # Log full error details for debugging (includes stack trace)
+    logger.error(
+        f"{operation_name} failed: {str(e)}\n"
+        f"Full traceback:\n{traceback.format_exc()}"
+    )
+
+    # Return sanitized response to user
+    return jsonify({"success": False, "error": user_message}), 500
+
 
 # ========================================
 # DASHBOARD ROUTES (Role-based views)
@@ -91,7 +122,7 @@ def list_users():
         return jsonify({"success": True, "users": users, "count": len(users)})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get users", "Failed to retrieve users")
 
 
 @api.route("/users", methods=["POST"])
@@ -147,7 +178,7 @@ def create_user():
             return jsonify({"success": False, "error": "Failed to create user"}), 500
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Create user", "Failed to create user")
 
 
 @api.route("/users/<user_id>", methods=["GET"])
@@ -175,7 +206,7 @@ def get_user(user_id: str):
             return jsonify({"success": False, "error": "User not found"}), 404
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get user by email", "Failed to retrieve user")
 
 
 # ========================================
@@ -204,7 +235,7 @@ def list_courses():
         return jsonify({"success": True, "courses": courses, "count": len(courses)})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get courses", "Failed to retrieve courses")
 
 
 @api.route("/courses", methods=["POST"])
@@ -257,7 +288,7 @@ def create_course_api():
             return jsonify({"success": False, "error": "Failed to create course"}), 500
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Create course", "Failed to create course")
 
 
 @api.route("/courses/<course_number>", methods=["GET"])
@@ -273,7 +304,7 @@ def get_course(course_number: str):
             return jsonify({"success": False, "error": "Course not found"}), 404
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get course by number", "Failed to retrieve course")
 
 
 # ========================================
@@ -291,7 +322,7 @@ def list_terms():
         return jsonify({"success": True, "terms": terms, "count": len(terms)})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get terms", "Failed to retrieve terms")
 
 
 @api.route("/terms", methods=["POST"])
@@ -344,7 +375,7 @@ def create_term_api():
             return jsonify({"success": False, "error": "Failed to create term"}), 500
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Create term", "Failed to create term")
 
 
 # ========================================
@@ -396,7 +427,7 @@ def list_sections():
         return jsonify({"success": True, "sections": sections, "count": len(sections)})
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Get sections", "Failed to retrieve sections")
 
 
 @api.route("/sections", methods=["POST"])
@@ -453,7 +484,7 @@ def create_section():
             )
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Create section", "Failed to create section")
 
 
 # ========================================
@@ -563,7 +594,7 @@ def import_excel_api():
                 pass
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Excel import", "Failed to process file upload")
 
 
 @api.route("/import/validate", methods=["POST"])
@@ -637,7 +668,7 @@ def validate_import_file():
                 pass
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return handle_api_error(e, "Import validation", "Failed to validate file")
 
 
 # ========================================

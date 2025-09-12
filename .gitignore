@@ -19,4 +19,9 @@ logs/
 # SonarCloud analysis artifacts
 .scannerwork/
 
+# CodeQL analysis artifacts
+python-database/
+codeql-results*.csv
+codeql-results*.sarif
+
 .DS_Store
