@@ -417,6 +417,31 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   
   # Also write to file to bypass GitHub truncation
   echo "$SAFETY_OUTPUT" > /tmp/safety_output.txt
+  echo "$SAFETY_OUTPUT" > safety_detailed_output.txt  # For artifact upload
+  
+  # Create comprehensive diagnostic file
+  {
+    echo "=== SAFETY SCAN DIAGNOSTIC REPORT ==="
+    echo "Timestamp: $(date)"
+    echo "Exit Code: $SAFETY_EXIT_CODE"
+    echo "Output Length: ${#SAFETY_OUTPUT} characters"
+    echo "Safety Version: $(safety --version 2>&1 || echo 'VERSION CHECK FAILED')"
+    echo "Python Version: $(python --version 2>&1)"
+    echo "Working Directory: $(pwd)"
+    echo ""
+    echo "=== COMPLETE SAFETY OUTPUT ==="
+    echo "$SAFETY_OUTPUT"
+    echo ""
+    echo "=== HEXDUMP OF OUTPUT ==="
+    echo "$SAFETY_OUTPUT" | hexdump -C
+    echo ""
+    echo "=== ALTERNATIVE COMMANDS ==="
+    echo "--- Safety scan without JSON ---"
+    timeout 10s safety scan 2>&1 || echo "Failed"
+    echo ""
+    echo "--- Safety check (deprecated) ---"
+    timeout 10s safety check 2>&1 || echo "Failed"
+  } > safety_full_diagnostic.txt
   set -e  # Re-enable exit on error
   
   echo "📋 Debug: Safety command completed with exit code: $SAFETY_EXIT_CODE"
