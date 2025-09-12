@@ -51,6 +51,7 @@ class QualityGateExecutor:
         # Get centralized quality gate logger
         import os
         import sys
+
         # Add parent directory to path for importing logging_config
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if parent_dir not in sys.path:
@@ -68,7 +69,7 @@ class QualityGateExecutor:
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
-            ("sonar", "🔍 SonarQube Quality Analysis"),
+            ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
@@ -359,13 +360,9 @@ class QualityGateExecutor:
 
         # Determine which checks to run
         if checks is None:
-            # Default: run the most important checks for development
-            # Note: coverage is separate from tests to avoid parallel pytest conflicts
-            checks_to_run = [
-                check
-                for check in self.all_checks
-                if check[0] in ["black", "isort", "lint", "tests"]
-            ]
+            # Default: run all atomic checks
+            # Note: tests and coverage run sequentially to avoid pytest conflicts
+            checks_to_run = self.all_checks
         else:
             # Run only specified checks
             available_checks = {flag: (flag, name) for flag, name in self.all_checks}
@@ -419,15 +416,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/ship_it.py                                    # All essential checks in parallel
-  python scripts/ship_it.py --fail-fast                        # All essential checks, exit on first failure
+  python scripts/ship_it.py                                    # All atomic checks in parallel
+  python scripts/ship_it.py --fail-fast                        # All atomic checks, exit on first failure
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
 Available checks: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication
 
-By default, runs the essential checks (black, isort, lint, tests) for fast development.
-Use specific --checks for targeted validation or comprehensive pre-commit checks.
+By default, runs ALL atomic checks for comprehensive quality validation.
+Use specific --checks for targeted validation or faster development cycles.
         """,
     )
 

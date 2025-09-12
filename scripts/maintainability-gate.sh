@@ -270,8 +270,8 @@ fi
 if [[ "$RUN_TESTS" == "true" ]]; then
   echo "🧪 Test Suite Execution (pytest)"
 
-  # Run UNIT tests only (fast tests, separate directory)
-  echo "  🔍 Running UNIT test suite..."
+  # Run UNIT tests only (fast tests, separate directory, no coverage)
+  echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
   TEST_OUTPUT=$(python -m pytest tests/unit/ -v 2>&1) || TEST_FAILED=true
 
   if [[ "$TEST_FAILED" == "true" ]]; then
@@ -317,8 +317,8 @@ fi
 if [[ "$RUN_COVERAGE" == "true" ]]; then
   echo "📊 Test Coverage Analysis (80% threshold)"
 
-  # Run coverage analysis with 80% threshold (unit tests only)
-  echo "  📊 Running coverage analysis..."
+  # Run coverage analysis with 80% threshold (unit tests only, independent pytest run)
+  echo "  📊 Running coverage analysis (separate pytest run with coverage)..."
   COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
 
   if [[ "$COVERAGE_FAILED" != "true" ]]; then
@@ -390,7 +390,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
 
   # Run safety scan for known vulnerabilities in dependencies
   echo "🔧 Running safety dependency scan..."
-  SAFETY_OUTPUT=$(timeout 30s safety scan --full-report --json --output safety-report.json 2>&1) || SAFETY_FAILED=true
+  SAFETY_OUTPUT=$(timeout 30s safety scan --full-report --output json 2>&1) || SAFETY_FAILED=true
 
   if [[ "$SAFETY_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
@@ -417,54 +417,56 @@ fi
 # SONARQUBE QUALITY ANALYSIS
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_SONAR" == "true" ]]; then
-  echo "🔍 SonarQube Quality Analysis"
+  echo "🔍 SonarCloud Quality Analysis"
 
   SONAR_PASSED=true
 
   # Check if sonar-scanner is available
   if ! command -v sonar-scanner &> /dev/null; then
-    echo "❌ SonarQube Scanner not found"
+    echo "❌ SonarCloud Scanner not found"
     echo "📋 Installation Instructions:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "  1. Download SonarScanner from: https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/"
     echo "  2. Or install via Homebrew: brew install sonar-scanner"
-    echo "  3. Configure SONAR_HOST_URL and SONAR_TOKEN environment variables"
+    echo "  3. Configure SONAR_TOKEN environment variable for SonarCloud"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    add_failure "SonarQube Analysis" "SonarQube Scanner not installed" "Install sonar-scanner and configure environment variables"
+    add_failure "SonarCloud Analysis" "SonarCloud Scanner not installed" "Install sonar-scanner and configure environment variables"
     SONAR_PASSED=false
   else
-    # Check if required environment variables are set
-    if [[ -z "$SONAR_HOST_URL" || -z "$SONAR_TOKEN" ]]; then
-      echo "⚠️  SonarQube environment variables not configured"
+    # Check if SONAR_TOKEN is set (SonarCloud doesn't need SONAR_HOST_URL)
+    if [[ -z "$SONAR_TOKEN" ]]; then
+      echo "⚠️  SonarCloud environment variables not configured"
       echo "📋 Required Environment Variables:"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "  export SONAR_HOST_URL=https://your-sonarqube-server.com"
-      echo "  export SONAR_TOKEN=your-project-token"
+      echo "  export SONAR_TOKEN=your-sonarcloud-token"
+      echo ""
+      echo "  Get your token from: https://sonarcloud.io/account/security"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      add_failure "SonarQube Analysis" "Environment variables not configured" "Set SONAR_HOST_URL and SONAR_TOKEN environment variables"
+      add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Run SonarQube analysis
-      echo "🔧 Running SonarQube analysis..."
+      # Run SonarCloud analysis
+      echo "🔧 Running SonarCloud analysis..."
       SONAR_OUTPUT=$(sonar-scanner \
         -Dsonar.projectKey=course-record-updater \
+        -Dsonar.organization=scienceisneato \
         -Dsonar.sources=. \
-        -Dsonar.exclusions="venv/**,**/.venv/**,**/node_modules/**,**/__pycache__/**,**/*.pyc,tests/**" \
+        -Dsonar.exclusions="venv/**,**/.venv/**,**/node_modules/**,**/__pycache__/**,**/*.pyc,tests/**,cursor-rules/**" \
         -Dsonar.python.coverage.reportPaths=coverage.xml \
         -Dsonar.python.xunit.reportPath=test-results.xml \
-        -Dsonar.host.url="$SONAR_HOST_URL" \
+        -Dsonar.host.url=https://sonarcloud.io \
         -Dsonar.login="$SONAR_TOKEN" 2>&1) || SONAR_FAILED=true
 
       if [[ "$SONAR_FAILED" != "true" ]]; then
-        echo "✅ SonarQube Analysis: PASSED"
-        add_success "SonarQube Analysis" "Code quality analysis completed successfully"
+        echo "✅ SonarCloud Analysis: PASSED"
+        add_success "SonarCloud Analysis" "Code quality analysis completed successfully"
       else
-        echo "❌ SonarQube Analysis: FAILED"
-        echo "📋 SonarQube Analysis Output:"
+        echo "❌ SonarCloud Analysis: FAILED"
+        echo "📋 SonarCloud Analysis Output:"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "$SONAR_OUTPUT" | tail -20 | sed 's/^/  /'
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        add_failure "SonarQube Analysis" "Quality analysis failed" "Check SonarQube server logs and fix quality issues"
+        add_failure "SonarCloud Analysis" "Quality analysis failed" "Check SonarCloud project configuration and fix quality issues"
         SONAR_PASSED=false
       fi
     fi
@@ -509,21 +511,9 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_DUPLICATION" == "true" ]]; then
   echo "🔄 Code Duplication Check"
-
-  # Use a simple approach for Python duplication detection
-  # This is a basic implementation - could be enhanced with tools like jscpd
-  echo "🔧 Checking for code duplication..."
-
-  # Simple duplication check using basic patterns
-  DUPLICATE_FUNCTIONS=$(grep -r "def " *.py **/*.py | cut -d: -f2 | sort | uniq -d | wc -l)
-
-  if [[ "$DUPLICATE_FUNCTIONS" -eq 0 ]]; then
-    echo "✅ Duplication Check: PASSED (no obvious duplicates)"
-    add_success "Duplication Check" "No obvious code duplication detected"
-  else
-    echo "❌ Duplication Check: WARNING ($DUPLICATE_FUNCTIONS potential duplicates)"
-    add_failure "Duplication Check" "$DUPLICATE_FUNCTIONS potential duplicate functions" "Review code for duplication and refactor if necessary"
-  fi
+  echo "📋 Note: Comprehensive duplication analysis is handled by SonarCloud"
+  echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
+  add_success "Duplication Check" "Duplication analysis delegated to SonarCloud for comprehensive detection"
   echo ""
 fi
 
