@@ -412,12 +412,11 @@ class TestImportBusinessLogic:
 
                 # Verify deletion was attempted for all collections
                 expected_collections = [
-                    "courses_v2",
+                    "courses",
                     "users",
                     "terms",
                     "course_sections",
                     "course_outcomes",
-                    "courses",
                 ]
 
                 collection_calls = [

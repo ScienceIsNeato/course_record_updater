@@ -410,9 +410,16 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   echo "📋 Debug: Testing basic safety command..."
   safety --help >/dev/null 2>&1 && echo "  Safety help works" || echo "  Safety help FAILED"
   
-  echo "📋 Debug: Running safety scan with full error capture..."
+  echo "📋 Debug: Running safety scan with authentication..."
   set +e  # Don't exit on error
-  SAFETY_OUTPUT=$(timeout 60s safety scan --output json 2>&1)
+  # Use API key from environment if available, otherwise try without auth
+  if [[ -n "$SAFETY_API_KEY" ]]; then
+    echo "  Using Safety API key for authentication"
+    SAFETY_OUTPUT=$(timeout 60s safety scan --output json --key "$SAFETY_API_KEY" 2>&1)
+  else
+    echo "  No Safety API key found, attempting scan without authentication"
+    SAFETY_OUTPUT=$(timeout 60s safety scan --output json 2>&1)
+  fi
   SAFETY_EXIT_CODE=$?
   
   # Also write to file to bypass GitHub truncation

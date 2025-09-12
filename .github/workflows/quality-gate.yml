@@ -229,6 +229,7 @@ jobs:
         exit ${PIPESTATUS[0]}
       env:
         PYTHONPATH: .
+        SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
     
     - name: Upload Security Audit Output
       if: always()
