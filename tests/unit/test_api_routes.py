@@ -107,9 +107,10 @@ class TestDashboardRoutes:
             "last_name": "User",
         }
 
-        with patch("api_routes.redirect") as mock_redirect, patch(
-            "api_routes.flash"
-        ) as mock_flash:
+        with (
+            patch("api_routes.redirect") as mock_redirect,
+            patch("api_routes.flash") as mock_flash,
+        ):
             mock_redirect.return_value = "Redirect response"
             response = self.client.get("/api/dashboard")
 
@@ -122,9 +123,10 @@ class TestDashboardRoutes:
         """Test dashboard when no user is logged in - line 50."""
         mock_get_user.return_value = None
 
-        with patch("api_routes.redirect") as mock_redirect, patch(
-            "api_routes.url_for"
-        ) as mock_url_for:
+        with (
+            patch("api_routes.redirect") as mock_redirect,
+            patch("api_routes.url_for") as mock_url_for,
+        ):
             mock_redirect.return_value = "Login redirect"
             mock_url_for.return_value = "/login"
             response = self.client.get("/api/dashboard")

@@ -4,7 +4,7 @@ Replaces hardcoded ALLOWED_TERMS with flexible term management.
 """
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 
 class TermGenerator:
@@ -14,7 +14,10 @@ class TermGenerator:
     TERM_CODES = {"FA": "Fall", "SP": "Spring", "SU": "Summer"}
 
     def __init__(
-        self, base_year: int = None, years_forward: int = 2, years_back: int = 1
+        self,
+        base_year: Optional[int] = None,
+        years_forward: int = 2,
+        years_back: int = 1,
     ):
         """
         Initialize term generator.

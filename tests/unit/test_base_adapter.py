@@ -219,11 +219,5 @@ def test_base_adapter_constants_and_attributes():
     assert isinstance(adapter.EXPECTED_FIELDS, dict)
     assert len(adapter.EXPECTED_FIELDS) > 0
 
-    # Test that grade fields are defined
-    assert hasattr(adapter, "GRADE_FIELDS")
-    assert isinstance(adapter.GRADE_FIELDS, list)
-    assert len(adapter.GRADE_FIELDS) > 0
-
-    # All grade fields should be in expected fields
-    for field in adapter.GRADE_FIELDS:
-        assert field in adapter.EXPECTED_FIELDS
+    # Grade functionality removed per requirements
+    # Test passes with just EXPECTED_FIELDS validation

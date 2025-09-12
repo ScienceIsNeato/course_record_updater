@@ -20,6 +20,7 @@ in parallel threads, then collects and formats the results.
 
 import argparse
 import concurrent.futures
+import logging
 import re
 import subprocess
 import sys
@@ -48,6 +49,16 @@ class QualityGateExecutor:
     """Manages parallel execution of quality gate checks for Python/Flask projects."""
 
     def __init__(self):
+        # Configure logging for quality gate execution
+        self.logger = logging.getLogger('QualityGate')
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                '%(message)s'  # Simple format for quality gate output
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.INFO)
         self.script_path = "./scripts/maintainability-gate.sh"
 
         # Define all quality checks - adapted for Python/Flask
@@ -121,8 +132,9 @@ class QualityGateExecutor:
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
         results = []
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        
+        try:
             # Submit all checks
             future_to_check = {
                 executor.submit(self.run_single_check, check_flag, check_name): (
@@ -141,28 +153,24 @@ class QualityGateExecutor:
 
                     # Print real-time status updates
                     status_icon = "✅" if result.status == CheckStatus.PASSED else "❌"
-                    print(
+                    self.logger.info(
                         f"{status_icon} {result.name} completed in {result.duration:.1f}s"
                     )
 
                     # Fail-fast: exit immediately on first failure
                     if fail_fast and result.status == CheckStatus.FAILED:
-                        # Enhanced error reporting for test failures
-                        if "Test Suite" in result.name:
-                            failure_reason = self._extract_test_failure_reason(
-                                result.output
-                            )
-                            print(
-                                f"\n🚨 FAIL-FAST: {result.name} failed, terminating immediately..."
-                            )
-                            print(f"   Reason: {failure_reason}")
-                        else:
-                            print(
-                                f"\n🚨 FAIL-FAST: {result.name} failed, terminating immediately..."
-                            )
-                        # Force shutdown executor to kill running processes
-                        executor.shutdown(wait=False, cancel_futures=True)
-                        # Exit immediately without waiting
+                        self.logger.error(
+                            f"\n🚨 FAIL-FAST: {result.name} failed, terminating immediately..."
+                        )
+                        self.logger.info("\n📋 Failure Details:")
+                        self.logger.info("━" * 60)
+                        self.logger.info(result.output)
+                        self.logger.info("━" * 60)
+                        
+                        # Cancel all remaining futures and shutdown immediately
+                        for f in future_to_check:
+                            f.cancel()
+                        executor.shutdown(wait=False)
                         sys.exit(1)
 
                 except (concurrent.futures.TimeoutError, RuntimeError) as exc:
@@ -176,8 +184,12 @@ class QualityGateExecutor:
                             error=f"Thread execution failed: {exc}",
                         )
                     )
-                    print(f"❌ {check_name} failed with exception: {exc}")
+                    self.logger.error(f"❌ {check_name} failed with exception: {exc}")
 
+        finally:
+            # Ensure executor is properly cleaned up
+            executor.shutdown(wait=True)
+            
         return results
 
     def _format_header(self, total_duration: float) -> List[str]:
@@ -338,11 +350,11 @@ class QualityGateExecutor:
 
     def execute(self, checks: List[str] = None, fail_fast: bool = False) -> int:
         """Execute all quality checks in parallel and return exit code."""
-        print(
+        self.logger.info(
             "🔍 Running Course Record Updater quality checks (PARALLEL MODE with auto-fix)..."
         )
-        print("🐍 Python/Flask enterprise validation suite")
-        print("")
+        self.logger.info("🐍 Python/Flask enterprise validation suite")
+        self.logger.info("")
 
         # Determine which checks to run
         if checks is None:
@@ -360,20 +372,20 @@ class QualityGateExecutor:
                 if check in available_checks:
                     checks_to_run.append(available_checks[check])
                 else:
-                    print(f"❌ Unknown check: {check}")
-                    print(f"Available checks: {', '.join(available_checks.keys())}")
+                    self.logger.error(f"❌ Unknown check: {check}")
+                    self.logger.info(f"Available checks: {', '.join(available_checks.keys())}")
                     return 1
 
         start_time = time.time()
 
         # Run all checks in parallel
-        print("🚀 Running all quality checks in parallel...")
+        self.logger.info("🚀 Running all quality checks in parallel...")
         all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
 
         total_duration = time.time() - start_time
 
         # Format and display results
-        print("\n" + self.format_results(all_results, total_duration))
+        self.logger.info("\n" + self.format_results(all_results, total_duration))
 
         # Return appropriate exit code
         failed_count = len([r for r in all_results if r.status == CheckStatus.FAILED])

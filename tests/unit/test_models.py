@@ -159,17 +159,7 @@ class TestCourseSection:
                 course_id="course-123", term_id="term-456", status="invalid_status"
             )
 
-    def test_update_grade_distribution(self):
-        """Test updating grade distribution"""
-        grades = CourseSection.update_grade_distribution(
-            grade_a=5, grade_b=8, grade_c=10, grade_d=2, grade_f=0
-        )
-
-        assert grades["grade_a"] == 5
-        assert grades["grade_b"] == 8
-        assert grades["grade_c"] == 10
-        assert grades["grade_d"] == 2
-        assert grades["grade_f"] == 0
+    # Grade distribution functionality removed per requirements
 
 
 class TestCourseOutcome:

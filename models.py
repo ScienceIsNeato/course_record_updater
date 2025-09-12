@@ -196,13 +196,7 @@ class CourseSection(DataModel):
             "section_number": section_number.strip(),
             "enrollment": enrollment,
             "status": status,
-            "grade_distribution": {
-                "grade_a": None,
-                "grade_b": None,
-                "grade_c": None,
-                "grade_d": None,
-                "grade_f": None,
-            },
+            "grade_distribution": {},
             "assigned_date": (
                 CourseSection.current_timestamp() if instructor_id else None
             ),
@@ -211,23 +205,7 @@ class CourseSection(DataModel):
             "last_modified": CourseSection.current_timestamp(),
         }
 
-    @staticmethod
-    def update_grade_distribution(
-        grade_a: Optional[int] = None,
-        grade_b: Optional[int] = None,
-        grade_c: Optional[int] = None,
-        grade_d: Optional[int] = None,
-        grade_f: Optional[int] = None,
-    ) -> Dict[str, Optional[int]]:
-        """Create grade distribution update data"""
-
-        return {
-            "grade_a": grade_a,
-            "grade_b": grade_b,
-            "grade_c": grade_c,
-            "grade_d": grade_d,
-            "grade_f": grade_f,
-        }
+    # Grade distribution functionality removed per requirements
 
 
 class CourseOutcome(DataModel):
@@ -350,14 +328,8 @@ class LegacyCourse(DataModel):
             enrollment=course_data.get("num_students"),
         )
 
-        # Update grade distribution
-        section["grade_distribution"] = CourseSection.update_grade_distribution(
-            grade_a=course_data.get("grade_a"),
-            grade_b=course_data.get("grade_b"),
-            grade_c=course_data.get("grade_c"),
-            grade_d=course_data.get("grade_d"),
-            grade_f=course_data.get("grade_f"),
-        )
+        # Grade distribution functionality removed per requirements
+        section["grade_distribution"] = {}
 
         return {"course": course, "term": term, "user": user, "section": section}
 

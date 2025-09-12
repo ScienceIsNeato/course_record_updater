@@ -322,8 +322,9 @@ class TestFileAdapterDispatcherExtended:
         """Test discover_adapters with general exception."""
         dispatcher = FileAdapterDispatcher()
 
-        with patch("os.path.isdir", return_value=True), patch(
-            "os.listdir", side_effect=OSError("Permission denied")
+        with (
+            patch("os.path.isdir", return_value=True),
+            patch("os.listdir", side_effect=OSError("Permission denied")),
         ):
             adapters = dispatcher.discover_adapters()
             # Should return empty list gracefully
@@ -342,9 +343,11 @@ class TestFileAdapterDispatcherExtended:
             "test_file.py",
         ]
 
-        with patch("os.path.isdir", return_value=True), patch(
-            "os.listdir", return_value=mock_files
-        ), patch("os.path.isfile", return_value=True):
+        with (
+            patch("os.path.isdir", return_value=True),
+            patch("os.listdir", return_value=mock_files),
+            patch("os.path.isfile", return_value=True),
+        ):
             adapters = dispatcher.discover_adapters()
 
             # Should only include .py files that aren't excluded

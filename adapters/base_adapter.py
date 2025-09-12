@@ -29,16 +29,8 @@ class BaseAdapter:
             False,
             int,
             lambda n: n >= 0,
-        ),  # Now potentially required by grades
-        # Optional Grades - Must be non-negative int if present
-        "grade_a": (False, int, lambda g: g >= 0),
-        "grade_b": (False, int, lambda g: g >= 0),
-        "grade_c": (False, int, lambda g: g >= 0),
-        "grade_d": (False, int, lambda g: g >= 0),
-        "grade_f": (False, int, lambda g: g >= 0),
+        ),
     }
-
-    GRADE_FIELDS = ["grade_a", "grade_b", "grade_c", "grade_d", "grade_f"]
 
     def parse_and_validate(self, form_data: dict):
         """
@@ -68,27 +60,16 @@ class BaseAdapter:
             if is_required and not raw_input_data.get(field):
                 errors.append(f"Missing required field: {field}")
 
-        # --- Grade Distribution Pre-check ---
-        # Check if any grade field has a non-empty value
-        any_grade_entered = any(
-            raw_input_data.get(g_field) for g_field in self.GRADE_FIELDS
-        )
-        num_students_raw = raw_input_data.get("num_students")
-
-        if any_grade_entered and not num_students_raw:
-            errors.append(
-                "Number of students is required when entering grade distribution."
-            )
-            # Mark num_students as effectively required for subsequent checks if needed
-            # This allows failing early if num_students is missing
-            # AND grades were entered
+        # Grade distribution functionality removed per requirements
+        # Grade distribution validation removed per requirements
+        # This allows failing early if num_students is missing
+        # AND grades were entered
 
         # Fail fast if required fields (including potentially num_students) are missing
         if errors:
             raise ValidationError("; ".join(errors))
 
         # --- Process fields (type conversion, validation) ---
-        grade_values = {}
         parsed_num_students = None
 
         for field, value_str in raw_input_data.items():
@@ -98,16 +79,8 @@ class BaseAdapter:
                 expected_type = config[1]
                 validator = config[2]
 
-                # Skip empty optional fields (unless it's num_students
-                # and grades were entered)
-                is_num_students_and_grades_entered = (
-                    field == "num_students" and any_grade_entered
-                )
-                if (
-                    not value_str
-                    and not is_required_field
-                    and not is_num_students_and_grades_entered
-                ):
+                # Skip empty optional fields
+                if not value_str and not is_required_field:
                     continue
 
                 # Attempt type conversion
@@ -142,8 +115,7 @@ class BaseAdapter:
                 # Store successfully converted values needed for cross-field validation
                 if field == "num_students" and processed_value is not None:
                     parsed_num_students = processed_value
-                elif field in self.GRADE_FIELDS and processed_value is not None:
-                    grade_values[field] = processed_value
+                # Grade field handling removed per requirements
 
                 # Run specific field validator if conversion succeeded
                 # and validator exists
@@ -167,33 +139,12 @@ class BaseAdapter:
                     if processed_value is not None or is_required_field:
                         validated_data[field] = processed_value
 
-        # --- Cross-Field Validation (Grade Distribution Sum) ---
-        if any_grade_entered:
-            # Ensure num_students was successfully parsed if grades were entered
-            if (
-                parsed_num_students is None
-                and "Number of students is required" not in "; ".join(errors)
-            ):
-                # This implies num_students was provided but failed
-                # type conversion/validation
-                # The specific error should already be in the errors list
-                pass  # Error already captured
-            elif parsed_num_students is not None:
-                # Sum only the grades that were actually entered and parsed correctly
-                current_grade_sum = sum(grade_values.values())
-                if current_grade_sum != parsed_num_students:
-                    errors.append(
-                        f"Sum of grades ({current_grade_sum}) does not match "
-                        f"Number of Students ({parsed_num_students})."
-                    )
+        # --- Grade distribution validation removed per requirements ---
 
         # --- Final check for errors ---
         if errors:
             raise ValidationError("; ".join(errors))
 
-        # Remove grade fields if none were entered (all were empty/optional)
-        if not any_grade_entered:
-            for g_field in self.GRADE_FIELDS:
-                validated_data.pop(g_field, None)
+        # Grade field processing removed per requirements
 
         return validated_data

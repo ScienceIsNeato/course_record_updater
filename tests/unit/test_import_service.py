@@ -63,10 +63,11 @@ class TestImportService:
             df.to_excel(tmp_file.name, index=False)
 
         try:
-            with patch("database_service.get_user_by_email", return_value=None), patch(
-                "database_service.get_course_by_number", return_value=None
-            ), patch("database_service.create_user", return_value="user123"), patch(
-                "database_service.create_course", return_value="course123"
+            with (
+                patch("database_service.get_user_by_email", return_value=None),
+                patch("database_service.get_course_by_number", return_value=None),
+                patch("database_service.create_user", return_value="user123"),
+                patch("database_service.create_course", return_value="course123"),
             ):
                 result = service.import_excel_file(
                     tmp_file.name,
@@ -102,9 +103,11 @@ class TestImportService:
             df.to_excel(tmp_file.name, index=False)
 
         try:
-            with patch("database_service.get_user_by_email", return_value=None), patch(
-                "database_service.get_course_by_number", return_value=None
-            ), patch.object(service, "_delete_all_data") as mock_delete:
+            with (
+                patch("database_service.get_user_by_email", return_value=None),
+                patch("database_service.get_course_by_number", return_value=None),
+                patch.object(service, "_delete_all_data") as mock_delete,
+            ):
                 result = service.import_excel_file(
                     tmp_file.name, delete_existing_db=True, dry_run=False
                 )
@@ -135,8 +138,9 @@ class TestImportService:
             df.to_excel(tmp_file.name, index=False)
 
         try:
-            with patch("database_service.get_user_by_email", return_value=None), patch(
-                "database_service.get_course_by_number", return_value=None
+            with (
+                patch("database_service.get_user_by_email", return_value=None),
+                patch("database_service.get_course_by_number", return_value=None),
             ):
                 result = service.import_excel_file(tmp_file.name, dry_run=True)
 
@@ -341,9 +345,11 @@ class TestImportService:
             df.to_excel(tmp_file.name, index=False)
 
         try:
-            with patch("database_service.get_user_by_email", return_value=None), patch(
-                "database_service.get_course_by_number", return_value=None
-            ), patch("builtins.print") as mock_print:
+            with (
+                patch("database_service.get_user_by_email", return_value=None),
+                patch("database_service.get_course_by_number", return_value=None),
+                patch("builtins.print") as mock_print,
+            ):
                 result = service.import_excel_file(
                     tmp_file.name,
                     dry_run=True,  # Use dry run to avoid actual database operations
