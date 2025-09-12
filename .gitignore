@@ -13,4 +13,7 @@ htmlcov/
 # Test artifacts
 .pytest_cache/
 
+# Log files and directories
+logs/
+
 .DS_Store

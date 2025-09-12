@@ -20,7 +20,6 @@ in parallel threads, then collects and formats the results.
 
 import argparse
 import concurrent.futures
-import logging
 import re
 import subprocess
 import sys
@@ -49,16 +48,15 @@ class QualityGateExecutor:
     """Manages parallel execution of quality gate checks for Python/Flask projects."""
 
     def __init__(self):
-        # Configure logging for quality gate execution
-        self.logger = logging.getLogger('QualityGate')
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                '%(message)s'  # Simple format for quality gate output
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-            self.logger.setLevel(logging.INFO)
+        # Get centralized quality gate logger
+        import os
+        import sys
+        # Add parent directory to path for importing logging_config
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        from logging_config import setup_quality_gate_logger
+        self.logger = setup_quality_gate_logger()
         self.script_path = "./scripts/maintainability-gate.sh"
 
         # Define all quality checks - adapted for Python/Flask

@@ -426,18 +426,19 @@ class TestDatabaseServiceIntegration:
 
     def test_logging_patterns(self):
         """Test that functions include proper logging."""
-        # This test verifies that functions call print statements for logging
-        # In a real implementation, you might want to use proper logging
+        # This test verifies that functions use proper logging
 
         with patch("database_service.db", None):
-            with patch("builtins.print") as mock_print:
+            with patch("database_service.logger") as mock_logger:
                 create_user({"email": "test@example.com"})
-                mock_print.assert_called()
+                mock_logger.info.assert_called()
+                mock_logger.error.assert_called()
 
         with patch("database_service.db", None):
-            with patch("builtins.print") as mock_print:
+            with patch("database_service.logger") as mock_logger:
                 get_user_by_email("test@example.com")
-                mock_print.assert_called()
+                mock_logger.info.assert_called()
+                mock_logger.error.assert_called()
 
 
 class TestExtendedDatabaseFunctions:

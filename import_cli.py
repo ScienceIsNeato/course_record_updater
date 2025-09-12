@@ -22,6 +22,10 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
 from import_service import ImportResult, create_import_report, import_excel
+from logging_config import get_logger
+
+# Get logger for CLI operations
+logger = get_logger("ImportCLI")
 
 
 def parse_arguments():
@@ -123,10 +127,12 @@ def determine_conflict_strategy(args) -> str:
 def validate_file(file_path: str) -> bool:
     """Validate that the input file exists and is accessible"""
     if not os.path.exists(file_path):
+        logger.error(f"File not found: {file_path}")
         print(f"❌ Error: File not found: {file_path}")
         return False
 
     if not os.access(file_path, os.R_OK):
+        logger.error(f"Cannot read file: {file_path}")
         print(f"❌ Error: Cannot read file: {file_path}")
         return False
 

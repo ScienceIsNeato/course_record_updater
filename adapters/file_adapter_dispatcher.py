@@ -3,7 +3,12 @@ import os
 
 import docx
 
+from logging_config import get_logger
+
 from .base_adapter import BaseAdapter, ValidationError
+
+# Get logger for file adapter operations
+logger = get_logger("FileAdapter")
 
 
 # Define a custom exception for dispatcher errors
@@ -49,7 +54,7 @@ class FileAdapterDispatcher:
             # Ensure ADAPTER_DIR is relative to this file's location or use absolute path
             # For simplicity, assume it's relative to project root where app runs
             if not os.path.isdir(self.ADAPTER_DIR):
-                print(f"Warning: Adapter directory '{self.ADAPTER_DIR}' not found.")
+                logger.warning(f"Adapter directory '{self.ADAPTER_DIR}' not found.")
                 return []
 
             for filename in os.listdir(self.ADAPTER_DIR):
@@ -60,16 +65,16 @@ class FileAdapterDispatcher:
                         adapter_name = filename[:-3]  # Remove .py extension
                         adapter_names.append(adapter_name)
         except FileNotFoundError:
-            print(
-                f"Warning: Adapter directory '{self.ADAPTER_DIR}' not found during listdir."
+            logger.warning(
+                f"Adapter directory '{self.ADAPTER_DIR}' not found during listdir."
             )
             return []  # Handle gracefully
         except Exception as e:
-            print(f"Error discovering adapters: {e}")
+            logger.error(f"Error discovering adapters: {e}")
             # Log error but potentially continue or return empty
             return []
 
-        print(f"Discovered adapters: {adapter_names}")
+        logger.info(f"Discovered adapters: {adapter_names}")
         return adapter_names
 
     def process_file(self, document: docx.document.Document, adapter_name: str):
@@ -105,16 +110,16 @@ class FileAdapterDispatcher:
                 if hasattr(adapter_instance, "parse") and callable(
                     adapter_instance.parse
                 ):
-                    print(f"Parsing document with {class_name}...")
+                    logger.info(f"Parsing document with {class_name}...")
                     # Call parse on the instance
                     parsed_data_list = adapter_instance.parse(document)
-                    print(f"Raw parsed data count: {len(parsed_data_list)}")
+                    logger.info(f"Raw parsed data count: {len(parsed_data_list)}")
 
                     # Apply base validation if requested
                     validated_data_list = []
                     validation_errors = []
                     if self._use_base_validation and self._base_validator:
-                        print("Applying base validation...")
+                        logger.info("Applying base validation...")
                         for i, course_data in enumerate(parsed_data_list):
                             try:
                                 validated = self._base_validator.parse_and_validate(
@@ -127,7 +132,7 @@ class FileAdapterDispatcher:
                         if validation_errors:
                             # Raise a single error summarizing all validation issues for the file
                             raise ValidationError("; ".join(validation_errors))
-                        print(
+                        logger.info(
                             f"Base validation passed for {len(validated_data_list)} records."
                         )
                         return validated_data_list  # Return validated data

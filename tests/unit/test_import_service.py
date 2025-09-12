@@ -229,22 +229,28 @@ class TestImportService:
         """Test _log method with different combinations."""
         # Test verbose mode
         service_verbose = ImportService(verbose=True)
-        with patch("builtins.print") as mock_print:
+        with patch.object(service_verbose, "logger") as mock_logger:
             service_verbose._log("Test message", "info")
             service_verbose._log("Error message", "error")
             service_verbose._log("Warning message", "warning")
             service_verbose._log("Summary message", "summary")
             assert (
-                mock_print.call_count >= 3
+                mock_logger.error.call_count
+                + mock_logger.warning.call_count
+                + mock_logger.info.call_count
+                + mock_logger.debug.call_count
+                >= 3
             )  # Should print most messages in verbose mode
 
         # Test non-verbose mode
         service_quiet = ImportService(verbose=False)
-        with patch("builtins.print") as mock_print:
-            service_quiet._log("Test message", "info")  # Should not print
-            service_quiet._log("Error message", "error")  # Should print
-            service_quiet._log("Summary message", "summary")  # Should print
-            assert mock_print.call_count >= 1  # Should print errors and summaries
+        with patch.object(service_quiet, "logger") as mock_logger:
+            service_quiet._log("Test message", "info")  # Should not log at debug level
+            service_quiet._log("Error message", "error")  # Should log error
+            service_quiet._log("Summary message", "summary")  # Should log info
+            assert (
+                mock_logger.error.call_count + mock_logger.info.call_count >= 1
+            )  # Should log errors and summaries
 
     def test_create_import_result_with_various_stats(self):
         """Test _create_import_result with different stat combinations."""
@@ -348,15 +354,15 @@ class TestImportService:
             with (
                 patch("database_service.get_user_by_email", return_value=None),
                 patch("database_service.get_course_by_number", return_value=None),
-                patch("builtins.print") as mock_print,
+                patch.object(service, "logger") as mock_logger,
             ):
                 result = service.import_excel_file(
                     tmp_file.name,
                     dry_run=True,  # Use dry run to avoid actual database operations
                 )
 
-                # Should have triggered progress reporting
-                assert mock_print.called
+                # Should have triggered progress reporting through logging
+                assert mock_logger.info.called
                 assert result.records_processed == 60
 
         finally:
@@ -471,41 +477,44 @@ class TestImportServiceLogging:
         """Test logging error messages."""
         service = ImportService(verbose=False)
 
-        with patch("builtins.print") as mock_print:
+        with patch.object(service, "logger") as mock_logger:
             service._log("Test error", "error")
-            mock_print.assert_called_once_with("[Import] ERROR: Test error")
+            mock_logger.error.assert_called_once_with("[Import] ERROR: Test error")
 
     def test_log_warning_message(self):
         """Test logging warning messages."""
         service = ImportService(verbose=False)
 
-        with patch("builtins.print") as mock_print:
+        with patch.object(service, "logger") as mock_logger:
             service._log("Test warning", "warning")
-            mock_print.assert_called_once_with("[Import] WARNING: Test warning")
+            mock_logger.warning.assert_called_once_with(
+                "[Import] WARNING: Test warning"
+            )
 
     def test_log_summary_message(self):
         """Test logging summary messages."""
         service = ImportService(verbose=False)
 
-        with patch("builtins.print") as mock_print:
+        with patch.object(service, "logger") as mock_logger:
             service._log("Test summary", "summary")
-            mock_print.assert_called_once_with("[Import] Test summary")
+            mock_logger.info.assert_called_once_with("[Import] Test summary")
 
     def test_log_verbose_mode_on(self):
         """Test logging in verbose mode."""
         service = ImportService(verbose=True)
 
-        with patch("builtins.print") as mock_print:
+        with patch.object(service, "logger") as mock_logger:
             service._log("Test message", "info")
-            mock_print.assert_called_once_with("[Import] Test message")
+            mock_logger.debug.assert_called_once_with("[Import] Test message")
 
     def test_log_verbose_mode_off(self):
         """Test logging in non-verbose mode."""
         service = ImportService(verbose=False)
 
-        with patch("builtins.print") as mock_print:
+        with patch.object(service, "logger") as mock_logger:
             service._log("Test message", "info")
-            mock_print.assert_not_called()
+            # In non-verbose mode, info messages should not be logged at debug level
+            mock_logger.debug.assert_not_called()
 
 
 class TestDetectCourseConflict:

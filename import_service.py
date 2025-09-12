@@ -80,6 +80,12 @@ class ImportService:
         self.verbose = verbose
         self._processed_users = set()  # Track users we've already processed
         self._processed_courses = set()  # Track courses we've already processed
+
+        # Get centralized logger
+        from logging_config import get_import_logger
+
+        self.logger = get_import_logger()
+
         self.reset_stats()
 
     def reset_stats(self):
@@ -101,13 +107,13 @@ class ImportService:
     def _log(self, message: str, level: str = "info"):
         """Smart logging that respects verbose mode"""
         if level == "error":
-            print(f"[Import] ERROR: {message}")
+            self.logger.error(f"[Import] ERROR: {message}")
         elif level == "warning":
-            print(f"[Import] WARNING: {message}")
+            self.logger.warning(f"[Import] WARNING: {message}")
         elif level == "summary":
-            print(f"[Import] {message}")
+            self.logger.info(f"[Import] {message}")
         elif self.verbose:
-            print(f"[Import] {message}")
+            self.logger.debug(f"[Import] {message}")
         # Otherwise, skip debug-level messages in non-verbose mode
         self.entity_cache: Dict[str, Dict] = {
             "courses": {},  # course_number -> course_data
@@ -297,7 +303,7 @@ class ImportService:
                         # TODO: Implement update_course function
                         # update_course(existing_course['course_id'], course_data)
                         self.stats["records_updated"] += 1
-                        print(f"[Import] Updated course: {course_number}")
+                        self.logger.info(f"[Import] Updated course: {course_number}")
                     else:
                         self.stats["errors"].append(
                             f"Course not found for update: {course_number}"
@@ -328,7 +334,7 @@ class ImportService:
                 course_id = create_course(course_data)
                 if course_id:
                     self.stats["records_created"] += 1
-                    print(
+                    self.logger.info(
                         f"[Import] Created course: {course_data.get('course_number')}"
                     )
                 else:
@@ -337,7 +343,7 @@ class ImportService:
                     )
                     return False, conflicts
             else:
-                print(
+                self.logger.info(
                     f"[Import] DRY RUN: Would create course: {course_data.get('course_number')}"
                 )
 
@@ -368,7 +374,7 @@ class ImportService:
             # Resolve conflicts based on strategy
             for conflict in conflicts:
                 resolution = self.resolve_conflict(conflict, strategy)
-                print(f"[Import] User conflict resolved: {resolution}")
+                self.logger.info(f"[Import] User conflict resolved: {resolution}")
 
             # Apply resolution if not dry run
             if not dry_run and strategy == ConflictStrategy.USE_THEIRS:
@@ -380,7 +386,7 @@ class ImportService:
                     # TODO: Implement update_user function in database_service_extended
                     # update_user_extended(existing_user['user_id'], user_data)
                     self.stats["records_updated"] += 1
-                    print(f"[Import] Updated user: {email}")
+                    self.logger.info(f"[Import] Updated user: {email}")
                 else:
                     self.stats["errors"].append(f"User not found for update: {email}")
                     return False, conflicts
@@ -388,7 +394,7 @@ class ImportService:
             elif strategy == ConflictStrategy.USE_MINE:
                 # Skip the import, keep existing
                 self.stats["records_skipped"] += 1
-                print(
+                self.logger.info(
                     f"[Import] Skipped user (keeping existing): {user_data.get('email')}"
                 )
 
@@ -448,11 +454,11 @@ class ImportService:
         start_time = datetime.now(timezone.utc)
         self.reset_stats()
 
-        print(f"[Import] Starting import from: {file_path}")
-        print(f"[Import] Conflict strategy: {conflict_strategy.value}")
-        print(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+        self.logger.info(f"[Import] Starting import from: {file_path}")
+        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
+        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
         if delete_existing_db:
-            print(
+            self.logger.warning(
                 f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
             )
 
@@ -467,9 +473,9 @@ class ImportService:
             if delete_existing_db:
                 if not dry_run:
                     self._delete_all_data()
-                    print("[Import] 🗑️  Cleared existing database")
+                    self.logger.info("[Import] 🗑️  Cleared existing database")
                 else:
-                    print("[Import] DRY RUN: Would clear existing database")
+                    self.logger.info("[Import] DRY RUN: Would clear existing database")
 
             # Load Excel file
             try:
@@ -528,11 +534,11 @@ class ImportService:
                                 term_id = create_term(entity_data)
                                 if term_id:
                                     self.stats["records_created"] += 1
-                                    print(
+                                    self.logger.info(
                                         f"[Import] Created term: {entity_data.get('name')}"
                                     )
                             else:
-                                print(
+                                self.logger.info(
                                     f"[Import] DRY RUN: Would create term: {entity_data.get('name')}"
                                 )
 
@@ -542,25 +548,25 @@ class ImportService:
                                 section_id = create_course_section(entity_data)
                                 if section_id:
                                     self.stats["records_created"] += 1
-                                    print(
+                                    self.logger.info(
                                         f"[Import] Created section: {entity_data.get('course_id')}"
                                     )
                             else:
-                                print(
+                                self.logger.info(
                                     f"[Import] DRY RUN: Would create section: {entity_data.get('course_id')}"
                                 )
 
                 except Exception as e:
                     error_msg = f"Error processing row {index + 1}: {str(e)}"
                     self.stats["errors"].append(error_msg)
-                    print(f"[Import] {error_msg}")
+                    self.logger.info(f"[Import] {error_msg}")
 
             self.stats["conflicts"].extend(all_conflicts)
 
         except Exception as e:
             error_msg = f"Unexpected error during import: {str(e)}"
             self.stats["errors"].append(error_msg)
-            print(f"[Import] {error_msg}")
+            self.logger.info(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
 
@@ -650,7 +656,7 @@ class ImportService:
             }
 
         except Exception as e:
-            print(f"[Import] Error parsing row: {str(e)}")
+            self.logger.info(f"[Import] Error parsing row: {str(e)}")
             return {"course": None, "user": None, "term": None, "section": None}
 
     def _extract_department_from_course(self, course_number: str) -> str:
@@ -787,12 +793,14 @@ class ImportService:
                     doc.reference.delete()
                     deleted_count += 1
 
-            print(f"[Import] Deleted {deleted_count} documents from database")
+            self.logger.info(
+                f"[Import] Deleted {deleted_count} documents from database"
+            )
 
         except Exception as e:
             error_msg = f"Failed to delete existing data: {str(e)}"
             self.stats["errors"].append(error_msg)
-            print(f"[Import] Error: {error_msg}")
+            self.logger.info(f"[Import] Error: {error_msg}")
 
     def _create_import_result(
         self, start_time: datetime, dry_run: bool

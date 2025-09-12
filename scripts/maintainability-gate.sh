@@ -110,8 +110,14 @@ add_success() {
   PASSED_CHECKS+=("$check_name|$success_message")
 }
 
-# Ensure we're in a virtual environment
+# Check virtual environment (skip in CI)
 check_venv() {
+  # Skip venv check if we're in CI environment
+  if [[ "$CI" == "true" ]]; then
+    echo "ℹ️  Skipping virtual environment check (CI environment detected)"
+    return 0
+  fi
+  
   if [[ -z "$VIRTUAL_ENV" ]]; then
     echo "⚠️  Warning: Not in a virtual environment. Attempting to activate..."
     if [[ -f "venv/bin/activate" ]]; then

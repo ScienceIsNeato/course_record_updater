@@ -8,6 +8,7 @@ from flask import Flask, render_template
 from api_routes import api
 from auth_service import get_current_user, is_authenticated
 from database_service import db as database_client
+from logging_config import get_app_logger
 
 # Unused imports removed
 
@@ -82,12 +83,13 @@ if __name__ == "__main__":
     # Debug mode should be controlled by FLASK_DEBUG environment variable
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
-    print(
-        f"INFO: Starting Course Record Updater on port {port} with debug mode: {use_debug}"
+    logger = get_app_logger()
+    logger.info(
+        f"Starting Course Record Updater on port {port} with debug mode: {use_debug}"
     )
-    print(f"INFO: Access the application at http://localhost:{port}")
-    print(
-        f"INFO: To use a different port, set PORT environment variable: PORT=3002 python app.py"
+    logger.info(f"Access the application at http://localhost:{port}")
+    logger.info(
+        f"To use a different port, set PORT environment variable: PORT=3002 python app.py"
     )
 
     app.run(host="0.0.0.0", port=port, debug=use_debug)
