@@ -39,5 +39,9 @@ types-python-dateutil>=2.8.0  # Type stubs for dateutil
 # Flask development tools
 flask-testing>=0.8.1       # Flask testing utilities
 
+# Data processing (needed for Excel import tests)
+pandas>=2.3.2               # Data manipulation and analysis
+openpyxl>=3.1.0             # Excel file support for pandas
+
 # Browser automation for frontend testing
 selenium>=4.15.0            # Web browser automation

@@ -399,7 +399,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
 
   # Run safety scan for known vulnerabilities in dependencies
   echo "🔧 Running safety dependency scan..."
-  SAFETY_OUTPUT=$(timeout 30s safety scan --output json 2>&1) || SAFETY_FAILED=true
+  SAFETY_OUTPUT=$(timeout 60s safety scan --output json 2>&1) || SAFETY_FAILED=true
 
   if [[ "$SAFETY_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
