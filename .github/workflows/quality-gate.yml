@@ -226,20 +226,48 @@ jobs:
         COURSE_RECORD_UPDATER_PORT: 3001
         FIRESTORE_EMULATOR_HOST: localhost:8080
         FLASK_DEBUG: false
-    - name: Run Smoke Tests
+    - name: Run Smoke Tests with Timestamps
       run: |
-        # Run tests with optimizations for CI environment
-        python -m pytest tests/integration/ -v \
-          --tb=short \
-          --disable-warnings \
-          --maxfail=3 \
-          -x
+        # Add timestamped logging to identify hanging tests
+        python -c "
+        import time
+        import subprocess
+        import sys
+        import signal
+        import os
+        
+        def timeout_handler(signum, frame):
+            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - TIMEOUT: Tests taking too long, investigating...')
+            # List processes
+            subprocess.run(['ps', 'aux'], check=False)
+            raise TimeoutError('Test execution timeout')
+        
+        # Set 10-minute timeout
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(600)
+        
+        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Starting smoke tests with CI optimizations...')
+        
+        cmd = ['python', '-m', 'pytest', 'tests/integration/', '-v', '--tb=short', '--disable-warnings', '--maxfail=3', '-x']
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                   universal_newlines=True, bufsize=1)
+        
+        for line in process.stdout:
+            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+            print(f'{timestamp} | {line.rstrip()}')
+            sys.stdout.flush()
+        
+        signal.alarm(0)  # Cancel timeout
+        process.wait()
+        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Tests completed with exit code: {process.returncode}')
+        sys.exit(process.returncode)
+        "
       env:
         PYTHONPATH: .
         FIRESTORE_EMULATOR_HOST: localhost:8080
         # Optimize Selenium for CI
-        SELENIUM_IMPLICIT_WAIT: 5
-        SELENIUM_PAGE_LOAD_TIMEOUT: 10
+        SELENIUM_IMPLICIT_WAIT: 3
+        SELENIUM_PAGE_LOAD_TIMEOUT: 8
 
   security-check:
     runs-on: ubuntu-latest
