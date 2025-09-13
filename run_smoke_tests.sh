@@ -38,10 +38,16 @@ check_chrome() {
     elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
         echo -e "${GREEN}✅ Chromium found in Applications (macOS)${NC}"
         return 0
+    elif [ -f "/usr/bin/google-chrome-stable" ]; then
+        echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+        return 0
+    elif [ -f "/usr/bin/google-chrome" ]; then
+        echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+        return 0
     else
         echo -e "${RED}❌ Chrome/Chromium not found. Please install Chrome or Chromium for frontend tests${NC}"
         echo -e "${YELLOW}💡 On macOS: brew install --cask google-chrome${NC}"
-        echo -e "${YELLOW}💡 On Ubuntu: sudo apt-get install chromium-browser${NC}"
+        echo -e "${YELLOW}💡 On Ubuntu/CI: sudo apt-get install google-chrome-stable${NC}"
         return 1
     fi
 }
@@ -168,15 +174,36 @@ main() {
     # Start Firestore emulator if not running
     if ! lsof -i :8086 > /dev/null 2>&1; then
         echo -e "${BLUE}🚀 Starting Firestore emulator...${NC}"
-        firebase emulators:start --only firestore > logs/test_firestore.log 2>&1 &
-        FIRESTORE_PID=$!
-        sleep 5
+        
+        # Check if we're in CI (GitHub Actions)
+        if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
+            echo -e "${BLUE}🐳 CI environment detected - checking for Docker emulator...${NC}"
+            # In CI, the emulator should already be started by the workflow
+            # Wait a bit and check again
+            sleep 5
+            if ! lsof -i :8086 > /dev/null 2>&1; then
+                echo -e "${RED}❌ Firestore emulator not running in CI${NC}"
+                echo -e "${YELLOW}💡 The CI workflow should start the Firestore emulator before running this script${NC}"
+                exit 1
+            fi
+            echo -e "${GREEN}✅ Firestore emulator found in CI${NC}"
+        else
+            # Local environment - use firebase CLI
+            if command -v firebase >/dev/null 2>&1; then
+                firebase emulators:start --only firestore > logs/test_firestore.log 2>&1 &
+                FIRESTORE_PID=$!
+                sleep 5
 
-        if ! lsof -i :8086 > /dev/null 2>&1; then
-            echo -e "${RED}❌ Failed to start Firestore emulator${NC}"
-            exit 1
+                if ! lsof -i :8086 > /dev/null 2>&1; then
+                    echo -e "${RED}❌ Failed to start Firestore emulator${NC}"
+                    exit 1
+                fi
+                echo -e "${GREEN}✅ Firestore emulator started${NC}"
+            else
+                echo -e "${RED}❌ Firebase CLI not found. Please install: npm install -g firebase-tools${NC}"
+                exit 1
+            fi
         fi
-        echo -e "${GREEN}✅ Firestore emulator started${NC}"
     else
         echo -e "${GREEN}✅ Firestore emulator already running${NC}"
     fi

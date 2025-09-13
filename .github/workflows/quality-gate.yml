@@ -254,73 +254,20 @@ jobs:
           netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
           exit 1
         fi
-    - name: Start Flask Application
+    - name: Run Smoke Tests (using unified script)
       run: |
-        # Start Flask app in background with timeout
-        timeout 60s python app.py &
-        # Quick health check with shorter wait
-        timeout 30s bash -c 'until curl -f http://localhost:3001/api/health; do sleep 1; done' || {
-          echo "Flask app startup timeout - continuing anyway"
-          ps aux | grep python || echo "No Python processes found"
-        }
+        # Set CI environment variables for the script
+        export FIRESTORE_EMULATOR_HOST=localhost:8086
+        export FIRESTORE_CLIENT_TIMEOUT=30
+        export SELENIUM_IMPLICIT_WAIT=3
+        export SELENIUM_PAGE_LOAD_TIMEOUT=8
+        export PYTHONPATH=.
+        
+        # Run the same script used locally
+        ./run_smoke_tests.sh
       env:
-        PYTHONPATH: .
-        COURSE_RECORD_UPDATER_PORT: 3001
-        FIRESTORE_EMULATOR_HOST: localhost:8086
-        FLASK_DEBUG: false
-        FIRESTORE_CLIENT_TIMEOUT: 30
-    - name: Run Smoke Tests with Timestamps
-      run: |
-        # Add timestamped logging to identify hanging tests
-        python -c "
-        import time
-        import subprocess
-        import sys
-        import signal
-        import os
-        
-        def timeout_handler(signum, frame):
-            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - TIMEOUT: Tests taking too long, investigating...')
-            # List processes
-            subprocess.run(['ps', 'aux'], check=False)
-            raise TimeoutError('Test execution timeout')
-        
-        # Set 10-minute timeout
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(600)
-        
-        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Starting smoke tests with CI optimizations...')
-        
-        # Verify Firestore emulator is accessible before running tests
-        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Verifying Firestore emulator accessibility...')
-        import requests
-        try:
-            response = requests.get('http://localhost:8086', timeout=5)
-            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Firestore emulator accessible (status: {response.status_code})')
-        except Exception as e:
-            print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - ERROR: Firestore emulator not accessible: {e}')
-            subprocess.run(['docker', 'ps', '-a'], check=False)
-            subprocess.run(['docker', 'logs', 'firestore-emulator'], check=False)
-            sys.exit(1)
-        
-        cmd = ['python', '-m', 'pytest', 'tests/integration/', '-v', '-s', '--tb=short', '--disable-warnings', '--maxfail=3', '-x']
-        
-        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Running: {\" \".join(cmd)}')
-        
-        # Use subprocess.run without capturing output for live display
-        process = subprocess.run(cmd, check=False)
-        
-        signal.alarm(0)  # Cancel timeout
-        print(f'{time.strftime(\"%Y-%m-%d %H:%M:%S\")} - Tests completed with exit code: {process.returncode}')
-        sys.exit(process.returncode)
-        "
-      env:
-        PYTHONPATH: .
-        FIRESTORE_EMULATOR_HOST: localhost:8086
-        FIRESTORE_CLIENT_TIMEOUT: 30
-        # Optimize Selenium for CI
-        SELENIUM_IMPLICIT_WAIT: 3
-        SELENIUM_PAGE_LOAD_TIMEOUT: 8
+        CI: true
+        GITHUB_ACTIONS: true
 
   security-check:
     runs-on: ubuntu-latest
