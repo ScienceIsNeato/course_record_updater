@@ -210,13 +210,12 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Install and Start Firestore Emulator
       run: |
-        echo "Installing gcloud and Firestore emulator..."
-        # Install gcloud CLI
-        curl -sSL https://sdk.cloud.google.com | bash
-        source $HOME/google-cloud-sdk/path.bash.inc
+        echo "Setting up Firestore emulator..."
+        # Use pre-installed gcloud and install beta components
+        gcloud components install beta --quiet --no-user-output-enabled
         
-        # Install beta components for Firestore emulator
-        gcloud components install beta --quiet
+        # Verify Java is available
+        java -version
         
         echo "Starting Firestore emulator..."
         # Start emulator in background
