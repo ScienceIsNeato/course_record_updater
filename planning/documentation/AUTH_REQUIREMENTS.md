@@ -18,7 +18,7 @@
 **Pricing:** $39.99/month + $X * 0.75 per course
 **Abilities:**
 - **Program Management:** Create/edit programs they manage (not institution-wide)
-- **User Management:** 
+- **User Management:**
   - Invite Program Administrators to their programs
   - Invite Regular Users to their programs
   - Manage access only within their assigned programs
@@ -26,7 +26,7 @@
 - **Data Views:** Access live views across their assigned programs with export capabilities
 - **Account Management:** Manage billing and settings for their programs
 
-### 3. PROGRAM_ADMINISTRATOR  
+### 3. PROGRAM_ADMINISTRATOR
 **Who:** Manages a single academic program/department
 **Scope:** One program + all courses within that program
 **Pricing:** $19.99/month + $X per course
@@ -65,7 +65,7 @@
 ### Core Approach
 **Live data, not static reports** - All "reports" are live views of current data that can be exported at any time:
 - Data is always current and reflects real-time state
-- Users access live dashboards and views, not generated reports  
+- Users access live dashboards and views, not generated reports
 - Export capabilities (PDF, Excel, CSV, Access) available from any view
 - No "report generation" process - data views are always available
 - Historical data maintained for trend analysis and comparisons

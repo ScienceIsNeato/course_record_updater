@@ -1,0 +1,75 @@
+# Course Record Updater - Pre-commit Configuration
+# Uses ship_it.py for consistent quality checks between local and CI
+
+repos:
+  # Use our centralized quality gate script for all checks
+  - repo: local
+    hooks:
+      - id: black-check
+        name: Code Formatting (black)
+        entry: python scripts/ship_it.py --checks black
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: isort-check
+        name: Import Sorting (isort)
+        entry: python scripts/ship_it.py --checks isort
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: lint-check
+        name: Code Linting (flake8)
+        entry: python scripts/ship_it.py --checks lint
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: unit-tests
+        name: Unit Tests
+        entry: python scripts/ship_it.py --checks tests
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: coverage-check
+        name: Coverage Analysis (80% threshold)
+        entry: python scripts/ship_it.py --checks coverage
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Security check temporarily disabled due to bandit performance issues
+      # TODO: Re-enable after optimizing bandit scan scope
+      # - id: security-check
+      #   name: Security Audit (bandit, safety)
+      #   entry: python scripts/ship_it.py --checks security
+      #   language: system
+      #   pass_filenames: false
+      #   always_run: true
+
+      - id: type-check
+        name: Type Checking (mypy)
+        entry: python scripts/ship_it.py --checks types
+        language: system
+        pass_filenames: false
+        always_run: true
+
+# Configuration
+default_language_version:
+  python: python3.11
+
+default_stages: [pre-commit]
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    venv/.*|
+    cursor-rules/.*|
+    logs/.*|
+    \.git/.*|
+    \.pytest_cache/.*|
+    __pycache__/.*|
+    .*\.pyc
+  )$

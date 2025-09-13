@@ -1,6 +1,6 @@
 # Program Administrator User Stories
 
-**Context:** Managing instructor workflow and CLO assessment data collection  
+**Context:** Managing instructor workflow and CLO assessment data collection
 **Primary Goal:** "Push out the data and pull it back" - coordinate assignments and data collection
 
 ---
@@ -10,7 +10,7 @@
 ### 1. View Main Course Sections Dashboard
 **As a program administrator, I want to** view the main dashboard showing all course sections with status indicators (Unassigned, Assigned, Editing, Complete, Overdue) and filters for year, term, instructor, and status **so that** I can quickly identify which sections need attention and hone in on specific subsets of my course portfolio.
 
-### 2. View Users Dashboard  
+### 2. View Users Dashboard
 **As a program administrator, I want to** view all instructors with their active and completed course sections **so that** I can see which instructors are assigned to which courses and track their submission status.
 
 ### 3. Add Existing Instructor to Course Section

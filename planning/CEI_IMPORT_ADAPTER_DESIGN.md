@@ -14,7 +14,7 @@ After analyzing the current wireframe system against CEI's enterprise requiremen
 
 **Current System Strengths:**
 - ✅ Adapter pattern perfectly suited for CEI data import
-- ✅ Database service abstraction allows data model evolution  
+- ✅ Database service abstraction allows data model evolution
 - ✅ Flask foundation can scale with proper restructuring
 - ✅ Firestore supports complex relationships needed for CEI
 
@@ -61,7 +61,7 @@ course = {
 # Target: Relational entities
 course = {
     'course_id': 'uuid',
-    'course_number': 'ACC-201', 
+    'course_number': 'ACC-201',
     'course_title': 'Accounting Principles'
 }
 
@@ -127,7 +127,7 @@ Excel → Our Data Model
 ```python
 class BaseImportAdapter:
     """Abstract base class for all import adapters"""
-    
+
     def validate_file(self, file_path: str) -> ValidationResult
     def extract_data(self, file_path: str) -> RawData
     def transform_data(self, raw_data: RawData) -> TransformedData
@@ -139,7 +139,7 @@ class BaseImportAdapter:
 ```python
 class CEIExcelImportAdapter(BaseImportAdapter):
     """CEI-specific implementation for 2024FAresults.xlsx format"""
-    
+
     def parse_excel_sheet(self, file_path: str) -> DataFrame
     def extract_courses(self, df: DataFrame) -> List[Course]
     def extract_course_sections(self, df: DataFrame) -> List[CourseSection]
@@ -152,9 +152,9 @@ class CEIExcelImportAdapter(BaseImportAdapter):
 ```python
 class ConflictResolutionEngine:
     """Handle data conflicts during import"""
-    
+
     STRATEGIES = ['use_mine', 'use_theirs', 'merge', 'manual_review']
-    
+
     def detect_conflicts(self, new_data, existing_data) -> List[DataConflict]
     def resolve_conflict(self, conflict: DataConflict, strategy: str) -> Resolution
     def create_conflict_report(self, conflicts: List[DataConflict]) -> ConflictReport
@@ -196,17 +196,17 @@ environments:
     database: "firestore-dev"
     import_endpoint: "https://dev-cei-system.app/api/import"
     audit_retention: "30 days"
-    
+
   test:
-    database: "firestore-test" 
+    database: "firestore-test"
     import_endpoint: "https://test-cei-system.app/api/import"
     audit_retention: "90 days"
-    
+
   stage:
     database: "firestore-stage"
     import_endpoint: "https://stage-cei-system.app/api/import"
     audit_retention: "1 year"
-    
+
   prod:
     database: "firestore-prod"
     import_endpoint: "https://cei-system.app/api/import"
@@ -238,9 +238,9 @@ def handle_first_import(self, data: TransformedData) -> ImportResult:
 ```python
 def handle_subsequent_import(self, data: TransformedData) -> ImportResult:
     """Handle imports when data already exists"""
-    
+
     conflicts = self.detect_conflicts(data, existing_data)
-    
+
     for conflict in conflicts:
         resolution = self.resolve_conflict(conflict, self.conflict_strategy)
         self.apply_resolution(resolution)
@@ -254,7 +254,7 @@ def handle_subsequent_import(self, data: TransformedData) -> ImportResult:
 - Log attempted changes as conflicts
 - Useful when database has been manually updated
 
-#### 4.4 "Use Theirs" Strategy  
+#### 4.4 "Use Theirs" Strategy
 - Overwrite database with Excel data
 - Log previous values as audit trail
 - Useful when Excel is authoritative source
@@ -284,16 +284,16 @@ class AuditLogEntry:
     source_type: str       # 'manual', 'scripted', 'import_adapter'
     source_user: str       # User ID (null for scripted)
     source_system: str     # 'cei_excel_import', 'manual_entry', 'api'
-    
+
     # Data changes
     old_values: dict       # Previous field values (null for creates)
     new_values: dict       # New field values (null for deletes)
-    
+
     # Import-specific fields
     import_batch_id: str   # Group related import operations
     conflict_resolution: str  # How conflicts were handled
     validation_errors: list   # Any validation issues encountered
-    
+
     # Environment tracking
     environment: str       # 'dev', 'test', 'stage', 'prod'
 ```
@@ -421,4 +421,3 @@ class AuditLogEntry:
 - **Mitigation:** Robust conflict resolution, audit trails, manual review options
 
 This design provides a solid foundation for building a reliable, auditable import system that bridges CEI's existing data into our new platform while maintaining data integrity and providing clear visibility into all operations.
-

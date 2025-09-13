@@ -1,6 +1,6 @@
 # Instructor User Stories
 
-**Context:** Faculty invited to complete CLO assessment data for assigned courses  
+**Context:** Faculty invited to complete CLO assessment data for assigned courses
 **Core Workflow:** Invitation → Account Setup → Data Entry → Submission
 
 ---

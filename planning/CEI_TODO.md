@@ -1,7 +1,7 @@
 # CEI Project TODO
 
-**Project:** Instructor Management System for College of Eastern Idaho  
-**Primary Contact:** Dr. Leslie Jernberg (Assessment Champion)  
+**Project:** Instructor Management System for College of Eastern Idaho
+**Primary Contact:** Dr. Leslie Jernberg (Assessment Champion)
 **Focus:** "Push out the data and pull it back" workflow
 
 ---

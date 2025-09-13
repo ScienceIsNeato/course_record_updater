@@ -1,8 +1,12 @@
-Flask>=2.0
+Flask>=3.1.1
 python-docx>=1.0
 google-cloud-firestore>=2.0
 gunicorn>=20.1 # Production WSGI server
+pandas>=2.3.2 # Data processing for Excel imports
+
+# Version constraints to resolve dependency conflicts
+cachetools<6.0,>=2.0.0 # Keep compatible with google-auth (required by google-cloud-firestore)
 
 # Testing Dependencies (not strictly needed in production image, but often included)
 pytest>=7.0 # Testing framework
-pytest-mock>=3.0 # For mocking dependencies 
+pytest-mock>=3.0 # For mocking dependencies

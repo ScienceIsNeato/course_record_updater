@@ -21,14 +21,14 @@
 - **Students Enrolled** (total number)
 - **Student Outcomes:**
   - Students who passed
-  - Students who got D/C/Incomplete  
+  - Students who got D/C/Incomplete
   - Students who withdrew (W)
   - Math validation: Enrolled - Withdrawn - Passed - D/C/I = 0
 
 ### CLO (Course Learning Outcome) Level Data
 Each course has **multiple CLOs** (one-to-many relationship):
 - **Assessment Tool** (specific to each CLO)
-- **Students who took assessment** 
+- **Students who took assessment**
 - **Students who passed assessment**
 - **Pass Rate Calculation** (passed ÷ took)
 - **Result:** S (Satisfactory) or U (Unsatisfactory) based on 75% threshold
@@ -81,7 +81,7 @@ CourseOutcome:
 - outcome_description
 - assessment_tool
 - students_took_assessment
-- students_passed_assessment  
+- students_passed_assessment
 - pass_rate (calculated)
 - threshold_percentage (default 75%)
 - result (S/U based on threshold)
@@ -115,7 +115,7 @@ Course:
 
 ### Business Value:
 - "Eliminate data integrity issues"
-- "Reduce time spent on manual processes"  
+- "Reduce time spent on manual processes"
 - "Scale beyond Access limitations"
 - "Professional reporting and analytics"
 

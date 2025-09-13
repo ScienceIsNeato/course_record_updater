@@ -18,7 +18,7 @@
 ### Program Tier - PROGRAM_ADMINISTRATOR
 **Target:** Department chairs, program directors
 **Price:** 30-day free trial, then $19.99/month + $X per course
-**Trial Period:** 
+**Trial Period:**
 - Full access to all Program Tier features for 30 days
 - Cancel anytime before first billing cycle with no charges
 - No credit card required for trial signup
@@ -41,7 +41,7 @@
 ### Institution Tier - INSTITUTION_ADMINISTRATOR
 **Target:** Academic deans, institutional research offices
 **Price:** 30-day free trial, then $39.99/month + $X * 0.75 per course (25% discount on per-course pricing)
-**Trial Period:** 
+**Trial Period:**
 - Full access to all Institution Tier features for 30 days
 - Cancel anytime before first billing cycle with no charges
 - No credit card required for trial signup

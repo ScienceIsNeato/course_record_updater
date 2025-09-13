@@ -1,6 +1,6 @@
 # CEI Implementation Milestones & Timeline
 
-**Project:** Instructor Management System for College of Eastern Idaho  
+**Project:** Instructor Management System for College of Eastern Idaho
 **Focus:** Transform Leslie's "push out the data and pull it back" workflow
 
 ---
@@ -169,4 +169,3 @@
 - **Stakeholder alignment:** Regular check-ins and approval gates
 
 This milestone sequence ensures we build incrementally, get approval at each stage, and maintain the bridge strategy that reduces adoption risk for CEI.
-

@@ -3,14 +3,14 @@
 ## Contact Information
 
 ### Primary Stakeholders
-- **Dr. Leslie Jernberg** 
+- **Dr. Leslie Jernberg**
   - Position: Business Faculty, Faculty Assessment Champion
   - Email: leslie.jernberg@cei.edu
   - Phone: 208.535.5353
   - Role: Will demonstrate current process and requirements
 
 - **Matthew R. Taylor, Ph.D.**
-  - Position: Dean, Health Sciences  
+  - Position: Dean, Health Sciences
   - Email: matthew.taylor@cei.edu
   - Phone: 208.535.5412
   - Role: Decision maker, introduced Leslie as key contact
@@ -61,7 +61,7 @@
 
 This is **exactly** what we needed:
 - ✅ Real stakeholder with domain expertise
-- ✅ Actual data in current format  
+- ✅ Actual data in current format
 - ✅ Process documentation (video)
 - ✅ Decision maker engagement (Dean Taylor)
 - ✅ Validation of market need

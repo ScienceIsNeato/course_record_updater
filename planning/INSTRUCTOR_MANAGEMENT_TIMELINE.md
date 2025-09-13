@@ -1,7 +1,7 @@
 # Instructor Management System: Development Timeline
 
-**Project Focus:** Transform from generic course entry system to focused instructor management and communication platform  
-**Primary User:** Program Administrators like Leslie who need to coordinate instructor assignments and data collection  
+**Project Focus:** Transform from generic course entry system to focused instructor management and communication platform
+**Primary User:** Program Administrators like Leslie who need to coordinate instructor assignments and data collection
 **Success Metric:** "Push out the data and pull it back" efficiently
 
 ---

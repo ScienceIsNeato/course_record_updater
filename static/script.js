@@ -9,33 +9,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only set up table event listeners if the table exists (legacy functionality)
     if (courseTableBody) {
         console.log("✅ Course table found, setting up event listeners");
-        // --- Event Delegation for Edit/Delete/Save/Cancel --- 
+        // --- Event Delegation for Edit/Delete/Save/Cancel ---
         courseTableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const row = target.closest('tr');
         if (!row || !row.dataset.courseId) {
             // Ignore clicks that aren't on a button within a valid course row
-            return; 
+            return;
         }
         const courseId = row.dataset.courseId; // Correctly get ID from row
 
-        // --- EDIT Button Click --- 
+        // --- EDIT Button Click ---
         if (target.classList.contains('edit-btn')) {
             console.log(`Edit clicked for ID: ${courseId}`);
             makeRowEditable(row);
         }
-        // --- DELETE Button Click --- 
+        // --- DELETE Button Click ---
         else if (target.classList.contains('delete-btn')) {
             console.log(`Delete clicked for ID: ${courseId}`);
             const courseNumber = row.cells[0].textContent; // Get course number from first cell
             handleDelete(row, courseId, courseNumber);
         }
-        // --- SAVE Button Click --- 
+        // --- SAVE Button Click ---
         else if (target.classList.contains('save-btn')) {
             console.log(`Save clicked for ID: ${courseId}`);
             await handleSave(row, courseId);
         }
-        // --- CANCEL Button Click --- 
+        // --- CANCEL Button Click ---
         else if (target.classList.contains('cancel-btn')) {
             console.log(`Cancel clicked for ID: ${courseId}`);
             cancelEdit(row);
@@ -45,23 +45,23 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("ℹ️ No course table found - skipping table event listeners (expected in cleaned UI)");
     }
 
-    // --- Helper Functions --- 
+    // --- Helper Functions ---
 
     function makeRowEditable(row) {
         // Store original values & switch action buttons
         const originalValues = {};
         const actionCellIndex = 10; // Updated index for 'Actions' cell
         const courseId = row.dataset.courseId;
-        
+
         row.querySelectorAll('td').forEach((cell, index) => {
             if (index === actionCellIndex) return; // Skip actions cell
 
             const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
-            if (!fieldName) return; 
+            if (!fieldName) return;
 
             const originalValue = cell.textContent.trim();
             originalValues[fieldName] = originalValue;
-            
+
             // Replace cell content with appropriate input field
             let input;
             if (fieldName === 'term') {
@@ -117,15 +117,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const fieldName = input.name;
             const value = input.value.trim();
             updatedData[fieldName] = value; // Send trimmed string value
-            
+
             // Store references
             if (fieldName === 'num_students') numStudentsInput = input;
             if (fieldName.startsWith('grade_')) gradeInputs.push(input);
 
-            // --- Basic client-side validation --- 
+            // --- Basic client-side validation ---
             input.classList.remove('is-invalid'); // Reset border first
 
-            if (!value && isFieldRequired(fieldName)) { 
+            if (!value && isFieldRequired(fieldName)) {
                 input.classList.add('is-invalid');
                 hasError = true;
             }
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // --- Grade Sum vs Num Students Validation --- 
+        // --- Grade Sum vs Num Students Validation ---
         const numStudentsValue = updatedData['num_students'] ? Number(updatedData['num_students']) : NaN;
         let gradeSum = 0;
         let anyGradeEntered = false;
@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If a grade field has invalid number, error is already caught above
             }
             // Store 0 even if empty for sum logic consistency if needed, but anyGradeEntered tracks actual input
-            if (!updatedData[input.name]) gradeValues[input.name] = 0; 
+            if (!updatedData[input.name]) gradeValues[input.name] = 0;
         });
 
         // Only validate sum if num_students is a valid number AND at least one grade > 0 was entered
@@ -174,19 +174,19 @@ document.addEventListener('DOMContentLoaded', () => {
              // Keep grades marked invalid if they individually failed conversion earlier
         }
 
-        // --- Stop if errors found --- 
+        // --- Stop if errors found ---
         if (hasError) {
             alert(validationErrorMsg); // Show specific error
             return; // Prevent saving
         }
 
-        // --- Proceed with saving --- 
+        // --- Proceed with saving ---
         console.log("Saving data:", updatedData);
 
         try {
             // Use POST and rely on backend route allowing POST for updates
             const response = await fetch(`/edit_course/${courseId}`, {
-                method: 'POST', 
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function cancelEdit(row) {
         const originalValues = JSON.parse(row.dataset.originalValues || '{}');
-        
+
         row.querySelectorAll('td').forEach((cell, index) => {
             const input = cell.querySelector('.inline-edit-input');
             if (input) {
@@ -246,8 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleDelete(row, courseId, courseNumber) {
         // Use simple confirm for now, prompt was complex
         const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
-            
-        if (!window.confirm(confirmationMessage)) { 
+
+        if (!window.confirm(confirmationMessage)) {
             console.log("Delete cancelled by user.");
             return;
         }
@@ -256,11 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Attempting to delete ID: ${courseId}`);
         // Use POST and rely on backend route allowing POST for delete
         fetch(`/delete_course/${courseId}`, {
-            method: 'POST' 
+            method: 'POST'
         })
         .then(response => {
             if (!response.ok) {
-                 return response.json().then(err => { 
+                 return response.json().then(err => {
                      throw new Error(err.error || `Server responded with status ${response.status}`);
                  }).catch(() => {
                       throw new Error(`Server responded with status ${response.status}`);
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             actionCell.innerHTML = `
                 <button class="btn btn-sm btn-warning edit-btn">Edit</button>
                 <button class="btn btn-sm btn-danger delete-btn">Delete</button>
-            `; 
+            `;
         }
          // Clean up dataset
         delete row.dataset.originalValues;
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'instructor_name', // 2
             'term',            // 3
             'num_students',    // 4
-            'grade_a',         // 5 
+            'grade_a',         // 5
             'grade_b',         // 6
             'grade_c',         // 7
             'grade_d',         // 8
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         return fieldMap[index] || null;
     }
-    
+
     function isFieldRequired(fieldName) {
         // Mirror required fields from BaseAdapter (adjust if needed)
          const requiredFields = ['course_title', 'course_number', 'instructor_name', 'term'];
@@ -323,11 +323,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Remove the duplicate direct event listener attachment block
-    /* 
-    // --- Delete Button Logic --- 
+    /*
+    // --- Delete Button Logic ---
     const deleteButtons = document.querySelectorAll('.delete-btn');
     ...
-    // --- Edit Button Logic (Placeholder) --- 
+    // --- Edit Button Logic (Placeholder) ---
     const editButtons = document.querySelectorAll('.edit-btn');
     ...
     */
@@ -444,13 +444,13 @@ function initializeImportForm() {
             // Confirm execution if not dry run
             if (!dryRun.checked) {
                 let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
-                
+
                 if (deleteExistingDb && deleteExistingDb.checked) {
                     confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
                 }
-                
+
                 confirmMsg += ' Are you sure?';
-                
+
                 if (!confirm(confirmMsg)) {
                     return;
                 }
@@ -476,7 +476,7 @@ function initializeImportForm() {
                 console.log("📥 Received response:", response.status, response.statusText);
                 const result = await response.json();
                 console.log("📊 Import result:", result);
-                
+
                 hideProgress();
 
                 if (result.success) {
@@ -678,4 +678,4 @@ function initializeImportForm() {
             resultsDiv.style.display = 'block';
         }
     }
-} 
+}

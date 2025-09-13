@@ -90,7 +90,7 @@
                 <p class="text-muted mb-3">
                     Import course data from Excel files with conflict resolution and safety features.
                 </p>
-                
+
                 <form id="excelImportForm" enctype="multipart/form-data">
                     <div class="row g-3">
                         <!-- File Selection -->
@@ -98,7 +98,7 @@
                             <label for="excel_file" class="form-label">Select Excel File (.xlsx, .xls):</label>
                             <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
                         </div>
-                        
+
                         <!-- Import Adapter -->
                         <div class="col-md-6">
                             <label for="import_adapter" class="form-label">Import Format:</label>
@@ -108,7 +108,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                     <!-- Conflict Resolution Strategy -->
                     <div class="row g-3 mt-2">
                         <div class="col-12">
@@ -153,7 +153,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Options -->
                     <div class="row g-3 mt-2">
                         <div class="col-md-4">
@@ -184,7 +184,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Action Buttons -->
                     <div class="row g-3 mt-3">
                         <div class="col-md-6">
@@ -199,7 +199,7 @@
                         </div>
                     </div>
                 </form>
-                
+
                 <!-- Progress and Results -->
                 <div id="importProgress" class="mt-4" style="display: none;">
                     <div class="progress mb-3">
@@ -212,7 +212,7 @@
                         <p class="mt-2">Processing import...</p>
                     </div>
                 </div>
-                
+
                 <!-- Results Display -->
                 <div id="importResults" class="mt-4" style="display: none;"></div>
             </div>
@@ -272,4 +272,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
-</html> 
+</html>

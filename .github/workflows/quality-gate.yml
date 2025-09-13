@@ -1,0 +1,411 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*' ]
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Generate cache key
+      id: cache-key
+      run: echo "key=${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}" >> $GITHUB_OUTPUT
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+  black-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Black Formatting Check
+      run: python scripts/ship_it.py --checks black
+      env:
+        PYTHONPATH: .
+
+  isort-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Import Sorting Check
+      run: python scripts/ship_it.py --checks isort
+      env:
+        PYTHONPATH: .
+
+  lint-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Linting
+      run: python scripts/ship_it.py --checks lint
+      env:
+        PYTHONPATH: .
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Unit Tests
+      run: python scripts/ship_it.py --checks tests
+      env:
+        PYTHONPATH: .
+
+  coverage-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Coverage Analysis
+      run: python scripts/ship_it.py --checks coverage
+      env:
+        PYTHONPATH: .
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Set up Java 11 (required for Firestore emulator)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install Chrome for Selenium
+      run: |
+        # Use pre-installed Chrome in GitHub Actions
+        google-chrome --version || {
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+        }
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Install and Start Firestore Emulator
+      run: |
+        echo "Setting up Firestore emulator..."
+        # Install Firebase CLI which includes Firestore emulator
+        sudo npm install -g firebase-tools
+        
+        # Verify Java is available
+        java -version
+        
+        echo "Starting Firestore emulator..."
+        # Start emulator in background using Firebase CLI
+        firebase emulators:start --only firestore --project=test-project &
+        EMULATOR_PID=$!
+        
+        echo "Waiting for Firestore emulator to start..."
+        # Wait for emulator to be ready
+        for i in {1..30}; do
+          if curl -f http://localhost:8086 2>/dev/null; then
+            echo "✅ Firestore emulator is ready after ${i} attempts"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ ERROR: Firestore emulator failed to start after 30 attempts"
+            echo "Emulator process status:"
+            ps aux | grep firestore || echo "No firestore process found"
+            echo "Network status:"
+            netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
+            exit 1
+          fi
+          echo "Waiting for emulator... (${i}/30)"
+          sleep 2
+        done
+    - name: Run Smoke Tests (using unified script)
+      run: |
+        # Set CI environment variables for the script
+        export FIRESTORE_EMULATOR_HOST=localhost:8086
+        export FIRESTORE_CLIENT_TIMEOUT=30
+        export SELENIUM_IMPLICIT_WAIT=3
+        export SELENIUM_PAGE_LOAD_TIMEOUT=8
+        export PYTHONPATH=.
+        
+        # Run the same script used locally
+        ./run_smoke_tests.sh
+      env:
+        CI: true
+        GITHUB_ACTIONS: true
+
+  security-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Security Audit
+      run: |
+        python scripts/ship_it.py --checks security | tee security-output.log
+        exit ${PIPESTATUS[0]}
+      env:
+        PYTHONPATH: .
+        SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+    
+    - name: Upload Security Audit Output
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-audit-output
+        path: |
+          security-output.log
+          safety_detailed_output.txt
+          safety_full_diagnostic.txt
+    - name: Upload security scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: |
+          bandit-report.json
+          safety-report.txt
+
+  type-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Type Checking
+      run: python scripts/ship_it.py --checks types
+      env:
+        PYTHONPATH: .
+
+  sonar-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run SonarQube Analysis
+      run: python scripts/ship_it.py --checks sonar
+      env:
+        PYTHONPATH: .
+        SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      continue-on-error: true
+
+  imports-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Import Analysis
+      run: python scripts/ship_it.py --checks imports
+      env:
+        PYTHONPATH: .
+
+  duplication-check:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run Code Duplication Check
+      run: python scripts/ship_it.py --checks duplication
+      env:
+        PYTHONPATH: .

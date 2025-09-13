@@ -21,7 +21,7 @@
 # Current flat model (works, but limited)
 course_record = {
     'course_number': 'ACC-201',
-    'course_title': 'Accounting Principles', 
+    'course_title': 'Accounting Principles',
     'instructor_name': 'John Smith',
     'term': '2024 Fall',
     'num_students': 25,
@@ -36,7 +36,7 @@ User = {
     'user_id': 'uuid',
     'email': 'john.smith@cei.edu',
     'first_name': 'John',
-    'last_name': 'Smith', 
+    'last_name': 'Smith',
     'role': 'instructor',  # instructor, program_admin, site_admin
     'department': 'Business',
     'active': True,
@@ -54,7 +54,7 @@ Course = {
 }
 
 Term = {
-    'term_id': 'uuid', 
+    'term_id': 'uuid',
     'name': '2024 Fall',
     'start_date': '2024-08-26',
     'end_date': '2024-12-13',
@@ -80,7 +80,7 @@ CourseSection = {
 
 CourseOutcome = {
     'outcome_id': 'uuid',
-    'course_id': 'uuid',      # FK to Course  
+    'course_id': 'uuid',      # FK to Course
     'clo_number': '1',
     'description': 'Students will demonstrate...',
     'assessment_method': 'Exam',
@@ -116,7 +116,7 @@ CourseOutcome = {
 ```python
 # Add to database_service.py
 USERS_COLLECTION = 'users'
-COURSES_COLLECTION_NEW = 'courses_v2' 
+COURSES_COLLECTION_NEW = 'courses_v2'
 TERMS_COLLECTION = 'terms'
 COURSE_SECTIONS_COLLECTION = 'course_sections'
 COURSE_OUTCOMES_COLLECTION = 'course_outcomes'
@@ -133,7 +133,7 @@ def get_user_by_email(email: str) -> dict
 def get_users_by_role(role: str) -> List[dict]
 def update_user(user_id: str, update_data: dict) -> bool
 
-# Course management  
+# Course management
 def create_course(course_data: dict) -> str
 def get_course_by_number(course_number: str) -> dict
 def get_courses_by_department(department: str) -> List[dict]
@@ -176,7 +176,7 @@ ROLES = {
     'instructor': {
         'permissions': [
             'view_own_sections',
-            'edit_own_assessments', 
+            'edit_own_assessments',
             'submit_assessments',
             'view_own_courses'
         ]
@@ -237,7 +237,7 @@ def role_required(required_role):
 **Current Routes:**
 ```python
 GET  /                    # Single page with forms and table
-POST /add                 # Manual course entry  
+POST /add                 # Manual course entry
 POST /add_course_automatic # File upload
 PUT  /edit_course/<id>    # Edit course
 DELETE /delete_course/<id> # Delete course
@@ -255,7 +255,7 @@ GET  /dashboard          # Main dashboard (role-dependent view)
 
 # Users API
 GET    /api/users        # List users (admin only)
-POST   /api/users        # Create user (admin only)  
+POST   /api/users        # Create user (admin only)
 GET    /api/users/<id>   # Get user details
 PUT    /api/users/<id>   # Update user
 DELETE /api/users/<id>   # Delete user (admin only)
@@ -267,7 +267,7 @@ GET    /api/courses/<id> # Get course details
 PUT    /api/courses/<id> # Update course
 DELETE /api/courses/<id> # Delete course
 
-# Course Sections API  
+# Course Sections API
 GET    /api/sections                    # List sections (filtered by role)
 POST   /api/sections                    # Create section
 GET    /api/sections/<id>               # Get section details
@@ -278,7 +278,7 @@ POST   /api/sections/<id>/assign        # Assign instructor
 # Course Outcomes API
 GET    /api/outcomes                    # List outcomes
 POST   /api/outcomes                    # Create outcome
-GET    /api/outcomes/<id>               # Get outcome details  
+GET    /api/outcomes/<id>               # Get outcome details
 PUT    /api/outcomes/<id>               # Update outcome
 PUT    /api/outcomes/<id>/assessment    # Update assessment data
 
@@ -304,7 +304,7 @@ GET    /api/import/status/<import_id>   # Import status
 - [ ] Implement CourseSection management
 - [ ] Test all new database operations
 
-### Week 2: Authentication & Authorization  
+### Week 2: Authentication & Authorization
 **Days 1-3:**
 - [ ] Set up Firebase Auth integration
 - [ ] Implement login/logout functionality
@@ -356,7 +356,7 @@ GET    /api/import/status/<import_id>   # Import status
 - **Authentication integration issues**: Start with simple email/password, add SSO later
 - **Backward compatibility breaks**: Maintain existing routes during transition
 
-### Timeline Risks  
+### Timeline Risks
 - **Scope creep**: Focus on core entities first, defer advanced features
 - **Testing overhead**: Build tests incrementally, not all at end
 - **Integration complexity**: Test each component independently first

@@ -5,4 +5,23 @@
 *.pyc
 cursor-rules/
 
+# Coverage files
+.coverage
+coverage.xml
+htmlcov/
+
+# Test artifacts
+.pytest_cache/
+
+# Log files and directories
+logs/
+
+# SonarCloud analysis artifacts
+.scannerwork/
+
+# CodeQL analysis artifacts
+python-database/
+codeql-results*.csv
+codeql-results*.sarif
+
 .DS_Store

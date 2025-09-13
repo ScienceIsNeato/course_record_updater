@@ -1,7 +1,7 @@
 # Site Admin User Stories
 
-**User Type:** SITE_ADMIN  
-**Scope:** Global access to all institutions, programs, and courses  
+**User Type:** SITE_ADMIN
+**Scope:** Global access to all institutions, programs, and courses
 **Pricing:** N/A (site owner/developer)
 
 ---

@@ -319,7 +319,7 @@ Institution (1) → (many) Programs (1) → (many) Courses (1) → (many) Course
 # Program Access
 ProgramAdmin → ProgramInvitation → Email → NewUser/ExistingUser → UserProgramAccess
 
-# Course Sharing  
+# Course Sharing
 CourseOwner → CourseInvitation → Email → NewUser/ExistingUser → Course.shared_with_user_ids
 
 # Instructor Assignment
@@ -331,11 +331,11 @@ CourseOwner → Add Instructor → Create Pending User → CourseInstructor crea
 ### Program Selection Logic
 **For Course Creation:**
 - **Institution Administrator:** Shows dropdown of all programs in their institution(s)
-- **Program Administrator:** 
+- **Program Administrator:**
   - If assigned to only 1 program: Program auto-selected (hidden field)
   - If assigned to multiple programs: Shows dropdown of their assigned programs
 - **Regular User:**
-  - If member of only 1 program: Program auto-selected (hidden field)  
+  - If member of only 1 program: Program auto-selected (hidden field)
   - If member of multiple programs: Shows dropdown of their accessible programs
 
 **Business Rule:** A course belongs to exactly one program
@@ -343,7 +343,7 @@ CourseOwner → Add Instructor → Create Pending User → CourseInstructor crea
 ### Row-Level Security
 - All queries automatically filter by user's accessible programs
 - Institution admins see all programs in their institution
-- Program admins see only their assigned programs  
+- Program admins see only their assigned programs
 - Regular users see only programs they're members of
 
 ### Invitation Security
