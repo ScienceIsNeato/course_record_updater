@@ -45,3 +45,6 @@ openpyxl>=3.1.0             # Excel file support for pandas
 
 # Browser automation for frontend testing
 selenium>=4.15.0            # Web browser automation
+
+# Version constraints to resolve dependency conflicts
+cachetools<6.0,>=2.0.0      # Keep compatible with google-auth

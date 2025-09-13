@@ -211,8 +211,9 @@ jobs:
     - name: Install and Start Firestore Emulator
       run: |
         echo "Setting up Firestore emulator..."
-        # Use pre-installed gcloud and install beta components
-        gcloud components install beta --quiet --no-user-output-enabled
+        # Install gcloud with firestore emulator support (component manager is disabled in pre-installed version)
+        sudo apt-get update -qq
+        sudo apt-get install -y google-cloud-cli-firestore-emulator
         
         # Verify Java is available
         java -version
