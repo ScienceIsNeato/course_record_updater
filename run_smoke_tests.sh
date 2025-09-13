@@ -22,14 +22,21 @@ echo -e "${BLUE}================================================${NC}"
 
 # Function to check if Chrome/Chromium is available
 check_chrome() {
+    # Check for Chrome in common locations (works with modern Selenium)
     if command -v google-chrome >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Chrome found${NC}"
+        echo -e "${GREEN}✅ Chrome found in PATH${NC}"
         return 0
     elif command -v chromium-browser >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Chromium found${NC}"
+        echo -e "${GREEN}✅ Chromium found in PATH${NC}"
         return 0
     elif command -v chromium >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ Chromium found${NC}"
+        echo -e "${GREEN}✅ Chromium found in PATH${NC}"
+        return 0
+    elif [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+        echo -e "${GREEN}✅ Chrome found in Applications (macOS)${NC}"
+        return 0
+    elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
+        echo -e "${GREEN}✅ Chromium found in Applications (macOS)${NC}"
         return 0
     else
         echo -e "${RED}❌ Chrome/Chromium not found. Please install Chrome or Chromium for frontend tests${NC}"
@@ -39,17 +46,10 @@ check_chrome() {
     fi
 }
 
-# Function to check if ChromeDriver is available
+# Function to check if ChromeDriver is available (modern Selenium handles this automatically)
 check_chromedriver() {
-    if command -v chromedriver >/dev/null 2>&1; then
-        echo -e "${GREEN}✅ ChromeDriver found${NC}"
-        return 0
-    else
-        echo -e "${RED}❌ ChromeDriver not found${NC}"
-        echo -e "${YELLOW}💡 Install ChromeDriver: pip install chromedriver-autoinstaller${NC}"
-        echo -e "${YELLOW}💡 Or download from: https://chromedriver.chromium.org/${NC}"
-        return 1
-    fi
+    echo -e "${GREEN}✅ ChromeDriver will be auto-managed by Selenium WebDriver Manager${NC}"
+    return 0
 }
 
 # Function to start test server
@@ -110,20 +110,29 @@ run_tests() {
     echo -e "${BLUE}🧪 Running smoke tests...${NC}"
 
     # Install test dependencies if needed
-    pip install -q pytest selenium requests chromedriver-autoinstaller 2>/dev/null || true
-
-    # Auto-install ChromeDriver if needed
+    pip install -q pytest selenium requests 2>/dev/null || true
+    
+    # Test Selenium WebDriver setup
     python -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 try:
-    import chromedriver_autoinstaller
-    chromedriver_autoinstaller.install()
-    print('✅ ChromeDriver auto-installed')
-except ImportError:
-    print('⚠️ chromedriver-autoinstaller not available')
-" 2>/dev/null || true
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    driver = webdriver.Chrome(options=options)
+    print('✅ Selenium WebDriver setup verified')
+    driver.quit()
+except Exception as e:
+    print(f'❌ Selenium WebDriver setup failed: {e}')
+    exit(1)
+" || {
+        echo -e "${RED}❌ Selenium WebDriver setup failed${NC}"
+        exit 1
+    }
 
-    # Run the tests
-    pytest tests/test_frontend_smoke.py -v --tb=short
+    # Run the tests (correct path for integration tests)
+    pytest tests/integration/ -v --tb=short -m integration
     TEST_EXIT_CODE=$?
 
     if [ $TEST_EXIT_CODE -eq 0 ]; then
