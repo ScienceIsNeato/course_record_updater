@@ -12,17 +12,32 @@ from database_service import (
     TERMS_COLLECTION,
     USERS_COLLECTION,
     create_course,
+    create_course_offering,
     create_course_section,
+    create_default_cei_institution,
+    create_institution,
+    create_new_institution,
     create_term,
     create_user,
     get_active_terms,
+    get_all_course_offerings,
+    get_all_courses,
+    get_all_institutions,
+    get_all_instructors,
+    get_all_sections,
     get_course_by_number,
+    get_course_offering,
     get_courses_by_department,
+    get_institution_by_id,
+    get_institution_by_short_name,
+    get_institution_instructor_count,
+    get_course_offering_by_course_and_term,
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_name,
     get_user_by_email,
     get_users_by_role,
+    sanitize_for_logging,
     update_user_extended,
 )
 
@@ -146,20 +161,13 @@ class TestCreateUser:
         mock_db.collection.assert_called_once_with(USERS_COLLECTION)
         mock_collection.add.assert_called_once_with(user_data)
 
+    @patch("database_service.db", None)
     def test_create_user_no_db_client(self):
         """Test user creation when db client is not available."""
-        # Temporarily set db to None
-        original_db = database_service.db
-        database_service.db = None
+        user_data = {"email": "test@example.com", "role": "instructor"}
+        result = create_user(user_data)
 
-        try:
-            user_data = {"email": "test@example.com", "role": "instructor"}
-            result = create_user(user_data)
-
-            assert result is None
-        finally:
-            # Restore original db
-            database_service.db = original_db
+        assert result is None
 
     @patch("database_service.db")
     def test_create_user_firestore_exception(self, mock_db):
@@ -257,18 +265,11 @@ class TestGetUserByEmail:
         # Verify results
         assert result is None
 
+    @patch("database_service.db", None)
     def test_get_user_by_email_no_db_client(self):
         """Test user retrieval when db client is not available."""
-        # Temporarily set db to None
-        original_db = database_service.db
-        database_service.db = None
-
-        try:
-            result = get_user_by_email("test@example.com")
-            assert result is None
-        finally:
-            # Restore original db
-            database_service.db = original_db
+        result = get_user_by_email("test@example.com")
+        assert result is None
 
     @patch("database_service.db")
     def test_get_user_by_email_firestore_exception(self, mock_db):
@@ -544,14 +545,19 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_courses_by_department_success(self, mock_db):
-        """Test get_courses_by_department function - lines 276-294."""
+        """Test get_courses_by_department function - lines 749-795."""
         mock_collection = Mock()
-        mock_query = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
         mock_doc = Mock()
 
         mock_db.collection.return_value = mock_collection
-        mock_collection.where.return_value = mock_query
-        mock_query.stream.return_value = [mock_doc]
+        # First where() call for institution_id returns mock_query1
+        mock_collection.where.return_value = mock_query1
+        # Second where() call for department returns mock_query2
+        mock_query1.where.return_value = mock_query2
+        # Final stream() call returns the documents
+        mock_query2.stream.return_value = [mock_doc]
 
         mock_doc.id = "course123"
         mock_doc.to_dict.return_value = {
@@ -776,3 +782,324 @@ class TestExtendedDatabaseFunctions:
         assert callable(create_course_section)
         assert callable(get_sections_by_instructor)
         assert callable(get_sections_by_term)
+
+
+class TestInstitutionManagement:
+    """Test institution management functions for coverage."""
+
+    @patch("database_service.db")
+    def test_create_institution_success(self, mock_db):
+        """Test create_institution function."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "institution123"
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.add.return_value = (None, mock_doc_ref)
+
+        institution_data = {
+            "name": "Test University",
+            "short_name": "TU",
+            "domain": "test.edu",
+        }
+
+        result = create_institution(institution_data)
+
+        assert result == "institution123"
+        mock_collection.add.assert_called_once_with(institution_data)
+
+    @patch("database_service.db")
+    def test_get_institution_by_id_success(self, mock_db):
+        """Test get_institution_by_id function."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+        mock_doc_ref.get.return_value = mock_doc
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"name": "Test University", "short_name": "TU"}
+        mock_doc.id = "institution123"
+
+        result = get_institution_by_id("institution123")
+
+        assert result["name"] == "Test University"
+        assert result["institution_id"] == "institution123"
+
+    @patch("database_service.db")
+    def test_get_institution_by_short_name_success(self, mock_db):
+        """Test get_institution_by_short_name function."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "institution123"
+        mock_doc.to_dict.return_value = {"name": "Test University", "short_name": "TU"}
+
+        result = get_institution_by_short_name("TU")
+
+        assert result["short_name"] == "TU"
+        assert result["institution_id"] == "institution123"
+
+    @patch("database_service.get_institution_by_short_name")
+    @patch("database_service.create_institution")
+    def test_create_default_cei_institution_new(
+        self, mock_create_institution, mock_get_institution
+    ):
+        """Test create_default_cei_institution when CEI doesn't exist."""
+        mock_get_institution.return_value = None
+        mock_create_institution.return_value = "cei-institution-id"
+
+        result = create_default_cei_institution()
+
+        assert result == "cei-institution-id"
+        mock_create_institution.assert_called_once()
+
+    @patch("database_service.get_institution_by_short_name")
+    def test_create_default_cei_institution_existing(self, mock_get_institution):
+        """Test create_default_cei_institution when CEI already exists."""
+        mock_get_institution.return_value = {"institution_id": "existing-cei-id"}
+
+        result = create_default_cei_institution()
+
+        assert result == "existing-cei-id"
+
+
+class TestCourseOfferingManagement:
+    """Test course offering management functions for coverage."""
+
+    @patch("database_service.db")
+    def test_create_course_offering_success(self, mock_db):
+        """Test create_course_offering function."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "offering123"
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.add.return_value = (None, mock_doc_ref)
+
+        offering_data = {
+            "course_id": "course123",
+            "term_id": "term123",
+            "institution_id": "institution123",
+        }
+
+        result = create_course_offering(offering_data)
+
+        assert result is not None
+        assert isinstance(result, str)
+
+    @patch("database_service.db")
+    def test_get_course_offering_success(self, mock_db):
+        """Test get_course_offering function."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+        mock_doc_ref.get.return_value = mock_doc
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"course_id": "course123", "term_id": "term123"}
+        mock_doc.id = "offering123"
+
+        result = get_course_offering("offering123")
+
+        assert result["course_id"] == "course123"
+        assert result["offering_id"] == "offering123"
+
+    @patch("database_service.db")
+    def test_get_all_course_offerings_success(self, mock_db):
+        """Test get_all_course_offerings function."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "offering123"
+        mock_doc.to_dict.return_value = {"course_id": "course123", "term_id": "term123"}
+
+        result = get_all_course_offerings("institution123")
+
+        assert len(result) == 1
+        assert result[0]["offering_id"] == "offering123"
+
+
+class TestSectionManagement:
+    """Test section management functions for coverage."""
+
+    @patch("database_service.db")
+    def test_get_all_sections_success(self, mock_db):
+        """Test get_all_sections function."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "section123"
+        mock_doc.to_dict.return_value = {
+            "offering_id": "offering123",
+            "instructor_id": "instructor123",
+        }
+
+        result = get_all_sections("institution123")
+
+        assert len(result) == 1
+        assert result[0]["section_id"] == "section123"
+
+    @patch("database_service.db")
+    def test_get_all_courses_success(self, mock_db):
+        """Test get_all_courses function."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "course123"
+        mock_doc.to_dict.return_value = {
+            "course_number": "MATH-101",
+            "department": "MATH",
+        }
+
+        result = get_all_courses("institution123")
+
+        assert len(result) == 1
+        assert result[0]["course_id"] == "course123"
+
+    @patch("database_service.db")
+    def test_get_all_instructors_success(self, mock_db):
+        """Test get_all_instructors function."""
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        # First where() call for role returns mock_query1
+        mock_collection.where.return_value = mock_query1
+        # Second where() call for institution_id returns mock_query2
+        mock_query1.where.return_value = mock_query2
+        # Final stream() call returns the documents
+        mock_query2.stream.return_value = [mock_doc]
+
+        mock_doc.id = "instructor123"
+        mock_doc.to_dict.return_value = {
+            "email": "instructor@test.edu",
+            "role": "instructor",
+        }
+
+        result = get_all_instructors("institution123")
+
+        assert len(result) == 1
+        assert result[0]["user_id"] == "instructor123"
+
+
+class TestAdditionalDatabaseFunctions:
+    """Test additional database functions for coverage."""
+
+    @patch("database_service.db")
+    def test_get_all_institutions_success(self, mock_db):
+        """Test get_all_institutions function."""
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_doc = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.stream.return_value = [mock_doc]
+
+        mock_doc.id = "institution123"
+        mock_doc.to_dict.return_value = {"name": "Test University", "is_active": True}
+
+        result = get_all_institutions()
+
+        assert len(result) == 1
+        assert result[0]["institution_id"] == "institution123"
+
+    @patch("database_service.db")
+    def test_get_institution_instructor_count_success(self, mock_db):
+        """Test get_institution_instructor_count function."""
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+        mock_query2.stream.return_value = ["doc1", "doc2", "doc3"]  # 3 instructors
+
+        result = get_institution_instructor_count("institution123")
+
+        assert result == 3
+
+    @patch("database_service.db")
+    def test_create_new_institution_success(self, mock_db):
+        """Test create_new_institution function."""
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "institution123"
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.add.return_value = (None, mock_doc_ref)
+
+        with patch("database_service.create_user", return_value="user123"):
+            institution_data = {"name": "Test University", "domain": "test.edu"}
+            admin_data = {"email": "admin@test.edu", "first_name": "Admin"}
+
+            result = create_new_institution(institution_data, admin_data)
+
+            assert result == ("institution123", "user123")
+
+    def test_sanitize_for_logging_comprehensive(self):
+        """Test sanitize_for_logging with comprehensive input types."""
+        # Test None input
+        assert sanitize_for_logging(None) == "None"
+        
+        # Test various data types
+        assert sanitize_for_logging(42) == "42"
+        assert sanitize_for_logging(True) == "True"
+        
+        # Test dangerous characters
+        dangerous = "test\nwith\r\nnewlines\x00nulls\x1bescape"
+        result = sanitize_for_logging(dangerous)
+        assert "\\n" in result
+        assert "\\r" in result
+        assert "\\x00" in result
+        assert "\\x1b" in result
+        
+        # Test length limiting
+        long_input = "a" * 200
+        result = sanitize_for_logging(long_input, max_length=50)
+        assert len(result) == 50
+
+    @patch("database_service.db")
+    def test_course_offering_error_paths(self, mock_db):
+        """Test course offering functions error handling."""
+        mock_db.collection.side_effect = Exception("Database error")
+        
+        assert create_course_offering({"course_id": "test"}) is None
+        assert get_course_offering("test") is None
+        assert get_course_offering_by_course_and_term("c", "t", "i") is None
+        assert get_all_course_offerings("institution123") == []
+
+    @patch("database_service.db", None)
+    def test_course_offering_no_db(self):
+        """Test course offering functions when db is None."""
+        assert create_course_offering({"course_id": "test"}) is None
+        assert get_course_offering("test") is None
+        assert get_course_offering_by_course_and_term("c", "t", "i") is None
+        assert get_all_course_offerings("institution123") == []

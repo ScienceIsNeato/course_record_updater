@@ -629,3 +629,25 @@ class TestAuthenticationIntegration:
         user = get_current_user()
         assert user is not None
         assert has_permission("any_permission") is True
+
+
+class TestInstitutionEndpoints:
+    """Test institution management endpoints."""
+
+    @patch("api_routes.get_all_institutions")
+    @patch("api_routes.get_institution_instructor_count")
+    def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
+        """Test GET /api/institutions endpoint."""
+        mock_get_institutions.return_value = [
+            {"institution_id": "inst1", "name": "University 1"},
+            {"institution_id": "inst2", "name": "University 2"}
+        ]
+        mock_get_count.return_value = 15
+        
+        with app.test_client() as client:
+            response = client.get("/api/institutions")
+            assert response.status_code == 200
+            
+            data = json.loads(response.data)
+            assert "institutions" in data
+            assert len(data["institutions"]) == 2

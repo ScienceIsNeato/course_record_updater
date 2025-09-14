@@ -128,12 +128,9 @@ class TestCourseSection:
 
     def test_create_section_schema_basic(self):
         """Test creating a basic section schema"""
-        section = CourseSection.create_schema(
-            course_id="course-123", term_id="term-456"
-        )
+        section = CourseSection.create_schema(offering_id="offering-123")
 
-        assert section["course_id"] == "course-123"
-        assert section["term_id"] == "term-456"
+        assert section["offering_id"] == "offering-123"
         assert section["section_number"] == "001"  # Default
         assert section["status"] == "assigned"  # Default
         assert section["instructor_id"] is None
@@ -142,8 +139,7 @@ class TestCourseSection:
     def test_create_section_with_instructor(self):
         """Test creating section with instructor assigned"""
         section = CourseSection.create_schema(
-            course_id="course-123",
-            term_id="term-456",
+            offering_id="offering-123",
             instructor_id="instructor-789",
             enrollment=25,
         )
@@ -156,7 +152,7 @@ class TestCourseSection:
         """Test that invalid status raises ValueError"""
         with pytest.raises(ValueError, match="Invalid status"):
             CourseSection.create_schema(
-                course_id="course-123", term_id="term-456", status="invalid_status"
+                offering_id="offering-123", status="invalid_status"
             )
 
     # Grade distribution functionality removed per requirements

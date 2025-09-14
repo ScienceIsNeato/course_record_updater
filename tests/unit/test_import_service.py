@@ -27,6 +27,19 @@ from import_service import (
 class TestImportService:
     """Main test class for ImportService functionality."""
 
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
+
     def test_import_excel_file_not_found_error(self):
         """Test import_excel_file with non-existent file - Line 198."""
         service = ImportService()
@@ -434,6 +447,19 @@ class TestEnumsAndDataClasses:
 class TestImportServiceInitialization:
     """Test ImportService initialization and basic methods."""
 
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
+
     def test_import_service_initialization_default(self):
         """Test ImportService initialization with defaults."""
         service = ImportService()
@@ -472,6 +498,19 @@ class TestImportServiceInitialization:
 
 class TestImportServiceLogging:
     """Test ImportService logging functionality."""
+
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
 
     def test_log_error_message(self):
         """Test logging error messages."""
@@ -520,6 +559,19 @@ class TestImportServiceLogging:
 class TestDetectCourseConflict:
     """Test detect_course_conflict method."""
 
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
+
     def test_detect_course_conflict_method_exists(self):
         """Test that detect_course_conflict method exists."""
         service = ImportService()
@@ -554,6 +606,19 @@ class TestImportExcelFunction:
 
 class TestImportServiceIntegration:
     """Test ImportService integration aspects."""
+
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
 
     def test_import_service_stats_tracking(self):
         """Test that ImportService properly tracks statistics."""
@@ -602,6 +667,19 @@ class TestImportServiceIntegration:
 class TestImportServiceErrorHandling:
     """Test ImportService error handling."""
 
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
+
     def test_import_service_handles_missing_dependencies(self):
         """Test ImportService handles missing dependencies gracefully."""
         service = ImportService()
@@ -618,6 +696,19 @@ class TestImportServiceErrorHandling:
 
 class TestImportServiceEdgeCases:
     """Edge case testing for import service functionality."""
+
+    def setup_method(self):
+        """Set up each test with CEI institution mocking."""
+        self.cei_institution_patcher = patch.object(
+            ImportService,
+            "_ensure_cei_institution",
+            return_value="test-cei-institution-id",
+        )
+        self.cei_institution_patcher.start()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        self.cei_institution_patcher.stop()
 
     def test_detect_course_conflict_no_course_number(self):
         """Test detect_course_conflict with missing course_number."""
@@ -1076,19 +1167,18 @@ class TestImportServiceEdgeCases:
         finally:
             os.unlink(tmp_file_path)
 
+    @patch("import_service.create_user")
     @patch("import_service.get_user_by_email")
-    @patch("import_service.str")
-    @patch("import_service.uuid.uuid4")
     def test_process_user_import_creation_failure(
-        self, mock_uuid, mock_str, mock_get_user
+        self, mock_get_user, mock_create_user
     ):
-        """Test process_user_import when user creation fails - lines 423-426."""
+        """Test process_user_import when user creation fails - lines 452-466."""
         service = ImportService()
 
         # Mock no existing user so it tries to create
         mock_get_user.return_value = None
-        # Mock user creation failure by making str() return None (falsy)
-        mock_str.return_value = None
+        # Mock user creation failure by making create_user return None
+        mock_create_user.return_value = None
 
         user_data = {
             "email": "test@example.com",
@@ -1261,21 +1351,25 @@ class TestImportServiceEdgeCases:
         assert "Mode: DRY RUN" in report
         assert "Records processed: 5" in report
 
-    @patch("database_service.db")
-    def test_delete_all_data_exception(self, mock_db):
+    @patch.object(ImportService, "_ensure_cei_institution")
+    def test_delete_all_data_exception(self, mock_ensure_cei):
         """Test _delete_all_data with exception - lines 802-805."""
+        # Mock the CEI institution creation to avoid database calls during initialization
+        mock_ensure_cei.return_value = "test-cei-institution-id"
+
         service = ImportService()
 
         # Mock database collection to raise exception during stream() call
-        mock_collection = Mock()
-        mock_db.collection.return_value = mock_collection
-        mock_collection.stream.side_effect = Exception("Database connection failed")
+        with patch("database_service.db") as mock_db:
+            mock_collection = Mock()
+            mock_db.collection.return_value = mock_collection
+            mock_collection.stream.side_effect = Exception("Database connection failed")
 
-        # Test delete operation with exception
-        service._delete_all_data()
+            # Test delete operation with exception
+            service._delete_all_data()
 
-        # Should handle exception gracefully
-        assert len(service.stats["errors"]) > 0
+            # Should handle exception gracefully
+            assert len(service.stats["errors"]) > 0
         assert any(
             "Failed to delete existing data" in error
             for error in service.stats["errors"]
