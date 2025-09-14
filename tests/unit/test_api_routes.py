@@ -381,12 +381,14 @@ class TestCourseEndpoints:
 
     @patch("api_routes.get_cei_institution_id")
     @patch("api_routes.get_all_courses")
-    def test_get_courses_endpoint_exists(self, mock_get_all_courses, mock_get_cei_institution_id):
+    def test_get_courses_endpoint_exists(
+        self, mock_get_all_courses, mock_get_cei_institution_id
+    ):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
         # Mock the institution ID and courses
         mock_get_cei_institution_id.return_value = "test-institution-id"
         mock_get_all_courses.return_value = []
-        
+
         with app.test_client() as client:
             response = client.get("/api/courses")
             assert response.status_code == 200
@@ -397,7 +399,9 @@ class TestCourseEndpoints:
 
     @patch("api_routes.get_cei_institution_id")
     @patch("api_routes.get_courses_by_department")
-    def test_get_courses_with_department_filter(self, mock_get_courses, mock_get_cei_institution_id):
+    def test_get_courses_with_department_filter(
+        self, mock_get_courses, mock_get_cei_institution_id
+    ):
         """Test GET /api/courses with department filter."""
         # Mock the institution ID
         mock_get_cei_institution_id.return_value = "test-institution-id"
@@ -505,12 +509,14 @@ class TestSectionEndpoints:
 
     @patch("api_routes.get_cei_institution_id")
     @patch("api_routes.get_all_sections")
-    def test_get_sections_endpoint_exists(self, mock_get_all_sections, mock_get_cei_institution_id):
+    def test_get_sections_endpoint_exists(
+        self, mock_get_all_sections, mock_get_cei_institution_id
+    ):
         """Test that GET /api/sections endpoint exists."""
         # Mock the institution ID and sections
         mock_get_cei_institution_id.return_value = "test-institution-id"
         mock_get_all_sections.return_value = []
-        
+
         with app.test_client() as client:
             response = client.get("/api/sections")
             assert response.status_code == 200

@@ -105,8 +105,15 @@ class TestAPIErrorHandling:
     def test_get_courses_exception_handling(self):
         """Test get courses with exception."""
         # Test lines 209-210 - exception handling for courses
-        with patch("api_routes.get_cei_institution_id", return_value="test-institution-id"), \
-             patch("api_routes.get_courses_by_department", side_effect=Exception("DB Error")):
+        with (
+            patch(
+                "api_routes.get_cei_institution_id", return_value="test-institution-id"
+            ),
+            patch(
+                "api_routes.get_courses_by_department",
+                side_effect=Exception("DB Error"),
+            ),
+        ):
             response = self.client.get("/api/courses?department=TEST")
 
             assert response.status_code == 500  # API returns error for exceptions
@@ -252,8 +259,12 @@ class TestSectionEndpoints:
     def test_get_sections_exception_handling(self):
         """Test get sections with exception."""
         # Test lines 484-569 - section endpoints
-        with patch("api_routes.get_cei_institution_id", return_value="test-institution-id"), \
-             patch("api_routes.get_all_sections", side_effect=Exception("DB Error")):
+        with (
+            patch(
+                "api_routes.get_cei_institution_id", return_value="test-institution-id"
+            ),
+            patch("api_routes.get_all_sections", side_effect=Exception("DB Error")),
+        ):
             response = self.client.get("/api/sections")
 
             assert response.status_code == 500  # API returns error for exceptions
@@ -307,7 +318,9 @@ class TestSectionEndpoints:
             "api_routes.get_sections_by_instructor",
             side_effect=Exception("DB Error"),
         ):
-            response = self.client.get("/api/sections?instructor_id=test-instructor-123")
+            response = self.client.get(
+                "/api/sections?instructor_id=test-instructor-123"
+            )
 
             assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
