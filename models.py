@@ -8,7 +8,7 @@ compatibility with the existing flat course model.
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # User Roles and Permissions
 ROLES = {
@@ -92,6 +92,8 @@ class User(DataModel):
         role: str = "instructor",
         department: Optional[str] = None,
         active: bool = True,
+        institution_id: Optional[str] = None,
+        account_status: str = "imported",
     ) -> Dict[str, Any]:
         """Create a new user record schema"""
 
@@ -107,7 +109,12 @@ class User(DataModel):
             "last_name": last_name.strip(),
             "role": role,
             "department": department,
+            "institution_id": institution_id,
             "active": active,
+            "account_status": account_status,  # imported, invited, active
+            "active_user": False,  # Derived field for billing (see calculate_active_status)
+            "invite_sent_at": None,
+            "invite_accepted_at": None,
             "created_at": User.current_timestamp(),
             "last_login": None,
             "last_modified": User.current_timestamp(),
@@ -117,6 +124,24 @@ class User(DataModel):
     def get_permissions(role: str) -> List[str]:
         """Get permissions for a given role"""
         return list(ROLES.get(role, {}).get("permissions", []))
+
+    @staticmethod
+    def calculate_active_status(account_status: str, has_active_courses: bool) -> bool:
+        """
+        Calculate if a user should be considered 'active' for billing purposes.
+
+        Active user criteria:
+        - A) Account status is 'active' (they've accepted invite and created account)
+        - B) They are associated with active courses (current or upcoming terms)
+
+        Args:
+            account_status: User's account status (imported, invited, active)
+            has_active_courses: Whether user has courses in current/upcoming terms
+
+        Returns:
+            True if user should count against billing headcount
+        """
+        return account_status == "active" and has_active_courses
 
 
 class Course(DataModel):
@@ -169,13 +194,39 @@ class Term(DataModel):
         }
 
 
-class CourseSection(DataModel):
-    """CourseSection entity - represents a specific offering of a course"""
+class CourseOffering(DataModel):
+    """CourseOffering entity - represents a course offered in a specific term"""
 
     @staticmethod
     def create_schema(
         course_id: str,
         term_id: str,
+        institution_id: str,
+        status: str = "active",
+        capacity: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Create a new course offering record schema"""
+
+        return {
+            "offering_id": CourseOffering.generate_id(),
+            "course_id": course_id,
+            "term_id": term_id,
+            "institution_id": institution_id,
+            "status": status,
+            "capacity": capacity,
+            "total_enrollment": 0,  # Will be calculated from sections
+            "section_count": 0,  # Will be calculated from sections
+            "created_at": CourseOffering.current_timestamp(),
+            "last_modified": CourseOffering.current_timestamp(),
+        }
+
+
+class CourseSection(DataModel):
+    """CourseSection entity - represents a specific section of a course offering"""
+
+    @staticmethod
+    def create_schema(
+        offering_id: str,
         section_number: str = "001",
         instructor_id: Optional[str] = None,
         enrollment: Optional[int] = None,
@@ -190,8 +241,7 @@ class CourseSection(DataModel):
 
         return {
             "section_id": CourseSection.generate_id(),
-            "course_id": course_id,
-            "term_id": term_id,
+            "offering_id": offering_id,
             "instructor_id": instructor_id,
             "section_number": section_number.strip(),
             "enrollment": enrollment,
@@ -321,9 +371,15 @@ class LegacyCourse(DataModel):
             role="instructor",
         )
 
-        section = CourseSection.create_schema(
+        # Create a course offering (bridge between course and term)
+        offering = CourseOffering.create_schema(
             course_id=course["course_id"],
             term_id=term["term_id"],
+            institution_id="cei_default",  # Legacy migration assumes CEI
+        )
+
+        section = CourseSection.create_schema(
+            offering_id=offering["offering_id"],
             instructor_id=user["user_id"],
             enrollment=course_data.get("num_students"),
         )
@@ -331,7 +387,13 @@ class LegacyCourse(DataModel):
         # Grade distribution functionality removed per requirements
         section["grade_distribution"] = {}
 
-        return {"course": course, "term": term, "user": user, "section": section}
+        return {
+            "course": course,
+            "term": term,
+            "offering": offering,
+            "user": user,
+            "section": section,
+        }
 
 
 # Validation functions
@@ -355,9 +417,59 @@ def validate_course_number(course_number: str) -> bool:
 
 
 def validate_term_name(term_name: str) -> bool:
-    """Validate term name format (e.g., 2024 Fall, 2024 Spring)"""
+    """Validate term name format (e.g., 2024 Fall, 2024 Spring, 2024FA, 2024SP)"""
+    # Handle space-separated format: "2024 Fall"
     parts = term_name.split()
-    return len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4
+    if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4:
+        return True
+
+    # Handle CEI abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI"
+    if len(term_name) == 6 and term_name[:4].isdigit():
+        season = term_name[4:].upper()
+        return season in ["FA", "SP", "SU", "WI"]  # Fall, Spring, Summer, Winter
+
+    return False
+
+
+def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
+    """
+    Parse CEI's effterm_c format into year and season.
+
+    Args:
+        effterm_c: Term code like '2024FA', '2024SP', etc.
+
+    Returns:
+        Tuple of (year, season) where season is the full name
+
+    Example:
+        parse_cei_term('2024FA') -> ('2024', 'Fall')
+    """
+    if not effterm_c or len(effterm_c) != 6:
+        raise ValueError(f"Invalid effterm_c format: {effterm_c}")
+
+    year = effterm_c[:4]
+    season_code = effterm_c[4:].upper()
+
+    season_map = {"FA": "Fall", "SP": "Spring", "SU": "Summer", "WI": "Winter"}
+
+    if season_code not in season_map:
+        raise ValueError(f"Invalid season code: {season_code}")
+
+    return year, season_map[season_code]
+
+
+def format_term_name(year: str, season: str) -> str:
+    """
+    Format year and season into standard term name.
+
+    Args:
+        year: 4-digit year string
+        season: Full season name (Fall, Spring, Summer, Winter)
+
+    Returns:
+        Formatted term name like '2024 Fall'
+    """
+    return f"{year} {season}"
 
 
 # Export all model classes and constants
@@ -365,6 +477,7 @@ __all__ = [
     "User",
     "Course",
     "Term",
+    "CourseOffering",
     "CourseSection",
     "CourseOutcome",
     "LegacyCourse",
@@ -374,4 +487,6 @@ __all__ = [
     "validate_email",
     "validate_course_number",
     "validate_term_name",
+    "parse_cei_term",
+    "format_term_name",
 ]

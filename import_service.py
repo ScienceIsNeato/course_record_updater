@@ -11,20 +11,30 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pandas as pd
 
 from database_service import (
     create_course,
+    create_course_offering,
     create_course_section,
+    create_default_cei_institution,
     create_term,
+    create_user,
     get_course_by_number,
+    get_course_offering_by_course_and_term,
+    get_institution_by_short_name,
     get_user_by_email,
 )
 
 # Import our models and services
-from models import validate_course_number, validate_term_name
+from models import (
+    format_term_name,
+    parse_cei_term,
+    validate_course_number,
+    validate_term_name,
+)
 
 
 class ConflictStrategy(Enum):
@@ -76,8 +86,9 @@ class ImportResult:
 class ImportService:
     """Service for handling data imports with conflict resolution"""
 
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, progress_callback=None):
         self.verbose = verbose
+        self.progress_callback = progress_callback
         self._processed_users = set()  # Track users we've already processed
         self._processed_courses = set()  # Track courses we've already processed
 
@@ -85,6 +96,11 @@ class ImportService:
         from logging_config import get_import_logger
 
         self.logger = get_import_logger()
+
+        # Ensure CEI institution exists and get its ID
+        self.cei_institution_id = self._ensure_cei_institution()
+        if not self.cei_institution_id:
+            raise RuntimeError("Failed to create or retrieve CEI institution")
 
         self.reset_stats()
 
@@ -103,6 +119,36 @@ class ImportService:
         }
 
         # Cache for entities to avoid duplicate lookups
+
+    def _ensure_cei_institution(self) -> Optional[str]:
+        """
+        Ensure CEI institution exists and return its ID
+
+        Returns:
+            Institution ID if successful, None otherwise
+        """
+        try:
+            # Check if CEI institution already exists
+            cei_institution = get_institution_by_short_name("CEI")
+            if cei_institution:
+                self.logger.info(
+                    f"[Import] Using existing CEI institution: {cei_institution['institution_id']}"
+                )
+                return cei_institution["institution_id"]
+
+            # Create CEI institution
+            self.logger.info("[Import] Creating CEI institution...")
+            institution_id = create_default_cei_institution()
+            if institution_id:
+                self.logger.info(f"[Import] Created CEI institution: {institution_id}")
+                return institution_id
+            else:
+                self.logger.error("[Import] Failed to create CEI institution")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"[Import] Error ensuring CEI institution: {e}")
+            return None
 
     def _log(self, message: str, level: str = "info"):
         """Smart logging that respects verbose mode"""
@@ -403,9 +449,7 @@ class ImportService:
         else:
             # No conflicts, create new user
             if not dry_run:
-                # TODO: Implement create_user in database_service_extended
-                # user_id = create_user(user_data)
-                user_id = str(uuid.uuid4())  # Stub for now
+                user_id = create_user(user_data)
 
                 if user_id:
                     self.stats["records_created"] += 1
@@ -506,6 +550,15 @@ class ImportService:
                         "summary",
                     )
 
+                    # Update progress callback if provided
+                    if self.progress_callback:
+                        self.progress_callback(
+                            percentage=progress,
+                            records_processed=index + 1,
+                            total_records=total_rows,
+                            message=f"Processing row {index + 1}/{total_rows} ({progress}%)",
+                        )
+
                 try:
                     # Extract data based on adapter (CEI-specific for now)
                     if adapter_name == "cei_excel_adapter":
@@ -514,46 +567,140 @@ class ImportService:
                         self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
                         continue
 
-                    # Process each entity type
-                    for entity_type, entity_data in entities.items():
-                        if entity_type == "course" and entity_data:
+                    # Process entities in dependency order: course -> user -> term -> offering -> section
+                    processing_order = ["course", "user", "term", "offering", "section"]
+
+                    # Track the offering_id for section processing
+                    current_offering_id = None
+
+                    for entity_type in processing_order:
+                        entity_data = entities.get(entity_type)
+                        if not entity_data:
+                            continue
+
+                        if entity_type == "course":
                             success, conflicts = self.process_course_import(
                                 entity_data, conflict_strategy, dry_run
                             )
                             all_conflicts.extend(conflicts)
 
-                        elif entity_type == "user" and entity_data:
+                        elif entity_type == "user":
                             success, conflicts = self.process_user_import(
                                 entity_data, conflict_strategy, dry_run
                             )
                             all_conflicts.extend(conflicts)
 
                         elif entity_type == "term" and entity_data:
-                            # Process term import (simplified for now)
-                            if not dry_run:
-                                term_id = create_term(entity_data)
-                                if term_id:
-                                    self.stats["records_created"] += 1
-                                    self.logger.info(
-                                        f"[Import] Created term: {entity_data.get('name')}"
-                                    )
-                            else:
+                            # Check if term already exists to avoid duplicates
+                            term_name = entity_data.get("term_name")
+                            institution_id = entity_data.get("institution_id")
+
+                            # Simple duplicate check - query for existing term
+                            from database_service import db
+
+                            existing_terms = (
+                                db.collection("terms")
+                                .where("term_name", "==", term_name)
+                                .where("institution_id", "==", institution_id)
+                                .limit(1)
+                                .stream()
+                            )
+
+                            existing_term = next(existing_terms, None)
+
+                            if existing_term:
+                                # Term already exists, skip creation
                                 self.logger.info(
-                                    f"[Import] DRY RUN: Would create term: {entity_data.get('name')}"
+                                    f"[Import] Term already exists: {term_name}"
                                 )
+                            else:
+                                # Create new term
+                                if not dry_run:
+                                    term_id = create_term(entity_data)
+                                    if term_id:
+                                        self.stats["records_created"] += 1
+                                        self.logger.info(
+                                            f"[Import] Created term: {term_name}"
+                                        )
+                                else:
+                                    self.logger.info(
+                                        f"[Import] DRY RUN: Would create term: {term_name}"
+                                    )
+
+                        elif entity_type == "offering" and entity_data:
+                            # Process course offering (bridge between course and sections)
+                            course_id = entity_data.get(
+                                "course_id"
+                            )  # This is still course_number
+                            term_name = entity_data.get(
+                                "term_id"
+                            )  # This is still term_name
+                            institution_id = entity_data.get("institution_id")
+
+                            # Resolve course_id from course_number
+                            if course_id:
+                                course = get_course_by_number(course_id)
+                                if course:
+                                    entity_data["course_id"] = course.get("course_id")
+
+                                    # Check if offering already exists
+                                    existing_offering = (
+                                        get_course_offering_by_course_and_term(
+                                            course.get("course_id"),
+                                            term_name,
+                                            institution_id,
+                                        )
+                                    )
+
+                                    if existing_offering:
+                                        self.logger.info(
+                                            f"[Import] Course offering already exists: {course_id} in {term_name}"
+                                        )
+                                        # Store the offering_id for section processing
+                                        current_offering_id = existing_offering.get(
+                                            "offering_id"
+                                        )
+                                        entity_data["offering_id"] = current_offering_id
+                                    else:
+                                        # Create new course offering
+                                        entity_data["term_id"] = (
+                                            term_name  # Keep term_name for now
+                                        )
+                                        if not dry_run:
+                                            offering_id = create_course_offering(
+                                                entity_data
+                                            )
+                                            if offering_id:
+                                                self.stats["records_created"] += 1
+                                                current_offering_id = offering_id
+                                                entity_data["offering_id"] = offering_id
+                                                self.logger.info(
+                                                    f"[Import] Created course offering: {course_id} in {term_name}"
+                                                )
+                                        else:
+                                            self.logger.info(
+                                                f"[Import] DRY RUN: Would create offering: {course_id} in {term_name}"
+                                            )
 
                         elif entity_type == "section" and entity_data:
-                            # Process section import (simplified for now)
-                            if not dry_run:
-                                section_id = create_course_section(entity_data)
-                                if section_id:
-                                    self.stats["records_created"] += 1
+                            # Process section import - use the offering_id from the current row's processing
+                            if current_offering_id:
+                                entity_data["offering_id"] = current_offering_id
+
+                                if not dry_run:
+                                    section_id = create_course_section(entity_data)
+                                    if section_id:
+                                        self.stats["records_created"] += 1
+                                        self.logger.info(
+                                            f"[Import] Created section: {current_offering_id}"
+                                        )
+                                else:
                                     self.logger.info(
-                                        f"[Import] Created section: {entity_data.get('course_id')}"
+                                        f"[Import] DRY RUN: Would create section: {current_offering_id}"
                                     )
                             else:
-                                self.logger.info(
-                                    f"[Import] DRY RUN: Would create section: {entity_data.get('course_id')}"
+                                self.logger.warning(
+                                    f"[Import] No offering_id available for section creation"
                                 )
 
                 except Exception as e:
@@ -599,6 +746,7 @@ class ImportService:
                             course_number
                         ),
                         "credit_hours": 3,  # Default, CEI file doesn't have credit hours
+                        "institution_id": self.cei_institution_id,  # Associate with CEI
                     }
 
             # Extract instructor information
@@ -616,28 +764,47 @@ class ImportService:
                     "department": (
                         course_data.get("department") if course_data else None
                     ),
+                    "institution_id": self.cei_institution_id,  # Associate with CEI
+                    "account_status": "imported",  # User created from import, not yet invited
+                    "active_user": False,  # Will be calculated later based on active courses
                 }
 
-            # Extract term information
+            # Extract term information from effterm_c column
             term_data = None
-            if "Term" in row and pd.notna(row["Term"]):
-                term_name = str(row["Term"])
-                if validate_term_name(term_name):
+            if "effterm_c" in row and pd.notna(row["effterm_c"]):
+                effterm_c = str(row["effterm_c"]).strip()
+                try:
+                    year, season = parse_cei_term(effterm_c)
+                    term_name = format_term_name(year, season)
                     term_data = {
-                        "name": term_name,
+                        "term_name": term_name,
                         "start_date": self._estimate_term_start(term_name),
                         "end_date": self._estimate_term_end(term_name),
                         "assessment_due_date": self._estimate_assessment_due(term_name),
+                        "institution_id": self.cei_institution_id,  # Associate with CEI
                     }
+                except ValueError as e:
+                    self.logger.warning(
+                        f"[Import] Invalid effterm_c format '{effterm_c}': {e}"
+                    )
 
-            # Extract section information
-            section_data = None
-            if course_data and user_data and term_data:
-                section_data = {
+            # Extract course offering information (bridge between course and sections)
+            offering_data = None
+            if course_data and term_data:
+                offering_data = {
                     "course_id": course_data.get(
                         "course_number"
                     ),  # Will be resolved later
-                    "term_id": term_data.get("name"),  # Will be resolved later
+                    "term_id": term_data.get("term_name"),  # Will be resolved later
+                    "institution_id": self.cei_institution_id,
+                    "status": "active",
+                }
+
+            # Extract section information
+            section_data = None
+            if course_data and user_data and term_data and offering_data:
+                section_data = {
+                    "offering_id": None,  # Will be resolved after offering creation
                     "instructor_id": user_data.get("email"),  # Will be resolved later
                     "section_number": "001",  # CEI file doesn't have explicit section numbers
                     "enrollment": (
@@ -652,12 +819,19 @@ class ImportService:
                 "course": course_data,
                 "user": user_data,
                 "term": term_data,
+                "offering": offering_data,
                 "section": section_data,
             }
 
         except Exception as e:
             self.logger.info(f"[Import] Error parsing row: {str(e)}")
-            return {"course": None, "user": None, "term": None, "section": None}
+            return {
+                "course": None,
+                "user": None,
+                "term": None,
+                "offering": None,
+                "section": None,
+            }
 
     def _extract_department_from_course(self, course_number: str) -> str:
         """Extract department from course number"""
@@ -836,6 +1010,7 @@ def import_excel(
     adapter_name: str = "cei_excel_adapter",
     delete_existing_db: bool = False,
     verbose: bool = False,
+    progress_callback: Optional[Callable] = None,
 ) -> ImportResult:
     """
     Convenience function to import Excel file
@@ -859,8 +1034,8 @@ def import_excel(
 
     strategy = strategy_map.get(conflict_strategy, ConflictStrategy.USE_THEIRS)
 
-    # Create service instance with verbose setting
-    service = ImportService(verbose=verbose)
+    # Create service instance with verbose setting and progress callback
+    service = ImportService(verbose=verbose, progress_callback=progress_callback)
 
     return service.import_excel_file(
         file_path=file_path,

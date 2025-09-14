@@ -105,15 +105,13 @@ class TestAPIErrorHandling:
     def test_get_courses_exception_handling(self):
         """Test get courses with exception."""
         # Test lines 209-210 - exception handling for courses
-        with patch(
-            "database_service.get_courses_by_department",
-            side_effect=Exception("DB Error"),
-        ):
+        with patch("api_routes.get_cei_institution_id", return_value="test-institution-id"), \
+             patch("api_routes.get_courses_by_department", side_effect=Exception("DB Error")):
             response = self.client.get("/api/courses?department=TEST")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
 
 class TestTermEndpoints:
@@ -219,7 +217,7 @@ class TestImportEndpoints:
 
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
-        # Test exception handling in import
+        # Test exception handling in import - now async, returns 202 with progress_id
         with patch("api_routes.import_excel", side_effect=Exception("Import failed")):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(b"fake excel data")
@@ -231,9 +229,12 @@ class TestImportEndpoints:
                         "/api/import/excel", data={"file": (f, "test.xlsx")}
                     )
 
-                assert response.status_code == 500
+                # New async behavior: returns 202 with progress_id immediately
+                assert response.status_code == 202
                 data = response.get_json()
-                assert data["success"] is False
+                assert data["success"] is True
+                assert "progress_id" in data
+                # Exception will be handled in background thread and reported via progress API
             finally:
                 os.unlink(tmp_path)
 
@@ -251,14 +252,13 @@ class TestSectionEndpoints:
     def test_get_sections_exception_handling(self):
         """Test get sections with exception."""
         # Test lines 484-569 - section endpoints
-        with patch(
-            "database_service.get_sections_by_term", side_effect=Exception("DB Error")
-        ):
-            response = self.client.get("/api/sections?term=FA24")
+        with patch("api_routes.get_cei_institution_id", return_value="test-institution-id"), \
+             patch("api_routes.get_all_sections", side_effect=Exception("DB Error")):
+            response = self.client.get("/api/sections")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
     def test_create_section_no_json_data(self):
         """Test section creation with no JSON data."""
@@ -304,14 +304,14 @@ class TestSectionEndpoints:
     def test_get_sections_by_instructor_exception(self):
         """Test get sections by instructor with exception."""
         with patch(
-            "database_service.get_sections_by_instructor",
+            "api_routes.get_sections_by_instructor",
             side_effect=Exception("DB Error"),
         ):
-            response = self.client.get("/api/sections?instructor=test@example.com")
+            response = self.client.get("/api/sections?instructor_id=test-instructor-123")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
 
 class TestDashboardErrorHandling:

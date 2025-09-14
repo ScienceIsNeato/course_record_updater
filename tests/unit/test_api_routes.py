@@ -379,8 +379,14 @@ class TestUserEndpoints:
 class TestCourseEndpoints:
     """Test course management endpoints."""
 
-    def test_get_courses_endpoint_exists(self):
+    @patch("api_routes.get_cei_institution_id")
+    @patch("api_routes.get_all_courses")
+    def test_get_courses_endpoint_exists(self, mock_get_all_courses, mock_get_cei_institution_id):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
+        # Mock the institution ID and courses
+        mock_get_cei_institution_id.return_value = "test-institution-id"
+        mock_get_all_courses.return_value = []
+        
         with app.test_client() as client:
             response = client.get("/api/courses")
             assert response.status_code == 200
@@ -389,9 +395,12 @@ class TestCourseEndpoints:
             assert "courses" in data
             assert isinstance(data["courses"], list)
 
+    @patch("api_routes.get_cei_institution_id")
     @patch("api_routes.get_courses_by_department")
-    def test_get_courses_with_department_filter(self, mock_get_courses):
+    def test_get_courses_with_department_filter(self, mock_get_courses, mock_get_cei_institution_id):
         """Test GET /api/courses with department filter."""
+        # Mock the institution ID
+        mock_get_cei_institution_id.return_value = "test-institution-id"
         mock_get_courses.return_value = [
             {
                 "course_number": "MATH-101",
@@ -404,7 +413,7 @@ class TestCourseEndpoints:
             response = client.get("/api/courses?department=MATH")
             assert response.status_code == 200
 
-            mock_get_courses.assert_called_with("MATH")
+            mock_get_courses.assert_called_with("test-institution-id", "MATH")
 
     @patch("api_routes.create_course")
     @patch("api_routes.has_permission")
@@ -456,9 +465,12 @@ class TestCourseEndpoints:
 class TestTermEndpoints:
     """Test term management endpoints."""
 
+    @patch("api_routes.get_cei_institution_id")
     @patch("api_routes.get_active_terms")
-    def test_get_terms_success(self, mock_get_terms):
+    def test_get_terms_success(self, mock_get_terms, mock_get_cei_institution_id):
         """Test GET /api/terms."""
+        # Mock the institution ID
+        mock_get_cei_institution_id.return_value = "test-institution-id"
         mock_get_terms.return_value = [
             {
                 "term_name": "Fall2024",
@@ -491,10 +503,16 @@ class TestTermEndpoints:
 class TestSectionEndpoints:
     """Test section management endpoints."""
 
-    def test_get_sections_endpoint_exists(self):
+    @patch("api_routes.get_cei_institution_id")
+    @patch("api_routes.get_all_sections")
+    def test_get_sections_endpoint_exists(self, mock_get_all_sections, mock_get_cei_institution_id):
         """Test that GET /api/sections endpoint exists."""
+        # Mock the institution ID and sections
+        mock_get_cei_institution_id.return_value = "test-institution-id"
+        mock_get_all_sections.return_value = []
+        
         with app.test_client() as client:
-            response = client.get("/api/sections?term=Fall2024")
+            response = client.get("/api/sections")
             assert response.status_code == 200
 
             data = json.loads(response.data)

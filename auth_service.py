@@ -20,9 +20,9 @@ class AuthService:
     def get_current_user(self) -> Optional[Dict[str, Any]]:
         """
         STUB: Get the current authenticated user from session.
-        For now, returns a mock admin user for development.
+        For now, returns a mock admin user for development with CEI institution context.
         """
-        # STUB: Return mock admin user for development
+        # STUB: Return mock admin user for development with institution context
         return {
             "user_id": "dev-admin-123",
             "email": "admin@cei.edu",
@@ -30,6 +30,9 @@ class AuthService:
             "first_name": "Dev",
             "last_name": "Admin",
             "department": "IT",
+            "institution_id": None,  # Will be dynamically resolved
+            "primary_institution_id": None,  # Will be dynamically resolved
+            "accessible_institutions": [],  # Will be dynamically resolved
         }
 
     def has_permission(self, required_permission: str) -> bool:
@@ -126,3 +129,29 @@ def get_user_department() -> Optional[str]:
     """Get current user's department (convenience function)."""
     user = get_current_user()
     return user.get("department") if user else None
+
+
+def get_current_institution_id() -> Optional[str]:
+    """Get current user's active institution ID (convenience function)."""
+    user = get_current_user()
+    if not user:
+        return None
+
+    # For site admins, we need to determine institution context from request or default to CEI
+    # For now, always return CEI institution ID for development
+    institution_id = user.get("institution_id") or user.get("primary_institution_id")
+
+    # If no institution_id is set, default to CEI for development
+    if not institution_id:
+        return get_cei_institution_id()
+
+    return institution_id
+
+
+def get_cei_institution_id() -> Optional[str]:
+    """Get CEI institution ID - helper function for development."""
+    # This will be replaced with actual institution lookup
+    from database_service import get_institution_by_short_name
+
+    cei_institution = get_institution_by_short_name("CEI")
+    return cei_institution["institution_id"] if cei_institution else None

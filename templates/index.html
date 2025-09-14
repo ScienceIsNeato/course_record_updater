@@ -158,10 +158,10 @@
                     <div class="row g-3 mt-2">
                         <div class="col-md-4">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run" checked>
+                                <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run">
                                 <label class="form-check-label" for="dry_run">
-                                    <strong>Dry Run (Recommended)</strong><br>
-                                    <small class="text-muted">Test import without making changes</small>
+                                    <strong>Dry Run (Test Mode)</strong><br>
+                                    <small class="text-muted">Preview changes without saving to database</small>
                                 </label>
                             </div>
                         </div>
@@ -230,37 +230,102 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="card border-primary">
-                            <div class="card-body text-center">
+                            <div class="card-body">
                                 <h5 class="card-title">Courses</h5>
                                 <p class="card-text">Manage course catalog</p>
-                                <small class="text-muted">Coming soon</small>
+                                <div id="coursesData">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted ms-2">Loading...</small>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card border-success">
-                            <div class="card-body text-center">
+                            <div class="card-body">
                                 <h5 class="card-title">Instructors</h5>
                                 <p class="card-text">Manage faculty</p>
-                                <small class="text-muted">Coming soon</small>
+                                <div id="instructorsData">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted ms-2">Loading...</small>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card border-warning">
-                            <div class="card-body text-center">
+                            <div class="card-body">
                                 <h5 class="card-title">Sections</h5>
                                 <p class="card-text">Manage course sections</p>
-                                <small class="text-muted">Coming soon</small>
+                                <div id="sectionsData">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted ms-2">Loading...</small>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card border-info">
-                            <div class="card-body text-center">
+                            <div class="card-body">
                                 <h5 class="card-title">Terms</h5>
                                 <p class="card-text">Manage academic terms</p>
-                                <small class="text-muted">Coming soon</small>
+                                <div id="termsData">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted ms-2">Loading...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Section (Development Only) -->
+    <div class="container mt-5">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">🔍 Debug Info (Development)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h6>Sample Courses</h6>
+                        <div id="debug-courses" class="small">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Sample Instructors</h6>
+                        <div id="debug-instructors" class="small">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Sample Sections</h6>
+                        <div id="debug-sections" class="small">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>Sample Terms</h6>
+                        <div id="debug-terms" class="small">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
                             </div>
                         </div>
                     </div>

@@ -22,17 +22,20 @@ show_usage() {
     echo ""
     echo "Options:"
     echo "  -f, --file FILE    Monitor specific log file (default: logs/server.log)"
-    echo "  -n, --lines NUM    Show last NUM lines first (default: 10)"
+    echo "  -n, --lines NUM    Show last NUM lines and exit (no follow)"
+    echo "  --follow           Force follow mode even with -n"
     echo "  -h, --help         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                      # Monitor default server log"
-    echo "  $0 -n 50              # Show last 50 lines then follow"
+    echo "  $0                      # Monitor default server log (follow mode)"
+    echo "  $0 -n 50              # Show last 50 lines and exit"
+    echo "  $0 -n 20 --follow     # Show last 20 lines then follow"
     echo "  $0 -f logs/firestore.log  # Monitor Firestore emulator log"
 }
 
 # Parse command line arguments
 LINES=10
+FOLLOW=true
 while [[ $# -gt 0 ]]; do
     case $1 in
         -f|--file)
@@ -41,7 +44,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         -n|--lines)
             LINES="$2"
+            FOLLOW=false  # When -n is specified, don't follow by default
             shift 2
+            ;;
+        --follow)
+            FOLLOW=true   # Explicit follow flag
+            shift
             ;;
         -h|--help)
             show_usage
@@ -98,9 +106,16 @@ colorize_logs() {
 echo -e "${BLUE}📋 Course Record Updater - Log Monitor${NC}"
 echo -e "${BLUE}=======================================${NC}"
 echo -e "${BLUE}📁 Monitoring: $LOG_FILE${NC}"
-echo -e "${BLUE}📊 Showing last $LINES lines, then following...${NC}"
-echo -e "${BLUE}🛑 Press Ctrl+C to stop monitoring${NC}"
-echo ""
 
-# Show initial lines and then follow
-tail -n "$LINES" -f "$LOG_FILE" | colorize_logs
+if [ "$FOLLOW" = true ]; then
+    echo -e "${BLUE}📊 Showing last $LINES lines, then following...${NC}"
+    echo -e "${BLUE}🛑 Press Ctrl+C to stop monitoring${NC}"
+    echo ""
+    # Show initial lines and then follow
+    tail -n "$LINES" -f "$LOG_FILE" | colorize_logs
+else
+    echo -e "${BLUE}📊 Showing last $LINES lines${NC}"
+    echo ""
+    # Just show the lines without following
+    tail -n "$LINES" "$LOG_FILE" | colorize_logs
+fi

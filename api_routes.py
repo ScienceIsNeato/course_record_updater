@@ -12,6 +12,8 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 # Import our services
 from auth_service import (
+    get_cei_institution_id,
+    get_current_institution_id,
     get_current_user,
     has_permission,
     login_required,
@@ -20,10 +22,17 @@ from auth_service import (
 from database_service import (
     create_course,
     create_course_section,
+    create_new_institution,
     create_term,
     get_active_terms,
+    get_all_courses,
+    get_all_institutions,
+    get_all_instructors,
+    get_all_sections,
     get_course_by_number,
     get_courses_by_department,
+    get_institution_by_id,
+    get_institution_instructor_count,
     get_sections_by_instructor,
     get_sections_by_term,
     get_users_by_role,
@@ -88,6 +97,122 @@ def dashboard():
     else:
         flash("Unknown user role. Please contact administrator.", "danger")
         return redirect(url_for("index"))
+
+
+# ========================================
+# INSTITUTION MANAGEMENT API
+# ========================================
+
+
+@api.route("/institutions", methods=["GET"])
+@permission_required("manage_institutions")
+def list_institutions():
+    """Get list of all institutions (site admin only)"""
+    try:
+        institutions = get_all_institutions()
+
+        # Add current instructor counts
+        for institution in institutions:
+            institution["current_instructor_count"] = get_institution_instructor_count(
+                institution["institution_id"]
+            )
+
+        return jsonify(
+            {"success": True, "institutions": institutions, "count": len(institutions)}
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get institutions", "Failed to retrieve institutions"
+        )
+
+
+@api.route("/institutions", methods=["POST"])
+def create_institution():
+    """Create a new institution with its first admin user (public endpoint for registration)"""
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_institution_fields = ["name", "short_name", "domain"]
+        required_user_fields = ["email", "first_name", "last_name", "password"]
+
+        institution_data = data.get("institution", {})
+        user_data = data.get("admin_user", {})
+
+        # Validate institution data
+        for field in required_institution_fields:
+            if not institution_data.get(field):
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Institution {field} is required"}
+                    ),
+                    400,
+                )
+
+        # Validate user data
+        for field in required_user_fields:
+            if not user_data.get(field):
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Admin user {field} is required"}
+                    ),
+                    400,
+                )
+
+        # Create institution and admin user
+        result = create_new_institution(institution_data, user_data)
+        if not result:
+            return (
+                jsonify({"success": False, "error": "Failed to create institution"}),
+                500,
+            )
+
+        institution_id, user_id = result
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "institution_id": institution_id,
+                    "admin_user_id": user_id,
+                    "message": "Institution and admin user created successfully",
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "Create institution", "Failed to create institution")
+
+
+@api.route("/institutions/<institution_id>", methods=["GET"])
+@login_required
+def get_institution_details(institution_id: str):
+    """Get institution details (users can only view their own institution)"""
+    try:
+        current_user = get_current_user()
+
+        # Users can only view their own institution unless they're site admin
+        if (
+            current_user.get("institution_id") != institution_id
+            and current_user.get("role") != "site_admin"
+        ):
+            return jsonify({"success": False, "error": "Access denied"}), 403
+
+        institution = get_institution_by_id(institution_id)
+        if not institution:
+            return jsonify({"success": False, "error": "Institution not found"}), 404
+
+        # Add current instructor count
+        institution["current_instructor_count"] = get_institution_instructor_count(
+            institution_id
+        )
+
+        return jsonify({"success": True, "institution": institution})
+
+    except Exception as e:
+        return handle_api_error(e, "Get institution", "Failed to retrieve institution")
 
 
 # ========================================
@@ -224,13 +349,20 @@ def list_courses():
     - department: Filter by department (optional)
     """
     try:
+        # Get institution context - for development, use CEI
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
         department_filter = request.args.get("department")
 
         if department_filter:
-            courses = get_courses_by_department(department_filter)
+            courses = get_courses_by_department(institution_id, department_filter)
         else:
-            # TODO: Implement get_all_courses_v2 function
-            courses = []
+            courses = get_all_courses(institution_id)
 
         return jsonify({"success": True, "courses": courses, "count": len(courses)})
 
@@ -308,6 +440,34 @@ def get_course(course_number: str):
 
 
 # ========================================
+# INSTRUCTOR MANAGEMENT API
+# ========================================
+
+
+@api.route("/instructors", methods=["GET"])
+@login_required
+def list_instructors():
+    """Get list of all instructors"""
+    try:
+        # Get institution context - for development, use CEI
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        instructors = get_all_instructors(institution_id)
+
+        return jsonify(
+            {"success": True, "instructors": instructors, "count": len(instructors)}
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "Get instructors", "Failed to retrieve instructors")
+
+
+# ========================================
 # TERM MANAGEMENT API
 # ========================================
 
@@ -317,7 +477,15 @@ def get_course(course_number: str):
 def list_terms():
     """Get list of active terms"""
     try:
-        terms = get_active_terms()
+        # Get institution context - for development, use CEI
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        terms = get_active_terms(institution_id)
 
         return jsonify({"success": True, "terms": terms, "count": len(terms)})
 
@@ -412,8 +580,16 @@ def list_sections():
         elif term_id:
             sections = get_sections_by_term(term_id)
         else:
-            # TODO: Implement get_all_sections function
-            sections = []
+            # Get institution context - for development, use CEI
+            institution_id = get_cei_institution_id()
+            if not institution_id:
+                return (
+                    jsonify(
+                        {"success": False, "error": "Institution context required"}
+                    ),
+                    400,
+                )
+            sections = get_all_sections(institution_id)
 
         # Filter based on permissions
         if current_user["role"] == "instructor" and not has_permission(
@@ -491,6 +667,59 @@ def create_section():
 # IMPORT API (New Excel Import System)
 # ========================================
 
+# Simple in-memory progress tracking for imports
+import threading
+import time
+import uuid
+from typing import Any, Dict
+
+_progress_store: Dict[str, Dict[str, Any]] = {}
+_progress_lock = threading.Lock()
+
+
+def create_progress_tracker() -> str:
+    """Create a new progress tracker and return its ID"""
+    progress_id = str(uuid.uuid4())
+    with _progress_lock:
+        _progress_store[progress_id] = {
+            "status": "starting",
+            "percentage": 0,
+            "message": "Initializing import...",
+            "records_processed": 0,
+            "total_records": 0,
+            "created_at": time.time(),
+        }
+    return progress_id
+
+
+def update_progress(progress_id: str, **kwargs):
+    """Update progress information"""
+    with _progress_lock:
+        if progress_id in _progress_store:
+            _progress_store[progress_id].update(kwargs)
+
+
+def get_progress(progress_id: str) -> Dict[str, Any]:
+    """Get current progress information"""
+    with _progress_lock:
+        return _progress_store.get(progress_id, {})
+
+
+def cleanup_progress(progress_id: str):
+    """Remove progress tracker after completion"""
+    with _progress_lock:
+        _progress_store.pop(progress_id, None)
+
+
+@api.route("/import/progress/<progress_id>", methods=["GET"])
+def get_import_progress(progress_id: str):
+    """Get the current progress of an import operation"""
+    progress = get_progress(progress_id)
+    if not progress:
+        return jsonify({"error": "Progress ID not found"}), 404
+
+    return jsonify(progress)
+
 
 @api.route("/import/excel", methods=["POST"])
 @permission_required("import_data")
@@ -542,56 +771,70 @@ def import_excel_api():
             file.save(temp_file.name)
             temp_file_path = temp_file.name
 
-        try:
-            # Perform the import
-            result = import_excel(
-                file_path=temp_file_path,
-                conflict_strategy=conflict_strategy,
-                dry_run=dry_run,
-                adapter_name=adapter_name,
-                delete_existing_db=delete_existing_db,
-                verbose=verbose,
-            )
+        # Create progress tracker
+        progress_id = create_progress_tracker()
 
-            # Create response
-            response_data = {
-                "success": result.success,
-                "dry_run": result.dry_run,
-                "statistics": {
-                    "records_processed": result.records_processed,
-                    "records_created": result.records_created,
-                    "records_updated": result.records_updated,
-                    "records_skipped": result.records_skipped,
-                    "conflicts_detected": result.conflicts_detected,
-                    "conflicts_resolved": result.conflicts_resolved,
-                    "execution_time": result.execution_time,
-                },
-                "errors": result.errors,
-                "warnings": result.warnings,
-                "conflicts": [
-                    {
-                        "entity_type": c.entity_type,
-                        "entity_key": c.entity_key,
-                        "field_name": c.field_name,
-                        "existing_value": str(c.existing_value),
-                        "import_value": str(c.import_value),
-                        "resolution": c.resolution,
-                    }
-                    for c in result.conflicts[:50]  # Limit to first 50 conflicts
-                ],
-            }
+        # Start import in background thread
+        import threading
 
-            if result.success:
-                return jsonify(response_data), 200
-            else:
-                return jsonify(response_data), 400
-
-        finally:
-            # Clean up temporary file
+        def run_import():
             try:
-                os.unlink(temp_file_path)
-            except OSError:
-                pass
+                update_progress(
+                    progress_id, status="running", message="Starting import..."
+                )
+
+                # Perform the import
+                result = import_excel(
+                    file_path=temp_file_path,
+                    conflict_strategy=conflict_strategy,
+                    dry_run=dry_run,
+                    adapter_name=adapter_name,
+                    delete_existing_db=delete_existing_db,
+                    verbose=verbose,
+                    progress_callback=lambda **kwargs: update_progress(
+                        progress_id, **kwargs
+                    ),
+                )
+
+                # Update with final results
+                update_progress(
+                    progress_id,
+                    status="completed",
+                    percentage=100,
+                    message=(
+                        "Import completed successfully!"
+                        if result.success
+                        else "Import failed"
+                    ),
+                    result=result,
+                )
+
+            except Exception as e:
+                update_progress(
+                    progress_id, status="error", message=f"Import failed: {str(e)}"
+                )
+            finally:
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_file_path)
+                except OSError:
+                    pass
+
+        # Start background thread
+        thread = threading.Thread(target=run_import, daemon=True)
+        thread.start()
+
+        # Return progress ID immediately
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "progress_id": progress_id,
+                    "message": "Import started. Use /api/import/progress/{progress_id} to track progress.",
+                }
+            ),
+            202,
+        )
 
     except Exception as e:
         return handle_api_error(e, "Excel import", "Failed to process file upload")
@@ -687,6 +930,153 @@ def health_check():
             "version": "2.0.0",
         }
     )
+
+
+# ========================================
+# DEBUG ENDPOINTS (for development/testing)
+# ========================================
+
+
+@api.route("/debug/courses", methods=["GET"])
+@login_required
+def debug_list_courses():
+    """Get sample list of courses for debugging"""
+    try:
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        courses = get_all_courses(institution_id)
+        # Return first 10 courses with basic info
+        sample_courses = []
+        for course in courses[:10]:
+            sample_courses.append(
+                {
+                    "course_number": course.get("course_number", "N/A"),
+                    "title": course.get("title", "N/A"),
+                    "department": course.get("department", "N/A"),
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "total_count": len(courses),
+                "sample_courses": sample_courses,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in debug_list_courses: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api.route("/debug/instructors", methods=["GET"])
+@login_required
+def debug_list_instructors():
+    """Get sample list of instructors for debugging"""
+    try:
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        instructors = get_all_instructors(institution_id)
+        # Return first 10 instructors with basic info
+        sample_instructors = []
+        for instructor in instructors[:10]:
+            sample_instructors.append(
+                {
+                    "email": instructor.get("email", "N/A"),
+                    "first_name": instructor.get("first_name", "N/A"),
+                    "last_name": instructor.get("last_name", "N/A"),
+                    "account_status": instructor.get("account_status", "N/A"),
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "total_count": len(instructors),
+                "sample_instructors": sample_instructors,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in debug_list_instructors: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api.route("/debug/sections", methods=["GET"])
+@login_required
+def debug_list_sections():
+    """Get sample list of sections for debugging"""
+    try:
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        sections = get_all_sections(institution_id)
+        # Return first 10 sections with basic info
+        sample_sections = []
+        for section in sections[:10]:
+            sample_sections.append(
+                {
+                    "section_number": section.get("section_number", "N/A"),
+                    "course_number": section.get("course_number", "N/A"),
+                    "instructor_email": section.get("instructor_email", "N/A"),
+                    "offering_id": section.get("offering_id", "N/A"),
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "total_count": len(sections),
+                "sample_sections": sample_sections,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in debug_list_sections: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@api.route("/debug/terms", methods=["GET"])
+@login_required
+def debug_list_terms():
+    """Get sample list of terms for debugging"""
+    try:
+        institution_id = get_cei_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        terms = get_active_terms(institution_id)
+        # Return all terms with basic info
+        sample_terms = []
+        for term in terms:
+            sample_terms.append(
+                {
+                    "term_name": term.get("term_name", "N/A"),
+                    "year": term.get("year", "N/A"),
+                    "season": term.get("season", "N/A"),
+                }
+            )
+
+        return jsonify(
+            {"success": True, "total_count": len(terms), "sample_terms": sample_terms}
+        )
+    except Exception as e:
+        logger.error(f"Error in debug_list_terms: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # ========================================

@@ -335,7 +335,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Excel Import Form Functionality ---
     initializeImportForm();
 
+    // --- Dashboard Data Loading ---
+    loadDashboardData();
+
 });
+
+// Dashboard data loading functions
+async function loadDashboardData() {
+    const endpoints = [
+        { id: 'coursesData', url: '/api/courses', key: 'courses' },
+        { id: 'instructorsData', url: '/api/instructors', key: 'instructors' },
+        { id: 'sectionsData', url: '/api/sections', key: 'sections' },
+        { id: 'termsData', url: '/api/terms', key: 'terms' }
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const response = await fetch(endpoint.url);
+            const data = await response.json();
+            
+            const element = document.getElementById(endpoint.id);
+            if (element && data.success) {
+                const count = data.count || 0;
+                element.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge bg-primary">${count} total</span>
+                        <small class="text-success">✓ Loaded</small>
+                    </div>
+                    ${count > 0 ? `<small class="text-muted mt-1 d-block">Last updated: ${new Date().toLocaleTimeString()}</small>` : ''}
+                `;
+            } else if (element) {
+                element.innerHTML = `<small class="text-danger">Failed to load</small>`;
+            }
+        } catch (error) {
+            console.error(`Failed to load ${endpoint.key}:`, error);
+            const element = document.getElementById(endpoint.id);
+            if (element) {
+                element.innerHTML = `<small class="text-danger">Error loading data</small>`;
+            }
+        }
+    }
+    
+    // Load debug data
+    loadDebugData();
+}
 
 function initializeImportForm() {
     console.log("🔧 Initializing import form...");
@@ -477,22 +520,13 @@ function initializeImportForm() {
                 const result = await response.json();
                 console.log("📊 Import result:", result);
 
-                hideProgress();
-
-                if (result.success) {
-                    console.log("✅ Import successful, showing results...");
-                    showImportResults(result, true);
-                    // Refresh page if actual import was successful
-                    if (!result.dry_run && result.statistics.records_created > 0) {
-                        setTimeout(() => {
-                            if (confirm('Import completed successfully! Refresh page to see new data?')) {
-                                window.location.reload();
-                            }
-                        }, 2000);
-                    }
+                if (result.success && result.progress_id) {
+                    console.log("🔄 Import started, tracking progress...");
+                    // Start polling for progress
+                    await pollImportProgress(result.progress_id, !dryRun.checked);
                 } else {
-                    console.log("❌ Import failed, showing error results...");
-                    showImportResults(result, false);
+                    hideProgress();
+                    showError('Failed to start import: ' + (result.error || 'Unknown error'));
                 }
             } catch (error) {
                 console.log("💥 Network error:", error);
@@ -520,6 +554,105 @@ function initializeImportForm() {
     function hideProgress() {
         if (progressDiv) {
             progressDiv.style.display = 'none';
+        }
+    }
+
+    async function pollImportProgress(progressId, shouldAutoRefresh) {
+        console.log(`🔄 Starting progress polling for ${progressId}`);
+        
+        const pollInterval = 1000; // Poll every second
+        const maxPollTime = 300000; // Max 5 minutes
+        const startTime = Date.now();
+        
+        const poll = async () => {
+            try {
+                const response = await fetch(`/api/import/progress/${progressId}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const progress = await response.json();
+                console.log('📊 Progress update:', progress);
+                
+                // Update progress bar
+                updateProgressBar(progress);
+                
+                if (progress.status === 'completed') {
+                    console.log('✅ Import completed successfully');
+                    hideProgress();
+                    
+                    // Show final results
+                    if (progress.result) {
+                        showImportResults(progress.result, true);
+                        
+                        // Auto-refresh if it was a real import (not dry run)
+                        if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
+                            const successMessage = document.createElement('div');
+                            successMessage.className = 'alert alert-success text-center mt-3';
+                            successMessage.innerHTML = '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
+                            
+                            const resultsDiv = document.getElementById('importResults');
+                            if (resultsDiv) {
+                                resultsDiv.appendChild(successMessage);
+                            }
+                            
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 3000);
+                        }
+                    }
+                    return; // Stop polling
+                } else if (progress.status === 'error') {
+                    console.log('❌ Import failed');
+                    hideProgress();
+                    showError('Import failed: ' + (progress.message || 'Unknown error'));
+                    return; // Stop polling
+                } else if (progress.status === 'running' || progress.status === 'starting') {
+                    // Continue polling
+                    if (Date.now() - startTime < maxPollTime) {
+                        setTimeout(poll, pollInterval);
+                    } else {
+                        console.log('⏰ Polling timeout');
+                        hideProgress();
+                        showError('Import is taking longer than expected. Please check the server logs.');
+                    }
+                }
+            } catch (error) {
+                console.log('💥 Progress polling error:', error);
+                hideProgress();
+                showError('Lost connection to import progress. Import may still be running.');
+            }
+        };
+        
+        // Start polling
+        setTimeout(poll, 500); // Start after 500ms
+    }
+
+    function updateProgressBar(progress) {
+        const progressBar = document.querySelector('.progress-bar');
+        const statusDiv = document.getElementById('importStatus');
+        
+        if (progressBar) {
+            const percentage = progress.percentage || 0;
+            progressBar.style.width = `${percentage}%`;
+            progressBar.setAttribute('aria-valuenow', percentage);
+        }
+        
+        if (statusDiv) {
+            const message = progress.message || 'Processing...';
+            const recordsProcessed = progress.records_processed || 0;
+            const totalRecords = progress.total_records || 0;
+            const recordsInfo = totalRecords > 0 
+                ? ` (${recordsProcessed}/${totalRecords} records)`
+                : '';
+            
+            statusDiv.innerHTML = `
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <p class="mt-2">${message}${recordsInfo}</p>
+                <small class="text-muted">${progress.percentage || 0}% complete</small>
+            `;
         }
     }
 
@@ -573,7 +706,7 @@ function initializeImportForm() {
             return;
         }
 
-        const stats = result.statistics;
+        // Access result properties directly (not under statistics)
         const alertClass = success ? 'alert-success' : 'alert-danger';
         const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
         const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
@@ -583,14 +716,14 @@ function initializeImportForm() {
                 <h5><i class="${icon}"></i> Import Results (${mode})</h5>
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Records Processed:</strong> ${stats.records_processed}</p>
-                        <p><strong>Records Created:</strong> ${stats.records_created}</p>
-                        <p><strong>Records Updated:</strong> ${stats.records_updated}</p>
+                        <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
+                        <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
+                        <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Records Skipped:</strong> ${stats.records_skipped}</p>
-                        <p><strong>Conflicts Detected:</strong> ${stats.conflicts_detected}</p>
-                        <p><strong>Execution Time:</strong> ${stats.execution_time.toFixed(2)}s</p>
+                        <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
+                        <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
+                        <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
                     </div>
                 </div>
             </div>
@@ -676,6 +809,61 @@ function initializeImportForm() {
                 </div>
             `;
             resultsDiv.style.display = 'block';
+        }
+    }
+}
+
+// Debug data loading function
+async function loadDebugData() {
+    const debugEndpoints = [
+        { id: 'debug-courses', url: '/api/debug/courses', key: 'sample_courses' },
+        { id: 'debug-instructors', url: '/api/debug/instructors', key: 'sample_instructors' },
+        { id: 'debug-sections', url: '/api/debug/sections', key: 'sample_sections' },
+        { id: 'debug-terms', url: '/api/debug/terms', key: 'sample_terms' }
+    ];
+
+    for (const endpoint of debugEndpoints) {
+        try {
+            const response = await fetch(endpoint.url);
+            const data = await response.json();
+            
+            const element = document.getElementById(endpoint.id);
+            if (element && data.success) {
+                const samples = data[endpoint.key] || [];
+                const totalCount = data.total_count || 0;
+                
+                let html = `<div class="mb-2"><strong>Total: ${totalCount}</strong></div>`;
+                
+                if (samples.length > 0) {
+                    html += '<ul class="list-unstyled">';
+                    samples.forEach(item => {
+                        let itemText = '';
+                        if (endpoint.key === 'sample_courses') {
+                            itemText = `${item.course_number} - ${item.title} (${item.department})`;
+                        } else if (endpoint.key === 'sample_instructors') {
+                            itemText = `${item.first_name} ${item.last_name} - ${item.email} (${item.account_status})`;
+                        } else if (endpoint.key === 'sample_sections') {
+                            itemText = `Section ${item.section_number} - ${item.course_number} (${item.instructor_email})`;
+                        } else if (endpoint.key === 'sample_terms') {
+                            itemText = `${item.term_name} - ${item.year} ${item.season}`;
+                        }
+                        html += `<li class="text-truncate">${itemText}</li>`;
+                    });
+                    html += '</ul>';
+                } else {
+                    html += '<div class="text-muted">No items found</div>';
+                }
+                
+                element.innerHTML = html;
+            } else if (element) {
+                element.innerHTML = `<div class="text-danger">Failed to load debug data</div>`;
+            }
+        } catch (error) {
+            console.error(`Failed to load debug ${endpoint.key}:`, error);
+            const element = document.getElementById(endpoint.id);
+            if (element) {
+                element.innerHTML = `<div class="text-danger">Error loading debug data</div>`;
+            }
         }
     }
 }
