@@ -31,7 +31,6 @@ from database_service import (
 # Import our models and services
 from models import (
     format_term_name,
-    parse_cei_term,
     validate_course_number,
     validate_term_name,
 )
@@ -537,9 +536,11 @@ class ImportService:
                         )
 
                 try:
-                    # Extract data based on adapter (CEI-specific for now)
+                    # Extract data based on adapter
                     if adapter_name == "cei_excel_adapter":
-                        entities = self._parse_cei_excel_row(row)
+                        from adapters.cei_excel_adapter import parse_cei_excel_row
+
+                        entities = parse_cei_excel_row(row, self.institution_id)
                     else:
                         self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
                         continue
@@ -693,122 +694,6 @@ class ImportService:
             self.logger.info(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
-
-    def _parse_cei_excel_row(
-        self, row: pd.Series
-    ) -> Dict[str, Optional[Dict[str, Any]]]:
-        """
-        Parse a single row from CEI's Excel format
-
-        Args:
-            row: Pandas Series representing one row
-
-        Returns:
-            Dictionary with entity types and their data
-        """
-        # This is a stub implementation - would need actual CEI column mapping
-        # Based on the analysis in SPREADSHEET_ANALYSIS.md
-
-        try:
-            # Extract course information
-            course_data = None
-            if "course" in row and pd.notna(row["course"]):
-                # Parse course number (e.g., "ACC-201")
-                course_number = str(row.get("course", ""))
-                if validate_course_number(course_number):
-                    course_data = {
-                        "course_number": course_number,
-                        "course_title": f"Course {course_number}",  # CEI file doesn't have course titles
-                        "department": self._extract_department_from_course(
-                            course_number
-                        ),
-                        "credit_hours": 3,  # Default, CEI file doesn't have credit hours
-                        "institution_id": self.institution_id,
-                    }
-
-            # Extract instructor information
-            user_data = None
-            if "Faculty Name" in row and pd.notna(row["Faculty Name"]):
-                instructor_name = str(row["Faculty Name"])
-                first_name, last_name = self._parse_name(instructor_name)
-                email = self._generate_email(first_name, last_name)
-
-                user_data = {
-                    "email": email,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "role": "instructor",
-                    "department": (
-                        course_data.get("department") if course_data else None
-                    ),
-                    "institution_id": self.institution_id,
-                    "account_status": "imported",  # User created from import, not yet invited
-                    "active_user": False,  # Will be calculated later based on active courses
-                }
-
-            # Extract term information from effterm_c column
-            term_data = None
-            if "effterm_c" in row and pd.notna(row["effterm_c"]):
-                effterm_c = str(row["effterm_c"]).strip()
-                try:
-                    year, season = parse_cei_term(effterm_c)
-                    term_name = format_term_name(year, season)
-                    term_data = {
-                        "term_name": term_name,
-                        "start_date": self._estimate_term_start(term_name),
-                        "end_date": self._estimate_term_end(term_name),
-                        "assessment_due_date": self._estimate_assessment_due(term_name),
-                        "institution_id": self.institution_id,
-                    }
-                except ValueError as e:
-                    self.logger.warning(
-                        f"[Import] Invalid effterm_c format '{effterm_c}': {e}"
-                    )
-
-            # Extract course offering information (bridge between course and sections)
-            offering_data = None
-            if course_data and term_data:
-                offering_data = {
-                    "course_id": course_data.get(
-                        "course_number"
-                    ),  # Will be resolved later
-                    "term_id": term_data.get("term_name"),  # Will be resolved later
-                    "institution_id": self.institution_id,
-                    "status": "active",
-                }
-
-            # Extract section information
-            section_data = None
-            if course_data and user_data and term_data and offering_data:
-                section_data = {
-                    "offering_id": None,  # Will be resolved after offering creation
-                    "instructor_id": user_data.get("email"),  # Will be resolved later
-                    "section_number": "001",  # CEI file doesn't have explicit section numbers
-                    "enrollment": (
-                        int(row.get("Enrolled Students", 0))
-                        if pd.notna(row.get("Enrolled Students"))
-                        else None
-                    ),
-                    "status": "completed",  # Imported data is assumed completed
-                }
-
-            return {
-                "course": course_data,
-                "user": user_data,
-                "term": term_data,
-                "offering": offering_data,
-                "section": section_data,
-            }
-
-        except Exception as e:
-            self.logger.info(f"[Import] Error parsing row: {str(e)}")
-            return {
-                "course": None,
-                "user": None,
-                "term": None,
-                "offering": None,
-                "section": None,
-            }
 
     def _extract_department_from_course(self, course_number: str) -> str:
         """Extract department from course number"""

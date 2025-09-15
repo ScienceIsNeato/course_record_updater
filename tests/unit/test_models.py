@@ -284,7 +284,8 @@ class TestValidationFunctions:
 
     def test_format_and_parse_functions(self):
         """Test format and parse utility functions."""
-        from models import format_term_name, parse_cei_term
+        from adapters.cei_excel_adapter import parse_cei_term
+        from models import format_term_name
 
         # Test format function
         formatted = format_term_name(2024, "Fall")
@@ -452,7 +453,7 @@ class TestModelValidationEdgeCases:
 
     def test_parse_cei_term_comprehensive(self):
         """Test parse_cei_term comprehensive functionality."""
-        from models import parse_cei_term
+        from adapters.cei_excel_adapter import parse_cei_term
 
         # Test valid CEI term formats
         valid_terms = ["2024FA", "2025SP", "2023SU", "2026WI"]

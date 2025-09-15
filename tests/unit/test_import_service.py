@@ -725,30 +725,6 @@ class TestImportServiceEdgeCases:
         # Should return empty conflicts due to missing course_number
         assert conflicts == []
 
-    def test_parse_cei_excel_row_with_minimal_data(self):
-        """Test _parse_cei_excel_row to hit various parsing lines."""
-        service = ImportService("test-institution-id")
-
-        # Create minimal row data to hit parsing logic
-        row_data = {
-            "Course Number": "TEST-101",
-            "Course Title": "Test Course",
-            "Instructor First Name": "John",
-            "Instructor Last Name": "Doe",
-            "Instructor Email": "john@example.com",
-            "Term": "FA24",
-            "Students": "25",
-            "Department": "TEST",
-        }
-        row = pd.Series(row_data)
-
-        result = service._parse_cei_excel_row(row)
-
-        # Should return parsed structure
-        assert isinstance(result, dict)
-        assert "user" in result
-        assert "course" in result
-
     @patch("import_service.get_course_by_number")
     def test_detect_course_conflict_with_conflicts(self, mock_get_course):
         """Test detect_course_conflict when conflicts exist - lines 173-180."""
@@ -1474,27 +1450,6 @@ class TestImportServiceEdgeCases:
         finally:
             os.unlink(tmp_file_path)
 
-    def test_parse_cei_excel_row_exception_handling(self):
-        """Test _parse_cei_excel_row exception handling - lines 662-664."""
-        service = ImportService("test-institution-id")
-
-        # Create a row that will cause parsing errors
-        row_data = {
-            "Course Number": None,  # This will cause issues
-            "Invalid Column": "Invalid Data",
-        }
-        row = pd.Series(row_data)
-
-        # Test exception handling
-        result = service._parse_cei_excel_row(row)
-
-        # Should return empty structure on error
-        assert result is not None
-        assert result.get("course") is None
-        assert result.get("user") is None
-        assert result.get("term") is None
-        assert result.get("section") is None
-
     def test_extract_department_from_course(self):
         """Test _extract_department_from_course function - lines 668-680."""
         service = ImportService("test-institution-id")
@@ -1854,11 +1809,18 @@ class TestImportServiceMethods:
         mock_read_excel.return_value = sample_data
 
         # Test successful Excel processing
-        with patch("import_service.ImportService._parse_cei_excel_row") as mock_parse:
+        with patch("adapters.cei_excel_adapter.parse_cei_excel_row") as mock_parse:
             mock_parse.return_value = {
-                "course_number": "MATH-101",
-                "course_title": "Algebra",
-                "department": "MATH",
+                "course": {
+                    "course_number": "MATH-101",
+                    "course_title": "Algebra",
+                    "department": "MATH",
+                    "institution_id": "test-institution-id",
+                },
+                "user": None,
+                "term": None,
+                "offering": None,
+                "section": None,
             }
 
             result = self.import_service.import_excel_file(

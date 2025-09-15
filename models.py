@@ -431,33 +431,6 @@ def validate_term_name(term_name: str) -> bool:
     return False
 
 
-def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
-    """
-    Parse CEI's effterm_c format into year and season.
-
-    Args:
-        effterm_c: Term code like '2024FA', '2024SP', etc.
-
-    Returns:
-        Tuple of (year, season) where season is the full name
-
-    Example:
-        parse_cei_term('2024FA') -> ('2024', 'Fall')
-    """
-    if not effterm_c or len(effterm_c) != 6:
-        raise ValueError(f"Invalid effterm_c format: {effterm_c}")
-
-    year = effterm_c[:4]
-    season_code = effterm_c[4:].upper()
-
-    season_map = {"FA": "Fall", "SP": "Spring", "SU": "Summer", "WI": "Winter"}
-
-    if season_code not in season_map:
-        raise ValueError(f"Invalid season code: {season_code}")
-
-    return year, season_map[season_code]
-
-
 def format_term_name(year: str, season: str) -> str:
     """
     Format year and season into standard term name.
@@ -487,6 +460,5 @@ __all__ = [
     "validate_email",
     "validate_course_number",
     "validate_term_name",
-    "parse_cei_term",
     "format_term_name",
 ]
