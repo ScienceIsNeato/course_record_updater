@@ -934,6 +934,7 @@ def health_check():
 
 # ========================================
 # DEBUG ENDPOINTS (for development/testing)
+# TODO: These debug endpoints will be removed in next PR - they're temporary development tools
 # ========================================
 
 

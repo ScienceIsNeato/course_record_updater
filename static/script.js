@@ -814,6 +814,7 @@ function initializeImportForm() {
 }
 
 // Debug data loading function
+// TODO: This debug functionality will be removed in next PR - temporary development tool
 async function loadDebugData() {
     const debugEndpoints = [
         { id: 'debug-courses', url: '/api/debug/courses', key: 'sample_courses' },

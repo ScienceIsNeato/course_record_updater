@@ -92,6 +92,7 @@ class TestDashboardAPI:
 
     def test_debug_endpoints(self, base_url: str):
         """Test that all debug endpoints return valid responses"""
+        # TODO: These debug endpoint tests will be removed in next PR along with the endpoints
         debug_endpoints = [
             ("/api/debug/courses", "sample_courses"),
             ("/api/debug/instructors", "sample_instructors"),
