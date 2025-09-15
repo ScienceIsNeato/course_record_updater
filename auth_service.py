@@ -143,7 +143,11 @@ def get_current_institution_id() -> Optional[str]:
             return institution_id
 
     # Development fallback - get default institution
-    from database_service import get_institution_by_short_name
+    try:
+        from database_service import get_institution_by_short_name
 
-    default_institution = get_institution_by_short_name("CEI")
-    return default_institution["institution_id"] if default_institution else None
+        default_institution = get_institution_by_short_name("CEI")
+        return default_institution["institution_id"] if default_institution else None
+    except Exception:
+        # If database is not available or CEI institution doesn't exist, return None
+        return None

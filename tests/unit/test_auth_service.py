@@ -315,16 +315,14 @@ class TestAuthServiceInstitutionFunctions:
 
     @patch("database_service.get_institution_by_short_name")
     def test_get_current_institution_id_exception(self, mock_get_institution):
-        """Test get_current_institution_id handles exceptions."""
+        """Test get_current_institution_id handles exceptions gracefully."""
         mock_get_institution.side_effect = Exception("Database error")
 
         from auth_service import get_current_institution_id
 
         # The function should handle the exception and return None
-        # but the mock is raising the exception before the handler can catch it
-        # So we need to test that the exception is raised as expected
-        with pytest.raises(Exception):
-            get_current_institution_id()
+        result = get_current_institution_id()
+        assert result is None
 
     def test_permission_decorator_logic(self):
         """Test permission decorator logic."""
