@@ -292,7 +292,7 @@ class TestValidationFunctions:
         assert isinstance(formatted, str)
 
         # Test parse function
-        result = parse_cei_term("2024FA")
+        result = parse_cei_term("FA2024")
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_validate_course_number_edge_cases(self):
@@ -456,7 +456,7 @@ class TestModelValidationEdgeCases:
         from adapters.cei_excel_adapter import parse_cei_term
 
         # Test valid CEI term formats
-        valid_terms = ["2024FA", "2025SP", "2023SU", "2026WI"]
+        valid_terms = ["FA2024", "SP2025", "SU2023", "WI2026"]
 
         expected_results = [
             ("2024", "Fall"),

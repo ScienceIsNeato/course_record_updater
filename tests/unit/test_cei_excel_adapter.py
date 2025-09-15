@@ -17,24 +17,24 @@ class TestParseCeiTerm:
 
     def test_parse_cei_term_valid_formats(self):
         """Test parse_cei_term with valid formats."""
-        assert parse_cei_term("2024FA") == ("2024", "Fall")
-        assert parse_cei_term("2025SP") == ("2025", "Spring")
-        assert parse_cei_term("2023SU") == ("2023", "Summer")
-        assert parse_cei_term("2026WI") == ("2026", "Winter")
+        assert parse_cei_term("FA2024") == ("2024", "Fall")
+        assert parse_cei_term("SP2025") == ("2025", "Spring")
+        assert parse_cei_term("SU2023") == ("2023", "Summer")
+        assert parse_cei_term("WI2026") == ("2026", "Winter")
 
     def test_parse_cei_term_invalid_length(self):
         """Test parse_cei_term with invalid length."""
         with pytest.raises(ValueError, match="Invalid effterm_c format"):
-            parse_cei_term("24FA")
+            parse_cei_term("FA24")
         with pytest.raises(ValueError, match="Invalid effterm_c format"):
-            parse_cei_term("2024FALL")
+            parse_cei_term("FALL2024")
         with pytest.raises(ValueError, match="Invalid effterm_c format"):
             parse_cei_term("")
 
     def test_parse_cei_term_invalid_season(self):
         """Test parse_cei_term with invalid season code."""
         with pytest.raises(ValueError, match="Invalid season code"):
-            parse_cei_term("2024XX")
+            parse_cei_term("XX2024")
 
 
 class TestHelperFunctions:
@@ -72,7 +72,7 @@ class TestParseCeiExcelRow:
             {
                 "course": "MATH-101",
                 "Faculty Name": "John Smith",
-                "effterm_c": "2024FA",
+                "effterm_c": "FA2024",
                 "students": "25",
             }
         )

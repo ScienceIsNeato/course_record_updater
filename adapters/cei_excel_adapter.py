@@ -19,19 +19,19 @@ def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
     Parse CEI's effterm_c format into year and season.
 
     Args:
-        effterm_c: Term code like '2024FA', '2024SP', etc.
+        effterm_c: Term code like 'FA2024', 'SP2025', etc.
 
     Returns:
         Tuple of (year, season) where season is the full name
 
     Example:
-        parse_cei_term('2024FA') -> ('2024', 'Fall')
+        parse_cei_term('FA2024') -> ('2024', 'Fall')
     """
     if not effterm_c or len(effterm_c) != 6:
         raise ValueError(f"Invalid effterm_c format: {effterm_c}")
 
-    year = effterm_c[:4]
-    season_code = effterm_c[4:].upper()
+    season_code = effterm_c[:2].upper()
+    year = effterm_c[2:]
 
     season_map = {"FA": "Fall", "SP": "Spring", "SU": "Summer", "WI": "Winter"}
 

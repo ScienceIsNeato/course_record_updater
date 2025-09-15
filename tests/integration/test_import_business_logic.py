@@ -75,7 +75,7 @@ class TestImportBusinessLogic:
                         "Faculty Name": f"Instructor{section} Name",  # REAL: 'Faculty Name'
                         "effterm_c": "2023FA",
                         "endterm_c": None,
-                        "Term": "2024FA",  # REAL: 'Term'
+                        "Term": "FA2024",  # REAL: 'Term'
                         "pass_course": None,
                         "dci_course": None,
                         "passed_c": None,
