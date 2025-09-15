@@ -132,8 +132,10 @@ class TestFrontendSmoke:
         dry_run_checkbox = driver.find_element(By.ID, "dry_run")
         import_btn_text = driver.find_element(By.ID, "importBtnText")
 
-        # Check that the dry run checkbox affects button text (this requires JavaScript)
-        assert dry_run_checkbox.is_selected(), "Dry run should be checked by default"
+        # Check that the dry run checkbox is unchecked by default (better UX for real imports)
+        assert (
+            not dry_run_checkbox.is_selected()
+        ), "Dry run should be unchecked by default for better UX"
 
         # Verify the form elements exist and are interactive (basic JavaScript functionality)
         assert dry_run_checkbox.is_enabled(), "Dry run checkbox should be enabled"
