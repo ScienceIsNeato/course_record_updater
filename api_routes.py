@@ -777,6 +777,14 @@ def import_excel_api():
         # Start import in background thread
         import threading
 
+        def create_progress_callback(progress_id: str):
+            """Create a progress callback function for the given progress_id"""
+
+            def progress_callback(**kwargs):
+                update_progress(progress_id, **kwargs)
+
+            return progress_callback
+
         def run_import():
             try:
                 update_progress(
@@ -784,16 +792,19 @@ def import_excel_api():
                 )
 
                 # Perform the import
+                institution_id = get_current_institution_id()
+                if not institution_id:
+                    raise ValueError("Unable to determine current institution ID")
+
                 result = import_excel(
                     file_path=temp_file_path,
+                    institution_id=institution_id,
                     conflict_strategy=conflict_strategy,
                     dry_run=dry_run,
                     adapter_name=adapter_name,
                     delete_existing_db=delete_existing_db,
                     verbose=verbose,
-                    progress_callback=lambda **kwargs: update_progress(
-                        progress_id, **kwargs
-                    ),
+                    progress_callback=create_progress_callback(progress_id),
                 )
 
                 # Update with final results
@@ -819,6 +830,14 @@ def import_excel_api():
                     os.unlink(temp_file_path)
                 except OSError:
                     pass
+
+                # Clean up progress tracker after a delay to allow final status retrieval
+                def delayed_cleanup():
+                    time.sleep(30)  # Wait 30 seconds before cleanup
+                    cleanup_progress(progress_id)
+
+                cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
+                cleanup_thread.start()
 
         # Start background thread
         thread = threading.Thread(target=run_import, daemon=True)
@@ -884,8 +903,13 @@ def validate_import_file():
 
         try:
             # Perform dry run validation
+            institution_id = get_current_institution_id()
+            if not institution_id:
+                raise ValueError("Unable to determine current institution ID")
+
             result = import_excel(
                 file_path=temp_file_path,
+                institution_id=institution_id,
                 conflict_strategy="use_theirs",
                 dry_run=True,  # Always dry run for validation
                 adapter_name=adapter_name,

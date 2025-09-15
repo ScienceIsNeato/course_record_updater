@@ -11,7 +11,6 @@ from models import (
     Course,
     CourseOutcome,
     CourseSection,
-    LegacyCourse,
     Term,
     User,
     validate_course_number,
@@ -203,54 +202,6 @@ class TestCourseOutcome:
         """Test that invalid assessment status raises ValueError"""
         with pytest.raises(ValueError, match="Invalid assessment_status"):
             CourseOutcome.update_assessment_data(assessment_status="invalid_status")
-
-
-class TestLegacyCourse:
-    """Test LegacyCourse model functionality"""
-
-    def test_from_flat_record(self):
-        """Test converting flat record to legacy format"""
-        flat_record = {
-            "course_number": "ACC-201",
-            "course_title": "Accounting Principles",
-            "instructor_name": "John Smith",
-            "term": "2024 Fall",
-            "num_students": 25,
-            "grade_a": 5,
-            "grade_b": 8,
-            "grade_c": 10,
-            "grade_d": 2,
-            "grade_f": 0,
-        }
-
-        legacy = LegacyCourse.from_flat_record(flat_record)
-
-        assert legacy["course_number"] == "ACC-201"
-        assert legacy["instructor_name"] == "John Smith"
-        assert legacy["term"] == "2024 Fall"
-
-    def test_to_relational_entities(self):
-        """Test converting legacy flat course to relational entities"""
-        flat_record = {
-            "course_number": "ACC-201",
-            "course_title": "Accounting Principles",
-            "instructor_name": "John Smith",
-            "term": "2024 Fall",
-            "num_students": 25,
-            "grade_a": 5,
-        }
-
-        entities = LegacyCourse.to_relational_entities(flat_record)
-
-        assert "course" in entities
-        assert "term" in entities
-        assert "user" in entities
-        assert "section" in entities
-
-        assert entities["course"]["course_number"] == "ACC-201"
-        assert entities["term"]["name"] == "2024 Fall"
-        assert entities["user"]["first_name"] == "John"
-        assert entities["section"]["enrollment"] == 25
 
 
 class TestValidationFunctions:

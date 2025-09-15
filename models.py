@@ -1,14 +1,13 @@
 """
-Data Models for CEI Course Management System
+Data Models for Course Management System
 
 This module defines the data structures for the expanded relational model
-that supports CEI's enterprise requirements while maintaining backward
-compatibility with the existing flat course model.
+that supports multi-institutional enterprise requirements.
 """
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # User Roles and Permissions
 ROLES = {
@@ -322,80 +321,6 @@ class CourseOutcome(DataModel):
         }
 
 
-class LegacyCourse(DataModel):
-    """Legacy course model for backward compatibility"""
-
-    @staticmethod
-    def from_flat_record(course_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert current flat course record to legacy format"""
-        return {
-            "course_number": course_data.get("course_number"),
-            "course_title": course_data.get("course_title"),
-            "instructor_name": course_data.get("instructor_name"),
-            "term": course_data.get("term"),
-            "num_students": course_data.get("num_students"),
-            "grade_a": course_data.get("grade_a"),
-            "grade_b": course_data.get("grade_b"),
-            "grade_c": course_data.get("grade_c"),
-            "grade_d": course_data.get("grade_d"),
-            "grade_f": course_data.get("grade_f"),
-            "timestamp": course_data.get("timestamp"),
-        }
-
-    @staticmethod
-    def to_relational_entities(
-        course_data: Dict[str, Any],
-    ) -> Dict[str, Dict[str, Any]]:
-        """Convert legacy flat course to new relational entities"""
-
-        # This would be used during migration
-        # Returns dict with keys: 'course', 'term', 'section', 'user'
-
-        course = Course.create_schema(
-            course_number=course_data["course_number"],
-            course_title=course_data["course_title"],
-            department="Unknown",  # Would need to be determined during migration
-        )
-
-        term = Term.create_schema(
-            name=course_data["term"],
-            start_date="2024-01-01",  # Would need actual dates
-            end_date="2024-05-01",
-            assessment_due_date="2024-05-15",
-        )
-
-        user = User.create_schema(
-            email=f"{course_data['instructor_name'].lower().replace(' ', '.')}@cei.edu",
-            first_name=course_data["instructor_name"].split()[0],
-            last_name=" ".join(course_data["instructor_name"].split()[1:]),
-            role="instructor",
-        )
-
-        # Create a course offering (bridge between course and term)
-        offering = CourseOffering.create_schema(
-            course_id=course["course_id"],
-            term_id=term["term_id"],
-            institution_id="cei_default",  # Legacy migration assumes CEI
-        )
-
-        section = CourseSection.create_schema(
-            offering_id=offering["offering_id"],
-            instructor_id=user["user_id"],
-            enrollment=course_data.get("num_students"),
-        )
-
-        # Grade distribution functionality removed per requirements
-        section["grade_distribution"] = {}
-
-        return {
-            "course": course,
-            "term": term,
-            "offering": offering,
-            "user": user,
-            "section": section,
-        }
-
-
 # Validation functions
 def validate_email(email: str) -> bool:
     """Basic email validation"""
@@ -423,7 +348,7 @@ def validate_term_name(term_name: str) -> bool:
     if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4:
         return True
 
-    # Handle CEI abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI"
+    # Handle abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI"
     if len(term_name) == 6 and term_name[:4].isdigit():
         season = term_name[4:].upper()
         return season in ["FA", "SP", "SU", "WI"]  # Fall, Spring, Summer, Winter
@@ -453,7 +378,6 @@ __all__ = [
     "CourseOffering",
     "CourseSection",
     "CourseOutcome",
-    "LegacyCourse",
     "ROLES",
     "SECTION_STATUSES",
     "ASSESSMENT_STATUSES",

@@ -20,9 +20,9 @@ class AuthService:
     def get_current_user(self) -> Optional[Dict[str, Any]]:
         """
         STUB: Get the current authenticated user from session.
-        For now, returns a mock admin user for development with CEI institution context.
+        For now, returns a mock admin user for development.
         """
-        # STUB: Return mock admin user for development with institution context
+        # STUB: Return mock admin user for development
         return {
             "user_id": "dev-admin-123",
             "email": "admin@cei.edu",
@@ -142,11 +142,11 @@ def get_current_institution_id() -> Optional[str]:
         if institution_id:
             return institution_id
 
-    # Development fallback - get CEI institution as default
+    # Development fallback - get default institution
     from database_service import get_institution_by_short_name
 
-    cei_institution = get_institution_by_short_name("CEI")
-    return cei_institution["institution_id"] if cei_institution else None
+    default_institution = get_institution_by_short_name("CEI")
+    return default_institution["institution_id"] if default_institution else None
 
 
 def get_user_institution_id() -> Optional[str]:
