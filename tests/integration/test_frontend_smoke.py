@@ -61,8 +61,10 @@ class TestFrontendSmoke:
     @pytest.fixture(scope="class")
     def base_url(self):
         """Base URL for the application"""
-        # Use same port as run_smoke_tests.sh (TEST_PORT=3002)
-        return "http://localhost:3002"
+        import os
+
+        port = os.getenv("DEFAULT_PORT", "3001")
+        return f"http://localhost:{port}"
 
     def test_server_is_running(self, base_url):
         """Test that the server is accessible"""
