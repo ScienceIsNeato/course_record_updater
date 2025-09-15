@@ -286,45 +286,45 @@ class TestAuthServiceInstitutionFunctions:
     """Test auth service institution-related functions."""
 
     @patch("database_service.get_institution_by_short_name")
-    def test_get_cei_institution_id_success(self, mock_get_institution):
-        """Test get_cei_institution_id returns institution ID."""
+    def test_get_user_institution_id_success(self, mock_get_institution):
+        """Test get_user_institution_id returns institution ID."""
         mock_get_institution.return_value = {
             "institution_id": "cei-institution-id",
             "name": "CEI University",
             "short_name": "CEI",
         }
 
-        from auth_service import get_cei_institution_id
+        from auth_service import get_user_institution_id
 
-        result = get_cei_institution_id()
+        result = get_user_institution_id()
 
         assert result == "cei-institution-id"
         mock_get_institution.assert_called_once_with("CEI")
 
     @patch("database_service.get_institution_by_short_name")
-    def test_get_cei_institution_id_not_found(self, mock_get_institution):
-        """Test get_cei_institution_id when CEI institution not found."""
+    def test_get_user_institution_id_not_found(self, mock_get_institution):
+        """Test get_user_institution_id when CEI institution not found."""
         mock_get_institution.return_value = None
 
-        from auth_service import get_cei_institution_id
+        from auth_service import get_user_institution_id
 
-        result = get_cei_institution_id()
+        result = get_user_institution_id()
 
         assert result is None
         mock_get_institution.assert_called_once_with("CEI")
 
     @patch("database_service.get_institution_by_short_name")
-    def test_get_cei_institution_id_exception(self, mock_get_institution):
-        """Test get_cei_institution_id handles exceptions."""
+    def test_get_user_institution_id_exception(self, mock_get_institution):
+        """Test get_user_institution_id handles exceptions."""
         mock_get_institution.side_effect = Exception("Database error")
 
-        from auth_service import get_cei_institution_id
+        from auth_service import get_user_institution_id
 
         # The function should handle the exception and return None
         # but the mock is raising the exception before the handler can catch it
         # So we need to test that the exception is raised as expected
         with pytest.raises(Exception):
-            get_cei_institution_id()
+            get_user_institution_id()
 
     def test_permission_decorator_logic(self):
         """Test permission decorator logic."""

@@ -86,7 +86,19 @@ class ImportResult:
 class ImportService:
     """Service for handling data imports with conflict resolution"""
 
-    def __init__(self, verbose=False, progress_callback=None, institution_id=None):
+    def __init__(self, institution_id, verbose=False, progress_callback=None):
+        """
+        Initialize the ImportService for a specific institution.
+
+        Args:
+            institution_id: Required ID of the institution to import data for
+            verbose: Enable verbose logging output
+            progress_callback: Optional callback for progress updates
+        """
+        if not institution_id:
+            raise ValueError("institution_id is required")
+
+        self.institution_id = institution_id
         self.verbose = verbose
         self.progress_callback = progress_callback
         self._processed_users = set()  # Track users we've already processed
@@ -96,11 +108,6 @@ class ImportService:
         from logging_config import get_import_logger
 
         self.logger = get_import_logger()
-
-        # Set institution ID - either provided or get default institution
-        self.institution_id = institution_id or self._get_default_institution_id()
-        if not self.institution_id:
-            raise RuntimeError("Failed to get institution ID for import service")
 
         self.reset_stats()
 
@@ -119,40 +126,6 @@ class ImportService:
         }
 
         # Cache for entities to avoid duplicate lookups
-
-    def _get_default_institution_id(self) -> Optional[str]:
-        """
-        Get the default institution ID for imports.
-        For backward compatibility, defaults to CEI institution.
-
-        Returns:
-            Institution ID if successful, None otherwise
-        """
-        try:
-            # For backward compatibility, default to CEI institution
-            # In the future, this could be configurable or determined by context
-            cei_institution = get_institution_by_short_name("CEI")
-            if cei_institution:
-                self.logger.info(
-                    f"[Import] Using existing institution: {cei_institution['institution_id']}"
-                )
-                return cei_institution["institution_id"]
-
-            # Create default CEI institution for backward compatibility
-            self.logger.info("[Import] Creating default institution...")
-            institution_id = create_default_cei_institution()
-            if institution_id:
-                self.logger.info(
-                    f"[Import] Created default institution: {institution_id}"
-                )
-                return institution_id
-            else:
-                self.logger.error("[Import] Failed to create default institution")
-                return None
-
-        except Exception as e:
-            self.logger.error(f"[Import] Error getting default institution: {e}")
-            return None
 
     def _log(self, message: str, level: str = "info"):
         """Smart logging that respects verbose mode"""
@@ -1009,6 +982,7 @@ class ImportService:
 # Convenience functions
 def import_excel(
     file_path: str,
+    institution_id: str,
     conflict_strategy: str = "use_theirs",
     dry_run: bool = False,
     adapter_name: str = "cei_excel_adapter",
@@ -1021,6 +995,7 @@ def import_excel(
 
     Args:
         file_path: Path to Excel file
+        institution_id: Required ID of the institution to import data for
         conflict_strategy: "use_mine", "use_theirs", "merge", or "manual_review"
         dry_run: If True, simulate import without making changes
         adapter_name: Which adapter to use
@@ -1038,8 +1013,12 @@ def import_excel(
 
     strategy = strategy_map.get(conflict_strategy, ConflictStrategy.USE_THEIRS)
 
-    # Create service instance with verbose setting and progress callback
-    service = ImportService(verbose=verbose, progress_callback=progress_callback)
+    # Create service instance with institution ID, verbose setting and progress callback
+    service = ImportService(
+        institution_id=institution_id,
+        verbose=verbose,
+        progress_callback=progress_callback,
+    )
 
     return service.import_excel_file(
         file_path=file_path,

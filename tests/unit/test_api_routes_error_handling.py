@@ -107,7 +107,7 @@ class TestAPIErrorHandling:
         # Test lines 209-210 - exception handling for courses
         with (
             patch(
-                "api_routes.get_cei_institution_id", return_value="test-institution-id"
+                "api_routes.get_user_institution_id", return_value="test-institution-id"
             ),
             patch(
                 "api_routes.get_courses_by_department",
@@ -261,7 +261,7 @@ class TestSectionEndpoints:
         # Test lines 484-569 - section endpoints
         with (
             patch(
-                "api_routes.get_cei_institution_id", return_value="test-institution-id"
+                "api_routes.get_user_institution_id", return_value="test-institution-id"
             ),
             patch("api_routes.get_all_sections", side_effect=Exception("DB Error")),
         ):
