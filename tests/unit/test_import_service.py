@@ -31,7 +31,7 @@ class TestImportService:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -448,17 +448,17 @@ class TestImportServiceInitialization:
     """Test ImportService initialization and basic methods."""
 
     def setup_method(self):
-        """Set up each test with CEI institution mocking."""
-        self.cei_institution_patcher = patch.object(
+        """Set up each test with institution mocking."""
+        self.institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
-            return_value="test-cei-institution-id",
+            "_get_default_institution_id",
+            return_value="test-institution-id",
         )
-        self.cei_institution_patcher.start()
+        self.institution_patcher.start()
 
     def teardown_method(self):
         """Clean up after each test."""
-        self.cei_institution_patcher.stop()
+        self.institution_patcher.stop()
 
     def test_import_service_initialization_default(self):
         """Test ImportService initialization with defaults."""
@@ -524,7 +524,7 @@ class TestImportServiceLogging:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -584,7 +584,7 @@ class TestDetectCourseConflict:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -632,7 +632,7 @@ class TestImportServiceIntegration:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -692,7 +692,7 @@ class TestImportServiceErrorHandling:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -722,7 +722,7 @@ class TestImportServiceEdgeCases:
         """Set up each test with CEI institution mocking."""
         self.cei_institution_patcher = patch.object(
             ImportService,
-            "_ensure_cei_institution",
+            "_get_default_institution_id",
             return_value="test-cei-institution-id",
         )
         self.cei_institution_patcher.start()
@@ -1372,7 +1372,7 @@ class TestImportServiceEdgeCases:
         assert "Mode: DRY RUN" in report
         assert "Records processed: 5" in report
 
-    @patch.object(ImportService, "_ensure_cei_institution")
+    @patch.object(ImportService, "_get_default_institution_id")
     def test_delete_all_data_exception(self, mock_ensure_cei):
         """Test _delete_all_data with exception - lines 802-805."""
         # Mock the CEI institution creation to avoid database calls during initialization
@@ -1642,7 +1642,7 @@ class TestImportServiceMethods:
     def setup_method(self):
         """Set up test fixtures."""
         with patch(
-            "import_service.ImportService._ensure_cei_institution",
+            "import_service.ImportService._get_default_institution_id",
             return_value="test-institution-id",
         ):
             self.import_service = ImportService()
@@ -1708,7 +1708,7 @@ class TestImportServiceMethods:
     def test_import_service_verbose_mode(self):
         """Test import service verbose mode functionality."""
         with patch(
-            "import_service.ImportService._ensure_cei_institution",
+            "import_service.ImportService._get_default_institution_id",
             return_value="test-institution-id",
         ):
             verbose_service = ImportService(verbose=True)
@@ -1722,7 +1722,7 @@ class TestImportServiceMethods:
             callback_calls.append(progress)
 
         with patch(
-            "import_service.ImportService._ensure_cei_institution",
+            "import_service.ImportService._get_default_institution_id",
             return_value="test-institution-id",
         ):
             callback_service = ImportService(progress_callback=test_callback)
@@ -1959,7 +1959,7 @@ class TestImportServiceMethods:
                 assert isinstance(result, ImportResult)
                 assert result.dry_run is True
 
-    @patch("import_service.ImportService._ensure_cei_institution")
+    @patch("import_service.ImportService._get_default_institution_id")
     def test_progress_callback_integration(self, mock_ensure_cei):
         """Test progress callback integration during import."""
         mock_ensure_cei.return_value = "cei-institution-id"
@@ -2111,10 +2111,10 @@ class TestImportServiceCEIInstitution:
 
     @patch("import_service.get_institution_by_short_name")
     @patch("import_service.create_default_cei_institution")
-    def test_ensure_cei_institution_existing(
+    def test_get_default_institution_id_existing(
         self, mock_create_cei, mock_get_institution
     ):
-        """Test _ensure_cei_institution when institution already exists."""
+        """Test _get_default_institution_id when institution already exists."""
         # Mock existing institution
         mock_get_institution.return_value = {
             "institution_id": "existing-cei-id",
@@ -2123,32 +2123,32 @@ class TestImportServiceCEIInstitution:
 
         service = ImportService()
 
-        assert service.cei_institution_id == "existing-cei-id"
+        assert service.institution_id == "existing-cei-id"
         assert mock_get_institution.call_count == 1  # Called once during __init__
         mock_create_cei.assert_not_called()
 
     @patch("import_service.get_institution_by_short_name")
     @patch("import_service.create_default_cei_institution")
-    def test_ensure_cei_institution_create_success(
+    def test_get_default_institution_id_create_success(
         self, mock_create_cei, mock_get_institution
     ):
-        """Test _ensure_cei_institution when creating new institution succeeds."""
+        """Test _get_default_institution_id when creating new institution succeeds."""
         # Mock no existing institution
         mock_get_institution.return_value = None
         mock_create_cei.return_value = "new-cei-id"
 
         service = ImportService()
 
-        assert service.cei_institution_id == "new-cei-id"
+        assert service.institution_id == "new-cei-id"
         assert mock_get_institution.call_count == 1  # Called once during __init__
         mock_create_cei.assert_called_once()
 
     @patch("import_service.get_institution_by_short_name")
     @patch("import_service.create_default_cei_institution")
-    def test_ensure_cei_institution_create_failure(
+    def test_get_default_institution_id_create_failure(
         self, mock_create_cei, mock_get_institution
     ):
-        """Test _ensure_cei_institution when creating new institution fails."""
+        """Test _get_default_institution_id when creating new institution fails."""
         # Mock no existing institution and failed creation
         mock_get_institution.return_value = None
         mock_create_cei.return_value = None
@@ -2158,14 +2158,14 @@ class TestImportServiceCEIInstitution:
             service = ImportService()
             assert False, "Should have raised RuntimeError"
         except RuntimeError as e:
-            assert "Failed to create or retrieve CEI institution" in str(e)
+            assert "Failed to get institution ID for import service" in str(e)
 
         assert mock_get_institution.call_count == 1
         mock_create_cei.assert_called_once()
 
     @patch("import_service.get_institution_by_short_name")
-    def test_ensure_cei_institution_exception(self, mock_get_institution):
-        """Test _ensure_cei_institution when exception occurs."""
+    def test_get_default_institution_id_exception(self, mock_get_institution):
+        """Test _get_default_institution_id when exception occurs."""
         # Mock exception during lookup
         mock_get_institution.side_effect = Exception("Database error")
 
@@ -2174,6 +2174,6 @@ class TestImportServiceCEIInstitution:
             service = ImportService()
             assert False, "Should have raised RuntimeError"
         except RuntimeError as e:
-            assert "Failed to create or retrieve CEI institution" in str(e)
+            assert "Failed to get institution ID for import service" in str(e)
 
         mock_get_institution.assert_called_once_with("CEI")

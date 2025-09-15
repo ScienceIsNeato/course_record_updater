@@ -86,7 +86,7 @@ class ImportResult:
 class ImportService:
     """Service for handling data imports with conflict resolution"""
 
-    def __init__(self, verbose=False, progress_callback=None):
+    def __init__(self, verbose=False, progress_callback=None, institution_id=None):
         self.verbose = verbose
         self.progress_callback = progress_callback
         self._processed_users = set()  # Track users we've already processed
@@ -97,10 +97,10 @@ class ImportService:
 
         self.logger = get_import_logger()
 
-        # Ensure CEI institution exists and get its ID
-        self.cei_institution_id = self._ensure_cei_institution()
-        if not self.cei_institution_id:
-            raise RuntimeError("Failed to create or retrieve CEI institution")
+        # Set institution ID - either provided or get default institution
+        self.institution_id = institution_id or self._get_default_institution_id()
+        if not self.institution_id:
+            raise RuntimeError("Failed to get institution ID for import service")
 
         self.reset_stats()
 
@@ -120,34 +120,38 @@ class ImportService:
 
         # Cache for entities to avoid duplicate lookups
 
-    def _ensure_cei_institution(self) -> Optional[str]:
+    def _get_default_institution_id(self) -> Optional[str]:
         """
-        Ensure CEI institution exists and return its ID
+        Get the default institution ID for imports.
+        For backward compatibility, defaults to CEI institution.
 
         Returns:
             Institution ID if successful, None otherwise
         """
         try:
-            # Check if CEI institution already exists
+            # For backward compatibility, default to CEI institution
+            # In the future, this could be configurable or determined by context
             cei_institution = get_institution_by_short_name("CEI")
             if cei_institution:
                 self.logger.info(
-                    f"[Import] Using existing CEI institution: {cei_institution['institution_id']}"
+                    f"[Import] Using existing institution: {cei_institution['institution_id']}"
                 )
                 return cei_institution["institution_id"]
 
-            # Create CEI institution
-            self.logger.info("[Import] Creating CEI institution...")
+            # Create default CEI institution for backward compatibility
+            self.logger.info("[Import] Creating default institution...")
             institution_id = create_default_cei_institution()
             if institution_id:
-                self.logger.info(f"[Import] Created CEI institution: {institution_id}")
+                self.logger.info(
+                    f"[Import] Created default institution: {institution_id}"
+                )
                 return institution_id
             else:
-                self.logger.error("[Import] Failed to create CEI institution")
+                self.logger.error("[Import] Failed to create default institution")
                 return None
 
         except Exception as e:
-            self.logger.error(f"[Import] Error ensuring CEI institution: {e}")
+            self.logger.error(f"[Import] Error getting default institution: {e}")
             return None
 
     def _log(self, message: str, level: str = "info"):
@@ -746,7 +750,7 @@ class ImportService:
                             course_number
                         ),
                         "credit_hours": 3,  # Default, CEI file doesn't have credit hours
-                        "institution_id": self.cei_institution_id,  # Associate with CEI
+                        "institution_id": self.institution_id,
                     }
 
             # Extract instructor information
@@ -764,7 +768,7 @@ class ImportService:
                     "department": (
                         course_data.get("department") if course_data else None
                     ),
-                    "institution_id": self.cei_institution_id,  # Associate with CEI
+                    "institution_id": self.institution_id,
                     "account_status": "imported",  # User created from import, not yet invited
                     "active_user": False,  # Will be calculated later based on active courses
                 }
@@ -781,7 +785,7 @@ class ImportService:
                         "start_date": self._estimate_term_start(term_name),
                         "end_date": self._estimate_term_end(term_name),
                         "assessment_due_date": self._estimate_assessment_due(term_name),
-                        "institution_id": self.cei_institution_id,  # Associate with CEI
+                        "institution_id": self.institution_id,
                     }
                 except ValueError as e:
                     self.logger.warning(
@@ -796,7 +800,7 @@ class ImportService:
                         "course_number"
                     ),  # Will be resolved later
                     "term_id": term_data.get("term_name"),  # Will be resolved later
-                    "institution_id": self.cei_institution_id,
+                    "institution_id": self.institution_id,
                     "status": "active",
                 }
 
