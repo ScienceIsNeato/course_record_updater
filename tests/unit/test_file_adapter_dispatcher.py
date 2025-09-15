@@ -283,8 +283,8 @@ def test_process_file_base_validation_error(mocker, mock_docx_document):
         dispatcher.process_file(mock_docx_document, adapter_name)
 
 
-class TestFileAdapterDispatcherExtended:
-    """Extended tests for FileAdapterDispatcher to hit missing coverage lines."""
+class TestFileAdapterDispatcherInitialization:
+    """Test FileAdapterDispatcher initialization and configuration."""
 
     def test_init_without_base_validation(self):
         """Test initialization without base validation."""

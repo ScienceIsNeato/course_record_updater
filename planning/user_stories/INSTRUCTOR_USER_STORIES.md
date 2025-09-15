@@ -26,13 +26,16 @@
 **As an instructor, I want to** see pre-populated course information and CLO structure **so that** I can focus on entering assessment data rather than setting up basic course details.
 
 ### 7. Enter Enrollment Data
-**As an instructor, I want to** enter enrollment data (total students, withdrawals, pass/fail counts) **so that** the system has accurate baseline numbers for calculating assessment results.
+**As an instructor, I want to** enter course result data with total students and withdrawals pre-populated from the feed, and manually enter pass count and DFIC count **so that** the system has accurate baseline numbers for calculating assessment results.
 
-### 8. Complete CLO Assessment Data
-**As an instructor, I want to** complete assessment data for pre-populated CLOs (descriptions managed by program admin) **so that** I can document student performance on each learning outcome.
+### 8. Complete CLLO Assessment Data
+**As an instructor, I want to** complete assessment data for each pre-populated CLLO by entering: assessment tool used, number of students who passed the assessment, and number of students who took the assessment **so that** I can document student performance on each learning outcome.
 
 ### 9. Enter Student Counts for Automatic Calculations
-**As an instructor, I want to** enter student counts (enrolled, passed, failed, withdrawn) and let the system calculate pass rates and S/U status automatically **so that** I avoid manual calculation errors and save time.
+**As an instructor, I want to** enter student counts from CLLO assessments and let the system calculate pass rates (% = #passed/#took) and S/U status automatically (IF % >=.75, "S", "U") **so that** I avoid manual calculation errors and save time.
+
+### 9a. Handle Enrollment Reconciliation Issues
+**As an instructor, I want to** check a "cannot reconcile" box when the formula (enrollment - withdrawals - pass - DFIC) does not equal zero **so that** I can proceed with submission when the numbers don't match due to data timing or other institutional factors.
 
 ### 10. Write Narrative Sections
 **As an instructor, I want to** write narrative sections (celebrations, challenges, changes) **so that** I can provide context and reflection on the assessment results.

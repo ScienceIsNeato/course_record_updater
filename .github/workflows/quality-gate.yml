@@ -248,6 +248,7 @@ jobs:
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
+        export DEFAULT_PORT=3001
         
         # Run the same script used locally
         ./run_smoke_tests.sh

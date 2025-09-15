@@ -27,7 +27,7 @@ class TestAPIErrorHandling:
 
     def test_create_user_no_json_data(self):
         """Test user creation with no JSON data."""
-        # Test line 117 - no data provided
+        # Test no data provided
         response = self.client.post("/api/users", content_type="application/json")
 
         # API currently returns 500 due to exception handling, but should be 400
@@ -35,7 +35,7 @@ class TestAPIErrorHandling:
 
     def test_create_user_database_failure(self):
         """Test user creation when database returns None."""
-        # Test lines 150-153 - database failure path
+        # Test database failure path
         with patch("api_routes.create_user", return_value=None):
             user_data = {
                 "email": "test@example.com",
@@ -54,7 +54,7 @@ class TestAPIErrorHandling:
 
     def test_get_users_exception_handling(self):
         """Test get users with exception."""
-        # Test lines 92, 96-97 - exception handling
+        # Test exception handling
         with patch(
             "database_service.get_users_by_role", side_effect=Exception("DB Error")
         ):
@@ -75,7 +75,7 @@ class TestAPIErrorHandling:
 
     def test_create_course_database_failure(self):
         """Test course creation when database fails."""
-        # Test lines 274-288 - course creation failure when create_course returns None
+        # Test course creation failure when create_course returns None
         with patch("api_routes.create_course", return_value=None):
             course_data = {
                 "course_number": "TEST-101",
@@ -93,7 +93,7 @@ class TestAPIErrorHandling:
 
     def test_get_course_by_number_not_found(self):
         """Test getting course by number when not found."""
-        # Test lines 296-297 - course not found path
+        # Test course not found path
         with patch("database_service.get_course_by_number", return_value=None):
             response = self.client.get("/api/courses/NONEXISTENT-101")
 
@@ -104,16 +104,22 @@ class TestAPIErrorHandling:
 
     def test_get_courses_exception_handling(self):
         """Test get courses with exception."""
-        # Test lines 209-210 - exception handling for courses
-        with patch(
-            "database_service.get_courses_by_department",
-            side_effect=Exception("DB Error"),
+        # Test exception handling for courses
+        with (
+            patch(
+                "api_routes.get_current_institution_id",
+                return_value="westside-liberal-arts",
+            ),
+            patch(
+                "api_routes.get_courses_by_department",
+                side_effect=Exception("DB Error"),
+            ),
         ):
             response = self.client.get("/api/courses?department=TEST")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
 
 class TestTermEndpoints:
@@ -128,7 +134,7 @@ class TestTermEndpoints:
 
     def test_create_term_no_json_data(self):
         """Test term creation with no JSON data."""
-        # Test lines 333-350 - term creation error paths
+        # Test term creation error paths
         response = self.client.post("/api/terms", content_type="application/json")
 
         assert response.status_code == 500  # API returns 500 for missing JSON data
@@ -180,7 +186,7 @@ class TestImportEndpoints:
 
     def test_import_excel_no_file(self):
         """Test Excel import with no file."""
-        # Test lines 425-459 - import error handling
+        # Test import error handling
         response = self.client.post("/api/import/excel")
 
         assert response.status_code == 400
@@ -219,7 +225,7 @@ class TestImportEndpoints:
 
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
-        # Test exception handling in import
+        # Test exception handling in import - now async, returns 202 with progress_id
         with patch("api_routes.import_excel", side_effect=Exception("Import failed")):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(b"fake excel data")
@@ -231,9 +237,12 @@ class TestImportEndpoints:
                         "/api/import/excel", data={"file": (f, "test.xlsx")}
                     )
 
-                assert response.status_code == 500
+                # New async behavior: returns 202 with progress_id immediately
+                assert response.status_code == 202
                 data = response.get_json()
-                assert data["success"] is False
+                assert data["success"] is True
+                assert "progress_id" in data
+                # Exception will be handled in background thread and reported via progress API
             finally:
                 os.unlink(tmp_path)
 
@@ -250,15 +259,19 @@ class TestSectionEndpoints:
 
     def test_get_sections_exception_handling(self):
         """Test get sections with exception."""
-        # Test lines 484-569 - section endpoints
-        with patch(
-            "database_service.get_sections_by_term", side_effect=Exception("DB Error")
+        # Test section endpoints
+        with (
+            patch(
+                "api_routes.get_current_institution_id",
+                return_value="westside-liberal-arts",
+            ),
+            patch("api_routes.get_all_sections", side_effect=Exception("DB Error")),
         ):
-            response = self.client.get("/api/sections?term=FA24")
+            response = self.client.get("/api/sections")
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
     def test_create_section_no_json_data(self):
         """Test section creation with no JSON data."""
@@ -304,14 +317,16 @@ class TestSectionEndpoints:
     def test_get_sections_by_instructor_exception(self):
         """Test get sections by instructor with exception."""
         with patch(
-            "database_service.get_sections_by_instructor",
+            "api_routes.get_sections_by_instructor",
             side_effect=Exception("DB Error"),
         ):
-            response = self.client.get("/api/sections?instructor=test@example.com")
+            response = self.client.get(
+                "/api/sections?instructor_id=test-instructor-123"
+            )
 
-            assert response.status_code == 200  # API gracefully handles exceptions
+            assert response.status_code == 500  # API returns error for exceptions
             data = response.get_json()
-            assert data["success"] is True  # API gracefully handles exceptions
+            assert data["success"] is False  # API properly reports exceptions
 
 
 class TestDashboardErrorHandling:
@@ -327,7 +342,7 @@ class TestDashboardErrorHandling:
     @patch("api_routes.get_current_user")
     def test_dashboard_no_user(self, mock_get_user):
         """Test dashboard with no current user."""
-        # Test lines 50, 55, 57, 61-62 - dashboard error paths
+        # Test dashboard error paths
         mock_get_user.return_value = None
 
         # This will likely cause an error or redirect

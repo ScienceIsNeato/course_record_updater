@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Import the auth service components
 from auth_service import (
     AuthService,
@@ -278,3 +280,123 @@ class TestStubBehaviorConsistency:
         assert user1 == user2
         assert user1["user_id"] == user2["user_id"]
         assert user1["email"] == user2["email"]
+
+
+class TestAuthServiceInstitutionFunctions:
+    """Test auth service institution-related functions."""
+
+    @patch("database_service.get_institution_by_short_name")
+    def test_get_current_institution_id_success(self, mock_get_institution):
+        """Test get_current_institution_id returns institution ID."""
+        mock_get_institution.return_value = {
+            "institution_id": "cei-institution-id",
+            "name": "CEI University",
+            "short_name": "CEI",
+        }
+
+        from auth_service import get_current_institution_id
+
+        result = get_current_institution_id()
+
+        assert result == "cei-institution-id"
+        mock_get_institution.assert_called_once_with("CEI")
+
+    @patch("database_service.get_institution_by_short_name")
+    def test_get_current_institution_id_not_found(self, mock_get_institution):
+        """Test get_current_institution_id when CEI institution not found."""
+        mock_get_institution.return_value = None
+
+        from auth_service import get_current_institution_id
+
+        result = get_current_institution_id()
+
+        assert result is None
+        mock_get_institution.assert_called_once_with("CEI")
+
+    @patch("database_service.get_institution_by_short_name")
+    def test_get_current_institution_id_exception(self, mock_get_institution):
+        """Test get_current_institution_id handles exceptions gracefully."""
+        mock_get_institution.side_effect = Exception("Database error")
+
+        from auth_service import get_current_institution_id
+
+        # The function should handle the exception and return None
+        result = get_current_institution_id()
+        assert result is None
+
+    def test_permission_decorator_logic(self):
+        """Test permission decorator logic."""
+        from auth_service import permission_required
+
+        # Test that decorator can be applied
+        @permission_required("test_permission")
+        def test_function():
+            return "success"
+
+        # In development mode, should allow access
+        result = test_function()
+        assert result == "success"
+
+    def test_auth_service_comprehensive_functionality(self):
+        """Test comprehensive auth service functionality."""
+        from auth_service import auth_service
+
+        # Test auth service instance
+        assert auth_service is not None
+
+        # Test current user retrieval
+        current_user = auth_service.get_current_user()
+        assert isinstance(current_user, dict)
+        assert "user_id" in current_user
+
+        # Test permission checking
+        has_perm = auth_service.has_permission("manage_users")
+        assert isinstance(has_perm, bool)
+
+        # Test authentication status
+        is_auth = auth_service.is_authenticated()
+        assert isinstance(is_auth, bool)
+
+    def test_utility_functions_comprehensive_coverage(self):
+        """Test comprehensive utility function coverage."""
+        # Test get_current_user function
+        user = get_current_user()
+        assert isinstance(user, dict)
+
+        # Test has_permission function
+        perm = has_permission("test_permission")
+        assert isinstance(perm, bool)
+
+        # Test is_authenticated function
+        auth = is_authenticated()
+        assert isinstance(auth, bool)
+
+        # Test get_user_role function
+        role = get_user_role()
+        assert isinstance(role, str)
+
+        # Test get_user_department function
+        dept = get_user_department()
+        assert dept is None or isinstance(dept, str)
+
+    def test_auth_edge_cases_and_error_handling(self):
+        """Test auth service edge cases and error handling."""
+        # Test with various permission strings
+        test_permissions = [
+            "manage_users",
+            "import_data",
+            "view_reports",
+            "admin_access",
+            "nonexistent_permission",
+        ]
+
+        for perm in test_permissions:
+            result = has_permission(perm)
+            # Should always return a boolean
+            assert isinstance(result, bool)
+
+        # Test role handling edge cases
+        role = get_user_role()
+        assert (
+            role in ["site_admin", "program_admin", "instructor"] or role == "unknown"
+        )

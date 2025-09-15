@@ -30,6 +30,9 @@ class AuthService:
             "first_name": "Dev",
             "last_name": "Admin",
             "department": "IT",
+            "institution_id": None,  # Will be dynamically resolved
+            "primary_institution_id": None,  # Will be dynamically resolved
+            "accessible_institutions": [],  # Will be dynamically resolved
         }
 
     def has_permission(self, required_permission: str) -> bool:
@@ -126,3 +129,25 @@ def get_user_department() -> Optional[str]:
     """Get current user's department (convenience function)."""
     user = get_current_user()
     return user.get("department") if user else None
+
+
+def get_current_institution_id() -> Optional[str]:
+    """Get current user's active institution ID (convenience function)."""
+    user = get_current_user()
+    if user:
+        # Get institution from user context
+        institution_id = user.get("institution_id") or user.get(
+            "primary_institution_id"
+        )
+        if institution_id:
+            return institution_id
+
+    # Development fallback - get default institution
+    try:
+        from database_service import get_institution_by_short_name
+
+        default_institution = get_institution_by_short_name("CEI")
+        return default_institution["institution_id"] if default_institution else None
+    except Exception:
+        # If database is not available or CEI institution doesn't exist, return None
+        return None

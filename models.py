@@ -1,9 +1,8 @@
 """
-Data Models for CEI Course Management System
+Data Models for Course Management System
 
 This module defines the data structures for the expanded relational model
-that supports CEI's enterprise requirements while maintaining backward
-compatibility with the existing flat course model.
+that supports multi-institutional enterprise requirements.
 """
 
 import uuid
@@ -92,6 +91,8 @@ class User(DataModel):
         role: str = "instructor",
         department: Optional[str] = None,
         active: bool = True,
+        institution_id: Optional[str] = None,
+        account_status: str = "imported",
     ) -> Dict[str, Any]:
         """Create a new user record schema"""
 
@@ -107,7 +108,12 @@ class User(DataModel):
             "last_name": last_name.strip(),
             "role": role,
             "department": department,
+            "institution_id": institution_id,
             "active": active,
+            "account_status": account_status,  # imported, invited, active
+            "active_user": False,  # Derived field for billing (see calculate_active_status)
+            "invite_sent_at": None,
+            "invite_accepted_at": None,
             "created_at": User.current_timestamp(),
             "last_login": None,
             "last_modified": User.current_timestamp(),
@@ -117,6 +123,24 @@ class User(DataModel):
     def get_permissions(role: str) -> List[str]:
         """Get permissions for a given role"""
         return list(ROLES.get(role, {}).get("permissions", []))
+
+    @staticmethod
+    def calculate_active_status(account_status: str, has_active_courses: bool) -> bool:
+        """
+        Calculate if a user should be considered 'active' for billing purposes.
+
+        Active user criteria:
+        - A) Account status is 'active' (they've accepted invite and created account)
+        - B) They are associated with active courses (current or upcoming terms)
+
+        Args:
+            account_status: User's account status (imported, invited, active)
+            has_active_courses: Whether user has courses in current/upcoming terms
+
+        Returns:
+            True if user should count against billing headcount
+        """
+        return account_status == "active" and has_active_courses
 
 
 class Course(DataModel):
@@ -169,19 +193,61 @@ class Term(DataModel):
         }
 
 
-class CourseSection(DataModel):
-    """CourseSection entity - represents a specific offering of a course"""
+class CourseOffering(DataModel):
+    """CourseOffering entity - represents a course offered in a specific term"""
 
     @staticmethod
     def create_schema(
         course_id: str,
         term_id: str,
+        institution_id: str,
+        status: str = "active",
+        capacity: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Create a new course offering record schema"""
+
+        return {
+            "offering_id": CourseOffering.generate_id(),
+            "course_id": course_id,
+            "term_id": term_id,
+            "institution_id": institution_id,
+            "status": status,
+            "capacity": capacity,
+            "total_enrollment": 0,  # Will be calculated from sections
+            "section_count": 0,  # Will be calculated from sections
+            "created_at": CourseOffering.current_timestamp(),
+            "last_modified": CourseOffering.current_timestamp(),
+        }
+
+
+class CourseSection(DataModel):
+    """CourseSection entity - represents a specific section of a course offering"""
+
+    @staticmethod
+    def create_schema(
+        offering_id: str,
         section_number: str = "001",
         instructor_id: Optional[str] = None,
         enrollment: Optional[int] = None,
         status: str = "assigned",
     ) -> Dict[str, Any]:
-        """Create a new course section record schema"""
+        """
+        Create a new course section record schema
+
+        Args:
+            offering_id: ID of the course offering this section belongs to
+            section_number: Section identifier (default: "001")
+            instructor_id: Optional ID of assigned instructor
+            enrollment: Number of enrolled students (was previously 'num_students')
+            status: Section status from SECTION_STATUSES
+
+        Returns:
+            Dictionary containing the course section schema
+
+        Breaking Change Note:
+            The 'num_students' parameter has been renamed to 'enrollment' for consistency
+            with the CourseOffering model's total_enrollment field.
+        """
 
         if status not in SECTION_STATUSES:
             raise ValueError(
@@ -190,8 +256,7 @@ class CourseSection(DataModel):
 
         return {
             "section_id": CourseSection.generate_id(),
-            "course_id": course_id,
-            "term_id": term_id,
+            "offering_id": offering_id,
             "instructor_id": instructor_id,
             "section_number": section_number.strip(),
             "enrollment": enrollment,
@@ -272,68 +337,6 @@ class CourseOutcome(DataModel):
         }
 
 
-class LegacyCourse(DataModel):
-    """Legacy course model for backward compatibility"""
-
-    @staticmethod
-    def from_flat_record(course_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert current flat course record to legacy format"""
-        return {
-            "course_number": course_data.get("course_number"),
-            "course_title": course_data.get("course_title"),
-            "instructor_name": course_data.get("instructor_name"),
-            "term": course_data.get("term"),
-            "num_students": course_data.get("num_students"),
-            "grade_a": course_data.get("grade_a"),
-            "grade_b": course_data.get("grade_b"),
-            "grade_c": course_data.get("grade_c"),
-            "grade_d": course_data.get("grade_d"),
-            "grade_f": course_data.get("grade_f"),
-            "timestamp": course_data.get("timestamp"),
-        }
-
-    @staticmethod
-    def to_relational_entities(
-        course_data: Dict[str, Any],
-    ) -> Dict[str, Dict[str, Any]]:
-        """Convert legacy flat course to new relational entities"""
-
-        # This would be used during migration
-        # Returns dict with keys: 'course', 'term', 'section', 'user'
-
-        course = Course.create_schema(
-            course_number=course_data["course_number"],
-            course_title=course_data["course_title"],
-            department="Unknown",  # Would need to be determined during migration
-        )
-
-        term = Term.create_schema(
-            name=course_data["term"],
-            start_date="2024-01-01",  # Would need actual dates
-            end_date="2024-05-01",
-            assessment_due_date="2024-05-15",
-        )
-
-        user = User.create_schema(
-            email=f"{course_data['instructor_name'].lower().replace(' ', '.')}@cei.edu",
-            first_name=course_data["instructor_name"].split()[0],
-            last_name=" ".join(course_data["instructor_name"].split()[1:]),
-            role="instructor",
-        )
-
-        section = CourseSection.create_schema(
-            course_id=course["course_id"],
-            term_id=term["term_id"],
-            instructor_id=user["user_id"],
-            enrollment=course_data.get("num_students"),
-        )
-
-        # Grade distribution functionality removed per requirements
-        section["grade_distribution"] = {}
-
-        return {"course": course, "term": term, "user": user, "section": section}
-
-
 # Validation functions
 def validate_email(email: str) -> bool:
     """Basic email validation"""
@@ -355,9 +358,33 @@ def validate_course_number(course_number: str) -> bool:
 
 
 def validate_term_name(term_name: str) -> bool:
-    """Validate term name format (e.g., 2024 Fall, 2024 Spring)"""
+    """
+    Validate term name format - supports standard space-separated format
+
+    Standard format: "2024 Fall", "2024 Spring", "2024 Summer", "2024 Winter"
+    For institution-specific formats, use adapter-specific validation.
+    """
+    # Handle space-separated format: "2024 Fall"
     parts = term_name.split()
-    return len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4
+    if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4:
+        season = parts[1].lower()
+        return season in ["fall", "spring", "summer", "winter"]
+
+    return False
+
+
+def format_term_name(year: str, season: str) -> str:
+    """
+    Format year and season into standard term name.
+
+    Args:
+        year: 4-digit year string
+        season: Full season name (Fall, Spring, Summer, Winter)
+
+    Returns:
+        Formatted term name like '2024 Fall'
+    """
+    return f"{year} {season}"
 
 
 # Export all model classes and constants
@@ -365,13 +392,14 @@ __all__ = [
     "User",
     "Course",
     "Term",
+    "CourseOffering",
     "CourseSection",
     "CourseOutcome",
-    "LegacyCourse",
     "ROLES",
     "SECTION_STATUSES",
     "ASSESSMENT_STATUSES",
     "validate_email",
     "validate_course_number",
     "validate_term_name",
+    "format_term_name",
 ]

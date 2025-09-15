@@ -7,7 +7,8 @@ including user management, course management, term management, and course sectio
 """
 
 import os  # Import os to check environment variables
-from typing import Any, Dict, List, Optional
+import uuid
+from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
 
@@ -82,11 +83,310 @@ except Exception as e:
     db = None  # Ensure db is None if initialization fails
 
 # Relational model collections
+INSTITUTIONS_COLLECTION = "institutions"
 USERS_COLLECTION = "users"
 COURSES_COLLECTION = "courses"
 TERMS_COLLECTION = "terms"
+COURSE_OFFERINGS_COLLECTION = "course_offerings"
 COURSE_SECTIONS_COLLECTION = "course_sections"
 COURSE_OUTCOMES_COLLECTION = "course_outcomes"
+
+# ========================================
+# INSTITUTION MANAGEMENT FUNCTIONS
+# ========================================
+
+
+def create_institution(institution_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Create a new institution in the database
+
+    Args:
+        institution_data: Institution data dictionary
+
+    Returns:
+        Institution ID if successful, None otherwise
+    """
+    logger.info("[DB Service] create_institution called.")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        collection_ref = db.collection(INSTITUTIONS_COLLECTION)
+        _, doc_ref = collection_ref.add(institution_data)
+        logger.info(f"[DB Service] Institution created with ID: {doc_ref.id}")
+        return doc_ref.id
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating institution: {e}")
+        return None
+
+
+def get_institution_by_id(institution_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get institution by ID
+
+    Args:
+        institution_id: Institution ID
+
+    Returns:
+        Institution dictionary if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_institution_by_id called for: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        doc_ref = db.collection(INSTITUTIONS_COLLECTION).document(institution_id)
+        doc = doc_ref.get()
+
+        if doc.exists:
+            institution = doc.to_dict()
+            institution["institution_id"] = doc.id
+            logger.info(
+                "[DB Service] Found institution: %s",
+                sanitize_for_logging(institution_id),
+            )
+            return institution
+        else:
+            logger.info(
+                "[DB Service] No institution found with ID: %s",
+                sanitize_for_logging(institution_id),
+            )
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting institution by ID: {e}")
+        return None
+
+
+def get_all_institutions() -> List[Dict[str, Any]]:
+    """
+    Get all active institutions
+
+    Returns:
+        List of institution dictionaries
+    """
+    logger.info("[DB Service] get_all_institutions called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        query = db.collection(INSTITUTIONS_COLLECTION).where(
+            filter=firestore.FieldFilter("is_active", "==", True)
+        )
+
+        docs = query.stream()
+        institutions = []
+
+        for doc in docs:
+            institution = doc.to_dict()
+            institution["institution_id"] = doc.id
+            institutions.append(institution)
+
+        logger.info("[DB Service] Found %d active institutions", len(institutions))
+        return institutions
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting all institutions: {e}")
+        return []
+
+
+def create_default_cei_institution() -> Optional[str]:
+    """
+    Create the default CEI institution record if it doesn't exist
+
+    Returns:
+        Institution ID if successful, None otherwise
+    """
+    logger.info("[DB Service] create_default_cei_institution called")
+
+    # Check if CEI institution already exists
+    existing_cei = get_institution_by_short_name("CEI")
+    if existing_cei:
+        logger.info("[DB Service] CEI institution already exists")
+        return existing_cei["institution_id"]
+
+    from datetime import datetime, timezone
+
+    cei_data = {
+        "name": "College of Eastern Idaho",
+        "short_name": "CEI",
+        "domain": "cei.edu",
+        "timezone": "America/Denver",
+        "created_at": datetime.now(timezone.utc),
+        "is_active": True,
+        "billing_settings": {
+            "instructor_seat_limit": 100,  # Generous limit for CEI
+            "current_instructor_count": 0,
+            "subscription_status": "active",
+        },
+        "settings": {
+            "default_credit_hours": 3,
+            "academic_year_start_month": 8,
+            "grading_scale": "traditional",
+        },
+    }
+
+    return create_institution(cei_data)
+
+
+def create_new_institution(
+    institution_data: Dict[str, Any], admin_user_data: Dict[str, Any]
+) -> Optional[Tuple[str, str]]:
+    """
+    Create a new institution along with its first admin user
+
+    Args:
+        institution_data: Institution details (name, domain, etc.)
+        admin_user_data: First admin user details
+
+    Returns:
+        Tuple of (institution_id, user_id) if successful, None otherwise
+    """
+    logger.info("[DB Service] create_new_institution called")
+
+    try:
+        from datetime import datetime, timezone
+
+        # Create institution record
+        full_institution_data = {
+            **institution_data,
+            "created_at": datetime.now(timezone.utc),
+            "is_active": True,
+            "billing_settings": {
+                "instructor_seat_limit": 10,  # Default starter limit
+                "current_instructor_count": 1,  # Admin user
+                "subscription_status": "trial",
+            },
+            "settings": {
+                "default_credit_hours": 3,
+                "academic_year_start_month": 8,
+                "grading_scale": "traditional",
+            },
+        }
+
+        institution_id = create_institution(full_institution_data)
+        if not institution_id:
+            logger.error("[DB Service] Failed to create institution")
+            return None
+
+        # Create admin user for this institution
+        full_user_data = {
+            **admin_user_data,
+            "institution_id": institution_id,
+            "role": "admin",
+            "is_institution_admin": True,
+            "created_by": None,  # Self-created
+            "invitation_status": "accepted",
+            "created_at": datetime.now(timezone.utc),
+        }
+
+        user_id = create_user(full_user_data)
+        if not user_id:
+            logger.error("[DB Service] Failed to create admin user")
+            # TODO: Should rollback institution creation here
+            return None
+
+        logger.info(
+            f"[DB Service] Successfully created institution {institution_id} with admin user {user_id}"
+        )
+        return (institution_id, user_id)
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating new institution: {e}")
+        return None
+
+
+def get_institution_instructor_count(institution_id: str) -> int:
+    """
+    Get current count of instructors for an institution
+
+    Args:
+        institution_id: Institution ID
+
+    Returns:
+        Number of instructors in the institution
+    """
+    logger.info(
+        "[DB Service] get_institution_instructor_count called for: %s",
+        sanitize_for_logging(institution_id),
+    )
+
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return 0
+
+    try:
+        query = (
+            db.collection(USERS_COLLECTION)
+            .where(filter=firestore.FieldFilter("institution_id", "==", institution_id))
+            .where(filter=firestore.FieldFilter("role", "==", "instructor"))
+        )
+
+        docs = list(query.stream())
+        count = len(docs)
+
+        logger.info(
+            "[DB Service] Found %d instructors for institution: %s",
+            count,
+            sanitize_for_logging(institution_id),
+        )
+        return count
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting instructor count: {e}")
+        return 0
+
+
+def get_institution_by_short_name(short_name: str) -> Optional[Dict[str, Any]]:
+    """
+    Get institution by short name (e.g., "CEI")
+
+    Args:
+        short_name: Institution short name
+
+    Returns:
+        Institution dictionary if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_institution_by_short_name called for: %s",
+        sanitize_for_logging(short_name),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        query = db.collection(INSTITUTIONS_COLLECTION).where(
+            filter=firestore.FieldFilter("short_name", "==", short_name)
+        )
+
+        docs = list(query.stream())
+
+        if docs:
+            doc = docs[0]  # Take first match
+            institution = doc.to_dict()
+            institution["institution_id"] = doc.id
+            logger.info(
+                "[DB Service] Found institution: %s", sanitize_for_logging(short_name)
+            )
+            return institution
+        else:
+            logger.info(
+                "[DB Service] No institution found with short_name: %s",
+                sanitize_for_logging(short_name),
+            )
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting institution by short_name: {e}")
+        return None
+
 
 # ========================================
 # USER MANAGEMENT FUNCTIONS
@@ -110,7 +410,14 @@ def create_user(user_data: Dict[str, Any]) -> Optional[str]:
 
     try:
         collection_ref = db.collection(USERS_COLLECTION)
-        _, doc_ref = collection_ref.add(user_data)
+        result = collection_ref.add(user_data)
+
+        # Handle both tuple and direct document reference returns
+        if isinstance(result, tuple):
+            _, doc_ref = result
+        else:
+            doc_ref = result
+
         logger.info(f"[DB Service] User created with ID: {doc_ref.id}")
         return doc_ref.id
     except Exception as e:
@@ -205,6 +512,119 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"[DB Service] Error getting users by role: {e}")
         return []
+
+
+def update_user_active_status(user_id: str, active_user: bool) -> bool:
+    """
+    Update a user's active_user status for billing purposes.
+
+    Args:
+        user_id: The user ID to update
+        active_user: Whether the user should be considered active for billing
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(
+        f"[DB Service] update_user_active_status called for user: {sanitize_for_logging(user_id)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return False
+
+    try:
+        doc_ref = db.collection(USERS_COLLECTION).document(user_id)
+        doc_ref.update(
+            {
+                "active_user": active_user,
+                "last_modified": firestore.SERVER_TIMESTAMP,
+            }
+        )
+
+        logger.info(
+            f"[DB Service] Updated active_user status to {active_user} for user: {sanitize_for_logging(user_id)}"
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error updating user active status: {e}")
+        return False
+
+
+def calculate_and_update_active_users(institution_id: str) -> int:
+    """
+    Calculate and update active_user status for all users in an institution.
+
+    A user is considered active if:
+    - Account status is 'active' (they've accepted invite)
+    - They have courses in current or upcoming terms
+
+    Args:
+        institution_id: Institution ID to process
+
+    Returns:
+        Number of users updated
+    """
+    logger.info(
+        f"[DB Service] calculate_and_update_active_users called for institution: {sanitize_for_logging(institution_id)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return 0
+
+    try:
+        # Get all users for the institution
+        users_query = db.collection(USERS_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
+
+        users_docs = users_query.stream()
+        updated_count = 0
+
+        # Get current date for term comparison
+        from datetime import datetime, timezone
+
+        current_date = datetime.now(timezone.utc)
+
+        for user_doc in users_docs:
+            user = user_doc.to_dict()
+            user_id = user_doc.id
+
+            # Check if user has accepted invite
+            account_active = user.get("account_status") == "active"
+
+            # Check if user has courses in current/upcoming terms
+            # For now, we'll consider any user with sections as having active courses
+            # TODO: Implement proper term date checking
+            sections_query = (
+                db.collection(COURSE_SECTIONS_COLLECTION)
+                .where(filter=firestore.FieldFilter("instructor_id", "==", user_id))
+                .limit(1)
+            )
+
+            has_sections = len(list(sections_query.stream())) > 0
+
+            # Calculate active status using the model's logic
+            from models import User
+
+            should_be_active = User.calculate_active_status(
+                user.get("account_status", "imported"), has_sections
+            )
+
+            # Update if status has changed
+            current_active = user.get("active_user", False)
+            if current_active != should_be_active:
+                if update_user_active_status(user_id, should_be_active):
+                    updated_count += 1
+
+        logger.info(
+            f"[DB Service] Updated active status for {updated_count} users in institution: {sanitize_for_logging(institution_id)}"
+        )
+        return updated_count
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error calculating active users: {e}")
+        return 0
 
 
 def update_user_extended(user_id: str, update_data: Dict[str, Any]) -> bool:
@@ -333,18 +753,22 @@ def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_courses_by_department(department: str) -> List[Dict[str, Any]]:
+def get_courses_by_department(
+    institution_id: str, department: str
+) -> List[Dict[str, Any]]:
     """
-    Get all courses for a specific department.
+    Get all courses for a specific department and institution.
 
     Args:
+        institution_id: Institution ID to filter by
         department: Department name
 
     Returns:
         List of course dictionaries
     """
     logger.info(
-        "[DB Service] get_courses_by_department called for: %s",
+        "[DB Service] get_courses_by_department called for institution: %s, department: %s",
+        sanitize_for_logging(institution_id),
         sanitize_for_logging(department),
     )
     if not db:
@@ -352,8 +776,10 @@ def get_courses_by_department(department: str) -> List[Dict[str, Any]]:
         return []
 
     try:
-        query = db.collection(COURSES_COLLECTION).where(
-            filter=firestore.FieldFilter("department", "==", department)
+        query = (
+            db.collection(COURSES_COLLECTION)
+            .where(filter=firestore.FieldFilter("institution_id", "==", institution_id))
+            .where(filter=firestore.FieldFilter("department", "==", department))
         )
 
         docs = query.stream()
@@ -373,6 +799,316 @@ def get_courses_by_department(department: str) -> List[Dict[str, Any]]:
 
     except Exception as e:
         logger.error(f"[DB Service] Error getting courses by department: {e}")
+        return []
+
+
+def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all courses for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
+
+    Returns:
+        List of course dictionaries
+    """
+    logger.info(
+        "[DB Service] get_all_courses called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        query = db.collection(COURSES_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
+
+        docs = query.stream()
+        courses = []
+
+        for doc in docs:
+            course = doc.to_dict()
+            course["course_id"] = doc.id
+            courses.append(course)
+
+        logger.info(
+            "[DB Service] Found %d courses for institution: %s",
+            len(courses),
+            sanitize_for_logging(institution_id),
+        )
+        return courses
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting courses for institution: {e}")
+        return []
+
+
+def get_all_instructors(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all users with instructor role for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
+
+    Returns:
+        List of instructor user dictionaries
+    """
+    logger.info(
+        "[DB Service] get_all_instructors called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        query = (
+            db.collection(USERS_COLLECTION)
+            .where(filter=firestore.FieldFilter("role", "==", "instructor"))
+            .where(filter=firestore.FieldFilter("institution_id", "==", institution_id))
+        )
+
+        docs = query.stream()
+        instructors = []
+
+        for doc in docs:
+            instructor = doc.to_dict()
+            instructor["user_id"] = doc.id
+            instructors.append(instructor)
+
+        logger.info(
+            "[DB Service] Found %d instructors for institution: %s",
+            len(instructors),
+            sanitize_for_logging(institution_id),
+        )
+        return instructors
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting instructors for institution: {e}")
+        return []
+
+
+def get_all_sections(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all course sections for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
+
+    Returns:
+        List of section dictionaries
+    """
+    logger.info(
+        "[DB Service] get_all_sections called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        query = db.collection(COURSE_SECTIONS_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
+
+        docs = query.stream()
+        sections = []
+
+        for doc in docs:
+            section = doc.to_dict()
+            section["section_id"] = doc.id
+            sections.append(section)
+
+        logger.info(
+            "[DB Service] Found %d sections for institution: %s",
+            len(sections),
+            sanitize_for_logging(institution_id),
+        )
+        return sections
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting sections for institution: {e}")
+        return []
+
+
+# ========================================
+# COURSE OFFERING MANAGEMENT FUNCTIONS
+# ========================================
+
+
+def create_course_offering(offering_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Create a new course offering.
+
+    Args:
+        offering_data: Dictionary containing course offering information
+
+    Returns:
+        The offering_id if successful, None otherwise
+    """
+    logger.info("[DB Service] create_course_offering called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        # Generate offering ID if not provided
+        if "offering_id" not in offering_data:
+            offering_data["offering_id"] = str(uuid.uuid4())
+
+        offering_id = offering_data["offering_id"]
+
+        # Add timestamp
+        offering_data["created_at"] = firestore.SERVER_TIMESTAMP
+        offering_data["last_modified"] = firestore.SERVER_TIMESTAMP
+
+        # Create the offering document
+        doc_ref = db.collection(COURSE_OFFERINGS_COLLECTION).document(offering_id)
+        doc_ref.set(offering_data)
+
+        logger.info(
+            f"[DB Service] Successfully created course offering: {sanitize_for_logging(offering_id)}"
+        )
+        return offering_id
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating course offering: {e}")
+        return None
+
+
+def get_course_offering(offering_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a course offering by ID.
+
+    Args:
+        offering_id: The offering ID to search for
+
+    Returns:
+        Course offering dictionary if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_course_offering called for offering: %s",
+        sanitize_for_logging(offering_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        doc_ref = db.collection(COURSE_OFFERINGS_COLLECTION).document(offering_id)
+        doc = doc_ref.get()
+
+        if doc.exists:
+            offering = doc.to_dict()
+            offering["offering_id"] = doc.id
+            logger.info(
+                f"[DB Service] Found course offering: {sanitize_for_logging(offering_id)}"
+            )
+            return offering
+        else:
+            logger.info(
+                f"[DB Service] Course offering not found: {sanitize_for_logging(offering_id)}"
+            )
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course offering: {e}")
+        return None
+
+
+def get_course_offering_by_course_and_term(
+    course_id: str, term_id: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get a course offering by course and term.
+
+    Args:
+        course_id: The course ID
+        term_id: The term ID
+        institution_id: The institution ID
+
+    Returns:
+        Course offering dictionary if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_course_offering_by_course_and_term called for course: %s, term: %s",
+        sanitize_for_logging(course_id),
+        sanitize_for_logging(term_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        query = (
+            db.collection(COURSE_OFFERINGS_COLLECTION)
+            .where(filter=firestore.FieldFilter("course_id", "==", course_id))
+            .where(filter=firestore.FieldFilter("term_id", "==", term_id))
+            .where(filter=firestore.FieldFilter("institution_id", "==", institution_id))
+            .limit(1)
+        )
+
+        docs = query.stream()
+        for doc in docs:
+            offering = doc.to_dict()
+            offering["offering_id"] = doc.id
+            logger.info(
+                f"[DB Service] Found course offering: {sanitize_for_logging(doc.id)}"
+            )
+            return offering
+
+        logger.info(
+            "[DB Service] No course offering found for course: %s, term: %s",
+            sanitize_for_logging(course_id),
+            sanitize_for_logging(term_id),
+        )
+        return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course offering: {e}")
+        return None
+
+
+def get_all_course_offerings(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all course offerings for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
+
+    Returns:
+        List of course offering dictionaries
+    """
+    logger.info(
+        "[DB Service] get_all_course_offerings called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        query = db.collection(COURSE_OFFERINGS_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
+
+        docs = query.stream()
+        offerings = []
+
+        for doc in docs:
+            offering = doc.to_dict()
+            offering["offering_id"] = doc.id
+            offerings.append(offering)
+
+        logger.info(
+            f"[DB Service] Retrieved {len(offerings)} course offerings for institution: {sanitize_for_logging(institution_id)}"
+        )
+        return offerings
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course offerings: {e}")
         return []
 
 
@@ -466,21 +1202,29 @@ def get_term_by_name(name: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_active_terms() -> List[Dict[str, Any]]:
+def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
     """
-    Get all active terms.
+    Get all active terms for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
 
     Returns:
         List of active term dictionaries
     """
-    logger.info("[DB Service] get_active_terms called")
+    logger.info(
+        "[DB Service] get_active_terms called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
     if not db:
         logger.error("[DB Service] Firestore client not available.")
         return []
 
     try:
+        # For now, get all terms for the institution (not filtering by active status)
+        # TODO: Add active field to terms and filter properly
         query = db.collection(TERMS_COLLECTION).where(
-            filter=firestore.FieldFilter("active", "==", True)
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
         )
 
         docs = query.stream()
@@ -491,11 +1235,15 @@ def get_active_terms() -> List[Dict[str, Any]]:
             term["term_id"] = doc.id
             terms.append(term)
 
-        logger.info(f"[DB Service] Found {len(terms)} active terms")
+        logger.info(
+            "[DB Service] Found %d active terms for institution: %s",
+            len(terms),
+            sanitize_for_logging(institution_id),
+        )
         return terms
 
     except Exception as e:
-        logger.error(f"[DB Service] Error getting active terms: {e}")
+        logger.error(f"[DB Service] Error getting active terms for institution: {e}")
         return []
 
 

@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Test configuration
-TEST_PORT=3002  # Use a different port for testing to avoid conflicts
-TEST_URL="http://localhost:$TEST_PORT"
+DEFAULT_PORT=${DEFAULT_PORT:-3001}  # Use DEFAULT_PORT env var, fallback to 3001
+TEST_URL="http://localhost:$DEFAULT_PORT"
 CHROME_DRIVER_TIMEOUT=30
 
 echo -e "${BLUE}🧪 Course Record Updater - Automated Smoke Tests${NC}"
@@ -60,7 +60,7 @@ check_chromedriver() {
 
 # Function to start test server
 start_test_server() {
-    echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
+    echo -e "${BLUE}🚀 Starting test server on port $DEFAULT_PORT...${NC}"
 
     # Load environment variables
     if [ -f ".envrc" ]; then
@@ -73,7 +73,7 @@ start_test_server() {
     fi
 
     # Start server on test port in background
-    PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
+    PORT=$DEFAULT_PORT python app.py > logs/test_server.log 2>&1 &
     SERVER_PID=$!
 
     # Wait for server to start
