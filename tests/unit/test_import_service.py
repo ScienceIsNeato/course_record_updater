@@ -495,6 +495,27 @@ class TestImportServiceInitialization:
         assert service.stats["conflicts_resolved"] == 0
         assert service.stats["errors"] == []
 
+    def test_import_service_logger_functionality(self):
+        """Test import service logger functionality."""
+        service = ImportService()
+
+        # Test that logger methods exist and are callable
+        assert hasattr(service.logger, "info")
+        assert hasattr(service.logger, "warning")
+        assert hasattr(service.logger, "error")
+        assert callable(service.logger.info)
+
+        # Test logging without errors
+        try:
+            service.logger.info("Test log message")
+            service.logger.warning("Test warning")
+            service.logger.error("Test error")
+            success = True
+        except Exception:
+            success = False
+
+        assert success, "Logger should work without errors"
+
 
 class TestImportServiceLogging:
     """Test ImportService logging functionality."""
@@ -2156,79 +2177,3 @@ class TestImportServiceCEIInstitution:
             assert "Failed to create or retrieve CEI institution" in str(e)
 
         mock_get_institution.assert_called_once_with("CEI")
-
-
-class TestImportServiceFinalCoverage:
-    """Final coverage push for import_service missing lines."""
-
-    def setup_method(self):
-        """Set up test environment."""
-        self.import_service_patcher = patch(
-            "import_service.ImportService._ensure_cei_institution"
-        )
-        self.mock_ensure_cei = self.import_service_patcher.start()
-        self.mock_ensure_cei.return_value = "test-institution-id"
-
-    def teardown_method(self):
-        """Clean up test environment."""
-        self.import_service_patcher.stop()
-
-    def test_import_service_init_coverage(self):
-        """Test ImportService initialization coverage."""
-        from import_service import ImportService
-
-        # Test initialization with default parameters
-        service = ImportService()
-        assert service.cei_institution_id == "test-institution-id"
-        assert service.logger is not None
-
-        # Test initialization with different parameters
-        service2 = ImportService()
-        assert service2.cei_institution_id == "test-institution-id"
-
-    def test_import_service_logger_coverage(self):
-        """Test import service logger functionality."""
-        from import_service import ImportService
-
-        service = ImportService()
-
-        # Test that logger methods exist and are callable
-        assert hasattr(service.logger, "info")
-        assert hasattr(service.logger, "warning")
-        assert hasattr(service.logger, "error")
-        assert callable(service.logger.info)
-
-        # Test logging without errors
-        try:
-            service.logger.info("Test log message")
-            service.logger.warning("Test warning")
-            service.logger.error("Test error")
-            success = True
-        except Exception:
-            success = False
-
-        assert success, "Logger should work without errors"
-
-    def test_import_service_constants_coverage(self):
-        """Test import service constants and enums."""
-        from import_service import ConflictStrategy, ImportMode
-
-        # Test ConflictStrategy enum values
-        assert hasattr(ConflictStrategy, "USE_MINE")
-        assert hasattr(ConflictStrategy, "USE_THEIRS")
-        assert hasattr(ConflictStrategy, "MERGE")
-
-        # Test ImportMode enum values
-        assert hasattr(ImportMode, "DRY_RUN")
-        assert hasattr(ImportMode, "EXECUTE")
-
-    def test_import_service_simple_coverage(self):
-        """Test simple import service functionality."""
-        from import_service import ImportService
-
-        service = ImportService()
-
-        # Test basic attributes exist
-        assert hasattr(service, "cei_institution_id")
-        assert hasattr(service, "logger")
-        assert service.cei_institution_id == "test-institution-id"

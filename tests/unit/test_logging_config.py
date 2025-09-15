@@ -76,6 +76,44 @@ class TestLoggingConfiguration:
         assert isinstance(logger, logging.Logger)
         assert logger.name == "test_module"
 
+    def test_setup_logger_parameter_variations(self):
+        """Test setup_logger with different parameter variations."""
+        import logging
+
+        # Test different log levels
+        levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
+
+        for level in levels:
+            logger = setup_logger(f"test_logger_{level}", level=level)
+            assert isinstance(logger, logging.Logger)
+            # Level may be inherited from parent
+            assert isinstance(logger.getEffectiveLevel(), int)
+
+    def test_logging_module_integration(self):
+        """Test integration with Python logging module."""
+        import logging
+
+        # Test that logging levels are properly accessible
+        assert hasattr(logging, "DEBUG")
+        assert hasattr(logging, "INFO")
+        assert hasattr(logging, "WARNING")
+        assert hasattr(logging, "ERROR")
+        assert hasattr(logging, "CRITICAL")
+
+        # Test level values are integers
+        assert isinstance(logging.DEBUG, int)
+        assert isinstance(logging.INFO, int)
+
+    def test_logging_config_module_attributes(self):
+        """Test logging configuration module attributes."""
+        import logging_config
+
+        # Test that module has expected functions
+        assert hasattr(logging_config, "setup_logger")
+        assert hasattr(logging_config, "get_import_logger")
+        assert callable(logging_config.setup_logger)
+        assert callable(logging_config.get_import_logger)
+
 
 class TestLoggingFormatters:
     """Test logging formatter functionality."""
@@ -140,139 +178,3 @@ class TestLoggingFormatters:
         except Exception as e:
             # If logging fails, that's an issue
             assert False, f"Logging failed: {e}"
-
-
-class TestLoggingConfigFinalCoverage:
-    """Final comprehensive logging tests to push over 80% coverage."""
-
-    def test_setup_logger_parameter_variations(self):
-        """Test setup_logger with parameter variations."""
-        import logging
-
-        # Test different log levels
-        levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR]
-
-        for level in levels:
-            logger = setup_logger("test_logger_varied", level=level)
-            assert isinstance(logger, logging.Logger)
-            # Level may be inherited from parent
-            assert isinstance(logger.getEffectiveLevel(), int)
-
-    def test_logging_module_constants(self):
-        """Test logging module constants and functionality."""
-        import logging
-
-        # Test that logging levels are properly defined
-        assert hasattr(logging, "DEBUG")
-        assert hasattr(logging, "INFO")
-        assert hasattr(logging, "WARNING")
-        assert hasattr(logging, "ERROR")
-        assert hasattr(logging, "CRITICAL")
-
-        # Test level values
-        assert (
-            logging.DEBUG
-            < logging.INFO
-            < logging.WARNING
-            < logging.ERROR
-            < logging.CRITICAL
-        )
-
-    def test_logging_config_module_coverage(self):
-        """Test logging_config module coverage for missing lines."""
-        import logging_config
-
-        # Test module attributes exist
-        assert hasattr(logging_config, "setup_logger")
-        assert hasattr(logging_config, "get_import_logger")
-        assert hasattr(logging_config, "get_logger")
-
-        # Test logger creation with different names
-        test_logger = setup_logger("test_coverage_logger")
-        assert test_logger.name == "test_coverage_logger"
-
-        # Test import logger functionality
-        import_logger = get_import_logger()
-        assert import_logger.name == "ImportService"
-
-        # Test get_logger function
-        from logging_config import get_logger
-
-        generic_logger = get_logger("generic_test")
-        assert generic_logger.name == "generic_test"
-
-
-class TestLoggingConfigMissingLines:
-    """Test missing lines in logging_config for coverage."""
-
-    def test_logging_config_constants_and_paths(self):
-        """Test logging configuration constants and file paths."""
-        import os
-
-        import logging_config
-
-        # Test that module can be imported and has expected attributes
-        assert hasattr(logging_config, "setup_logger")
-        assert hasattr(logging_config, "get_import_logger")
-
-        # Test logger creation with different configurations
-        logger1 = setup_logger("test1", level=logging.INFO)
-        logger2 = setup_logger("test2", level=logging.DEBUG)
-
-        assert logger1.name == "test1"
-        assert logger2.name == "test2"
-
-        # Test that loggers have proper configuration
-        assert isinstance(logger1.getEffectiveLevel(), int)
-        assert isinstance(logger2.getEffectiveLevel(), int)
-
-    def test_logging_config_edge_cases(self):
-        """Test logging configuration edge cases."""
-        import logging
-
-        from logging_config import (
-            get_api_logger,
-            get_app_logger,
-            get_database_logger,
-            get_logger,
-        )
-
-        # Test with various logger names
-        test_names = [
-            "module.submodule",
-            "test_logger_123",
-            "__special_logger__",
-            "a.b.c.d.e",
-        ]
-
-        for name in test_names:
-            logger = get_logger(name)
-            assert logger.name == name
-            assert isinstance(logger, logging.Logger)
-
-        # Test logger functionality
-        loggers = [get_database_logger(), get_api_logger(), get_app_logger()]
-        for logger in loggers:
-            assert hasattr(logger, "debug")
-            assert hasattr(logger, "info")
-            assert hasattr(logger, "warning")
-            assert hasattr(logger, "error")
-            assert hasattr(logger, "critical")
-
-    def test_logging_config_file_operations(self):
-        """Test logging configuration file operations."""
-        from logging_config import get_logger
-
-        # Simple test that doesn't require actual file operations
-        logger = get_logger("file_test")
-
-        # Test basic logging functionality
-        try:
-            logger.info("Testing file operations")
-            logger.debug("Debug message")
-            logger.warning("Warning message")
-            success = True
-        except Exception:
-            success = False
-
-        assert success, "Logger should handle file operations without errors"

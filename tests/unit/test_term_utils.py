@@ -296,8 +296,8 @@ class TestBackwardCompatibilityExtended:
             assert len(display) > 0
 
 
-class TestTermGeneratorAdvanced:
-    """Test advanced TermGenerator functionality for better coverage."""
+class TestTermGeneratorCustomization:
+    """Test TermGenerator customization and configuration options."""
 
     def test_term_generator_custom_parameters(self):
         """Test TermGenerator with custom parameters."""

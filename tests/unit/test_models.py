@@ -73,6 +73,14 @@ class TestUser:
         assert "manage_users" in admin_perms
         assert "full_access" in admin_perms
 
+    def test_user_active_status_calculation(self):
+        """Test User model active status calculation."""
+        # Test various status combinations
+        assert User.calculate_active_status("active", True) is True
+        assert User.calculate_active_status("active", False) is False
+        assert User.calculate_active_status("inactive", True) is False
+        assert User.calculate_active_status("inactive", False) is False
+
 
 class TestCourse:
     """Test Course model functionality"""
@@ -273,6 +281,23 @@ class TestValidationFunctions:
         assert validate_term_name("Fall 2024") is False  # Wrong order
         assert validate_term_name("2024") is False  # Missing season
         assert validate_term_name("24 Fall") is False  # Wrong year format
+
+    def test_format_and_parse_functions(self):
+        """Test format and parse utility functions."""
+        from models import format_term_name, parse_cei_term
+
+        # Test format function
+        formatted = format_term_name(2024, "Fall")
+        assert isinstance(formatted, str)
+
+        # Test parse function
+        result = parse_cei_term("2024FA")
+        assert isinstance(result, tuple) and len(result) == 2
+
+    def test_validate_course_number_edge_cases(self):
+        """Test course number validation edge cases."""
+        # Current implementation accepts lowercase
+        assert validate_course_number("math-101") is True
 
 
 class TestConstants:
@@ -499,41 +524,3 @@ class TestModelValidationEdgeCases:
             assert schema["instructor_id"] == data["instructor_id"]
             assert schema["enrollment"] == data["enrollment"]
             assert schema["status"] == data["status"]
-
-
-class TestModelsFinalCoverage:
-    """Final push for models coverage."""
-
-    def test_models_constants_validation(self):
-        """Test model constants and validation functions."""
-        from models import (
-            format_term_name,
-            parse_cei_term,
-            validate_course_number,
-            validate_term_name,
-        )
-
-        # Test validation functions
-        assert validate_course_number("MATH-101") is True
-        assert (
-            validate_course_number("math-101") is True
-        )  # Current implementation accepts lowercase
-
-        assert validate_term_name("2024 Fall") is True
-
-        # Test format and parse functions
-        formatted = format_term_name(2024, "Fall")
-        assert isinstance(formatted, str)
-
-        result = parse_cei_term("2024FA")
-        assert isinstance(result, tuple) and len(result) == 2
-
-    def test_models_user_active_status(self):
-        """Test User model active status calculation."""
-        from models import User
-
-        # Test various status combinations
-        assert User.calculate_active_status("active", True) is True
-        assert User.calculate_active_status("active", False) is False
-        assert User.calculate_active_status("inactive", True) is False
-        assert User.calculate_active_status("inactive", False) is False
