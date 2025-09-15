@@ -24,6 +24,32 @@ This document outlines the complete design and implementation plan for replacing
 
 ---
 
+## 🧪 Smoke Test Strategy
+
+### **Test Categories by Epic**
+
+**Epic 1 (Foundation)**: Model validation, password security, session management
+**Epic 2 (Registration)**: Registration flows, email verification, invitation system  
+**Epic 3 (Authentication)**: Login/logout, password reset, account lockout
+**Epic 4 (Programs)**: Program CRUD, course associations, admin assignments
+**Epic 5 (Authorization)**: Role permissions, access control, context filtering
+
+### **Critical Integration Points**
+- Complete registration → login → dashboard access flow
+- Invitation → acceptance → immediate system access
+- Program creation → course assignment → instructor access
+- Role-based UI hiding/showing based on permissions
+- Institution/program context switching for multi-access users
+
+### **Smoke Test Execution Strategy**
+- Add smoke tests incrementally with each story completion
+- Run full smoke test suite before epic completion
+- Focus on end-to-end user journeys, not just unit functionality
+- Test both happy path and critical error scenarios
+- Validate security boundaries and unauthorized access prevention
+
+---
+
 ## 📊 Data Model Changes
 
 ### **Enhanced User Model**
@@ -304,6 +330,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 5 story points
 
+**Smoke Tests Added:**
+- [ ] Test User model creation with all required fields
+- [ ] Test UserInvitation model creation and expiry logic
+- [ ] Test Program model creation with institution association
+- [ ] Test enhanced Institution model with auth fields
+
 ---
 
 #### **Story 1.2: Password Management System**
@@ -354,6 +386,13 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 5 story points
 
+**Smoke Tests Added:**
+- [ ] Test password strength validation with various inputs
+- [ ] Test bcrypt hashing and verification
+- [ ] Test password reset token generation and validation
+- [ ] Test account lockout after 5 failed attempts
+- [ ] Test session creation and timeout handling
+
 ---
 
 ### **Epic 2: User Registration & Onboarding**
@@ -381,6 +420,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 8 story points
 
+**Smoke Tests Added:**
+- [ ] Test complete registration flow from form to email verification
+- [ ] Test institution creation during admin registration
+- [ ] Test default program creation for new institutions
+- [ ] Test email verification link and account activation
+
 ---
 
 #### **Story 2.2: User Invitation System**
@@ -405,6 +450,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 - Create invitation status tracking
 
 **Estimate:** 10 story points
+
+**Smoke Tests Added:**
+- [ ] Test invitation email sending and token generation
+- [ ] Test invitation acceptance flow and account creation
+- [ ] Test invitation expiry and status tracking
+- [ ] Test role assignment during invitation acceptance
 
 ---
 
@@ -435,6 +486,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 8 story points
 
+**Smoke Tests Added:**
+- [ ] Test login with valid credentials and session creation
+- [ ] Test login failure with invalid credentials and account lockout
+- [ ] Test logout and session cleanup
+- [ ] Test "remember me" functionality and extended sessions
+
 ---
 
 #### **Story 3.2: Password Reset Flow**
@@ -461,6 +518,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 - Implement new password processing
 
 **Estimate:** 8 story points
+
+**Smoke Tests Added:**
+- [ ] Test password reset request and email sending
+- [ ] Test password reset form with valid token
+- [ ] Test password reset with expired token
+- [ ] Test new password validation and account access
 
 ---
 
@@ -489,6 +552,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 13 story points
 
+**Smoke Tests Added:**
+- [ ] Test program creation and management by institution admin
+- [ ] Test program admin assignment and removal
+- [ ] Test default program creation for new institutions
+- [ ] Test program deletion with course reassignment
+
 ---
 
 #### **Story 4.2: Course-Program Association**
@@ -513,6 +582,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 - Update import system to handle program associations
 
 **Estimate:** 10 story points
+
+**Smoke Tests Added:**
+- [ ] Test adding/removing courses from programs
+- [ ] Test course visibility based on program access
+- [ ] Test bulk course operations within programs
+- [ ] Test course assignment to default program when orphaned
 
 ---
 
@@ -565,6 +640,13 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 - Create admin institution switching
 
 **Estimate:** 8 story points
+
+**Smoke Tests Added:**
+- [ ] Test role-based access control for all 4 tiers
+- [ ] Test permission enforcement on API endpoints
+- [ ] Test unauthorized access handling
+- [ ] Test program-scoped permissions for program admins
+- [ ] Test institution context filtering and validation
 
 ---
 
