@@ -386,7 +386,7 @@ class TestCourseEndpoints:
     ):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
         # Mock the institution ID and courses
-        mock_get_user_institution_id.return_value = "test-institution-id"
+        mock_get_user_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_courses.return_value = []
 
         with app.test_client() as client:
@@ -404,7 +404,7 @@ class TestCourseEndpoints:
     ):
         """Test GET /api/courses with department filter."""
         # Mock the institution ID
-        mock_get_user_institution_id.return_value = "test-institution-id"
+        mock_get_user_institution_id.return_value = "riverside-tech-institute"
         mock_get_courses.return_value = [
             {
                 "course_number": "MATH-101",
@@ -417,7 +417,7 @@ class TestCourseEndpoints:
             response = client.get("/api/courses?department=MATH")
             assert response.status_code == 200
 
-            mock_get_courses.assert_called_with("test-institution-id", "MATH")
+            mock_get_courses.assert_called_with("riverside-tech-institute", "MATH")
 
     @patch("api_routes.create_course")
     @patch("api_routes.has_permission")
@@ -474,7 +474,7 @@ class TestTermEndpoints:
     def test_get_terms_success(self, mock_get_terms, mock_get_user_institution_id):
         """Test GET /api/terms."""
         # Mock the institution ID
-        mock_get_user_institution_id.return_value = "test-institution-id"
+        mock_get_user_institution_id.return_value = "riverside-tech-institute"
         mock_get_terms.return_value = [
             {
                 "term_name": "Fall2024",
@@ -514,7 +514,7 @@ class TestSectionEndpoints:
     ):
         """Test that GET /api/sections endpoint exists."""
         # Mock the institution ID and sections
-        mock_get_user_institution_id.return_value = "test-institution-id"
+        mock_get_user_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_sections.return_value = []
 
         with app.test_client() as client:
@@ -1164,7 +1164,7 @@ class TestAPIRoutesErrorHandling:
             "user_id": "test-user",
             "role": "site_admin",
         }
-        mock_get_cei_id.return_value = "test-institution-id"
+        mock_get_cei_id.return_value = "riverside-tech-institute"
 
         response = self.app.get("/api/users")
 
@@ -1184,7 +1184,7 @@ class TestAPIRoutesErrorHandling:
             "role": "site_admin",
         }
         mock_has_permission.return_value = True
-        mock_get_cei_id.return_value = "test-institution-id"
+        mock_get_cei_id.return_value = "riverside-tech-institute"
 
         response = self.app.get("/api/users/nonexistent-user")
 
@@ -1204,7 +1204,7 @@ class TestAPIRoutesErrorHandling:
             "user_id": "admin-user",
             "role": "site_admin",
         }
-        mock_get_cei_id.return_value = "test-institution-id"
+        mock_get_cei_id.return_value = "riverside-tech-institute"
 
         user_data = {
             "email": "newuser@example.com",

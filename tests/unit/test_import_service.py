@@ -39,7 +39,7 @@ class TestImportService:
 
     def test_import_excel_file_not_found_error(self):
         """Test import_excel_file with non-existent file - Line 198."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test with non-existent file
         result = service.import_excel_file("nonexistent_file.xlsx")
@@ -54,7 +54,7 @@ class TestImportService:
 
     def test_import_excel_file_comprehensive_workflow(self):
         """Test import_excel_file comprehensive workflow to hit lines 244-256."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a real temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -95,7 +95,7 @@ class TestImportService:
 
     def test_import_excel_file_with_delete_existing_db_option(self):
         """Test import_excel_file with delete_existing_db=True to hit deletion lines."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create minimal Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -130,7 +130,7 @@ class TestImportService:
 
     def test_import_excel_file_dry_run_mode(self):
         """Test import_excel_file in dry_run mode to hit dry run logic."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create minimal Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -164,7 +164,7 @@ class TestImportService:
 
     def test_process_user_import_with_existing_user(self):
         """Test process_user_import with existing user to hit conflict resolution."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         user_data = {
             "email": "existing@example.com",
@@ -191,7 +191,7 @@ class TestImportService:
 
     def test_process_course_import_with_existing_course(self):
         """Test process_course_import with existing course to hit conflict resolution."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         course_data = {
             "course_number": "EXISTING-101",
@@ -219,7 +219,7 @@ class TestImportService:
 
     def test_delete_all_data_functionality(self):
         """Test _delete_all_data method to hit deletion logic."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         with patch("database_service.db") as mock_db:
             # Mock collection method
@@ -238,7 +238,7 @@ class TestImportService:
     def test_logging_functionality(self):
         """Test _log method with different combinations."""
         # Test verbose mode
-        service_verbose = ImportService("test-institution-id", verbose=True)
+        service_verbose = ImportService("northern-valley-cc", verbose=True)
         with patch.object(service_verbose, "logger") as mock_logger:
             service_verbose._log("Test message", "info")
             service_verbose._log("Error message", "error")
@@ -253,7 +253,7 @@ class TestImportService:
             )  # Should print most messages in verbose mode
 
         # Test non-verbose mode
-        service_quiet = ImportService("test-institution-id", verbose=False)
+        service_quiet = ImportService("northern-valley-cc", verbose=False)
         with patch.object(service_quiet, "logger") as mock_logger:
             service_quiet._log("Test message", "info")  # Should not log at debug level
             service_quiet._log("Error message", "error")  # Should log error
@@ -264,7 +264,7 @@ class TestImportService:
 
     def test_create_import_result_with_various_stats(self):
         """Test _create_import_result with different stat combinations."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Set up various stats conditions
         service.stats["records_processed"] = 100
@@ -298,7 +298,7 @@ class TestImportService:
 
     def test_processed_tracking_sets(self):
         """Test processed users and courses tracking."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test processed sets functionality
         service._processed_users.add("user1@example.com")
@@ -320,7 +320,7 @@ class TestImportService:
 
     def test_conflict_detection_edge_cases(self):
         """Test detect_course_conflict with edge cases."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test with course missing course_number
         import_course_no_number = {
@@ -343,7 +343,7 @@ class TestImportService:
 
     def test_import_excel_file_large_dataset_progress(self):
         """Test import_excel_file with large dataset to trigger progress reporting."""
-        service = ImportService("test-institution-id", verbose=True)
+        service = ImportService("northern-valley-cc", verbose=True)
 
         # Create larger dataset to trigger progress reporting (50+ records)
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -456,7 +456,7 @@ class TestImportServiceInitialization:
 
     def test_import_service_initialization_default(self):
         """Test ImportService initialization with defaults."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         assert service.verbose is False
         assert service._processed_users == set()
@@ -465,13 +465,13 @@ class TestImportServiceInitialization:
 
     def test_import_service_initialization_verbose(self):
         """Test ImportService initialization with verbose mode."""
-        service = ImportService("test-institution-id", verbose=True)
+        service = ImportService("northern-valley-cc", verbose=True)
 
         assert service.verbose is True
 
     def test_reset_stats(self):
         """Test reset_stats method."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Modify stats
         service.stats["records_processed"] = 10
@@ -491,7 +491,7 @@ class TestImportServiceInitialization:
 
     def test_import_service_logger_functionality(self):
         """Test import service logger functionality."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test that logger methods exist and are callable
         assert hasattr(service.logger, "info")
@@ -526,7 +526,7 @@ class TestImportServiceLogging:
 
     def test_log_error_message(self):
         """Test logging error messages."""
-        service = ImportService("test-institution-id", verbose=False)
+        service = ImportService("northern-valley-cc", verbose=False)
 
         with patch.object(service, "logger") as mock_logger:
             service._log("Test error", "error")
@@ -534,7 +534,7 @@ class TestImportServiceLogging:
 
     def test_log_warning_message(self):
         """Test logging warning messages."""
-        service = ImportService("test-institution-id", verbose=False)
+        service = ImportService("northern-valley-cc", verbose=False)
 
         with patch.object(service, "logger") as mock_logger:
             service._log("Test warning", "warning")
@@ -544,7 +544,7 @@ class TestImportServiceLogging:
 
     def test_log_summary_message(self):
         """Test logging summary messages."""
-        service = ImportService("test-institution-id", verbose=False)
+        service = ImportService("northern-valley-cc", verbose=False)
 
         with patch.object(service, "logger") as mock_logger:
             service._log("Test summary", "summary")
@@ -552,7 +552,7 @@ class TestImportServiceLogging:
 
     def test_log_verbose_mode_on(self):
         """Test logging in verbose mode."""
-        service = ImportService("test-institution-id", verbose=True)
+        service = ImportService("northern-valley-cc", verbose=True)
 
         with patch.object(service, "logger") as mock_logger:
             service._log("Test message", "info")
@@ -560,7 +560,7 @@ class TestImportServiceLogging:
 
     def test_log_verbose_mode_off(self):
         """Test logging in non-verbose mode."""
-        service = ImportService("test-institution-id", verbose=False)
+        service = ImportService("northern-valley-cc", verbose=False)
 
         with patch.object(service, "logger") as mock_logger:
             service._log("Test message", "info")
@@ -583,13 +583,13 @@ class TestDetectCourseConflict:
 
     def test_detect_course_conflict_method_exists(self):
         """Test that detect_course_conflict method exists."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
         assert hasattr(service, "detect_course_conflict")
         assert callable(service.detect_course_conflict)
 
     def test_detect_course_conflict_basic_functionality(self):
         """Test detect_course_conflict basic functionality."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         import_course = {
             "course_number": "MATH-101",
@@ -628,7 +628,7 @@ class TestImportServiceIntegration:
 
     def test_import_service_stats_tracking(self):
         """Test that ImportService properly tracks statistics."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Verify initial state
         assert service.stats["records_processed"] == 0
@@ -646,7 +646,7 @@ class TestImportServiceIntegration:
 
     def test_import_service_processed_tracking(self):
         """Test that ImportService tracks processed entities."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Add some processed entities
         service._processed_users.add("user1@example.com")
@@ -661,7 +661,7 @@ class TestImportServiceIntegration:
 
     def test_import_service_basic_functionality(self):
         """Test ImportService basic functionality."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
         service.reset_stats()  # Initialize service
 
         # Test basic service functionality
@@ -685,7 +685,7 @@ class TestImportServiceErrorHandling:
 
     def test_import_service_handles_missing_dependencies(self):
         """Test ImportService handles missing dependencies gracefully."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # This should not raise an exception
         service.reset_stats()
@@ -712,7 +712,7 @@ class TestImportServiceEdgeCases:
 
     def test_detect_course_conflict_no_course_number(self):
         """Test detect_course_conflict with missing course_number."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test with import course missing course_number
         import_course = {
@@ -728,7 +728,7 @@ class TestImportServiceEdgeCases:
     @patch("import_service.get_course_by_number")
     def test_detect_course_conflict_with_conflicts(self, mock_get_course):
         """Test detect_course_conflict when conflicts exist - lines 173-180."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing course with different data
         mock_get_course.return_value = {
@@ -764,7 +764,7 @@ class TestImportServiceEdgeCases:
     @patch("import_service.get_user_by_email")
     def test_detect_user_conflict_with_conflicts(self, mock_get_user):
         """Test detect_user_conflict when conflicts exist - lines 205-219."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing user with different data
         mock_get_user.return_value = {
@@ -802,7 +802,7 @@ class TestImportServiceEdgeCases:
     @patch("import_service.get_user_by_email")
     def test_detect_user_conflict_no_conflicts(self, mock_get_user):
         """Test detect_user_conflict when no conflicts exist."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing user with same data
         mock_get_user.return_value = {
@@ -829,7 +829,7 @@ class TestImportServiceEdgeCases:
 
     def test_excel_file_read_exception(self):
         """Test import_excel_file when Excel reading fails - lines 492-495."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a file that exists but is not a valid Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -852,7 +852,7 @@ class TestImportServiceEdgeCases:
         self, mock_create_course, mock_get_course
     ):
         """Test process_course_import with conflict resolution - lines 278-294."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing course with different data
         mock_get_course.return_value = {
@@ -880,7 +880,7 @@ class TestImportServiceEdgeCases:
 
     def test_delete_all_data_dry_run(self):
         """Test delete_existing_db in dry run mode - line 482."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -912,7 +912,7 @@ class TestImportServiceEdgeCases:
 
     def test_progress_reporting_large_dataset(self):
         """Test progress reporting for large datasets - lines 500-503."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a larger dataset to trigger progress reporting
         large_data = []
@@ -946,7 +946,7 @@ class TestImportServiceEdgeCases:
 
     def test_resolve_conflict_strategies(self):
         """Test resolve_conflict with different strategies - lines 237-256."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a test conflict
         conflict = ConflictRecord(
@@ -988,7 +988,7 @@ class TestImportServiceEdgeCases:
         self, mock_create_course, mock_get_course
     ):
         """Test process_course_import when course creation fails - lines 345-348."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock no existing course so it tries to create
         mock_get_course.return_value = None
@@ -1011,7 +1011,7 @@ class TestImportServiceEdgeCases:
 
     def test_process_course_import_dry_run_creation(self):
         """Test process_course_import in dry run mode - lines 349-352."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
 
@@ -1026,7 +1026,7 @@ class TestImportServiceEdgeCases:
     @patch("import_service.get_user_by_email")
     def test_process_user_import_with_conflicts_use_theirs(self, mock_get_user):
         """Test process_user_import with USE_THEIRS strategy - lines 376-396."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing user
         mock_get_user.return_value = {
@@ -1055,7 +1055,7 @@ class TestImportServiceEdgeCases:
     @patch("import_service.get_user_by_email")
     def test_process_user_import_with_conflicts_use_mine(self, mock_get_user):
         """Test process_user_import with USE_MINE strategy - lines 398-403."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock existing user
         mock_get_user.return_value = {
@@ -1100,7 +1100,7 @@ class TestImportServiceEdgeCases:
             # Test the convenience function with string strategy
             result = import_excel(
                 file_path=tmp_file_path,
-                institution_id="test-institution-id",
+                institution_id="northern-valley-cc",
                 conflict_strategy="use_theirs",
                 dry_run=True,
                 verbose=True,
@@ -1134,7 +1134,7 @@ class TestImportServiceEdgeCases:
             # Test with invalid strategy
             result = import_excel(
                 file_path=tmp_file_path,
-                institution_id="test-institution-id",
+                institution_id="northern-valley-cc",
                 conflict_strategy="invalid_strategy",
                 dry_run=True,
             )
@@ -1151,7 +1151,7 @@ class TestImportServiceEdgeCases:
         self, mock_get_user, mock_create_user
     ):
         """Test process_user_import when user creation fails - lines 452-466."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock no existing user so it tries to create
         mock_get_user.return_value = None
@@ -1178,7 +1178,7 @@ class TestImportServiceEdgeCases:
 
     def test_process_user_import_dry_run_duplicate_tracking(self):
         """Test process_user_import dry run with duplicate tracking - lines 428-433."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         user_data = {
             "email": "test@example.com",
@@ -1203,7 +1203,7 @@ class TestImportServiceEdgeCases:
 
     def test_import_excel_unknown_adapter(self):
         """Test import_excel_file with unknown adapter - lines 518-519."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create a temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -1234,7 +1234,7 @@ class TestImportServiceEdgeCases:
 
     def test_import_excel_course_processing_path(self):
         """Test import_excel_file course processing path - lines 524-527."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create Excel file with course data
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -1331,7 +1331,7 @@ class TestImportServiceEdgeCases:
 
     def test_delete_all_data_exception(self):
         """Test _delete_all_data with exception - lines 802-805."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Mock database collection to raise exception during stream() call
         with patch("database_service.db") as mock_db:
@@ -1351,7 +1351,7 @@ class TestImportServiceEdgeCases:
 
     def test_import_result_creation_with_stats(self):
         """Test _create_import_result method - lines 807-827."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Set up some stats
         service.stats["records_processed"] = 10
@@ -1391,7 +1391,7 @@ class TestImportServiceEdgeCases:
 
     def test_import_excel_term_processing_path(self):
         """Test import_excel_file term processing path - lines 537-547."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create Excel file with term data
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -1422,7 +1422,7 @@ class TestImportServiceEdgeCases:
 
     def test_import_excel_section_processing_path(self):
         """Test import_excel_file section processing path - lines 551-566."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Create Excel file with section data
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
@@ -1452,7 +1452,7 @@ class TestImportServiceEdgeCases:
 
     def test_extract_department_from_course(self):
         """Test _extract_department_from_course function - lines 668-680."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test known department mappings
         assert service._extract_department_from_course("ACC-101") == "Business"
@@ -1472,7 +1472,7 @@ class TestImportServiceEdgeCases:
 
     def test_parse_name_from_email(self):
         """Test _parse_name_from_email function - lines 698-724."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test email with dot separator
         first, last = service._parse_name_from_email("john.doe")
@@ -1501,7 +1501,7 @@ class TestImportServiceEdgeCases:
 
     def test_parse_name_function(self):
         """Test _parse_name function - lines 684-690."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test full name parsing
         first, last = service._parse_name("John Doe")
@@ -1525,7 +1525,7 @@ class TestImportServiceEdgeCases:
 
     def test_estimate_term_dates(self):
         """Test term date estimation functions - lines 729-739, 743-753."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test fall term
         start_date = service._estimate_term_start("2024 Fall")
@@ -1553,7 +1553,7 @@ class TestImportServiceEdgeCases:
 
     def test_generate_email_function(self):
         """Test _generate_email function - line 694."""
-        service = ImportService("test-institution-id")
+        service = ImportService("northern-valley-cc")
 
         # Test email generation
         email = service._generate_email("John", "Doe")
@@ -1574,7 +1574,7 @@ class TestImportServiceMethods:
     def setup_method(self):
         """Set up test fixtures."""
         # No patching needed - ImportService now requires institution_id parameter
-        self.import_service = ImportService("test-institution-id")
+        self.import_service = ImportService("northern-valley-cc")
 
     def teardown_method(self):
         """Clean up after tests."""
@@ -1636,7 +1636,7 @@ class TestImportServiceMethods:
 
     def test_import_service_verbose_mode(self):
         """Test import service verbose mode functionality."""
-        verbose_service = ImportService("test-institution-id", verbose=True)
+        verbose_service = ImportService("northern-valley-cc", verbose=True)
         assert verbose_service.verbose is True
 
         # Test progress callback
@@ -1646,7 +1646,7 @@ class TestImportServiceMethods:
             callback_calls.append(progress)
 
         callback_service = ImportService(
-            "test-institution-id", progress_callback=test_callback
+            "northern-valley-cc", progress_callback=test_callback
         )
         assert callback_service.progress_callback is not None
 
@@ -1815,7 +1815,7 @@ class TestImportServiceMethods:
                     "course_number": "MATH-101",
                     "course_title": "Algebra",
                     "department": "MATH",
-                    "institution_id": "test-institution-id",
+                    "institution_id": "northern-valley-cc",
                 },
                 "user": None,
                 "term": None,
@@ -1895,7 +1895,7 @@ class TestImportServiceMethods:
             progress_updates.append(kwargs)
 
         import_service = ImportService(
-            "test-institution-id", progress_callback=test_callback
+            "northern-valley-cc", progress_callback=test_callback
         )
 
         # Test that progress callback is properly set
@@ -1955,7 +1955,7 @@ class TestImportServiceMethods:
             # Test convenience function with all parameters
             result = import_excel(
                 file_path="test.xlsx",
-                institution_id="test-institution-id",
+                institution_id="northern-valley-cc",
                 conflict_strategy="use_theirs",
                 dry_run=False,
                 adapter_name="cei_excel_adapter",

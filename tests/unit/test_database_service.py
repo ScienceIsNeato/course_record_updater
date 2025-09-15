@@ -568,7 +568,7 @@ class TestExtendedDatabaseFunctions:
             "department": "MATH",
         }
 
-        result = get_courses_by_department("test-institution-id", "MATH")
+        result = get_courses_by_department("mountain-view-university", "MATH")
 
         assert len(result) == 1
         assert result[0]["course_id"] == "course123"
@@ -681,7 +681,7 @@ class TestExtendedDatabaseFunctions:
             "start_date": "2024-08-01",
         }
 
-        result = get_active_terms("test-institution-id")
+        result = get_active_terms("mountain-view-university")
 
         assert len(result) == 1
         assert result[0]["term_id"] == "term123"
@@ -692,7 +692,7 @@ class TestExtendedDatabaseFunctions:
         """Test get_active_terms exception handling - lines 402-404."""
         mock_db.collection.side_effect = Exception("Database error")
 
-        result = get_active_terms("test-institution-id")
+        result = get_active_terms("mountain-view-university")
 
         assert result == []
 
@@ -762,10 +762,10 @@ class TestExtendedDatabaseFunctions:
             assert update_user_extended("user123", {}) is False
             assert create_course({"course_number": "TEST-101"}) is None
             assert get_course_by_number("TEST-101") is None
-            assert get_courses_by_department("test-institution-id", "MATH") == []
+            assert get_courses_by_department("mountain-view-university", "MATH") == []
             assert create_term({"term_name": "FA24"}) is None
             assert get_term_by_name("FA24") is None
-            assert get_active_terms("test-institution-id") == []
+            assert get_active_terms("mountain-view-university") == []
             assert create_course_section({"course_id": "123"}) is None
             assert get_sections_by_instructor("instructor123") == []
             assert get_sections_by_term("term123") == []

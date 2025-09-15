@@ -30,7 +30,7 @@ class TestImportBusinessLogic:
 
     def setup_method(self):
         """Set up test fixtures"""
-        self.import_service = ImportService("test-institution-id")
+        self.import_service = ImportService("coastal-state-college")
 
         # Sample course data for testing
         self.sample_courses = [
