@@ -8,6 +8,7 @@
 3. **✅ Implemented Web-Based Integration Testing**: Full Selenium WebDriver test suite
 4. **✅ Enhanced Import Progress**: Fixed progress indicators and auto-refresh
 5. **✅ Multi-Tenancy Architecture**: Completed institution-based data isolation
+6. **✅ Resolved CI Test Failures**: Fixed auth service and integration test setup issues
 
 ### Current Status: Web-Based Testing & Import Flow
 
@@ -23,9 +24,10 @@
 - **Test timeout issue resolved**: Fixed Firestore emulator connection, tests now run in ~2s instead of 300s timeout
 - **API test failures fixed**: Added proper mocking for institution context in API route tests
 - **Database connection working**: Firestore emulator properly configured and running
+- **CI test failures resolved**: Added defensive error handling in auth service and integration test setup
+- **Integration test 400 errors fixed**: Created conftest.py to auto-setup CEI institution for tests
 
 #### 🔄 Remaining Issues  
-- **Institution context missing**: CEI institution needs to be created in fresh database
 - **Sections not importing**: 0 sections being created (Course Offerings model needs debugging)
 - **Some database service tests failing**: Function signature changes need test updates
 
