@@ -14,7 +14,10 @@ class TestAPIHealth:
     @pytest.fixture(scope="class")
     def base_url(self):
         """Base URL for the test server"""
-        return "http://localhost:3001"
+        import os
+
+        port = os.getenv("DEFAULT_PORT", "3001")
+        return f"http://localhost:{port}"
 
     def test_health_endpoint(self, base_url: str):
         """Test that the health endpoint returns 200 OK"""

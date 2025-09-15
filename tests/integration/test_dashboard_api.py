@@ -22,7 +22,10 @@ class TestDashboardAPI:
     @pytest.fixture(scope="class")
     def base_url(self):
         """Base URL for the test server"""
-        return "http://localhost:3001"  # Server is running on port 3001
+        import os
+
+        port = os.getenv("DEFAULT_PORT", "3001")
+        return f"http://localhost:{port}"
 
     @pytest.fixture(scope="class")
     def driver(self):
@@ -268,7 +271,10 @@ class TestDashboardFrontend:
     @pytest.fixture(scope="class")
     def base_url(self):
         """Base URL for the test server"""
-        return "http://localhost:3001"  # Server is running on port 3001
+        import os
+
+        port = os.getenv("DEFAULT_PORT", "3001")
+        return f"http://localhost:{port}"
 
     @pytest.fixture(scope="class")
     def driver(self):
