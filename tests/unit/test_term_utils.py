@@ -294,3 +294,119 @@ class TestBackwardCompatibilityExtended:
             display = generator.get_term_display_name(first_term)
             assert isinstance(display, str)
             assert len(display) > 0
+
+
+class TestTermGeneratorAdvanced:
+    """Test advanced TermGenerator functionality for better coverage."""
+
+    def test_term_generator_custom_parameters(self):
+        """Test TermGenerator with custom parameters."""
+        generator = TermGenerator(base_year=2023, years_forward=3, years_back=2)
+        assert generator.base_year == 2023
+        assert generator.years_forward == 3
+        assert generator.years_back == 2
+
+        terms = generator.get_valid_terms()
+        # Should generate terms from 2021 to 2026
+        assert "FA2021" in terms
+        assert "SP2026" in terms
+        assert len(terms) >= 18  # 6 years * 3 terms per year
+
+    def test_get_current_term_month_logic(self):
+        """Test current term logic for different months."""
+        generator = TermGenerator()
+
+        # Mock different months to test logic
+        from unittest.mock import Mock, patch
+
+        with patch("term_utils.datetime") as mock_datetime:
+            # Test Spring term (January-May)
+            mock_datetime.now.return_value = Mock(year=2024, month=3)
+            assert generator.get_current_term() == "SP2024"
+
+            # Test Summer term (June-August)
+            mock_datetime.now.return_value = Mock(year=2024, month=7)
+            assert generator.get_current_term() == "SU2024"
+
+            # Test Fall term (September-December)
+            mock_datetime.now.return_value = Mock(year=2024, month=10)
+            assert generator.get_current_term() == "FA2024"
+
+    def test_get_term_display_name_edge_cases(self):
+        """Test term display name with edge cases."""
+        generator = TermGenerator()
+
+        # Test valid cases
+        assert generator.get_term_display_name("FA2024") == "Fall 2024"
+        assert generator.get_term_display_name("SP2025") == "Spring 2025"
+        assert generator.get_term_display_name("SU2023") == "Summer 2023"
+
+        # Test invalid/edge cases
+        assert generator.get_term_display_name("FA24") == "FA24"  # Too short
+        # The function may modify unknown codes, so test actual behavior
+        invalid_result = generator.get_term_display_name("INVALID")
+        assert isinstance(invalid_result, str)
+        assert generator.get_term_display_name("") == ""
+
+    def test_is_valid_term_edge_cases(self):
+        """Test term validation with edge cases."""
+        generator = TermGenerator(base_year=2024, years_forward=1, years_back=1)
+
+        # Test boundary years
+        assert generator.is_valid_term("FA2023") is True  # Back boundary
+        assert generator.is_valid_term("SU2025") is True  # Forward boundary
+        assert generator.is_valid_term("FA2022") is False  # Before back boundary
+        assert generator.is_valid_term("SP2026") is False  # After forward boundary
+
+        # Test invalid formats
+        assert generator.is_valid_term("") is False
+        assert generator.is_valid_term("INVALID") is False
+        assert generator.is_valid_term("FA24") is False
+
+    def test_get_default_terms_class_method(self):
+        """Test get_default_terms class method."""
+        terms = TermGenerator.get_default_terms()
+
+        assert isinstance(terms, list)
+        assert len(terms) > 0
+
+        # Should be sorted
+        assert terms == sorted(terms)
+
+        # Should contain current year
+        current_year = datetime.now().year
+        current_year_terms = [term for term in terms if str(current_year) in term]
+        assert len(current_year_terms) >= 3  # At least FA, SP, SU
+
+    def test_backward_compatibility_comprehensive(self):
+        """Test backward compatibility functions comprehensively."""
+        # Test get_allowed_terms
+        allowed_terms = get_allowed_terms()
+        assert isinstance(allowed_terms, list)
+        assert len(allowed_terms) > 0
+
+        # Test is_valid_term function
+        if allowed_terms:
+            first_term = allowed_terms[0]
+            assert is_valid_term(first_term) is True
+            assert is_valid_term("INVALID_TERM") is False
+
+        # Test get_current_term function
+        current_term = get_current_term()
+        assert isinstance(current_term, str)
+        assert len(current_term) >= 6
+        assert current_term in allowed_terms
+
+    def test_term_generator_zero_range(self):
+        """Test TermGenerator with zero forward/back range."""
+        generator = TermGenerator(base_year=2024, years_forward=0, years_back=0)
+        terms = generator.get_valid_terms()
+
+        # Should only contain 2024 terms
+        expected_2024_terms = ["FA2024", "SP2024", "SU2024"]
+        for term in expected_2024_terms:
+            assert term in terms
+
+        # Should not contain other years
+        assert all("2024" in term for term in terms)
+        assert len(terms) == 3

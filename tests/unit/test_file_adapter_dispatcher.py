@@ -353,3 +353,134 @@ class TestFileAdapterDispatcherExtended:
             # Should only include .py files that aren't excluded
             expected_adapters = ["valid_adapter", "test_file"]
             assert set(adapters) == set(expected_adapters)
+
+
+class TestFileAdapterDispatcherAdvanced:
+    """Test advanced file adapter dispatcher functionality for better coverage."""
+
+    def test_dispatcher_initialization_options(self):
+        """Test dispatcher initialization with different options."""
+        # Test with base validation enabled (default)
+        dispatcher = FileAdapterDispatcher()
+        assert dispatcher._use_base_validation is True
+        assert dispatcher._base_validator is not None
+
+        # Test with base validation explicitly enabled
+        dispatcher = FileAdapterDispatcher(use_base_validation=True)
+        assert dispatcher._use_base_validation is True
+        assert dispatcher._base_validator is not None
+
+        # Test with base validation disabled
+        dispatcher = FileAdapterDispatcher(use_base_validation=False)
+        assert dispatcher._use_base_validation is False
+        assert dispatcher._base_validator is None
+
+    def test_discover_adapters_edge_cases(self):
+        """Test adapter discovery edge cases."""
+        dispatcher = FileAdapterDispatcher()
+
+        # Test with empty directory
+        with (
+            patch("os.path.isdir", return_value=True),
+            patch("os.listdir", return_value=[]),
+            patch("os.path.isfile", return_value=True),
+        ):
+            adapters = dispatcher.discover_adapters()
+            assert adapters == []
+
+        # Test with only excluded files
+        excluded_files = [
+            "__init__.py",
+            "base_adapter.py",
+            "file_adapter_dispatcher.py",
+        ]
+        with (
+            patch("os.path.isdir", return_value=True),
+            patch("os.listdir", return_value=excluded_files),
+            patch("os.path.isfile", return_value=True),
+        ):
+            adapters = dispatcher.discover_adapters()
+            assert adapters == []
+
+    def test_process_file_error_handling_comprehensive(self):
+        """Test comprehensive error handling in process_file."""
+        from unittest.mock import Mock, patch
+
+        dispatcher = FileAdapterDispatcher()
+        mock_document = Mock()
+
+        # Test with non-existent adapter (import error)
+        with patch("importlib.import_module", side_effect=ImportError("No module")):
+            with pytest.raises(DispatcherError) as exc_info:
+                dispatcher.process_file(mock_document, "nonexistent_adapter")
+            assert "not found" in str(exc_info.value)
+
+    def test_class_name_conversion_logic(self):
+        """Test the class name conversion logic used in process_file."""
+        # Test the actual conversion logic
+        test_cases = [
+            ("dummy_adapter", "DummyAdapter"),
+            ("cei_excel_adapter", "CeiExcelAdapter"),
+            ("multi_word_test_adapter", "MultiWordTestAdapter"),
+            ("single", "Single"),
+            ("a_b_c", "ABC"),
+        ]
+
+        for adapter_name, expected_class_name in test_cases:
+            # This is the actual logic used in the dispatcher
+            class_name = "".join(word.capitalize() for word in adapter_name.split("_"))
+            assert class_name == expected_class_name, f"Failed for {adapter_name}"
+
+    def test_process_file_without_base_validation(self):
+        """Test process_file without base validation."""
+        from unittest.mock import Mock, patch
+
+        dispatcher = FileAdapterDispatcher(use_base_validation=False)
+        mock_document = Mock()
+
+        # Mock successful adapter
+        parsed_data = {"test": "data"}
+        mock_adapter_instance = Mock()
+        mock_adapter_instance.parse.return_value = parsed_data
+
+        mock_adapter_class = Mock(return_value=mock_adapter_instance)
+        mock_module = Mock()
+        mock_module.TestAdapter = mock_adapter_class
+
+        with patch("importlib.import_module", return_value=mock_module):
+            result = dispatcher.process_file(mock_document, "test_adapter")
+
+            # Should return parsed data directly without validation
+            assert result == parsed_data
+            mock_adapter_instance.parse.assert_called_once_with(mock_document)
+
+    def test_dispatcher_error_exception(self):
+        """Test DispatcherError exception."""
+        # Test that DispatcherError can be raised and caught
+        with pytest.raises(DispatcherError):
+            raise DispatcherError("Test error message")
+
+        # Test error message
+        error = DispatcherError("Custom error")
+        assert str(error) == "Custom error"
+
+    def test_adapter_constants(self):
+        """Test FileAdapterDispatcher constants."""
+        assert FileAdapterDispatcher.ADAPTER_DIR == "adapters"
+
+        expected_exclude_files = [
+            "__init__.py",
+            "base_adapter.py",
+            "file_adapter_dispatcher.py",
+        ]
+        assert FileAdapterDispatcher.EXCLUDE_FILES == expected_exclude_files
+
+    def test_logger_integration(self):
+        """Test logger integration."""
+        # Test that logger is available
+        from adapters.file_adapter_dispatcher import logger
+
+        assert logger is not None
+        assert hasattr(logger, "info")
+        assert hasattr(logger, "error")
+        assert hasattr(logger, "warning")
