@@ -231,7 +231,23 @@ class CourseSection(DataModel):
         enrollment: Optional[int] = None,
         status: str = "assigned",
     ) -> Dict[str, Any]:
-        """Create a new course section record schema"""
+        """
+        Create a new course section record schema
+
+        Args:
+            offering_id: ID of the course offering this section belongs to
+            section_number: Section identifier (default: "001")
+            instructor_id: Optional ID of assigned instructor
+            enrollment: Number of enrolled students (was previously 'num_students')
+            status: Section status from SECTION_STATUSES
+
+        Returns:
+            Dictionary containing the course section schema
+
+        Breaking Change Note:
+            The 'num_students' parameter has been renamed to 'enrollment' for consistency
+            with the CourseOffering model's total_enrollment field.
+        """
 
         if status not in SECTION_STATUSES:
             raise ValueError(
@@ -342,16 +358,17 @@ def validate_course_number(course_number: str) -> bool:
 
 
 def validate_term_name(term_name: str) -> bool:
-    """Validate term name format (e.g., 2024 Fall, 2024 Spring, 2024FA, 2024SP)"""
+    """
+    Validate term name format - supports standard space-separated format
+
+    Standard format: "2024 Fall", "2024 Spring", "2024 Summer", "2024 Winter"
+    For institution-specific formats, use adapter-specific validation.
+    """
     # Handle space-separated format: "2024 Fall"
     parts = term_name.split()
     if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4:
-        return True
-
-    # Handle abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI"
-    if len(term_name) == 6 and term_name[:4].isdigit():
-        season = term_name[4:].upper()
-        return season in ["FA", "SP", "SU", "WI"]  # Fall, Spring, Summer, Winter
+        season = parts[1].lower()
+        return season in ["fall", "spring", "summer", "winter"]
 
     return False
 

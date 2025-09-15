@@ -14,7 +14,6 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from auth_service import (
     get_current_institution_id,
     get_current_user,
-    get_user_institution_id,
     has_permission,
     login_required,
     permission_required,
@@ -350,7 +349,7 @@ def list_courses():
     """
     try:
         # Get institution context - for development, use CEI
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -450,7 +449,7 @@ def list_instructors():
     """Get list of all instructors"""
     try:
         # Get institution context - for development, use CEI
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -478,7 +477,7 @@ def list_terms():
     """Get list of active terms"""
     try:
         # Get institution context - for development, use CEI
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -581,7 +580,7 @@ def list_sections():
             sections = get_sections_by_term(term_id)
         else:
             # Get institution context - for development, use CEI
-            institution_id = get_user_institution_id()
+            institution_id = get_current_institution_id()
             if not institution_id:
                 return (
                     jsonify(
@@ -967,7 +966,7 @@ def health_check():
 def debug_list_courses():
     """Get sample list of courses for debugging"""
     try:
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -1003,7 +1002,7 @@ def debug_list_courses():
 def debug_list_instructors():
     """Get sample list of instructors for debugging"""
     try:
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -1040,7 +1039,7 @@ def debug_list_instructors():
 def debug_list_sections():
     """Get sample list of sections for debugging"""
     try:
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
@@ -1077,7 +1076,7 @@ def debug_list_sections():
 def debug_list_terms():
     """Get sample list of terms for debugging"""
     try:
-        institution_id = get_user_institution_id()
+        institution_id = get_current_institution_id()
         if not institution_id:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),

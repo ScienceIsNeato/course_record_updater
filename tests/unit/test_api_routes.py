@@ -379,14 +379,14 @@ class TestUserEndpoints:
 class TestCourseEndpoints:
     """Test course management endpoints."""
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_courses")
     def test_get_courses_endpoint_exists(
-        self, mock_get_all_courses, mock_get_user_institution_id
+        self, mock_get_all_courses, mock_get_current_institution_id
     ):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
         # Mock the institution ID and courses
-        mock_get_user_institution_id.return_value = "riverside-tech-institute"
+        mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_courses.return_value = []
 
         with app.test_client() as client:
@@ -397,14 +397,14 @@ class TestCourseEndpoints:
             assert "courses" in data
             assert isinstance(data["courses"], list)
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_courses_by_department")
     def test_get_courses_with_department_filter(
-        self, mock_get_courses, mock_get_user_institution_id
+        self, mock_get_courses, mock_get_current_institution_id
     ):
         """Test GET /api/courses with department filter."""
         # Mock the institution ID
-        mock_get_user_institution_id.return_value = "riverside-tech-institute"
+        mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_courses.return_value = [
             {
                 "course_number": "MATH-101",
@@ -469,12 +469,12 @@ class TestCourseEndpoints:
 class TestTermEndpoints:
     """Test term management endpoints."""
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_active_terms")
-    def test_get_terms_success(self, mock_get_terms, mock_get_user_institution_id):
+    def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
         """Test GET /api/terms."""
         # Mock the institution ID
-        mock_get_user_institution_id.return_value = "riverside-tech-institute"
+        mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_terms.return_value = [
             {
                 "term_name": "Fall2024",
@@ -507,14 +507,14 @@ class TestTermEndpoints:
 class TestSectionEndpoints:
     """Test section management endpoints."""
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_sections")
     def test_get_sections_endpoint_exists(
-        self, mock_get_all_sections, mock_get_user_institution_id
+        self, mock_get_all_sections, mock_get_current_institution_id
     ):
         """Test that GET /api/sections endpoint exists."""
         # Mock the institution ID and sections
-        mock_get_user_institution_id.return_value = "riverside-tech-institute"
+        mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_sections.return_value = []
 
         with app.test_client() as client:
@@ -702,7 +702,7 @@ class TestInstitutionEndpoints:
             assert "institution" in data
             assert data["institution"]["name"] == "Test University"
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_instructors")
     def test_list_instructors_success(self, mock_get_instructors, mock_get_cei):
         """Test GET /api/instructors endpoint success."""
@@ -1012,7 +1012,7 @@ class TestUserManagementAPI:
         assert data["error"] == "Permission denied"
 
 
-class TestCourseManagementAdvanced:
+class TestCourseManagementOperations:
     """Test advanced course management functionality."""
 
     def setup_method(self):
@@ -1152,7 +1152,7 @@ class TestAPIRoutesErrorHandling:
         app.config["SECRET_KEY"] = "test-secret-key"
         self.app = app.test_client()
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_list_users_no_role_filter_coverage(
@@ -1172,7 +1172,7 @@ class TestAPIRoutesErrorHandling:
         data = response.get_json()
         assert data["users"] == []
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_get_user_not_found_coverage(
@@ -1192,7 +1192,7 @@ class TestAPIRoutesErrorHandling:
         data = response.get_json()
         assert data["error"] == "User not found"
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_create_user_stub_success_coverage(
@@ -1443,7 +1443,7 @@ class TestAPIRoutesHealthCheck:
             assert data["success"] is True
 
 
-class TestAPIRoutesMissingCoverage:
+class TestAPIRoutesExtended:
     """Test missing coverage lines in API routes."""
 
     def setup_method(self):
@@ -1476,7 +1476,7 @@ class TestAPIRoutesMissingCoverage:
             assert isinstance(result2, tuple)
             assert result2[1] == 500
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     def test_list_courses_institution_error(self, mock_get_cei_id):
         """Test list_courses when institution ID is None."""
         mock_get_cei_id.return_value = None
@@ -1487,7 +1487,7 @@ class TestAPIRoutesMissingCoverage:
         data = response.get_json()
         assert data["error"] == "Institution context required"
 
-    @patch("api_routes.get_user_institution_id")
+    @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_courses_by_department")
     def test_list_courses_with_department(self, mock_get_courses, mock_get_cei_id):
         """Test list_courses with department filter."""

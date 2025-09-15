@@ -9,7 +9,37 @@ from adapters.cei_excel_adapter import (
     _parse_name,
     parse_cei_excel_row,
     parse_cei_term,
+    validate_cei_term_name,
 )
+
+
+class TestValidateCeiTermName:
+    """Test CEI term validation function."""
+
+    def test_validate_cei_term_standard_format(self):
+        """Test validation with standard space-separated format."""
+        assert validate_cei_term_name("2024 Fall") is True
+        assert validate_cei_term_name("2025 Spring") is True
+        assert validate_cei_term_name("2023 Summer") is True
+        assert validate_cei_term_name("2026 Winter") is True
+
+    def test_validate_cei_term_abbreviated_format(self):
+        """Test validation with CEI abbreviated format."""
+        assert validate_cei_term_name("FA2024") is True
+        assert validate_cei_term_name("SP2025") is True
+        assert validate_cei_term_name("SU2023") is True
+        assert validate_cei_term_name("WI2026") is True
+
+    def test_validate_cei_term_invalid_formats(self):
+        """Test validation with invalid formats."""
+        assert validate_cei_term_name("Fall 2024") is False  # Wrong order
+        assert validate_cei_term_name("2024") is False  # Missing season
+        assert validate_cei_term_name("Fall") is False  # Missing year
+        assert validate_cei_term_name("XX2024") is False  # Invalid season
+        assert validate_cei_term_name("FA24") is False  # Wrong year length
+        assert validate_cei_term_name("2024FA") is False  # Wrong format (year first)
+        assert validate_cei_term_name("") is False  # Empty string
+        assert validate_cei_term_name("invalid") is False  # Completely invalid
 
 
 class TestParseCeiTerm:

@@ -1403,7 +1403,7 @@ class TestSectionAndTermFunctions:
         # institution_id and created_at may or may not be added by the function
 
 
-class TestDatabaseServiceAdvancedFunctionality:
+class TestDatabaseServiceOperations:
     """Test advanced database service functionality for better coverage."""
 
     @patch("database_service.db")
@@ -1606,7 +1606,7 @@ class TestDatabaseServiceAdvancedFunctionality:
         assert result["start_date"] == "2024-06-01"
 
 
-class TestDatabaseServiceFinalCoverage:
+class TestDatabaseServiceComprehensive:
     """Final comprehensive tests to push coverage over 80%."""
 
     def test_database_constants_validation(self):

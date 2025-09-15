@@ -107,7 +107,7 @@ class TestAPIErrorHandling:
         # Test exception handling for courses
         with (
             patch(
-                "api_routes.get_user_institution_id",
+                "api_routes.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
             patch(
@@ -262,7 +262,7 @@ class TestSectionEndpoints:
         # Test section endpoints
         with (
             patch(
-                "api_routes.get_user_institution_id",
+                "api_routes.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
             patch("api_routes.get_all_sections", side_effect=Exception("DB Error")),

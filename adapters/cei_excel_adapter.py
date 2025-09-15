@@ -14,6 +14,28 @@ import pandas as pd
 from models import validate_course_number
 
 
+def validate_cei_term_name(term_name: str) -> bool:
+    """
+    Validate CEI-specific term name formats
+
+    Supports:
+    - Standard format: "2024 Fall", "2024 Spring", etc.
+    - CEI abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI"
+    """
+    # Handle space-separated format: "2024 Fall"
+    parts = term_name.split()
+    if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 4:
+        season = parts[1].lower()
+        return season in ["fall", "spring", "summer", "winter"]
+
+    # Handle CEI abbreviated format: "FA2024", "SP2025", "SU2023", "WI2026"
+    if len(term_name) == 6 and term_name[2:].isdigit():
+        season = term_name[:2].upper()
+        return season in ["FA", "SP", "SU", "WI"]  # Fall, Spring, Summer, Winter
+
+    return False
+
+
 def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
     """
     Parse CEI's effterm_c format into year and season.

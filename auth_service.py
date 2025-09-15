@@ -147,11 +147,3 @@ def get_current_institution_id() -> Optional[str]:
 
     default_institution = get_institution_by_short_name("CEI")
     return default_institution["institution_id"] if default_institution else None
-
-
-def get_user_institution_id() -> Optional[str]:
-    """
-    Get the current user's institution ID from their context.
-    This is an alias for get_current_institution_id() for backward compatibility.
-    """
-    return get_current_institution_id()

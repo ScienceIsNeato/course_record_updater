@@ -32,7 +32,6 @@ from database_service import (
 from models import (
     format_term_name,
     validate_course_number,
-    validate_term_name,
 )
 
 
@@ -425,20 +424,27 @@ class ImportService:
         else:
             # No conflicts, create new user
             if not dry_run:
-                user_id = create_user(user_data)
+                try:
+                    user_id = create_user(user_data)
 
-                if user_id:
-                    self.stats["records_created"] += 1
-                    email = user_data.get("email")
-                    if email not in self._processed_users:
-                        self._processed_users.add(email)
-                        self._log(f"Created user: {email}", "summary")
+                    if user_id:
+                        self.stats["records_created"] += 1
+                        email = user_data.get("email")
+                        if email not in self._processed_users:
+                            self._processed_users.add(email)
+                            self._log(f"Created user: {email}", "summary")
+                        else:
+                            self._log(f"User already processed: {email}", "debug")
                     else:
-                        self._log(f"User already processed: {email}", "debug")
-                else:
+                        self.stats["errors"].append(
+                            f"Failed to create user: {user_data.get('email')} - database returned None"
+                        )
+                        return False, conflicts
+                except Exception as e:
                     self.stats["errors"].append(
-                        f"Failed to create user: {user_data.get('email')}"
+                        f"Error creating user {user_data.get('email')}: {str(e)}"
                     )
+                    self.logger.error(f"Exception during user creation: {e}")
                     return False, conflicts
             else:
                 email = user_data.get("email")
