@@ -694,37 +694,84 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ---
 
-## 📝 Database Migration Plan
+## 📝 Database Schema Setup
 
-### **Migration 1: User Model Enhancement**
+### **Initial Collections & Indexes**
+
+Since this is a greenfield project, we'll create the database schema from scratch with all necessary collections and indexes:
+
 ```python
-# Add new fields to existing User documents
-def migrate_user_model():
-    users = db.collection('users').get()
-    for user_doc in users:
-        user_data = user_doc.to_dict()
-        
-        # Add new required fields with defaults
-        updates = {
-            'account_status': 'active',  # Existing users are active
-            'email_verified': True,      # Existing users are verified
-            'login_attempts': 0,
-            'role': user_data.get('role', 'instructor'),  # Preserve existing role
-        }
-        
-        # Update document
-        user_doc.reference.update(updates)
+def setup_database_schema():
+    """Initialize database collections and indexes for auth system"""
+    
+    # Users collection - enhanced model
+    users_collection = db.collection('users')
+    users_collection.create_index([('email', 1)], unique=True)
+    users_collection.create_index([('institution_id', 1)])
+    users_collection.create_index([('role', 1)])
+    users_collection.create_index([('account_status', 1)])
+    users_collection.create_index([('email_verification_token', 1)])
+    users_collection.create_index([('password_reset_token', 1)])
+    
+    # Institutions collection
+    institutions_collection = db.collection('institutions')
+    institutions_collection.create_index([('short_name', 1)], unique=True)
+    institutions_collection.create_index([('created_by', 1)])
+    
+    # Programs collection - new
+    programs_collection = db.collection('programs')
+    programs_collection.create_index([('institution_id', 1)])
+    programs_collection.create_index([('short_name', 1)])
+    programs_collection.create_index([('program_admins', 1)])
+    programs_collection.create_index([('is_default', 1)])
+    
+    # User invitations collection - new
+    invitations_collection = db.collection('user_invitations')
+    invitations_collection.create_index([('email', 1)])
+    invitations_collection.create_index([('token', 1)], unique=True)
+    invitations_collection.create_index([('expires_at', 1)])
+    invitations_collection.create_index([('institution_id', 1)])
+    invitations_collection.create_index([('status', 1)])
+    
+    # Courses collection - update with program associations
+    courses_collection = db.collection('courses')
+    courses_collection.create_index([('institution_id', 1)])
+    courses_collection.create_index([('program_ids', 1)])  # New: for program associations
+    courses_collection.create_index([('course_number', 1), ('institution_id', 1)], unique=True)
 ```
 
-### **Migration 2: Create UserInvitation Collection**
+### **Development Data Setup**
+
+For development environments, we'll also create default data:
+
 ```python
-# Create new collection with proper indexes
-def create_invitation_collection():
-    # Collection will be created automatically
-    # Add indexes for performance
-    db.collection('user_invitations').create_index([('email', 1)])
-    db.collection('user_invitations').create_index([('token', 1)])
-    db.collection('user_invitations').create_index([('expires_at', 1)])
+def create_development_data():
+    """Create default data for development environment"""
+    
+    # Create default CEI institution with default program
+    cei_institution_id = create_default_cei_institution()
+    
+    # Create default "Unclassified" program for CEI
+    default_program = Program(
+        name="Unclassified",
+        short_name="UNCL",
+        description="Default program for courses without specific program assignment",
+        institution_id=cei_institution_id,
+        created_by="system",
+        is_default=True
+    )
+    
+    # Create development admin user
+    dev_admin = User(
+        email="admin@cei.edu",
+        password_hash=bcrypt.hashpw("devpassword".encode('utf-8'), bcrypt.gensalt()),
+        first_name="Dev",
+        last_name="Admin",
+        role="institution_admin",
+        institution_id=cei_institution_id,
+        account_status="active",
+        email_verified=True
+    )
 ```
 
 ---
