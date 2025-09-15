@@ -489,7 +489,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_users_by_role_exception(self, mock_db):
-        """Test exception handling in get_users_by_role - lines 149-151."""
+        """Test exception handling in get_users_by_role"""
         mock_db.collection.side_effect = Exception("Database connection failed")
 
         result = get_users_by_role("instructor")
@@ -515,7 +515,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_update_user_extended_exception(self, mock_db):
-        """Test exception handling in update_user_extended - lines 176-178."""
+        """Test exception handling in update_user_extended"""
         mock_db.collection.side_effect = Exception("Update failed")
 
         result = update_user_extended("user123", {"first_name": "Test"})
@@ -524,7 +524,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_course_by_number_not_found(self, mock_db):
-        """Test get_course_by_number when course not found - lines 253-254."""
+        """Test get_course_by_number when course not found"""
         mock_collection = Mock()
         mock_query = Mock()
 
@@ -538,7 +538,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_course_by_number_exception(self, mock_db):
-        """Test exception handling in get_course_by_number - lines 256-258."""
+        """Test exception handling in get_course_by_number"""
         mock_db.collection.side_effect = Exception("Database error")
 
         result = get_course_by_number("MATH-101")
@@ -547,7 +547,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_courses_by_department_success(self, mock_db):
-        """Test get_courses_by_department function - lines 749-795."""
+        """Test get_courses_by_department function"""
         mock_collection = Mock()
         mock_query1 = Mock()
         mock_query2 = Mock()
@@ -576,7 +576,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_create_term_success(self, mock_db):
-        """Test create_term function - lines 317-333."""
+        """Test create_term function"""
         mock_collection = Mock()
         mock_doc_ref = Mock()
         mock_doc_ref.id = "term123"
@@ -597,7 +597,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_create_term_missing_field(self, mock_db):
-        """Test create_term with missing required field - lines 320-323."""
+        """Test create_term with missing required field"""
         term_data = {
             "term_name": "Fall 2024",
             "start_date": "2024-08-01",
@@ -610,7 +610,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_create_term_exception(self, mock_db):
-        """Test create_term exception handling - lines 331-333."""
+        """Test create_term exception handling"""
         mock_db.collection.side_effect = Exception("Database error")
 
         term_data = {
@@ -625,7 +625,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_term_by_name_success(self, mock_db):
-        """Test get_term_by_name function - lines 351-371."""
+        """Test get_term_by_name function"""
         mock_collection = Mock()
         mock_query = Mock()
         mock_doc = Mock()
@@ -650,7 +650,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_term_by_name_not_found(self, mock_db):
-        """Test get_term_by_name when term not found - lines 365-367."""
+        """Test get_term_by_name when term not found"""
         mock_collection = Mock()
         mock_query = Mock()
 
@@ -665,7 +665,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_active_terms_success(self, mock_db):
-        """Test get_active_terms function - lines 386-404."""
+        """Test get_active_terms function"""
         mock_collection = Mock()
         mock_query = Mock()
         mock_doc = Mock()
@@ -689,7 +689,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_get_active_terms_exception(self, mock_db):
-        """Test get_active_terms exception handling - lines 402-404."""
+        """Test get_active_terms exception handling"""
         mock_db.collection.side_effect = Exception("Database error")
 
         result = get_active_terms("mountain-view-university")
@@ -698,7 +698,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_create_course_section_success(self, mock_db):
-        """Test create_course_section function - lines 427-443."""
+        """Test create_course_section function"""
         mock_collection = Mock()
         mock_doc_ref = Mock()
         mock_doc_ref.id = "section123"
@@ -720,7 +720,7 @@ class TestExtendedDatabaseFunctions:
 
     @patch("database_service.db")
     def test_create_course_section_missing_field(self, mock_db):
-        """Test create_course_section with missing field - lines 430-433."""
+        """Test create_course_section with missing field"""
         section_data = {
             "course_id": "course123",
             "term_id": "term123",

@@ -38,7 +38,7 @@ class TestDashboardRoutes:
 
     @patch("api_routes.get_current_user")
     def test_dashboard_instructor_role(self, mock_get_user):
-        """Test dashboard for instructor role - line 55."""
+        """Test dashboard for instructor role"""
         mock_get_user.return_value = {
             "user_id": "user123",
             "email": "instructor@example.com",
@@ -58,7 +58,7 @@ class TestDashboardRoutes:
 
     @patch("api_routes.get_current_user")
     def test_dashboard_program_admin_role(self, mock_get_user):
-        """Test dashboard for program_admin role - line 57."""
+        """Test dashboard for program_admin role"""
         mock_get_user.return_value = {
             "user_id": "user123",
             "email": "admin@example.com",
@@ -78,7 +78,7 @@ class TestDashboardRoutes:
 
     @patch("api_routes.get_current_user")
     def test_dashboard_site_admin_role(self, mock_get_user):
-        """Test dashboard for site_admin role - line 59."""
+        """Test dashboard for site_admin role"""
         mock_get_user.return_value = {
             "user_id": "user123",
             "email": "siteadmin@example.com",
@@ -98,7 +98,7 @@ class TestDashboardRoutes:
 
     @patch("api_routes.get_current_user")
     def test_dashboard_unknown_role(self, mock_get_user):
-        """Test dashboard for unknown role - line 62."""
+        """Test dashboard for unknown role"""
         mock_get_user.return_value = {
             "user_id": "user123",
             "email": "unknown@example.com",
@@ -120,7 +120,7 @@ class TestDashboardRoutes:
 
     @patch("api_routes.get_current_user")
     def test_dashboard_no_user(self, mock_get_user):
-        """Test dashboard when no user is logged in - line 50."""
+        """Test dashboard when no user is logged in"""
         mock_get_user.return_value = None
 
         with (
@@ -199,7 +199,7 @@ class TestUserEndpoints:
 
     @patch("api_routes.get_users_by_role")
     def test_get_users_with_department_filter(self, mock_get_users):
-        """Test GET /api/users with department filter - line 92."""
+        """Test GET /api/users with department filter"""
         mock_get_users.return_value = [
             {
                 "user_id": "1",
@@ -233,7 +233,7 @@ class TestUserEndpoints:
 
     @patch("api_routes.get_users_by_role")
     def test_get_users_exception_handling(self, mock_get_users):
-        """Test GET /api/users exception handling - lines 96-97."""
+        """Test GET /api/users exception handling"""
         mock_get_users.side_effect = Exception("Database connection failed")
 
         with app.test_client() as client:
@@ -246,7 +246,7 @@ class TestUserEndpoints:
 
     @patch("api_routes.has_permission")
     def test_create_user_no_json_data(self, mock_has_permission):
-        """Test POST /api/users with no JSON data - line 117."""
+        """Test POST /api/users with no JSON data"""
         mock_has_permission.return_value = True
 
         with app.test_client() as client:
@@ -260,7 +260,7 @@ class TestUserEndpoints:
 
     @patch("api_routes.has_permission")
     def test_create_user_database_failure(self, mock_has_permission):
-        """Test POST /api/users when database creation fails - line 150."""
+        """Test POST /api/users when database creation fails"""
         mock_has_permission.return_value = True
         # The API uses a stub "stub-user-id" so it always succeeds currently
 
@@ -284,7 +284,7 @@ class TestUserEndpoints:
 
     @patch("api_routes.has_permission")
     def test_create_user_exception_handling(self, mock_has_permission):
-        """Test POST /api/users with exception - lines 152-153."""
+        """Test POST /api/users with exception"""
         mock_has_permission.return_value = True
         # The API uses a stub implementation so it won't throw exceptions normally
 

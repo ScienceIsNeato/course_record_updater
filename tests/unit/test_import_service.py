@@ -38,7 +38,7 @@ class TestImportService:
         pass
 
     def test_import_excel_file_not_found_error(self):
-        """Test import_excel_file with non-existent file - Line 198."""
+        """Test import_excel_file with non-existent file."""
         service = ImportService("northern-valley-cc")
 
         # Test with non-existent file
@@ -53,7 +53,7 @@ class TestImportService:
         )
 
     def test_import_excel_file_comprehensive_workflow(self):
-        """Test import_excel_file comprehensive workflow to hit lines 244-256."""
+        """Test import_excel_file comprehensive workflow."""
         service = ImportService("northern-valley-cc")
 
         # Create a real temporary Excel file
@@ -727,7 +727,7 @@ class TestImportServiceEdgeCases:
 
     @patch("import_service.get_course_by_number")
     def test_detect_course_conflict_with_conflicts(self, mock_get_course):
-        """Test detect_course_conflict when conflicts exist - lines 173-180."""
+        """Test detect_course_conflict when conflicts exist"""
         service = ImportService("northern-valley-cc")
 
         # Mock existing course with different data
@@ -763,7 +763,7 @@ class TestImportServiceEdgeCases:
 
     @patch("import_service.get_user_by_email")
     def test_detect_user_conflict_with_conflicts(self, mock_get_user):
-        """Test detect_user_conflict when conflicts exist - lines 205-219."""
+        """Test detect_user_conflict when conflicts exist"""
         service = ImportService("northern-valley-cc")
 
         # Mock existing user with different data
@@ -828,7 +828,7 @@ class TestImportServiceEdgeCases:
         assert len(conflicts) == 0
 
     def test_excel_file_read_exception(self):
-        """Test import_excel_file when Excel reading fails - lines 492-495."""
+        """Test import_excel_file when Excel reading fails"""
         service = ImportService("northern-valley-cc")
 
         # Create a file that exists but is not a valid Excel file
@@ -851,7 +851,7 @@ class TestImportServiceEdgeCases:
     def test_process_course_import_with_conflicts(
         self, mock_create_course, mock_get_course
     ):
-        """Test process_course_import with conflict resolution - lines 278-294."""
+        """Test process_course_import with conflict resolution"""
         service = ImportService("northern-valley-cc")
 
         # Mock existing course with different data
@@ -879,7 +879,7 @@ class TestImportServiceEdgeCases:
         assert "TEST-101" in service._processed_courses
 
     def test_delete_all_data_dry_run(self):
-        """Test delete_existing_db in dry run mode - line 482."""
+        """Test delete_existing_db in dry run mode"""
         service = ImportService("northern-valley-cc")
 
         # Create a temporary Excel file
@@ -911,7 +911,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_progress_reporting_large_dataset(self):
-        """Test progress reporting for large datasets - lines 500-503."""
+        """Test progress reporting for large datasets"""
         service = ImportService("northern-valley-cc")
 
         # Create a larger dataset to trigger progress reporting
@@ -945,7 +945,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_resolve_conflict_strategies(self):
-        """Test resolve_conflict with different strategies - lines 237-256."""
+        """Test resolve_conflict with different strategies"""
         service = ImportService("northern-valley-cc")
 
         # Create a test conflict
@@ -957,7 +957,7 @@ class TestImportServiceEdgeCases:
             import_value="New Title",
         )
 
-        # Test USE_MINE strategy - lines 237-238
+        # Test USE_MINE strategy
         result = service.resolve_conflict(conflict, ConflictStrategy.USE_MINE)
         assert "Kept existing" in result
         assert conflict.resolution == "kept_existing"
@@ -967,17 +967,17 @@ class TestImportServiceEdgeCases:
         assert "Updated" in result
         assert conflict.resolution == "used_import"
 
-        # Test MERGE strategy - lines 244-248
+        # Test MERGE strategy
         result = service.resolve_conflict(conflict, ConflictStrategy.MERGE)
         assert "Merged" in result
         assert conflict.resolution == "merged_import"
 
-        # Test MANUAL_REVIEW strategy - lines 250-252
+        # Test MANUAL_REVIEW strategy
         result = service.resolve_conflict(conflict, ConflictStrategy.MANUAL_REVIEW)
         assert "Flagged for manual review" in result
         assert conflict.resolution == "flagged_manual"
 
-        # Test invalid strategy - lines 254-256
+        # Test invalid strategy
         result = service.resolve_conflict(conflict, "invalid_strategy")
         assert "Unresolved conflict" in result
         assert conflict.resolution == "unresolved"
@@ -987,7 +987,7 @@ class TestImportServiceEdgeCases:
     def test_process_course_import_creation_failure(
         self, mock_create_course, mock_get_course
     ):
-        """Test process_course_import when course creation fails - lines 345-348."""
+        """Test process_course_import when course creation fails"""
         service = ImportService("northern-valley-cc")
 
         # Mock no existing course so it tries to create
@@ -1010,7 +1010,7 @@ class TestImportServiceEdgeCases:
         )
 
     def test_process_course_import_dry_run_creation(self):
-        """Test process_course_import in dry run mode - lines 349-352."""
+        """Test process_course_import in dry run mode"""
         service = ImportService("northern-valley-cc")
 
         course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
@@ -1025,7 +1025,7 @@ class TestImportServiceEdgeCases:
 
     @patch("import_service.get_user_by_email")
     def test_process_user_import_with_conflicts_use_theirs(self, mock_get_user):
-        """Test process_user_import with USE_THEIRS strategy - lines 376-396."""
+        """Test process_user_import with USE_THEIRS strategy"""
         service = ImportService("northern-valley-cc")
 
         # Mock existing user
@@ -1054,7 +1054,7 @@ class TestImportServiceEdgeCases:
 
     @patch("import_service.get_user_by_email")
     def test_process_user_import_with_conflicts_use_mine(self, mock_get_user):
-        """Test process_user_import with USE_MINE strategy - lines 398-403."""
+        """Test process_user_import with USE_MINE strategy"""
         service = ImportService("northern-valley-cc")
 
         # Mock existing user
@@ -1080,7 +1080,7 @@ class TestImportServiceEdgeCases:
         assert service.stats["records_skipped"] > 0
 
     def test_import_excel_convenience_function(self):
-        """Test import_excel convenience function - lines 855-867."""
+        """Test import_excel convenience function"""
         # Create a temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             df = pd.DataFrame(
@@ -1114,7 +1114,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_import_excel_invalid_strategy(self):
-        """Test import_excel with invalid strategy defaults to USE_THEIRS - line 862."""
+        """Test import_excel with invalid strategy defaults to USE_THEIRS"""
         # Create a temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
             df = pd.DataFrame(
@@ -1150,7 +1150,7 @@ class TestImportServiceEdgeCases:
     def test_process_user_import_creation_failure(
         self, mock_get_user, mock_create_user
     ):
-        """Test process_user_import when user creation fails - lines 452-466."""
+        """Test process_user_import when user creation fails"""
         service = ImportService("northern-valley-cc")
 
         # Mock no existing user so it tries to create
@@ -1177,7 +1177,7 @@ class TestImportServiceEdgeCases:
         )
 
     def test_process_user_import_dry_run_duplicate_tracking(self):
-        """Test process_user_import dry run with duplicate tracking - lines 428-433."""
+        """Test process_user_import dry run with duplicate tracking"""
         service = ImportService("northern-valley-cc")
 
         user_data = {
@@ -1202,7 +1202,7 @@ class TestImportServiceEdgeCases:
         assert "test@example.com" in service._processed_users
 
     def test_import_excel_unknown_adapter(self):
-        """Test import_excel_file with unknown adapter - lines 518-519."""
+        """Test import_excel_file with unknown adapter"""
         service = ImportService("northern-valley-cc")
 
         # Create a temporary Excel file
@@ -1233,7 +1233,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_import_excel_course_processing_path(self):
-        """Test import_excel_file course processing path - lines 524-527."""
+        """Test import_excel_file course processing path"""
         service = ImportService("northern-valley-cc")
 
         # Create Excel file with course data
@@ -1262,7 +1262,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_create_import_report_function(self):
-        """Test create_import_report function - lines 878-921."""
+        """Test create_import_report function"""
         # Create a sample ImportResult with various data
         conflicts = [
             ConflictRecord(
@@ -1330,7 +1330,7 @@ class TestImportServiceEdgeCases:
         assert "Records processed: 5" in report
 
     def test_delete_all_data_exception(self):
-        """Test _delete_all_data with exception - lines 802-805."""
+        """Test _delete_all_data with exception"""
         service = ImportService("northern-valley-cc")
 
         # Mock database collection to raise exception during stream() call
@@ -1350,7 +1350,7 @@ class TestImportServiceEdgeCases:
         )
 
     def test_import_result_creation_with_stats(self):
-        """Test _create_import_result method - lines 807-827."""
+        """Test _create_import_result method"""
         service = ImportService("northern-valley-cc")
 
         # Set up some stats
@@ -1390,7 +1390,7 @@ class TestImportServiceEdgeCases:
         assert result.execution_time >= 0
 
     def test_import_excel_term_processing_path(self):
-        """Test import_excel_file term processing path - lines 537-547."""
+        """Test import_excel_file term processing path"""
         service = ImportService("northern-valley-cc")
 
         # Create Excel file with term data
@@ -1421,7 +1421,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_import_excel_section_processing_path(self):
-        """Test import_excel_file section processing path - lines 551-566."""
+        """Test import_excel_file section processing path"""
         service = ImportService("northern-valley-cc")
 
         # Create Excel file with section data
@@ -1451,7 +1451,7 @@ class TestImportServiceEdgeCases:
             os.unlink(tmp_file_path)
 
     def test_extract_department_from_course(self):
-        """Test _extract_department_from_course function - lines 668-680."""
+        """Test _extract_department_from_course function"""
         service = ImportService("northern-valley-cc")
 
         # Test known department mappings
@@ -1471,7 +1471,7 @@ class TestImportServiceEdgeCases:
         assert service._extract_department_from_course("INVALID") == "General Studies"
 
     def test_parse_name_from_email(self):
-        """Test _parse_name_from_email function - lines 698-724."""
+        """Test _parse_name_from_email function"""
         service = ImportService("northern-valley-cc")
 
         # Test email with dot separator
@@ -1500,7 +1500,7 @@ class TestImportServiceEdgeCases:
         assert last == "Smith"
 
     def test_parse_name_function(self):
-        """Test _parse_name function - lines 684-690."""
+        """Test _parse_name function"""
         service = ImportService("northern-valley-cc")
 
         # Test full name parsing
@@ -1524,7 +1524,7 @@ class TestImportServiceEdgeCases:
         assert last == "Instructor"
 
     def test_estimate_term_dates(self):
-        """Test term date estimation functions - lines 729-739, 743-753."""
+        """Test term date estimation functions, 743-753."""
         service = ImportService("northern-valley-cc")
 
         # Test fall term
@@ -1552,7 +1552,7 @@ class TestImportServiceEdgeCases:
         assert end_date == "2024-05-01"
 
     def test_generate_email_function(self):
-        """Test _generate_email function - line 694."""
+        """Test _generate_email function"""
         service = ImportService("northern-valley-cc")
 
         # Test email generation
