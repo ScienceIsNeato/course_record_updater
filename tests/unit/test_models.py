@@ -29,28 +29,35 @@ class TestUser:
             first_name="John",
             last_name="Doe",
             role="instructor",
+            institution_id="test-institution",
+            password_hash="$2b$12$test_hash",
         )
 
         assert user["email"] == "john.doe@cei.edu"
         assert user["first_name"] == "John"
         assert user["last_name"] == "Doe"
         assert user["role"] == "instructor"
-        assert user["active"] is True
-        assert "user_id" in user
+        assert user["institution_id"] == "test-institution"
+        assert user["password_hash"] == "$2b$12$test_hash"
+        assert user["account_status"] == "pending"  # Default status
         assert "created_at" in user
 
-    def test_create_user_schema_with_department(self):
-        """Test creating user schema with department"""
+    def test_create_user_schema_with_optional_fields(self):
+        """Test creating user schema with optional fields"""
         user = User.create_schema(
             email="jane.smith@cei.edu",
             first_name="Jane",
             last_name="Smith",
             role="program_admin",
-            department="Business",
+            institution_id="test-institution",
+            password_hash="$2b$12$test_hash",
+            display_name="Jane S.",
+            program_ids=["prog1", "prog2"],
         )
 
-        assert user["department"] == "Business"
+        assert user["display_name"] == "Jane S."
         assert user["role"] == "program_admin"
+        assert user["program_ids"] == ["prog1", "prog2"]
 
     def test_create_user_invalid_role(self):
         """Test that invalid role raises ValueError"""
@@ -60,6 +67,8 @@ class TestUser:
                 first_name="Test",
                 last_name="User",
                 role="invalid_role",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
             )
 
     def test_get_permissions(self):
@@ -90,11 +99,13 @@ class TestCourse:
             course_number="ACC-201",
             course_title="Accounting Principles",
             department="Business",
+            institution_id="test-institution",
         )
 
         assert course["course_number"] == "ACC-201"
         assert course["course_title"] == "Accounting Principles"
         assert course["department"] == "Business"
+        assert course["institution_id"] == "test-institution"
         assert course["credit_hours"] == 3  # Default
         assert course["active"] is True
         assert "course_id" in course
@@ -105,6 +116,7 @@ class TestCourse:
             course_number="NURS-150",
             course_title="Nursing Fundamentals",
             department="Nursing",
+            institution_id="test-institution",
             credit_hours=4,
         )
 

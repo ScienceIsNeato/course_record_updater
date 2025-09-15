@@ -7,7 +7,9 @@ including user management, course management, term management, and course sectio
 """
 
 import os  # Import os to check environment variables
+import signal
 import uuid
+from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
@@ -20,6 +22,67 @@ from models import User, validate_course_number, validate_email  # noqa: F401
 
 # Get standardized logger
 logger = get_database_logger()
+
+
+class DatabaseTimeoutError(Exception):
+    """Raised when database operations timeout"""
+
+    pass
+
+
+@contextmanager
+def db_operation_timeout(seconds=5):
+    """
+    Context manager to enforce timeouts on database operations
+
+    Args:
+        seconds: Timeout in seconds (default 5)
+
+    Raises:
+        DatabaseTimeoutError: If operation takes longer than specified timeout
+    """
+
+    def timeout_handler(signum, frame):
+        raise DatabaseTimeoutError(
+            f"Database operation timed out after {seconds} seconds"
+        )
+
+    # Set the signal handler and a alarm for the specified timeout
+    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(seconds)
+
+    try:
+        yield
+    finally:
+        # Restore the old signal handler and cancel the alarm
+        signal.signal(signal.SIGALRM, old_handler)
+        signal.alarm(0)
+
+
+def check_db_connection() -> bool:
+    """
+    Check if database connection is available with fast timeout
+
+    Returns:
+        True if database is available, False otherwise
+    """
+    if not db:
+        logger.error("[DB Service] Firestore client not initialized")
+        return False
+
+    try:
+        with db_operation_timeout(2):  # Very short timeout for connection check
+            # Try a simple operation to test connection
+            db.collection("_connection_test").limit(1).get()
+        return True
+    except DatabaseTimeoutError:
+        logger.error(
+            "[DB Service] Database connection check timed out - database appears to be down"
+        )
+        return False
+    except Exception as e:
+        logger.error(f"[DB Service] Database connection check failed: {e}")
+        return False
 
 
 def sanitize_for_logging(value: Any, max_length: int = 100) -> str:
@@ -135,29 +198,34 @@ def get_institution_by_id(institution_id: str) -> Optional[Dict[str, Any]]:
         "[DB Service] get_institution_by_id called for: %s",
         sanitize_for_logging(institution_id),
     )
-    if not db:
-        logger.error("[DB Service] Firestore client not available.")
+    if not check_db_connection():
         return None
 
     try:
-        doc_ref = db.collection(INSTITUTIONS_COLLECTION).document(institution_id)
-        doc = doc_ref.get()
+        with db_operation_timeout(5):
+            doc_ref = db.collection(INSTITUTIONS_COLLECTION).document(institution_id)
+            doc = doc_ref.get()
 
-        if doc.exists:
-            institution = doc.to_dict()
-            institution["institution_id"] = doc.id
-            logger.info(
-                "[DB Service] Found institution: %s",
-                sanitize_for_logging(institution_id),
-            )
-            return institution
-        else:
-            logger.info(
-                "[DB Service] No institution found with ID: %s",
-                sanitize_for_logging(institution_id),
-            )
-            return None
+            if doc.exists:
+                institution = doc.to_dict()
+                institution["institution_id"] = doc.id
+                logger.info(
+                    "[DB Service] Found institution: %s",
+                    sanitize_for_logging(institution_id),
+                )
+                return institution
+            else:
+                logger.info(
+                    "[DB Service] No institution found with ID: %s",
+                    sanitize_for_logging(institution_id),
+                )
+                return None
 
+    except DatabaseTimeoutError:
+        logger.error(
+            f"[DB Service] Timeout getting institution by ID: {institution_id}"
+        )
+        return None
     except Exception as e:
         logger.error(f"[DB Service] Error getting institution by ID: {e}")
         return None
@@ -816,30 +884,37 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_all_courses called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    if not db:
-        logger.error("[DB Service] Firestore client not available.")
+    if not check_db_connection():
         return []
 
     try:
-        query = db.collection(COURSES_COLLECTION).where(
-            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        with db_operation_timeout(
+            10
+        ):  # Longer timeout for potentially large result sets
+            query = db.collection(COURSES_COLLECTION).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
+
+            docs = query.stream()
+            courses = []
+
+            for doc in docs:
+                course = doc.to_dict()
+                course["course_id"] = doc.id
+                courses.append(course)
+
+            logger.info(
+                "[DB Service] Found %d courses for institution: %s",
+                len(courses),
+                sanitize_for_logging(institution_id),
+            )
+            return courses
+
+    except DatabaseTimeoutError:
+        logger.error(
+            f"[DB Service] Timeout getting courses for institution: {institution_id}"
         )
-
-        docs = query.stream()
-        courses = []
-
-        for doc in docs:
-            course = doc.to_dict()
-            course["course_id"] = doc.id
-            courses.append(course)
-
-        logger.info(
-            "[DB Service] Found %d courses for institution: %s",
-            len(courses),
-            sanitize_for_logging(institution_id),
-        )
-        return courses
-
+        return []
     except Exception as e:
         logger.error(f"[DB Service] Error getting courses for institution: {e}")
         return []
@@ -859,32 +934,39 @@ def get_all_instructors(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_all_instructors called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    if not db:
-        logger.error("[DB Service] Firestore client not available.")
+    if not check_db_connection():
         return []
 
     try:
-        query = (
-            db.collection(USERS_COLLECTION)
-            .where(filter=firestore.FieldFilter("role", "==", "instructor"))
-            .where(filter=firestore.FieldFilter("institution_id", "==", institution_id))
+        with db_operation_timeout(10):
+            query = (
+                db.collection(USERS_COLLECTION)
+                .where(filter=firestore.FieldFilter("role", "==", "instructor"))
+                .where(
+                    filter=firestore.FieldFilter("institution_id", "==", institution_id)
+                )
+            )
+
+            docs = query.stream()
+            instructors = []
+
+            for doc in docs:
+                instructor = doc.to_dict()
+                instructor["user_id"] = doc.id
+                instructors.append(instructor)
+
+            logger.info(
+                "[DB Service] Found %d instructors for institution: %s",
+                len(instructors),
+                sanitize_for_logging(institution_id),
+            )
+            return instructors
+
+    except DatabaseTimeoutError:
+        logger.error(
+            f"[DB Service] Timeout getting instructors for institution: {institution_id}"
         )
-
-        docs = query.stream()
-        instructors = []
-
-        for doc in docs:
-            instructor = doc.to_dict()
-            instructor["user_id"] = doc.id
-            instructors.append(instructor)
-
-        logger.info(
-            "[DB Service] Found %d instructors for institution: %s",
-            len(instructors),
-            sanitize_for_logging(institution_id),
-        )
-        return instructors
-
+        return []
     except Exception as e:
         logger.error(f"[DB Service] Error getting instructors for institution: {e}")
         return []
@@ -904,30 +986,35 @@ def get_all_sections(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_all_sections called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    if not db:
-        logger.error("[DB Service] Firestore client not available.")
+    if not check_db_connection():
         return []
 
     try:
-        query = db.collection(COURSE_SECTIONS_COLLECTION).where(
-            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        with db_operation_timeout(10):
+            query = db.collection(COURSE_SECTIONS_COLLECTION).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
+
+            docs = query.stream()
+            sections = []
+
+            for doc in docs:
+                section = doc.to_dict()
+                section["section_id"] = doc.id
+                sections.append(section)
+
+            logger.info(
+                "[DB Service] Found %d sections for institution: %s",
+                len(sections),
+                sanitize_for_logging(institution_id),
+            )
+            return sections
+
+    except DatabaseTimeoutError:
+        logger.error(
+            f"[DB Service] Timeout getting sections for institution: {institution_id}"
         )
-
-        docs = query.stream()
-        sections = []
-
-        for doc in docs:
-            section = doc.to_dict()
-            section["section_id"] = doc.id
-            sections.append(section)
-
-        logger.info(
-            "[DB Service] Found %d sections for institution: %s",
-            len(sections),
-            sanitize_for_logging(institution_id),
-        )
-        return sections
-
+        return []
     except Exception as e:
         logger.error(f"[DB Service] Error getting sections for institution: {e}")
         return []
@@ -1216,32 +1303,37 @@ def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_active_terms called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    if not db:
-        logger.error("[DB Service] Firestore client not available.")
+    if not check_db_connection():
         return []
 
     try:
-        # For now, get all terms for the institution (not filtering by active status)
-        # TODO: Add active field to terms and filter properly
-        query = db.collection(TERMS_COLLECTION).where(
-            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        with db_operation_timeout(10):
+            # For now, get all terms for the institution (not filtering by active status)
+            # TODO: Add active field to terms and filter properly
+            query = db.collection(TERMS_COLLECTION).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
+
+            docs = query.stream()
+            terms = []
+
+            for doc in docs:
+                term = doc.to_dict()
+                term["term_id"] = doc.id
+                terms.append(term)
+
+            logger.info(
+                "[DB Service] Found %d active terms for institution: %s",
+                len(terms),
+                sanitize_for_logging(institution_id),
+            )
+            return terms
+
+    except DatabaseTimeoutError:
+        logger.error(
+            f"[DB Service] Timeout getting active terms for institution: {institution_id}"
         )
-
-        docs = query.stream()
-        terms = []
-
-        for doc in docs:
-            term = doc.to_dict()
-            term["term_id"] = doc.id
-            terms.append(term)
-
-        logger.info(
-            "[DB Service] Found %d active terms for institution: %s",
-            len(terms),
-            sanitize_for_logging(institution_id),
-        )
-        return terms
-
+        return []
     except Exception as e:
         logger.error(f"[DB Service] Error getting active terms for institution: {e}")
         return []

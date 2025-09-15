@@ -5,9 +5,13 @@ This module defines the data structures for the expanded relational model
 that supports multi-institutional enterprise requirements.
 """
 
+import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+
+# Import password service for secure password handling
+from password_service import hash_password, validate_password_strength
 
 # User Roles and Permissions
 ROLES = {
@@ -86,6 +90,21 @@ ASSESSMENT_STATUSES = [
     "approved",  # Approved by program admin
 ]
 
+# Authentication Status Enums
+ACCOUNT_STATUSES = [
+    "pending",  # User record created, awaiting email verification
+    "active",  # User has verified email and can log in
+    "suspended",  # Account temporarily disabled
+    "locked",  # Account locked due to failed login attempts
+]
+
+INVITATION_STATUSES = [
+    "pending",  # Invitation sent, not yet accepted
+    "accepted",  # Invitation accepted, user registered
+    "expired",  # Invitation expired without acceptance
+    "cancelled",  # Invitation cancelled by inviter
+]
+
 
 class DataModel:
     """Base class for all data models with common functionality"""
@@ -101,9 +120,66 @@ class DataModel:
         # Will be replaced with firestore.SERVER_TIMESTAMP in actual usage
         return datetime.now(timezone.utc)
 
+    @staticmethod
+    def create_password_hash(password: str) -> str:
+        """
+        Create a secure password hash using bcrypt
+
+        Args:
+            password: Plain text password
+
+        Returns:
+            Hashed password string
+
+        Raises:
+            PasswordValidationError: If password doesn't meet requirements
+        """
+        return hash_password(password)
+
+    @staticmethod
+    def validate_password(password: str) -> None:
+        """
+        Validate password meets strength requirements
+
+        Args:
+            password: Password to validate
+
+        Raises:
+            PasswordValidationError: If password doesn't meet requirements
+        """
+        validate_password_strength(password)
+
+    @staticmethod
+    def generate_password_reset_token() -> str:
+        """
+        Generate a secure password reset token
+
+        Returns:
+            Cryptographically secure random token
+        """
+        from password_service import generate_reset_token
+
+        return generate_reset_token()
+
+    @staticmethod
+    def create_password_reset_data(user_id: str, email: str) -> Dict:
+        """
+        Create password reset token data with expiry
+
+        Args:
+            user_id: User ID for the reset request
+            email: User email for verification
+
+        Returns:
+            Dictionary with token data
+        """
+        from password_service import PasswordService
+
+        return PasswordService.create_reset_token_data(user_id, email)
+
 
 class User(DataModel):
-    """User entity for authentication and role management"""
+    """Enhanced User model with full authentication support"""
 
     @staticmethod
     def create_schema(
@@ -111,34 +187,65 @@ class User(DataModel):
         first_name: str,
         last_name: str,
         role: str = "instructor",
-        department: Optional[str] = None,
-        active: bool = True,
         institution_id: Optional[str] = None,
-        account_status: str = "imported",
+        password_hash: Optional[str] = None,
+        account_status: str = "pending",
+        program_ids: Optional[List[str]] = None,
+        display_name: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create a new user record schema"""
+        """Create a new user record schema with enhanced authentication fields"""
 
         if role not in ROLES:
             raise ValueError(
                 f"Invalid role: {role}. Must be one of {list(ROLES.keys())}"
             )
 
+        if account_status not in ACCOUNT_STATUSES:
+            raise ValueError(
+                f"Invalid account_status: {account_status}. Must be one of {ACCOUNT_STATUSES}"
+            )
+
+        # Validate required fields based on role
+        if role != "site_admin" and not institution_id:
+            raise ValueError(
+                "institution_id is required for all roles except site_admin"
+            )
+
         return {
+            # Identity
             "user_id": User.generate_id(),
             "email": email.lower().strip(),
+            "password_hash": password_hash,
+            # Profile
             "first_name": first_name.strip(),
             "last_name": last_name.strip(),
+            "display_name": display_name.strip() if display_name else None,
+            # Authentication State
+            "account_status": account_status,
+            "email_verified": False,
+            "email_verification_token": None,
+            "email_verification_sent_at": None,
+            # Password Reset
+            "password_reset_token": None,
+            "password_reset_expires_at": None,
+            # Role & Institution
             "role": role,
-            "department": department,
             "institution_id": institution_id,
-            "active": active,
-            "account_status": account_status,  # imported, invited, active
-            "active_user": False,  # Derived field for billing (see calculate_active_status)
-            "invite_sent_at": None,
-            "invite_accepted_at": None,
+            "program_ids": program_ids
+            or [],  # Programs user has access to (for program_admin)
+            # Activity Tracking
             "created_at": User.current_timestamp(),
-            "last_login": None,
-            "last_modified": User.current_timestamp(),
+            "updated_at": User.current_timestamp(),
+            "last_login_at": None,
+            "login_attempts": 0,
+            "locked_until": None,
+            # Invitation Tracking
+            "invited_by": None,  # user_id of inviter
+            "invited_at": None,
+            "registration_completed_at": None,
+            # Future OAuth Support
+            "oauth_provider": None,
+            "oauth_id": None,
         }
 
     @staticmethod
@@ -147,22 +254,184 @@ class User(DataModel):
         return list(ROLES.get(role, {}).get("permissions", []))
 
     @staticmethod
+    def full_name(first_name: str, last_name: str) -> str:
+        """Generate full name from first and last name"""
+        return f"{first_name} {last_name}"
+
+    @staticmethod
+    def is_active(account_status: str, locked_until: Optional[datetime] = None) -> bool:
+        """
+        Check if user account is active and can log in
+
+        Args:
+            account_status: User's account status
+            locked_until: Timestamp until which account is locked
+
+        Returns:
+            True if user can log in
+        """
+        if account_status != "active":
+            return False
+
+        if locked_until and locked_until > datetime.now(timezone.utc):
+            return False
+
+        return True
+
+    @staticmethod
+    def generate_verification_token() -> str:
+        """Generate a secure email verification token"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def generate_reset_token() -> str:
+        """Generate a secure password reset token"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
     def calculate_active_status(account_status: str, has_active_courses: bool) -> bool:
         """
         Calculate if a user should be considered 'active' for billing purposes.
 
         Active user criteria:
-        - A) Account status is 'active' (they've accepted invite and created account)
+        - A) Account status is 'active' (they've completed registration)
         - B) They are associated with active courses (current or upcoming terms)
 
         Args:
-            account_status: User's account status (imported, invited, active)
+            account_status: User's account status
             has_active_courses: Whether user has courses in current/upcoming terms
 
         Returns:
             True if user should count against billing headcount
         """
         return account_status == "active" and has_active_courses
+
+
+class UserInvitation(DataModel):
+    """Track pending user invitations"""
+
+    @staticmethod
+    def create_schema(
+        email: str,
+        role: str,
+        institution_id: str,
+        invited_by: str,
+        personal_message: Optional[str] = None,
+        expires_days: int = 7,
+    ) -> Dict[str, Any]:
+        """Create a new user invitation record schema"""
+
+        if role not in ROLES:
+            raise ValueError(
+                f"Invalid role: {role}. Must be one of {list(ROLES.keys())}"
+            )
+
+        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+
+        return {
+            "invitation_id": UserInvitation.generate_id(),
+            "email": email.lower().strip(),
+            "role": role,
+            "institution_id": institution_id,
+            # Invitation Management
+            "token": UserInvitation.generate_invitation_token(),
+            "invited_by": invited_by,
+            "invited_at": UserInvitation.current_timestamp(),
+            "expires_at": expires_at,
+            # Status Tracking
+            "status": "pending",
+            "accepted_at": None,
+            # Personal Message
+            "personal_message": personal_message.strip() if personal_message else None,
+        }
+
+    @staticmethod
+    def generate_invitation_token() -> str:
+        """Generate a secure invitation token"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def is_expired(expires_at: datetime) -> bool:
+        """Check if invitation has expired"""
+        return datetime.now(timezone.utc) > expires_at
+
+    @staticmethod
+    def can_accept(status: str, expires_at: datetime) -> bool:
+        """Check if invitation can still be accepted"""
+        return status == "pending" and not UserInvitation.is_expired(expires_at)
+
+
+class Institution(DataModel):
+    """Enhanced Institution model with auth fields"""
+
+    @staticmethod
+    def create_schema(
+        name: str,
+        short_name: str,
+        created_by: str,
+        admin_email: str,
+        website_url: Optional[str] = None,
+        allow_self_registration: bool = False,
+        require_email_verification: bool = True,
+    ) -> Dict[str, Any]:
+        """Create a new institution record schema"""
+
+        return {
+            "institution_id": Institution.generate_id(),
+            "name": name.strip(),
+            "short_name": short_name.strip().upper(),
+            "website_url": website_url.strip() if website_url else None,
+            # Auth fields
+            "created_by": created_by,
+            "admin_email": admin_email.lower().strip(),
+            # Settings
+            "allow_self_registration": allow_self_registration,
+            "require_email_verification": require_email_verification,
+            # Activity
+            "created_at": Institution.current_timestamp(),
+            "updated_at": Institution.current_timestamp(),
+            "is_active": True,
+        }
+
+
+class Program(DataModel):
+    """Academic Program/Department within an Institution"""
+
+    @staticmethod
+    def create_schema(
+        name: str,
+        short_name: str,
+        institution_id: str,
+        created_by: str,
+        description: Optional[str] = None,
+        is_default: bool = False,
+        program_admins: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Create a new program record schema"""
+
+        return {
+            # Identity
+            "program_id": Program.generate_id(),
+            "name": name.strip(),
+            "short_name": short_name.strip().upper(),
+            "description": description.strip() if description else None,
+            # Hierarchy
+            "institution_id": institution_id,
+            # Management
+            "created_by": created_by,
+            "program_admins": program_admins or [],  # user_ids of program admins
+            # Settings
+            "is_default": is_default,  # True for "Unclassified" default program
+            # Activity
+            "created_at": Program.current_timestamp(),
+            "updated_at": Program.current_timestamp(),
+            "is_active": True,
+        }
+
+    @staticmethod
+    def admin_count(program_admins: List[str]) -> int:
+        """Get count of program administrators"""
+        return len(program_admins)
 
 
 class Course(DataModel):
@@ -173,10 +442,12 @@ class Course(DataModel):
         course_number: str,
         course_title: str,
         department: str,
+        institution_id: str,
         credit_hours: int = 3,
+        program_ids: Optional[List[str]] = None,
         active: bool = True,
     ) -> Dict[str, Any]:
-        """Create a new course record schema"""
+        """Create a new course record schema with program associations"""
 
         return {
             "course_id": Course.generate_id(),
@@ -184,6 +455,8 @@ class Course(DataModel):
             "course_title": course_title.strip(),
             "department": department.strip(),
             "credit_hours": credit_hours,
+            "institution_id": institution_id,
+            "program_ids": program_ids or [],  # Courses can belong to multiple programs
             "active": active,
             "created_at": Course.current_timestamp(),
             "last_modified": Course.current_timestamp(),
@@ -411,15 +684,23 @@ def format_term_name(year: str, season: str) -> str:
 
 # Export all model classes and constants
 __all__ = [
+    # Core Models
     "User",
+    "UserInvitation",
+    "Institution",
+    "Program",
     "Course",
     "Term",
     "CourseOffering",
     "CourseSection",
     "CourseOutcome",
+    # Constants
     "ROLES",
     "SECTION_STATUSES",
     "ASSESSMENT_STATUSES",
+    "ACCOUNT_STATUSES",
+    "INVITATION_STATUSES",
+    # Validation Functions
     "validate_email",
     "validate_course_number",
     "validate_term_name",

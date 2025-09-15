@@ -1302,11 +1302,13 @@ class TestAPIRoutesValidation:
 
     @patch("api_routes.has_permission")
     @patch("api_routes.import_excel")
+    @patch("api_routes.get_current_institution_id")
     def test_validate_import_file_coverage(
-        self, mock_import_excel, mock_has_permission
+        self, mock_get_institution_id, mock_import_excel, mock_has_permission
     ):
         """Test import file validation endpoint."""
         mock_has_permission.return_value = True
+        mock_get_institution_id.return_value = "test-institution"
 
         # Mock import result
         from import_service import ImportResult
@@ -1378,11 +1380,17 @@ class TestAPIRoutesValidation:
     @patch("api_routes.has_permission")
     @patch("api_routes.import_excel")
     @patch("os.unlink")
+    @patch("api_routes.get_current_institution_id")
     def test_validate_import_cleanup_error(
-        self, mock_unlink, mock_import_excel, mock_has_permission
+        self,
+        mock_get_institution_id,
+        mock_unlink,
+        mock_import_excel,
+        mock_has_permission,
     ):
         """Test validation endpoint cleanup error handling."""
         mock_has_permission.return_value = True
+        mock_get_institution_id.return_value = "test-institution"
         mock_unlink.side_effect = OSError("Permission denied")
 
         # Mock import result

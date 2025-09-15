@@ -326,21 +326,25 @@ fi
 if [[ "$RUN_COVERAGE" == "true" ]]; then
   echo "📊 Test Coverage Analysis (80% threshold)"
 
-  # Run coverage analysis with 80% threshold (unit tests only, independent pytest run)
-  echo "  📊 Running coverage analysis (separate pytest run with coverage)..."
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --cov-fail-under=80 2>&1) || COVERAGE_FAILED=true
-
-  if [[ "$COVERAGE_FAILED" != "true" ]]; then
-    # Extract coverage percentage
-    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
-    echo "✅ Coverage: PASSED ($COVERAGE)"
-    add_success "Test Coverage" "Coverage at $COVERAGE (meets 80% threshold)"
-  else
-    # Extract coverage percentage from output
-    COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
-
-    # Check if this is a coverage threshold failure
-    if echo "$COVERAGE_OUTPUT" | grep -q "coverage.*fail\|TOTAL.*[0-9]\+%"; then
+  # Run coverage analysis independently of test results (unit tests only)
+  echo "  📊 Running coverage analysis (independent of test results)..."
+  
+  # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  
+  # Extract coverage percentage from output
+  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
+  
+  # Check if we got a valid coverage percentage
+  if [[ "$COVERAGE" != "unknown" && "$COVERAGE" != "" ]]; then
+    # Extract numeric value for comparison
+    COVERAGE_NUM=$(echo "$COVERAGE" | sed 's/%//')
+    
+    # Compare against 80% threshold using bc for floating point
+    if (( $(echo "$COVERAGE_NUM >= 80.0" | bc -l) )); then
+      echo "✅ Coverage: PASSED ($COVERAGE)"
+      add_success "Test Coverage" "Coverage at $COVERAGE (meets 80% threshold)"
+    else
       echo "❌ Coverage: THRESHOLD NOT MET ($COVERAGE)"
       echo ""
 
@@ -360,10 +364,12 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
       echo ""
 
       add_failure "Test Coverage" "Coverage at $COVERAGE (below 80% threshold)" "Add tests to increase coverage above 80%"
-    else
-      echo "❌ Coverage: ANALYSIS FAILED"
-      add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration"
     fi
+  else
+    echo "❌ Coverage: ANALYSIS FAILED"
+    echo "📋 Coverage Output (for debugging):"
+    echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
+    add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration"
   fi
   echo ""
 fi
