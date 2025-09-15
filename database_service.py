@@ -410,7 +410,14 @@ def create_user(user_data: Dict[str, Any]) -> Optional[str]:
 
     try:
         collection_ref = db.collection(USERS_COLLECTION)
-        _, doc_ref = collection_ref.add(user_data)
+        result = collection_ref.add(user_data)
+
+        # Handle both tuple and direct document reference returns
+        if isinstance(result, tuple):
+            _, doc_ref = result
+        else:
+            doc_ref = result
+
         logger.info(f"[DB Service] User created with ID: {doc_ref.id}")
         return doc_ref.id
     except Exception as e:
