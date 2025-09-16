@@ -206,7 +206,9 @@ class TestCourseOutcome:
 
         assert assessment["assessment_data"]["students_assessed"] == 25
         assert assessment["assessment_data"]["students_meeting"] == 22
-        assert assessment["assessment_data"]["percentage_meeting"] == 88.0  # Calculated
+        assert (
+            abs(assessment["assessment_data"]["percentage_meeting"] - 88.0) < 0.01
+        )  # Calculated with tolerance
         assert assessment["assessment_data"]["assessment_status"] == "completed"
         assert assessment["narrative"] == "Most students performed well..."
 

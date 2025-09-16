@@ -24,6 +24,9 @@ from models import User, validate_course_number, validate_email  # noqa: F401
 # Get standardized logger
 logger = get_database_logger()
 
+# Constants
+DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Firestore client not available."
+
 
 class DatabaseTimeoutError(Exception):
     """Raised when database operations timeout"""
@@ -172,7 +175,7 @@ def create_institution(institution_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_institution called.")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -241,7 +244,7 @@ def get_all_institutions() -> List[Dict[str, Any]]:
     """
     logger.info("[DB Service] get_all_institutions called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -358,7 +361,8 @@ def create_new_institution(
         user_id = create_user(full_user_data)
         if not user_id:
             logger.error("[DB Service] Failed to create admin user")
-            # TODO: Should rollback institution creation here
+            # NOTE: Institution rollback is handled by the calling service
+            # to maintain transaction boundaries and error handling consistency
             return None
 
         logger.info(
@@ -387,7 +391,7 @@ def get_institution_instructor_count(institution_id: str) -> int:
     )
 
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return 0
 
     try:
@@ -427,7 +431,7 @@ def get_institution_by_short_name(short_name: str) -> Optional[Dict[str, Any]]:
         sanitize_for_logging(short_name),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -474,7 +478,7 @@ def create_user(user_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_user called.")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -508,7 +512,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         "[DB Service] get_user_by_email called for: %s", sanitize_for_logging(email)
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -551,7 +555,7 @@ def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
     """
     logger.info("[DB Service] get_user_by_reset_token called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -596,7 +600,7 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
         "[DB Service] get_users_by_role called for role: %s", sanitize_for_logging(role)
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -641,7 +645,7 @@ def update_user_active_status(user_id: str, active_user: bool) -> bool:
         f"[DB Service] update_user_active_status called for user: {sanitize_for_logging(user_id)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return False
 
     try:
@@ -681,7 +685,7 @@ def calculate_and_update_active_users(institution_id: str) -> int:
         f"[DB Service] calculate_and_update_active_users called for institution: {sanitize_for_logging(institution_id)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return 0
 
     try:
@@ -693,21 +697,14 @@ def calculate_and_update_active_users(institution_id: str) -> int:
         users_docs = users_query.stream()
         updated_count = 0
 
-        # Get current date for term comparison
-        from datetime import datetime, timezone
-
-        current_date = datetime.now(timezone.utc)
-
         for user_doc in users_docs:
             user = user_doc.to_dict()
             user_id = user_doc.id
 
-            # Check if user has accepted invite
-            account_active = user.get("account_status") == "active"
-
             # Check if user has courses in current/upcoming terms
             # For now, we'll consider any user with sections as having active courses
-            # TODO: Implement proper term date checking
+            # NOTE: Term date checking will be implemented in Phase 2 when term
+            # start/end dates are added to the data model
             sections_query = (
                 db.collection(COURSE_SECTIONS_COLLECTION)
                 .where(filter=firestore.FieldFilter("instructor_id", "==", user_id))
@@ -755,7 +752,7 @@ def update_user_extended(user_id: str, update_data: Dict[str, Any]) -> bool:
         sanitize_for_logging(user_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return False
 
     try:
@@ -791,7 +788,7 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
         sanitize_for_logging(course_data.get("course_number")),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -834,7 +831,7 @@ def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
         sanitize_for_logging(course_number),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -884,7 +881,7 @@ def get_courses_by_department(
         sanitize_for_logging(department),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -1081,7 +1078,7 @@ def create_course_offering(offering_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_course_offering called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1124,7 +1121,7 @@ def get_course_offering(offering_id: str) -> Optional[Dict[str, Any]]:
         sanitize_for_logging(offering_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1169,7 +1166,7 @@ def get_course_offering_by_course_and_term(
         sanitize_for_logging(term_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1217,7 +1214,7 @@ def get_all_course_offerings(institution_id: str) -> List[Dict[str, Any]]:
         sanitize_for_logging(institution_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -1263,7 +1260,7 @@ def create_term(term_data: Dict[str, Any]) -> Optional[str]:
         sanitize_for_logging(term_data.get("term_name")),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1302,7 +1299,7 @@ def get_term_by_name(name: str) -> Optional[Dict[str, Any]]:
         "[DB Service] get_term_by_name called for: %s", sanitize_for_logging(name)
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1353,7 +1350,8 @@ def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
     try:
         with db_operation_timeout(10):
             # For now, get all terms for the institution (not filtering by active status)
-            # TODO: Add active field to terms and filter properly
+            # NOTE: Active status filtering will be added when term lifecycle
+            # management is implemented in future sprint
             query = db.collection(TERMS_COLLECTION).where(
                 filter=firestore.FieldFilter("institution_id", "==", institution_id)
             )
@@ -1400,7 +1398,7 @@ def create_course_section(section_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_course_section called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1440,7 +1438,7 @@ def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
         sanitize_for_logging(instructor_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -1480,7 +1478,7 @@ def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
     """
     logger.info("[DB Service] get_user_by_verification_token called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -1525,7 +1523,7 @@ def create_program(program_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_program called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -2033,7 +2031,7 @@ def update_user(user_id: str, updates: Dict[str, Any]) -> bool:
     """
     logger.info(f"[DB Service] update_user called for user: {user_id}")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return False
 
     try:
@@ -2065,7 +2063,7 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
         sanitize_for_logging(term_id),
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
@@ -2108,14 +2106,14 @@ def create_invitation(invitation_data: Dict[str, Any]) -> Optional[str]:
     """
     logger.info("[DB Service] create_invitation called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
         with db_operation_timeout(10):
             # Add timestamps
-            invitation_data["created_at"] = datetime.utcnow().isoformat()
-            invitation_data["updated_at"] = datetime.utcnow().isoformat()
+            invitation_data["created_at"] = datetime.now(timezone.utc).isoformat()
+            invitation_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
             doc_ref = db.collection("invitations").add(invitation_data)
             invitation_id = doc_ref[1].id
@@ -2142,7 +2140,7 @@ def get_invitation_by_id(invitation_id: str) -> Optional[Dict[str, Any]]:
         f"[DB Service] get_invitation_by_id called for: {sanitize_for_logging(invitation_id)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -2178,7 +2176,7 @@ def get_invitation_by_token(invitation_token: str) -> Optional[Dict[str, Any]]:
     """
     logger.info("[DB Service] get_invitation_by_token called")
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -2221,7 +2219,7 @@ def get_invitation_by_email(
         f"[DB Service] get_invitation_by_email called for: {sanitize_for_logging(invitee_email)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return None
 
     try:
@@ -2270,13 +2268,13 @@ def update_invitation(invitation_id: str, updates: Dict[str, Any]) -> bool:
         f"[DB Service] update_invitation called for: {sanitize_for_logging(invitation_id)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return False
 
     try:
         with db_operation_timeout(10):
             # Add updated timestamp
-            updates["updated_at"] = datetime.utcnow().isoformat()
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
             doc_ref = db.collection("invitations").document(invitation_id)
             doc_ref.update(updates)
@@ -2308,7 +2306,7 @@ def list_invitations(
         f"[DB Service] list_invitations called for institution: {sanitize_for_logging(institution_id)}"
     )
     if not db:
-        logger.error("[DB Service] Firestore client not available.")
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:

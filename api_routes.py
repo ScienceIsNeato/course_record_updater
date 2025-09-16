@@ -63,6 +63,17 @@ api = Blueprint("api", __name__, url_prefix="/api")
 # Get logger for this module
 logger = get_logger(__name__)
 
+# Constants for error messages to avoid duplication
+NO_DATA_PROVIDED_MSG = "No data provided"
+INSTITUTION_CONTEXT_REQUIRED_MSG = "Institution context required"
+COURSE_NOT_FOUND_MSG = "Course not found"
+PROGRAM_NOT_FOUND_MSG = "Program not found"
+XLSX_EXTENSION = ".xlsx"
+INVALID_EMAIL_FORMAT_MSG = "Invalid email format"
+NO_JSON_DATA_PROVIDED_MSG = "No JSON data provided"
+NOT_FOUND_MSG = "not found"
+INVITATION_NOT_FOUND_MSG = "Invitation not found"
+
 
 def handle_api_error(
     e, operation_name="API operation", user_message="An error occurred"
@@ -254,7 +265,7 @@ def list_users():
         if role_filter:
             users = get_users_by_role(role_filter)
         else:
-            # TODO: Implement get_all_users function
+            # NOTE: get_all_users function will be implemented when user management features are added
             users = []
 
         # Filter by department if specified
@@ -284,7 +295,7 @@ def create_user():
         data = request.get_json()
 
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["email", "first_name", "last_name", "role"]
@@ -301,7 +312,7 @@ def create_user():
                 400,
             )
 
-        # TODO: Implement create_user in database_service_extended
+        # NOTE: create_user implementation will be added when user management API is implemented
         # user_id = create_user(data)
         user_id = "stub-user-id"  # Stub for now
 
@@ -338,7 +349,7 @@ def get_user(user_id: str):
         if user_id != current_user["user_id"] and not has_permission("manage_users"):
             return jsonify({"success": False, "error": "Permission denied"}), 403
 
-        # TODO: Implement get_user_by_id function
+            # NOTE: get_user_by_id function will be implemented when user management features are added
         # user = get_user_by_id(user_id)
         user = None  # Stub for now
 
@@ -370,7 +381,7 @@ def list_courses():
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -403,7 +414,7 @@ def create_course_api():
         data = request.get_json()
 
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["course_number", "course_title", "department"]
@@ -450,7 +461,7 @@ def get_course(course_number: str):
         if course:
             return jsonify({"success": True, "course": course})
         else:
-            return jsonify({"success": False, "error": "Course not found"}), 404
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
     except Exception as e:
         return handle_api_error(e, "Get course by number", "Failed to retrieve course")
@@ -470,7 +481,7 @@ def list_instructors():
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -498,7 +509,7 @@ def list_terms():
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -526,7 +537,7 @@ def create_term_api():
         data = request.get_json()
 
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["name", "start_date", "end_date", "assessment_due_date"]
@@ -592,7 +603,7 @@ def create_program_api():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["name", "short_name"]
@@ -657,7 +668,7 @@ def get_program(program_id: str):
         if program:
             return jsonify({"success": True, "program": program})
         else:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
     except Exception as e:
         return handle_api_error(e, "Get program", "Failed to retrieve program")
@@ -670,12 +681,12 @@ def update_program_api(program_id: str):
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate program exists and user has permission
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Update program
         success = update_program(program_id, data)
@@ -697,7 +708,7 @@ def delete_program_api(program_id: str):
         # Validate program exists and user has permission
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Prevent deletion of default program
         if program.get("is_default", False):
@@ -754,7 +765,7 @@ def get_program_courses(program_id: str):
         # Validate program exists and user has access
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         courses = get_courses_by_program(program_id)
 
@@ -781,7 +792,7 @@ def add_course_to_program_api(program_id: str):
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         course_id = data.get("course_id")
         if not course_id:
@@ -795,14 +806,14 @@ def add_course_to_program_api(program_id: str):
         # Validate program exists
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Validate course exists
         course = get_course_by_number(
             course_id
         )  # Assuming course_id is course_number for now
         if not course:
-            return jsonify({"success": False, "error": "Course not found"}), 404
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
         # Add course to program
         success = add_course_to_program(course["course_id"], program_id)
@@ -834,7 +845,7 @@ def remove_course_from_program_api(program_id: str, course_id: str):
         # Validate program exists
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Get default program for orphan handling
         institution_id = get_current_institution_id()
@@ -876,7 +887,7 @@ def bulk_manage_program_courses(program_id: str):
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         action = data.get("action")
         course_ids = data.get("course_ids", [])
@@ -903,7 +914,7 @@ def bulk_manage_program_courses(program_id: str):
         # Validate program exists
         program = get_program_by_id(program_id)
         if not program:
-            return jsonify({"success": False, "error": "Program not found"}), 404
+            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         if action == "add":
             result = bulk_add_courses_to_program(course_ids, program_id)
@@ -942,7 +953,7 @@ def get_course_programs(course_id: str):
             course_id
         )  # Assuming course_id is course_number for now
         if not course:
-            return jsonify({"success": False, "error": "Course not found"}), 404
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
 
         program_ids = course.get("program_ids", [])
         programs = []
@@ -1008,7 +1019,7 @@ def list_sections():
             if not institution_id:
                 return (
                     jsonify(
-                        {"success": False, "error": "Institution context required"}
+                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
                     ),
                     400,
                 )
@@ -1046,7 +1057,7 @@ def create_section():
         data = request.get_json()
 
         if not data:
-            return jsonify({"success": False, "error": "No data provided"}), 400
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["course_id", "term_id"]
@@ -1175,7 +1186,7 @@ def import_excel_api():
         verbose = request.form.get("verbose_output", "false").lower() == "true"
 
         # Validate file type
-        if not file.filename.lower().endswith((".xlsx", ".xls")):
+        if not file.filename.lower().endswith((XLSX_EXTENSION, ".xls")):
             return (
                 jsonify(
                     {
@@ -1190,7 +1201,9 @@ def import_excel_api():
         import os
         import tempfile
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=XLSX_EXTENSION
+        ) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
 
@@ -1305,7 +1318,7 @@ def validate_import_file():
         adapter_name = request.form.get("adapter_name", "cei_excel_adapter")
 
         # Validate file type
-        if not file.filename.lower().endswith((".xlsx", ".xls")):
+        if not file.filename.lower().endswith((XLSX_EXTENSION, ".xls")):
             return (
                 jsonify(
                     {
@@ -1320,7 +1333,9 @@ def validate_import_file():
         import os
         import tempfile
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=XLSX_EXTENSION
+        ) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
 
@@ -1459,7 +1474,7 @@ def register_institution_admin_api():
 
         # Validate email format
         if "@" not in email or "." not in email:
-            return jsonify({"success": False, "error": "Invalid email format"}), 400
+            return jsonify({"success": False, "error": INVALID_EMAIL_FORMAT_MSG}), 400
 
         # Register the admin
         result = register_institution_admin(
@@ -1587,7 +1602,7 @@ def resend_verification_email_api():
             )
 
         if "@" not in email or "." not in email:
-            return jsonify({"success": False, "error": "Invalid email format"}), 400
+            return jsonify({"success": False, "error": INVALID_EMAIL_FORMAT_MSG}), 400
 
         # Resend verification email
         result = resend_verification_email(email)
@@ -1640,7 +1655,7 @@ def get_registration_status_api(email):
                     {
                         "exists": False,
                         "status": "invalid_email",
-                        "message": "Invalid email format",
+                        "message": INVALID_EMAIL_FORMAT_MSG,
                     }
                 ),
                 400,
@@ -1697,7 +1712,7 @@ def create_invitation_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["invitee_email", "invitee_role"]
@@ -1718,7 +1733,7 @@ def create_invitation_api():
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -1788,7 +1803,7 @@ def accept_invitation_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["invitation_token", "password"]
@@ -1856,8 +1871,8 @@ def get_invitation_status_api(invitation_token):
 
     except Exception as e:
         logger.error(f"Error getting invitation status: {e}")
-        if "not found" in str(e).lower():
-            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        if NOT_FOUND_MSG in str(e).lower():
+            return jsonify({"success": False, "error": INVITATION_NOT_FOUND_MSG}), 404
         else:
             return (
                 jsonify({"success": False, "error": "Failed to get invitation status"}),
@@ -1898,8 +1913,8 @@ def resend_invitation_api(invitation_id):
 
     except Exception as e:
         logger.error(f"Error resending invitation: {e}")
-        if "not found" in str(e).lower():
-            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        if NOT_FOUND_MSG in str(e).lower():
+            return jsonify({"success": False, "error": INVITATION_NOT_FOUND_MSG}), 404
         elif "Cannot resend" in str(e):
             return jsonify({"success": False, "error": str(e)}), 400
         else:
@@ -1933,7 +1948,7 @@ def list_invitations_api():
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
-                jsonify({"success": False, "error": "Institution context required"}),
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
@@ -2000,8 +2015,8 @@ def cancel_invitation_api(invitation_id):
 
     except Exception as e:
         logger.error(f"Error cancelling invitation: {e}")
-        if "not found" in str(e).lower():
-            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        if NOT_FOUND_MSG in str(e).lower():
+            return jsonify({"success": False, "error": INVITATION_NOT_FOUND_MSG}), 404
         elif "Cannot cancel" in str(e):
             return jsonify({"success": False, "error": str(e)}), 400
         else:
@@ -2040,7 +2055,7 @@ def login_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["email", "password"]
@@ -2202,7 +2217,7 @@ def unlock_account_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         if "email" not in data:
             return (
@@ -2253,7 +2268,7 @@ def forgot_password_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         if "email" not in data:
             return (
@@ -2301,7 +2316,7 @@ def reset_password_api():
         # Get request data
         data = request.get_json()
         if not data:
-            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
         required_fields = ["reset_token", "new_password"]

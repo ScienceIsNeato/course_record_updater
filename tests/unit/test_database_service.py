@@ -2109,9 +2109,7 @@ class TestUpdateInvitation:
     def test_update_invitation_success(self, mock_datetime, mock_db):
         """Test successful invitation update."""
         # Setup mock datetime
-        mock_datetime.utcnow.return_value.isoformat.return_value = (
-            "2024-01-01T12:00:00Z"
-        )
+        mock_datetime.now.return_value.isoformat.return_value = "2024-01-01T12:00:00Z"
 
         # Setup mock Firestore
         mock_collection = Mock()
@@ -2144,9 +2142,7 @@ class TestUpdateInvitation:
     def test_update_invitation_adds_timestamp(self, mock_datetime, mock_db):
         """Test that update_invitation automatically adds updated_at timestamp."""
         # Setup mock datetime
-        mock_datetime.utcnow.return_value.isoformat.return_value = (
-            "2024-02-15T10:30:45Z"
-        )
+        mock_datetime.now.return_value.isoformat.return_value = "2024-02-15T10:30:45Z"
 
         # Setup mock Firestore
         mock_collection = Mock()
@@ -2198,9 +2194,7 @@ class TestUpdateInvitation:
     def test_update_invitation_empty_updates(self, mock_datetime, mock_db):
         """Test invitation update with empty updates dictionary."""
         # Setup mock datetime
-        mock_datetime.utcnow.return_value.isoformat.return_value = (
-            "2024-01-01T00:00:00Z"
-        )
+        mock_datetime.now.return_value.isoformat.return_value = "2024-01-01T00:00:00Z"
 
         # Setup mock Firestore
         mock_collection = Mock()

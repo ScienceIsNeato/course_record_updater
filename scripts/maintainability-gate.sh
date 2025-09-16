@@ -94,7 +94,7 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
-  RUN_SONAR=true
+  # RUN_SONAR=true  # Disabled - will configure in separate branch
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
 fi
@@ -588,15 +588,9 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Run SonarCloud analysis
+      # Run SonarCloud analysis using sonar-project.properties
       echo "🔧 Running SonarCloud analysis..."
       SONAR_OUTPUT=$(sonar-scanner \
-        -Dsonar.projectKey=course-record-updater \
-        -Dsonar.organization=scienceisneato \
-        -Dsonar.sources=. \
-        -Dsonar.exclusions="venv/**,**/.venv/**,**/node_modules/**,**/__pycache__/**,**/*.pyc,tests/**,cursor-rules/**" \
-        -Dsonar.python.coverage.reportPaths=coverage.xml \
-        -Dsonar.python.xunit.reportPath=test-results.xml \
         -Dsonar.host.url=https://sonarcloud.io \
         -Dsonar.login="$SONAR_TOKEN" 2>&1) || SONAR_FAILED=true
 

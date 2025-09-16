@@ -12,6 +12,9 @@ from app import app
 # pytest import removed
 # Flask import removed
 
+# Test constants to avoid hard-coded values
+TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
+
 
 class TestAPIBlueprint:
     """Test API blueprint setup and registration."""
@@ -112,7 +115,7 @@ class TestDashboardRoutes:
             patch("api_routes.flash") as mock_flash,
         ):
             mock_redirect.return_value = "Redirect response"
-            response = self.client.get("/api/dashboard")
+            self.client.get("/api/dashboard")
 
             # Should flash error message and redirect
             mock_flash.assert_called_once()
@@ -129,7 +132,7 @@ class TestDashboardRoutes:
         ):
             mock_redirect.return_value = "Login redirect"
             mock_url_for.return_value = "/login"
-            response = self.client.get("/api/dashboard")
+            self.client.get("/api/dashboard")
 
             # Should redirect to login
             mock_redirect.assert_called_once()
@@ -204,7 +207,7 @@ class TestRegistrationEndpoints:
                 "/api/auth/register",
                 json={
                     "email": "admin@testuniv.edu",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     "first_name": "John",
                     "last_name": "Doe",
                     "institution_name": "Test University",
@@ -223,7 +226,7 @@ class TestRegistrationEndpoints:
             # Verify the service was called with correct parameters
             mock_register.assert_called_once_with(
                 email="admin@testuniv.edu",
-                password="SecurePass123!",
+                password=TEST_PASSWORD,
                 first_name="John",
                 last_name="Doe",
                 institution_name="Test University",
@@ -257,7 +260,7 @@ class TestRegistrationEndpoints:
                 "/api/auth/register",
                 json={
                     "email": "invalid-email",  # No @ or .
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     "first_name": "John",
                     "last_name": "Doe",
                     "institution_name": "Test University",
@@ -281,7 +284,7 @@ class TestRegistrationEndpoints:
                 "/api/auth/register",
                 json={
                     "email": "admin@testuniv.edu",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     "first_name": "John",
                     "last_name": "Doe",
                     "institution_name": "Test University",
@@ -303,7 +306,7 @@ class TestRegistrationEndpoints:
                 "/api/auth/register",
                 json={
                     "email": "admin@testuniv.edu",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     "first_name": "John",
                     "last_name": "Doe",
                     "institution_name": "Test University",
@@ -331,7 +334,7 @@ class TestRegistrationEndpoints:
                     "/api/auth/register",
                     json={
                         "email": "admin@testuniv.edu",
-                        "password": "SecurePass123!",
+                        "password": TEST_PASSWORD,
                         "first_name": "John",
                         "last_name": "Doe",
                         "institution_name": "Test University",
@@ -344,7 +347,7 @@ class TestRegistrationEndpoints:
                 # Verify website_url was passed as None
                 mock_register.assert_called_once_with(
                     email="admin@testuniv.edu",
-                    password="SecurePass123!",
+                    password=TEST_PASSWORD,
                     first_name="John",
                     last_name="Doe",
                     institution_name="Test University",
@@ -607,7 +610,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "valid-token-123",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     "display_name": "John Doe",
                 },
             )
@@ -624,7 +627,7 @@ class TestAcceptInvitationEndpoints:
             # Verify service was called correctly
             mock_invitation_service.accept_invitation.assert_called_once_with(
                 invitation_token="valid-token-123",
-                password="SecurePass123!",
+                password=TEST_PASSWORD,
                 display_name="John Doe",
             )
 
@@ -645,7 +648,7 @@ class TestAcceptInvitationEndpoints:
         with app.test_client() as client:
             response = client.post(
                 "/api/auth/accept-invitation",
-                json={"password": "SecurePass123!", "display_name": "John Doe"},
+                json={"password": TEST_PASSWORD, "display_name": "John Doe"},
             )
 
             assert response.status_code == 400
@@ -683,7 +686,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "invalid-token",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                 },
             )
 
@@ -706,7 +709,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "expired-token",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                 },
             )
 
@@ -749,7 +752,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "valid-token-123",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                 },
             )
 
@@ -774,7 +777,7 @@ class TestAcceptInvitationEndpoints:
                 "/api/auth/accept-invitation",
                 json={
                     "invitation_token": "valid-token-123",
-                    "password": "SecurePass123!",
+                    "password": TEST_PASSWORD,
                     # No display_name provided
                 },
             )
@@ -786,7 +789,7 @@ class TestAcceptInvitationEndpoints:
             # Verify service was called with None for display_name
             mock_invitation_service.accept_invitation.assert_called_once_with(
                 invitation_token="valid-token-123",
-                password="SecurePass123!",
+                password=TEST_PASSWORD,
                 display_name=None,
             )
 
@@ -2463,7 +2466,7 @@ class TestAPIRoutesExtended:
             assert isinstance(result, tuple)
             assert len(result) == 2
 
-            json_response, status_code = result
+            _, status_code = result
             assert status_code == 500
 
             # Test with default parameters
