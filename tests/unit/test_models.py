@@ -72,14 +72,16 @@ class TestUser:
             )
 
     def test_get_permissions(self):
-        """Test getting permissions for different roles"""
+        """Test getting permissions for different roles using new authorization system"""
         instructor_perms = User.get_permissions("instructor")
-        assert "view_own_sections" in instructor_perms
+        assert "view_section_data" in instructor_perms
+        assert "submit_assessments" in instructor_perms
         assert "manage_users" not in instructor_perms
 
         admin_perms = User.get_permissions("site_admin")
         assert "manage_users" in admin_perms
-        assert "full_access" in admin_perms
+        assert "manage_institutions" in admin_perms
+        assert "view_all_data" in admin_perms
 
     def test_user_active_status_calculation(self):
         """Test User model active status calculation."""
@@ -270,15 +272,21 @@ class TestConstants:
     """Test that constants are properly defined"""
 
     def test_roles_defined(self):
-        """Test that all roles are properly defined"""
-        assert "instructor" in ROLES
-        assert "program_admin" in ROLES
-        assert "site_admin" in ROLES
+        """Test that all roles are properly defined in new authorization system"""
+        from auth_service import ROLE_PERMISSIONS, UserRole
 
-        for role, config in ROLES.items():
-            assert "name" in config
-            assert "permissions" in config
-            assert isinstance(config["permissions"], list)
+        # Test that UserRole enum contains expected roles
+        role_values = [role.value for role in UserRole]
+        assert "instructor" in role_values
+        assert "program_admin" in role_values
+        assert "institution_admin" in role_values
+        assert "site_admin" in role_values
+
+        # Test that all roles have permissions defined
+        for role_value in role_values:
+            assert role_value in ROLE_PERMISSIONS
+            assert isinstance(ROLE_PERMISSIONS[role_value], list)
+            assert len(ROLE_PERMISSIONS[role_value]) > 0
 
     def test_status_enums_defined(self):
         """Test that status enums are properly defined"""

@@ -83,7 +83,7 @@ class TestEnhancedUserModel:
         assert user_data["display_name"] == "Dr. Admin"
 
     def test_user_model_role_validation(self):
-        """Test User model validates role against ROLES dict"""
+        """Test User model validates role against new UserRole enum"""
         with pytest.raises(ValueError, match="Invalid role"):
             User.create_schema(
                 email="test@example.com",

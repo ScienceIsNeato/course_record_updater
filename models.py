@@ -13,7 +13,11 @@ from typing import Any, Dict, List, Optional
 # Import password service for secure password handling
 from password_service import hash_password, validate_password_strength
 
-# User Roles and Permissions
+# NOTE: User roles and permissions are now managed in auth_service.py
+# This provides centralized role-based access control with the UserRole enum
+# and ROLE_PERMISSIONS mapping.
+
+# DEPRECATED: Old ROLES dictionary - kept for backward compatibility during transition
 ROLES = {
     "instructor": {
         "name": "Instructor",
@@ -195,10 +199,12 @@ class User(DataModel):
     ) -> Dict[str, Any]:
         """Create a new user record schema with enhanced authentication fields"""
 
-        if role not in ROLES:
-            raise ValueError(
-                f"Invalid role: {role}. Must be one of {list(ROLES.keys())}"
-            )
+        # Import here to avoid circular imports
+        from auth_service import UserRole
+
+        valid_roles = [r.value for r in UserRole]
+        if role not in valid_roles:
+            raise ValueError(f"Invalid role: {role}. Must be one of {valid_roles}")
 
         if account_status not in ACCOUNT_STATUSES:
             raise ValueError(
@@ -250,8 +256,11 @@ class User(DataModel):
 
     @staticmethod
     def get_permissions(role: str) -> List[str]:
-        """Get permissions for a given role"""
-        return list(ROLES.get(role, {}).get("permissions", []))
+        """Get permissions for a given role using new authorization system"""
+        # Import here to avoid circular imports
+        from auth_service import ROLE_PERMISSIONS
+
+        return ROLE_PERMISSIONS.get(role, [])
 
     @staticmethod
     def full_name(first_name: str, last_name: str) -> str:
@@ -321,10 +330,12 @@ class UserInvitation(DataModel):
     ) -> Dict[str, Any]:
         """Create a new user invitation record schema"""
 
-        if role not in ROLES:
-            raise ValueError(
-                f"Invalid role: {role}. Must be one of {list(ROLES.keys())}"
-            )
+        # Import here to avoid circular imports
+        from auth_service import UserRole
+
+        valid_roles = [r.value for r in UserRole]
+        if role not in valid_roles:
+            raise ValueError(f"Invalid role: {role}. Must be one of {valid_roles}")
 
         expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
 
@@ -695,7 +706,7 @@ __all__ = [
     "CourseSection",
     "CourseOutcome",
     # Constants
-    "ROLES",
+    "ROLES",  # DEPRECATED: Use auth_service.UserRole instead
     "SECTION_STATUSES",
     "ASSESSMENT_STATUSES",
     "ACCOUNT_STATUSES",

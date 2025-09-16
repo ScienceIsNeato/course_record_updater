@@ -14,8 +14,9 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import database_service as db
+from auth_service import UserRole
 from email_service import EmailService
-from models import INVITATION_STATUSES, ROLES, User, UserInvitation
+from models import INVITATION_STATUSES, User, UserInvitation
 from password_service import PasswordService
 
 logger = logging.getLogger(__name__)
@@ -61,9 +62,12 @@ class InvitationService:
             InvitationError: If invitation creation fails
         """
         try:
-            # Validate role
-            if invitee_role not in ROLES:
-                raise InvitationError(f"Invalid role: {invitee_role}")
+            # Validate role using new UserRole enum
+            valid_roles = [role.value for role in UserRole]
+            if invitee_role not in valid_roles:
+                raise InvitationError(
+                    f"Invalid role: {invitee_role}. Valid roles: {valid_roles}"
+                )
 
             # Check if user already exists
             existing_user = db.get_user_by_email(invitee_email)
