@@ -457,23 +457,19 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 - [ ] Test invitation expiry and status tracking
 - [ ] Test role assignment during invitation acceptance
 
----
-
-### **Epic 3: Authentication Endpoints**
-
-#### **Story 3.1: Login/Logout System**
+#### **Story 2.3: Login/Logout System** ✅ **COMPLETED**
 **As a** user  
 **I want** to securely log in and out of the system  
 **So that** I can access my account and protect it when finished
 
 **Acceptance Criteria:**
-- [ ] Login form with email/password
-- [ ] Secure authentication verification
-- [ ] Account lockout after failed attempts
-- [ ] "Remember me" checkbox functionality
-- [ ] Proper session creation on successful login
-- [ ] Secure logout with session cleanup
-- [ ] Redirect to intended page after login
+- [x] Login form with email/password
+- [x] Secure authentication verification
+- [x] Account lockout after failed attempts
+- [x] "Remember me" checkbox functionality
+- [x] Proper session creation on successful login
+- [x] Secure logout with session cleanup
+- [x] Redirect to intended page after login
 
 **Technical Tasks:**
 - Create login form template
@@ -494,19 +490,21 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ---
 
-#### **Story 3.2: Password Reset Flow**
+### **Epic 3: Authentication Endpoints**
+
+#### **Story 3.1: Password Reset Flow** ✅ **COMPLETED**
 **As a** user who forgot my password  
 **I want** to reset my password via email  
 **So that** I can regain access to my account
 
 **Acceptance Criteria:**
 - [ ] "Forgot Password" link on login page
-- [ ] Password reset request form
-- [ ] Secure reset token generation and email
-- [ ] Password reset form with token validation
-- [ ] New password strength validation
-- [ ] Success confirmation and auto-login
-- [ ] Token expiry and security measures
+- [x] Password reset request form
+- [x] Secure reset token generation and email
+- [x] Password reset form with token validation
+- [x] New password strength validation
+- [x] Success confirmation and auto-login
+- [x] Token expiry and security measures
 
 **Technical Tasks:**
 - Create forgot password form

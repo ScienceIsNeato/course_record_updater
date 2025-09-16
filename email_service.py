@@ -198,6 +198,32 @@ class EmailService:
         )
 
     @staticmethod
+    def send_password_reset_confirmation_email(email: str, user_name: str) -> bool:
+        """
+        Send password reset confirmation email
+        
+        Args:
+            email: User's email address
+            user_name: User's display name
+            
+        Returns:
+            True if email sent successfully
+        """
+        subject = "Password Reset Successful"
+        
+        html_body = EmailService._render_password_reset_confirmation_email_html(
+            user_name=user_name, email=email
+        )
+        
+        text_body = EmailService._render_password_reset_confirmation_email_text(
+            user_name=user_name, email=email
+        )
+        
+        return EmailService._send_email(
+            to_email=email, subject=subject, html_body=html_body, text_body=text_body
+        )
+
+    @staticmethod
     def send_invitation_email(
         email: str,
         invitation_token: str,
@@ -530,6 +556,97 @@ To reset your password, visit this link:
 Important: This reset link will expire in 1 hour for security reasons.
 
 If you didn't request this password reset, you can safely ignore this email. Your password will not be changed.
+
+This email was sent to {email}
+
+© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+        """
+
+    @staticmethod
+    def _render_password_reset_confirmation_email_html(
+        user_name: str, email: str
+    ) -> str:
+        """Render HTML password reset confirmation email template"""
+        return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Password Reset Successful</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: #27ae60; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background: #f9f9f9; }}
+        .success-icon {{ font-size: 48px; color: #27ae60; text-align: center; margin: 20px 0; }}
+        .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Password Reset Successful</h1>
+        </div>
+        <div class="content">
+            <div class="success-icon">✅</div>
+            <p>Hello, {user_name}</p>
+            <p>Your password has been successfully reset for your Course Record Updater account.</p>
+            <p><strong>Account:</strong> {email}</p>
+            <p><strong>Reset completed:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d at %H:%M UTC')}</p>
+            
+            <h3>Security Information:</h3>
+            <ul>
+                <li>Your password has been securely updated</li>
+                <li>All failed login attempts have been cleared</li>
+                <li>You can now log in with your new password</li>
+            </ul>
+            
+            <p><strong>If you did not perform this password reset:</strong></p>
+            <p>Please contact support immediately as your account may have been compromised.</p>
+            
+            <p>For security reasons, we recommend:</p>
+            <ul>
+                <li>Using a strong, unique password</li>
+                <li>Not sharing your login credentials</li>
+                <li>Logging out when finished using the system</li>
+            </ul>
+        </div>
+        <div class="footer">
+            <p>This email was sent to {email}</p>
+            <p>© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+
+    @staticmethod
+    def _render_password_reset_confirmation_email_text(
+        user_name: str, email: str
+    ) -> str:
+        """Render text password reset confirmation email template"""
+        return f"""
+Course Record Updater - Password Reset Successful
+
+Hello, {user_name}
+
+Your password has been successfully reset for your Course Record Updater account.
+
+Account: {email}
+Reset completed: {datetime.now(timezone.utc).strftime('%Y-%m-%d at %H:%M UTC')}
+
+Security Information:
+- Your password has been securely updated
+- All failed login attempts have been cleared  
+- You can now log in with your new password
+
+IF YOU DID NOT PERFORM THIS PASSWORD RESET:
+Please contact support immediately as your account may have been compromised.
+
+For security reasons, we recommend:
+- Using a strong, unique password
+- Not sharing your login credentials
+- Logging out when finished using the system
 
 This email was sent to {email}
 

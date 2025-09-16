@@ -539,6 +539,45 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Get user by password reset token
+    
+    Args:
+        reset_token: Password reset token to search for
+        
+    Returns:
+        User data if found, None otherwise
+    """
+    logger.info("[DB Service] get_user_by_reset_token called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(5):
+            query = (
+                db.collection(USERS_COLLECTION)
+                .where(filter=firestore.FieldFilter("password_reset_token", "==", reset_token))
+                .limit(1)
+            )
+
+            docs = query.stream()
+
+            for doc in docs:
+                user_data = doc.to_dict()
+                user_data["user_id"] = doc.id
+                logger.info("[DB Service] Found user by reset token")
+                return user_data
+
+            logger.info("[DB Service] No user found with reset token")
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting user by reset token: {e}")
+        return None
+
+
 def get_users_by_role(role: str) -> List[Dict[str, Any]]:
     """
     Retrieve all users with a specific role.

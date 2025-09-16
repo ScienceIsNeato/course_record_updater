@@ -1739,3 +1739,376 @@ def cancel_invitation_api(invitation_id):
                 jsonify({"success": False, "error": "Failed to cancel invitation"}),
                 500,
             )
+
+
+# ===== LOGIN/LOGOUT API ENDPOINTS =====
+
+@api.route("/auth/login", methods=["POST"])
+def login_api():
+    """
+    Authenticate user and create session
+    
+    JSON Body:
+    {
+        "email": "user@example.com",
+        "password": "password123",
+        "remember_me": false  // Optional, default false
+    }
+    
+    Returns:
+        200: Login successful
+        400: Invalid request data
+        401: Invalid credentials
+        423: Account locked
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        from password_service import AccountLockedError
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+        
+        # Validate required fields
+        required_fields = ["email", "password"]
+        for field in required_fields:
+            if field not in data:
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Missing required field: {field}"}
+                    ),
+                    400,
+                )
+        
+        # Authenticate user
+        result = LoginService.authenticate_user(
+            email=data["email"],
+            password=data["password"],
+            remember_me=data.get("remember_me", False)
+        )
+        
+        return (
+            jsonify({
+                "success": True,
+                **result
+            }),
+            200,
+        )
+        
+    except AccountLockedError as e:
+        logger.warning(f"Account locked during login attempt: {data.get('email', 'unknown')}")
+        return jsonify({"success": False, "error": str(e)}), 423
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        if "Invalid email or password" in str(e) or "Account" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 401
+        else:
+            return jsonify({"success": False, "error": "Login failed"}), 500
+
+
+@api.route("/auth/logout", methods=["POST"])
+def logout_api():
+    """
+    Logout current user and destroy session
+    
+    Returns:
+        200: Logout successful
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        
+        # Logout user
+        result = LoginService.logout_user()
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        return jsonify({"success": False, "error": "Logout failed"}), 500
+
+
+@api.route("/auth/status", methods=["GET"])
+def login_status_api():
+    """
+    Get current login status
+    
+    Returns:
+        200: Status retrieved successfully
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        
+        # Get login status
+        status = LoginService.get_login_status()
+        
+        return jsonify({
+            "success": True,
+            **status
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting login status: {e}")
+        return jsonify({"success": False, "error": "Failed to get login status"}), 500
+
+
+@api.route("/auth/refresh", methods=["POST"])
+def refresh_session_api():
+    """
+    Refresh current user session
+    
+    Returns:
+        200: Session refreshed successfully
+        401: No active session
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        
+        # Refresh session
+        result = LoginService.refresh_session()
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Session refresh error: {e}")
+        if "No active session" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 401
+        else:
+            return jsonify({"success": False, "error": "Failed to refresh session"}), 500
+
+
+@api.route("/auth/lockout-status/<email>", methods=["GET"])
+def check_lockout_status_api(email):
+    """
+    Check account lockout status for an email
+    
+    URL: /api/auth/lockout-status/{email}
+    
+    Returns:
+        200: Lockout status retrieved
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        
+        # Check lockout status
+        status = LoginService.check_account_lockout_status(email)
+        
+        return jsonify({
+            "success": True,
+            **status
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error checking lockout status: {e}")
+        return jsonify({"success": False, "error": "Failed to check lockout status"}), 500
+
+
+@api.route("/auth/unlock-account", methods=["POST"])
+@login_required
+def unlock_account_api():
+    """
+    Manually unlock a locked account (admin function)
+    
+    JSON Body:
+    {
+        "email": "user@example.com"
+    }
+    
+    Returns:
+        200: Account unlocked successfully
+        400: Invalid request data
+        403: Insufficient permissions
+        500: Server error
+    """
+    try:
+        from login_service import LoginService
+        from auth_service import get_current_user
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+        
+        if "email" not in data:
+            return jsonify({"success": False, "error": "Missing required field: email"}), 400
+        
+        # Get current user (admin check would go here)
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+        
+        # For now, allow any logged-in user to unlock accounts
+        # In production, this should check for admin role
+        
+        # Unlock account
+        result = LoginService.unlock_account(data["email"], current_user["id"])
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Account unlock error: {e}")
+        return jsonify({"success": False, "error": "Failed to unlock account"}), 500
+
+
+# ===== PASSWORD RESET API ENDPOINTS =====
+
+@api.route("/auth/forgot-password", methods=["POST"])
+def forgot_password_api():
+    """
+    Request password reset email
+    
+    JSON Body:
+    {
+        "email": "user@example.com"
+    }
+    
+    Returns:
+        200: Reset email sent (or would be sent)
+        400: Invalid request data
+        429: Too many requests
+        500: Server error
+    """
+    try:
+        from password_reset_service import PasswordResetService
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+        
+        if "email" not in data:
+            return jsonify({"success": False, "error": "Missing required field: email"}), 400
+        
+        # Request password reset
+        result = PasswordResetService.request_password_reset(data["email"])
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Password reset request error: {e}")
+        if "Too many" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 429
+        elif "restricted in development" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return jsonify({"success": False, "error": "Password reset request failed"}), 500
+
+
+@api.route("/auth/reset-password", methods=["POST"])
+def reset_password_api():
+    """
+    Complete password reset with new password
+    
+    JSON Body:
+    {
+        "reset_token": "secure-reset-token",
+        "new_password": "newSecurePassword123!"
+    }
+    
+    Returns:
+        200: Password reset successful
+        400: Invalid request data or token
+        500: Server error
+    """
+    try:
+        from password_reset_service import PasswordResetService
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+        
+        # Validate required fields
+        required_fields = ["reset_token", "new_password"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+        
+        # Reset password
+        result = PasswordResetService.reset_password(
+            reset_token=data["reset_token"],
+            new_password=data["new_password"]
+        )
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Password reset error: {e}")
+        if any(phrase in str(e) for phrase in ["Invalid", "expired", "validation failed"]):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return jsonify({"success": False, "error": "Password reset failed"}), 500
+
+
+@api.route("/auth/validate-reset-token/<reset_token>", methods=["GET"])
+def validate_reset_token_api(reset_token):
+    """
+    Validate a password reset token
+    
+    URL: /api/auth/validate-reset-token/{token}
+    
+    Returns:
+        200: Token validation result
+        500: Server error
+    """
+    try:
+        from password_reset_service import PasswordResetService
+        
+        # Validate reset token
+        result = PasswordResetService.validate_reset_token(reset_token)
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Token validation error: {e}")
+        return jsonify({"success": False, "error": "Failed to validate reset token"}), 500
+
+
+@api.route("/auth/reset-status/<email>", methods=["GET"])
+def reset_status_api(email):
+    """
+    Get password reset status for an email
+    
+    URL: /api/auth/reset-status/{email}
+    
+    Returns:
+        200: Reset status retrieved
+        500: Server error
+    """
+    try:
+        from password_reset_service import PasswordResetService
+        
+        # Get reset status
+        result = PasswordResetService.get_reset_status(email)
+        
+        return jsonify({
+            "success": True,
+            **result
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Reset status error: {e}")
+        return jsonify({"success": False, "error": "Failed to get reset status"}), 500
