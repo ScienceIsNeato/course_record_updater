@@ -10,6 +10,7 @@ import os  # Import os to check environment variables
 import signal
 import uuid
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
@@ -1575,4 +1576,260 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
 
     except Exception as e:
         logger.error(f"[DB Service] Error getting sections by term: {e}")
+        return []
+
+
+# Invitation Management Methods
+
+
+def create_invitation(invitation_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Create a new user invitation
+
+    Args:
+        invitation_data: Invitation data dictionary
+
+    Returns:
+        Invitation ID if created successfully, None otherwise
+    """
+    logger.info("[DB Service] create_invitation called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(10):
+            # Add timestamps
+            invitation_data["created_at"] = datetime.utcnow().isoformat()
+            invitation_data["updated_at"] = datetime.utcnow().isoformat()
+
+            doc_ref = db.collection("invitations").add(invitation_data)
+            invitation_id = doc_ref[1].id
+
+            logger.info(f"[DB Service] Created invitation with ID: {invitation_id}")
+            return invitation_id
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating invitation: {e}")
+        return None
+
+
+def get_invitation_by_id(invitation_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get invitation by ID
+
+    Args:
+        invitation_id: Invitation ID
+
+    Returns:
+        Invitation dictionary if found, None otherwise
+    """
+    logger.info(
+        f"[DB Service] get_invitation_by_id called for: {sanitize_for_logging(invitation_id)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(10):
+            doc_ref = db.collection("invitations").document(invitation_id)
+            doc = doc_ref.get()
+
+            if doc.exists:
+                invitation = doc.to_dict()
+                invitation["id"] = doc.id
+                logger.info(f"[DB Service] Found invitation: {invitation_id}")
+                return invitation
+            else:
+                logger.info(
+                    f"[DB Service] No invitation found with ID: {invitation_id}"
+                )
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting invitation by ID: {e}")
+        return None
+
+
+def get_invitation_by_token(invitation_token: str) -> Optional[Dict[str, Any]]:
+    """
+    Get invitation by token
+
+    Args:
+        invitation_token: Invitation token
+
+    Returns:
+        Invitation dictionary if found, None otherwise
+    """
+    logger.info("[DB Service] get_invitation_by_token called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(10):
+            query = db.collection("invitations").where(
+                filter=firestore.FieldFilter("token", "==", invitation_token)
+            )
+
+            docs = list(query.stream())
+
+            if docs:
+                doc = docs[0]  # Take first match
+                invitation = doc.to_dict()
+                invitation["id"] = doc.id
+                logger.info("[DB Service] Found invitation by token")
+                return invitation
+            else:
+                logger.info("[DB Service] No invitation found with token")
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting invitation by token: {e}")
+        return None
+
+
+def get_invitation_by_email(
+    invitee_email: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get invitation by email and institution
+
+    Args:
+        invitee_email: Email address of invitee
+        institution_id: Institution ID
+
+    Returns:
+        Invitation dictionary if found, None otherwise
+    """
+    logger.info(
+        f"[DB Service] get_invitation_by_email called for: {sanitize_for_logging(invitee_email)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(10):
+            query = (
+                db.collection("invitations")
+                .where(filter=firestore.FieldFilter("email", "==", invitee_email))
+                .where(
+                    filter=firestore.FieldFilter("institution_id", "==", institution_id)
+                )
+            )
+
+            docs = list(query.stream())
+
+            if docs:
+                doc = docs[0]  # Take first match
+                invitation = doc.to_dict()
+                invitation["id"] = doc.id
+                logger.info(
+                    f"[DB Service] Found invitation for email: {sanitize_for_logging(invitee_email)}"
+                )
+                return invitation
+            else:
+                logger.info(
+                    f"[DB Service] No invitation found for email: {sanitize_for_logging(invitee_email)}"
+                )
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting invitation by email: {e}")
+        return None
+
+
+def update_invitation(invitation_id: str, updates: Dict[str, Any]) -> bool:
+    """
+    Update an invitation
+
+    Args:
+        invitation_id: Invitation ID
+        updates: Dictionary of fields to update
+
+    Returns:
+        True if updated successfully, False otherwise
+    """
+    logger.info(
+        f"[DB Service] update_invitation called for: {sanitize_for_logging(invitation_id)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return False
+
+    try:
+        with db_operation_timeout(10):
+            # Add updated timestamp
+            updates["updated_at"] = datetime.utcnow().isoformat()
+
+            doc_ref = db.collection("invitations").document(invitation_id)
+            doc_ref.update(updates)
+
+            logger.info(f"[DB Service] Updated invitation: {invitation_id}")
+            return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error updating invitation: {e}")
+        return False
+
+
+def list_invitations(
+    institution_id: str, status: Optional[str] = None, limit: int = 50, offset: int = 0
+) -> List[Dict[str, Any]]:
+    """
+    List invitations for an institution
+
+    Args:
+        institution_id: Institution ID
+        status: Optional status filter
+        limit: Maximum number of results
+        offset: Offset for pagination
+
+    Returns:
+        List of invitation dictionaries
+    """
+    logger.info(
+        f"[DB Service] list_invitations called for institution: {sanitize_for_logging(institution_id)}"
+    )
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return []
+
+    try:
+        with db_operation_timeout(10):
+            query = db.collection("invitations").where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
+
+            # Add status filter if provided
+            if status:
+                query = query.where(
+                    filter=firestore.FieldFilter("status", "==", status)
+                )
+
+            # Order by invited_at descending
+            query = query.order_by("invited_at", direction=firestore.Query.DESCENDING)
+
+            # Apply pagination
+            if offset > 0:
+                query = query.offset(offset)
+            query = query.limit(limit)
+
+            docs = list(query.stream())
+            invitations = []
+
+            for doc in docs:
+                invitation = doc.to_dict()
+                invitation["id"] = doc.id
+                invitations.append(invitation)
+
+            logger.info(
+                f"[DB Service] Found {len(invitations)} invitations for institution: {sanitize_for_logging(institution_id)}"
+            )
+            return invitations
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error listing invitations: {e}")
         return []

@@ -1394,3 +1394,348 @@ def get_registration_status_api(email):
             ),
             500,
         )
+
+
+# ===== INVITATION API ENDPOINTS =====
+
+
+@api.route("/auth/invite", methods=["POST"])
+@login_required
+def create_invitation_api():
+    """
+    Create and send a user invitation
+
+    JSON Body:
+    {
+        "invitee_email": "instructor@example.com",
+        "invitee_role": "instructor",
+        "program_ids": ["prog-123"],  // Optional, for program_admin role
+        "personal_message": "Welcome to our team!"  // Optional
+    }
+
+    Returns:
+        201: Invitation created and sent successfully
+        400: Invalid request data
+        403: Insufficient permissions
+        409: User already exists or invitation pending
+        500: Server error
+    """
+    try:
+        from auth_service import get_current_institution_id, get_current_user
+        from invitation_service import InvitationService
+
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+
+        # Validate required fields
+        required_fields = ["invitee_email", "invitee_role"]
+        for field in required_fields:
+            if field not in data:
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Missing required field: {field}"}
+                    ),
+                    400,
+                )
+
+        # Get current user and institution
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        # Create invitation
+        invitation = InvitationService.create_invitation(
+            inviter_user_id=current_user["id"],
+            inviter_email=current_user["email"],
+            invitee_email=data["invitee_email"],
+            invitee_role=data["invitee_role"],
+            institution_id=institution_id,
+            program_ids=data.get("program_ids", []),
+            personal_message=data.get("personal_message"),
+        )
+
+        # Send invitation email
+        email_sent = InvitationService.send_invitation(invitation)
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "invitation_id": invitation["id"],
+                    "message": (
+                        "Invitation created and sent successfully"
+                        if email_sent
+                        else "Invitation created but email failed to send"
+                    ),
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating invitation: {e}")
+        if "already exists" in str(e) or "already exists" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 409
+        elif "Invalid role" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to create invitation"}),
+                500,
+            )
+
+
+@api.route("/auth/accept-invitation", methods=["POST"])
+def accept_invitation_api():
+    """
+    Accept an invitation and create user account
+
+    JSON Body:
+    {
+        "invitation_token": "secure-token-here",
+        "password": "newpassword123",
+        "display_name": "John Doe"  // Optional
+    }
+
+    Returns:
+        200: Invitation accepted and account created
+        400: Invalid request data or token
+        410: Invitation expired or already accepted
+        500: Server error
+    """
+    try:
+        from invitation_service import InvitationService
+
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+
+        # Validate required fields
+        required_fields = ["invitation_token", "password"]
+        for field in required_fields:
+            if field not in data:
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Missing required field: {field}"}
+                    ),
+                    400,
+                )
+
+        # Accept invitation
+        user = InvitationService.accept_invitation(
+            invitation_token=data["invitation_token"],
+            password=data["password"],
+            display_name=data.get("display_name"),
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "user_id": user["id"],
+                    "email": user["email"],
+                    "role": user["role"],
+                    "message": "Invitation accepted and account created successfully",
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.error(f"Error accepting invitation: {e}")
+        if "expired" in str(e).lower() or "already been accepted" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 410
+        elif "Invalid" in str(e) or "not available" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to accept invitation"}),
+                500,
+            )
+
+
+@api.route("/auth/invitation-status/<invitation_token>", methods=["GET"])
+def get_invitation_status_api(invitation_token):
+    """
+    Get invitation status by token
+
+    URL: /api/auth/invitation-status/{invitation_token}
+
+    Returns:
+        200: Invitation status retrieved
+        404: Invitation not found
+        500: Server error
+    """
+    try:
+        from invitation_service import InvitationService
+
+        # Get invitation status
+        status = InvitationService.get_invitation_status(invitation_token)
+
+        return jsonify({"success": True, **status}), 200
+
+    except Exception as e:
+        logger.error(f"Error getting invitation status: {e}")
+        if "not found" in str(e).lower():
+            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to get invitation status"}),
+                500,
+            )
+
+
+@api.route("/auth/resend-invitation/<invitation_id>", methods=["POST"])
+@login_required
+def resend_invitation_api(invitation_id):
+    """
+    Resend an existing invitation
+
+    URL: /api/auth/resend-invitation/{invitation_id}
+
+    Returns:
+        200: Invitation resent successfully
+        400: Cannot resend invitation (wrong status)
+        404: Invitation not found
+        500: Server error
+    """
+    try:
+        from invitation_service import InvitationService
+
+        # Resend invitation
+        success = InvitationService.resend_invitation(invitation_id)
+
+        if success:
+            return (
+                jsonify({"success": True, "message": "Invitation resent successfully"}),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to resend invitation"}),
+                500,
+            )
+
+    except Exception as e:
+        logger.error(f"Error resending invitation: {e}")
+        if "not found" in str(e).lower():
+            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        elif "Cannot resend" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to resend invitation"}),
+                500,
+            )
+
+
+@api.route("/auth/invitations", methods=["GET"])
+@login_required
+def list_invitations_api():
+    """
+    List invitations for current user's institution
+
+    Query Parameters:
+    - status: Filter by status (pending, sent, accepted, expired, cancelled)
+    - limit: Number of results (default 50, max 100)
+    - offset: Offset for pagination (default 0)
+
+    Returns:
+        200: List of invitations
+        400: Invalid parameters
+        500: Server error
+    """
+    try:
+        from auth_service import get_current_institution_id
+        from invitation_service import InvitationService
+
+        # Get institution context
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
+
+        # Get query parameters
+        status = request.args.get("status")
+        limit = min(int(request.args.get("limit", 50)), 100)
+        offset = int(request.args.get("offset", 0))
+
+        # List invitations
+        invitations = InvitationService.list_invitations(
+            institution_id=institution_id, status=status, limit=limit, offset=offset
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "invitations": invitations,
+                    "count": len(invitations),
+                    "limit": limit,
+                    "offset": offset,
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing invitations: {e}")
+        return jsonify({"success": False, "error": "Failed to list invitations"}), 500
+
+
+@api.route("/auth/cancel-invitation/<invitation_id>", methods=["DELETE"])
+@login_required
+def cancel_invitation_api(invitation_id):
+    """
+    Cancel a pending invitation
+
+    URL: /api/auth/cancel-invitation/{invitation_id}
+
+    Returns:
+        200: Invitation cancelled successfully
+        400: Cannot cancel invitation (wrong status)
+        404: Invitation not found
+        500: Server error
+    """
+    try:
+        from invitation_service import InvitationService
+
+        # Cancel invitation
+        success = InvitationService.cancel_invitation(invitation_id)
+
+        if success:
+            return (
+                jsonify(
+                    {"success": True, "message": "Invitation cancelled successfully"}
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to cancel invitation"}),
+                500,
+            )
+
+    except Exception as e:
+        logger.error(f"Error cancelling invitation: {e}")
+        if "not found" in str(e).lower():
+            return jsonify({"success": False, "error": "Invitation not found"}), 404
+        elif "Cannot cancel" in str(e):
+            return jsonify({"success": False, "error": str(e)}), 400
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to cancel invitation"}),
+                500,
+            )
