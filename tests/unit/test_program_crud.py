@@ -315,6 +315,8 @@ class TestProgramAPIEndpoints:
     @patch("api_routes.get_program_by_id")
     def test_get_program_success(self, mock_get_program):
         """Test successful program retrieval"""
+        from flask import Flask
+
         from api_routes import get_program
 
         mock_get_program.return_value = {
@@ -323,10 +325,12 @@ class TestProgramAPIEndpoints:
             "short_name": "CS",
         }
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = Mock()
+        app = Flask(__name__)
+        with app.test_request_context("/programs/test-program"):
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = Mock()
 
-            result = get_program("test-program")
+                result = get_program("test-program")
 
             mock_jsonify.assert_called_once_with(
                 {
@@ -342,14 +346,18 @@ class TestProgramAPIEndpoints:
     @patch("api_routes.get_program_by_id")
     def test_get_program_not_found(self, mock_get_program):
         """Test program retrieval when program doesn't exist"""
+        from flask import Flask
+
         from api_routes import get_program
 
         mock_get_program.return_value = None
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = (Mock(), 404)
+        app = Flask(__name__)
+        with app.test_request_context("/programs/nonexistent-program"):
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = (Mock(), 404)
 
-            result = get_program("nonexistent-program")
+                result = get_program("nonexistent-program")
 
             mock_jsonify.assert_called_once_with(
                 {"success": False, "error": "Program not found"}

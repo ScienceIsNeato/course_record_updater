@@ -215,7 +215,7 @@ def create_institution():
 
 
 @api.route("/institutions/<institution_id>", methods=["GET"])
-@login_required
+@permission_required("view_institution_data", context_keys=["institution_id"])
 def get_institution_details(institution_id: str):
     """Get institution details (users can only view their own institution)"""
     try:
@@ -368,7 +368,7 @@ def get_user(user_id: str):
 
 
 @api.route("/courses", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def list_courses():
     """
     Get list of courses, optionally filtered by department
@@ -452,7 +452,7 @@ def create_course_api():
 
 
 @api.route("/courses/<course_number>", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def get_course(course_number: str):
     """Get course details by course number"""
     try:
@@ -473,7 +473,7 @@ def get_course(course_number: str):
 
 
 @api.route("/instructors", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def list_instructors():
     """Get list of all instructors"""
     try:
@@ -501,7 +501,7 @@ def list_instructors():
 
 
 @api.route("/terms", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def list_terms():
     """Get list of active terms"""
     try:
@@ -580,7 +580,7 @@ def create_term_api():
 
 
 @api.route("/programs", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def list_programs():
     """Get list of programs for the current institution"""
     try:
@@ -659,7 +659,7 @@ def create_program_api():
 
 
 @api.route("/programs/<program_id>", methods=["GET"])
-@login_required
+@permission_required("view_program_data", context_keys=["program_id"])
 def get_program(program_id: str):
     """Get program details by ID"""
     try:
@@ -758,7 +758,7 @@ def delete_program_api(program_id: str):
 
 
 @api.route("/programs/<program_id>/courses", methods=["GET"])
-@login_required
+@permission_required("view_program_data", context_keys=["program_id"])
 def get_program_courses(program_id: str):
     """Get all courses associated with a program"""
     try:
@@ -944,7 +944,7 @@ def bulk_manage_program_courses(program_id: str):
 
 
 @api.route("/courses/<course_id>/programs", methods=["GET"])
-@login_required
+@permission_required("view_program_data")
 def get_course_programs(course_id: str):
     """Get all programs associated with a course"""
     try:
@@ -986,7 +986,7 @@ def get_course_programs(course_id: str):
 
 
 @api.route("/sections", methods=["GET"])
-@login_required
+@permission_required("view_section_data")
 def list_sections():
     """
     Get list of course sections
@@ -1685,7 +1685,7 @@ def get_registration_status_api(email):
 
 
 @api.route("/auth/invite", methods=["POST"])
-@login_required
+@permission_required("manage_institution_users")
 def create_invitation_api():
     """
     Create and send a user invitation
@@ -1881,7 +1881,7 @@ def get_invitation_status_api(invitation_token):
 
 
 @api.route("/auth/resend-invitation/<invitation_id>", methods=["POST"])
-@login_required
+@permission_required("manage_institution_users")
 def resend_invitation_api(invitation_id):
     """
     Resend an existing invitation
@@ -1925,7 +1925,7 @@ def resend_invitation_api(invitation_id):
 
 
 @api.route("/auth/invitations", methods=["GET"])
-@login_required
+@permission_required("manage_institution_users")
 def list_invitations_api():
     """
     List invitations for current user's institution
@@ -1981,7 +1981,7 @@ def list_invitations_api():
 
 
 @api.route("/auth/cancel-invitation/<invitation_id>", methods=["DELETE"])
-@login_required
+@permission_required("manage_institution_users")
 def cancel_invitation_api(invitation_id):
     """
     Cancel a pending invitation
