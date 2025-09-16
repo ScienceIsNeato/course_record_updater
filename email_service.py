@@ -201,24 +201,24 @@ class EmailService:
     def send_password_reset_confirmation_email(email: str, user_name: str) -> bool:
         """
         Send password reset confirmation email
-        
+
         Args:
             email: User's email address
             user_name: User's display name
-            
+
         Returns:
             True if email sent successfully
         """
         subject = "Password Reset Successful"
-        
+
         html_body = EmailService._render_password_reset_confirmation_email_html(
             user_name=user_name, email=email
         )
-        
+
         text_body = EmailService._render_password_reset_confirmation_email_text(
             user_name=user_name, email=email
         )
-        
+
         return EmailService._send_email(
             to_email=email, subject=subject, html_body=html_body, text_body=text_body
         )

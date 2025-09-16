@@ -730,6 +730,82 @@ class TestInstitutionEndpoints:
             data = json.loads(response.data)
             assert data["success"] is False
 
+    @patch("api_routes.create_new_institution")
+    def test_create_institution_missing_admin_user_field(self, mock_create_institution):
+        """Test POST /api/institutions with missing admin user field."""
+        with app.test_client() as client:
+            # Send institution data but missing admin user email
+            response = client.post("/api/institutions", json={
+                "institution": {
+                    "name": "Test University",
+                    "short_name": "TU",
+                    "domain": "testuniversity.edu"
+                },
+                "admin_user": {
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "password": "SecurePassword123!"
+                    # Missing email field
+                }
+            })
+            assert response.status_code == 400
+
+            data = json.loads(response.data)
+            assert data["success"] is False
+            assert "Admin user email is required" in data["error"]
+
+    @patch("api_routes.create_new_institution")
+    def test_create_institution_creation_failure(self, mock_create_institution):
+        """Test POST /api/institutions when institution creation fails."""
+        # Setup - make create_new_institution return None (failure)
+        mock_create_institution.return_value = None
+        
+        with app.test_client() as client:
+            response = client.post("/api/institutions", json={
+                "institution": {
+                    "name": "Test University",
+                    "short_name": "TU",
+                    "domain": "testuniversity.edu"
+                },
+                "admin_user": {
+                    "email": "admin@testuniversity.edu",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "password": "SecurePassword123!"
+                }
+            })
+            assert response.status_code == 500
+
+            data = json.loads(response.data)
+            assert data["success"] is False
+            assert "Failed to create institution" in data["error"]
+
+    @patch("api_routes.create_new_institution")
+    def test_create_institution_exception_handling(self, mock_create_institution):
+        """Test POST /api/institutions exception handling."""
+        # Setup - make create_new_institution raise an exception
+        mock_create_institution.side_effect = Exception("Database connection failed")
+        
+        with app.test_client() as client:
+            response = client.post("/api/institutions", json={
+                "institution": {
+                    "name": "Test University",
+                    "short_name": "TU",
+                    "domain": "testuniversity.edu"
+                },
+                "admin_user": {
+                    "email": "admin@testuniversity.edu",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "password": "SecurePassword123!"
+                }
+            })
+            assert response.status_code == 500
+
+            data = json.loads(response.data)
+            assert data["success"] is False
+            assert "Failed to create institution" in data["error"]
+
     @patch("api_routes.get_all_institutions")
     def test_list_institutions_exception(self, mock_get_institutions):
         """Test GET /api/institutions exception handling."""

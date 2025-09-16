@@ -10,7 +10,7 @@ import os  # Import os to check environment variables
 import signal
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
@@ -542,10 +542,10 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
 def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
     """
     Get user by password reset token
-    
+
     Args:
         reset_token: Password reset token to search for
-        
+
     Returns:
         User data if found, None otherwise
     """
@@ -558,7 +558,11 @@ def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
         with db_operation_timeout(5):
             query = (
                 db.collection(USERS_COLLECTION)
-                .where(filter=firestore.FieldFilter("password_reset_token", "==", reset_token))
+                .where(
+                    filter=firestore.FieldFilter(
+                        "password_reset_token", "==", reset_token
+                    )
+                )
                 .limit(1)
             )
 
@@ -1543,6 +1547,477 @@ def create_program(program_data: Dict[str, Any]) -> Optional[str]:
     except Exception as e:
         logger.error(f"[DB Service] Error creating program: {e}")
         return None
+
+
+def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all programs for a specific institution
+
+    Args:
+        institution_id: Institution identifier
+
+    Returns:
+        List of program dictionaries
+    """
+    logger.info(
+        f"[DB Service] get_programs_by_institution called for: {institution_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            programs_ref = db.collection("programs")
+            query = programs_ref.where("institution_id", "==", institution_id)
+            programs = []
+
+            for doc in query.stream():
+                program_data = doc.to_dict()
+                program_data["id"] = doc.id
+                programs.append(program_data)
+
+            logger.info(
+                f"[DB Service] Retrieved {len(programs)} programs for institution {institution_id}"
+            )
+            return programs
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error retrieving programs for institution {institution_id}: {e}"
+        )
+        return []
+
+
+def get_program_by_id(program_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a program by its ID
+
+    Args:
+        program_id: Program identifier
+
+    Returns:
+        Program dictionary if found, None otherwise
+    """
+    logger.info(f"[DB Service] get_program_by_id called for: {program_id}")
+
+    try:
+        with db_operation_timeout():
+            program_ref = db.collection("programs").document(program_id)
+            program_doc = program_ref.get()
+
+            if program_doc.exists:
+                program_data = program_doc.to_dict()
+                program_data["id"] = program_doc.id
+                logger.info(f"[DB Service] Retrieved program: {program_id}")
+                return program_data
+            else:
+                logger.info(f"[DB Service] Program not found: {program_id}")
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error retrieving program {program_id}: {e}")
+        return None
+
+
+def update_program(program_id: str, updates: Dict[str, Any]) -> bool:
+    """
+    Update a program's information
+
+    Args:
+        program_id: Program identifier
+        updates: Dictionary of fields to update
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(f"[DB Service] update_program called for: {program_id}")
+
+    try:
+        with db_operation_timeout():
+            program_ref = db.collection("programs").document(program_id)
+
+            # Add timestamp
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+            program_ref.update(updates)
+            logger.info(f"[DB Service] Updated program: {program_id}")
+            return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error updating program {program_id}: {e}")
+        return False
+
+
+def delete_program(program_id: str, reassign_to_program_id: str) -> bool:
+    """
+    Delete a program and reassign its courses to another program
+
+    Args:
+        program_id: Program identifier to delete
+        reassign_to_program_id: Program ID to reassign courses to
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(f"[DB Service] delete_program called for: {program_id}")
+
+    try:
+        with db_operation_timeout():
+            # First, reassign all courses from this program to the default program
+            courses_ref = db.collection("courses")
+            query = courses_ref.where("program_ids", "array_contains", program_id)
+
+            batch = db.batch()
+
+            for doc in query.stream():
+                course_data = doc.to_dict()
+                program_ids = course_data.get("program_ids", [])
+
+                # Remove the deleted program and add the reassignment program
+                if program_id in program_ids:
+                    program_ids.remove(program_id)
+
+                if reassign_to_program_id not in program_ids:
+                    program_ids.append(reassign_to_program_id)
+
+                # Update the course
+                batch.update(
+                    doc.reference,
+                    {
+                        "program_ids": program_ids,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+
+            # Delete the program
+            program_ref = db.collection("programs").document(program_id)
+            batch.delete(program_ref)
+
+            # Commit all changes
+            batch.commit()
+
+            logger.info(
+                f"[DB Service] Deleted program {program_id} and reassigned courses to {reassign_to_program_id}"
+            )
+            return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error deleting program {program_id}: {e}")
+        return False
+
+
+def get_courses_by_program(program_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all courses associated with a specific program
+
+    Args:
+        program_id: Program identifier
+
+    Returns:
+        List of course dictionaries
+    """
+    logger.info(f"[DB Service] get_courses_by_program called for: {program_id}")
+
+    try:
+        with db_operation_timeout():
+            courses_ref = db.collection("courses")
+            query = courses_ref.where("program_ids", "array_contains", program_id)
+            courses = []
+
+            for doc in query.stream():
+                course_data = doc.to_dict()
+                course_data["id"] = doc.id
+                courses.append(course_data)
+
+            logger.info(
+                f"[DB Service] Retrieved {len(courses)} courses for program {program_id}"
+            )
+            return courses
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error retrieving courses for program {program_id}: {e}"
+        )
+        return []
+
+
+def add_course_to_program(course_id: str, program_id: str) -> bool:
+    """
+    Add a course to a program
+
+    Args:
+        course_id: Course identifier
+        program_id: Program identifier
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(
+        f"[DB Service] add_course_to_program called: course={course_id}, program={program_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            course_ref = db.collection("courses").document(course_id)
+            course_doc = course_ref.get()
+
+            if not course_doc.exists:
+                logger.error(f"[DB Service] Course not found: {course_id}")
+                return False
+
+            course_data = course_doc.to_dict()
+            program_ids = course_data.get("program_ids", [])
+
+            # Add program if not already present
+            if program_id not in program_ids:
+                program_ids.append(program_id)
+                course_ref.update(
+                    {
+                        "program_ids": program_ids,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                logger.info(
+                    f"[DB Service] Added course {course_id} to program {program_id}"
+                )
+            else:
+                logger.info(
+                    f"[DB Service] Course {course_id} already in program {program_id}"
+                )
+
+            return True
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error adding course {course_id} to program {program_id}: {e}"
+        )
+        return False
+
+
+def remove_course_from_program(
+    course_id: str, program_id: str, default_program_id: Optional[str] = None
+) -> bool:
+    """
+    Remove a course from a program, optionally assigning to default program if orphaned
+
+    Args:
+        course_id: Course identifier
+        program_id: Program identifier to remove from
+        default_program_id: Default program ID to assign if course becomes orphaned
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(
+        f"[DB Service] remove_course_from_program called: course={course_id}, program={program_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            course_ref = db.collection("courses").document(course_id)
+            course_doc = course_ref.get()
+
+            if not course_doc.exists:
+                logger.error(f"[DB Service] Course not found: {course_id}")
+                return False
+
+            course_data = course_doc.to_dict()
+            program_ids = course_data.get("program_ids", [])
+
+            # Remove program if present
+            if program_id in program_ids:
+                program_ids.remove(program_id)
+
+                # If course becomes orphaned and default program provided, add to default
+                if not program_ids and default_program_id:
+                    program_ids.append(default_program_id)
+                    logger.info(
+                        f"[DB Service] Course {course_id} orphaned, assigned to default program {default_program_id}"
+                    )
+
+                course_ref.update(
+                    {
+                        "program_ids": program_ids,
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+                logger.info(
+                    f"[DB Service] Removed course {course_id} from program {program_id}"
+                )
+            else:
+                logger.info(
+                    f"[DB Service] Course {course_id} not in program {program_id}"
+                )
+
+            return True
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error removing course {course_id} from program {program_id}: {e}"
+        )
+        return False
+
+
+def bulk_add_courses_to_program(
+    course_ids: List[str], program_id: str
+) -> Dict[str, Any]:
+    """
+    Add multiple courses to a program in a batch operation
+
+    Args:
+        course_ids: List of course identifiers
+        program_id: Program identifier
+
+    Returns:
+        Dictionary with success/failure counts and details
+    """
+    logger.info(
+        f"[DB Service] bulk_add_courses_to_program called: {len(course_ids)} courses to program {program_id}"
+    )
+
+    result: Dict[str, Any] = {
+        "success_count": 0,
+        "failure_count": 0,
+        "failures": [],
+        "already_assigned": 0,
+    }
+
+    try:
+        with db_operation_timeout():
+            batch = db.batch()
+
+            for course_id in course_ids:
+                try:
+                    course_ref = db.collection("courses").document(course_id)
+                    course_doc = course_ref.get()
+
+                    if not course_doc.exists:
+                        result["failure_count"] += 1
+                        result["failures"].append(
+                            {"course_id": course_id, "error": "Course not found"}
+                        )
+                        continue
+
+                    course_data = course_doc.to_dict()
+                    program_ids = course_data.get("program_ids", [])
+
+                    if program_id in program_ids:
+                        result["already_assigned"] += 1
+                        continue
+
+                    program_ids.append(program_id)
+                    batch.update(
+                        course_ref,
+                        {
+                            "program_ids": program_ids,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+                    result["success_count"] += 1
+
+                except Exception as e:
+                    result["failure_count"] += 1
+                    result["failures"].append({"course_id": course_id, "error": str(e)})
+
+            # Commit all changes
+            if result["success_count"] > 0:
+                batch.commit()
+                logger.info(
+                    f"[DB Service] Bulk added {result['success_count']} courses to program {program_id}"
+                )
+
+            return result
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error in bulk_add_courses_to_program: {e}")
+        result["failure_count"] = len(course_ids)
+        result["success_count"] = 0
+        result["failures"] = [{"course_id": cid, "error": str(e)} for cid in course_ids]
+        return result
+
+
+def bulk_remove_courses_from_program(
+    course_ids: List[str], program_id: str, default_program_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Remove multiple courses from a program in a batch operation
+
+    Args:
+        course_ids: List of course identifiers
+        program_id: Program identifier to remove from
+        default_program_id: Default program ID to assign if courses become orphaned
+
+    Returns:
+        Dictionary with success/failure counts and details
+    """
+    logger.info(
+        f"[DB Service] bulk_remove_courses_from_program called: {len(course_ids)} courses from program {program_id}"
+    )
+
+    result: Dict[str, Any] = {
+        "success_count": 0,
+        "failure_count": 0,
+        "failures": [],
+        "not_assigned": 0,
+        "orphaned_assigned_to_default": 0,
+    }
+
+    try:
+        with db_operation_timeout():
+            batch = db.batch()
+
+            for course_id in course_ids:
+                try:
+                    course_ref = db.collection("courses").document(course_id)
+                    course_doc = course_ref.get()
+
+                    if not course_doc.exists:
+                        result["failure_count"] += 1
+                        result["failures"].append(
+                            {"course_id": course_id, "error": "Course not found"}
+                        )
+                        continue
+
+                    course_data = course_doc.to_dict()
+                    program_ids = course_data.get("program_ids", [])
+
+                    if program_id not in program_ids:
+                        result["not_assigned"] += 1
+                        continue
+
+                    program_ids.remove(program_id)
+
+                    # If course becomes orphaned and default program provided
+                    if not program_ids and default_program_id:
+                        program_ids.append(default_program_id)
+                        result["orphaned_assigned_to_default"] += 1
+
+                    batch.update(
+                        course_ref,
+                        {
+                            "program_ids": program_ids,
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+                    result["success_count"] += 1
+
+                except Exception as e:
+                    result["failure_count"] += 1
+                    result["failures"].append({"course_id": course_id, "error": str(e)})
+
+            # Commit all changes
+            if result["success_count"] > 0:
+                batch.commit()
+                logger.info(
+                    f"[DB Service] Bulk removed {result['success_count']} courses from program {program_id}"
+                )
+
+            return result
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error in bulk_remove_courses_from_program: {e}")
+        result["failure_count"] = len(course_ids)
+        result["success_count"] = 0
+        result["failures"] = [{"course_id": cid, "error": str(e)} for cid in course_ids]
+        return result
 
 
 def update_user(user_id: str, updates: Dict[str, Any]) -> bool:

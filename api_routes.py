@@ -19,10 +19,15 @@ from auth_service import (
     permission_required,
 )
 from database_service import (
+    add_course_to_program,
+    bulk_add_courses_to_program,
+    bulk_remove_courses_from_program,
     create_course,
     create_course_section,
     create_new_institution,
+    create_program,
     create_term,
+    delete_program,
     get_active_terms,
     get_all_courses,
     get_all_institutions,
@@ -30,14 +35,20 @@ from database_service import (
     get_all_sections,
     get_course_by_number,
     get_courses_by_department,
+    get_courses_by_program,
     get_institution_by_id,
     get_institution_instructor_count,
+    get_program_by_id,
+    get_programs_by_institution,
     get_sections_by_instructor,
     get_sections_by_term,
     get_users_by_role,
+    remove_course_from_program,
+    update_program,
 )
 from import_service import import_excel
 from logging_config import get_logger
+from models import Program
 from registration_service import (
     RegistrationError,
     get_registration_status,
@@ -550,6 +561,412 @@ def create_term_api():
 
     except Exception as e:
         return handle_api_error(e, "Create term", "Failed to create term")
+
+
+# ========================================
+# PROGRAM MANAGEMENT API
+# ========================================
+
+
+@api.route("/programs", methods=["GET"])
+@login_required
+def list_programs():
+    """Get list of programs for the current institution"""
+    try:
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return jsonify({"success": False, "error": "Institution ID not found"}), 400
+
+        programs = get_programs_by_institution(institution_id)
+
+        return jsonify({"success": True, "programs": programs})
+
+    except Exception as e:
+        return handle_api_error(e, "List programs", "Failed to retrieve programs")
+
+
+@api.route("/programs", methods=["POST"])
+@permission_required("manage_programs")
+def create_program_api():
+    """Create a new program"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        # Validate required fields
+        required_fields = ["name", "short_name"]
+        for field in required_fields:
+            if field not in data:
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Missing required field: {field}"}
+                    ),
+                    400,
+                )
+
+        # Get current institution and user
+        institution_id = get_current_institution_id()
+        current_user = get_current_user()
+
+        if not institution_id:
+            return jsonify({"success": False, "error": "Institution ID not found"}), 400
+
+        if not current_user:
+            return jsonify({"success": False, "error": "User not found"}), 400
+
+        # Create program schema
+        program_data = Program.create_schema(
+            name=data["name"],
+            short_name=data["short_name"],
+            institution_id=institution_id,
+            created_by=current_user.get("user_id", "unknown"),
+            description=data.get("description"),
+            is_default=data.get("is_default", False),
+            program_admins=data.get("program_admins", []),
+        )
+
+        # Create program in database
+        program_id = create_program(program_data)
+
+        if program_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "program_id": program_id,
+                        "message": "Program created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to create program"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Create program", "Failed to create program")
+
+
+@api.route("/programs/<program_id>", methods=["GET"])
+@login_required
+def get_program(program_id: str):
+    """Get program details by ID"""
+    try:
+        program = get_program_by_id(program_id)
+
+        if program:
+            return jsonify({"success": True, "program": program})
+        else:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+    except Exception as e:
+        return handle_api_error(e, "Get program", "Failed to retrieve program")
+
+
+@api.route("/programs/<program_id>", methods=["PUT"])
+@permission_required("manage_programs")
+def update_program_api(program_id: str):
+    """Update an existing program"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        # Validate program exists and user has permission
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        # Update program
+        success = update_program(program_id, data)
+
+        if success:
+            return jsonify({"success": True, "message": "Program updated successfully"})
+        else:
+            return jsonify({"success": False, "error": "Failed to update program"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update program", "Failed to update program")
+
+
+@api.route("/programs/<program_id>", methods=["DELETE"])
+@permission_required("manage_programs")
+def delete_program_api(program_id: str):
+    """Delete a program (with course reassignment to default)"""
+    try:
+        # Validate program exists and user has permission
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        # Prevent deletion of default program
+        if program.get("is_default", False):
+            return (
+                jsonify({"success": False, "error": "Cannot delete default program"}),
+                400,
+            )
+
+        # Get the default program for reassignment
+        institution_id = get_current_institution_id()
+        programs = get_programs_by_institution(institution_id)
+        default_program = next(
+            (p for p in programs if p.get("is_default", False)), None
+        )
+
+        if not default_program:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "No default program found for course reassignment",
+                    }
+                ),
+                500,
+            )
+
+        # Delete program and reassign courses
+        success = delete_program(program_id, default_program["id"])
+
+        if success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Program deleted successfully and courses reassigned",
+                }
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to delete program"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Delete program", "Failed to delete program")
+
+
+# ========================================
+# COURSE-PROGRAM ASSOCIATION API
+# ========================================
+
+
+@api.route("/programs/<program_id>/courses", methods=["GET"])
+@login_required
+def get_program_courses(program_id: str):
+    """Get all courses associated with a program"""
+    try:
+        # Validate program exists and user has access
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        courses = get_courses_by_program(program_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "program_id": program_id,
+                "program_name": program.get("name"),
+                "courses": courses,
+                "count": len(courses),
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get program courses", "Failed to retrieve program courses"
+        )
+
+
+@api.route("/programs/<program_id>/courses", methods=["POST"])
+@permission_required("manage_programs")
+def add_course_to_program_api(program_id: str):
+    """Add a course to a program"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        course_id = data.get("course_id")
+        if not course_id:
+            return (
+                jsonify(
+                    {"success": False, "error": "Missing required field: course_id"}
+                ),
+                400,
+            )
+
+        # Validate program exists
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        # Validate course exists
+        course = get_course_by_number(
+            course_id
+        )  # Assuming course_id is course_number for now
+        if not course:
+            return jsonify({"success": False, "error": "Course not found"}), 404
+
+        # Add course to program
+        success = add_course_to_program(course["course_id"], program_id)
+
+        if success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Course {course_id} added to program {program.get('name', program_id)}",
+                }
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to add course to program"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Add course to program", "Failed to add course to program"
+        )
+
+
+@api.route("/programs/<program_id>/courses/<course_id>", methods=["DELETE"])
+@permission_required("manage_programs")
+def remove_course_from_program_api(program_id: str, course_id: str):
+    """Remove a course from a program"""
+    try:
+        # Validate program exists
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        # Get default program for orphan handling
+        institution_id = get_current_institution_id()
+        programs = get_programs_by_institution(institution_id)
+        default_program = next(
+            (p for p in programs if p.get("is_default", False)), None
+        )
+
+        default_program_id = default_program["id"] if default_program else None
+
+        # Remove course from program
+        success = remove_course_from_program(course_id, program_id, default_program_id)
+
+        if success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Course {course_id} removed from program {program.get('name', program_id)}",
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to remove course from program"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Remove course from program", "Failed to remove course from program"
+        )
+
+
+@api.route("/programs/<program_id>/courses/bulk", methods=["POST"])
+@permission_required("manage_programs")
+def bulk_manage_program_courses(program_id: str):
+    """Bulk add or remove courses from a program"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+
+        action = data.get("action")
+        course_ids = data.get("course_ids", [])
+
+        if not action or action not in ["add", "remove"]:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Invalid or missing action. Use 'add' or 'remove'",
+                    }
+                ),
+                400,
+            )
+
+        if not course_ids or not isinstance(course_ids, list):
+            return (
+                jsonify(
+                    {"success": False, "error": "Missing or invalid course_ids array"}
+                ),
+                400,
+            )
+
+        # Validate program exists
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        if action == "add":
+            result = bulk_add_courses_to_program(course_ids, program_id)
+            message = f"Bulk add operation completed: {result['success_count']} added"
+        else:  # remove
+            # Get default program for orphan handling
+            institution_id = get_current_institution_id()
+            programs = get_programs_by_institution(institution_id)
+            default_program = next(
+                (p for p in programs if p.get("is_default", False)), None
+            )
+            default_program_id = default_program["id"] if default_program else None
+
+            result = bulk_remove_courses_from_program(
+                course_ids, program_id, default_program_id
+            )
+            message = (
+                f"Bulk remove operation completed: {result['success_count']} removed"
+            )
+
+        return jsonify({"success": True, "message": message, "details": result})
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Bulk manage program courses", "Failed to bulk manage program courses"
+        )
+
+
+@api.route("/courses/<course_id>/programs", methods=["GET"])
+@login_required
+def get_course_programs(course_id: str):
+    """Get all programs associated with a course"""
+    try:
+        # Get course to validate it exists
+        course = get_course_by_number(
+            course_id
+        )  # Assuming course_id is course_number for now
+        if not course:
+            return jsonify({"success": False, "error": "Course not found"}), 404
+
+        program_ids = course.get("program_ids", [])
+        programs = []
+
+        # Get program details for each program ID
+        for program_id in program_ids:
+            program = get_program_by_id(program_id)
+            if program:
+                programs.append(program)
+
+        return jsonify(
+            {
+                "success": True,
+                "course_id": course_id,
+                "course_title": course.get("course_title"),
+                "programs": programs,
+                "count": len(programs),
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course programs", "Failed to retrieve course programs"
+        )
 
 
 # ========================================
@@ -1743,18 +2160,19 @@ def cancel_invitation_api(invitation_id):
 
 # ===== LOGIN/LOGOUT API ENDPOINTS =====
 
+
 @api.route("/auth/login", methods=["POST"])
 def login_api():
     """
     Authenticate user and create session
-    
+
     JSON Body:
     {
         "email": "user@example.com",
         "password": "password123",
         "remember_me": false  // Optional, default false
     }
-    
+
     Returns:
         200: Login successful
         400: Invalid request data
@@ -1765,12 +2183,12 @@ def login_api():
     try:
         from login_service import LoginService
         from password_service import AccountLockedError
-        
+
         # Get request data
         data = request.get_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
-        
+
         # Validate required fields
         required_fields = ["email", "password"]
         for field in required_fields:
@@ -1781,24 +2199,23 @@ def login_api():
                     ),
                     400,
                 )
-        
+
         # Authenticate user
         result = LoginService.authenticate_user(
             email=data["email"],
             password=data["password"],
-            remember_me=data.get("remember_me", False)
+            remember_me=data.get("remember_me", False),
         )
-        
+
         return (
-            jsonify({
-                "success": True,
-                **result
-            }),
+            jsonify({"success": True, **result}),
             200,
         )
-        
+
     except AccountLockedError as e:
-        logger.warning(f"Account locked during login attempt: {data.get('email', 'unknown')}")
+        logger.warning(
+            f"Account locked during login attempt: {data.get('email', 'unknown')}"
+        )
         return jsonify({"success": False, "error": str(e)}), 423
     except Exception as e:
         logger.error(f"Login error: {e}")
@@ -1812,22 +2229,19 @@ def login_api():
 def logout_api():
     """
     Logout current user and destroy session
-    
+
     Returns:
         200: Logout successful
         500: Server error
     """
     try:
         from login_service import LoginService
-        
+
         # Logout user
         result = LoginService.logout_user()
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Logout error: {e}")
         return jsonify({"success": False, "error": "Logout failed"}), 500
@@ -1837,22 +2251,19 @@ def logout_api():
 def login_status_api():
     """
     Get current login status
-    
+
     Returns:
         200: Status retrieved successfully
         500: Server error
     """
     try:
         from login_service import LoginService
-        
+
         # Get login status
         status = LoginService.get_login_status()
-        
-        return jsonify({
-            "success": True,
-            **status
-        }), 200
-        
+
+        return jsonify({"success": True, **status}), 200
+
     except Exception as e:
         logger.error(f"Error getting login status: {e}")
         return jsonify({"success": False, "error": "Failed to get login status"}), 500
@@ -1862,7 +2273,7 @@ def login_status_api():
 def refresh_session_api():
     """
     Refresh current user session
-    
+
     Returns:
         200: Session refreshed successfully
         401: No active session
@@ -1870,48 +2281,48 @@ def refresh_session_api():
     """
     try:
         from login_service import LoginService
-        
+
         # Refresh session
         result = LoginService.refresh_session()
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Session refresh error: {e}")
         if "No active session" in str(e):
             return jsonify({"success": False, "error": str(e)}), 401
         else:
-            return jsonify({"success": False, "error": "Failed to refresh session"}), 500
+            return (
+                jsonify({"success": False, "error": "Failed to refresh session"}),
+                500,
+            )
 
 
 @api.route("/auth/lockout-status/<email>", methods=["GET"])
 def check_lockout_status_api(email):
     """
     Check account lockout status for an email
-    
+
     URL: /api/auth/lockout-status/{email}
-    
+
     Returns:
         200: Lockout status retrieved
         500: Server error
     """
     try:
         from login_service import LoginService
-        
+
         # Check lockout status
         status = LoginService.check_account_lockout_status(email)
-        
-        return jsonify({
-            "success": True,
-            **status
-        }), 200
-        
+
+        return jsonify({"success": True, **status}), 200
+
     except Exception as e:
         logger.error(f"Error checking lockout status: {e}")
-        return jsonify({"success": False, "error": "Failed to check lockout status"}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to check lockout status"}),
+            500,
+        )
 
 
 @api.route("/auth/unlock-account", methods=["POST"])
@@ -1919,12 +2330,12 @@ def check_lockout_status_api(email):
 def unlock_account_api():
     """
     Manually unlock a locked account (admin function)
-    
+
     JSON Body:
     {
         "email": "user@example.com"
     }
-    
+
     Returns:
         200: Account unlocked successfully
         400: Invalid request data
@@ -1932,33 +2343,33 @@ def unlock_account_api():
         500: Server error
     """
     try:
-        from login_service import LoginService
         from auth_service import get_current_user
-        
+        from login_service import LoginService
+
         # Get request data
         data = request.get_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
-        
+
         if "email" not in data:
-            return jsonify({"success": False, "error": "Missing required field: email"}), 400
-        
+            return (
+                jsonify({"success": False, "error": "Missing required field: email"}),
+                400,
+            )
+
         # Get current user (admin check would go here)
         current_user = get_current_user()
         if not current_user:
             return jsonify({"success": False, "error": "Authentication required"}), 401
-        
+
         # For now, allow any logged-in user to unlock accounts
         # In production, this should check for admin role
-        
+
         # Unlock account
         result = LoginService.unlock_account(data["email"], current_user["id"])
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Account unlock error: {e}")
         return jsonify({"success": False, "error": "Failed to unlock account"}), 500
@@ -1966,16 +2377,17 @@ def unlock_account_api():
 
 # ===== PASSWORD RESET API ENDPOINTS =====
 
+
 @api.route("/auth/forgot-password", methods=["POST"])
 def forgot_password_api():
     """
     Request password reset email
-    
+
     JSON Body:
     {
         "email": "user@example.com"
     }
-    
+
     Returns:
         200: Reset email sent (or would be sent)
         400: Invalid request data
@@ -1984,23 +2396,23 @@ def forgot_password_api():
     """
     try:
         from password_reset_service import PasswordResetService
-        
+
         # Get request data
         data = request.get_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
-        
+
         if "email" not in data:
-            return jsonify({"success": False, "error": "Missing required field: email"}), 400
-        
+            return (
+                jsonify({"success": False, "error": "Missing required field: email"}),
+                400,
+            )
+
         # Request password reset
         result = PasswordResetService.request_password_reset(data["email"])
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Password reset request error: {e}")
         if "Too many" in str(e):
@@ -2008,20 +2420,23 @@ def forgot_password_api():
         elif "restricted in development" in str(e):
             return jsonify({"success": False, "error": str(e)}), 400
         else:
-            return jsonify({"success": False, "error": "Password reset request failed"}), 500
+            return (
+                jsonify({"success": False, "error": "Password reset request failed"}),
+                500,
+            )
 
 
 @api.route("/auth/reset-password", methods=["POST"])
 def reset_password_api():
     """
     Complete password reset with new password
-    
+
     JSON Body:
     {
         "reset_token": "secure-reset-token",
         "new_password": "newSecurePassword123!"
     }
-    
+
     Returns:
         200: Password reset successful
         400: Invalid request data or token
@@ -2029,32 +2444,35 @@ def reset_password_api():
     """
     try:
         from password_reset_service import PasswordResetService
-        
+
         # Get request data
         data = request.get_json()
         if not data:
             return jsonify({"success": False, "error": "No JSON data provided"}), 400
-        
+
         # Validate required fields
         required_fields = ["reset_token", "new_password"]
         for field in required_fields:
             if field not in data:
-                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
-        
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Missing required field: {field}"}
+                    ),
+                    400,
+                )
+
         # Reset password
         result = PasswordResetService.reset_password(
-            reset_token=data["reset_token"],
-            new_password=data["new_password"]
+            reset_token=data["reset_token"], new_password=data["new_password"]
         )
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Password reset error: {e}")
-        if any(phrase in str(e) for phrase in ["Invalid", "expired", "validation failed"]):
+        if any(
+            phrase in str(e) for phrase in ["Invalid", "expired", "validation failed"]
+        ):
             return jsonify({"success": False, "error": str(e)}), 400
         else:
             return jsonify({"success": False, "error": "Password reset failed"}), 500
@@ -2064,51 +2482,48 @@ def reset_password_api():
 def validate_reset_token_api(reset_token):
     """
     Validate a password reset token
-    
+
     URL: /api/auth/validate-reset-token/{token}
-    
+
     Returns:
         200: Token validation result
         500: Server error
     """
     try:
         from password_reset_service import PasswordResetService
-        
+
         # Validate reset token
         result = PasswordResetService.validate_reset_token(reset_token)
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Token validation error: {e}")
-        return jsonify({"success": False, "error": "Failed to validate reset token"}), 500
+        return (
+            jsonify({"success": False, "error": "Failed to validate reset token"}),
+            500,
+        )
 
 
 @api.route("/auth/reset-status/<email>", methods=["GET"])
 def reset_status_api(email):
     """
     Get password reset status for an email
-    
+
     URL: /api/auth/reset-status/{email}
-    
+
     Returns:
         200: Reset status retrieved
         500: Server error
     """
     try:
         from password_reset_service import PasswordResetService
-        
+
         # Get reset status
         result = PasswordResetService.get_reset_status(email)
-        
-        return jsonify({
-            "success": True,
-            **result
-        }), 200
-        
+
+        return jsonify({"success": True, **result}), 200
+
     except Exception as e:
         logger.error(f"Reset status error: {e}")
         return jsonify({"success": False, "error": "Failed to get reset status"}), 500

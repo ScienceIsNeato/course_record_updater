@@ -4,12 +4,13 @@ Unit tests for login_service.py
 Tests the LoginService class and its methods for user authentication functionality.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import MagicMock, Mock, patch
 
-from login_service import LoginService, LoginError
+import pytest
+
+from login_service import LoginError, LoginService
 from password_service import AccountLockedError
 
 
@@ -19,7 +20,9 @@ class TestLoginServiceAuthentication:
     @patch("login_service.SessionService")
     @patch("login_service.PasswordService")
     @patch("login_service.db")
-    def test_authenticate_user_success(self, mock_db, mock_password_service, mock_session_service):
+    def test_authenticate_user_success(
+        self, mock_db, mock_password_service, mock_session_service
+    ):
         """Test successful user authentication"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -31,7 +34,7 @@ class TestLoginServiceAuthentication:
             "account_status": "active",
             "institution_id": "inst-123",
             "display_name": "Test User",
-            "login_count": 5
+            "login_count": 5,
         }
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
@@ -39,7 +42,9 @@ class TestLoginServiceAuthentication:
         mock_session_service.create_user_session.return_value = None
 
         # Execute
-        result = LoginService.authenticate_user("test@example.com", "password123", False)
+        result = LoginService.authenticate_user(
+            "test@example.com", "password123", False
+        )
 
         # Verify
         assert result["login_success"] is True
@@ -48,10 +53,16 @@ class TestLoginServiceAuthentication:
         assert result["role"] == "instructor"
         assert result["message"] == "Login successful"
 
-        mock_password_service.check_account_lockout.assert_called_once_with("test@example.com")
+        mock_password_service.check_account_lockout.assert_called_once_with(
+            "test@example.com"
+        )
         mock_db.get_user_by_email.assert_called_once_with("test@example.com")
-        mock_password_service.verify_password.assert_called_once_with("password123", "hashed-password")
-        mock_password_service.clear_failed_attempts.assert_called_once_with("test@example.com")
+        mock_password_service.verify_password.assert_called_once_with(
+            "password123", "hashed-password"
+        )
+        mock_password_service.clear_failed_attempts.assert_called_once_with(
+            "test@example.com"
+        )
         mock_db.update_user.assert_called_once()
         mock_session_service.create_user_session.assert_called_once()
 
@@ -68,7 +79,9 @@ class TestLoginServiceAuthentication:
         with pytest.raises(LoginError, match="Invalid email or password"):
             LoginService.authenticate_user("invalid@example.com", "password123")
 
-        mock_password_service.track_failed_login.assert_called_once_with("invalid@example.com")
+        mock_password_service.track_failed_login.assert_called_once_with(
+            "invalid@example.com"
+        )
 
     @patch("login_service.PasswordService")
     @patch("login_service.db")
@@ -80,7 +93,7 @@ class TestLoginServiceAuthentication:
             "user_id": "user-123",
             "email": "test@example.com",
             "password_hash": "hashed-password",
-            "account_status": "active"
+            "account_status": "active",
         }
         mock_password_service.verify_password.return_value = False
         mock_password_service.track_failed_login.return_value = None
@@ -89,7 +102,9 @@ class TestLoginServiceAuthentication:
         with pytest.raises(LoginError, match="Invalid email or password"):
             LoginService.authenticate_user("test@example.com", "wrongpassword")
 
-        mock_password_service.track_failed_login.assert_called_once_with("test@example.com")
+        mock_password_service.track_failed_login.assert_called_once_with(
+            "test@example.com"
+        )
 
     @patch("login_service.PasswordService")
     @patch("login_service.db")
@@ -101,7 +116,7 @@ class TestLoginServiceAuthentication:
             "user_id": "user-123",
             "email": "test@example.com",
             "password_hash": "hashed-password",
-            "account_status": "pending"
+            "account_status": "pending",
         }
 
         # Execute & Verify
@@ -118,7 +133,7 @@ class TestLoginServiceAuthentication:
             "user_id": "user-123",
             "email": "test@example.com",
             "password_hash": "hashed-password",
-            "account_status": "suspended"
+            "account_status": "suspended",
         }
 
         # Execute & Verify
@@ -129,7 +144,9 @@ class TestLoginServiceAuthentication:
     def test_authenticate_user_account_locked(self, mock_password_service):
         """Test authentication with locked account"""
         # Setup
-        mock_password_service.check_account_lockout.side_effect = AccountLockedError("Account is locked")
+        mock_password_service.check_account_lockout.side_effect = AccountLockedError(
+            "Account is locked"
+        )
 
         # Execute & Verify
         with pytest.raises(AccountLockedError, match="Account is locked"):
@@ -144,18 +161,22 @@ class TestLoginServiceAuthentication:
         mock_db.get_user_by_email.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
-            "account_status": "active"
+            "account_status": "active",
             # No password_hash field
         }
 
         # Execute & Verify
-        with pytest.raises(LoginError, match="Account is not configured for password login"):
+        with pytest.raises(
+            LoginError, match="Account is not configured for password login"
+        ):
             LoginService.authenticate_user("test@example.com", "password123")
 
     @patch("login_service.SessionService")
     @patch("login_service.PasswordService")
     @patch("login_service.db")
-    def test_authenticate_user_remember_me(self, mock_db, mock_password_service, mock_session_service):
+    def test_authenticate_user_remember_me(
+        self, mock_db, mock_password_service, mock_session_service
+    ):
         """Test authentication with remember me option"""
         # Setup
         mock_password_service.check_account_lockout.return_value = None
@@ -165,7 +186,7 @@ class TestLoginServiceAuthentication:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
-            "login_count": 0
+            "login_count": 0,
         }
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
@@ -173,13 +194,17 @@ class TestLoginServiceAuthentication:
         mock_session_service.create_user_session.return_value = None
 
         # Execute
-        result = LoginService.authenticate_user("test@example.com", "password123", remember_me=True)
+        result = LoginService.authenticate_user(
+            "test@example.com", "password123", remember_me=True
+        )
 
         # Verify
         assert result["login_success"] is True
         mock_session_service.create_user_session.assert_called_once()
         session_call = mock_session_service.create_user_session.call_args
-        assert session_call[0][1] is True  # remember_me is the second positional argument
+        assert (
+            session_call[0][1] is True
+        )  # remember_me is the second positional argument
 
 
 class TestLoginServiceLogout:
@@ -189,7 +214,9 @@ class TestLoginServiceLogout:
     def test_logout_user_success(self, mock_session_service):
         """Test successful user logout"""
         # Setup
-        mock_session_service.get_session_info.return_value = {"email": "test@example.com"}
+        mock_session_service.get_session_info.return_value = {
+            "email": "test@example.com"
+        }
         mock_session_service.destroy_session.return_value = None
 
         # Execute
@@ -231,7 +258,7 @@ class TestLoginServiceStatus:
             "role": "instructor",
             "institution_id": "inst-123",
             "display_name": "Test User",
-            "last_activity": "2024-01-01T12:00:00"
+            "last_activity": "2024-01-01T12:00:00",
         }
 
         # Execute
@@ -355,13 +382,17 @@ class TestLoginServiceAccountLockout:
         # Verify
         assert result["unlock_success"] is True
         assert "has been unlocked" in result["message"]
-        mock_password_service.clear_failed_attempts.assert_called_once_with("test@example.com")
+        mock_password_service.clear_failed_attempts.assert_called_once_with(
+            "test@example.com"
+        )
 
     @patch("login_service.PasswordService")
     def test_unlock_account_error(self, mock_password_service):
         """Test account unlock with error"""
         # Setup
-        mock_password_service.clear_failed_attempts.side_effect = Exception("Unlock error")
+        mock_password_service.clear_failed_attempts.side_effect = Exception(
+            "Unlock error"
+        )
 
         # Execute & Verify
         with pytest.raises(LoginError, match="Failed to unlock account"):
@@ -378,7 +409,7 @@ class TestLoginServiceNotifications:
         mock_db.get_user_by_email.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
-            "institution_id": "inst-123"
+            "institution_id": "inst-123",
         }
         mock_db.get_institution_by_id.return_value = {"name": "Test Institution"}
 
@@ -413,11 +444,14 @@ class TestLoginServiceConvenienceFunctions:
 
         # Execute
         from login_service import login_user
+
         result = login_user("test@example.com", "password123", True)
 
         # Verify
         assert result == expected_result
-        mock_authenticate.assert_called_once_with("test@example.com", "password123", True)
+        mock_authenticate.assert_called_once_with(
+            "test@example.com", "password123", True
+        )
 
     @patch("login_service.LoginService.logout_user")
     def test_logout_user_convenience(self, mock_logout):
@@ -428,6 +462,7 @@ class TestLoginServiceConvenienceFunctions:
 
         # Execute
         from login_service import logout_user
+
         result = logout_user()
 
         # Verify
@@ -442,6 +477,7 @@ class TestLoginServiceConvenienceFunctions:
 
         # Execute
         from login_service import is_user_logged_in
+
         result = is_user_logged_in()
 
         # Verify
@@ -455,11 +491,12 @@ class TestLoginServiceConvenienceFunctions:
             "logged_in": True,
             "user_id": "user-123",
             "email": "test@example.com",
-            "role": "instructor"
+            "role": "instructor",
         }
 
         # Execute
         from login_service import get_current_user_info
+
         result = get_current_user_info()
 
         # Verify
@@ -475,6 +512,7 @@ class TestLoginServiceConvenienceFunctions:
 
         # Execute
         from login_service import get_current_user_info
+
         result = get_current_user_info()
 
         # Verify
@@ -487,7 +525,9 @@ class TestLoginServiceIntegration:
     @patch("login_service.SessionService")
     @patch("login_service.PasswordService")
     @patch("login_service.db")
-    def test_complete_login_logout_flow(self, mock_db, mock_password_service, mock_session_service):
+    def test_complete_login_logout_flow(
+        self, mock_db, mock_password_service, mock_session_service
+    ):
         """Test complete login and logout flow"""
         # Setup for login
         mock_password_service.check_account_lockout.return_value = None
@@ -497,7 +537,7 @@ class TestLoginServiceIntegration:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
-            "login_count": 0
+            "login_count": 0,
         }
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
@@ -514,7 +554,7 @@ class TestLoginServiceIntegration:
         mock_session_service.get_session_info.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
-            "role": "instructor"
+            "role": "instructor",
         }
 
         # Step 2: Check status
@@ -522,7 +562,9 @@ class TestLoginServiceIntegration:
         assert status_result["logged_in"] is True
 
         # Setup for logout
-        mock_session_service.get_session_info.return_value = {"email": "test@example.com"}
+        mock_session_service.get_session_info.return_value = {
+            "email": "test@example.com"
+        }
         mock_session_service.destroy_session.return_value = None
 
         # Step 3: Logout
