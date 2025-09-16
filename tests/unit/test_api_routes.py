@@ -1530,10 +1530,16 @@ class TestAuthenticationIntegration:
         # Test that auth functions are imported and available
         from api_routes import get_current_user, has_permission
 
-        # In stub mode, these should work
+        # Test that auth functions work correctly
         user = get_current_user()
         assert user is not None
-        assert has_permission("any_permission") is True
+        assert user["role"] == "site_admin"
+
+        # Test valid permission
+        assert has_permission("manage_users") is True
+
+        # Test invalid permission
+        assert has_permission("nonexistent_permission") is False
 
 
 class TestInstitutionEndpoints:
