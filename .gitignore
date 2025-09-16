@@ -28,5 +28,5 @@ codeql-results*.sarif
 
 firebase-debug.log
 firestore-debug.log
-saftey_detailed_output.txt
+safety_detailed_output.txt
 safety_full_diagnostic.txt

@@ -38,6 +38,13 @@ from database_service import (
 )
 from import_service import import_excel
 from logging_config import get_logger
+from registration_service import (
+    RegistrationError,
+    get_registration_status,
+    register_institution_admin,
+    resend_verification_email,
+    verify_email,
+)
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -1118,3 +1125,272 @@ def api_not_found(error):
 def api_internal_error(error):
     """Handle 500 errors for API routes"""
     return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+# =============================================================================
+# REGISTRATION API ENDPOINTS (Story 2.1)
+# =============================================================================
+
+
+@api.route("/auth/register", methods=["POST"])
+def register_institution_admin_api():
+    """
+    Register a new institution administrator
+
+    Expected JSON payload:
+    {
+        "email": "admin@example.com",
+        "password": "SecurePass123!",
+        "first_name": "John",
+        "last_name": "Doe",
+        "institution_name": "Example University",
+        "website_url": "https://example.edu"  // optional
+    }
+
+    Returns:
+    {
+        "success": true,
+        "message": "Registration successful! Please check your email to verify your account.",
+        "user_id": "user-123",
+        "institution_id": "inst-123"
+    }
+    """
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = [
+            "email",
+            "password",
+            "first_name",
+            "last_name",
+            "institution_name",
+        ]
+        missing_fields = [field for field in required_fields if not data.get(field)]
+
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Missing required fields: {', '.join(missing_fields)}",
+                    }
+                ),
+                400,
+            )
+
+        # Extract data
+        email = data["email"].strip().lower()
+        password = data["password"]
+        first_name = data["first_name"].strip()
+        last_name = data["last_name"].strip()
+        institution_name = data["institution_name"].strip()
+        website_url = data.get("website_url", "").strip() or None
+
+        # Validate email format
+        if "@" not in email or "." not in email:
+            return jsonify({"success": False, "error": "Invalid email format"}), 400
+
+        # Register the admin
+        result = register_institution_admin(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            institution_name=institution_name,
+            website_url=website_url,
+        )
+
+        # Return success response (exclude sensitive data)
+        return (
+            jsonify(
+                {
+                    "success": result["success"],
+                    "message": result["message"],
+                    "user_id": result["user_id"],
+                    "institution_id": result["institution_id"],
+                    "email_sent": result["email_sent"],
+                }
+            ),
+            201,
+        )
+
+    except RegistrationError as e:
+        logger.warning(f"Registration failed: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    except Exception as e:
+        logger.error(f"Unexpected error in registration: {e}")
+        return (
+            jsonify(
+                {"success": False, "error": "Registration failed due to server error"}
+            ),
+            500,
+        )
+
+
+@api.route("/auth/verify-email/<token>", methods=["GET"])
+def verify_email_api(token):
+    """
+    Verify user's email address using verification token
+
+    URL: /api/auth/verify-email/{verification_token}
+
+    Returns:
+    {
+        "success": true,
+        "message": "Email verified successfully! Your account is now active.",
+        "user_id": "user-123",
+        "already_verified": false
+    }
+    """
+    try:
+        # Validate token
+        if not token or len(token) < 10:
+            return (
+                jsonify({"success": False, "error": "Invalid verification token"}),
+                400,
+            )
+
+        # Verify email
+        result = verify_email(token)
+
+        # Return success response
+        return (
+            jsonify(
+                {
+                    "success": result["success"],
+                    "message": result["message"],
+                    "user_id": result["user_id"],
+                    "already_verified": result.get("already_verified", False),
+                    "email": result.get("email"),
+                    "display_name": result.get("display_name"),
+                    "institution_name": result.get("institution_name"),
+                }
+            ),
+            200,
+        )
+
+    except RegistrationError as e:
+        logger.warning(f"Email verification failed: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    except Exception as e:
+        logger.error(f"Unexpected error in email verification: {e}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Email verification failed due to server error",
+                }
+            ),
+            500,
+        )
+
+
+@api.route("/auth/resend-verification", methods=["POST"])
+def resend_verification_email_api():
+    """
+    Resend verification email for pending user
+
+    Expected JSON payload:
+    {
+        "email": "admin@example.com"
+    }
+
+    Returns:
+    {
+        "success": true,
+        "message": "Verification email sent! Please check your email.",
+        "email_sent": true
+    }
+    """
+    try:
+        data = request.get_json()
+
+        # Validate email
+        email = data.get("email", "").strip().lower()
+        if not email:
+            return (
+                jsonify({"success": False, "error": "Email address is required"}),
+                400,
+            )
+
+        if "@" not in email or "." not in email:
+            return jsonify({"success": False, "error": "Invalid email format"}), 400
+
+        # Resend verification email
+        result = resend_verification_email(email)
+
+        # Return success response
+        return (
+            jsonify(
+                {
+                    "success": result["success"],
+                    "message": result["message"],
+                    "email_sent": result["email_sent"],
+                }
+            ),
+            200,
+        )
+
+    except RegistrationError as e:
+        logger.warning(f"Resend verification failed: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    except Exception as e:
+        logger.error(f"Unexpected error in resend verification: {e}")
+        return (
+            jsonify({"success": False, "error": "Failed to resend verification email"}),
+            500,
+        )
+
+
+@api.route("/auth/registration-status/<email>", methods=["GET"])
+def get_registration_status_api(email):
+    """
+    Get registration status for an email address
+
+    URL: /api/auth/registration-status/{email}
+
+    Returns:
+    {
+        "exists": true,
+        "status": "active",  // or "pending_verification", "not_registered"
+        "user_id": "user-123",
+        "message": "Account is active and verified"
+    }
+    """
+    try:
+        # Validate email
+        email = email.strip().lower()
+        if not email or "@" not in email or "." not in email:
+            return (
+                jsonify(
+                    {
+                        "exists": False,
+                        "status": "invalid_email",
+                        "message": "Invalid email format",
+                    }
+                ),
+                400,
+            )
+
+        # Get registration status
+        result = get_registration_status(email)
+
+        # Return status
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"Unexpected error in registration status check: {e}")
+        return (
+            jsonify(
+                {
+                    "exists": False,
+                    "status": "error",
+                    "message": "Failed to check registration status",
+                }
+            ),
+            500,
+        )

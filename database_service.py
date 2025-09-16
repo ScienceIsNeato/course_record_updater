@@ -1424,6 +1424,117 @@ def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:
         return []
 
 
+def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
+    """
+    Get user by email verification token
+
+    Args:
+        token: Email verification token
+
+    Returns:
+        User document or None if not found
+    """
+    logger.info("[DB Service] get_user_by_verification_token called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(10):
+            check_db_connection()
+            query = (
+                db.collection(USERS_COLLECTION)
+                .where(
+                    filter=firestore.FieldFilter(
+                        "email_verification_token", "==", token
+                    )
+                )
+                .limit(1)
+            )
+            docs = query.stream()
+
+            for doc in docs:
+                user_data = doc.to_dict()
+                user_data["id"] = doc.id
+                logger.info(
+                    f"[DB Service] Found user by verification token: {user_data['id']}"
+                )
+                return user_data
+
+            logger.info("[DB Service] No user found with verification token")
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting user by verification token: {e}")
+        return None
+
+
+def create_program(program_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Create a new program
+
+    Args:
+        program_data: Program data dictionary
+
+    Returns:
+        Program ID if successful, None otherwise
+    """
+    logger.info("[DB Service] create_program called")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return None
+
+    try:
+        with db_operation_timeout(15):
+            check_db_connection()
+            program_id = program_data.get("id")
+            if not program_id:
+                raise ValueError("Program data must include 'id' field")
+
+            # Remove id from data before storing
+            data_to_store = {k: v for k, v in program_data.items() if k != "id"}
+
+            programs_ref = db.collection("programs")
+            programs_ref.document(program_id).set(data_to_store)
+
+            logger.info(f"[DB Service] Created program: {program_id}")
+            return program_id
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating program: {e}")
+        return None
+
+
+def update_user(user_id: str, updates: Dict[str, Any]) -> bool:
+    """
+    Update user document
+
+    Args:
+        user_id: User ID to update
+        updates: Dictionary of fields to update
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(f"[DB Service] update_user called for user: {user_id}")
+    if not db:
+        logger.error("[DB Service] Firestore client not available.")
+        return False
+
+    try:
+        with db_operation_timeout(10):
+            check_db_connection()
+            users_ref = db.collection(USERS_COLLECTION)
+            users_ref.document(user_id).update(updates)
+
+            logger.info(f"[DB Service] Updated user: {user_id}")
+            return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error updating user {user_id}: {e}")
+        return False
+
+
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
     """
     Get all sections for a specific term.
