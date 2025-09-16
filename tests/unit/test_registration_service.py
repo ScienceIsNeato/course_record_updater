@@ -259,6 +259,24 @@ class TestEmailVerification:
             assert result["success"] is True
             assert result["already_verified"] is False
 
+    @patch("registration_service.db")
+    def test_verify_email_no_expiry_date(self, mock_db):
+        """Test email verification when token has no expiry date"""
+        # Setup mock user without expiry date
+        mock_user = {
+            "id": "user-123",
+            "email": "admin@example.com",
+            "email_verified": False,
+            # Missing email_verification_expires_at field
+        }
+        mock_db.get_user_by_verification_token.return_value = mock_user
+
+        # Execute & Verify
+        with pytest.raises(
+            RegistrationError, match="Verification token has no expiry date"
+        ):
+            verify_email("token-no-expiry")
+
 
 class TestResendVerificationEmail:
     """Test resending verification email functionality"""
@@ -317,6 +335,31 @@ class TestResendVerificationEmail:
 
         with pytest.raises(RegistrationError, match="already verified"):
             resend_verification_email("admin@example.com")
+
+    @patch("registration_service.db")
+    @patch("registration_service.send_verification_email")
+    def test_resend_verification_email_send_failure(self, mock_send_email, mock_db):
+        """Test resend verification email when email sending fails"""
+        # Setup mocks
+        mock_user = {
+            "id": "user-123",
+            "email": "admin@example.com",
+            "first_name": "John",
+            "last_name": "Doe",
+            "email_verified": False,
+            "account_status": "pending",
+        }
+        mock_db.get_user_by_email.return_value = mock_user
+        mock_db.update_user.return_value = True
+        mock_send_email.return_value = False  # Email sending fails
+
+        # Execute
+        result = resend_verification_email("admin@example.com")
+
+        # Verify - should still succeed but with warning logged
+        assert result["success"] is True
+        assert result["message"] == "Verification email sent! Please check your email."
+        mock_send_email.assert_called_once()
 
 
 class TestRegistrationStatus:
@@ -409,6 +452,27 @@ class TestRegistrationStatus:
         assert result["exists"] is False
         assert result["status"] == "error"
         assert "Failed to check" in result["message"]
+
+    @patch("registration_service.db")
+    def test_get_registration_status_suspended(self, mock_db):
+        """Test status check for suspended user"""
+        mock_user = {
+            "id": "user-456",
+            "email": "suspended@example.com",
+            "account_status": "suspended",
+            "email_verified": True,
+            "role": "instructor",
+            "institution_id": "inst-123",
+        }
+
+        mock_db.get_user_by_email.return_value = mock_user
+
+        result = get_registration_status("suspended@example.com")
+
+        assert result["exists"] is True
+        assert result["status"] == "suspended"
+        assert result["user_id"] == "user-456"
+        assert result["message"] == "Account status: suspended"
 
 
 class TestRegistrationServiceIntegration:

@@ -159,6 +159,22 @@ class TestSessionCreation:
         assert session["ip_address"] == "192.168.1.1"
         assert session["user_agent_hash"] == "hash123"
 
+    def test_create_user_session_regenerates_session_id(
+        self, request_context, sample_user_data
+    ):
+        """Test that session ID is regenerated for security"""
+        from flask import session
+
+        # Create a mock session with regenerate method
+        mock_session = MagicMock()
+        mock_session.regenerate = MagicMock()
+
+        with patch("session_service.session", mock_session):
+            create_user_session(sample_user_data)
+
+            # Verify regenerate was called
+            mock_session.regenerate.assert_called_once()
+
 
 class TestSessionValidation:
     """Test session validation functionality"""

@@ -206,6 +206,35 @@ class TestLoginServiceAuthentication:
             session_call[0][1] is True
         )  # remember_me is the second positional argument
 
+    @patch("login_service.SessionService")
+    @patch("login_service.db")
+    @patch("login_service.PasswordService")
+    def test_login_user_generic_exception(
+        self, mock_password_service, mock_db, mock_session_service
+    ):
+        """Test authentication with generic exception (not credentials/account related)"""
+        # Setup
+        mock_password_service.check_account_lockout.return_value = None
+        mock_db.get_user_by_email.return_value = {
+            "user_id": "user-123",
+            "email": "test@example.com",
+            "password_hash": "hashed-password",
+            "role": "instructor",
+            "account_status": "active",
+        }
+        mock_password_service.verify_password.return_value = True
+
+        # Make session creation raise a generic exception (not credentials/account related)
+        mock_session_service.create_user_session.side_effect = Exception(
+            "Database connection error"
+        )
+
+        # Execute & Verify
+        with pytest.raises(LoginError, match="Login failed. Please try again."):
+            LoginService.authenticate_user(
+                "test@example.com", "password123", remember_me=False
+            )
+
 
 class TestLoginServiceLogout:
     """Test logout functionality"""

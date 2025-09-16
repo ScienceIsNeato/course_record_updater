@@ -376,8 +376,7 @@ async function loadDashboardData() {
         }
     }
     
-    // Load debug data
-    loadDebugData();
+    // Debug data loading removed - temporary development tools no longer needed
 }
 
 function initializeImportForm() {
@@ -813,58 +812,4 @@ function initializeImportForm() {
     }
 }
 
-// Debug data loading function
-// TODO: This debug functionality will be removed in next PR - temporary development tool
-async function loadDebugData() {
-    const debugEndpoints = [
-        { id: 'debug-courses', url: '/api/debug/courses', key: 'sample_courses' },
-        { id: 'debug-instructors', url: '/api/debug/instructors', key: 'sample_instructors' },
-        { id: 'debug-sections', url: '/api/debug/sections', key: 'sample_sections' },
-        { id: 'debug-terms', url: '/api/debug/terms', key: 'sample_terms' }
-    ];
-
-    for (const endpoint of debugEndpoints) {
-        try {
-            const response = await fetch(endpoint.url);
-            const data = await response.json();
-            
-            const element = document.getElementById(endpoint.id);
-            if (element && data.success) {
-                const samples = data[endpoint.key] || [];
-                const totalCount = data.total_count || 0;
-                
-                let html = `<div class="mb-2"><strong>Total: ${totalCount}</strong></div>`;
-                
-                if (samples.length > 0) {
-                    html += '<ul class="list-unstyled">';
-                    samples.forEach(item => {
-                        let itemText = '';
-                        if (endpoint.key === 'sample_courses') {
-                            itemText = `${item.course_number} - ${item.title} (${item.department})`;
-                        } else if (endpoint.key === 'sample_instructors') {
-                            itemText = `${item.first_name} ${item.last_name} - ${item.email} (${item.account_status})`;
-                        } else if (endpoint.key === 'sample_sections') {
-                            itemText = `Section ${item.section_number} - ${item.course_number} (${item.instructor_email})`;
-                        } else if (endpoint.key === 'sample_terms') {
-                            itemText = `${item.term_name} - ${item.year} ${item.season}`;
-                        }
-                        html += `<li class="text-truncate">${itemText}</li>`;
-                    });
-                    html += '</ul>';
-                } else {
-                    html += '<div class="text-muted">No items found</div>';
-                }
-                
-                element.innerHTML = html;
-            } else if (element) {
-                element.innerHTML = `<div class="text-danger">Failed to load debug data</div>`;
-            }
-        } catch (error) {
-            console.error(`Failed to load debug ${endpoint.key}:`, error);
-            const element = document.getElementById(endpoint.id);
-            if (element) {
-                element.innerHTML = `<div class="text-danger">Error loading debug data</div>`;
-            }
-        }
-    }
-}
+// Debug functionality removed - temporary development tools no longer needed

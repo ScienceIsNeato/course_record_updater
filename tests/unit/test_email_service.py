@@ -404,6 +404,228 @@ class TestEmailSuppression:
             assert any("Test Text Content" in call for call in log_calls)
 
 
+class TestSMTPSending:
+    """Test actual SMTP sending logic (not suppressed)"""
+
+    def test_smtp_ssl_connection(self):
+        """Test SMTP SSL connection and sending"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "smtp.gmail.com"
+        app.config["MAIL_PORT"] = 465
+        app.config["MAIL_USE_SSL"] = True
+        app.config["MAIL_USE_TLS"] = False
+        app.config["MAIL_USERNAME"] = "test@gmail.com"
+        app.config["MAIL_PASSWORD"] = "test-password"
+        app.config["MAIL_DEFAULT_SENDER"] = "noreply@test.com"
+        app.config["MAIL_DEFAULT_SENDER_NAME"] = "Test Service"
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP_SSL") as mock_smtp_ssl:
+                mock_server = MagicMock()
+                mock_smtp_ssl.return_value = mock_server
+
+                result = EmailService._send_email(
+                    to_email="recipient@example.com",
+                    subject="Test Subject",
+                    html_body="<p>Test HTML</p>",
+                    text_body="Test Text",
+                )
+
+                assert result is True
+                mock_smtp_ssl.assert_called_once_with("smtp.gmail.com", 465)
+                mock_server.login.assert_called_once_with(
+                    "test@gmail.com", "test-password"
+                )
+                mock_server.send_message.assert_called_once()
+                mock_server.quit.assert_called_once()
+
+    def test_smtp_tls_connection(self):
+        """Test SMTP TLS connection and sending"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "smtp.mailgun.org"
+        app.config["MAIL_PORT"] = 587
+        app.config["MAIL_USE_SSL"] = False
+        app.config["MAIL_USE_TLS"] = True
+        app.config["MAIL_USERNAME"] = "test@mailgun.org"
+        app.config["MAIL_PASSWORD"] = "mailgun-password"
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP") as mock_smtp:
+                mock_server = MagicMock()
+                mock_smtp.return_value = mock_server
+
+                result = EmailService._send_email(
+                    to_email="recipient@example.com",
+                    subject="Test Subject",
+                    html_body="<p>Test HTML</p>",
+                    text_body="Test Text",
+                )
+
+                assert result is True
+                mock_smtp.assert_called_once_with("smtp.mailgun.org", 587)
+                mock_server.starttls.assert_called_once()
+                mock_server.login.assert_called_once_with(
+                    "test@mailgun.org", "mailgun-password"
+                )
+                mock_server.send_message.assert_called_once()
+                mock_server.quit.assert_called_once()
+
+    def test_smtp_no_auth_connection(self):
+        """Test SMTP connection without authentication"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "localhost"
+        app.config["MAIL_PORT"] = 25
+        app.config["MAIL_USE_SSL"] = False
+        app.config["MAIL_USE_TLS"] = False
+        # No username/password for local SMTP
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP") as mock_smtp:
+                mock_server = MagicMock()
+                mock_smtp.return_value = mock_server
+
+                result = EmailService._send_email(
+                    to_email="recipient@example.com",
+                    subject="Test Subject",
+                    html_body="<p>Test HTML</p>",
+                    text_body="Test Text",
+                )
+
+                assert result is True
+                mock_smtp.assert_called_once_with("localhost", 25)
+                mock_server.starttls.assert_not_called()  # TLS disabled
+                mock_server.login.assert_not_called()  # No auth
+                mock_server.send_message.assert_called_once()
+                mock_server.quit.assert_called_once()
+
+    def test_smtp_message_formatting(self):
+        """Test SMTP message formatting with proper headers"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "localhost"
+        app.config["MAIL_PORT"] = 587
+        app.config["MAIL_DEFAULT_SENDER"] = "noreply@courserecord.app"
+        app.config["MAIL_DEFAULT_SENDER_NAME"] = "Course Record System"
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP") as mock_smtp:
+                mock_server = MagicMock()
+                mock_smtp.return_value = mock_server
+
+                EmailService._send_email(
+                    to_email="recipient@example.com",
+                    subject="Test Email Subject",
+                    html_body="<h1>HTML Content</h1>",
+                    text_body="Plain text content",
+                )
+
+                # Verify send_message was called with proper message
+                mock_server.send_message.assert_called_once()
+                sent_message = mock_server.send_message.call_args[0][0]
+
+                assert sent_message["Subject"] == "Test Email Subject"
+                assert (
+                    sent_message["From"]
+                    == "Course Record System <noreply@courserecord.app>"
+                )
+                assert sent_message["To"] == "recipient@example.com"
+
+    def test_smtp_connection_error_handling(self):
+        """Test SMTP connection error handling"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "smtp.gmail.com"
+        app.config["MAIL_PORT"] = 465
+        app.config["MAIL_USE_SSL"] = True
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP_SSL") as mock_smtp_ssl:
+                mock_smtp_ssl.side_effect = Exception("Connection failed")
+
+                with patch("email_service.logger") as mock_logger:
+                    result = EmailService._send_email(
+                        to_email="recipient@example.com",
+                        subject="Test Subject",
+                        html_body="<p>Test HTML</p>",
+                        text_body="Test Text",
+                    )
+
+                    # Should return False on connection failure
+                    assert result is False
+
+                    # Should log the error
+                    mock_logger.error.assert_called_once()
+                    error_call = mock_logger.error.call_args[0][0]
+                    assert "Failed to send email to recipient@example.com" in error_call
+                    assert "Connection failed" in error_call
+
+    def test_smtp_authentication_error_handling(self):
+        """Test SMTP authentication error handling"""
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
+        app.config["BASE_URL"] = "http://localhost:5000"
+        app.config["MAIL_SERVER"] = "smtp.gmail.com"
+        app.config["MAIL_PORT"] = 587
+        app.config["MAIL_USE_TLS"] = True
+        app.config["MAIL_USERNAME"] = "test@gmail.com"
+        app.config["MAIL_PASSWORD"] = "wrong-password"
+
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            with patch("smtplib.SMTP") as mock_smtp:
+                mock_server = MagicMock()
+                mock_server.login.side_effect = Exception("Authentication failed")
+                mock_smtp.return_value = mock_server
+
+                with patch("email_service.logger") as mock_logger:
+                    result = EmailService._send_email(
+                        to_email="recipient@example.com",
+                        subject="Test Subject",
+                        html_body="<p>Test HTML</p>",
+                        text_body="Test Text",
+                    )
+
+                    # Should return False on authentication failure
+                    assert result is False
+
+                    # Should log the error
+                    mock_logger.error.assert_called_once()
+                    error_call = mock_logger.error.call_args[0][0]
+                    assert "Failed to send email to recipient@example.com" in error_call
+                    assert "Authentication failed" in error_call
+
+
 class TestConvenienceFunctions:
     """Test convenience functions"""
 

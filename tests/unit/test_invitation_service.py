@@ -351,6 +351,30 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="Failed to create user account"):
             InvitationService.accept_invitation("token", "ValidPassword123!")
 
+    @patch("invitation_service.db")
+    def test_accept_invitation_status_expired(self, mock_db):
+        """Test invitation acceptance when status is already 'expired'"""
+        # Setup
+        invitation = {"status": "expired"}  # Invitation already marked as expired
+        mock_db.get_invitation_by_token.return_value = invitation
+
+        # Execute & Verify
+        with pytest.raises(InvitationError, match="Invitation has expired"):
+            InvitationService.accept_invitation("token", "ValidPassword123!")
+
+    @patch("invitation_service.db")
+    def test_accept_invitation_unknown_status(self, mock_db):
+        """Test invitation acceptance with unknown/cancelled status"""
+        # Setup
+        invitation = {
+            "status": "cancelled"
+        }  # Unknown status other than sent/accepted/expired
+        mock_db.get_invitation_by_token.return_value = invitation
+
+        # Execute & Verify
+        with pytest.raises(InvitationError, match="not available for acceptance"):
+            InvitationService.accept_invitation("token", "ValidPassword123!")
+
 
 class TestInvitationServiceManagement:
     """Test invitation management functionality"""

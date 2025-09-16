@@ -40,6 +40,16 @@ class TestPasswordHashing:
         with pytest.raises(PasswordValidationError):
             hash_password("weak")
 
+    @patch("password_service.bcrypt.hashpw")
+    def test_hash_password_bcrypt_exception(self, mock_hashpw):
+        """Test hash_password exception handling when bcrypt fails"""
+        # Setup mock to raise exception
+        mock_hashpw.side_effect = Exception("bcrypt failed")
+
+        # Execute & Verify
+        with pytest.raises(Exception, match="bcrypt failed"):
+            hash_password("ValidPassword123!")
+
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
         password = "TestPass123!"
@@ -204,6 +214,16 @@ class TestResetTokens:
         }
 
         assert PasswordService.is_reset_token_valid(token_data) is True
+
+    def test_reset_token_validation_invalid_iso_string(self):
+        """Test validation with invalid ISO string expiry date format"""
+        token_data = {
+            "token": "invalid_token",
+            "expires_at": "invalid-date-format",  # Invalid ISO format
+            "used": False,
+        }
+
+        assert PasswordService.is_reset_token_valid(token_data) is False
 
 
 class TestAccountLockout:

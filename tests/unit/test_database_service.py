@@ -33,12 +33,15 @@ from database_service import (
     get_institution_by_id,
     get_institution_by_short_name,
     get_institution_instructor_count,
+    get_invitation_by_email,
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_name,
     get_user_by_email,
     get_users_by_role,
+    list_invitations,
     sanitize_for_logging,
+    update_invitation,
     update_user_active_status,
     update_user_extended,
 )
@@ -1698,3 +1701,520 @@ class TestDatabaseServiceComprehensive:
         # Should use the mocked database
         mock_db.collection.assert_called_once()
         assert result == "test123"
+
+
+class TestListInvitations:
+    """Test list_invitations function."""
+
+    @patch("database_service.db")
+    def test_list_invitations_success_no_filters(self, mock_db):
+        """Test successful invitation listing without filters."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_ordered_query = Mock()
+        mock_limited_query = Mock()
+        mock_doc1 = Mock()
+        mock_doc2 = Mock()
+
+        # Mock the query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_ordered_query
+        mock_ordered_query.limit.return_value = mock_limited_query
+
+        # Mock documents
+        mock_doc1.to_dict.return_value = {
+            "email": "user1@example.com",
+            "status": "sent",
+            "invited_at": "2024-01-01T00:00:00Z",
+        }
+        mock_doc1.id = "inv-1"
+
+        mock_doc2.to_dict.return_value = {
+            "email": "user2@example.com",
+            "status": "pending",
+            "invited_at": "2024-01-02T00:00:00Z",
+        }
+        mock_doc2.id = "inv-2"
+
+        mock_limited_query.stream.return_value = [mock_doc1, mock_doc2]
+
+        # Execute
+        result = list_invitations("inst-123")
+
+        # Verify query construction
+        mock_db.collection.assert_called_once_with("invitations")
+        mock_collection.where.assert_called_once()
+        mock_query.order_by.assert_called_once_with(
+            "invited_at", direction=database_service.firestore.Query.DESCENDING
+        )
+        mock_ordered_query.limit.assert_called_once_with(50)  # Default limit
+
+        # Verify results
+        assert len(result) == 2
+        assert result[0]["id"] == "inv-1"
+        assert result[0]["email"] == "user1@example.com"
+        assert result[1]["id"] == "inv-2"
+        assert result[1]["email"] == "user2@example.com"
+
+    @patch("database_service.db")
+    def test_list_invitations_with_status_filter(self, mock_db):
+        """Test invitation listing with status filter."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+        mock_ordered_query = Mock()
+        mock_limited_query = Mock()
+
+        # Mock the query chain with status filter
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+        mock_query2.order_by.return_value = mock_ordered_query
+        mock_ordered_query.limit.return_value = mock_limited_query
+
+        # Mock empty results
+        mock_limited_query.stream.return_value = []
+
+        # Execute with status filter
+        result = list_invitations("inst-123", status="pending")
+
+        # Verify query construction with status filter
+        mock_db.collection.assert_called_once_with("invitations")
+        assert mock_collection.where.call_count == 1  # Institution filter
+        assert mock_query1.where.call_count == 1  # Status filter
+        mock_query2.order_by.assert_called_once_with(
+            "invited_at", direction=database_service.firestore.Query.DESCENDING
+        )
+
+        # Verify results
+        assert result == []
+
+    @patch("database_service.db")
+    def test_list_invitations_with_pagination(self, mock_db):
+        """Test invitation listing with pagination."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_ordered_query = Mock()
+        mock_offset_query = Mock()
+        mock_limited_query = Mock()
+
+        # Mock the query chain with pagination
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_ordered_query
+        mock_ordered_query.offset.return_value = mock_offset_query
+        mock_offset_query.limit.return_value = mock_limited_query
+
+        # Mock empty results
+        mock_limited_query.stream.return_value = []
+
+        # Execute with pagination
+        result = list_invitations("inst-123", limit=10, offset=20)
+
+        # Verify query construction with pagination
+        mock_db.collection.assert_called_once_with("invitations")
+        mock_collection.where.assert_called_once()
+        mock_query.order_by.assert_called_once_with(
+            "invited_at", direction=database_service.firestore.Query.DESCENDING
+        )
+        mock_ordered_query.offset.assert_called_once_with(20)
+        mock_offset_query.limit.assert_called_once_with(10)
+
+        # Verify results
+        assert result == []
+
+    @patch("database_service.db")
+    def test_list_invitations_no_offset(self, mock_db):
+        """Test invitation listing with zero offset (should skip offset call)."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query = Mock()
+        mock_ordered_query = Mock()
+        mock_limited_query = Mock()
+
+        # Mock the query chain without offset
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query
+        mock_query.order_by.return_value = mock_ordered_query
+        mock_ordered_query.limit.return_value = mock_limited_query
+
+        # Mock empty results
+        mock_limited_query.stream.return_value = []
+
+        # Execute with zero offset
+        result = list_invitations("inst-123", limit=10, offset=0)
+
+        # Verify query construction - should NOT call offset
+        mock_db.collection.assert_called_once_with("invitations")
+        mock_collection.where.assert_called_once()
+        mock_query.order_by.assert_called_once_with(
+            "invited_at", direction=database_service.firestore.Query.DESCENDING
+        )
+        mock_ordered_query.offset.assert_not_called()  # Should not be called for offset=0
+        mock_ordered_query.limit.assert_called_once_with(10)
+
+        # Verify results
+        assert result == []
+
+    def test_list_invitations_db_not_available(self):
+        """Test invitation listing when database is not available."""
+        # Execute without mocking db (it will be None)
+        with patch("database_service.db", None):
+            result = list_invitations("inst-123")
+
+        # Should return empty list
+        assert result == []
+
+    @patch("database_service.db")
+    def test_list_invitations_exception_handling(self, mock_db):
+        """Test invitation listing exception handling."""
+        # Setup mock to raise exception
+        mock_collection = Mock()
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.side_effect = Exception("Firestore error")
+
+        # Execute
+        result = list_invitations("inst-123")
+
+        # Should return empty list on exception
+        assert result == []
+
+    @patch("database_service.db")
+    def test_list_invitations_all_parameters(self, mock_db):
+        """Test invitation listing with all parameters."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+        mock_ordered_query = Mock()
+        mock_offset_query = Mock()
+        mock_limited_query = Mock()
+        mock_doc = Mock()
+
+        # Mock the complete query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+        mock_query2.order_by.return_value = mock_ordered_query
+        mock_ordered_query.offset.return_value = mock_offset_query
+        mock_offset_query.limit.return_value = mock_limited_query
+
+        # Mock document
+        mock_doc.to_dict.return_value = {
+            "email": "test@example.com",
+            "status": "accepted",
+            "invited_at": "2024-01-01T00:00:00Z",
+        }
+        mock_doc.id = "inv-123"
+        mock_limited_query.stream.return_value = [mock_doc]
+
+        # Execute with all parameters
+        result = list_invitations("inst-456", status="accepted", limit=25, offset=10)
+
+        # Verify complete query construction
+        mock_db.collection.assert_called_once_with("invitations")
+        assert mock_collection.where.call_count == 1  # Institution filter
+        assert mock_query1.where.call_count == 1  # Status filter
+        mock_query2.order_by.assert_called_once_with(
+            "invited_at", direction=database_service.firestore.Query.DESCENDING
+        )
+        mock_ordered_query.offset.assert_called_once_with(10)
+        mock_offset_query.limit.assert_called_once_with(25)
+
+        # Verify results
+        assert len(result) == 1
+        assert result[0]["id"] == "inv-123"
+        assert result[0]["email"] == "test@example.com"
+        assert result[0]["status"] == "accepted"
+
+
+class TestGetInvitationByEmail:
+    """Test get_invitation_by_email function."""
+
+    @patch("database_service.db")
+    def test_get_invitation_by_email_found(self, mock_db):
+        """Test successful invitation retrieval by email."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+        mock_doc = Mock()
+
+        # Mock the query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+
+        # Mock document found
+        mock_doc.to_dict.return_value = {
+            "email": "user@example.com",
+            "status": "pending",
+            "invited_at": "2024-01-01T00:00:00Z",
+            "role": "instructor",
+        }
+        mock_doc.id = "inv-123"
+        mock_query2.stream.return_value = [mock_doc]
+
+        # Execute
+        result = get_invitation_by_email("user@example.com", "inst-456")
+
+        # Verify query construction
+        mock_db.collection.assert_called_once_with("invitations")
+        assert mock_collection.where.call_count == 1  # Email filter
+        assert mock_query1.where.call_count == 1  # Institution filter
+
+        # Verify results
+        assert result is not None
+        assert result["id"] == "inv-123"
+        assert result["email"] == "user@example.com"
+        assert result["status"] == "pending"
+        assert result["role"] == "instructor"
+
+    @patch("database_service.db")
+    def test_get_invitation_by_email_not_found(self, mock_db):
+        """Test invitation retrieval when no invitation exists."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+
+        # Mock the query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+
+        # Mock no documents found
+        mock_query2.stream.return_value = []
+
+        # Execute
+        result = get_invitation_by_email("nonexistent@example.com", "inst-456")
+
+        # Verify query construction
+        mock_db.collection.assert_called_once_with("invitations")
+        assert mock_collection.where.call_count == 1  # Email filter
+        assert mock_query1.where.call_count == 1  # Institution filter
+
+        # Verify results
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_invitation_by_email_multiple_found(self, mock_db):
+        """Test invitation retrieval when multiple invitations exist (takes first)."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+        mock_doc1 = Mock()
+        mock_doc2 = Mock()
+
+        # Mock the query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+
+        # Mock multiple documents found
+        mock_doc1.to_dict.return_value = {
+            "email": "user@example.com",
+            "status": "sent",
+            "invited_at": "2024-01-01T00:00:00Z",
+        }
+        mock_doc1.id = "inv-first"
+
+        mock_doc2.to_dict.return_value = {
+            "email": "user@example.com",
+            "status": "pending",
+            "invited_at": "2024-01-02T00:00:00Z",
+        }
+        mock_doc2.id = "inv-second"
+
+        mock_query2.stream.return_value = [mock_doc1, mock_doc2]
+
+        # Execute
+        result = get_invitation_by_email("user@example.com", "inst-456")
+
+        # Verify query construction
+        mock_db.collection.assert_called_once_with("invitations")
+        assert mock_collection.where.call_count == 1  # Email filter
+        assert mock_query1.where.call_count == 1  # Institution filter
+
+        # Verify results - should return first match
+        assert result is not None
+        assert result["id"] == "inv-first"
+        assert result["status"] == "sent"
+
+    def test_get_invitation_by_email_db_not_available(self):
+        """Test invitation retrieval when database is not available."""
+        # Execute without mocking db (it will be None)
+        with patch("database_service.db", None):
+            result = get_invitation_by_email("user@example.com", "inst-456")
+
+        # Should return None
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_invitation_by_email_exception_handling(self, mock_db):
+        """Test invitation retrieval exception handling."""
+        # Setup mock to raise exception
+        mock_collection = Mock()
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.side_effect = Exception("Firestore error")
+
+        # Execute
+        result = get_invitation_by_email("user@example.com", "inst-456")
+
+        # Should return None on exception
+        assert result is None
+
+    @patch("database_service.db")
+    def test_get_invitation_by_email_query_filters(self, mock_db):
+        """Test that query filters are constructed correctly."""
+        # Setup mock Firestore query chain
+        mock_collection = Mock()
+        mock_query1 = Mock()
+        mock_query2 = Mock()
+
+        # Mock the query chain
+        mock_db.collection.return_value = mock_collection
+        mock_collection.where.return_value = mock_query1
+        mock_query1.where.return_value = mock_query2
+
+        # Mock no results to focus on query construction
+        mock_query2.stream.return_value = []
+
+        # Execute with specific email and institution
+        get_invitation_by_email("test@domain.com", "inst-789")
+
+        # Verify query construction details
+        mock_db.collection.assert_called_once_with("invitations")
+
+        # Check that where was called twice (email filter + institution filter)
+        assert mock_collection.where.call_count == 1
+        assert mock_query1.where.call_count == 1
+
+        # Verify the filters were applied in correct order
+        # First call should be email filter, second should be institution filter
+        mock_collection.where.assert_called_once()
+        mock_query1.where.assert_called_once()
+
+
+class TestUpdateInvitation:
+    """Test update_invitation function."""
+
+    @patch("database_service.db")
+    @patch("database_service.datetime")
+    def test_update_invitation_success(self, mock_datetime, mock_db):
+        """Test successful invitation update."""
+        # Setup mock datetime
+        mock_datetime.utcnow.return_value.isoformat.return_value = (
+            "2024-01-01T12:00:00Z"
+        )
+
+        # Setup mock Firestore
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+
+        # Execute
+        updates = {"status": "accepted", "accepted_at": "2024-01-01T12:00:00Z"}
+        result = update_invitation("inv-123", updates)
+
+        # Verify database operations
+        mock_db.collection.assert_called_once_with("invitations")
+        mock_collection.document.assert_called_once_with("inv-123")
+
+        # Verify update was called with timestamp added
+        expected_updates = {
+            "status": "accepted",
+            "accepted_at": "2024-01-01T12:00:00Z",
+            "updated_at": "2024-01-01T12:00:00Z",
+        }
+        mock_doc_ref.update.assert_called_once_with(expected_updates)
+
+        # Verify result
+        assert result is True
+
+    @patch("database_service.db")
+    @patch("database_service.datetime")
+    def test_update_invitation_adds_timestamp(self, mock_datetime, mock_db):
+        """Test that update_invitation automatically adds updated_at timestamp."""
+        # Setup mock datetime
+        mock_datetime.utcnow.return_value.isoformat.return_value = (
+            "2024-02-15T10:30:45Z"
+        )
+
+        # Setup mock Firestore
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+
+        # Execute with minimal updates
+        updates = {"status": "pending"}
+        result = update_invitation("inv-456", updates)
+
+        # Verify timestamp was added to updates
+        expected_updates = {"status": "pending", "updated_at": "2024-02-15T10:30:45Z"}
+        mock_doc_ref.update.assert_called_once_with(expected_updates)
+
+        # Verify original updates dict was modified
+        assert updates["updated_at"] == "2024-02-15T10:30:45Z"
+        assert result is True
+
+    def test_update_invitation_db_not_available(self):
+        """Test invitation update when database is not available."""
+        # Execute without mocking db (it will be None)
+        with patch("database_service.db", None):
+            result = update_invitation("inv-123", {"status": "accepted"})
+
+        # Should return False
+        assert result is False
+
+    @patch("database_service.db")
+    def test_update_invitation_exception_handling(self, mock_db):
+        """Test invitation update exception handling."""
+        # Setup mock to raise exception
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+        mock_doc_ref.update.side_effect = Exception("Firestore error")
+
+        # Execute
+        result = update_invitation("inv-123", {"status": "accepted"})
+
+        # Should return False on exception
+        assert result is False
+
+    @patch("database_service.db")
+    @patch("database_service.datetime")
+    def test_update_invitation_empty_updates(self, mock_datetime, mock_db):
+        """Test invitation update with empty updates dictionary."""
+        # Setup mock datetime
+        mock_datetime.utcnow.return_value.isoformat.return_value = (
+            "2024-01-01T00:00:00Z"
+        )
+
+        # Setup mock Firestore
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+
+        mock_db.collection.return_value = mock_collection
+        mock_collection.document.return_value = mock_doc_ref
+
+        # Execute with empty updates
+        updates = {}
+        result = update_invitation("inv-789", updates)
+
+        # Verify only timestamp was added
+        expected_updates = {"updated_at": "2024-01-01T00:00:00Z"}
+        mock_doc_ref.update.assert_called_once_with(expected_updates)
+
+        assert result is True

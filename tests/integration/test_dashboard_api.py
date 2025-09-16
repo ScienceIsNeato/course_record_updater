@@ -90,56 +90,7 @@ class TestDashboardAPI:
                 print(f"Endpoint {endpoint} timed out - but exists!")
                 continue
 
-    def test_debug_endpoints(self, base_url: str):
-        """Test that all debug endpoints return valid responses"""
-        # TODO: These debug endpoint tests will be removed in next PR along with the endpoints
-        debug_endpoints = [
-            ("/api/debug/courses", "sample_courses"),
-            ("/api/debug/instructors", "sample_instructors"),
-            ("/api/debug/sections", "sample_sections"),
-            ("/api/debug/terms", "sample_terms"),
-        ]
-
-        for endpoint, expected_key in debug_endpoints:
-            response = requests.get(f"{base_url}{endpoint}")
-
-            # Should return 200 OK
-            assert (
-                response.status_code == 200
-            ), f"Debug endpoint {endpoint} returned {response.status_code}"
-
-            # Should return valid JSON
-            data = response.json()
-            assert isinstance(
-                data, dict
-            ), f"Debug endpoint {endpoint} didn't return JSON object"
-
-            # Should have success field
-            assert (
-                "success" in data
-            ), f"Debug endpoint {endpoint} missing 'success' field"
-            assert (
-                data["success"] is True
-            ), f"Debug endpoint {endpoint} returned success=False"
-
-            # Should have total_count field
-            assert (
-                "total_count" in data
-            ), f"Debug endpoint {endpoint} missing 'total_count' field"
-            assert isinstance(
-                data["total_count"], int
-            ), f"Debug endpoint {endpoint} total_count is not integer"
-            assert (
-                data["total_count"] >= 0
-            ), f"Debug endpoint {endpoint} total_count is negative"
-
-            # Should have sample data field
-            assert (
-                expected_key in data
-            ), f"Debug endpoint {endpoint} missing '{expected_key}' field"
-            assert isinstance(
-                data[expected_key], list
-            ), f"Debug endpoint {endpoint} {expected_key} is not a list"
+    # Debug endpoints tests removed - temporary development tools no longer needed
 
     def test_debug_course_data_structure(self, base_url: str):
         """Test that debug courses endpoint returns properly structured data"""
