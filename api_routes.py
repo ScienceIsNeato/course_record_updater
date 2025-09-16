@@ -120,6 +120,8 @@ def dashboard():
         return render_template("dashboard/instructor.html", user=user)
     elif role == "program_admin":
         return render_template("dashboard/program_admin.html", user=user)
+    elif role == "institution_admin":
+        return render_template("dashboard/institution_admin.html", user=user)
     elif role == "site_admin":
         return render_template("dashboard/site_admin.html", user=user)
     else:
