@@ -30,3 +30,10 @@ firebase-debug.log
 firestore-debug.log
 safety_detailed_output.txt
 safety_full_diagnostic.txt
+
+# Node.js dependencies and artifacts
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

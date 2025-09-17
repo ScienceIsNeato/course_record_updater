@@ -1102,27 +1102,45 @@ class TestUserEndpoints:
             assert "users" in data
             assert isinstance(data["users"], list)
 
+    @patch("auth_service.get_current_institution_id")
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.has_permission")
     @patch("api_routes.get_users_by_role")
-    def test_get_users_with_department_filter(self, mock_get_users):
+    def test_get_users_with_department_filter(
+        self,
+        mock_get_users,
+        mock_has_permission,
+        mock_get_current_user,
+        mock_get_institution_id,
+    ):
         """Test GET /api/users with department filter"""
+        mock_has_permission.return_value = True
+        mock_get_current_user.return_value = {
+            "user_id": "test-user",
+            "role": "site_admin",
+        }
+        mock_get_institution_id.return_value = "test-institution"
         mock_get_users.return_value = [
             {
                 "user_id": "1",
                 "email": "math1@example.com",
                 "department": "MATH",
                 "role": "instructor",
+                "institution_id": "test-institution",
             },
             {
                 "user_id": "2",
                 "email": "cs1@example.com",
                 "department": "CS",
                 "role": "instructor",
+                "institution_id": "test-institution",
             },
             {
                 "user_id": "3",
                 "email": "math2@example.com",
                 "department": "MATH",
                 "role": "instructor",
+                "institution_id": "test-institution",
             },
         ]
 
@@ -1927,14 +1945,37 @@ class TestUserManagementAPI:
         app.config["SECRET_KEY"] = "test-secret-key"
         self.app = app.test_client()
 
+    @patch("auth_service.get_current_institution_id")
+    @patch("api_routes.get_current_user")
     @patch("api_routes.get_users_by_role")
     @patch("api_routes.has_permission")
-    def test_list_users_with_role_filter(self, mock_has_permission, mock_get_users):
+    def test_list_users_with_role_filter(
+        self,
+        mock_has_permission,
+        mock_get_users,
+        mock_get_current_user,
+        mock_get_institution_id,
+    ):
         """Test listing users with role filter."""
         mock_has_permission.return_value = True
+        mock_get_current_user.return_value = {
+            "user_id": "test-user",
+            "role": "site_admin",
+        }
+        mock_get_institution_id.return_value = "test-institution"
         mock_get_users.return_value = [
-            {"user_id": "1", "email": "instructor1@cei.edu", "role": "instructor"},
-            {"user_id": "2", "email": "instructor2@cei.edu", "role": "instructor"},
+            {
+                "user_id": "1",
+                "email": "instructor1@cei.edu",
+                "role": "instructor",
+                "institution_id": "test-institution",
+            },
+            {
+                "user_id": "2",
+                "email": "instructor2@cei.edu",
+                "role": "instructor",
+                "institution_id": "test-institution",
+            },
         ]
 
         response = self.app.get("/api/users?role=instructor")
@@ -1946,25 +1987,38 @@ class TestUserManagementAPI:
         assert len(data["users"]) == 2
         mock_get_users.assert_called_once_with("instructor")
 
+    @patch("auth_service.get_current_institution_id")
+    @patch("api_routes.get_current_user")
     @patch("api_routes.get_users_by_role")
     @patch("api_routes.has_permission")
     def test_list_users_with_department_filter(
-        self, mock_has_permission, mock_get_users
+        self,
+        mock_has_permission,
+        mock_get_users,
+        mock_get_current_user,
+        mock_get_institution_id,
     ):
         """Test listing users with department filter."""
         mock_has_permission.return_value = True
+        mock_get_current_user.return_value = {
+            "user_id": "test-user",
+            "role": "site_admin",
+        }
+        mock_get_institution_id.return_value = "test-institution"
         mock_get_users.return_value = [
             {
                 "user_id": "1",
                 "email": "math1@cei.edu",
                 "role": "instructor",
                 "department": "MATH",
+                "institution_id": "test-institution",
             },
             {
                 "user_id": "2",
                 "email": "eng1@cei.edu",
                 "role": "instructor",
                 "department": "ENG",
+                "institution_id": "test-institution",
             },
         ]
 

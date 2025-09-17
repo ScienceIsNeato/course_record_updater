@@ -343,6 +343,26 @@ class TestEmailURLBuilding:
         url = EmailService._build_password_reset_url("reset-token-456")
         assert url == "http://localhost:5000/reset-password/reset-token-456"
 
+    @patch("email_service.EmailService._send_email")
+    def test_send_password_reset_confirmation_email(self, mock_send_email, app_context):
+        """Test sending password reset confirmation email (covers lines 212-222)"""
+        mock_send_email.return_value = True
+
+        result = EmailService.send_password_reset_confirmation_email(
+            user_name="John Doe", email="john@example.com"
+        )
+
+        # Should return True for successful send
+        assert result is True
+
+        # Verify _send_email was called with correct parameters
+        mock_send_email.assert_called_once()
+        call_args = mock_send_email.call_args
+        assert call_args[1]["to_email"] == "john@example.com"
+        assert call_args[1]["subject"] == "Password Reset Successful"
+        assert "html_body" in call_args[1]
+        assert "text_body" in call_args[1]
+
     def test_invitation_url_building(self, app_context):
         """Test invitation URL building"""
         url = EmailService._build_invitation_url("invite-token-789")

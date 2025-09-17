@@ -498,3 +498,42 @@ class TestModelValidationEdgeCases:
             assert schema["instructor_id"] == data["instructor_id"]
             assert schema["enrollment"] == data["enrollment"]
             assert schema["status"] == data["status"]
+
+
+class TestCourseOfferingAdditional:
+    """Test CourseOffering model additional functionality."""
+
+    def test_create_offering_schema_basic(self):
+        """Test basic course offering schema creation."""
+        from models import CourseOffering
+
+        schema = CourseOffering.create_schema(
+            course_id="course123", term_id="term456", institution_id="inst789"
+        )
+
+        # This should cover the return statement on line 515
+        assert schema["course_id"] == "course123"
+        assert schema["term_id"] == "term456"
+        assert schema["institution_id"] == "inst789"
+        assert "offering_id" in schema
+        assert schema["status"] == "active"
+        assert schema["capacity"] is None
+
+
+class TestCourseOutcomeAdditional:
+    """Test CourseOutcome model additional functionality."""
+
+    def test_update_assessment_data_percentage_calculation(self):
+        """Test automatic percentage calculation in assessment data update."""
+        from models import CourseOutcome
+
+        # Test the specific case where percentage is calculated automatically
+        # This should trigger the percentage calculation on lines 631-632
+        updated_data = CourseOutcome.update_assessment_data(
+            students_assessed=30, students_meeting=24, assessment_status="completed"
+        )
+
+        assert updated_data["assessment_data"]["students_assessed"] == 30
+        assert updated_data["assessment_data"]["students_meeting"] == 24
+        assert updated_data["assessment_data"]["percentage_meeting"] == 80.0
+        assert updated_data["assessment_data"]["assessment_status"] == "completed"

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+cursor-rules/node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Test coverage
+coverage/
+htmlcov/
+
+# Logs
+logs/
+*.log
+
+# Python files
+*.py
+*.pyc
+__pycache__/
+
+# Other non-JS files
+*.md
+*.txt
+*.json
+*.css
+*.html
+
+# Specific files to ignore
+static/script.js  # Legacy code, will be refactored later
+

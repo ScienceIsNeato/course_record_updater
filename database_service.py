@@ -586,6 +586,50 @@ def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def get_all_users(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all users for a specific institution.
+
+    Args:
+        institution_id: Institution ID to filter by
+
+    Returns:
+        List of user dictionaries
+    """
+    logger.info(
+        "[DB Service] get_all_users called for institution: %s",
+        sanitize_for_logging(institution_id),
+    )
+    if not db:
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
+        return []
+
+    try:
+        query = db.collection(USERS_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
+
+        docs = query.stream()
+        users = []
+
+        for doc in docs:
+            user = doc.to_dict()
+            user["user_id"] = doc.id
+            user["id"] = doc.id  # Add id field for consistency
+            users.append(user)
+
+        logger.info(
+            "[DB Service] Found %d users for institution: %s",
+            len(users),
+            sanitize_for_logging(institution_id),
+        )
+        return users
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting all users: {e}")
+        return []
+
+
 def get_users_by_role(role: str) -> List[Dict[str, Any]]:
     """
     Retrieve all users with a specific role.
@@ -616,6 +660,7 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
         for doc in docs:
             user = doc.to_dict()
             user["user_id"] = doc.id
+            user["id"] = doc.id  # Add id field for consistency
             users.append(user)
 
         logger.info(
@@ -628,6 +673,88 @@ def get_users_by_role(role: str) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"[DB Service] Error getting users by role: {e}")
         return []
+
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get user by ID.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        User data if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_user_by_id called for: %s", sanitize_for_logging(user_id)
+    )
+    if not db:
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
+        return None
+
+    try:
+        doc = db.collection(USERS_COLLECTION).document(user_id).get()
+
+        if doc.exists:
+            user_data = doc.to_dict()
+            user_data["user_id"] = doc.id
+            user_data["id"] = doc.id  # Add id field for consistency
+            logger.info(
+                "[DB Service] Found user: %s",
+                sanitize_for_logging(user_data.get("email")),
+            )
+            return user_data
+        else:
+            logger.info(
+                "[DB Service] No user found with ID: %s", sanitize_for_logging(user_id)
+            )
+            return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting user by ID: {e}")
+        return None
+
+
+def update_user(user_id: str, user_data: Dict[str, Any]) -> bool:
+    """
+    Update user information.
+
+    Args:
+        user_id: User ID to update
+        user_data: Dictionary containing fields to update
+
+    Returns:
+        True if successful, False otherwise
+    """
+    logger.info(
+        "[DB Service] update_user called for: %s", sanitize_for_logging(user_id)
+    )
+    if not db:
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
+        return False
+
+    try:
+        # Remove fields that shouldn't be updated directly
+        update_data = {
+            k: v
+            for k, v in user_data.items()
+            if k not in ["id", "user_id", "email", "created_at"]
+        }
+
+        # Add updated timestamp
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+        doc_ref = db.collection(USERS_COLLECTION).document(user_id)
+        doc_ref.update(update_data)
+
+        logger.info(
+            "[DB Service] Successfully updated user: %s", sanitize_for_logging(user_id)
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error updating user: {e}")
+        return False
 
 
 def update_user_active_status(user_id: str, active_user: bool) -> bool:
@@ -2122,36 +2249,6 @@ def bulk_remove_courses_from_program(
         result["success_count"] = 0
         result["failures"] = [{"course_id": cid, "error": str(e)} for cid in course_ids]
         return result
-
-
-def update_user(user_id: str, updates: Dict[str, Any]) -> bool:
-    """
-    Update user document
-
-    Args:
-        user_id: User ID to update
-        updates: Dictionary of fields to update
-
-    Returns:
-        True if successful, False otherwise
-    """
-    logger.info(f"[DB Service] update_user called for user: {user_id}")
-    if not db:
-        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
-        return False
-
-    try:
-        with db_operation_timeout(10):
-            check_db_connection()
-            users_ref = db.collection(USERS_COLLECTION)
-            users_ref.document(user_id).update(updates)
-
-            logger.info(f"[DB Service] Updated user: {user_id}")
-            return True
-
-    except Exception as e:
-        logger.error(f"[DB Service] Error updating user {user_id}: {e}")
-        return False
 
 
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:

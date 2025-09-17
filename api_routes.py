@@ -37,6 +37,7 @@ from database_service import (
     get_all_institutions,
     get_all_instructors,
     get_all_sections,
+    get_all_users,
     get_course_by_number,
     get_courses_by_department,
     get_courses_by_program,
@@ -47,9 +48,11 @@ from database_service import (
     get_sections_by_instructor,
     get_sections_by_term,
     get_unassigned_courses,
+    get_user_by_id,
     get_users_by_role,
     remove_course_from_program,
     update_program,
+    update_user,
 )
 from import_service import import_excel
 from logging_config import get_logger
@@ -429,14 +432,24 @@ def list_users():
     - department: Filter by department (optional)
     """
     try:
+        from auth_service import get_current_institution_id
+
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
         role_filter = request.args.get("role")
         department_filter = request.args.get("department")
 
         if role_filter:
             users = get_users_by_role(role_filter)
+            # Filter by institution
+            users = [u for u in users if u.get("institution_id") == institution_id]
         else:
-            # NOTE: get_all_users function will be implemented when user management features are added
-            users = []
+            users = get_all_users(institution_id)
 
         # Filter by department if specified
         if department_filter and users:
@@ -506,7 +519,7 @@ def create_user():
 
 @api.route("/users/<user_id>", methods=["GET"])
 @login_required
-def get_user(user_id: str):
+def get_user_api(user_id: str):
     """
     Get user details by ID
 
@@ -519,9 +532,7 @@ def get_user(user_id: str):
         if user_id != current_user["user_id"] and not has_permission("manage_users"):
             return jsonify({"success": False, "error": "Permission denied"}), 403
 
-            # NOTE: get_user_by_id function will be implemented when user management features are added
-        # user = get_user_by_id(user_id)
-        user = None  # Stub for now
+        user = get_user_by_id(user_id)
 
         if user:
             return jsonify({"success": True, "user": user})
@@ -529,7 +540,50 @@ def get_user(user_id: str):
             return jsonify({"success": False, "error": "User not found"}), 404
 
     except Exception as e:
-        return handle_api_error(e, "Get user by email", "Failed to retrieve user")
+        return handle_api_error(e, "Get user by ID", "Failed to retrieve user")
+
+
+@api.route("/users/<user_id>", methods=["PUT"])
+@permission_required("manage_users")
+def update_user_api(user_id: str):
+    """
+    Update user details
+
+    Request body should contain fields to update:
+    - first_name: User's first name
+    - last_name: User's last name
+    - role: User's role
+    - account_status: User's account status
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+        # Check if user exists
+        existing_user = get_user_by_id(user_id)
+        if not existing_user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Update user
+        success = update_user(user_id, data)
+
+        if success:
+            # Return updated user data
+            updated_user = get_user_by_id(user_id)
+            return jsonify(
+                {
+                    "success": True,
+                    "user": updated_user,
+                    "message": "User updated successfully",
+                }
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update user"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update user", "Failed to update user")
 
 
 # ========================================

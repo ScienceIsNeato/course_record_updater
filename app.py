@@ -117,6 +117,22 @@ def profile():
     return render_template("auth/profile.html", current_user=current_user)
 
 
+# Admin Routes
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    """Admin user management page"""
+    from auth_service import has_permission
+
+    # Check if user has permission to manage users
+    if not has_permission("manage_users"):
+        flash("You don't have permission to access user management.", "error")
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    current_user = get_current_user()
+    return render_template("admin/user_management.html", current_user=current_user)
+
+
 if __name__ == "__main__":
     # Use PORT environment variable if available (common in deployment),
     # otherwise use COURSE_RECORD_UPDATER_PORT from .envrc, or default to 3001

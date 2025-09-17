@@ -58,16 +58,19 @@ class TestImportService:
 
         # Create a real temporary Excel file
         with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            # Create DataFrame with test data
+            # Create DataFrame with test data using CEI format to trigger term processing
             test_data = {
-                "Course Number": ["TEST-101", "TEST-102"],
-                "Course Title": ["Test Course 1", "Test Course 2"],
-                "Instructor First Name": ["John", "Jane"],
-                "Instructor Last Name": ["Doe", "Smith"],
-                "Instructor Email": ["john@example.com", "jane@example.com"],
-                "Term": ["FA24", "FA24"],
-                "Students": [25, 30],
-                "Department": ["TEST", "TEST"],
+                "course_number": ["TEST-101", "TEST-102"],
+                "course_title": ["Test Course 1", "Test Course 2"],
+                "first_name": ["John", "Jane"],
+                "last_name": ["Doe", "Smith"],
+                "email": ["john@example.com", "jane@example.com"],
+                "effterm_c": [
+                    "FA2024",
+                    "FA2024",
+                ],  # CEI term format to trigger term processing
+                "students": [25, 30],
+                "department": ["TEST", "TEST"],
             }
             df = pd.DataFrame(test_data)
             df.to_excel(tmp_file.name, index=False)
@@ -78,7 +81,21 @@ class TestImportService:
                 patch("database_service.get_course_by_number", return_value=None),
                 patch("database_service.create_user", return_value="user123"),
                 patch("database_service.create_course", return_value="course123"),
+                patch("database_service.create_term", return_value="term123"),
+                patch("database_service.db") as mock_db,
             ):
+                # Mock the database query for term duplicate detection (lines 585-593)
+                mock_collection = Mock()
+                mock_where_name = Mock()
+                mock_where_institution = Mock()
+                mock_limit = Mock()
+
+                mock_db.collection.return_value = mock_collection
+                mock_collection.where.return_value = mock_where_name
+                mock_where_name.where.return_value = mock_where_institution
+                mock_where_institution.limit.return_value = mock_limit
+                mock_limit.stream.return_value = iter([])  # No existing terms found
+
                 result = service.import_excel_file(
                     tmp_file.name,
                     conflict_strategy=ConflictStrategy.USE_THEIRS,
@@ -86,9 +103,11 @@ class TestImportService:
                     delete_existing_db=False,
                 )
 
-                # Should process the Excel file successfully
+                # Should process the Excel file successfully and trigger term processing
                 assert result.success is True
                 assert result.records_processed == 2
+                # Verify term processing was triggered
+                mock_db.collection.assert_called_with("terms")
 
         finally:
             os.unlink(tmp_file.name)
@@ -1389,37 +1408,6 @@ class TestImportServiceEdgeCases:
         assert len(result.conflicts) == 1
         assert result.execution_time >= 0
 
-    def test_import_excel_term_processing_path(self):
-        """Test import_excel_file term processing path"""
-        service = ImportService("northern-valley-cc")
-
-        # Create Excel file with term data
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["TEST-101"],
-                    "Course Title": ["Test Course"],
-                    "Instructor First Name": ["John"],
-                    "Instructor Last Name": ["Doe"],
-                    "Instructor Email": ["john@example.com"],
-                    "Term": "Fall 2024",
-                    "Start Date": "2024-08-01",
-                    "End Date": "2024-12-15",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test term processing in dry run
-            result = service.import_excel_file(tmp_file_path, dry_run=True)
-
-            # Should process terms successfully
-            assert result.records_processed == 1
-            assert result.dry_run is True
-        finally:
-            os.unlink(tmp_file_path)
-
     def test_import_excel_section_processing_path(self):
         """Test import_excel_file section processing path"""
         service = ImportService("northern-valley-cc")
@@ -1649,22 +1637,6 @@ class TestImportServiceMethods:
             "northern-valley-cc", progress_callback=test_callback
         )
         assert callback_service.progress_callback is not None
-
-    @patch("import_service.create_term")
-    def test_process_term_import(self, mock_create_term):
-        """Test term import processing."""
-        from import_service import ConflictStrategy
-
-        mock_create_term.return_value = "term123"
-
-        term_data = {
-            "term_name": "Fall 2024",
-            "start_date": "2024-08-01",
-            "end_date": "2024-12-15",
-        }
-
-        # Test the term processing logic indirectly
-        assert mock_create_term is not None  # Verify mock is set up
 
     def test_conflict_detection_comprehensive(self):
         """Test comprehensive conflict detection scenarios."""
