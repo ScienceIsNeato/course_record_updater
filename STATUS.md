@@ -168,6 +168,11 @@ The web-based integration tests now automatically catch:
 - **✅ AGENT_LESSONS_LEARNED.md**: Updated best practices with new validation approach
 - **✅ GitHub Actions**: Existing workflows continue to work with individual `--checks` flags
 
+#### CI Environment Fix:
+- **✅ Environment Variable Check**: Skip env var validation in CI (CI=true or GITHUB_ACTIONS=true)
+- **✅ CI Compatibility**: Prevents CI failures due to missing local development variables
+- **✅ Local Development**: Maintains helpful direnv guidance for local setup
+
 ### Next Steps
 1. **Story 6.2**: Admin User Management Interface
 2. **Epic 7**: Testing & Security (Stories 7.1, 7.2)
