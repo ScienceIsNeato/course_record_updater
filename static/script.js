@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   } else {
+    console.log(
       'ℹ️ No course table found - skipping table event listeners (expected in cleaned UI)'
     );
   }
@@ -378,6 +379,7 @@ function initializeImportForm() {
   const progressDiv = document.getElementById('importProgress');
   const resultsDiv = document.getElementById('importResults');
 
+  console.log('Import form elements found:', {
     importForm: !!importForm,
     validateBtn: !!validateBtn,
     executeBtn: !!executeBtn,

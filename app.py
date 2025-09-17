@@ -67,11 +67,13 @@ else:
 def index():
     """Render the main page with course management interface."""
 
-    # Redirect to dashboard if authenticated, login if not
-    if is_authenticated():
-        return redirect(url_for(DASHBOARD_ENDPOINT))
-    else:
+    # Redirect to login if not authenticated
+    if not is_authenticated():
         return redirect(url_for("login"))
+
+    # For authenticated users, render the main interface
+    user = get_current_user()
+    return render_template("index.html", user=user)
 
 
 # Authentication Routes

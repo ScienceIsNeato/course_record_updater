@@ -114,18 +114,18 @@ class TestIndexRoute:
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_redirects_authenticated_user(
+    def test_index_route_renders_for_authenticated_user(
         self, mock_is_authenticated, mock_get_current_user
     ):
-        """Test that index route redirects authenticated users to dashboard."""
+        """Test that index route renders template for authenticated users."""
         mock_get_current_user.return_value = {"email": "test@example.com"}
         mock_is_authenticated.return_value = True
 
         with app_module.app.test_client() as client:
             response = client.get("/")
-            assert response.status_code == 302
-            # Check that it redirects to dashboard
-            assert "/dashboard" in response.location
+            assert response.status_code == 200
+            # Check that it renders the index template with import form
+            assert b"excelImportForm" in response.data
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
