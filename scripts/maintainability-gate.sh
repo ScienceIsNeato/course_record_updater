@@ -26,45 +26,49 @@
 
 set -e
 
-# Check required environment variables first
-echo "🔍 Checking environment variables..."
+# Check required environment variables (skip in CI environments)
+if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+  echo "🔄 Skipping environment variable check in CI environment"
+else
+  echo "🔍 Checking environment variables..."
 
-REQUIRED_VARS=(
-  "AGENT_HOME"
-  "FIRESTORE_EMULATOR_HOST" 
-  "COURSE_RECORD_UPDATER_PORT"
-  "SONAR_TOKEN"
-  "SAFETY_API_KEY"
-  "DEFAULT_PORT"
-  "GITHUB_PERSONAL_ACCESS_TOKEN"
-)
+  REQUIRED_VARS=(
+    "AGENT_HOME"
+    "FIRESTORE_EMULATOR_HOST" 
+    "COURSE_RECORD_UPDATER_PORT"
+    "SONAR_TOKEN"
+    "SAFETY_API_KEY"
+    "DEFAULT_PORT"
+    "GITHUB_PERSONAL_ACCESS_TOKEN"
+  )
 
-MISSING_VARS=()
+  MISSING_VARS=()
 
-for var in "${REQUIRED_VARS[@]}"; do
-  if [ -z "${!var}" ]; then
-    MISSING_VARS+=("$var")
-  fi
-done
-
-if [ ${#MISSING_VARS[@]} -ne 0 ]; then
-  echo "❌ ENVIRONMENT SETUP FAILED"
-  echo ""
-  echo "Missing required environment variables:"
-  for var in "${MISSING_VARS[@]}"; do
-    echo "  • $var"
+  for var in "${REQUIRED_VARS[@]}"; do
+    if [ -z "${!var}" ]; then
+      MISSING_VARS+=("$var")
+    fi
   done
-  echo ""
-  echo "💡 FIX: Run 'direnv allow' to load environment variables from .envrc"
-  echo "   This is a common issue - the .envrc file contains all required variables"
-  echo "   but direnv needs permission to load them into your shell environment."
-  echo ""
-  echo "   If direnv is not installed: brew install direnv"
-  echo "   Then add to your shell config: eval \"\$(direnv hook bash)\" or eval \"\$(direnv hook zsh)\""
-  exit 1
-fi
 
-echo "✅ Environment variables loaded correctly"
+  if [ ${#MISSING_VARS[@]} -ne 0 ]; then
+    echo "❌ ENVIRONMENT SETUP FAILED"
+    echo ""
+    echo "Missing required environment variables:"
+    for var in "${MISSING_VARS[@]}"; do
+      echo "  • $var"
+    done
+    echo ""
+    echo "💡 FIX: Run 'direnv allow' to load environment variables from .envrc"
+    echo "   This is a common issue - the .envrc file contains all required variables"
+    echo "   but direnv needs permission to load them into your shell environment."
+    echo ""
+    echo "   If direnv is not installed: brew install direnv"
+    echo "   Then add to your shell config: eval \"\$(direnv hook bash)\" or eval \"\$(direnv hook zsh)\""
+    exit 1
+  fi
+
+  echo "✅ Environment variables loaded correctly"
+fi
 
 # Individual check flags - ATOMIC CHECKS ONLY
 RUN_BLACK=false
