@@ -2,12 +2,12 @@
 # Uses ship_it.py for consistent quality checks between local and CI
 
 repos:
-  # Use our centralized quality gate script for all checks with fail-fast
+  # Use our centralized quality gate script for commit validation (fail-fast always enabled)
   - repo: local
     hooks:
       - id: quality-gate
         name: Quality Gate (All Checks)
-        entry: python scripts/ship_it.py --fail-fast
+        entry: python scripts/ship_it.py
         language: system
         pass_filenames: false
         always_run: true
