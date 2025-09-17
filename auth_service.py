@@ -134,9 +134,11 @@ class AuthService:
         Get the current authenticated user from session.
         Returns None if no user is authenticated.
         """
+        from flask import session
+
         # For now, return mock admin user for development
         # TODO: Replace with real session-based authentication in Story 4.1
-        return {
+        base_user = {
             "user_id": "dev-admin-123",
             "email": "admin@cei.edu",
             "role": "site_admin",
@@ -146,8 +148,23 @@ class AuthService:
             "institution_id": "inst-123",
             "primary_institution_id": "inst-123",
             "accessible_institutions": ["inst-123"],
-            "accessible_programs": [],  # Will be populated based on role
+            "accessible_programs": [
+                "prog-123",
+                "prog-456",
+                "prog-789",
+            ],  # Populated for context switching
         }
+
+        # Add current program context from session if available
+        try:
+            current_program_id = session.get("current_program_id")
+            if current_program_id:
+                base_user["current_program_id"] = current_program_id
+        except RuntimeError:
+            # Outside of application context (e.g., in tests)
+            pass
+
+        return base_user
 
     def has_permission(
         self, required_permission: str, context: Optional[Dict[str, Any]] = None
@@ -299,6 +316,8 @@ class AuthService:
         # Site admin and institution admin can access all programs in their scope
         if user_role in [UserRole.SITE_ADMIN.value, UserRole.INSTITUTION_ADMIN.value]:
             # TODO: Return programs from database based on institution scope
+            # For now, use institution_id if provided for future database filtering
+            _ = institution_id  # Acknowledge parameter for future use
             return ["prog-123", "prog-456"]  # Mock data
 
         # Program admin can only access their specific programs
@@ -509,6 +528,63 @@ def get_current_institution_id() -> Optional[str]:
     except Exception:
         # If database is not available or CEI institution doesn't exist, return None
         return None
+
+
+def get_current_program_id() -> Optional[str]:
+    """Get current user's active program ID (for program-scoped operations)."""
+    user = get_current_user()
+    if user:
+        # Get current program from session context
+        return user.get("current_program_id")
+    return None
+
+
+def set_current_program_id(program_id: str) -> bool:
+    """Set current user's active program context (for program switching)."""
+    try:
+        from flask import session
+
+        user = get_current_user()
+        if not user:
+            return False
+
+        # Verify user has access to this program
+        accessible_programs = user.get("accessible_programs", [])
+        if program_id not in accessible_programs:
+            logger.warning(
+                f"User {user.get('user_id')} attempted to switch to unauthorized program {program_id}"
+            )
+            return False
+
+        # Update session context
+        session["current_program_id"] = program_id
+        logger.info(
+            f"User {user.get('user_id')} switched to program context: {program_id}"
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"Error setting current program ID: {e}")
+        return False
+
+
+def clear_current_program_id() -> bool:
+    """Clear current user's active program context (return to institution-wide view)."""
+    try:
+        from flask import session
+
+        user = get_current_user()
+        if not user:
+            return False
+
+        # Remove program context from session
+        session.pop("current_program_id", None)
+        logger.info(f"User {user.get('user_id')} cleared program context")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error clearing current program ID: {e}")
+        return False
 
 
 def has_role(required_role: str) -> bool:

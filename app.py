@@ -2,11 +2,14 @@ import logging
 import os
 import sys
 
-from flask import Flask, render_template
+from flask import Flask, flash, redirect, render_template, url_for
+
+# Constants
+DASHBOARD_ENDPOINT = "api.dashboard"
 
 # Import new API routes and services
 from api_routes import api
-from auth_service import get_current_user, is_authenticated
+from auth_service import get_current_user, is_authenticated, login_required
 from database_service import db as database_client
 from logging_config import get_app_logger
 
@@ -64,14 +67,54 @@ else:
 def index():
     """Render the main page with course management interface."""
 
-    # Get current user info for display
-    current_user = get_current_user()
+    # Redirect to dashboard if authenticated, login if not
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+    else:
+        return redirect(url_for("login"))
 
-    # For now, just show the import interface
-    # Later we can add a proper dashboard with course listings
-    return render_template(
-        "index.html", current_user=current_user, is_authenticated=is_authenticated()
-    )
+
+# Authentication Routes
+@app.route("/login")
+def login():
+    """Login page"""
+    # Redirect to dashboard if already authenticated
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    return render_template("auth/login.html")
+
+
+@app.route("/register")
+def register():
+    """Registration page"""
+    # Redirect to dashboard if already authenticated
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    return render_template("auth/register.html")
+
+
+@app.route("/forgot-password")
+def forgot_password():
+    """Forgot password page"""
+    # Redirect to dashboard if already authenticated
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    return render_template("auth/forgot_password.html")
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    """User profile/account settings page"""
+    current_user = get_current_user()
+    if not current_user:
+        flash("Please log in to access your profile.", "error")
+        return redirect(url_for("login"))
+
+    return render_template("auth/profile.html", current_user=current_user)
 
 
 if __name__ == "__main__":
@@ -85,11 +128,11 @@ if __name__ == "__main__":
 
     logger = get_app_logger()
     logger.info(
-        f"Starting Course Record Updater on port {port} with debug mode: {use_debug}"
+        "Starting Course Record Updater on port %s with debug mode: %s", port, use_debug
     )
-    logger.info(f"Access the application at http://localhost:{port}")
+    logger.info("Access the application at http://localhost:%s", port)
     logger.info(
-        f"To use a different port, set PORT environment variable: PORT=3002 python app.py"
+        "To use a different port, set PORT environment variable: PORT=3002 python app.py"
     )
 
     app.run(host="0.0.0.0", port=port, debug=use_debug)

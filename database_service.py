@@ -1737,6 +1737,112 @@ def get_courses_by_program(program_id: str) -> List[Dict[str, Any]]:
         return []
 
 
+def get_unassigned_courses(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all courses that are not assigned to any program within an institution.
+    These courses need default program assignment.
+
+    Args:
+        institution_id: Institution identifier
+
+    Returns:
+        List of unassigned course dictionaries
+    """
+    logger.info(
+        f"[DB Service] get_unassigned_courses called for institution: {institution_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            courses_ref = db.collection("courses")
+            query = courses_ref.where("institution_id", "==", institution_id)
+            unassigned_courses = []
+
+            for doc in query.stream():
+                course_data = doc.to_dict()
+                course_data["id"] = doc.id
+
+                # Check if course has no program assignments
+                program_ids = course_data.get("program_ids", [])
+                if not program_ids or len(program_ids) == 0:
+                    unassigned_courses.append(course_data)
+
+            logger.info(
+                f"[DB Service] Found {len(unassigned_courses)} unassigned courses for institution {institution_id}"
+            )
+            return unassigned_courses
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error retrieving unassigned courses for institution {institution_id}: {e}"
+        )
+        return []
+
+
+def assign_course_to_default_program(course_id: str, institution_id: str) -> bool:
+    """
+    Assign a course to the default program for an institution.
+    Creates a "General" program if none exists.
+
+    Args:
+        course_id: Course identifier
+        institution_id: Institution identifier
+
+    Returns:
+        True if assignment successful, False otherwise
+    """
+    logger.info(
+        f"[DB Service] assign_course_to_default_program called for course: {course_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            # Look for existing "General" program
+            programs_ref = db.collection("programs")
+            query = programs_ref.where("institution_id", "==", institution_id).where(
+                "name", "==", "General"
+            )
+
+            general_program_id = None
+            for doc in query.stream():
+                general_program_id = doc.id
+                break
+
+            # Create General program if it doesn't exist
+            if not general_program_id:
+                general_program_data = {
+                    "name": "General",
+                    "description": "Default program for unassigned courses",
+                    "institution_id": institution_id,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                doc_ref = programs_ref.add(general_program_data)
+                general_program_id = doc_ref[1].id
+                logger.info(
+                    f"[DB Service] Created default 'General' program: {general_program_id}"
+                )
+
+            # Assign course to the General program
+            if general_program_id:
+                success = add_course_to_program(course_id, general_program_id)
+                if success:
+                    logger.info(
+                        f"[DB Service] Assigned course {course_id} to default program {general_program_id}"
+                    )
+                return success
+
+            return False
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error assigning course {course_id} to default program: {e}"
+        )
+        return False
+
+
 def add_course_to_program(course_id: str, program_id: str) -> bool:
     """
     Add a course to a program

@@ -11,6 +11,7 @@ from database_service import (
     COURSES_COLLECTION,
     TERMS_COLLECTION,
     USERS_COLLECTION,
+    assign_course_to_default_program,
     calculate_and_update_active_users,
     create_course,
     create_course_offering,
@@ -37,6 +38,7 @@ from database_service import (
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_name,
+    get_unassigned_courses,
     get_user_by_email,
     get_users_by_role,
     list_invitations,
@@ -2212,3 +2214,49 @@ class TestUpdateInvitation:
         mock_doc_ref.update.assert_called_once_with(expected_updates)
 
         assert result is True
+
+
+class TestUnassignedCoursesAndDefaults:
+    """Test unassigned courses and default program functionality"""
+
+    @patch("database_service.db")
+    def test_get_unassigned_courses_success(self, mock_db_client):
+        """Test getting unassigned courses"""
+        # Mock courses with no program_ids
+        mock_courses = [
+            {"course_id": "course1", "name": "Unassigned Course 1", "program_ids": []},
+            {
+                "course_id": "course2",
+                "name": "Unassigned Course 2",
+            },  # Missing program_ids
+        ]
+
+        mock_docs = []
+        for i, course in enumerate(mock_courses):
+            mock_doc = Mock()
+            mock_doc.id = f"course{i+1}"
+            mock_doc.to_dict.return_value = course
+            mock_docs.append(mock_doc)
+
+        mock_db_client.collection.return_value.where.return_value.stream.return_value = (
+            mock_docs
+        )
+
+        result = get_unassigned_courses("inst123")
+
+        # Should return courses without program assignments
+        assert len(result) == 2
+
+    @patch("database_service.db")
+    def test_assign_course_to_default_program_success(self, mock_db_client):
+        """Test assigning course to default program"""
+        # Mock existing General program
+        mock_general_doc = Mock()
+        mock_general_doc.id = "general123"
+        mock_db_client.collection.return_value.where.return_value.where.return_value.stream.return_value = [
+            mock_general_doc
+        ]
+
+        with patch("database_service.add_course_to_program", return_value=True):
+            result = assign_course_to_default_program("course123", "inst123")
+            assert result is True

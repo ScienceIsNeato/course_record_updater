@@ -114,30 +114,100 @@ class TestIndexRoute:
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_renders_template(
+    def test_index_route_redirects_authenticated_user(
         self, mock_is_authenticated, mock_get_current_user
     ):
-        """Test that index route renders the correct template."""
+        """Test that index route redirects authenticated users to dashboard."""
         mock_get_current_user.return_value = {"email": "test@example.com"}
         mock_is_authenticated.return_value = True
 
         with app_module.app.test_client() as client:
             response = client.get("/")
-            assert response.status_code == 200
-            # Check that it's returning HTML content
-            assert b"<!DOCTYPE html" in response.data or b"<html" in response.data
+            assert response.status_code == 302
+            # Check that it redirects to dashboard
+            assert "/dashboard" in response.location
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_handles_unauthenticated_user(
+    def test_index_route_redirects_unauthenticated_user(
         self, mock_is_authenticated, mock_get_current_user
     ):
-        """Test that index route handles unauthenticated users."""
+        """Test that index route redirects unauthenticated users to login."""
         mock_get_current_user.return_value = None
         mock_is_authenticated.return_value = False
 
         with app_module.app.test_client() as client:
             response = client.get("/")
+            assert response.status_code == 302
+            # Check that it redirects to login
+            assert "/login" in response.location
+
+    @patch("app.is_authenticated")
+    def test_login_route_renders_template(self, mock_is_authenticated):
+        """Test that login route renders the login template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/login")
+            assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_login_route_redirects_authenticated_user(self, mock_is_authenticated):
+        """Test that login route redirects authenticated users."""
+        mock_is_authenticated.return_value = True
+
+        with app_module.app.test_client() as client:
+            response = client.get("/login")
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
+
+    @patch("app.is_authenticated")
+    def test_register_route_renders_template(self, mock_is_authenticated):
+        """Test that register route renders the registration template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/register")
+            assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_forgot_password_route_renders_template(self, mock_is_authenticated):
+        """Test that forgot password route renders the template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/forgot-password")
+            assert response.status_code == 200
+
+    @patch("app.get_current_user")
+    @patch("app.is_authenticated")
+    def test_profile_route_requires_authentication(
+        self, mock_is_authenticated, mock_get_current_user
+    ):
+        """Test that profile route requires authentication."""
+        mock_is_authenticated.return_value = False
+        mock_get_current_user.return_value = None
+
+        with app_module.app.test_client() as client:
+            response = client.get("/profile")
+            assert response.status_code == 302  # Should redirect due to @login_required
+
+    @patch("app.get_current_user")
+    @patch("app.is_authenticated")
+    def test_profile_route_renders_for_authenticated_user(
+        self, mock_is_authenticated, mock_get_current_user
+    ):
+        """Test that profile route renders for authenticated users."""
+        mock_is_authenticated.return_value = True
+        mock_get_current_user.return_value = {
+            "email": "test@example.com",
+            "first_name": "Test",
+            "last_name": "User",
+            "role": "instructor",
+        }
+
+        with app_module.app.test_client() as client:
+            response = client.get("/profile")
             assert response.status_code == 200
 
 

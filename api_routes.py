@@ -12,14 +12,18 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 # Import our services
 from auth_service import (
+    clear_current_program_id,
     get_current_institution_id,
+    get_current_program_id,
     get_current_user,
     has_permission,
     login_required,
     permission_required,
+    set_current_program_id,
 )
 from database_service import (
     add_course_to_program,
+    assign_course_to_default_program,
     bulk_add_courses_to_program,
     bulk_remove_courses_from_program,
     create_course,
@@ -42,6 +46,7 @@ from database_service import (
     get_programs_by_institution,
     get_sections_by_instructor,
     get_sections_by_term,
+    get_unassigned_courses,
     get_users_by_role,
     remove_course_from_program,
     update_program,
@@ -62,6 +67,67 @@ api = Blueprint("api", __name__, url_prefix="/api")
 
 # Get logger for this module
 logger = get_logger(__name__)
+
+
+@api.before_request
+def validate_context():
+    """Validate institution and program context for API requests"""
+    # Skip validation for context management endpoints
+    if request.endpoint and (
+        request.endpoint.startswith("api.get_program_context")
+        or request.endpoint.startswith("api.switch_program_context")
+        or request.endpoint.startswith("api.clear_program_context")
+        or request.endpoint.startswith("api.create_institution")
+        or request.endpoint.startswith("api.list_institutions")
+        or "auth" in request.endpoint  # Skip for auth endpoints
+    ):
+        return
+
+    # Skip validation for non-API endpoints
+    if not request.endpoint or not request.endpoint.startswith("api."):
+        return
+
+    # Skip validation for OPTIONS requests (CORS preflight)
+    if request.method == "OPTIONS":
+        return
+
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return  # Let the auth decorators handle authentication
+
+        # Site admins don't need context validation
+        if current_user.get("role") == "site_admin":
+            return
+
+        # Validate institution context for non-site-admin users
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            logger.warning(
+                f"Missing institution context for user {current_user.get('user_id')} on endpoint {request.endpoint}"
+            )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Institution context required",
+                        "code": "MISSING_INSTITUTION_CONTEXT",
+                    }
+                ),
+                400,
+            )
+
+        # Log context for debugging
+        current_program_id = get_current_program_id()
+        logger.debug(
+            f"Request context - User: {current_user.get('user_id')}, Institution: {institution_id}, Program: {current_program_id}"
+        )
+
+    except Exception as e:
+        logger.error(f"Context validation error: {e}")
+        # Don't block requests on validation errors, let them proceed
+        return
+
 
 # Constants for error messages to avoid duplication
 NO_DATA_PROVIDED_MSG = "No data provided"
@@ -246,6 +312,108 @@ def get_institution_details(institution_id: str):
 
 
 # ========================================
+# CONTEXT MANAGEMENT API
+# ========================================
+
+
+@api.route("/context/program", methods=["GET"])
+@login_required
+def get_program_context():
+    """Get current user's program context and accessible programs"""
+    try:
+        current_user = get_current_user()
+        current_program_id = get_current_program_id()
+        accessible_programs = current_user.get("accessible_programs", [])
+
+        # Get program details for accessible programs
+        program_details = []
+        for program_id in accessible_programs:
+            program = get_program_by_id(program_id)
+            if program:
+                program_details.append(program)
+
+        return jsonify(
+            {
+                "success": True,
+                "current_program_id": current_program_id,
+                "accessible_programs": program_details,
+                "has_multiple_programs": len(accessible_programs) > 1,
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get program context", "Failed to retrieve program context"
+        )
+
+
+@api.route("/context/program/<program_id>", methods=["POST"])
+@login_required
+def switch_program_context(program_id: str):
+    """Switch user's active program context"""
+    try:
+        current_user = get_current_user()
+
+        # Verify user has access to this program
+        accessible_programs = current_user.get("accessible_programs", [])
+        if program_id not in accessible_programs:
+            return jsonify({"success": False, "error": "Access denied to program"}), 403
+
+        # Verify program exists
+        program = get_program_by_id(program_id)
+        if not program:
+            return jsonify({"success": False, "error": "Program not found"}), 404
+
+        # Switch context
+        if set_current_program_id(program_id):
+            return jsonify(
+                {
+                    "success": True,
+                    "message": f"Switched to program: {program.get('name', program_id)}",
+                    "current_program_id": program_id,
+                    "program": program,
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to switch program context"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Switch program context", "Failed to switch program context"
+        )
+
+
+@api.route("/context/program", methods=["DELETE"])
+@login_required
+def clear_program_context():
+    """Clear user's active program context (return to institution-wide view)"""
+    try:
+        if clear_current_program_id():
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Cleared program context - now viewing institution-wide data",
+                    "current_program_id": None,
+                }
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to clear program context"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Clear program context", "Failed to clear program context"
+        )
+
+
+# ========================================
 # USER MANAGEMENT API
 # ========================================
 
@@ -373,10 +541,11 @@ def get_user(user_id: str):
 @permission_required("view_program_data")
 def list_courses():
     """
-    Get list of courses, optionally filtered by department
+    Get list of courses, optionally filtered by department and program context
 
     Query parameters:
     - department: Filter by department (optional)
+    - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
         # Get institution context - for development, use CEI
@@ -387,14 +556,59 @@ def list_courses():
                 400,
             )
 
+        # Check for program context
+        program_id_override = request.args.get("program_id")
+        current_program_id = get_current_program_id()
+
+        # Use override if provided and user has access
+        if program_id_override:
+            current_user = get_current_user()
+            accessible_programs = current_user.get("accessible_programs", [])
+            if program_id_override in accessible_programs:
+                current_program_id = program_id_override
+            else:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Access denied to specified program",
+                        }
+                    ),
+                    403,
+                )
+
         department_filter = request.args.get("department")
 
-        if department_filter:
-            courses = get_courses_by_department(institution_id, department_filter)
-        else:
-            courses = get_all_courses(institution_id)
+        # Apply filters based on context and parameters
+        if current_program_id:
+            # Program context active - get courses for this program
+            courses = get_courses_by_program(current_program_id)
 
-        return jsonify({"success": True, "courses": courses, "count": len(courses)})
+            # Apply department filter if specified
+            if department_filter:
+                courses = [
+                    c for c in courses if c.get("department") == department_filter
+                ]
+
+            context_info = f"program {current_program_id}"
+        elif department_filter:
+            # Institution-wide with department filter
+            courses = get_courses_by_department(institution_id, department_filter)
+            context_info = f"department {department_filter}"
+        else:
+            # Institution-wide, all courses
+            courses = get_all_courses(institution_id)
+            context_info = "institution-wide"
+
+        return jsonify(
+            {
+                "success": True,
+                "courses": courses,
+                "count": len(courses),
+                "context": context_info,
+                "current_program_id": current_program_id,
+            }
+        )
 
     except Exception as e:
         return handle_api_error(e, "Get courses", "Failed to retrieve courses")
@@ -467,6 +681,73 @@ def get_course(course_number: str):
 
     except Exception as e:
         return handle_api_error(e, "Get course by number", "Failed to retrieve course")
+
+
+@api.route("/courses/unassigned", methods=["GET"])
+@permission_required("manage_courses")
+def list_unassigned_courses():
+    """Get list of courses not assigned to any program"""
+    try:
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        unassigned_courses = get_unassigned_courses(institution_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "courses": unassigned_courses,
+                "count": len(unassigned_courses),
+                "message": f"Found {len(unassigned_courses)} unassigned courses",
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get unassigned courses", "Failed to retrieve unassigned courses"
+        )
+
+
+@api.route("/courses/<course_id>/assign-default", methods=["POST"])
+@permission_required("manage_courses")
+def assign_course_to_default(course_id: str):
+    """Assign a course to the default 'General' program"""
+    try:
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        success = assign_course_to_default_program(course_id, institution_id)
+
+        if success:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Course assigned to default program successfully",
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to assign course to default program",
+                    }
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Assign course to default", "Failed to assign course to default program"
+        )
 
 
 # ========================================
