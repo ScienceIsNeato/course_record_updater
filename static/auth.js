@@ -1,9 +1,7 @@
 // Authentication JavaScript - Form validation, password strength, and API integration
 
-
 // DOM Content Loaded
 document.addEventListener('DOMContentLoaded', () => {
-
   // Initialize based on current page
   initializePage();
 });
@@ -402,7 +400,7 @@ async function handleLogin(e) {
       }
     }
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', error); // eslint-disable-line no-console
     showError('Network error. Please try again.');
   } finally {
     setLoadingState(submitBtn, false);
@@ -450,7 +448,7 @@ async function handleRegister(e) {
       showError(result.error || 'Registration failed. Please try again.');
     }
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error:', error); // eslint-disable-line no-console
     showError('Network error. Please try again.');
   } finally {
     setLoadingState(submitBtn, false);
@@ -494,7 +492,7 @@ async function handleForgotPassword(e) {
       showError(result.error || 'Failed to send reset instructions. Please try again.');
     }
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('Forgot password error:', error); // eslint-disable-line no-console
     showError('Network error. Please try again.');
   } finally {
     setLoadingState(submitBtn, false);

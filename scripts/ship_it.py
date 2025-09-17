@@ -66,6 +66,8 @@ class QualityGateExecutor:
             ("black", "🎨 Code Formatting (black)"),
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
+            ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
@@ -421,7 +423,7 @@ Examples:
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
-Available checks: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication
 
 By default, runs ALL atomic checks for comprehensive quality validation.
 Use specific --checks for targeted validation or faster development cycles.

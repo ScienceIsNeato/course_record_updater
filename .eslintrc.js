@@ -15,6 +15,9 @@ module.exports = {
     // Bootstrap globals
     bootstrap: 'readonly',
     
+    // Our logger utility
+    Logger: 'readonly',
+    
     // Our custom globals (functions exposed on window)
     changePage: 'writable',
     editUser: 'writable',

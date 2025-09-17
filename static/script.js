@@ -1,7 +1,6 @@
 // static/script.js
 
 document.addEventListener('DOMContentLoaded', () => {
-
   const courseTableBody = document.querySelector('.table tbody'); // Target tbody directly
 
   // Only set up table event listeners if the table exists (legacy functionality)
@@ -20,21 +19,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (target.classList.contains('edit-btn')) {
         makeRowEditable(row);
       } else if (target.classList.contains('delete-btn')) {
-      // --- DELETE Button Click ---
+        // --- DELETE Button Click ---
         const courseNumber = row.cells[0].textContent; // Get course number from first cell
         handleDelete(row, courseId, courseNumber);
       } else if (target.classList.contains('save-btn')) {
-      // --- SAVE Button Click ---
+        // --- SAVE Button Click ---
         await handleSave(row, courseId);
       } else if (target.classList.contains('cancel-btn')) {
-      // --- CANCEL Button Click ---
+        // --- CANCEL Button Click ---
         cancelEdit(row);
       }
     });
   } else {
-    console.log(
-      'ℹ️ No course table found - skipping table event listeners (expected in cleaned UI)'
-    );
+    Logger.info('No course table found - skipping table event listeners (expected in cleaned UI)');
   }
 
   // --- Helper Functions ---
@@ -158,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gradeInputs.forEach(input => input.classList.add('is-invalid'));
       }
     } else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
-    // Also check: if any grade was entered, num_students MUST be provided and valid
+      // Also check: if any grade was entered, num_students MUST be provided and valid
       hasError = true;
       validationErrorMsg =
         'Number of Students is required and must be a valid non-negative number when entering grades.';
@@ -201,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         revertRowToActionButtons(row);
       } else {
-        console.error('Update failed:', result.error || `HTTP ${response.status}`);
+        Logger.error('Update failed:', result.error || `HTTP ${response.status}`);
         // Try to show backend validation error if available
         const backendError = result.error || 'Server error';
         if (
@@ -217,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Leave editable on failure
       }
     } catch (error) {
-      console.error('Network or fetch error during save:', error);
+      Logger.error('Network or fetch error during save:', error);
       alert('Failed to send update request.');
     }
   }
@@ -267,12 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
           row.remove(); // Remove row from table
           alert(`Course ${courseNumber} deleted successfully.`);
         } else {
-          console.error('Delete failed on server:', result.error);
+          Logger.error('Delete failed on server:', result.error);
           alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
         }
       })
       .catch(error => {
-        console.error('Network or other error during delete:', error);
+        Logger.error('Network or other error during delete:', error);
         alert(`Failed to delete course: ${error.message}`);
       });
   }
@@ -359,7 +356,7 @@ async function loadDashboardData() {
         element.innerHTML = '<small class="text-danger">Failed to load</small>';
       }
     } catch (error) {
-      console.error(`Failed to load ${endpoint.key}:`, error);
+      Logger.error(`Failed to load ${endpoint.key}:`, error);
       const element = document.getElementById(endpoint.id);
       if (element) {
         element.innerHTML = '<small class="text-danger">Error loading data</small>';
@@ -379,7 +376,7 @@ function initializeImportForm() {
   const progressDiv = document.getElementById('importProgress');
   const resultsDiv = document.getElementById('importResults');
 
-  console.log('Import form elements found:', {
+  Logger.debug('Import form elements found:', {
     importForm: !!importForm,
     validateBtn: !!validateBtn,
     executeBtn: !!executeBtn,
@@ -388,7 +385,7 @@ function initializeImportForm() {
   });
 
   if (!importForm) {
-    console.error('❌ Import form not found!');
+    Logger.error('Import form not found!');
     return; // Exit if import form doesn't exist
   }
 
@@ -540,7 +537,6 @@ function initializeImportForm() {
   }
 
   async function pollImportProgress(progressId, shouldAutoRefresh) {
-
     const pollInterval = 1000; // Poll every second
     const maxPollTime = 300000; // Max 5 minutes
     const startTime = Date.now();
@@ -676,7 +672,7 @@ function initializeImportForm() {
 
   function showImportResults(result, success) {
     if (!resultsDiv) {
-      console.error('❌ Results div not found!');
+      Logger.error('Results div not found!');
       return;
     }
 

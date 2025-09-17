@@ -1,6 +1,5 @@
 // Admin Interface JavaScript - User Management
 
-
 // Global state
 let currentUsers = [];
 let currentInvitations = [];
@@ -127,7 +126,7 @@ async function loadUsers() {
       throw new Error(data.error || 'Failed to load users');
     }
   } catch (error) {
-    console.error('Error loading users:', error);
+    console.error('Error loading users:', error); // eslint-disable-line no-console
     showError('Failed to load users: ' + error.message);
     showEmpty('users');
   }
@@ -152,7 +151,7 @@ async function loadInvitations() {
       throw new Error(data.error || 'Failed to load invitations');
     }
   } catch (error) {
-    console.error('Error loading invitations:', error);
+    console.error('Error loading invitations:', error); // eslint-disable-line no-console
     showError('Failed to load invitations: ' + error.message);
     showEmpty('invitations');
   }
@@ -177,7 +176,7 @@ async function loadPrograms() {
       }
     }
   } catch (error) {
-    console.error('Error loading programs:', error);
+    console.error('Error loading programs:', error); // eslint-disable-line no-console
   }
 }
 
@@ -553,7 +552,7 @@ async function handleInviteUser(event) {
       throw new Error(result.error || 'Failed to send invitation');
     }
   } catch (error) {
-    console.error('Error sending invitation:', error);
+    console.error('Error sending invitation:', error); // eslint-disable-line no-console
     showError('Failed to send invitation: ' + error.message);
   } finally {
     setLoadingState(submitBtn, false);
@@ -632,7 +631,7 @@ async function handleEditUser(event) {
       throw new Error(result.error || 'Failed to update user');
     }
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error('Error updating user:', error); // eslint-disable-line no-console
     showError('Failed to update user: ' + error.message);
   } finally {
     setLoadingState(submitBtn, false);
