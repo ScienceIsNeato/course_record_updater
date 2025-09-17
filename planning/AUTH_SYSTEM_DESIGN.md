@@ -591,18 +591,18 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ### **Epic 5: Authorization & Permissions**
 
-#### **Story 5.1: 4-Tier Role-Based Access Control**
+#### **Story 5.1: 4-Tier Role-Based Access Control** ✅ **COMPLETED**
 **As a** system  
 **I want** to enforce role-based permissions  
 **So that** users can only access appropriate functionality
 
 **Acceptance Criteria:**
-- [ ] Replace stub authentication decorators
-- [ ] Implement 4-tier role hierarchy (site_admin > institution_admin > program_admin > instructor)
-- [ ] Implement program-scoped permissions for program_admin
-- [ ] Update all existing routes with proper decorators
-- [ ] Add unauthorized access error handling
-- [ ] Create permission checking utilities for program access
+- [x] Replace stub authentication decorators
+- [x] Implement 4-tier role hierarchy (site_admin > institution_admin > program_admin > instructor)
+- [x] Implement program-scoped permissions for program_admin
+- [x] Update all existing routes with proper decorators
+- [x] Add unauthorized access error handling
+- [x] Create permission checking utilities for program access
 
 **Technical Tasks:**
 - Replace stub decorators in auth_service.py
@@ -614,9 +614,134 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 **Estimate:** 10 story points
 
+**Smoke Tests Added:**
+- [x] Test role-based access control for all 4 tiers
+- [x] Test permission enforcement on API endpoints
+- [x] Test unauthorized access handling
+- [x] Test program-scoped permissions for program admins
+
 ---
 
-#### **Story 5.2: Program Context Management**
+#### **Story 5.2: Apply Authorization Decorators to API Routes** ✅ **COMPLETED**
+**As a** system administrator  
+**I want** all API routes to use proper authorization decorators  
+**So that** access control is consistently enforced across the application
+
+**Acceptance Criteria:**
+- [x] Update all API routes with appropriate authorization decorators
+- [x] Replace generic @login_required with specific permission decorators
+- [x] Implement context-aware permissions with context_keys
+- [x] Add proper error handling for authorization failures
+- [x] Test all routes with different user roles
+- [x] Update tests to work with new authorization requirements
+
+**Technical Tasks:**
+- Update all API routes in api_routes.py with proper decorators
+- Replace @login_required with @permission_required where appropriate
+- Add context_keys for institution_id and program_id validation
+- Update existing tests to handle authorization contexts
+- Test authorization with different user roles
+
+**Estimate:** 8 story points
+
+**Smoke Tests Added:**
+- [x] Test all API routes with proper authorization decorators
+- [x] Test context-aware permissions with institution and program contexts
+- [x] Test authorization failures return proper error codes
+
+---
+
+#### **Story 5.3: Integrate Authorization System with Invitation/Registration Flows** ✅ **COMPLETED**
+**As a** system administrator  
+**I want** invitation and registration flows to use the centralized authorization system  
+**So that** role management is consistent across all user onboarding
+
+**Acceptance Criteria:**
+- [x] Update invitation_service.py to use UserRole enum for validation
+- [x] Update models.py to validate roles against centralized UserRole enum
+- [x] Migrate User.get_permissions() to use ROLE_PERMISSIONS mapping
+- [x] Deprecate old ROLES dictionary in favor of auth_service definitions
+- [x] Update all role validation to use single source of truth
+- [x] Ensure backward compatibility during transition
+
+**Technical Tasks:**
+- Update invitation_service.py to import and use UserRole enum
+- Update models.py User and UserInvitation schemas for role validation
+- Replace User.get_permissions() implementation to use auth_service
+- Comment out and deprecate old ROLES dictionary
+- Update unit tests to reflect new role validation logic
+
+**Estimate:** 6 story points
+
+**Smoke Tests Added:**
+- [x] Test invitation creation with centralized role validation
+- [x] Test user registration with UserRole enum validation
+- [x] Test permission retrieval uses centralized ROLE_PERMISSIONS
+
+---
+
+#### **Story 5.4: Add Role-Based UI Components and Navigation** ✅ **COMPLETED**
+**As a** user  
+**I want** the UI to adapt based on my role and permissions  
+**So that** I only see functionality I'm authorized to use
+
+**Acceptance Criteria:**
+- [x] Create role-specific dashboard templates for all 4 user roles
+- [x] Implement dynamic navigation menus based on user role
+- [x] Add authentication-aware main template with login/logout
+- [x] Create user context display with role badges and dropdowns
+- [x] Implement JavaScript-based role detection and UI adaptation
+- [x] Update dashboard route to handle all 4 roles
+
+**Technical Tasks:**
+- Create dashboard templates for each role (site_admin, institution_admin, program_admin, instructor)
+- Implement role-based navigation components
+- Add authentication status checking via JavaScript
+- Create user context display and logout functionality
+- Update main template with dynamic navigation
+
+**Estimate:** 12 story points
+
+**Smoke Tests Added:**
+- [x] Test role-specific dashboard templates render correctly
+- [x] Test navigation menus adapt based on user role
+- [x] Test authentication status detection and UI updates
+
+---
+
+#### **Story 5.5: Test Authorization System with Multi-Tenant Data Access Scenarios** ✅ **COMPLETED**
+**As a** system administrator  
+**I want** comprehensive testing of multi-tenant data access  
+**So that** users can only access data within their institutional/program scope
+
+**Acceptance Criteria:**
+- [x] Create integration tests for institution-level data isolation
+- [x] Test program-scoped access control for program admins
+- [x] Validate cross-tenant access prevention across all user roles
+- [x] Test role hierarchy access patterns and inheritance
+- [x] Create comprehensive smoke tests for authorization system health
+- [x] Test context-aware API endpoint security
+
+**Technical Tasks:**
+- Create comprehensive multi-tenant authorization integration tests
+- Implement authorization system smoke tests
+- Test institution data isolation scenarios
+- Test program-scoped access control
+- Test cross-tenant access prevention
+- Test role hierarchy and permission inheritance
+
+**Estimate:** 10 story points
+
+**Smoke Tests Added:**
+- [x] Test multi-tenant data isolation with 34 comprehensive integration tests
+- [x] Test institution-level data access restrictions
+- [x] Test program-scoped access control validation
+- [x] Test cross-tenant access prevention
+- [x] Test role hierarchy and security boundaries
+
+---
+
+#### **Story 5.6: Program Context Management**
 **As a** user  
 **I want** all my actions to be scoped to my institution and programs  
 **So that** I only see and can modify data I have access to
@@ -640,17 +765,17 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 **Estimate:** 8 story points
 
 **Smoke Tests Added:**
-- [ ] Test role-based access control for all 4 tiers
-- [ ] Test permission enforcement on API endpoints
-- [ ] Test unauthorized access handling
-- [ ] Test program-scoped permissions for program admins
+- [ ] Test program context management for all user roles
+- [ ] Test automatic context detection from user sessions
+- [ ] Test database query filtering by institution/program access
+- [ ] Test program switching for multi-program admins
 - [ ] Test institution context filtering and validation
 
 ---
 
-### **Epic 5: User Interface & Experience**
+### **Epic 6: User Interface & Experience**
 
-#### **Story 5.1: Authentication UI Components**
+#### **Story 6.1: Authentication UI Components**
 **As a** user  
 **I want** intuitive authentication interfaces  
 **So that** I can easily manage my account and access
@@ -675,7 +800,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ---
 
-#### **Story 5.2: Admin User Management Interface**
+#### **Story 6.2: Admin User Management Interface**
 **As an** institution administrator  
 **I want** to manage users in my institution  
 **So that** I can control access and maintain my team
@@ -700,9 +825,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ---
 
-### **Epic 6: Testing & Security**
+### **Epic 7: Testing & Security**
 
-#### **Story 6.1: Authentication Testing Suite**
+#### **Story 7.1: Authentication Testing Suite**
 **As a** developer  
 **I want** comprehensive authentication tests  
 **So that** the auth system is reliable and secure
@@ -725,7 +850,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)  # 8-hour sessions
 
 ---
 
-#### **Story 6.2: Security Hardening**
+#### **Story 7.2: Security Hardening**
 **As a** system administrator  
 **I want** the authentication system to be secure  
 **So that** user accounts and data are protected
@@ -897,7 +1022,7 @@ Each story is complete when:
 
 ### **🔧 Frontend Integration Catch-All**
 
-#### **Story 7.1: Frontend Authentication Integration**
+#### **Story 8.1: Frontend Authentication Integration**
 **As a** user  
 **I want** complete frontend integration for authentication features  
 **So that** I have a seamless user experience
