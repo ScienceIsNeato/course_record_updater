@@ -166,6 +166,13 @@ jobs:
       run: python scripts/ship_it.py --checks coverage
       env:
         PYTHONPATH: .
+    - name: Generate Detailed Coverage Report (Temporary Debug)
+      run: |
+        echo "=== DETAILED CI COVERAGE REPORT FOR DEBUGGING ==="
+        python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet
+        echo "=== END DETAILED COVERAGE REPORT ==="
+      env:
+        PYTHONPATH: .
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
