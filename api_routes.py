@@ -2076,7 +2076,7 @@ def create_invitation_api():
 
         # Create invitation
         invitation = InvitationService.create_invitation(
-            inviter_user_id=current_user["id"],
+            inviter_user_id=current_user["user_id"],
             inviter_email=current_user["email"],
             invitee_email=data["invitee_email"],
             invitee_role=data["invitee_role"],

@@ -26,6 +26,11 @@ from auth_service import (
 class TestAuthService:
     """Test the AuthService class."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = Flask(__name__)
+        self.app.config["TESTING"] = True
+
     def test_auth_service_instance_creation(self):
         """Test that AuthService instance can be created."""
         service = AuthService()
@@ -33,37 +38,45 @@ class TestAuthService:
 
     def test_get_current_user_returns_mock_admin(self):
         """Test that get_current_user returns the expected mock admin user."""
-        service = AuthService()
-        user = service.get_current_user()
+        with self.app.app_context():
+            service = AuthService()
+            user = service.get_current_user()
 
-        assert user is not None
-        assert user["user_id"] == "dev-admin-123"
-        assert user["email"] == "admin@cei.edu"
-        assert user["role"] == "site_admin"
-        assert user["first_name"] == "Dev"
-        assert user["last_name"] == "Admin"
-        assert user["department"] == "IT"
+            assert user is not None
+            assert user["user_id"] == "dev-admin-123"
+            assert user["email"] == "admin@cei.edu"
+            assert user["role"] == "site_admin"
+            assert user["first_name"] == "Dev"
+            assert user["last_name"] == "Admin"
+            assert user["department"] == "IT"
 
     def test_has_permission_with_site_admin(self):
         """Test that has_permission works correctly for site admin."""
-        service = AuthService()
+        with self.app.app_context():
+            service = AuthService()
 
-        # Site admin should have all permissions
-        assert service.has_permission("manage_institutions") is True
-        assert service.has_permission("manage_users") is True
-        assert service.has_permission("view_all_data") is True
+            # Site admin should have all permissions
+            assert service.has_permission("manage_institutions") is True
+            assert service.has_permission("manage_users") is True
+            assert service.has_permission("view_all_data") is True
 
-        # Non-existent permission should return False
-        assert service.has_permission("nonexistent_permission") is False
+            # Non-existent permission should return False
+            assert service.has_permission("nonexistent_permission") is False
 
     def test_is_authenticated_returns_true_with_user(self):
         """Test that is_authenticated returns True when user exists."""
-        service = AuthService()
-        assert service.is_authenticated() is True
+        with self.app.app_context():
+            service = AuthService()
+            assert service.is_authenticated() is True
 
 
 class TestGlobalAuthServiceInstance:
     """Test the global auth_service instance."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = Flask(__name__)
+        self.app.config["TESTING"] = True
 
     def test_global_auth_service_exists(self):
         """Test that global auth_service instance exists."""
@@ -72,11 +85,12 @@ class TestGlobalAuthServiceInstance:
 
     def test_global_auth_service_methods(self):
         """Test that global auth_service instance methods work."""
-        user = auth_service.get_current_user()
-        assert user["email"] == "admin@cei.edu"
+        with self.app.app_context():
+            user = auth_service.get_current_user()
+            assert user["email"] == "admin@cei.edu"
 
-        assert auth_service.has_permission("manage_institutions") is True
-        assert auth_service.is_authenticated() is True
+            assert auth_service.has_permission("manage_institutions") is True
+            assert auth_service.is_authenticated() is True
 
 
 class TestAuthDecorators:

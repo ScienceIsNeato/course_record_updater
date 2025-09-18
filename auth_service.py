@@ -134,10 +134,33 @@ class AuthService:
         Get the current authenticated user from session.
         Returns None if no user is authenticated.
         """
+        # Feature flag for incremental migration to real auth
+        # Default to mock auth, enable real auth with USE_REAL_AUTH=True
+        try:
+            from flask import current_app
+
+            if current_app.config.get("USE_REAL_AUTH", False):
+                return self._get_real_session_user()
+            else:
+                return self._get_mock_user()
+        except RuntimeError:
+            # Outside of application context (e.g., in standalone tests)
+            # Default to mock user behavior
+            return self._get_mock_user()
+
+    def _get_real_session_user(self) -> Optional[Dict[str, Any]]:
+        """Real session-based authentication (production mode)"""
+        from session_service import SessionService
+
+        if not SessionService.is_user_logged_in():
+            return None
+
+        return SessionService.get_current_user()
+
+    def _get_mock_user(self) -> Optional[Dict[str, Any]]:
+        """Mock user for development and legacy tests"""
         from flask import session
 
-        # For now, return mock admin user for development
-        # TODO: Replace with real session-based authentication in Story 4.1
         base_user = {
             "user_id": "dev-admin-123",
             "email": "admin@cei.edu",
@@ -155,8 +178,25 @@ class AuthService:
             ],  # Populated for context switching
         }
 
-        # Add current program context from session if available
+        # Override with session data when available (for test compatibility)
         try:
+            # Check if we have test session data - use it to override defaults
+            session_user_id = session.get("user_id")
+            if session_user_id:
+                # Use session data when available (makes tests work in both mock and real mode)
+                session_overrides = {
+                    "user_id": session.get("user_id", base_user["user_id"]),
+                    "email": session.get("email", base_user["email"]),
+                    "role": session.get("role", base_user["role"]),
+                    "first_name": session.get("first_name", base_user["first_name"]),
+                    "last_name": session.get("last_name", base_user["last_name"]),
+                    "institution_id": session.get(
+                        "institution_id", base_user["institution_id"]
+                    ),
+                }
+                base_user.update(session_overrides)
+
+            # Add current program context from session if available
             current_program_id = session.get("current_program_id")
             if current_program_id:
                 base_user["current_program_id"] = current_program_id

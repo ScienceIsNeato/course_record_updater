@@ -225,20 +225,29 @@ class TestProgramAPIEndpoints:
             {"id": "prog2", "name": "Mathematics", "short_name": "MATH"},
         ]
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = Mock()
+        with self.app.app_context():
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = Mock()
 
-            result = list_programs()
+                result = list_programs()
 
-            mock_jsonify.assert_called_once_with(
-                {
-                    "success": True,
-                    "programs": [
-                        {"id": "prog1", "name": "Computer Science", "short_name": "CS"},
-                        {"id": "prog2", "name": "Mathematics", "short_name": "MATH"},
-                    ],
-                }
-            )
+                mock_jsonify.assert_called_once_with(
+                    {
+                        "success": True,
+                        "programs": [
+                            {
+                                "id": "prog1",
+                                "name": "Computer Science",
+                                "short_name": "CS",
+                            },
+                            {
+                                "id": "prog2",
+                                "name": "Mathematics",
+                                "short_name": "MATH",
+                            },
+                        ],
+                    }
+                )
 
     @patch("api_routes.get_current_institution_id")
     def test_list_programs_no_institution(self, mock_get_institution):
@@ -247,14 +256,15 @@ class TestProgramAPIEndpoints:
 
         mock_get_institution.return_value = None
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = (Mock(), 400)
+        with self.app.app_context():
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = (Mock(), 400)
 
-            result = list_programs()
+                result = list_programs()
 
-            mock_jsonify.assert_called_once_with(
-                {"success": False, "error": "Institution ID not found"}
-            )
+                mock_jsonify.assert_called_once_with(
+                    {"success": False, "error": "Institution ID not found"}
+                )
 
     def test_create_program_success(self):
         """Test successful program creation"""
@@ -416,12 +426,13 @@ class TestProgramAPIEndpoints:
         ]
         mock_delete.return_value = True
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = Mock()
+        with self.app.app_context():
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = Mock()
 
-            result = delete_program_api("test-program")
+                result = delete_program_api("test-program")
 
-            mock_delete.assert_called_once_with("test-program", "default-program")
+                mock_delete.assert_called_once_with("test-program", "default-program")
 
     @patch("api_routes.get_program_by_id")
     def test_delete_default_program_prevented(self, mock_get_program):
@@ -430,14 +441,15 @@ class TestProgramAPIEndpoints:
 
         mock_get_program.return_value = {"id": "default-program", "is_default": True}
 
-        with patch("api_routes.jsonify") as mock_jsonify:
-            mock_jsonify.return_value = (Mock(), 400)
+        with self.app.app_context():
+            with patch("api_routes.jsonify") as mock_jsonify:
+                mock_jsonify.return_value = (Mock(), 400)
 
-            result = delete_program_api("default-program")
+                result = delete_program_api("default-program")
 
-            mock_jsonify.assert_called_once_with(
-                {"success": False, "error": "Cannot delete default program"}
-            )
+                mock_jsonify.assert_called_once_with(
+                    {"success": False, "error": "Cannot delete default program"}
+                )
 
 
 class TestProgramIntegration:

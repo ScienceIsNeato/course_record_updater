@@ -1,0 +1,162 @@
+"""
+Test utilities for course record updater tests.
+Provides authentication helpers and test data for consistent testing.
+"""
+
+import json
+from contextlib import contextmanager
+
+from flask import current_app, session
+
+# Standard test user data
+ADMIN_USER_DATA = {
+    "user_id": "test-admin-123",
+    "email": "admin@test.edu",
+    "role": "site_admin",
+    "first_name": "Test",
+    "last_name": "Admin",
+    "institution_id": "test-inst-123",
+    "program_ids": ["test-prog-123", "test-prog-456"],
+    "display_name": "Test Admin",
+}
+
+INSTRUCTOR_USER_DATA = {
+    "user_id": "test-instructor-456",
+    "email": "instructor@test.edu",
+    "role": "instructor",
+    "first_name": "Test",
+    "last_name": "Instructor",
+    "institution_id": "test-inst-123",
+    "program_ids": ["test-prog-123"],
+    "display_name": "Test Instructor",
+}
+
+
+def enable_real_auth(app):
+    """Enable real authentication for this test session"""
+    app.config["USE_REAL_AUTH"] = True
+
+
+def disable_real_auth(app):
+    """Disable real authentication (use mock) for this test session"""
+    app.config["USE_REAL_AUTH"] = False
+
+
+def is_using_real_auth():
+    """
+    Check if the current test session is using real authentication.
+
+    Returns:
+        bool: True if using real auth, False if using mock auth
+    """
+    from flask import current_app
+
+    try:
+        return current_app.config.get("USE_REAL_AUTH", False)
+    except RuntimeError:
+        # No app context, default to False
+        return False
+
+
+def require_real_auth_session(client, user_data):
+    """
+    Create a test session that's compatible with real authentication.
+
+    This function should be used when --use-real-auth flag is enabled.
+    It creates a proper Flask session that SessionService can read.
+
+    Args:
+        client: Flask test client
+        user_data: Dictionary with user session data
+    """
+    if is_using_real_auth():
+        # For real auth, create a proper session
+        create_test_session(client, user_data)
+    else:
+        # For mock auth, session creation is not needed (mock returns hardcoded user)
+        pass
+
+
+def create_test_session(client, user_data):
+    """
+    Helper function to create a test session with user data.
+    Works with both mock and real auth modes.
+    """
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
+def setup_admin_auth(client):
+    """Quick setup for admin authentication"""
+    create_test_session(client, ADMIN_USER_DATA)
+
+
+def setup_instructor_auth(client):
+    """Quick setup for instructor authentication"""
+    create_test_session(client, INSTRUCTOR_USER_DATA)
+
+
+class RealAuthTestMixin:
+    """
+    Mixin for test classes that want to use real authentication.
+
+    Usage:
+    class TestMyEndpoints(RealAuthTestMixin):
+        def setup_method(self):
+            super().setup_method()  # Enables real auth
+            self.app = app
+            self.client = app.test_client()
+    """
+
+    def setup_method(self):
+        """Enable real auth for this test class"""
+        if hasattr(self, "app"):
+            enable_real_auth(self.app)
+
+
+@contextmanager
+def authenticated_test_client(app_instance, user_data):
+    """
+    Context manager for authenticated test client.
+
+    Usage:
+    with authenticated_test_client(app, ADMIN_USER_DATA) as client:
+        response = client.get('/api/endpoint')
+    """
+    client = app_instance.test_client()
+    create_test_session(client, user_data)
+    yield client
+
+
+def get_authenticated_client(app_instance, user_data):
+    """
+    Creates a new Flask test client and authenticates it with the given user data.
+    """
+    client = app_instance.test_client()
+    create_test_session(client, user_data)
+    return client
+
+
+class AuthenticatedTestMixin:
+    """
+    Mixin that provides authenticated request helpers.
+    """
+
+    def make_authenticated_request(self, method, url, user_data=None, **kwargs):
+        """Make an authenticated request"""
+        if user_data is None:
+            user_data = ADMIN_USER_DATA
+
+        client = get_authenticated_client(self.app, user_data)
+        return getattr(client, method.lower())(url, **kwargs)
