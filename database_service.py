@@ -7,13 +7,14 @@ including user management, course management, term management, and course sectio
 """
 
 import os  # Import os to check environment variables
-import signal
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
+
+from constants import SITE_ADMIN_INSTITUTION_ID
 
 # Import centralized logging
 from logging_config import get_database_logger
@@ -39,28 +40,18 @@ def db_operation_timeout(seconds=5):
     """
     Context manager to enforce timeouts on database operations
 
+    Note: Signal-based timeout disabled due to Flask threading issues.
+    TODO: Implement thread-safe timeout mechanism if needed.
+
     Args:
-        seconds: Timeout in seconds (default 5)
+        seconds: Timeout in seconds (default 5) - currently ignored
 
     Raises:
         DatabaseTimeoutError: If operation takes longer than specified timeout
     """
-
-    def timeout_handler(signum, frame):
-        raise DatabaseTimeoutError(
-            f"Database operation timed out after {seconds} seconds"
-        )
-
-    # Set the signal handler and a alarm for the specified timeout
-    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(seconds)
-
-    try:
-        yield
-    finally:
-        # Restore the old signal handler and cancel the alarm
-        signal.signal(signal.SIGALRM, old_handler)
-        signal.alarm(0)
+    # Signal-based timeout doesn't work in Flask request threads
+    # For now, just yield without timeout enforcement
+    yield
 
 
 def check_db_connection() -> bool:
@@ -586,28 +577,33 @@ def get_user_by_reset_token(reset_token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_all_users(institution_id: str) -> List[Dict[str, Any]]:
+def get_all_users(institution_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Get all users for a specific institution.
+    Get all users for a specific institution, or all users if institution_id is wildcard.
 
     Args:
-        institution_id: Institution ID to filter by
+        institution_id: Institution ID to filter by, or SITE_ADMIN_INSTITUTION_ID for all users
 
     Returns:
         List of user dictionaries
     """
     logger.info(
         "[DB Service] get_all_users called for institution: %s",
-        sanitize_for_logging(institution_id),
+        sanitize_for_logging(institution_id) if institution_id else "ALL",
     )
     if not db:
         logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
         return []
 
     try:
-        query = db.collection(USERS_COLLECTION).where(
-            filter=firestore.FieldFilter("institution_id", "==", institution_id)
-        )
+        if institution_id == SITE_ADMIN_INSTITUTION_ID:
+            # Site admin - get all users
+            query = db.collection(USERS_COLLECTION)
+        else:
+            # Institution-specific users
+            query = db.collection(USERS_COLLECTION).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
 
         docs = query.stream()
         users = []
@@ -943,6 +939,46 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
         return None
 
 
+def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get course by ID.
+
+    Args:
+        course_id: ID of the course to retrieve
+
+    Returns:
+        Course dictionary if found, None otherwise
+    """
+    logger.info(
+        f"[DB Service] get_course_by_id called for: {sanitize_for_logging(course_id)}"
+    )
+    if not db:
+        logger.error(DB_CLIENT_NOT_AVAILABLE_MSG)
+        return None
+
+    try:
+        with db_operation_timeout():
+            doc_ref = db.collection(COURSES_COLLECTION).document(course_id)
+            doc = doc_ref.get()
+
+            if doc.exists:
+                course_data = doc.to_dict()
+                course_data["id"] = doc.id
+                logger.info(
+                    f"[DB Service] Found course: {course_data.get('course_number')}"
+                )
+                return course_data
+            else:
+                logger.info(
+                    f"[DB Service] No course found with ID: {sanitize_for_logging(course_id)}"
+                )
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course by ID: {e}")
+        return None
+
+
 def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
     """
     Get course by course number.
@@ -1038,19 +1074,19 @@ def get_courses_by_department(
         return []
 
 
-def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
+def get_all_courses(institution_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Get all courses for a specific institution.
+    Get all courses for a specific institution, or all courses if institution_id is wildcard.
 
     Args:
-        institution_id: Institution ID to filter by
+        institution_id: Institution ID to filter by, or SITE_ADMIN_INSTITUTION_ID for all courses
 
     Returns:
         List of course dictionaries
     """
     logger.info(
         "[DB Service] get_all_courses called for institution: %s",
-        sanitize_for_logging(institution_id),
+        sanitize_for_logging(institution_id) if institution_id else "ALL",
     )
     if not check_db_connection():
         return []
@@ -1059,9 +1095,14 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         with db_operation_timeout(
             10
         ):  # Longer timeout for potentially large result sets
-            query = db.collection(COURSES_COLLECTION).where(
-                filter=firestore.FieldFilter("institution_id", "==", institution_id)
-            )
+            if institution_id == SITE_ADMIN_INSTITUTION_ID:
+                # Site admin - get all courses
+                query = db.collection(COURSES_COLLECTION)
+            else:
+                # Institution-specific courses
+                query = db.collection(COURSES_COLLECTION).where(
+                    filter=firestore.FieldFilter("institution_id", "==", institution_id)
+                )
 
             docs = query.stream()
             courses = []
@@ -1674,12 +1715,81 @@ def create_program(program_data: Dict[str, Any]) -> Optional[str]:
         return None
 
 
-def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
+def get_all_programs() -> List[Dict[str, Any]]:
     """
-    Get all programs for a specific institution
+    Get all programs across all institutions (for site admin)
+
+    Returns:
+        List of program dictionaries
+    """
+    logger.info("[DB Service] get_all_programs called")
+
+    try:
+        with db_operation_timeout():
+            programs_ref = db.collection("programs")
+            programs = []
+
+            for doc in programs_ref.stream():
+                program_data = doc.to_dict()
+                program_data["id"] = doc.id
+                programs.append(program_data)
+
+            logger.info(
+                f"[DB Service] Retrieved {len(programs)} programs across all institutions"
+            )
+            return programs
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error retrieving all programs: {e}")
+        return []
+
+
+def get_program_by_name_and_institution(
+    name: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get a program by name and institution (for idempotent seeding)
 
     Args:
+        name: Program name
         institution_id: Institution identifier
+
+    Returns:
+        Program dictionary if found, None otherwise
+    """
+    logger.info(
+        f"[DB Service] get_program_by_name_and_institution called for: {name} at {institution_id}"
+    )
+
+    try:
+        with db_operation_timeout():
+            programs_ref = db.collection("programs")
+            query = programs_ref.where("name", "==", name).where(
+                "institution_id", "==", institution_id
+            )
+
+            for doc in query.stream():
+                program_data = doc.to_dict()
+                program_data["id"] = doc.id
+                logger.info(f"[DB Service] Found existing program: {name}")
+                return program_data
+
+            logger.info(f"[DB Service] Program not found: {name} at {institution_id}")
+            return None
+
+    except Exception as e:
+        logger.error(
+            f"[DB Service] Error finding program {name} at {institution_id}: {e}"
+        )
+        return None
+
+
+def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all programs for a specific institution, or all programs if wildcard
+
+    Args:
+        institution_id: Institution identifier or SITE_ADMIN_INSTITUTION_ID for all
 
     Returns:
         List of program dictionaries
@@ -1691,7 +1801,14 @@ def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
     try:
         with db_operation_timeout():
             programs_ref = db.collection("programs")
-            query = programs_ref.where("institution_id", "==", institution_id)
+
+            if institution_id == SITE_ADMIN_INSTITUTION_ID:
+                # Site admin - get all programs
+                query = programs_ref
+            else:
+                # Institution-specific programs
+                query = programs_ref.where("institution_id", "==", institution_id)
+
             programs = []
 
             for doc in query.stream():

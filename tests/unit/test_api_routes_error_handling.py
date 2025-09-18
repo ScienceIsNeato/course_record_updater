@@ -15,6 +15,23 @@ from flask import Flask
 from api_routes import api
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestAPIErrorHandling:
     """Test error handling paths in API routes."""
 
@@ -42,6 +59,7 @@ class TestAPIErrorHandling:
                 "first_name": "Test",
                 "last_name": "User",
                 "role": "instructor",
+                "institution_id": "inst123",
             }
 
             response = self.client.post("/api/users", json=user_data)
@@ -339,11 +357,9 @@ class TestDashboardErrorHandling:
         self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_no_user(self, mock_get_user):
+    def test_dashboard_no_user(self):
         """Test dashboard with no current user."""
-        # Test dashboard error paths
-        mock_get_user.return_value = None
+        # Test dashboard error paths - no session created means no user
 
         # This will likely cause an error or redirect
         try:
@@ -354,14 +370,14 @@ class TestDashboardErrorHandling:
             # Template errors are expected in unit tests
             pass
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_unknown_role(self, mock_get_user):
+    def test_dashboard_unknown_role(self):
         """Test dashboard with unknown role."""
-        mock_get_user.return_value = {
+        user_data = {
             "role": "unknown_role",
             "first_name": "Test",
             "last_name": "User",
         }
+        create_test_session(self.client, user_data)
 
         try:
             response = self.client.get("/api/dashboard")

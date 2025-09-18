@@ -25,6 +25,23 @@ from import_service import ConflictStrategy, ImportService
 pytestmark = pytest.mark.integration
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestImportBusinessLogic:
     """Test comprehensive import business logic scenarios"""
 
@@ -181,6 +198,7 @@ class TestImportBusinessLogic:
                     "first_name": "Instructor1",
                     "last_name": "Name",
                     "role": "instructor",
+                    "institution_id": "inst123",
                     "department": "Mathematics",  # Matches MATH-101
                 }
             elif "instructor2.name@cei.edu" in email:
@@ -189,6 +207,7 @@ class TestImportBusinessLogic:
                     "first_name": "Instructor2",
                     "last_name": "Name",
                     "role": "instructor",
+                    "institution_id": "inst123",
                     "department": "English",  # Matches ENG-102
                 }
             return None
@@ -245,7 +264,8 @@ class TestImportBusinessLogic:
             return None  # BIO-101 doesn't exist yet
 
         mock_get_course.side_effect = mock_get_course_side_effect
-        mock_get_user.return_value = {"email": "test@cei.edu"}
+        user_data = {"email": "test@cei.edu"}
+        create_test_session(self.client, user_data)
         mock_create_course.return_value = "new_course_id"
 
         # Import extended data (includes new BIO-101 course)

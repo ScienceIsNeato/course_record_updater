@@ -60,6 +60,9 @@ class SessionService:
 
         # Basic session configuration
         app.config["SESSION_TYPE"] = "filesystem"  # Use Redis in production
+        app.config["SESSION_FILE_DIR"] = (
+            "flask_session"  # Store sessions in dedicated directory
+        )
         app.config["SESSION_PERMANENT"] = False
         app.config["SESSION_USE_SIGNER"] = True
         app.config["SESSION_KEY_PREFIX"] = SESSION_KEY_PREFIX

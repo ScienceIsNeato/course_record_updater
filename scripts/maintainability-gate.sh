@@ -63,7 +63,7 @@ else
     echo "   but direnv needs permission to load them into your shell environment."
     echo ""
     echo "   If direnv is not installed: brew install direnv"
-    echo "   Then add to your shell config: eval \"\$(direnv hook bash)\" or eval \"\$(direnv hook zsh)\""
+    echo "   Then add direnv hook to your shell config (see direnv documentation)"
     exit 1
   fi
 

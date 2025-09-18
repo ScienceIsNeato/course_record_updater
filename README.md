@@ -44,6 +44,25 @@ pre-commit install
 
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
+### Manual Testing
+For comprehensive user acceptance testing of the authentication system:
+- **[UAT_GUIDE.md](UAT_GUIDE.md)**: Complete manual testing protocol with role-based scenarios
+- **[SMOKE_TESTING_GUIDE.md](SMOKE_TESTING_GUIDE.md)**: Quick smoke test procedures
+- **[seed_db.py](seed_db.py)**: Database seeding script for realistic test data
+
+#### Quick UAT Setup
+```bash
+# Seed database with test data
+python seed_db.py --clear
+
+# Start application
+./restart_server.sh
+
+# Login with test accounts (see UAT_GUIDE.md for full list)
+# Site Admin: siteadmin@system.local / SiteAdmin123!
+# Institution Admin: sarah.admin@cei.edu / InstitutionAdmin123!
+```
+
 ## Project Structure
 
 ```
@@ -144,9 +163,14 @@ When adding new documentation:
 
 6.  **Run the application:**
     ```bash
-    python app.py
+    ./restart_server.sh
     ```
-    The application should be accessible at `http://localhost:8080` (or the port specified by the `PORT` environment variable).
+    The application will be accessible at `http://localhost:3001`. The script handles:
+    - Virtual environment activation
+    - Environment variable loading from `.envrc`
+    - Port conflict resolution
+    - Firestore emulator verification
+    - Proper logging to `logs/server.log`
 
 ## Running Tests
 

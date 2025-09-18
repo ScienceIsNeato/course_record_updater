@@ -5,6 +5,23 @@ from unittest.mock import Mock, patch
 from database_service import USERS_COLLECTION, create_user, get_user_by_email
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestCreateUser:
     """Test create_user function."""
 
@@ -21,6 +38,7 @@ class TestCreateUser:
         user_data = {
             "email": "test@example.com",
             "role": "instructor",
+            "institution_id": "inst123",
             "first_name": "Test",
             "last_name": "User",
         }
@@ -36,7 +54,11 @@ class TestCreateUser:
     @patch("database_service.db", None)
     def test_create_user_no_db_client(self):
         """Test user creation when db client is not available."""
-        user_data = {"email": "test@example.com", "role": "instructor"}
+        user_data = {
+            "email": "test@example.com",
+            "role": "instructor",
+            "institution_id": "inst123",
+        }
         result = create_user(user_data)
 
         assert result is None
@@ -49,7 +71,11 @@ class TestCreateUser:
         mock_collection.add.side_effect = Exception("Firestore error")
         mock_db.collection.return_value = mock_collection
 
-        user_data = {"email": "test@example.com", "role": "instructor"}
+        user_data = {
+            "email": "test@example.com",
+            "role": "instructor",
+            "institution_id": "inst123",
+        }
         result = create_user(user_data)
 
         assert result is None
@@ -92,7 +118,11 @@ class TestCreateUser:
         mock_collection.add.return_value = mock_doc_ref  # Direct reference, not tuple
         mock_db.collection.return_value = mock_collection
 
-        user_data = {"email": "direct@example.com", "role": "instructor"}
+        user_data = {
+            "email": "direct@example.com",
+            "role": "instructor",
+            "institution_id": "inst123",
+        }
 
         result = create_user(user_data)
 
@@ -114,6 +144,7 @@ class TestGetUserByEmail:
         mock_doc.to_dict.return_value = {
             "email": "test@example.com",
             "role": "instructor",
+            "institution_id": "inst123",
             "first_name": "Test",
             "last_name": "User",
         }
@@ -130,6 +161,7 @@ class TestGetUserByEmail:
         expected_result = {
             "email": "test@example.com",
             "role": "instructor",
+            "institution_id": "inst123",
             "first_name": "Test",
             "last_name": "User",
             "user_id": "user123",

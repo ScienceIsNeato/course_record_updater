@@ -15,6 +15,24 @@ from auth_service import (
     get_current_program_id,
     set_current_program_id,
 )
+from constants import SITE_ADMIN_INSTITUTION_ID
+
+
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
 
 
 class TestProgramContextUtilities:
@@ -31,6 +49,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
+            "institution_id": "inst123",
             "accessible_programs": ["prog-123", "prog-456"],
         }
         with patch("auth_service.get_current_user", return_value=mock_user):
@@ -42,6 +61,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
+            "institution_id": "inst123",
             "accessible_programs": ["prog-123", "prog-456"],
             "current_program_id": "prog-123",
         }
@@ -61,6 +81,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
+            "institution_id": "inst123",
             "accessible_programs": ["prog-123", "prog-456"],
         }
         with patch("auth_service.get_current_user", return_value=mock_user):
@@ -75,6 +96,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
+            "institution_id": "inst123",
             "accessible_programs": ["prog-123", "prog-456"],
         }
 
@@ -94,7 +116,11 @@ class TestProgramContextUtilities:
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
 
-        mock_user = {"user_id": "test-user", "role": "program_admin"}
+        mock_user = {
+            "user_id": "test-user",
+            "role": "program_admin",
+            "institution_id": "inst123",
+        }
 
         with app.test_request_context():
             # Set up session with current program
@@ -260,7 +286,11 @@ class TestUnassignedCoursesAPI:
                 patch("api_routes.get_unassigned_courses", return_value=mock_courses),
                 patch(
                     "auth_service.get_current_user",
-                    return_value={"user_id": "test", "role": "site_admin"},
+                    return_value={
+                        "user_id": "test",
+                        "role": "site_admin",
+                        "institution_id": SITE_ADMIN_INSTITUTION_ID,
+                    },
                 ),
                 patch("auth_service.has_permission", return_value=True),
             ):
@@ -281,7 +311,11 @@ class TestUnassignedCoursesAPI:
                 patch("api_routes.assign_course_to_default_program", return_value=True),
                 patch(
                     "auth_service.get_current_user",
-                    return_value={"user_id": "test", "role": "site_admin"},
+                    return_value={
+                        "user_id": "test",
+                        "role": "site_admin",
+                        "institution_id": SITE_ADMIN_INSTITUTION_ID,
+                    },
                 ),
                 patch("auth_service.has_permission", return_value=True),
             ):
@@ -325,7 +359,11 @@ class TestContextValidationMiddleware:
 
     def test_context_validation_allows_site_admin(self, app):
         """Test that context validation allows site admin without institution context"""
-        mock_user = {"user_id": "admin-123", "role": "site_admin"}
+        mock_user = {
+            "user_id": "admin-123",
+            "role": "site_admin",
+            "institution_id": SITE_ADMIN_INSTITUTION_ID,
+        }
 
         with app.test_request_context("/api/courses", method="GET"):
             with patch("api_routes.get_current_user", return_value=mock_user):
@@ -336,7 +374,11 @@ class TestContextValidationMiddleware:
 
     def test_context_validation_logs_missing_institution(self, app):
         """Test that context validation logs when institution context is missing"""
-        mock_user = {"user_id": "user-123", "role": "program_admin"}
+        mock_user = {
+            "user_id": "user-123",
+            "role": "program_admin",
+            "institution_id": "inst123",
+        }
 
         with app.test_request_context("/api/courses", method="GET"):
             with (

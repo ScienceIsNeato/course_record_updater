@@ -54,6 +54,11 @@ app.register_blueprint(api)
 # Secret key configuration
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 
+# Configure session service
+from session_service import SessionService
+
+SessionService.configure_app(app)
+
 # Check database connection
 if database_client is None:
     app.logger.error(
@@ -85,6 +90,12 @@ def login():
         return redirect(url_for(DASHBOARD_ENDPOINT))
 
     return render_template("auth/login.html")
+
+
+@app.route("/dashboard")
+def dashboard_redirect():
+    """Redirect to the API dashboard route for consistency"""
+    return redirect(url_for(DASHBOARD_ENDPOINT))
 
 
 @app.route("/register")

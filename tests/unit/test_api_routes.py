@@ -8,12 +8,30 @@ from unittest.mock import patch
 # Import the API blueprint and related modules
 from api_routes import api
 from app import app
+from constants import SITE_ADMIN_INSTITUTION_ID
 
 # pytest import removed
 # Flask import removed
 
 # Test constants to avoid hard-coded values
 TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
+
+
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
 
 
 class TestAPIBlueprint:
@@ -39,104 +57,141 @@ class TestDashboardRoutes:
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_instructor_role(self, mock_get_user):
+    def test_dashboard_instructor_role(self):
         """Test dashboard for instructor role"""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "email": "instructor@example.com",
             "role": "instructor",
             "first_name": "John",
             "last_name": "Doe",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         with patch("api_routes.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
             response = self.client.get("/api/dashboard")
 
             assert response.status_code == 200
+            # The user data will be reconstructed from session, so we need to match the expected format
+            expected_user = {
+                "user_id": "user123",
+                "email": "instructor@example.com",
+                "role": "instructor",
+                "institution_id": "inst123",
+                "program_ids": [],
+                "display_name": "John Doe",
+                "created_at": None,
+                "last_activity": None,
+                "remember_me": False,
+            }
             mock_render.assert_called_once_with(
-                "dashboard/instructor.html", user=mock_get_user.return_value
+                "dashboard/instructor.html", user=expected_user
             )
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_program_admin_role(self, mock_get_user):
+    def test_dashboard_program_admin_role(self):
         """Test dashboard for program_admin role"""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "email": "admin@example.com",
             "role": "program_admin",
+            "institution_id": "inst123",
             "first_name": "Jane",
             "last_name": "Admin",
         }
+        create_test_session(self.client, user_data)
 
         with patch("api_routes.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
             response = self.client.get("/api/dashboard")
 
             assert response.status_code == 200
+            expected_user = {
+                "user_id": user_data.get("user_id"),
+                "email": user_data.get("email"),
+                "role": user_data.get("role"),
+                "institution_id": user_data.get("institution_id"),
+                "program_ids": user_data.get("program_ids", []),
+                "display_name": f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+                "created_at": user_data.get("created_at"),
+                "last_activity": user_data.get("last_activity"),
+                "remember_me": user_data.get("remember_me", False),
+            }
             mock_render.assert_called_once_with(
-                "dashboard/program_admin.html", user=mock_get_user.return_value
+                "dashboard/program_admin.html", user=expected_user
             )
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_site_admin_role(self, mock_get_user):
+    def test_dashboard_site_admin_role(self):
         """Test dashboard for site_admin role"""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "email": "siteadmin@example.com",
             "role": "site_admin",
             "first_name": "Super",
             "last_name": "Admin",
+            "institution_id": SITE_ADMIN_INSTITUTION_ID,
         }
+        create_test_session(self.client, user_data)
 
         with patch("api_routes.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
             response = self.client.get("/api/dashboard")
 
             assert response.status_code == 200
+            expected_user = {
+                "user_id": user_data.get("user_id"),
+                "email": user_data.get("email"),
+                "role": user_data.get("role"),
+                "institution_id": SITE_ADMIN_INSTITUTION_ID,
+                "program_ids": user_data.get("program_ids", []),
+                "display_name": f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+                "created_at": user_data.get("created_at"),
+                "last_activity": user_data.get("last_activity"),
+                "remember_me": user_data.get("remember_me", False),
+            }
             mock_render.assert_called_once_with(
-                "dashboard/site_admin.html", user=mock_get_user.return_value
+                "dashboard/site_admin.html", user=expected_user
             )
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_unknown_role(self, mock_get_user):
+    def test_dashboard_unknown_role(self):
         """Test dashboard for unknown role"""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "email": "unknown@example.com",
             "role": "unknown_role",
             "first_name": "Unknown",
             "last_name": "User",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         with (
             patch("api_routes.redirect") as mock_redirect,
             patch("api_routes.flash") as mock_flash,
+            patch("api_routes.url_for") as mock_url_for,
         ):
             mock_redirect.return_value = "Redirect response"
+            mock_url_for.return_value = "/index"
             self.client.get("/api/dashboard")
 
             # Should flash error message and redirect
-            mock_flash.assert_called_once()
-            mock_redirect.assert_called_once()
+            mock_flash.assert_called_once_with(
+                "Unknown user role. Please contact administrator.", "danger"
+            )
+            mock_redirect.assert_called_once_with("/index")
 
-    @patch("api_routes.get_current_user")
-    def test_dashboard_no_user(self, mock_get_user):
+    def test_dashboard_no_user(self):
         """Test dashboard when no user is logged in"""
-        mock_get_user.return_value = None
+        # No session created - user is not logged in
+        response = self.client.get("/api/dashboard")
 
-        with (
-            patch("api_routes.redirect") as mock_redirect,
-            patch("api_routes.url_for") as mock_url_for,
-        ):
-            mock_redirect.return_value = "Login redirect"
-            mock_url_for.return_value = "/login"
-            self.client.get("/api/dashboard")
-
-            # Should redirect to login
-            mock_redirect.assert_called_once()
-            mock_url_for.assert_called_once_with("login")
+        # Should return 401 due to login_required decorator
+        assert response.status_code == 401
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert data["error"] == "Authentication required"
+        assert data["error_code"] == "AUTH_REQUIRED"
 
 
 class TestHealthEndpoint:
@@ -167,24 +222,32 @@ class TestHealthEndpoint:
 class TestDashboardEndpoint:
     """Test the dashboard endpoint."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
     @patch("api_routes.render_template")
     @patch("api_routes.get_current_user")
     def test_dashboard_endpoint_exists(self, mock_get_user, mock_render):
         """Test that dashboard endpoint is registered."""
         # Mock a site admin user to avoid redirect
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "email": "admin@example.com",
             "role": "site_admin",
             "first_name": "Admin",
             "last_name": "User",
+            "institution_id": SITE_ADMIN_INSTITUTION_ID,
         }
+        create_test_session(self.client, user_data)
         mock_render.return_value = "Dashboard HTML"
+        mock_get_user.return_value = user_data
 
-        with app.test_client() as client:
-            response = client.get("/api/dashboard")
-            # Endpoint exists and works correctly
-            assert response.status_code == 200
+        response = self.client.get("/api/dashboard")
+        # Endpoint exists and works correctly
+        assert response.status_code == 200
 
 
 class TestRegistrationEndpoints:
@@ -358,6 +421,12 @@ class TestRegistrationEndpoints:
 class TestInvitationEndpoints:
     """Test invitation API endpoints (Story 2.2)"""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_user")
     @patch("auth_service.get_current_institution_id")
@@ -367,11 +436,13 @@ class TestInvitationEndpoints:
         """Test successful invitation creation."""
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
-        mock_get_user.return_value = {
+        user_data = {
             "id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         # Mock the class methods, not instance methods
         mock_invitation_service.create_invitation.return_value = {
@@ -454,11 +525,13 @@ class TestInvitationEndpoints:
 
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
-        mock_get_user.return_value = {
+        user_data = {
             "id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         # Mock the service to raise an error for invalid email
         mock_invitation_service.create_invitation.side_effect = InvitationError(
@@ -490,11 +563,13 @@ class TestInvitationEndpoints:
 
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
-        mock_get_user.return_value = {
+        user_data = {
             "id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         mock_invitation_service.create_invitation.side_effect = InvitationError(
             "User already exists"
@@ -523,11 +598,13 @@ class TestInvitationEndpoints:
         """Test invitation creation with unexpected server error."""
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
-        mock_get_user.return_value = {
+        user_data = {
             "id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         mock_invitation_service.create_invitation.side_effect = Exception(
             "Database error"
@@ -556,11 +633,13 @@ class TestInvitationEndpoints:
         """Test invitation creation with program IDs for program_admin role."""
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
-        mock_get_user.return_value = {
+        user_data = {
             "id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
+            "institution_id": "inst123",
         }
+        create_test_session(self.client, user_data)
 
         mock_invitation_service.create_invitation.return_value = {
             "id": "inv-789",
@@ -603,6 +682,7 @@ class TestAcceptInvitationEndpoints:
             "first_name": "John",
             "last_name": "Doe",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         with app.test_client() as client:
@@ -770,6 +850,7 @@ class TestAcceptInvitationEndpoints:
             "first_name": "Jane",
             "last_name": "Smith",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         with app.test_client() as client:
@@ -1192,6 +1273,7 @@ class TestUserEndpoints:
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         with app.test_client() as client:
@@ -1216,6 +1298,7 @@ class TestUserEndpoints:
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         with app.test_client() as client:
@@ -1246,7 +1329,12 @@ class TestUserEndpoints:
         """Test GET /api/users with role filter."""
         mock_has_permission.return_value = True
         mock_get_users.return_value = [
-            {"user_id": "1", "email": "instructor@example.com", "role": "instructor"}
+            {
+                "user_id": "1",
+                "email": "instructor@example.com",
+                "role": "instructor",
+                "institution_id": "inst123",
+            }
         ]
 
         with app.test_client() as client:
@@ -1264,6 +1352,7 @@ class TestUserEndpoints:
         user_data = {
             "email": "newuser@example.com",
             "role": "instructor",
+            "institution_id": "inst123",
             "first_name": "New",
             "last_name": "User",
         }
@@ -1563,6 +1652,12 @@ class TestAuthenticationIntegration:
 class TestInstitutionEndpoints:
     """Test institution management endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
     @patch("api_routes.get_all_institutions")
     @patch("api_routes.get_institution_instructor_count")
     def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
@@ -1612,11 +1707,12 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_institution_by_id")
     def test_get_institution_details_success(self, mock_get_institution, mock_get_user):
         """Test GET /api/institutions/<id> endpoint success."""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "institution_id": "institution123",
             "role": "admin",
         }
+        create_test_session(self.client, user_data)
         mock_get_institution.return_value = {
             "institution_id": "institution123",
             "name": "Test University",
@@ -1762,11 +1858,12 @@ class TestInstitutionEndpoints:
         self, mock_get_institution, mock_get_user
     ):
         """Test GET /api/institutions/<id> access denied."""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "user123",
             "institution_id": "different-institution",
             "role": "instructor",
         }
+        create_test_session(self.client, user_data)
 
         with app.test_client() as client:
             response = client.get("/api/institutions/target-institution")
@@ -2261,6 +2358,7 @@ class TestAPIRoutesErrorHandling:
             "first_name": "New",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         response = self.app.post("/api/users", json=user_data)

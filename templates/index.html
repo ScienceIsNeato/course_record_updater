@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEI Course Admin</title>
+    <title>Learning Assessment System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/cei_logo.jpg') }}" type="image/jpeg">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo_placeholder.png') }}" type="image/png">
     <style>
         .flash-message {
             margin-top: 1rem;
@@ -23,20 +23,62 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/cei_logo.jpg') }}" alt="CEI Logo" height="30" class="d-inline-block align-text-top me-2">
-                CEI Course Admin Tool
+                <img src="{{ url_for('static', filename='images/logo_placeholder.png') }}" alt="Institution Logo" height="30" class="d-inline-block align-text-top me-2">
+                Learning Assessment System
             </a>
             
-            <!-- Navigation Items (will be populated by JavaScript based on auth status) -->
-            <div class="navbar-nav me-auto" id="navItems"></div>
+            <!-- Navigation Items (server-rendered based on user role) -->
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>
+                {% if user %}
+                    {% if user.role == 'site_admin' %}
+                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                        <a class="nav-link" href="#"><i class="fas fa-university me-1"></i>Institutions</a>
+                        <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
+                        <a class="nav-link" href="#"><i class="fas fa-cogs me-1"></i>System</a>
+                    {% elif user.role == 'institution_admin' %}
+                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                        <a class="nav-link" href="#"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
+                        <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
+                        <a class="nav-link" href="#"><i class="fas fa-chart-bar me-1"></i>Reports</a>
+                    {% elif user.role == 'program_admin' %}
+                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                        <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>Courses</a>
+                        <a class="nav-link" href="#"><i class="fas fa-chalkboard-teacher me-1"></i>Instructors</a>
+                        <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>Sections</a>
+                    {% elif user.role == 'instructor' %}
+                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                        <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>My Sections</a>
+                        <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>My Courses</a>
+                        <a class="nav-link" href="#"><i class="fas fa-chart-line me-1"></i>Assessments</a>
+                    {% endif %}
+                {% endif %}
+            </div>
             
-            <!-- User Info (will be populated by JavaScript if authenticated) -->
-            <div class="navbar-nav" id="userInfo">
-                <div class="nav-item">
-                    <button class="btn btn-outline-light btn-sm" onclick="showLogin()">
-                        <i class="fas fa-sign-in-alt me-1"></i>Login
-                    </button>
-                </div>
+            <!-- User Info (server-rendered) -->
+            <div class="navbar-nav">
+                {% if user %}
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-light" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            {{ user.display_name or (user.first_name + " " + user.last_name) or user.email.split("@")[0] }}
+                            <span class="badge bg-secondary ms-1">{{ user.role.replace('_', ' ').title() }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/api/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="nav-item">
+                        <a class="btn btn-outline-light btn-sm" href="/login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -91,7 +133,6 @@
             {% endif %}
         {% endwith %}
 
-
         <!-- Excel Import Form (Advanced) -->
         <div class="card mb-4 border-info">
             <div class="card-header bg-info text-white">
@@ -114,7 +155,7 @@
                         <div class="col-md-6">
                             <label for="import_adapter" class="form-label">Import Format:</label>
                             <select class="form-select" id="import_adapter" name="import_adapter" required>
-                                <option value="cei_excel_adapter" selected>CEI Excel Format</option>
+                                <option value="cei_excel_adapter" selected>Institution Excel Format</option>
                                 <option value="generic_excel_adapter">Generic Excel Format</option>
                             </select>
                         </div>
@@ -300,136 +341,13 @@
         </div>
     </div>
 
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='logger.js') }}"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     
     <script>
-        // Authentication and Role-based UI Management
-        let currentUser = null;
-
-        // Check authentication status on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuthStatus();
-        });
-
-        async function checkAuthStatus() {
-            try {
-                const response = await fetch('/api/auth/status');
-                const data = await response.json();
-                
-                if (data.success && data.authenticated) {
-                    currentUser = data.user;
-                    updateNavigation(data.user);
-                } else {
-                    currentUser = null;
-                    updateNavigation(null);
-                }
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                currentUser = null;
-                updateNavigation(null);
-            }
-        }
-
-        function updateNavigation(user) {
-            const navItems = document.getElementById('navItems');
-            const userInfo = document.getElementById('userInfo');
-
-            if (user) {
-                // Show role-based navigation
-                navItems.innerHTML = getRoleBasedNavigation(user.role);
-                
-                // Show user info with dropdown
-                userInfo.innerHTML = `
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i>
-                            ${user.first_name} ${user.last_name}
-                            <span class="badge bg-secondary ms-1">${user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="/api/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
-                        </ul>
-                    </div>
-                `;
-                
-                // Show role-appropriate content
-                showAuthenticatedContent(user);
-            } else {
-                // Show login button
-                navItems.innerHTML = '';
-                userInfo.innerHTML = `
-                    <div class="nav-item">
-                        <button class="btn btn-outline-light btn-sm" onclick="showLogin()">
-                            <i class="fas fa-sign-in-alt me-1"></i>Login
-                        </button>
-                    </div>
-                `;
-                
-                // Show public content
-                showPublicContent();
-            }
-        }
-
-        function getRoleBasedNavigation(role) {
-            const baseNav = '<a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>';
-            
-            switch (role) {
-                case 'site_admin':
-                    return baseNav + `
-                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-                        <a class="nav-link" href="#"><i class="fas fa-university me-1"></i>Institutions</a>
-                        <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
-                        <a class="nav-link" href="#"><i class="fas fa-cogs me-1"></i>System</a>
-                    `;
-                case 'institution_admin':
-                    return baseNav + `
-                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-                        <a class="nav-link" href="#"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
-                        <a class="nav-link" href="#"><i class="fas fa-users me-1"></i>Users</a>
-                        <a class="nav-link" href="#"><i class="fas fa-chart-bar me-1"></i>Reports</a>
-                    `;
-                case 'program_admin':
-                    return baseNav + `
-                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-                        <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>Courses</a>
-                        <a class="nav-link" href="#"><i class="fas fa-chalkboard-teacher me-1"></i>Instructors</a>
-                        <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>Sections</a>
-                    `;
-                case 'instructor':
-                    return baseNav + `
-                        <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-                        <a class="nav-link" href="#"><i class="fas fa-list me-1"></i>My Sections</a>
-                        <a class="nav-link" href="#"><i class="fas fa-book me-1"></i>My Courses</a>
-                        <a class="nav-link" href="#"><i class="fas fa-chart-line me-1"></i>Assessments</a>
-                    `;
-                default:
-                    return baseNav;
-            }
-        }
-
-        function showAuthenticatedContent(user) {
-            // Hide public content, show authenticated content
-            // This would be expanded based on specific needs
-            console.log('User authenticated:', user);
-        }
-
-        function showPublicContent() {
-            // Show public content, hide authenticated content
-            console.log('User not authenticated - showing public content');
-        }
-
-        function showLogin() {
-            // For now, show an alert. In a real implementation, this would show a login modal
-            alert('Login functionality coming soon! For now, use the API endpoints directly.');
-        }
-
+        // Simple page functionality - authentication is handled server-side
+        
         async function logout() {
             try {
                 const response = await fetch('/api/auth/logout', {
@@ -440,24 +358,17 @@
                 });
                 
                 if (response.ok) {
-                    currentUser = null;
-                    updateNavigation(null);
-                    // Optionally redirect or refresh page
-                    window.location.reload();
+                    // Redirect to login page after logout
+                    window.location.href = '/login';
                 } else {
                     console.error('Logout failed');
                     alert('Logout failed. Please try again.');
                 }
             } catch (error) {
                 console.error('Logout error:', error);
-                alert('Logout failed. Please try again.');
+                alert('Network error during logout. Please try again.');
             }
         }
-
-        // Make functions available globally
-        window.checkAuthStatus = checkAuthStatus;
-        window.showLogin = showLogin;
-        window.logout = logout;
     </script>
 </body>
 </html>

@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 
 from flask import jsonify, request, session
 
+from constants import SITE_ADMIN_INSTITUTION_ID, UserRole
+
 # Import our models and logging
 from logging_config import get_logger
 
@@ -136,35 +138,27 @@ class AuthService:
         """
         from flask import session
 
-        # For now, return mock admin user for development
-        # TODO: Replace with real session-based authentication in Story 4.1
-        base_user = {
-            "user_id": "dev-admin-123",
-            "email": "admin@cei.edu",
-            "role": "site_admin",
-            "first_name": "Dev",
-            "last_name": "Admin",
-            "department": "IT",
-            "institution_id": "inst-123",
-            "primary_institution_id": "inst-123",
-            "accessible_institutions": ["inst-123"],
-            "accessible_programs": [
-                "prog-123",
-                "prog-456",
-                "prog-789",
-            ],  # Populated for context switching
-        }
+        from session_service import SessionService
+
+        # Use real session-based authentication
+        if not SessionService.is_user_logged_in():
+            return None
+
+        # Get current user from session
+        session_user = SessionService.get_current_user()
+        if not session_user:
+            return None
 
         # Add current program context from session if available
         try:
             current_program_id = session.get("current_program_id")
             if current_program_id:
-                base_user["current_program_id"] = current_program_id
+                session_user["current_program_id"] = current_program_id
         except RuntimeError:
             # Outside of application context (e.g., in tests)
             pass
 
-        return base_user
+        return session_user
 
     def has_permission(
         self, required_permission: str, context: Optional[Dict[str, Any]] = None
@@ -512,22 +506,18 @@ def get_current_institution_id() -> Optional[str]:
     """Get current user's active institution ID (convenience function)."""
     user = get_current_user()
     if user:
+        # Site admins get the wildcard institution ID
+        if user.get("role") == UserRole.SITE_ADMIN:
+            return SITE_ADMIN_INSTITUTION_ID
+
         # Get institution from user context
         institution_id = user.get("institution_id") or user.get(
             "primary_institution_id"
         )
-        if institution_id:
-            return institution_id
+        return institution_id
 
-    # Development fallback - get default institution
-    try:
-        from database_service import get_institution_by_short_name
-
-        default_institution = get_institution_by_short_name("CEI")
-        return default_institution["institution_id"] if default_institution else None
-    except Exception:
-        # If database is not available or CEI institution doesn't exist, return None
-        return None
+    # No fallback - if user has no institution context, return None
+    return None
 
 
 def get_current_program_id() -> Optional[str]:

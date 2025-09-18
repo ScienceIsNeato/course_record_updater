@@ -15,6 +15,23 @@ from flask import Flask
 from auth_service import AuthService, Permission, UserRole
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestAuthorizationSmoke:
     """Smoke tests for authorization system critical paths"""
 
@@ -23,10 +40,11 @@ class TestAuthorizationSmoke:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "site-admin-1",
                 "role": "site_admin",
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -59,12 +77,13 @@ class TestAuthorizationSmoke:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "inst-admin-1",
                 "role": "institution_admin",
                 "institution_id": "test-institution",
                 "accessible_institutions": ["test-institution"],
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -106,12 +125,13 @@ class TestAuthorizationSmoke:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "prog-admin-1",
                 "role": "program_admin",
                 "institution_id": "test-institution",
                 "accessible_programs": ["test-program-1", "test-program-2"],
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -161,11 +181,12 @@ class TestAuthorizationSmoke:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "instructor-1",
                 "role": "instructor",
                 "institution_id": "test-institution",
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -371,12 +392,13 @@ class TestSecurityBoundariesSmoke:
 
         # Test institution admin trying to access other institution
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "inst-admin-a",
                 "role": "institution_admin",
                 "institution_id": "institution-a",
                 "accessible_institutions": ["institution-a"],
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -396,12 +418,13 @@ class TestSecurityBoundariesSmoke:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "prog-admin-1",
                 "role": "program_admin",
                 "institution_id": "institution-a",
                 "accessible_programs": ["program-a1"],
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -420,11 +443,12 @@ class TestSecurityBoundariesSmoke:
 
         # Test that instructor cannot access admin functions
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "instructor-1",
                 "role": "instructor",
                 "institution_id": "institution-a",
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 

@@ -203,6 +203,23 @@ class TestProgramDatabaseService:
         mock_batch.commit.assert_called_once()
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestProgramAPIEndpoints:
     """Test program API endpoints"""
 
@@ -278,7 +295,8 @@ class TestProgramAPIEndpoints:
                     }
                 )
                 mock_get_institution.return_value = "test-institution"
-                mock_get_user.return_value = {"user_id": "test-user"}
+                user_data = {"user_id": "test-user"}
+                create_test_session(self.client, user_data)
                 mock_schema.return_value = {"id": "new-program"}
                 mock_create.return_value = "new-program"
                 mock_jsonify.return_value = (Mock(), 201)

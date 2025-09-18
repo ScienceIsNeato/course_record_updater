@@ -21,6 +21,7 @@ from auth_service import (
     permission_required,
     set_current_program_id,
 )
+from constants import SITE_ADMIN_INSTITUTION_ID
 from database_service import (
     add_course_to_program,
     assign_course_to_default_program,
@@ -36,6 +37,7 @@ from database_service import (
     get_all_courses,
     get_all_institutions,
     get_all_instructors,
+    get_all_programs,
     get_all_sections,
     get_all_users,
     get_course_by_number,
@@ -99,11 +101,7 @@ def validate_context():
         if not current_user:
             return  # Let the auth decorators handle authentication
 
-        # Site admins don't need context validation
-        if current_user.get("role") == "site_admin":
-            return
-
-        # Validate institution context for non-site-admin users
+        # Validate institution context for all users (site admins get wildcard institution_id)
         institution_id = get_current_institution_id()
         if not institution_id:
             logger.warning(
@@ -432,8 +430,9 @@ def list_users():
     - department: Filter by department (optional)
     """
     try:
-        from auth_service import get_current_institution_id
+        from auth_service import get_current_institution_id, get_current_user
 
+        # Get institution context (site admins get wildcard, others get their institution)
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
@@ -446,9 +445,11 @@ def list_users():
 
         if role_filter:
             users = get_users_by_role(role_filter)
-            # Filter by institution
-            users = [u for u in users if u.get("institution_id") == institution_id]
+            # Filter by institution (wildcard for site admins)
+            if institution_id != SITE_ADMIN_INSTITUTION_ID:
+                users = [u for u in users if u.get("institution_id") == institution_id]
         else:
+            # Use unified approach - wildcard for site admins, specific institution for others
             users = get_all_users(institution_id)
 
         # Filter by department if specified
@@ -602,7 +603,7 @@ def list_courses():
     - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
-        # Get institution context - for development, use CEI
+        # Get institution context (site admins get wildcard, others get their institution)
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
@@ -647,12 +648,24 @@ def list_courses():
             context_info = f"program {current_program_id}"
         elif department_filter:
             # Institution-wide with department filter
-            courses = get_courses_by_department(institution_id, department_filter)
-            context_info = f"department {department_filter}"
+            if institution_id == SITE_ADMIN_INSTITUTION_ID:
+                # For site admin, need to get all courses then filter by department
+                courses = get_all_courses(institution_id)
+                courses = [
+                    c for c in courses if c.get("department") == department_filter
+                ]
+                context_info = f"system-wide department {department_filter}"
+            else:
+                courses = get_courses_by_department(institution_id, department_filter)
+                context_info = f"department {department_filter}"
         else:
-            # Institution-wide, all courses
+            # All courses (institution-wide or system-wide)
             courses = get_all_courses(institution_id)
-            context_info = "institution-wide"
+            context_info = (
+                "system-wide"
+                if institution_id == SITE_ADMIN_INSTITUTION_ID
+                else "institution-wide"
+            )
 
         return jsonify(
             {
@@ -919,15 +932,19 @@ def create_term_api():
 @api.route("/programs", methods=["GET"])
 @permission_required("view_program_data")
 def list_programs():
-    """Get list of programs for the current institution"""
+    """Get list of programs for the current institution (wildcard for site admin)"""
     try:
         institution_id = get_current_institution_id()
         if not institution_id:
-            return jsonify({"success": False, "error": "Institution ID not found"}), 400
+            return (
+                jsonify({"success": False, "error": "Institution ID not found"}),
+                400,
+            )
 
+        # Use unified function that handles both regular institutions and wildcard
         programs = get_programs_by_institution(institution_id)
 
-        return jsonify({"success": True, "programs": programs})
+        return jsonify({"success": True, "programs": programs, "count": len(programs)})
 
     except Exception as e:
         return handle_api_error(e, "List programs", "Failed to retrieve programs")
@@ -2467,7 +2484,41 @@ def login_status_api():
         # Get login status
         status = LoginService.get_login_status()
 
-        return jsonify({"success": True, **status}), 200
+        if status.get("logged_in"):
+            # User is authenticated - return user data
+            user_data = {
+                "user_id": status.get("user_id"),
+                "email": status.get("email"),
+                "role": status.get("role"),
+                "institution_id": status.get("institution_id"),
+                "display_name": status.get("display_name"),
+                "first_name": (
+                    status.get("display_name", "").split(" ")[0]
+                    if status.get("display_name")
+                    else ""
+                ),
+                "last_name": (
+                    " ".join(status.get("display_name", "").split(" ")[1:])
+                    if status.get("display_name")
+                    else ""
+                ),
+            }
+            return (
+                jsonify({"success": True, "authenticated": True, "user": user_data}),
+                200,
+            )
+        else:
+            # User is not authenticated
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "authenticated": False,
+                        "message": status.get("message", "Not authenticated"),
+                    }
+                ),
+                200,
+            )
 
     except Exception as e:
         logger.error(f"Error getting login status: {e}")

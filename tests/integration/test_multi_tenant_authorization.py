@@ -20,6 +20,23 @@ from flask import Flask
 from auth_service import Permission, UserRole
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestInstitutionDataIsolation:
     """Test that users can only access data from their own institution"""
 
@@ -172,12 +189,13 @@ class TestProgramScopedAccess:
 
         # Test program admin with multiple programs
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "prog-admin-multi",
                 "role": "program_admin",
                 "institution_id": "institution-a",
                 "accessible_programs": ["program-a1", "program-a2"],
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -213,7 +231,7 @@ class TestProgramScopedAccess:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "prog-admin-a",
                 "role": "program_admin",
                 "institution_id": "institution-a",
@@ -221,6 +239,7 @@ class TestProgramScopedAccess:
                     "program-1"
                 ],  # Same ID exists in other institution
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -316,7 +335,8 @@ class TestRoleHierarchyAccess:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {"user_id": "site-admin", "role": "site_admin"}
+            user_data = {"user_id": "site-admin", "role": "site_admin"}
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 
@@ -332,11 +352,12 @@ class TestRoleHierarchyAccess:
         from auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
-            mock_get_user.return_value = {
+            user_data = {
                 "user_id": "inst-admin-a",
                 "role": "institution_admin",
                 "institution_id": "inst-123",
             }
+            create_test_session(self.client, user_data)
 
             service = AuthService()
 

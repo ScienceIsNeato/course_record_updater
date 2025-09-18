@@ -24,6 +24,23 @@ from import_service import (
 # pytest import removed
 
 
+def create_test_session(client, user_data):
+    """Helper function to create a test session with user data."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = user_data.get("user_id")
+        sess["email"] = user_data.get("email")
+        sess["role"] = user_data.get("role")
+        sess["institution_id"] = user_data.get("institution_id")
+        sess["program_ids"] = user_data.get("program_ids", [])
+        sess["display_name"] = user_data.get(
+            "display_name",
+            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
+        )
+        sess["created_at"] = user_data.get("created_at")
+        sess["last_activity"] = user_data.get("last_activity")
+        sess["remember_me"] = user_data.get("remember_me", False)
+
+
 class TestImportService:
     """Main test class for ImportService functionality."""
 
@@ -190,6 +207,7 @@ class TestImportService:
             "first_name": "John",
             "last_name": "Doe",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         # Mock existing user with different data
@@ -786,20 +804,23 @@ class TestImportServiceEdgeCases:
         service = ImportService("northern-valley-cc")
 
         # Mock existing user with different data
-        mock_get_user.return_value = {
+        user_data = {
             "email": "john@example.com",
             "first_name": "John",
             "last_name": "Smith",  # Different last name
             "role": "instructor",
+            "institution_id": "inst123",
             "department": "MATH",  # Different department
         }
+        create_test_session(self.client, user_data)
 
         # Import user with different values
         import_user = {
             "email": "john@example.com",
             "first_name": "John",  # Same first name
             "last_name": "Doe",  # Different last name
-            "role": "instructor",  # Same role
+            "role": "instructor",
+            "institution_id": "inst123",  # Same role
             "department": "CS",  # Different department
         }
 
@@ -824,13 +845,15 @@ class TestImportServiceEdgeCases:
         service = ImportService("northern-valley-cc")
 
         # Mock existing user with same data
-        mock_get_user.return_value = {
+        user_data = {
             "email": "john@example.com",
             "first_name": "John",
             "last_name": "Doe",
             "role": "instructor",
+            "institution_id": "inst123",
             "department": "CS",
         }
+        create_test_session(self.client, user_data)
 
         # Import user with same values
         import_user = {
@@ -838,6 +861,7 @@ class TestImportServiceEdgeCases:
             "first_name": "John",
             "last_name": "Doe",
             "role": "instructor",
+            "institution_id": "inst123",
             "department": "CS",
         }
 
@@ -1048,12 +1072,13 @@ class TestImportServiceEdgeCases:
         service = ImportService("northern-valley-cc")
 
         # Mock existing user
-        mock_get_user.return_value = {
+        user_data = {
             "email": "john@example.com",
             "first_name": "John",
             "last_name": "Smith",
             "user_id": "user123",
         }
+        create_test_session(self.client, user_data)
 
         # Import user with different data
         user_data = {
@@ -1077,11 +1102,12 @@ class TestImportServiceEdgeCases:
         service = ImportService("northern-valley-cc")
 
         # Mock existing user
-        mock_get_user.return_value = {
+        user_data = {
             "email": "john@example.com",
             "first_name": "John",
             "last_name": "Smith",
         }
+        create_test_session(self.client, user_data)
 
         # Import user with different data
         user_data = {
@@ -1580,6 +1606,7 @@ class TestImportServiceMethods:
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst123",
         }
 
         success, conflicts = self.import_service.process_user_import(
@@ -1669,20 +1696,23 @@ class TestImportServiceMethods:
     @patch("import_service.get_user_by_email")
     def test_user_conflict_detection_comprehensive(self, mock_get_user):
         """Test comprehensive user conflict detection."""
-        mock_get_user.return_value = {
+        user_data = {
             "user_id": "existing123",
             "email": "john.doe@cei.edu",
             "first_name": "John",
             "last_name": "Doe",
             "role": "instructor",
+            "institution_id": "inst123",
             "department": "MATH",
         }
+        create_test_session(self.client, user_data)
 
         import_user = {
             "email": "john.doe@cei.edu",
             "first_name": "Johnny",  # Different first name
             "last_name": "Doe",
-            "role": "program_admin",  # Different role
+            "role": "program_admin",
+            "institution_id": "inst123",  # Different role
             "department": "SCIENCE",  # Different department
         }
 
