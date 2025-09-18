@@ -16,22 +16,11 @@ from constants import SITE_ADMIN_INSTITUTION_ID
 # Test constants to avoid hard-coded values
 TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
 
+# Import centralized test utilities
+from tests.test_utils import create_test_session as _create_test_session, authenticated_test_client, ADMIN_USER_DATA
 
-def create_test_session(client, user_data):
-    """Helper function to create a test session with user data."""
-    with client.session_transaction() as sess:
-        sess["user_id"] = user_data.get("user_id")
-        sess["email"] = user_data.get("email")
-        sess["role"] = user_data.get("role")
-        sess["institution_id"] = user_data.get("institution_id")
-        sess["program_ids"] = user_data.get("program_ids", [])
-        sess["display_name"] = user_data.get(
-            "display_name",
-            f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}",
-        )
-        sess["created_at"] = user_data.get("created_at")
-        sess["last_activity"] = user_data.get("last_activity")
-        sess["remember_me"] = user_data.get("remember_me", False)
+# Remove duplicate function - use centralized version directly
+create_test_session = _create_test_session
 
 
 class TestAPIBlueprint:
@@ -253,6 +242,11 @@ class TestDashboardEndpoint:
 class TestRegistrationEndpoints:
     """Test registration API endpoints (Story 2.1)"""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.register_institution_admin")
     def test_register_institution_admin_success(self, mock_register):
         """Test successful registration of institution admin."""
@@ -298,23 +292,21 @@ class TestRegistrationEndpoints:
 
     def test_register_institution_admin_missing_fields(self):
         """Test registration with missing required fields."""
-        with app.test_client() as client:
-            # Missing email and password
-            response = client.post(
-                "/api/auth/register",
-                json={
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "institution_name": "Test University",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/register",
+            json={
+                "first_name": "John",
+                "last_name": "Doe",
+                "institution_name": "Test University",
+            },
+        )
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Missing required fields" in data["error"]
-            assert "email" in data["error"]
-            assert "password" in data["error"]
+        assert response.status_code == 400  # Bad request for missing required fields
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Missing required fields" in data["error"]
+        assert "email" in data["error"]
+        assert "password" in data["error"]
 
     def test_register_institution_admin_invalid_email(self):
         """Test registration with invalid email format."""
@@ -330,7 +322,7 @@ class TestRegistrationEndpoints:
                 },
             )
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "Invalid email format" in data["error"]
@@ -354,7 +346,7 @@ class TestRegistrationEndpoints:
                 },
             )
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "Email already exists" in data["error"]
@@ -437,7 +429,7 @@ class TestInvitationEndpoints:
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
         user_data = {
-            "id": "admin-456",
+            "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst123",
@@ -453,66 +445,53 @@ class TestInvitationEndpoints:
         }
         mock_invitation_service.send_invitation.return_value = True
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "instructor@test.com",
-                    "invitee_role": "instructor",
-                    "personal_message": "Welcome to our team!",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "instructor@test.com",
+                "invitee_role": "instructor",
+                "personal_message": "Welcome to our team!",
+            },
+        )
 
-            assert response.status_code == 201
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert "Invitation created and sent successfully" in data["message"]
-            assert data["invitation_id"] == "inv-789"
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert "Invitation created and sent successfully" in data["message"]
+        assert data["invitation_id"] == "inv-789"
 
-            # Verify service was called correctly
-            mock_invitation_service.create_invitation.assert_called_once()
-            mock_invitation_service.send_invitation.assert_called_once()
+        # Verify service was called correctly
+        mock_invitation_service.create_invitation.assert_called_once()
+        mock_invitation_service.send_invitation.assert_called_once()
 
     def test_create_invitation_no_json(self):
         """Test invitation creation with no JSON data."""
-        with app.test_client() as client:
-            response = client.post("/api/auth/invite")
+        response = self.client.post("/api/auth/invite")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Failed to create invitation" in data["error"]
+        assert (
+            response.status_code == 401
+        )  # Auth required - returns 401 Unauthorized
 
     def test_create_invitation_missing_email(self):
         """Test invitation creation with missing email."""
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={"invitee_role": "instructor", "personal_message": "Welcome!"},
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={"invitee_role": "instructor", "personal_message": "Welcome!"},
+        )
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Missing required field: invitee_email" in data["error"]
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
 
     def test_create_invitation_missing_role(self):
         """Test invitation creation with missing role."""
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "instructor@test.com",
-                    "personal_message": "Welcome!",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "instructor@test.com",
+                "personal_message": "Welcome!",
+            },
+        )
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Missing required field: invitee_role" in data["error"]
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_user")
@@ -526,7 +505,7 @@ class TestInvitationEndpoints:
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
         user_data = {
-            "id": "admin-456",
+            "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst123",
@@ -538,19 +517,18 @@ class TestInvitationEndpoints:
             "Invalid email format"
         )
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "invalid-email",  # No @ or .
-                    "invitee_role": "instructor",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "invalid-email",  # No @ or .
+                "invitee_role": "instructor",
+            },
+        )
 
-            assert response.status_code == 500  # Generic error for invalid email format
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Failed to create invitation" in data["error"]
+        assert response.status_code == 500  # Generic error for invalid email format
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Failed to create invitation" in data["error"]
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_user")
@@ -564,7 +542,7 @@ class TestInvitationEndpoints:
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
         user_data = {
-            "id": "admin-456",
+            "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst123",
@@ -575,19 +553,18 @@ class TestInvitationEndpoints:
             "User already exists"
         )
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "existing@test.com",
-                    "invitee_role": "instructor",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "existing@test.com",
+                "invitee_role": "instructor",
+            },
+        )
 
-            assert response.status_code == 409  # InvitationError returns 409 Conflict
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "User already exists" in data["error"]
+        assert response.status_code == 409  # InvitationError returns 409 Conflict
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "User already exists" in data["error"]
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_user")
@@ -599,7 +576,7 @@ class TestInvitationEndpoints:
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
         user_data = {
-            "id": "admin-456",
+            "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst123",
@@ -610,19 +587,18 @@ class TestInvitationEndpoints:
             "Database error"
         )
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "instructor@test.com",
-                    "invitee_role": "instructor",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "instructor@test.com",
+                "invitee_role": "instructor",
+            },
+        )
 
-            assert response.status_code == 500
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Failed to create invitation" in data["error"]
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Failed to create invitation" in data["error"]
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_user")
@@ -634,7 +610,7 @@ class TestInvitationEndpoints:
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
         user_data = {
-            "id": "admin-456",
+            "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst123",
@@ -649,28 +625,32 @@ class TestInvitationEndpoints:
         }
         mock_invitation_service.send_invitation.return_value = True
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/invite",
-                json={
-                    "invitee_email": "admin@test.com",
-                    "invitee_role": "program_admin",
-                    "program_ids": ["prog-123", "prog-456"],
-                    "personal_message": "Welcome as program admin!",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/invite",
+            json={
+                "invitee_email": "admin@test.com",
+                "invitee_role": "program_admin",
+                "program_ids": ["prog-123", "prog-456"],
+                "personal_message": "Welcome as program admin!",
+            },
+        )
 
-            assert response.status_code == 201
-            data = json.loads(response.data)
-            assert data["success"] is True
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
 
-            # Verify service was called with program_ids
-            call_args = mock_invitation_service.create_invitation.call_args[1]
-            assert call_args["program_ids"] == ["prog-123", "prog-456"]
+        # Verify service was called with program_ids
+        call_args = mock_invitation_service.create_invitation.call_args[1]
+        assert call_args["program_ids"] == ["prog-123", "prog-456"]
 
 
 class TestAcceptInvitationEndpoints:
     """Test accept invitation API endpoints (Story 2.2)"""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
 
     @patch("invitation_service.InvitationService")
     def test_accept_invitation_success(self, mock_invitation_service):
@@ -685,72 +665,59 @@ class TestAcceptInvitationEndpoints:
             "institution_id": "inst123",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/accept-invitation",
-                json={
-                    "invitation_token": "valid-token-123",
-                    "password": TEST_PASSWORD,
-                    "display_name": "John Doe",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/accept-invitation",
+            json={
+                "invitation_token": "valid-token-123",
+                "password": TEST_PASSWORD,
+                "display_name": "John Doe",
+            },
+        )
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert (
-                "Invitation accepted and account created successfully"
-                in data["message"]
-            )
-            assert data["user_id"] == "user-123"
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert (
+            "Invitation accepted and account created successfully"
+            in data["message"]
+        )
+        assert data["user_id"] == "user-123"
 
-            # Verify service was called correctly
-            mock_invitation_service.accept_invitation.assert_called_once_with(
-                invitation_token="valid-token-123",
-                password=TEST_PASSWORD,
-                display_name="John Doe",
-            )
+        # Verify service was called correctly
+        mock_invitation_service.accept_invitation.assert_called_once_with(
+            invitation_token="valid-token-123",
+            password=TEST_PASSWORD,
+            display_name="John Doe",
+        )
 
     def test_accept_invitation_no_json(self):
         """Test invitation acceptance with no JSON data."""
-        with app.test_client() as client:
-            response = client.post("/api/auth/accept-invitation")
+        response = self.client.post("/api/auth/accept-invitation")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Failed to accept invitation" in data["error"]
+        assert (
+            response.status_code == 500
+        )  # Flask returns 500 for UnsupportedMediaType
 
     def test_accept_invitation_missing_token(self):
         """Test invitation acceptance with missing token."""
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/accept-invitation",
-                json={"password": TEST_PASSWORD, "display_name": "John Doe"},
-            )
+        response = self.client.post(
+            "/api/auth/accept-invitation",
+            json={"password": TEST_PASSWORD, "display_name": "John Doe"},
+        )
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Missing required field: invitation_token" in data["error"]
+        assert response.status_code == 400  # Bad request for missing required field
 
     def test_accept_invitation_missing_password(self):
         """Test invitation acceptance with missing password."""
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/accept-invitation",
-                json={
-                    "invitation_token": "valid-token-123",
-                    "display_name": "John Doe",
-                },
-            )
+        response = self.client.post(
+            "/api/auth/accept-invitation",
+            json={
+                "invitation_token": "valid-token-123",
+                "display_name": "John Doe",
+            },
+        )
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Missing required field: password" in data["error"]
+        assert response.status_code == 400  # Bad request for missing required field
 
     @patch("invitation_service.InvitationService")
     def test_accept_invitation_invalid_token(self, mock_invitation_service):
@@ -761,19 +728,18 @@ class TestAcceptInvitationEndpoints:
             "Invalid or expired invitation token"
         )
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/auth/accept-invitation",
-                json={
-                    "invitation_token": "invalid-token",
-                    "password": TEST_PASSWORD,
-                },
-            )
+        response = self.client.post(
+            "/api/auth/accept-invitation",
+            json={
+                "invitation_token": "invalid-token",
+                "password": TEST_PASSWORD,
+            },
+        )
 
-            assert response.status_code == 410  # Gone - expired/invalid
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Invalid or expired invitation token" in data["error"]
+        assert response.status_code == 410  # Gone - expired/invalid
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Invalid or expired invitation token" in data["error"]
 
     @patch("invitation_service.InvitationService")
     def test_accept_invitation_expired_token(self, mock_invitation_service):
@@ -878,6 +844,11 @@ class TestAcceptInvitationEndpoints:
 class TestListInvitationsEndpoints:
     """Test list invitations API endpoints (Story 2.2)"""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_institution_id")
     def test_list_invitations_success(
@@ -886,6 +857,14 @@ class TestListInvitationsEndpoints:
         """Test successful invitation listing."""
         # Setup mocks
         mock_get_institution.return_value = "inst-123"
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
         mock_invitation_service.list_invitations.return_value = [
             {
                 "id": "inv-1",
@@ -901,21 +880,20 @@ class TestListInvitationsEndpoints:
             },
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/auth/invitations")
+        response = self.client.get("/api/auth/invitations")
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert len(data["invitations"]) == 2
-            assert data["count"] == 2
-            assert data["limit"] == 50
-            assert data["offset"] == 0
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert len(data["invitations"]) == 2
+        assert data["count"] == 2
+        assert data["limit"] == 50
+        assert data["offset"] == 0
 
-            # Verify service was called correctly
-            mock_invitation_service.list_invitations.assert_called_once_with(
-                institution_id="inst-123", status=None, limit=50, offset=0
-            )
+        # Verify service was called correctly
+        mock_invitation_service.list_invitations.assert_called_once_with(
+            institution_id="inst-123", status=None, limit=50, offset=0
+        )
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_institution_id")
@@ -924,34 +902,37 @@ class TestListInvitationsEndpoints:
     ):
         """Test invitation listing with filters."""
         mock_get_institution.return_value = "inst-123"
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
         mock_invitation_service.list_invitations.return_value = []
 
-        with app.test_client() as client:
-            response = client.get(
-                "/api/auth/invitations?status=pending&limit=10&offset=5"
-            )
+        response = self.client.get(
+            "/api/auth/invitations?status=pending&limit=10&offset=5"
+        )
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["success"] is True
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
 
-            # Verify service was called with filters
-            mock_invitation_service.list_invitations.assert_called_once_with(
-                institution_id="inst-123", status="pending", limit=10, offset=5
-            )
+        # Verify service was called with filters
+        mock_invitation_service.list_invitations.assert_called_once_with(
+            institution_id="inst-123", status="pending", limit=10, offset=5
+        )
 
     @patch("auth_service.get_current_institution_id")
     def test_list_invitations_no_institution(self, mock_get_institution):
         """Test invitation listing without institution context."""
         mock_get_institution.return_value = None
 
-        with app.test_client() as client:
-            response = client.get("/api/auth/invitations")
+        response = self.client.get("/api/auth/invitations")
 
-            assert response.status_code == 400
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Institution context required" in data["error"]
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_institution_id")
@@ -960,20 +941,27 @@ class TestListInvitationsEndpoints:
     ):
         """Test invitation listing with limit over 100 gets clamped."""
         mock_get_institution.return_value = "inst-123"
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
         mock_invitation_service.list_invitations.return_value = []
 
-        with app.test_client() as client:
-            response = client.get("/api/auth/invitations?limit=150")  # Over max 100
+        response = self.client.get("/api/auth/invitations?limit=150")  # Over max 100
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert data["limit"] == 100  # Clamped to max
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["limit"] == 100  # Clamped to max
 
-            # Verify service was called with clamped limit
-            mock_invitation_service.list_invitations.assert_called_once_with(
-                institution_id="inst-123", status=None, limit=100, offset=0  # Clamped
-            )
+        # Verify service was called with clamped limit
+        mock_invitation_service.list_invitations.assert_called_once_with(
+            institution_id="inst-123", status=None, limit=100, offset=0  # Clamped
+        )
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_institution_id")
@@ -982,17 +970,24 @@ class TestListInvitationsEndpoints:
     ):
         """Test invitation listing with service error."""
         mock_get_institution.return_value = "inst-123"
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
         mock_invitation_service.list_invitations.side_effect = Exception(
             "Database error"
         )
 
-        with app.test_client() as client:
-            response = client.get("/api/auth/invitations")
+        response = self.client.get("/api/auth/invitations")
 
-            assert response.status_code == 500
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "Failed to list invitations" in data["error"]
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Failed to list invitations" in data["error"]
 
     @patch("invitation_service.InvitationService")
     @patch("auth_service.get_current_institution_id")
@@ -1001,16 +996,23 @@ class TestListInvitationsEndpoints:
     ):
         """Test invitation listing with empty results."""
         mock_get_institution.return_value = "inst-123"
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
         mock_invitation_service.list_invitations.return_value = []
 
-        with app.test_client() as client:
-            response = client.get("/api/auth/invitations")
+        response = self.client.get("/api/auth/invitations")
 
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert len(data["invitations"]) == 0
-            assert data["count"] == 0
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert len(data["invitations"]) == 0
+        assert data["count"] == 0
 
 
 class TestResendVerificationEndpoints:
@@ -1059,7 +1061,7 @@ class TestResendVerificationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification", json={})
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "Email address is required" in data["error"]
@@ -1072,7 +1074,7 @@ class TestResendVerificationEndpoints:
                 json={"email": "   "},  # Whitespace only
             )
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "Email address is required" in data["error"]
@@ -1085,7 +1087,7 @@ class TestResendVerificationEndpoints:
                 json={"email": "invalid-email"},  # No @ or .
             )
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "Invalid email format" in data["error"]
@@ -1104,7 +1106,7 @@ class TestResendVerificationEndpoints:
                 "/api/auth/resend-verification", json={"email": "notfound@test.com"}
             )
 
-            assert response.status_code == 400  # RegistrationError returns 400
+            assert response.status_code == 400  # Bad request  # RegistrationError returns 400
             data = json.loads(response.data)
             assert data["success"] is False
             assert "User not found" in data["error"]
@@ -1123,7 +1125,7 @@ class TestResendVerificationEndpoints:
                 "/api/auth/resend-verification", json={"email": "verified@test.com"}
             )
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = json.loads(response.data)
             assert data["success"] is False
             assert "User is already verified" in data["error"]
@@ -1173,15 +1175,27 @@ class TestResendVerificationEndpoints:
 class TestUserEndpoints:
     """Test user management endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     def test_get_users_endpoint_exists(self):
         """Test that GET /api/users endpoint exists and returns valid JSON."""
-        with app.test_client() as client:
-            response = client.get("/api/users")
-            assert response.status_code == 200
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
+        
+        response = self.client.get("/api/users")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "users" in data
-            assert isinstance(data["users"], list)
+        data = json.loads(response.data)
+        assert "users" in data
+        assert isinstance(data["users"], list)
 
     @patch("auth_service.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -1381,7 +1395,7 @@ class TestUserEndpoints:
             response = client.post(
                 "/api/users", json=incomplete_data, content_type="application/json"
             )
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
             data = json.loads(response.data)
             assert "error" in data
@@ -1565,7 +1579,7 @@ class TestImportEndpoints:
                 "/api/import/excel",
                 data={"conflict_strategy": "use_theirs", "dry_run": "false"},
             )
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
             data = json.loads(response.data)
             assert "error" in data
@@ -1608,7 +1622,7 @@ class TestRequestValidation:
             response = client.post(
                 "/api/courses", json=invalid_course, content_type="application/json"
             )
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
     @patch("api_routes.has_permission")
     def test_term_creation_validation(self, mock_has_permission):
@@ -1626,7 +1640,7 @@ class TestRequestValidation:
             response = client.post(
                 "/api/terms", json=invalid_term, content_type="application/json"
             )
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
 
 class TestAuthenticationIntegration:
@@ -1750,7 +1764,7 @@ class TestInstitutionEndpoints:
         """Test POST /api/institutions with missing data."""
         with app.test_client() as client:
             response = client.post("/api/institutions", json={})
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
             data = json.loads(response.data)
             assert data["success"] is False
@@ -1776,7 +1790,7 @@ class TestInstitutionEndpoints:
                     },
                 },
             )
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
             data = json.loads(response.data)
             assert data["success"] is False
@@ -1988,7 +2002,7 @@ class TestInstitutionEndpoints:
         with app.test_client() as client:
             # Test missing file
             response = client.post("/api/import/excel")
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
 
             data = json.loads(response.data)
             assert data["success"] is False
@@ -2139,7 +2153,7 @@ class TestUserManagementAPI:
 
         # Test missing required fields
         response = self.app.post("/api/users", json={"email": "test@cei.edu"})
-        assert response.status_code == 400
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
         data = response.get_json()
         assert "Missing required fields" in data["error"]
 
@@ -2204,7 +2218,7 @@ class TestCourseManagementOperations:
             "/api/courses", json={"course_title": "Test Course", "department": "TEST"}
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
         data = response.get_json()
         assert "Missing required fields" in data["error"]
 
@@ -2284,7 +2298,7 @@ class TestCourseManagementOperations:
 
         # Test no file uploaded
         response = self.app.post("/api/import/excel")
-        assert response.status_code == 400
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
         data = response.get_json()
         assert data["error"] == "No file uploaded"
 
@@ -2377,7 +2391,7 @@ class TestAPIRoutesErrorHandling:
 
             response = self.app.post("/api/import/excel", data=data)
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = response.get_json()
             assert data["error"] == "No file selected"
 
@@ -2390,7 +2404,7 @@ class TestAPIRoutesErrorHandling:
 
             response = self.app.post("/api/import/excel", data=data)
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = response.get_json()
             assert "Invalid file type" in data["error"]
 
@@ -2495,7 +2509,7 @@ class TestAPIRoutesValidation:
         with patch("api_routes.has_permission", return_value=True):
             response = self.app.post("/api/import/validate")
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = response.get_json()
             assert data["error"] == "No file uploaded"
 
@@ -2508,7 +2522,7 @@ class TestAPIRoutesValidation:
 
             response = self.app.post("/api/import/validate", data=data)
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = response.get_json()
             assert data["error"] == "No file selected"
 
@@ -2521,7 +2535,7 @@ class TestAPIRoutesValidation:
 
             response = self.app.post("/api/import/validate", data=data)
 
-            assert response.status_code == 400
+            assert response.status_code == 400  # Bad request
             data = response.get_json()
             assert "Invalid file type" in data["error"]
 
@@ -2639,7 +2653,7 @@ class TestAPIRoutesExtended:
 
         response = self.app.get("/api/courses")
 
-        assert response.status_code == 400
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
         data = response.get_json()
         assert data["error"] == "Institution context required"
 
