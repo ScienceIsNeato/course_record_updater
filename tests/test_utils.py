@@ -62,6 +62,24 @@ def create_test_session(client, user_data):
         sess["remember_me"] = user_data.get("remember_me", False)
 
 
+def setup_admin_auth(client, institution_id="inst-123", role="site_admin"):
+    """
+    Setup admin authentication for tests - DRY helper to avoid repetition.
+    
+    Args:
+        client: Flask test client
+        institution_id: Institution ID for the admin user
+        role: Role for the user (defaults to site_admin)
+    """
+    auth_data = {
+        "user_id": "admin-456",
+        "email": "admin@test.com",
+        "role": role,
+        "institution_id": institution_id,
+    }
+    create_test_session(client, auth_data)
+
+
 def get_authenticated_client(app_instance, user_data):
     """
     Creates a new Flask test client and authenticates it with the given user data.
