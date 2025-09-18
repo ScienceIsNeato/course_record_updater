@@ -378,11 +378,11 @@ fi
 if [[ "$RUN_COVERAGE" == "true" ]]; then
   echo "📊 Test Coverage Analysis (80% threshold)"
 
-  # Run coverage analysis independently of test results (all tests)
+  # Run coverage analysis independently of test results (unit tests only)
   echo "  📊 Running coverage analysis (independent of test results)..."
   
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
-  COVERAGE_OUTPUT=$(python -m pytest tests/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
