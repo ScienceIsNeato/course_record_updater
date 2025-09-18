@@ -16,6 +16,10 @@ htmlcov/
 # Log files and directories
 logs/
 
+# Flask session files
+flask_session/
+*flask_session*
+
 # SonarCloud analysis artifacts
 .scannerwork/
 
