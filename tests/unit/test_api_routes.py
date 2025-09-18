@@ -17,7 +17,8 @@ from constants import SITE_ADMIN_INSTITUTION_ID
 TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
 
 # Import centralized test utilities
-from tests.test_utils import create_test_session as _create_test_session, authenticated_test_client, ADMIN_USER_DATA
+from tests.test_utils import ADMIN_USER_DATA, authenticated_test_client
+from tests.test_utils import create_test_session as _create_test_session
 
 # Remove duplicate function - use centralized version directly
 create_test_session = _create_test_session
@@ -468,9 +469,7 @@ class TestInvitationEndpoints:
         """Test invitation creation with no JSON data."""
         response = self.client.post("/api/auth/invite")
 
-        assert (
-            response.status_code == 401
-        )  # Auth required - returns 401 Unauthorized
+        assert response.status_code == 401  # Auth required - returns 401 Unauthorized
 
     def test_create_invitation_missing_email(self):
         """Test invitation creation with missing email."""
@@ -677,10 +676,7 @@ class TestAcceptInvitationEndpoints:
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["success"] is True
-        assert (
-            "Invitation accepted and account created successfully"
-            in data["message"]
-        )
+        assert "Invitation accepted and account created successfully" in data["message"]
         assert data["user_id"] == "user-123"
 
         # Verify service was called correctly
@@ -694,9 +690,7 @@ class TestAcceptInvitationEndpoints:
         """Test invitation acceptance with no JSON data."""
         response = self.client.post("/api/auth/accept-invitation")
 
-        assert (
-            response.status_code == 500
-        )  # Flask returns 500 for UnsupportedMediaType
+        assert response.status_code == 500  # Flask returns 500 for UnsupportedMediaType
 
     def test_accept_invitation_missing_token(self):
         """Test invitation acceptance with missing token."""
@@ -864,7 +858,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         mock_invitation_service.list_invitations.return_value = [
             {
                 "id": "inv-1",
@@ -909,7 +903,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get(
@@ -948,7 +942,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get("/api/auth/invitations?limit=150")  # Over max 100
@@ -977,7 +971,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         mock_invitation_service.list_invitations.side_effect = Exception(
             "Database error"
         )
@@ -1003,7 +997,7 @@ class TestListInvitationsEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get("/api/auth/invitations")
@@ -1106,7 +1100,9 @@ class TestResendVerificationEndpoints:
                 "/api/auth/resend-verification", json={"email": "notfound@test.com"}
             )
 
-            assert response.status_code == 400  # Bad request  # RegistrationError returns 400
+            assert (
+                response.status_code == 400
+            )  # Bad request  # RegistrationError returns 400
             data = json.loads(response.data)
             assert data["success"] is False
             assert "User not found" in data["error"]
@@ -1189,7 +1185,7 @@ class TestUserEndpoints:
             "institution_id": "inst-123",
         }
         create_test_session(self.client, user_data)
-        
+
         response = self.client.get("/api/users")
         assert response.status_code == 200
 
@@ -1239,42 +1235,66 @@ class TestUserEndpoints:
             },
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/users?role=instructor&department=MATH")
-            assert response.status_code == 200
+        # Setup authentication
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
 
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert len(data["users"]) == 2  # Should filter to only MATH department
-            for user in data["users"]:
-                assert user["department"] == "MATH"
+        response = self.client.get("/api/users?role=instructor&department=MATH")
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert len(data["users"]) == 2  # Should filter to only MATH department
+        for user in data["users"]:
+            assert user["department"] == "MATH"
 
     @patch("api_routes.get_users_by_role")
     def test_get_users_exception_handling(self, mock_get_users):
         """Test GET /api/users exception handling"""
         mock_get_users.side_effect = Exception("Database connection failed")
 
-        with app.test_client() as client:
-            response = client.get("/api/users?role=instructor")
-            assert response.status_code == 500
+        # Setup authentication
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
 
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "error" in data
+        response = self.client.get("/api/users?role=instructor")
+        assert response.status_code == 500
+
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "error" in data
 
     @patch("api_routes.has_permission")
     def test_create_user_no_json_data(self, mock_has_permission):
         """Test POST /api/users with no JSON data"""
         mock_has_permission.return_value = True
 
-        with app.test_client() as client:
-            response = client.post("/api/users", content_type="application/json")
-            # The API actually returns 500 due to exception when request.get_json() is called on empty request
-            assert response.status_code == 500
+        # Setup authentication
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, user_data)
 
-            data = json.loads(response.data)
-            assert data["success"] is False
-            # The actual error will be from the exception handling
+        response = self.client.post("/api/users", content_type="application/json")
+        # The API actually returns 500 due to exception when request.get_json() is called on empty request
+        assert response.status_code == 500
+
+        data = json.loads(response.data)
+        assert data["success"] is False
+        # The actual error will be from the exception handling
 
     @patch("api_routes.has_permission")
     def test_create_user_database_failure(self, mock_has_permission):
@@ -1290,16 +1310,24 @@ class TestUserEndpoints:
             "institution_id": "inst123",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/users", json=user_data, content_type="application/json"
-            )
-            # API currently returns 201 due to stub implementation
-            assert response.status_code == 201
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert data["user_id"] == "stub-user-id"
+        response = self.client.post(
+            "/api/users", json=user_data, content_type="application/json"
+        )
+        # API currently returns 201 due to stub implementation
+        assert response.status_code == 201
+
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["user_id"] == "stub-user-id"
 
     @patch("api_routes.has_permission")
     def test_create_user_exception_handling(self, mock_has_permission):
@@ -1315,27 +1343,43 @@ class TestUserEndpoints:
             "institution_id": "inst123",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/users", json=user_data, content_type="application/json"
-            )
-            # API currently returns 201 due to stub implementation
-            assert response.status_code == 201
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert data["user_id"] == "stub-user-id"
+        response = self.client.post(
+            "/api/users", json=user_data, content_type="application/json"
+        )
+        # API currently returns 201 due to stub implementation
+        assert response.status_code == 201
+
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["user_id"] == "stub-user-id"
 
     def test_get_users_without_permission_stub_mode(self):
         """Test GET /api/users in stub mode (auth always passes)."""
         # In stub mode, auth service always returns True, so this will pass
-        with app.test_client() as client:
-            response = client.get("/api/users")
-            # Should succeed in stub mode, but return empty list
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "users" in data
+        response = self.client.get("/api/users")
+        # Should succeed in stub mode, but return empty list
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert "users" in data
 
     @patch("api_routes.get_users_by_role")
     @patch("api_routes.has_permission")
@@ -1351,12 +1395,20 @@ class TestUserEndpoints:
             }
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/users?role=instructor")
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst123",
+        }
+        create_test_session(self.client, auth_data)
 
-            # Verify the role filter was applied
-            mock_get_users.assert_called_with("instructor")
+        response = self.client.get("/api/users?role=instructor")
+        assert response.status_code == 200
+
+        # Verify the role filter was applied
+        mock_get_users.assert_called_with("instructor")
 
     @patch("api_routes.has_permission")
     def test_create_user_success(self, mock_has_permission):
@@ -1371,15 +1423,23 @@ class TestUserEndpoints:
             "last_name": "User",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/users", json=user_data, content_type="application/json"
-            )
-            assert response.status_code == 201
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "message" in data
-            assert "created" in data["message"].lower()
+        response = self.client.post(
+            "/api/users", json=user_data, content_type="application/json"
+        )
+        assert response.status_code == 201
+
+        data = json.loads(response.data)
+        assert "message" in data
+        assert "created" in data["message"].lower()
 
     @patch("api_routes.has_permission")
     def test_create_user_missing_required_fields(self, mock_has_permission):
@@ -1391,19 +1451,32 @@ class TestUserEndpoints:
             # Missing role
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/users", json=incomplete_data, content_type="application/json"
-            )
-            assert response.status_code == 400  # Bad request
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "error" in data
-            assert "required" in data["error"].lower()
+        response = self.client.post(
+            "/api/users", json=incomplete_data, content_type="application/json"
+        )
+        assert response.status_code == 400  # Bad request
+
+        data = json.loads(response.data)
+        assert "error" in data
+        assert "required" in data["error"].lower()
 
 
 class TestCourseEndpoints:
     """Test course management endpoints."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_courses")
@@ -1415,13 +1488,21 @@ class TestCourseEndpoints:
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_courses.return_value = []
 
-        with app.test_client() as client:
-            response = client.get("/api/courses")
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "courses" in data
-            assert isinstance(data["courses"], list)
+        response = self.client.get("/api/courses")
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert "courses" in data
+        assert isinstance(data["courses"], list)
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_courses_by_department")
@@ -1439,11 +1520,19 @@ class TestCourseEndpoints:
             }
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/courses?department=MATH")
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, auth_data)
 
-            mock_get_courses.assert_called_with("riverside-tech-institute", "MATH")
+        response = self.client.get("/api/courses?department=MATH")
+        assert response.status_code == 200
+
+        mock_get_courses.assert_called_with("riverside-tech-institute", "MATH")
 
     @patch("api_routes.create_course")
     @patch("api_routes.has_permission")
@@ -1459,41 +1548,70 @@ class TestCourseEndpoints:
             "credit_hours": 3,
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/courses", json=course_data, content_type="application/json"
-            )
-            assert response.status_code == 201
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "message" in data
-            assert "course_id" in data
+        response = self.client.post(
+            "/api/courses", json=course_data, content_type="application/json"
+        )
+        assert response.status_code == 201
+
+        data = json.loads(response.data)
+        assert "message" in data
+        assert "course_id" in data
 
     def test_get_course_by_number_endpoint_exists(self):
         """Test that GET /api/courses/<course_number> endpoint exists."""
-        with app.test_client() as client:
-            response = client.get("/api/courses/MATH-101")
-            # Endpoint exists and correctly returns 404 for non-existent course
-            assert response.status_code == 404
-            data = json.loads(response.data)
-            assert "error" in data
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
+
+        response = self.client.get("/api/courses/MATH-101")
+        # Endpoint exists and correctly returns 404 for non-existent course
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert "error" in data
 
     @patch("api_routes.get_course_by_number")
     def test_get_course_by_number_not_found(self, mock_get_course):
         """Test GET /api/courses/<course_number> when course doesn't exist."""
         mock_get_course.return_value = None
 
-        with app.test_client() as client:
-            response = client.get("/api/courses/NONEXISTENT-999")
-            assert response.status_code == 404
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "error" in data
-            assert "not found" in data["error"].lower()
+        response = self.client.get("/api/courses/NONEXISTENT-999")
+        assert response.status_code == 404
+
+        data = json.loads(response.data)
+        assert "error" in data
+        assert "not found" in data["error"].lower()
 
 
 class TestTermEndpoints:
     """Test term management endpoints."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_active_terms")
@@ -1514,13 +1632,21 @@ class TestTermEndpoints:
             },
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/terms")
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "terms" in data
-            assert len(data["terms"]) == 2
+        response = self.client.get("/api/terms")
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert "terms" in data
+        assert len(data["terms"]) == 2
 
     def test_create_term_endpoint_exists(self):
         """Test that POST /api/terms endpoint exists."""
@@ -1533,6 +1659,11 @@ class TestTermEndpoints:
 class TestSectionEndpoints:
     """Test section management endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_sections")
     def test_get_sections_endpoint_exists(
@@ -1543,13 +1674,21 @@ class TestSectionEndpoints:
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_sections.return_value = []
 
-        with app.test_client() as client:
-            response = client.get("/api/sections")
-            assert response.status_code == 200
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "sections" in data
-            assert isinstance(data["sections"], list)
+        response = self.client.get("/api/sections")
+        assert response.status_code == 200
+
+        data = json.loads(response.data)
+        assert "sections" in data
+        assert isinstance(data["sections"], list)
 
     def test_create_section_endpoint_exists(self):
         """Test that POST /api/sections endpoint exists."""
@@ -1561,6 +1700,11 @@ class TestSectionEndpoints:
 
 class TestImportEndpoints:
     """Test import functionality endpoints."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
 
     def test_excel_import_endpoint_exists(self):
         """Test that POST /api/import/excel endpoint exists."""
@@ -1574,16 +1718,24 @@ class TestImportEndpoints:
         """Test POST /api/import/excel without file."""
         mock_has_permission.return_value = True
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/import/excel",
-                data={"conflict_strategy": "use_theirs", "dry_run": "false"},
-            )
-            assert response.status_code == 400  # Bad request
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
 
-            data = json.loads(response.data)
-            assert "error" in data
-            assert "file" in data["error"].lower()
+        response = self.client.post(
+            "/api/import/excel",
+            data={"conflict_strategy": "use_theirs", "dry_run": "false"},
+        )
+        assert response.status_code == 400  # Bad request
+
+        data = json.loads(response.data)
+        assert "error" in data
+        assert "file" in data["error"].lower()
 
 
 class TestErrorHandling:
@@ -1607,6 +1759,11 @@ class TestErrorHandling:
 class TestRequestValidation:
     """Test request data validation."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.has_permission")
     def test_course_creation_validation(self, mock_has_permission):
         """Test course creation with various validation scenarios."""
@@ -1618,11 +1775,19 @@ class TestRequestValidation:
             # Missing course_number
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/courses", json=invalid_course, content_type="application/json"
-            )
-            assert response.status_code == 400  # Bad request
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
+
+        response = self.client.post(
+            "/api/courses", json=invalid_course, content_type="application/json"
+        )
+        assert response.status_code == 400  # Bad request
 
     @patch("api_routes.has_permission")
     def test_term_creation_validation(self, mock_has_permission):
@@ -1636,11 +1801,19 @@ class TestRequestValidation:
             "end_date": "2024-12-15",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/terms", json=invalid_term, content_type="application/json"
-            )
-            assert response.status_code == 400  # Bad request
+        # Setup authentication
+        auth_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+        create_test_session(self.client, auth_data)
+
+        response = self.client.post(
+            "/api/terms", json=invalid_term, content_type="application/json"
+        )
+        assert response.status_code == 400  # Bad request
 
 
 class TestAuthenticationIntegration:
