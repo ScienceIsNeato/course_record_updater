@@ -21,8 +21,6 @@ from typing import Any, Dict, Optional
 from flask import current_app, request, session
 
 from flask_session import Session  # type: ignore
-
-# Import centralized logging
 from logging_config import get_logger
 
 # Get standardized logger
