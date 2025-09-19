@@ -227,6 +227,96 @@ class TestIndexRoute:
             response = client.get("/profile")
             assert response.status_code == 200
 
+    def test_dashboard_route_requires_authentication(self):
+        """Test that dashboard route requires authentication."""
+        with app_module.app.test_client() as client:
+            response = client.get("/dashboard")
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_dashboard_route_renders_for_authenticated_user(self):
+        """Test that dashboard route renders for authenticated users."""
+        from tests.test_utils import create_test_session
+
+        with app_module.app.test_client() as client:
+            # Create authenticated session
+            create_test_session(
+                client,
+                {
+                    "user_id": "test123",
+                    "email": "test@example.com",
+                    "role": "instructor",
+                    "first_name": "Test",
+                    "last_name": "User",
+                },
+            )
+
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+            assert b"dashboard" in response.data.lower()
+
+    def test_dashboard_route_different_roles(self):
+        """Test dashboard route with different user roles."""
+        from tests.test_utils import create_test_session
+
+        with app_module.app.test_client() as client:
+            # Test program_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin1",
+                    "email": "program@example.com",
+                    "role": "program_admin",
+                    "first_name": "Program",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test institution_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin2",
+                    "email": "institution@example.com",
+                    "role": "institution_admin",
+                    "first_name": "Institution",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test site_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin3",
+                    "email": "site@example.com",
+                    "role": "site_admin",
+                    "first_name": "Site",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test unknown role
+            create_test_session(
+                client,
+                {
+                    "user_id": "unknown",
+                    "email": "unknown@example.com",
+                    "role": "unknown_role",
+                    "first_name": "Unknown",
+                    "last_name": "User",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 302  # Should redirect for unknown role
+
 
 class TestAdminRoutes:
     """Test admin route functionality."""

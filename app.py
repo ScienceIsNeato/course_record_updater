@@ -5,7 +5,7 @@ import sys
 from flask import Flask, flash, redirect, render_template, url_for
 
 # Constants
-DASHBOARD_ENDPOINT = "api.dashboard"
+DASHBOARD_ENDPOINT = "dashboard"
 
 # Import new API routes and services
 from api_routes import api
@@ -133,6 +133,32 @@ def admin_users():
 
     current_user = get_current_user()
     return render_template("admin/user_management.html", current_user=current_user)
+
+
+# Dashboard Routes
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """
+    Role-based dashboard - returns different views based on user role
+    """
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    role = user["role"]
+
+    if role == "instructor":
+        return render_template("dashboard/instructor.html", user=user)
+    elif role == "program_admin":
+        return render_template("dashboard/program_admin.html", user=user)
+    elif role == "institution_admin":
+        return render_template("dashboard/institution_admin.html", user=user)
+    elif role == "site_admin":
+        return render_template("dashboard/site_admin.html", user=user)
+    else:
+        flash("Unknown user role. Please contact administrator.", "danger")
+        return redirect(url_for("index"))
 
 
 if __name__ == "__main__":

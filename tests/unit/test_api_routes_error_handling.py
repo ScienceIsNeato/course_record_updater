@@ -376,7 +376,7 @@ class TestDashboardErrorHandling:
 
         # This will likely cause an error or redirect
         try:
-            response = self.client.get("/api/dashboard")
+            response = self.client.get("/dashboard")
             # Any response is fine - we're just exercising the code path
             assert response.status_code in [200, 302, 401, 500]
         except Exception:
@@ -393,7 +393,7 @@ class TestDashboardErrorHandling:
         }
 
         try:
-            response = self.client.get("/api/dashboard")
+            response = self.client.get("/dashboard")
             # Should hit the unknown role redirect path
             assert response.status_code in [200, 302, 404, 500]
         except Exception:

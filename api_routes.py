@@ -173,31 +173,6 @@ def handle_api_error(
 # ========================================
 
 
-@api.route("/dashboard")
-@login_required
-def dashboard():
-    """
-    Role-based dashboard - returns different views based on user role
-    """
-    user = get_current_user()
-    if not user:
-        return redirect(url_for("login"))
-
-    role = user["role"]
-
-    if role == "instructor":
-        return render_template("dashboard/instructor.html", user=user)
-    elif role == "program_admin":
-        return render_template("dashboard/program_admin.html", user=user)
-    elif role == "institution_admin":
-        return render_template("dashboard/institution_admin.html", user=user)
-    elif role == "site_admin":
-        return render_template("dashboard/site_admin.html", user=user)
-    else:
-        flash("Unknown user role. Please contact administrator.", "danger")
-        return redirect(url_for("index"))
-
-
 # ========================================
 # INSTITUTION MANAGEMENT API
 # ========================================

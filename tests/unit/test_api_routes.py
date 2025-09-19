@@ -53,9 +53,9 @@ class TestDashboardRoutes:
         }
         create_test_session(self.client, user_data)
 
-        with patch("api_routes.render_template") as mock_render:
+        with patch("app.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
-            response = self.client.get("/api/dashboard")
+            response = self.client.get("/dashboard")
 
             assert response.status_code == 200
             # Verify the correct template was called for instructor role
@@ -78,9 +78,9 @@ class TestDashboardRoutes:
         }
         create_test_session(self.client, user_data)
 
-        with patch("api_routes.render_template") as mock_render:
+        with patch("app.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
-            response = self.client.get("/api/dashboard")
+            response = self.client.get("/dashboard")
 
             assert response.status_code == 200
             # Verify the correct template was called for program_admin role
@@ -103,9 +103,9 @@ class TestDashboardRoutes:
         }
         create_test_session(self.client, user_data)
 
-        with patch("api_routes.render_template") as mock_render:
+        with patch("app.render_template") as mock_render:
             mock_render.return_value = "Dashboard HTML"
-            response = self.client.get("/api/dashboard")
+            response = self.client.get("/dashboard")
 
             assert response.status_code == 200
             # Verify the correct template was called for site_admin role
@@ -129,11 +129,11 @@ class TestDashboardRoutes:
         create_test_session(self.client, user_data)
 
         with (
-            patch("api_routes.redirect") as mock_redirect,
-            patch("api_routes.flash") as mock_flash,
+            patch("app.redirect") as mock_redirect,
+            patch("app.flash") as mock_flash,
         ):
             mock_redirect.return_value = "Redirect response"
-            self.client.get("/api/dashboard")
+            self.client.get("/dashboard")
 
             # Should flash error message and redirect for unknown role
             mock_flash.assert_called_once()
@@ -142,13 +142,12 @@ class TestDashboardRoutes:
     def test_dashboard_no_user(self):
         """Test dashboard when no user is logged in"""
         # No session created - user is unauthenticated
-        # Send AJAX headers to ensure API endpoint returns JSON (not redirect)
-        response = self.client.get(
-            "/api/dashboard", headers={"X-Requested-With": "XMLHttpRequest"}
-        )
+        # Dashboard is now a web route, so it should redirect to login
+        response = self.client.get("/dashboard")
 
-        # API requests with AJAX headers return 401 for unauthenticated requests
-        assert response.status_code == 401
+        # Web routes redirect to login when not authenticated
+        assert response.status_code == 302
+        assert "/login" in response.location
 
 
 class TestHealthEndpoint:
@@ -186,7 +185,7 @@ class TestDashboardEndpoint:
         self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
 
-    @patch("api_routes.render_template")
+    @patch("app.render_template")
     def test_dashboard_endpoint_exists(self, mock_render):
         """Test that dashboard endpoint is registered."""
         from tests.test_utils import create_test_session
@@ -203,7 +202,7 @@ class TestDashboardEndpoint:
         create_test_session(self.client, user_data)
         mock_render.return_value = "Dashboard HTML"
 
-        response = self.client.get("/api/dashboard")
+        response = self.client.get("/dashboard")
         # Endpoint exists and works correctly
         assert response.status_code == 200
 
