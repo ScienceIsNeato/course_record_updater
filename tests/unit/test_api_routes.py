@@ -2265,7 +2265,8 @@ class TestUserManagementAPI:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.app = app
+        self.client = app.test_client()
 
     @patch("auth_service.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -2279,6 +2280,17 @@ class TestUserManagementAPI:
         mock_get_institution_id,
     ):
         """Test listing users with role filter."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "test-user",
@@ -2300,7 +2312,7 @@ class TestUserManagementAPI:
             },
         ]
 
-        response = self.test_client.get("/api/users?role=instructor")
+        response = self.client.get("/api/users?role=instructor")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2321,6 +2333,17 @@ class TestUserManagementAPI:
         mock_get_institution_id,
     ):
         """Test listing users with department filter."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "test-user",
@@ -2344,7 +2367,7 @@ class TestUserManagementAPI:
             },
         ]
 
-        response = self.test_client.get("/api/users?role=instructor&department=MATH")
+        response = self.client.get("/api/users?role=instructor&department=MATH")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2355,15 +2378,26 @@ class TestUserManagementAPI:
     @patch("api_routes.has_permission")
     def test_create_user_validation(self, mock_has_permission):
         """Test create user with validation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
         # Test with no JSON data
-        response = self.test_client.post("/api/users")
+        response = self.client.post("/api/users")
         # May return 500 if permission decorator fails, 400 if it gets to validation
         assert response.status_code in [400, 500]
 
         # Test missing required fields
-        response = self.test_client.post("/api/users", json={"email": "test@cei.edu"})
+        response = self.client.post("/api/users", json={"email": "test@cei.edu"})
         assert response.status_code == 400
         data = response.get_json()
         assert "Missing required fields" in data["error"]
@@ -2374,10 +2408,21 @@ class TestUserManagementAPI:
         self, mock_has_permission, mock_get_current_user
     ):
         """Test user trying to access other user's details without permission."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session with limited permissions
+        user_data = {
+            "user_id": "user123",
+            "email": "user@test.com",
+            "role": "instructor",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_current_user.return_value = {"user_id": "user123"}
         mock_has_permission.return_value = False
 
-        response = self.test_client.get("/api/users/other_user")
+        response = self.client.get("/api/users/other_user")
 
         assert response.status_code == 403
         data = response.get_json()
