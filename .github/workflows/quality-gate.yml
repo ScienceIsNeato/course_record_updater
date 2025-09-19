@@ -137,8 +137,13 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Run Unit Tests
       run: |
-        echo "Debug: CI=$CI"
-        echo "Debug: GITHUB_ACTIONS=$GITHUB_ACTIONS"
+        echo "=== Environment Debug ==="
+        echo "CI=$CI"
+        echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
+        echo "PYTHONPATH=$PYTHONPATH"
+        echo "=== Running maintainability gate directly to see what's missing ==="
+        ./scripts/maintainability-gate.sh --tests || echo "Maintainability gate failed - let's see why"
+        echo "=== Now running via ship_it ==="
         python scripts/ship_it.py --checks tests
       env:
         PYTHONPATH: .

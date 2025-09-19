@@ -20,9 +20,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-# Mark ALL tests in this file as smoke tests (slow, requires browser)
-pytestmark = pytest.mark.smoke
-
 
 class TestFrontendSmoke:
     """Smoke tests for frontend functionality"""

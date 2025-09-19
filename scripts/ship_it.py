@@ -80,6 +80,8 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
+            ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
+            ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
         # Fast checks for commit validation (exclude slow checks >30s)
@@ -452,7 +454,7 @@ Validation Types:
   commit - Fast checks for development cycle (excludes security & sonar, ~30s savings)
   PR     - Full validation for pull requests (all checks including security & sonar)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -469,7 +471,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
 
     args = parser.parse_args()

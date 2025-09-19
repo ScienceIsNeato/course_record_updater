@@ -105,6 +105,8 @@ else
       --complexity) RUN_COMPLEXITY=true ;;
       --js-lint) RUN_JS_LINT=true ;;
       --js-format) RUN_JS_FORMAT=true ;;
+      --smoke-tests) RUN_SMOKE_TESTS=true ;;
+      --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --help)
         echo "maintainability-gate - Course Record Updater Quality Framework"
         echo ""
@@ -123,6 +125,8 @@ else
         echo "  ./scripts/maintainability-gate.sh --complexity # Check code complexity"
         echo "  ./scripts/maintainability-gate.sh --js-lint    # Check JavaScript linting"
         echo "  ./scripts/maintainability-gate.sh --js-format  # Check JavaScript formatting"
+        echo "  ./scripts/maintainability-gate.sh --smoke-tests # Run smoke tests (tests/smoke/)"
+        echo "  ./scripts/maintainability-gate.sh --frontend-check # Quick frontend validation"
         echo "  ./scripts/maintainability-gate.sh --help    # Show this help"
         echo ""
         echo "This script ensures code maintainability through comprehensive quality checks"
@@ -856,6 +860,62 @@ if [[ "$RUN_JS_FORMAT" == "true" ]]; then
                   "Review Prettier output above and fix manually"
     fi
   fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SMOKE TESTS EXECUTION - END-TO-END TESTING
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
+  echo "🔥 Smoke Tests Execution (tests/smoke/)"
+  
+  # Run smoke tests from the smoke folder
+  echo "  🔍 Running smoke test suite (end-to-end validation)..."
+  SMOKE_OUTPUT=$(python -m pytest tests/smoke/ -v 2>&1) || SMOKE_FAILED=true
+  
+  if [[ "$SMOKE_FAILED" == "true" ]]; then
+    echo "❌ Smoke Tests: FAILED"
+    echo ""
+    echo "📋 Smoke Test Output:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$SMOKE_OUTPUT" | sed 's/^/  /'
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    # Extract summary stats for the failure record
+    FAILED_SMOKE_TESTS=$(echo "$SMOKE_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    add_failure "Smoke Tests" "Smoke test failures: $FAILED_SMOKE_TESTS" "See detailed output above and run 'python -m pytest tests/smoke/ -v' for full details"
+  else
+    echo "✅ Smoke Tests: PASSED"
+    add_success "Smoke Tests" "All smoke tests passed successfully"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FRONTEND CHECK - QUICK UI VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
+  echo "🌐 Frontend Check (Quick UI Validation)"
+  
+  # Run the frontend check script
+  echo "  🔍 Running frontend validation check..."
+  FRONTEND_OUTPUT=$(./check_frontend.sh 2>&1) || FRONTEND_FAILED=true
+  
+  if [[ "$FRONTEND_FAILED" == "true" ]]; then
+    echo "❌ Frontend Check: FAILED"
+    echo ""
+    echo "📋 Frontend Check Output:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$FRONTEND_OUTPUT" | sed 's/^/  /'
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './check_frontend.sh' manually"
+  else
+    echo "✅ Frontend Check: PASSED"
+    add_success "Frontend Check" "Frontend validation passed successfully"
+  fi
+  echo ""
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
