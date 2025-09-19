@@ -134,18 +134,12 @@ class AuthService:
         Get the current authenticated user from session.
         Returns None if no user is authenticated.
         """
-        # Feature flag for incremental migration to real auth
-        # Default to mock auth, enable real auth with USE_REAL_AUTH=True
+        # Use real session-based authentication
         try:
-            from flask import current_app
-
-            if current_app.config.get("USE_REAL_AUTH", False):
-                return self._get_real_session_user()
-            else:
-                return self._get_mock_user()
+            return self._get_real_session_user()
         except RuntimeError:
             # Outside of application context (e.g., in standalone tests)
-            # Default to mock user behavior
+            # Default to mock user behavior for backward compatibility
             return self._get_mock_user()
 
     def _get_real_session_user(self) -> Optional[Dict[str, Any]]:

@@ -144,13 +144,8 @@ class TestDashboardRoutes:
         # No session created - user is unauthenticated
         response = self.client.get("/api/dashboard")
 
-        use_real_auth = self.app.config.get("USE_REAL_AUTH", False)
-        if use_real_auth:
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth always provides a user, so request succeeds
-            assert response.status_code == 200
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
 
 class TestHealthEndpoint:
@@ -404,9 +399,6 @@ class TestInvitationEndpoints:
         create_test_session(self.client, user_data)
         return user_data
 
-    def _using_real_auth(self):
-        return self.app.config.get("USE_REAL_AUTH", False)
-
     @patch("invitation_service.InvitationService")
     def test_create_invitation_success(self, mock_invitation_service):
         """Test successful invitation creation."""
@@ -444,12 +436,8 @@ class TestInvitationEndpoints:
         """Test invitation creation with no JSON data."""
         response = self.client.post("/api/auth/invite")
 
-        if self._using_real_auth():
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth provides a user, so we get a different error (500 for no JSON)
-            assert response.status_code == 500
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
     def test_create_invitation_missing_email(self):
         """Test invitation creation with missing email."""
@@ -458,12 +446,8 @@ class TestInvitationEndpoints:
             json={"invitee_role": "instructor", "personal_message": "Welcome!"},
         )
 
-        if self._using_real_auth():
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth provides a user, so we get 400 for missing email
-            assert response.status_code == 400
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
     def test_create_invitation_missing_role(self):
         """Test invitation creation with missing role."""
@@ -475,12 +459,8 @@ class TestInvitationEndpoints:
             },
         )
 
-        if self._using_real_auth():
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth provides a user, so we get 400 for missing role
-            assert response.status_code == 400
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
     @patch("invitation_service.InvitationService")
     def test_create_invitation_invalid_email(self, mock_invitation_service):
@@ -872,12 +852,8 @@ class TestListInvitationsEndpoints:
         # Don't create session - test unauthenticated request
         response = self.client.get("/api/auth/invitations")
 
-        if self.app.config.get("USE_REAL_AUTH", False):
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth provides a user, so request succeeds
-            assert response.status_code == 200
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
     @patch("invitation_service.InvitationService")
     def test_list_invitations_limit_clamping(self, mock_invitation_service):
@@ -1167,12 +1143,8 @@ class TestUserEndpoints(CommonAuthMixin):
         # Don't create session - test unauthenticated request
         response = self.client.post("/api/users", content_type="application/json")
 
-        if self.app.config.get("USE_REAL_AUTH", False):
-            # Real auth returns 401 for unauthenticated requests
-            assert response.status_code == 401
-        else:
-            # Mock auth provides a user, so we get 500 for no JSON data
-            assert response.status_code == 500
+        # Real auth returns 401 for unauthenticated requests
+        assert response.status_code == 401
 
     def test_create_user_database_failure(self):
         """Test POST /api/users when database creation fails"""

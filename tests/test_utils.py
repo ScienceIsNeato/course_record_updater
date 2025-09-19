@@ -32,49 +32,18 @@ INSTRUCTOR_USER_DATA = {
 }
 
 
-def enable_real_auth(app):
-    """Enable real authentication for this test session"""
-    app.config["USE_REAL_AUTH"] = True
-
-
-def disable_real_auth(app):
-    """Disable real authentication (use mock) for this test session"""
-    app.config["USE_REAL_AUTH"] = False
-
-
-def is_using_real_auth():
-    """
-    Check if the current test session is using real authentication.
-
-    Returns:
-        bool: True if using real auth, False if using mock auth
-    """
-    from flask import current_app
-
-    try:
-        return current_app.config.get("USE_REAL_AUTH", False)
-    except RuntimeError:
-        # No app context, default to False
-        return False
-
-
 def require_real_auth_session(client, user_data):
     """
     Create a test session that's compatible with real authentication.
 
-    This function should be used when --use-real-auth flag is enabled.
     It creates a proper Flask session that SessionService can read.
 
     Args:
         client: Flask test client
         user_data: Dictionary with user session data
     """
-    if is_using_real_auth():
-        # For real auth, create a proper session
-        create_test_session(client, user_data)
-    else:
-        # For mock auth, session creation is not needed (mock returns hardcoded user)
-        pass
+    # Always create a proper session (real auth is now default)
+    create_test_session(client, user_data)
 
 
 def create_test_session(client, user_data):
@@ -119,10 +88,7 @@ class RealAuthTestMixin:
             self.client = app.test_client()
     """
 
-    def setup_method(self):
-        """Enable real auth for this test class"""
-        if hasattr(self, "app"):
-            enable_real_auth(self.app)
+    # Real auth is now enabled by default - no setup needed
 
 
 @contextmanager

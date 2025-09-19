@@ -203,16 +203,10 @@ class TestIndexRoute:
 
     def test_profile_route_requires_authentication(self):
         """Test that profile route requires authentication."""
-        from tests.test_utils import is_using_real_auth
-
         with app_module.app.test_client() as client:
             response = client.get("/profile")
-            if is_using_real_auth():
-                assert (
-                    response.status_code == 401
-                )  # Real auth returns 401 for unauthenticated
-            else:
-                assert response.status_code == 200  # Mock auth always provides a user
+            # Real auth returns 401 for unauthenticated requests (now default)
+            assert response.status_code == 401
 
     def test_profile_route_renders_for_authenticated_user(self):
         """Test that profile route renders for authenticated users."""
