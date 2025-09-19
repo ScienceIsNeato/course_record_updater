@@ -279,7 +279,8 @@ if [[ "$RUN_TYPES" == "true" ]]; then
   echo "🔧 Type Check (mypy strict mode)"
 
   # Run mypy type checking (main files only, with timeout)
-  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" | head -15 | xargs mypy --ignore-missing-imports --no-strict-optional 2>&1) || TYPE_FAILED=true
+  # Include scripts for type checking but exclude from coverage
+  TYPE_OUTPUT=$(timeout 30s find . -name "*.py" -not -path "./venv/*" -not -path "./cursor-rules/*" -not -path "./.venv/*" -not -path "./tests/*" -not -path "./scripts/seed_db.py" | xargs mypy --ignore-missing-imports --no-strict-optional 2>&1) || TYPE_FAILED=true
 
   if [[ "$TYPE_FAILED" != "true" ]]; then
     echo "✅ Type Check: PASSED (strict mypy type checking)"

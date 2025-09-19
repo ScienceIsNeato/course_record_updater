@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,7 +34,7 @@ class DatabaseSeeder:
 
     def __init__(self, verbose: bool = True):
         self.verbose = verbose
-        self.created_entities = {
+        self.created_entities: Dict[str, List[str]] = {
             "institutions": [],
             "users": [],
             "programs": [],
@@ -135,7 +135,13 @@ class DatabaseSeeder:
                 )
             else:
                 # Create new institution
-                schema = Institution.create_schema(**inst_data)
+                schema = Institution.create_schema(
+                    name=inst_data["name"],
+                    short_name=inst_data["short_name"],
+                    created_by=inst_data["created_by"],
+                    admin_email=inst_data["admin_email"],
+                    website_url=inst_data.get("website_url"),
+                )
                 institution_id = db.create_institution(schema)
                 if institution_id:
                     institution_ids.append(institution_id)
@@ -224,16 +230,18 @@ class DatabaseSeeder:
 
         admin_ids = []
         for admin in admin_data:
-            if admin["institution_idx"] < len(institution_ids):
+            institution_idx = cast(int, admin["institution_idx"])
+            if institution_idx < len(institution_ids):
                 try:
                     # Check if admin already exists
-                    existing_user = db.get_user_by_email(admin["email"])
+                    email = str(admin["email"])
+                    existing_user = db.get_user_by_email(email)
                     if existing_user:
                         user_id = existing_user["user_id"]
                         admin_ids.append(user_id)
                         self.created_entities["users"].append(user_id)
                         self.log(
-                            f"   Found existing institution admin: {admin['email']} / InstitutionAdmin123!"
+                            f"   Found existing institution admin: {email} / InstitutionAdmin123!"
                         )
                         continue
 
@@ -241,14 +249,14 @@ class DatabaseSeeder:
                     password_hash = hash_password("InstitutionAdmin123!")
 
                     schema = User.create_schema(
-                        email=admin["email"],
-                        first_name=admin["first_name"],
-                        last_name=admin["last_name"],
+                        email=email,
+                        first_name=str(admin["first_name"]),
+                        last_name=str(admin["last_name"]),
                         role="institution_admin",
-                        institution_id=institution_ids[admin["institution_idx"]],
+                        institution_id=institution_ids[institution_idx],
                         password_hash=password_hash,
                         account_status="active",
-                        display_name=admin["display_name"],
+                        display_name=str(admin.get("display_name", "")),
                     )
 
                     # Override email verification for test user
@@ -343,16 +351,17 @@ class DatabaseSeeder:
 
         program_ids = []
         for prog_data in programs_data:
-            if prog_data["institution_idx"] < len(institution_ids) and prog_data[
-                "admin_idx"
-            ] < len(admin_ids):
+            institution_idx = cast(int, prog_data["institution_idx"])
+            admin_idx = cast(int, prog_data["admin_idx"])
+            if institution_idx < len(institution_ids) and admin_idx < len(admin_ids):
 
                 try:
-                    institution_id = institution_ids[prog_data["institution_idx"]]
+                    institution_id = institution_ids[institution_idx]
 
                     # Check if program already exists
+                    program_name = cast(str, prog_data["name"])
                     existing_program = db.get_program_by_name_and_institution(
-                        prog_data["name"], institution_id
+                        program_name, institution_id
                     )
 
                     if existing_program:
@@ -365,12 +374,12 @@ class DatabaseSeeder:
                     else:
                         # Create new program
                         schema = Program.create_schema(
-                            name=prog_data["name"],
-                            short_name=prog_data["short_name"],
+                            name=cast(str, prog_data["name"]),
+                            short_name=cast(str, prog_data["short_name"]),
                             institution_id=institution_id,
-                            created_by=admin_ids[prog_data["admin_idx"]],
-                            description=prog_data["description"],
-                            is_default=prog_data.get("is_default", False),
+                            created_by=admin_ids[admin_idx],
+                            description=cast(str, prog_data.get("description", "")),
+                            is_default=cast(bool, prog_data.get("is_default", False)),
                         )
 
                         # Database service expects 'id' field, not 'program_id'

@@ -92,16 +92,17 @@ class PanelManager {
   bindEvents() {
     // Panel toggle events
     document.addEventListener('click', e => {
-      if (e.target.closest('.panel-header')) {
-        const panel = e.target.closest('.dashboard-panel');
-        if (panel && !e.target.closest('.panel-actions')) {
+      const target = e.target instanceof Element ? e.target : e.target.parentElement;
+      if (target && target.closest && target.closest('.panel-header')) {
+        const panel = target.closest('.dashboard-panel');
+        if (panel && !target.closest('.panel-actions')) {
           this.togglePanel(panel.id);
         }
       }
 
       // Table sorting events
-      if (e.target.closest('th.sortable')) {
-        const header = e.target.closest('th.sortable');
+      if (target && target.closest && target.closest('th.sortable')) {
+        const header = target.closest('th.sortable');
         const table = header.closest('.panel-table');
         const sortKey =
           header.dataset.sort || Array.from(header.parentElement.children).indexOf(header);
@@ -109,16 +110,16 @@ class PanelManager {
       }
 
       // Panel focus events
-      if (e.target.closest('.panel-title') && e.detail === 2) {
+      if (target && target.closest && target.closest('.panel-title') && e.detail === 2) {
         // Double click
-        const panel = e.target.closest('.dashboard-panel');
+        const panel = target.closest('.dashboard-panel');
         if (panel) {
           this.focusPanel(panel.id);
         }
       }
 
       // Close stat previews when clicking outside
-      if (!e.target.closest('.stat-item')) {
+      if (!target || !target.closest || !target.closest('.stat-item')) {
         this.hideAllStatPreviews();
       }
     });
@@ -127,8 +128,10 @@ class PanelManager {
     document.addEventListener(
       'mouseenter',
       e => {
-        if (e.target.closest('.stat-item')) {
-          const statItem = e.target.closest('.stat-item');
+        // Ensure we have an Element before calling closest()
+        const target = e.target instanceof Element ? e.target : e.target.parentElement;
+        if (target && target.closest && target.closest('.stat-item')) {
+          const statItem = target.closest('.stat-item');
           const statId = statItem.dataset.stat;
           if (statId) {
             this.showStatPreview(statId);
@@ -141,8 +144,10 @@ class PanelManager {
     document.addEventListener(
       'mouseleave',
       e => {
-        if (e.target.closest('.stat-item')) {
-          const statItem = e.target.closest('.stat-item');
+        // Ensure we have an Element before calling closest()
+        const target = e.target instanceof Element ? e.target : e.target.parentElement;
+        if (target && target.closest && target.closest('.stat-item')) {
+          const statItem = target.closest('.stat-item');
           const statId = statItem.dataset.stat;
           if (statId) {
             this.scheduleHideStatPreview(statId);

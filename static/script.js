@@ -393,7 +393,7 @@ function initializeImportForm() {
 
   if (!importForm) {
     // eslint-disable-next-line no-console
-    console.error('Import form not found!');
+    console.log('Import form not found on this page - skipping import form initialization');
     return; // Exit if import form doesn't exist
   }
 
