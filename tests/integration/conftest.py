@@ -14,7 +14,7 @@ def setup_integration_test_data():
     Set up integration test data including default CEI institution.
 
     This fixture runs once per test session and ensures that:
-    1. The CEI institution exists for auth service fallback
+    1. A baseline CEI institution exists for historical test data
     2. Basic test data is available for integration tests
     """
     import os

@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   } else {
+    // eslint-disable-next-line no-console
     console.log('No course table found - skipping table event listeners (expected in cleaned UI)');
   }
 
@@ -198,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         revertRowToActionButtons(row);
       } else {
+        // eslint-disable-next-line no-console
         console.error('Update failed:', result.error || `HTTP ${response.status}`);
         // Try to show backend validation error if available
         const backendError = result.error || 'Server error';
@@ -214,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Leave editable on failure
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Network or fetch error during save:', error);
       alert('Failed to send update request.');
     }
@@ -264,11 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
           row.remove(); // Remove row from table
           alert(`Course ${courseNumber} deleted successfully.`);
         } else {
+          // eslint-disable-next-line no-console
           console.error('Delete failed on server:', result.error);
           alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
         }
       })
       .catch(error => {
+        // eslint-disable-next-line no-console
         console.error('Network or other error during delete:', error);
         alert(`Failed to delete course: ${error.message}`);
       });
@@ -356,6 +361,7 @@ async function loadDashboardData() {
         element.innerHTML = '<small class="text-danger">Failed to load</small>';
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(`Failed to load ${endpoint.key}:`, error);
       const element = document.getElementById(endpoint.id);
       if (element) {
@@ -376,6 +382,7 @@ function initializeImportForm() {
   const progressDiv = document.getElementById('importProgress');
   const resultsDiv = document.getElementById('importResults');
 
+  // eslint-disable-next-line no-console
   console.log('Import form elements found:', {
     importForm: !!importForm,
     validateBtn: !!validateBtn,
@@ -385,6 +392,7 @@ function initializeImportForm() {
   });
 
   if (!importForm) {
+    // eslint-disable-next-line no-console
     console.error('Import form not found!');
     return; // Exit if import form doesn't exist
   }
@@ -672,6 +680,7 @@ function initializeImportForm() {
 
   function showImportResults(result, success) {
     if (!resultsDiv) {
+      // eslint-disable-next-line no-console
       console.error('Results div not found!');
       return;
     }

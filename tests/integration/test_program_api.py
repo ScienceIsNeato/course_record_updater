@@ -152,6 +152,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             "id": "cs-program",
             "name": "Computer Science",
             "is_default": False,
+            "institution_id": "test-institution",
         }
         mock_get_institution.return_value = "test-institution"
         mock_get_programs.return_value = [
@@ -211,16 +212,17 @@ class TestProgramAPIIntegration(CommonAuthMixin):
 
     @patch("api_routes.get_current_institution_id")
     def test_list_programs_no_institution_integration(self, mock_get_institution):
-        """Test program listing when no institution context available"""
+        """Test program listing when no institution context available - should return system-wide programs for site admin"""
         mock_get_institution.return_value = None
 
         with patch("api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs")
 
-        assert response.status_code == 400
+        # Should succeed and return system-wide programs (new behavior for site admin)
+        assert response.status_code == 200
         data = response.get_json()
-        assert data["success"] is False
-        assert data["error"] == "Institution ID not found"
+        assert data["success"] is True
+        assert "programs" in data
 
 
 class TestProgramWorkflow(CommonAuthMixin):
@@ -311,6 +313,7 @@ class TestProgramWorkflow(CommonAuthMixin):
             "id": program_id,
             "name": "Engineering & Technology",
             "is_default": False,
+            "institution_id": "test-institution",
         }
         mock_get_programs.return_value = [{"id": "default-program", "is_default": True}]
         mock_delete.return_value = True

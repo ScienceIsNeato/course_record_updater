@@ -275,20 +275,22 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
 
     @patch("api_routes.get_current_institution_id")
     def test_list_programs_no_institution(self, mock_get_institution):
-        """Test program listing when no institution ID available"""
+        """Test program listing when no institution ID available - should return system-wide programs for site admin"""
         from api_routes import list_programs
 
         mock_get_institution.return_value = None
 
         with self._authenticated_request_context():
             with patch("api_routes.jsonify") as mock_jsonify:
-                mock_jsonify.return_value = (Mock(), 400)
+                mock_jsonify.return_value = (Mock(), 200)
 
                 result = list_programs()
 
-                mock_jsonify.assert_called_once_with(
-                    {"success": False, "error": "Institution ID not found"}
-                )
+                # Should succeed and return programs (new behavior for site admin system-wide access)
+                mock_jsonify.assert_called_once()
+                call_args = mock_jsonify.call_args[0][0]
+                assert call_args["success"] is True
+                assert "programs" in call_args
 
     def test_create_program_success(self):
         """Test successful program creation"""
@@ -436,7 +438,11 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
         """Test successful program deletion"""
         from api_routes import delete_program_api
 
-        mock_get_program.return_value = {"id": "test-program", "is_default": False}
+        mock_get_program.return_value = {
+            "id": "test-program",
+            "is_default": False,
+            "institution_id": "test-institution",
+        }
         mock_get_institution.return_value = "test-institution"
         mock_get_programs.return_value = [
             {"id": "default-program", "is_default": True},
@@ -444,7 +450,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
         ]
         mock_delete.return_value = True
 
-        with self.app.app_context():
+        with self._authenticated_request_context():
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 

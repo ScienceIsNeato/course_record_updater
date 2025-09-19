@@ -323,75 +323,42 @@ class TestAuthServiceInstitutionFunctions:
     def test_get_current_institution_id_success(
         self, mock_get_user, mock_get_institution
     ):
-        """Test get_current_institution_id returns institution ID."""
-        # Mock user without institution_id to trigger database lookup
+        """Test get_current_institution_id returns institution from user context."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
-            "email": "admin@cei.edu",
-            "role": "site_admin",
-            "first_name": "Dev",
-            "last_name": "Admin",
-            "department": "IT",
-            # No institution_id to trigger database lookup
-        }
-
-        mock_get_institution.return_value = {
-            "institution_id": "cei-institution-id",
-            "name": "CEI University",
-            "short_name": "CEI",
+            "institution_id": "inst-123",
         }
 
         from auth_service import get_current_institution_id
 
         result = get_current_institution_id()
 
-        assert result == "cei-institution-id"
-        mock_get_institution.assert_called_once_with("CEI")
+        assert result == "inst-123"
+        mock_get_institution.assert_not_called()
 
-    @patch("database_service.get_institution_by_short_name")
     @patch("auth_service.get_current_user")
-    def test_get_current_institution_id_not_found(
-        self, mock_get_user, mock_get_institution
-    ):
-        """Test get_current_institution_id when CEI institution not found."""
-        # Mock user without institution_id to trigger database lookup
+    def test_get_current_institution_id_primary_fallback(self, mock_get_user):
+        """Test get_current_institution_id uses primary institution when provided."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
-            "email": "admin@cei.edu",
-            "role": "site_admin",
-            # No institution_id to trigger database lookup
+            "primary_institution_id": "inst-primary",
         }
-
-        mock_get_institution.return_value = None
 
         from auth_service import get_current_institution_id
 
-        result = get_current_institution_id()
+        assert get_current_institution_id() == "inst-primary"
 
-        assert result is None
-        mock_get_institution.assert_called_once_with("CEI")
-
-    @patch("database_service.get_institution_by_short_name")
     @patch("auth_service.get_current_user")
-    def test_get_current_institution_id_exception(
-        self, mock_get_user, mock_get_institution
-    ):
-        """Test get_current_institution_id handles exceptions gracefully."""
-        # Mock user without institution_id to trigger database lookup
+    def test_get_current_institution_id_missing_context(self, mock_get_user):
+        """Test get_current_institution_id returns None when no context available."""
         mock_get_user.return_value = {
             "user_id": "dev-admin-123",
-            "email": "admin@cei.edu",
             "role": "site_admin",
-            # No institution_id to trigger database lookup
         }
-
-        mock_get_institution.side_effect = Exception("Database error")
 
         from auth_service import get_current_institution_id
 
-        # The function should handle the exception and return None
-        result = get_current_institution_id()
-        assert result is None
+        assert get_current_institution_id() is None
 
     def test_permission_decorator_logic(self):
         """Test permission decorator logic."""

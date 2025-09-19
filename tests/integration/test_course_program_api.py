@@ -97,7 +97,11 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         self, mock_remove, mock_get_programs, mock_get_institution, mock_get_program
     ):
         """Test course removal from program endpoint integration"""
-        mock_get_program.return_value = {"id": "cs-program", "name": "Computer Science"}
+        mock_get_program.return_value = {
+            "id": "cs-program",
+            "name": "Computer Science",
+            "institution_id": "test-institution",
+        }
         mock_get_institution.return_value = "test-institution"
         mock_get_programs.return_value = [
             {"id": "default-program", "is_default": True},

@@ -7,9 +7,7 @@ including user management, course management, term management, and course sectio
 """
 
 import os  # Import os to check environment variables
-import signal
 import uuid
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,28 +32,28 @@ class DatabaseTimeoutError(Exception):
     pass
 
 
-@contextmanager
 def db_operation_timeout(seconds=5):
     """
     DEPRECATED: Database operation timeout context manager.
-    
+
     The original implementation used signal.alarm() which only works in the main thread.
     Flask handles requests in worker threads, causing "signal only works in main thread" errors.
-    
+
     This is now a no-op context manager. Database operations should be fast enough
     that explicit timeouts are unnecessary, or use proper async timeout mechanisms.
-    
+
     Args:
         seconds: Ignored (for backward compatibility)
     """
     from contextlib import nullcontext
+
     return nullcontext()
 
 
 def check_db_connection() -> bool:
     """
     Check if database connection is available.
-    
+
     Simplified version that doesn't use timeouts to avoid threading issues.
     In practice, Firestore operations are either fast or fail quickly.
 
@@ -1043,7 +1041,9 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         return []
 
     try:
-        with db_operation_timeout(10):  # Longer timeout for potentially large result sets
+        with db_operation_timeout(
+            10
+        ):  # Longer timeout for potentially large result sets
             query = db.collection(COURSES_COLLECTION).where(
                 filter=firestore.FieldFilter("institution_id", "==", institution_id)
             )

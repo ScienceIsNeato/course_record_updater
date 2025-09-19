@@ -7,6 +7,7 @@ with the existing single-page application.
 """
 
 import traceback
+from typing import Any, Dict, List
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
@@ -70,6 +71,34 @@ api = Blueprint("api", __name__, url_prefix="/api")
 
 # Get logger for this module
 logger = get_logger(__name__)
+
+
+class InstitutionContextMissingError(Exception):
+    """Raised when a request requires institution scope but none is set."""
+
+
+def _resolve_institution_scope(require: bool = True):
+    """Return the current user, accessible institution ids, and whether scope is global."""
+
+    current_user = get_current_user()
+    institution_id = get_current_institution_id()
+
+    if institution_id:
+        return current_user, [institution_id], False
+
+    if current_user and current_user.get("role") == "site_admin":
+        institutions = get_all_institutions()
+        institution_ids = [
+            inst["institution_id"]
+            for inst in institutions
+            if inst.get("institution_id")
+        ]
+        return current_user, institution_ids, True
+
+    if require:
+        raise InstitutionContextMissingError()
+
+    return current_user, [], False
 
 
 @api.before_request
@@ -407,12 +436,9 @@ def list_users():
     - department: Filter by department (optional)
     """
     try:
-        from auth_service import get_current_institution_id
-        from constants import SITE_ADMIN_INSTITUTION_ID
-
-        current_user = get_current_user()
-        institution_id = get_current_institution_id()
-        if not institution_id:
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
@@ -421,28 +447,31 @@ def list_users():
         role_filter = request.args.get("role")
         department_filter = request.args.get("department")
 
-        # Site admins see all users across all institutions
-        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
+        if is_global:
             if role_filter:
                 users = get_users_by_role(role_filter)
+                if institution_ids:
+                    users = [
+                        u
+                        for u in users
+                        if not u.get("institution_id")
+                        or u.get("institution_id") in institution_ids
+                    ]
             else:
-                # Get all users across all institutions
-                from database_service import get_all_institutions
-                institutions = get_all_institutions()
-                all_users = []
-                for inst in institutions:
-                    inst_users = get_all_users(inst["institution_id"])
-                    all_users.extend(inst_users)
-                users = all_users
+                users = []
+                for inst_id in institution_ids:
+                    users.extend(get_all_users(inst_id))
         else:
+            institution_id = institution_ids[0]
             if role_filter:
-                users = get_users_by_role(role_filter)
-                # Filter by institution
-                users = [u for u in users if u.get("institution_id") == institution_id]
+                users = [
+                    u
+                    for u in get_users_by_role(role_filter)
+                    if u.get("institution_id") == institution_id
+                ]
             else:
                 users = get_all_users(institution_id)
 
-        # Filter by department if specified
         if department_filter and users:
             users = [u for u in users if u.get("department") == department_filter]
 
@@ -593,25 +622,24 @@ def list_courses():
     - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
-        from constants import SITE_ADMIN_INSTITUTION_ID
-        
-        # Get institution context - for development, use CEI
-        current_user = get_current_user()
-        institution_id = get_current_institution_id()
-        if not institution_id:
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
-        # Check for program context
         program_id_override = request.args.get("program_id")
         current_program_id = get_current_program_id()
 
-        # Use override if provided and user has access
         if program_id_override:
-            accessible_programs = current_user.get("accessible_programs", [])
-            if program_id_override in accessible_programs:
+            accessible_programs = (
+                current_user.get("accessible_programs", []) if current_user else []
+            )
+            if program_id_override in accessible_programs or (
+                current_user and current_user.get("role") == "site_admin"
+            ):
                 current_program_id = program_id_override
             else:
                 return (
@@ -626,45 +654,32 @@ def list_courses():
 
         department_filter = request.args.get("department")
 
-        # Site admins see all courses across all institutions
-        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
-            # Get all institutions and collect all courses
-            from database_service import get_all_institutions
-            institutions = get_all_institutions()
-            all_courses = []
-            for inst in institutions:
-                inst_courses = get_all_courses(inst["institution_id"])
-                all_courses.extend(inst_courses)
-            courses = all_courses
+        if is_global:
+            courses: List[Dict[str, Any]] = []
+            for inst_id in institution_ids:
+                courses.extend(get_all_courses(inst_id))
             context_info = "system-wide"
-            
-            # Apply department filter if specified
+
             if department_filter:
                 courses = [
                     c for c in courses if c.get("department") == department_filter
                 ]
                 context_info = f"system-wide, department {department_filter}"
         else:
-            # Apply filters based on context and parameters
+            institution_id = institution_ids[0]
             if current_program_id:
-                # Program context active - get courses for this program
                 courses = get_courses_by_program(current_program_id)
-
-                # Apply department filter if specified
                 if department_filter:
                     courses = [
                         c for c in courses if c.get("department") == department_filter
                     ]
-
                 context_info = f"program {current_program_id}"
             elif department_filter:
-                # Institution-wide with department filter
                 courses = get_courses_by_department(institution_id, department_filter)
                 context_info = f"department {department_filter}"
             else:
-                # Institution-wide, all courses
                 courses = get_all_courses(institution_id)
-                context_info = "institution-wide"
+                context_info = f"institution {institution_id}"
 
         return jsonify(
             {
@@ -754,21 +769,30 @@ def get_course(course_number: str):
 def list_unassigned_courses():
     """Get list of courses not assigned to any program"""
     try:
-        institution_id = get_current_institution_id()
-        if not institution_id:
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
-        unassigned_courses = get_unassigned_courses(institution_id)
+        if is_global:
+            courses: List[Dict[str, Any]] = []
+            for inst_id in institution_ids:
+                courses.extend(get_unassigned_courses(inst_id))
+            context_message = "system-wide"
+        else:
+            institution_id = institution_ids[0]
+            courses = get_unassigned_courses(institution_id)
+            context_message = f"institution {institution_id}"
 
         return jsonify(
             {
                 "success": True,
-                "courses": unassigned_courses,
-                "count": len(unassigned_courses),
-                "message": f"Found {len(unassigned_courses)} unassigned courses",
+                "courses": courses,
+                "count": len(courses),
+                "message": f"Found {len(courses)} unassigned courses ({context_message})",
             }
         )
 
@@ -785,10 +809,19 @@ def assign_course_to_default(course_id: str):
     try:
         institution_id = get_current_institution_id()
         if not institution_id:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
+            current_user = get_current_user()
+            if current_user and current_user.get("role") == "site_admin":
+                payload = request.get_json(silent=True) or {}
+                institution_id = payload.get("institution_id") or request.args.get(
+                    "institution_id"
+                )
+            if not institution_id:
+                return (
+                    jsonify(
+                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
+                    ),
+                    400,
+                )
 
         success = assign_course_to_default_program(course_id, institution_id)
 
@@ -826,15 +859,20 @@ def assign_course_to_default(course_id: str):
 def list_instructors():
     """Get list of all instructors"""
     try:
-        # Get institution context - for development, use CEI
-        institution_id = get_current_institution_id()
-        if not institution_id:
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
-        instructors = get_all_instructors(institution_id)
+        if is_global:
+            instructors: List[Dict[str, Any]] = []
+            for inst_id in institution_ids:
+                instructors.extend(get_all_instructors(inst_id))
+        else:
+            instructors = get_all_instructors(institution_ids[0])
 
         return jsonify(
             {"success": True, "instructors": instructors, "count": len(instructors)}
@@ -854,15 +892,20 @@ def list_instructors():
 def list_terms():
     """Get list of active terms"""
     try:
-        # Get institution context - for development, use CEI
-        institution_id = get_current_institution_id()
-        if not institution_id:
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
                 400,
             )
 
-        terms = get_active_terms(institution_id)
+        if is_global:
+            terms: List[Dict[str, Any]] = []
+            for inst_id in institution_ids:
+                terms.extend(get_active_terms(inst_id))
+        else:
+            terms = get_active_terms(institution_ids[0])
 
         return jsonify({"success": True, "terms": terms, "count": len(terms)})
 
@@ -931,27 +974,22 @@ def create_term_api():
 @api.route("/programs", methods=["GET"])
 @permission_required("view_program_data")
 def list_programs():
-    """Get list of programs for the current institution (or all programs for site admins)"""
+    """Get programs for the current institution (or all programs for site admins)."""
     try:
-        from constants import SITE_ADMIN_INSTITUTION_ID
-        
-        current_user = get_current_user()
-        institution_id = get_current_institution_id()
-        
-        if not institution_id:
-            return jsonify({"success": False, "error": "Institution ID not found"}), 400
+        try:
+            current_user, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
+            return (
+                jsonify({"success": False, "error": "Institution context required"}),
+                400,
+            )
 
-        # Site admins see all programs across all institutions
-        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
-            # Get all institutions and collect all programs
-            from database_service import get_all_institutions
-            institutions = get_all_institutions()
-            all_programs = []
-            for inst in institutions:
-                inst_programs = get_programs_by_institution(inst["institution_id"])
-                all_programs.extend(inst_programs)
-            programs = all_programs
+        if is_global:
+            programs: List[Dict[str, Any]] = []
+            for inst_id in institution_ids:
+                programs.extend(get_programs_by_institution(inst_id))
         else:
+            institution_id = institution_ids[0]
             programs = get_programs_by_institution(institution_id)
 
         return jsonify({"success": True, "programs": programs})
@@ -980,15 +1018,27 @@ def create_program_api():
                     400,
                 )
 
-        # Get current institution and user
         institution_id = get_current_institution_id()
         current_user = get_current_user()
 
-        if not institution_id:
-            return jsonify({"success": False, "error": "Institution ID not found"}), 400
-
         if not current_user:
             return jsonify({"success": False, "error": "User not found"}), 400
+
+        if not institution_id:
+            if current_user.get("role") == "site_admin":
+                institution_id = data.get("institution_id") or request.args.get(
+                    "institution_id"
+                )
+            if not institution_id:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Institution context required to create program",
+                        }
+                    ),
+                    400,
+                )
 
         # Create program schema
         program_data = Program.create_schema(
@@ -1082,8 +1132,8 @@ def delete_program_api(program_id: str):
             )
 
         # Get the default program for reassignment
-        institution_id = get_current_institution_id()
-        programs = get_programs_by_institution(institution_id)
+        institution_id = program.get("institution_id")
+        programs = get_programs_by_institution(institution_id) if institution_id else []
         default_program = next(
             (p for p in programs if p.get("is_default", False)), None
         )
@@ -1212,8 +1262,8 @@ def remove_course_from_program_api(program_id: str, course_id: str):
             return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
         # Get default program for orphan handling
-        institution_id = get_current_institution_id()
-        programs = get_programs_by_institution(institution_id)
+        institution_id = program.get("institution_id")
+        programs = get_programs_by_institution(institution_id) if institution_id else []
         default_program = next(
             (p for p in programs if p.get("is_default", False)), None
         )

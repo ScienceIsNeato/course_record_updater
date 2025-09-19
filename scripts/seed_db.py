@@ -14,9 +14,13 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our services and models
 import database_service as db

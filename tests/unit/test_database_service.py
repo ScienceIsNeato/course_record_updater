@@ -1,6 +1,7 @@
 """Unit tests for database_service.py."""
 
 import os
+from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 # Import the module under test
@@ -12,12 +13,15 @@ from database_service import (
     TERMS_COLLECTION,
     USERS_COLLECTION,
     assign_course_to_default_program,
+    bulk_add_courses_to_program,
+    bulk_remove_courses_from_program,
     calculate_and_update_active_users,
     create_course,
     create_course_offering,
     create_course_section,
     create_default_cei_institution,
     create_institution,
+    create_invitation,
     create_new_institution,
     create_term,
     create_user,
@@ -35,6 +39,8 @@ from database_service import (
     get_institution_by_short_name,
     get_institution_instructor_count,
     get_invitation_by_email,
+    get_invitation_by_id,
+    get_invitation_by_token,
     get_sections_by_instructor,
     get_sections_by_term,
     get_term_by_name,
@@ -42,6 +48,7 @@ from database_service import (
     get_user_by_email,
     get_users_by_role,
     list_invitations,
+    remove_course_from_program,
     sanitize_for_logging,
     update_invitation,
     update_user_active_status,
@@ -2260,3 +2267,454 @@ class TestUnassignedCoursesAndDefaults:
         with patch("database_service.add_course_to_program", return_value=True):
             result = assign_course_to_default_program("course123", "inst123")
             assert result is True
+
+
+class TestDatabaseQueryAggregations:
+    """Broader tests covering complex read/update flows."""
+
+    def setup_method(self):
+        self.original_db = database_service.db
+        self.original_check = database_service.check_db_connection
+
+    def teardown_method(self):
+        database_service.db = self.original_db
+        database_service.check_db_connection = self.original_check
+
+    def _build_doc(self, doc_id: str, payload: Dict[str, Any]):
+        doc = Mock()
+        doc.id = doc_id
+        doc.to_dict.return_value = payload
+        doc.reference = Mock()
+        doc.exists = True
+        return doc
+
+    @patch("database_service.db")
+    def test_get_user_by_reset_token_success(self, mock_db):
+        mock_collection = Mock()
+        initial_query = Mock()
+        limited_query = Mock()
+        doc = self._build_doc("user-1", {"email": "reset@example.edu"})
+        limited_query.stream.return_value = [doc]
+        initial_query.limit.return_value = limited_query
+        mock_collection.where.return_value = initial_query
+        mock_db.collection.return_value = mock_collection
+
+        user = database_service.get_user_by_reset_token("reset-token")
+
+        assert user["user_id"] == "user-1"
+
+    @patch("database_service.db")
+    def test_get_all_users_collects_ids(self, mock_db):
+        mock_collection = Mock()
+        query = Mock()
+        doc = self._build_doc("user-2", {"email": "inst@example.edu"})
+        query.stream.return_value = [doc]
+        mock_collection.where.return_value = query
+        mock_db.collection.return_value = mock_collection
+
+        users = database_service.get_all_users("inst-1")
+
+        assert users == [
+            {"email": "inst@example.edu", "user_id": "user-2", "id": "user-2"}
+        ]
+
+    @patch("database_service.db")
+    def test_get_users_by_role_filters_active_users(self, mock_db):
+        mock_collection = Mock()
+        first_where = Mock()
+        second_where = Mock()
+        doc_active = self._build_doc("user-3", {"role": "instructor", "active": True})
+        second_where.stream.return_value = [doc_active]
+        first_where.where.return_value = second_where
+        mock_collection.where.return_value = first_where
+        mock_db.collection.return_value = mock_collection
+
+        users = database_service.get_users_by_role("instructor")
+
+        assert len(users) == 1 and users[0]["user_id"] == "user-3"
+
+    @patch("database_service.db")
+    def test_get_user_by_id_success(self, mock_db):
+        mock_collection = Mock()
+        doc_ref = Mock()
+        doc = self._build_doc("user-4", {"email": "byid@example.edu"})
+        doc_ref.get.return_value = doc
+        mock_collection.document.return_value = doc_ref
+        mock_db.collection.return_value = mock_collection
+
+        user = database_service.get_user_by_id("user-4")
+
+        assert user["user_id"] == "user-4"
+
+    @patch("database_service.db")
+    def test_get_all_courses_success(self, mock_db):
+        database_service.check_db_connection = lambda: True
+        mock_collection = Mock()
+        query = Mock()
+        doc = self._build_doc("course-1", {"name": "Intro"})
+        query.stream.return_value = [doc]
+        mock_collection.where.return_value = query
+        mock_db.collection.return_value = mock_collection
+
+        courses = database_service.get_all_courses("inst-2")
+
+        assert courses == [{"name": "Intro", "course_id": "course-1"}]
+
+    @patch("database_service.db")
+    def test_get_all_instructors_success(self, mock_db):
+        database_service.check_db_connection = lambda: True
+        mock_collection = Mock()
+        first_where = Mock()
+        second_where = Mock()
+        doc = self._build_doc("inst-1", {"email": "prof@example.edu"})
+        second_where.stream.return_value = [doc]
+        first_where.where.return_value = second_where
+        mock_collection.where.return_value = first_where
+        mock_db.collection.return_value = mock_collection
+
+        instructors = database_service.get_all_instructors("inst-1")
+
+        assert instructors == [{"email": "prof@example.edu", "user_id": "inst-1"}]
+
+    @patch("database_service.db")
+    def test_program_queries(self, mock_db):
+        programs_collection = Mock()
+        courses_collection = Mock()
+
+        def collection_side_effect(name):
+            if name == "programs":
+                return programs_collection
+            if name == "courses":
+                return courses_collection
+            raise AssertionError("Unexpected collection requested")
+
+        mock_db.collection.side_effect = collection_side_effect
+
+        first_where = Mock()
+        program_doc = self._build_doc("prog-1", {"name": "Program One"})
+        first_where.stream.return_value = [program_doc]
+        programs_collection.where.return_value = first_where
+        programs = database_service.get_programs_by_institution("inst-3")
+        assert programs == [{"name": "Program One", "id": "prog-1"}]
+
+        first_where = Mock()
+        second_where = Mock()
+        limit_query = Mock()
+        limit_query.get.return_value = [
+            self._build_doc("prog-2", {"name": "Program Two"})
+        ]
+        second_where.limit.return_value = limit_query
+        first_where.where.return_value = second_where
+        programs_collection.where.return_value = first_where
+        program = database_service.get_program_by_name_and_institution(
+            "Program Two", "inst-3"
+        )
+        assert program["id"] == "prog-2"
+
+    @patch("database_service.db")
+    def test_create_program_and_delete_flow(self, mock_db):
+        database_service.check_db_connection = lambda: True
+        programs_collection = Mock()
+        courses_collection = Mock()
+        batch = Mock()
+
+        def collection_side_effect(name):
+            if name == "programs":
+                return programs_collection
+            if name == "courses":
+                return courses_collection
+            raise AssertionError
+
+        mock_db.collection.side_effect = collection_side_effect
+        mock_db.batch.return_value = batch
+
+        doc_ref = Mock()
+        programs_collection.document.return_value = doc_ref
+
+        assert (
+            database_service.create_program({"id": "prog-new", "name": "New"})
+            == "prog-new"
+        )
+        doc_ref.set.assert_called_once_with({"name": "New"})
+
+        course_doc = self._build_doc("course-8", {"program_ids": ["prog-old"]})
+        query = Mock()
+        query.stream.return_value = [course_doc]
+        courses_collection.where.return_value = query
+
+        assert database_service.delete_program("prog-old", "prog-new") is True
+        batch.update.assert_called_once()
+        batch.delete.assert_called_once_with(doc_ref)
+        batch.commit.assert_called_once()
+
+    @patch("database_service.db")
+    def test_get_courses_by_program_success(self, mock_db):
+        courses_collection = Mock()
+        query = Mock()
+        doc = self._build_doc("course-9", {"name": "Course"})
+        query.stream.return_value = [doc]
+        courses_collection.where.return_value = query
+        mock_db.collection.return_value = courses_collection
+
+        courses = database_service.get_courses_by_program("prog-9")
+        assert courses == [{"name": "Course", "id": "course-9"}]
+
+    @patch("database_service.db")
+    def test_get_user_by_verification_token(self, mock_db):
+        collection = Mock()
+        initial_query = Mock()
+        limit_query = Mock()
+        doc = self._build_doc("user-verify", {"email": "verify@example.edu"})
+        limit_query.stream.return_value = [doc]
+        initial_query.limit.return_value = limit_query
+        collection.where.return_value = initial_query
+        mock_db.collection.return_value = collection
+
+        user = database_service.get_user_by_verification_token("verify-token")
+        assert user["id"] == "user-verify"
+
+
+class FakeDocumentSnapshot:
+    def __init__(self, store: Dict[str, Dict[str, Any]], doc_id: str, exists: bool):
+        self._store = store
+        self.id = doc_id
+        self.exists = exists
+
+    def to_dict(self) -> Dict[str, Any]:
+        if not self.exists:
+            raise KeyError("Document does not exist")
+        return dict(self._store[self.id])
+
+
+class FakeDocumentRef:
+    def __init__(self, store: Dict[str, Dict[str, Any]], doc_id: str):
+        self._store = store
+        self.id = doc_id
+
+    def get(self) -> FakeDocumentSnapshot:
+        exists = self.id in self._store
+        return FakeDocumentSnapshot(self._store, self.id, exists)
+
+    def update(self, updates: Dict[str, Any]):
+        if self.id not in self._store:
+            raise KeyError("Document not found")
+        self._store[self.id].update(updates)
+
+
+class FakeBatch:
+    def __init__(self):
+        self._operations: List = []
+
+    def update(self, doc_ref: FakeDocumentRef, updates: Dict[str, Any]):
+        self._operations.append((doc_ref, updates))
+
+    def commit(self):
+        for doc_ref, updates in self._operations:
+            doc_ref.update(updates)
+        self._operations.clear()
+
+
+class FakeCollection:
+    def __init__(self, store: Dict[str, Dict[str, Any]]):
+        self._store = store
+
+    def document(self, doc_id: str) -> FakeDocumentRef:
+        return FakeDocumentRef(self._store, doc_id)
+
+
+class FakeFirestore:
+    def __init__(self, initial_data: Dict[str, Dict[str, Dict[str, Any]]]):
+        self._data = initial_data
+
+    def collection(self, name: str) -> FakeCollection:
+        store = self._data.setdefault(name, {})
+        return FakeCollection(store)
+
+    def batch(self) -> FakeBatch:
+        return FakeBatch()
+
+
+class FakeInvitationQuery:
+    def __init__(self, get_docs, next_query=None):
+        self._get_docs = get_docs
+        self._next = next_query
+
+    def where(self, *_, **__):
+        return self._next or self
+
+    def order_by(self, *_, **__):
+        return self
+
+    def offset(self, *_):
+        return self
+
+    def limit(self, *_):
+        return self
+
+    def stream(self):
+        docs = self._get_docs()
+        snapshots = []
+        for doc_id, payload in docs:
+            snapshots.append(FakeDocumentSnapshot({doc_id: payload}, doc_id, True))
+        return snapshots
+
+
+class FakeInvitationCollection:
+    def __init__(self):
+        self.documents: Dict[str, Dict[str, Any]] = {}
+        self._query_queue: List[FakeInvitationQuery] = []
+
+    def set_queries(self, queries: List[FakeInvitationQuery]):
+        self._query_queue = list(queries)
+
+    def add(self, data: Dict[str, Any]):
+        doc_id = f"inv-{len(self.documents) + 1}"
+        self.documents[doc_id] = dict(data)
+        return (None, FakeDocumentRef(self.documents, doc_id))
+
+    def document(self, doc_id: str) -> FakeDocumentRef:
+        return FakeDocumentRef(self.documents, doc_id)
+
+    def where(self, *_, **__):
+        if not self._query_queue:
+            raise AssertionError("Unexpected where call on invitations collection")
+        return self._query_queue.pop(0)
+
+
+class FakeInvitationDB:
+    def __init__(self, invitation_collection: FakeInvitationCollection):
+        self._invitation_collection = invitation_collection
+
+    def collection(self, name: str):
+        if name != "invitations":
+            raise AssertionError(f"Unexpected collection requested: {name}")
+        return self._invitation_collection
+
+    def batch(self):
+        raise AssertionError("Batch operations not supported in invitation tests")
+
+
+class TestProgramCourseBatchOperations:
+    """Holistic tests for bulk course-program operations."""
+
+    def setup_method(self):
+        self._original_db = database_service.db
+        self.courses_store: Dict[str, Dict[str, Any]] = {
+            "course1": {"program_ids": ["prog-1"]},
+            "course2": {"program_ids": []},
+            "course3": {"program_ids": ["prog-2"]},
+        }
+        database_service.db = FakeFirestore({"courses": self.courses_store})
+
+    def teardown_method(self):
+        database_service.db = self._original_db
+
+    def test_bulk_course_add_and_remove_workflow(self):
+        """End-to-end bulk add/remove flow keeps course assignments consistent."""
+
+        add_result = bulk_add_courses_to_program(
+            ["course1", "course2", "course3", "missing"], "prog-1"
+        )
+
+        assert add_result["success_count"] == 2
+        assert add_result["failure_count"] == 1
+        assert add_result["already_assigned"] == 1
+        assert any(f["course_id"] == "missing" for f in add_result["failures"])
+
+        assert self.courses_store["course1"]["program_ids"] == ["prog-1"]
+        assert self.courses_store["course2"]["program_ids"] == ["prog-1"]
+        assert set(self.courses_store["course3"]["program_ids"]) == {"prog-2", "prog-1"}
+
+        remove_result = bulk_remove_courses_from_program(
+            ["course1", "course2", "course3", "missing"],
+            "prog-1",
+            default_program_id="prog-default",
+        )
+
+        assert remove_result["success_count"] == 3
+        assert remove_result["failure_count"] == 1
+        assert remove_result["not_assigned"] == 0
+        assert remove_result["orphaned_assigned_to_default"] == 2
+
+        assert self.courses_store["course1"]["program_ids"] == ["prog-default"]
+        assert self.courses_store["course2"]["program_ids"] == ["prog-default"]
+        assert self.courses_store["course3"]["program_ids"] == ["prog-2"]
+
+        assert remove_course_from_program("course1", "prog-default") is True
+        assert self.courses_store["course1"]["program_ids"] == []
+
+        assert remove_course_from_program("course3", "prog-2") is True
+        assert self.courses_store["course3"]["program_ids"] == []
+
+
+class TestInvitationLifecycle:
+    """Holistic tests covering invitation CRUD helpers."""
+
+    def setup_method(self):
+        self._original_db = database_service.db
+        self.fake_collection = FakeInvitationCollection()
+        self.fake_db = FakeInvitationDB(self.fake_collection)
+        database_service.db = self.fake_db
+
+    def teardown_method(self):
+        database_service.db = self._original_db
+
+    def test_full_invitation_workflow(self):
+        """Create, retrieve, update, and list invitations in one flow."""
+
+        target_token = "invite-token"
+        invite_email = "faculty@example.edu"
+        institution_id = "inst-42"
+
+        token_query = FakeInvitationQuery(
+            lambda: [
+                (doc_id, doc)
+                for doc_id, doc in self.fake_collection.documents.items()
+                if doc.get("token") == target_token
+            ]
+        )
+
+        email_query_final = FakeInvitationQuery(
+            lambda: [
+                (doc_id, doc)
+                for doc_id, doc in self.fake_collection.documents.items()
+                if doc.get("email") == invite_email
+                and doc.get("institution_id") == institution_id
+            ]
+        )
+        email_query_first = FakeInvitationQuery(
+            lambda: [], next_query=email_query_final
+        )
+
+        list_query = FakeInvitationQuery(
+            lambda: list(self.fake_collection.documents.items())
+        )
+
+        self.fake_collection.set_queries([token_query, email_query_first, list_query])
+
+        invitation_id = create_invitation(
+            {
+                "email": invite_email,
+                "institution_id": institution_id,
+                "token": target_token,
+                "status": "pending",
+            }
+        )
+
+        assert invitation_id is not None
+
+        loaded_by_id = get_invitation_by_id(invitation_id)
+        assert loaded_by_id and loaded_by_id["id"] == invitation_id
+
+        loaded_by_token = get_invitation_by_token(target_token)
+        assert loaded_by_token and loaded_by_token["id"] == invitation_id
+
+        loaded_by_email = get_invitation_by_email(invite_email, institution_id)
+        assert loaded_by_email and loaded_by_email["id"] == invitation_id
+
+        assert update_invitation(invitation_id, {"status": "accepted"}) is True
+        assert self.fake_collection.documents[invitation_id]["status"] == "accepted"
+
+        invitations = list_invitations(institution_id)
+        assert len(invitations) == 1
+        assert invitations[0]["id"] == invitation_id

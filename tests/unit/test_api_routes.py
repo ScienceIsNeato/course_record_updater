@@ -2866,17 +2866,32 @@ class TestAPIRoutesExtended:
             assert isinstance(result2, tuple)
             assert result2[1] == 500
 
+    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_all_institutions")
     @patch("api_routes.get_current_institution_id")
-    def test_list_courses_institution_error(self, mock_get_cei_id):
-        """Test list_courses when institution ID is None."""
+    def test_list_courses_global_scope(
+        self, mock_get_cei_id, mock_get_institutions, mock_get_all_courses
+    ):
+        """Site admin without institution context should see system-wide courses."""
         self._login_site_admin()
         mock_get_cei_id.return_value = None
+        mock_get_institutions.return_value = [
+            {"institution_id": "inst-1"},
+            {"institution_id": "inst-2"},
+        ]
+        mock_get_all_courses.side_effect = [
+            [{"course_id": "c1", "department": "ENG"}],
+            [{"course_id": "c2", "department": "SCI"}],
+        ]
 
         response = self.client.get("/api/courses")
 
-        assert response.status_code == 400
+        assert response.status_code == 200
         data = response.get_json()
-        assert data["error"] == "Institution context required"
+        assert data["success"] is True
+        assert data["count"] == 2
+        returned_ids = {course["course_id"] for course in data["courses"]}
+        assert returned_ids == {"c1", "c2"}
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_courses_by_department")
