@@ -2315,7 +2315,7 @@ class TestUserManagementAPI:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     @patch("auth_service.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -2350,7 +2350,7 @@ class TestUserManagementAPI:
             },
         ]
 
-        response = self.test_client.get("/api/users?role=instructor")
+        response = self.client.get("/api/users?role=instructor")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2394,7 +2394,7 @@ class TestUserManagementAPI:
             },
         ]
 
-        response = self.test_client.get("/api/users?role=instructor&department=MATH")
+        response = self.client.get("/api/users?role=instructor&department=MATH")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2408,12 +2408,12 @@ class TestUserManagementAPI:
         mock_has_permission.return_value = True
 
         # Test with no JSON data
-        response = self.test_client.post("/api/users")
+        response = self.client.post("/api/users")
         # May return 500 if permission decorator fails, 400 if it gets to validation
         assert response.status_code in [400, 500]
 
         # Test missing required fields
-        response = self.test_client.post("/api/users", json={"email": "test@cei.edu"})
+        response = self.client.post("/api/users", json={"email": "test@cei.edu"})
         assert response.status_code == 400
         data = response.get_json()
         assert "Missing required fields" in data["error"]
@@ -2427,7 +2427,7 @@ class TestUserManagementAPI:
         mock_get_current_user.return_value = {"user_id": "user123"}
         mock_has_permission.return_value = False
 
-        response = self.test_client.get("/api/users/other_user")
+        response = self.client.get("/api/users/other_user")
 
         assert response.status_code == 403
         data = response.get_json()
@@ -2442,7 +2442,8 @@ class TestCourseManagementOperations:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.app = app
+        self.client = app.test_client()
 
     @patch("api_routes.create_course")
     @patch("api_routes.has_permission")
@@ -2450,6 +2451,17 @@ class TestCourseManagementOperations:
         self, mock_has_permission, mock_create_course
     ):
         """Test comprehensive course creation validation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_create_course.return_value = "course123"
 
@@ -2461,7 +2473,7 @@ class TestCourseManagementOperations:
             "credit_hours": 3,
         }
 
-        response = self.test_client.post("/api/courses", json=course_data)
+        response = self.client.post("/api/courses", json=course_data)
 
         assert response.status_code == 201
         data = response.get_json()
@@ -2472,10 +2484,21 @@ class TestCourseManagementOperations:
     @patch("api_routes.has_permission")
     def test_create_course_missing_fields(self, mock_has_permission):
         """Test course creation with missing required fields."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
         # Test missing course_number
-        response = self.test_client.post(
+        response = self.client.post(
             "/api/courses", json={"course_title": "Test Course", "department": "TEST"}
         )
 
@@ -2487,6 +2510,17 @@ class TestCourseManagementOperations:
     @patch("api_routes.has_permission")
     def test_create_term_comprehensive(self, mock_has_permission, mock_create_term):
         """Test comprehensive term creation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_create_term.return_value = "term123"
 
@@ -2497,7 +2531,7 @@ class TestCourseManagementOperations:
             "assessment_due_date": "2024-12-20",
         }
 
-        response = self.test_client.post("/api/terms", json=term_data)
+        response = self.client.post("/api/terms", json=term_data)
 
         assert response.status_code == 201
         data = response.get_json()
@@ -2507,6 +2541,17 @@ class TestCourseManagementOperations:
     @patch("api_routes.get_sections_by_instructor")
     def test_get_sections_by_instructor_comprehensive(self, mock_get_sections):
         """Test getting sections by instructor comprehensively."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_sections.return_value = [
             {
                 "section_id": "1",
@@ -2520,7 +2565,7 @@ class TestCourseManagementOperations:
             },
         ]
 
-        response = self.test_client.get("/api/sections?instructor_id=instructor1")
+        response = self.client.get("/api/sections?instructor_id=instructor1")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2531,12 +2576,23 @@ class TestCourseManagementOperations:
     @patch("api_routes.get_sections_by_term")
     def test_get_sections_by_term_comprehensive(self, mock_get_sections):
         """Test getting sections by term comprehensively."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_sections.return_value = [
             {"section_id": "1", "course_number": "MATH-101", "term_id": "term1"},
             {"section_id": "2", "course_number": "ENG-102", "term_id": "term1"},
         ]
 
-        response = self.test_client.get("/api/sections?term_id=term1")
+        response = self.client.get("/api/sections?term_id=term1")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2547,7 +2603,7 @@ class TestCourseManagementOperations:
     def test_get_import_progress_comprehensive(self):
         """Test import progress endpoint comprehensively."""
         # Test with valid progress ID
-        response = self.test_client.get("/api/import/progress/progress123")
+        response = self.client.get("/api/import/progress/progress123")
 
         # Should handle progress endpoint (currently returns stubbed data)
         assert response.status_code in [200, 404]  # May not be implemented yet
@@ -2555,10 +2611,21 @@ class TestCourseManagementOperations:
     @patch("api_routes.has_permission")
     def test_import_excel_file_validation(self, mock_has_permission):
         """Test Excel import file validation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
         # Test no file uploaded
-        response = self.test_client.post("/api/import/excel")
+        response = self.client.post("/api/import/excel")
         assert response.status_code == 400
         data = response.get_json()
         assert data["error"] == "No file uploaded"
@@ -2572,7 +2639,7 @@ class TestAPIRoutesErrorHandling:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -2588,7 +2655,7 @@ class TestAPIRoutesErrorHandling:
         }
         mock_get_cei_id.return_value = "riverside-tech-institute"
 
-        response = self.test_client.get("/api/users")
+        response = self.client.get("/api/users")
 
         assert response.status_code == 200
         data = response.get_json()
@@ -2608,7 +2675,7 @@ class TestAPIRoutesErrorHandling:
         mock_has_permission.return_value = True
         mock_get_cei_id.return_value = "riverside-tech-institute"
 
-        response = self.test_client.get("/api/users/nonexistent-user")
+        response = self.client.get("/api/users/nonexistent-user")
 
         assert response.status_code == 404
         data = response.get_json()
@@ -2635,7 +2702,7 @@ class TestAPIRoutesErrorHandling:
             "role": "instructor",
         }
 
-        response = self.test_client.post("/api/users", json=user_data)
+        response = self.client.post("/api/users", json=user_data)
 
         assert response.status_code == 201
         data = response.get_json()
@@ -2649,7 +2716,7 @@ class TestAPIRoutesErrorHandling:
 
             data = {"file": (BytesIO(b"test"), "")}
 
-            response = self.test_client.post("/api/import/excel", data=data)
+            response = self.client.post("/api/import/excel", data=data)
 
             assert response.status_code == 400
             data = response.get_json()
@@ -2662,7 +2729,7 @@ class TestAPIRoutesErrorHandling:
 
             data = {"file": (BytesIO(b"test"), "test.txt")}
 
-            response = self.test_client.post("/api/import/excel", data=data)
+            response = self.client.post("/api/import/excel", data=data)
 
             assert response.status_code == 400
             data = response.get_json()
@@ -2677,7 +2744,7 @@ class TestAPIRoutesProgressTracking:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     @patch("api_routes.create_progress_tracker")
     @patch("api_routes.update_progress")
@@ -2701,7 +2768,7 @@ class TestAPIRoutesProgressTracking:
 
     def test_import_progress_stub_response(self):
         """Test import progress endpoint stub response."""
-        response = self.test_client.get("/api/import/progress/test123")
+        response = self.client.get("/api/import/progress/test123")
 
         # Should return progress data (currently stubbed)
         assert response.status_code in [200, 404]
@@ -2720,7 +2787,7 @@ class TestAPIRoutesValidation:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     @patch("api_routes.has_permission")
     @patch("api_routes.import_excel")
@@ -2756,7 +2823,7 @@ class TestAPIRoutesValidation:
 
         data = {"file": (BytesIO(b"test excel data"), "test.xlsx")}
 
-        response = self.test_client.post("/api/import/validate", data=data)
+        response = self.client.post("/api/import/validate", data=data)
 
         # Should validate the file
         assert response.status_code == 200
@@ -2767,7 +2834,7 @@ class TestAPIRoutesValidation:
     def test_validate_import_no_file(self):
         """Test validation endpoint with no file."""
         with patch("api_routes.has_permission", return_value=True):
-            response = self.test_client.post("/api/import/validate")
+            response = self.client.post("/api/import/validate")
 
             assert response.status_code == 400
             data = response.get_json()
@@ -2780,7 +2847,7 @@ class TestAPIRoutesValidation:
 
             data = {"file": (BytesIO(b"test"), "")}
 
-            response = self.test_client.post("/api/import/validate", data=data)
+            response = self.client.post("/api/import/validate", data=data)
 
             assert response.status_code == 400
             data = response.get_json()
@@ -2793,7 +2860,7 @@ class TestAPIRoutesValidation:
 
             data = {"file": (BytesIO(b"test"), "test.txt")}
 
-            response = self.test_client.post("/api/import/validate", data=data)
+            response = self.client.post("/api/import/validate", data=data)
 
             assert response.status_code == 400
             data = response.get_json()
@@ -2838,7 +2905,7 @@ class TestAPIRoutesValidation:
 
         data = {"file": (BytesIO(b"excel data"), "test.xlsx")}
 
-        response = self.test_client.post("/api/import/validate", data=data)
+        response = self.client.post("/api/import/validate", data=data)
 
         # Should still succeed despite cleanup error
         assert response.status_code == 200
@@ -2853,11 +2920,11 @@ class TestAPIRoutesHealthCheck:
         """Set up test client."""
         from app import app
 
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     def test_health_check_endpoint(self):
         """Test health check endpoint."""
-        response = self.test_client.get("/api/health")
+        response = self.client.get("/api/health")
 
         # Should return health status
         assert response.status_code == 200
@@ -2881,7 +2948,7 @@ class TestAPIRoutesExtended:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
-        self.test_client = app.test_client()
+        self.client = app.test_client()
 
     def test_api_error_handler_comprehensive(self):
         """Test API error handler function directly."""
@@ -2911,7 +2978,7 @@ class TestAPIRoutesExtended:
         """Test list_courses when institution ID is None."""
         mock_get_cei_id.return_value = None
 
-        response = self.test_client.get("/api/courses")
+        response = self.client.get("/api/courses")
 
         assert response.status_code == 400
         data = response.get_json()
@@ -2924,7 +2991,7 @@ class TestAPIRoutesExtended:
         mock_get_cei_id.return_value = "institution123"
         mock_get_courses.return_value = [{"course_id": "1", "department": "MATH"}]
 
-        response = self.test_client.get("/api/courses?department=MATH")
+        response = self.client.get("/api/courses?department=MATH")
 
         assert response.status_code == 200
         data = response.get_json()

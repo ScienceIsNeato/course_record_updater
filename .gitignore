@@ -40,3 +40,4 @@ yarn-error.log*
 
 # Flask session files
 flask_session/
+COMMIT_MSG.txt
