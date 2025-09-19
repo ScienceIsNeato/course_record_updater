@@ -171,7 +171,7 @@
             course: task.course_number
               ? `${task.course_number} — ${task.course_title || ''}`
               : task.course_title || 'Course',
-            section: task.section_id || '—',
+            section: task.section_number || task.section_id || '—',
             due: dueDate,
             due_sort: task.due_date || '',
             status: status.charAt(0).toUpperCase() + status.slice(1),

@@ -597,7 +597,7 @@ class PanelManager {
         title: 'Assessments',
         items: formatItems(
           tasks,
-          task => task.course_number || task.course_title || task.section_id,
+          task => task.course_number || task.course_title || task.section_number || task.section_id,
           task => (task.status || 'pending').replace(/_/g, ' ')
         )
       };

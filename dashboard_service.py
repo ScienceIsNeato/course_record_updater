@@ -767,6 +767,7 @@ class DashboardService:
             tasks.append(
                 {
                     "section_id": section.get("section_id") or section.get("id"),
+                    "section_number": section.get("section_number"),
                     "course_id": course_id,
                     "course_number": course.get("course_number")
                     or course.get("number"),
