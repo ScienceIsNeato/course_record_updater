@@ -136,10 +136,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Unit Tests
-      run: |
-        echo "Debug: CI=$CI"
-        echo "Debug: GITHUB_ACTIONS=$GITHUB_ACTIONS"
-        python scripts/ship_it.py --checks tests
+      run: python scripts/ship_it.py --checks tests
       env:
         PYTHONPATH: .
 
