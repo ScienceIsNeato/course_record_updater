@@ -1689,20 +1689,21 @@ def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
     )
 
     try:
-        with db_operation_timeout():
-            programs_ref = db.collection("programs")
-            query = programs_ref.where("institution_id", "==", institution_id)
-            programs = []
+        # Temporarily disable timeout to fix threading issue
+        # with db_operation_timeout():
+        programs_ref = db.collection("programs")
+        query = programs_ref.where("institution_id", "==", institution_id)
+        programs = []
 
-            for doc in query.stream():
-                program_data = doc.to_dict()
-                program_data["id"] = doc.id
-                programs.append(program_data)
+        for doc in query.stream():
+            program_data = doc.to_dict()
+            program_data["id"] = doc.id
+            programs.append(program_data)
 
-            logger.info(
-                f"[DB Service] Retrieved {len(programs)} programs for institution {institution_id}"
-            )
-            return programs
+        logger.info(
+            f"[DB Service] Retrieved {len(programs)} programs for institution {institution_id}"
+        )
+        return programs
 
     except Exception as e:
         logger.error(
@@ -1742,7 +1743,9 @@ def get_program_by_id(program_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_program_by_name_and_institution(program_name: str, institution_id: str) -> Optional[Dict[str, Any]]:
+def get_program_by_name_and_institution(
+    program_name: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
     """
     Get a program by its name and institution ID (for idempotent seeding)
 
@@ -1753,12 +1756,16 @@ def get_program_by_name_and_institution(program_name: str, institution_id: str) 
     Returns:
         Program dictionary if found, None otherwise
     """
-    logger.info(f"[DB Service] get_program_by_name_and_institution called for: {program_name} in {institution_id}")
+    logger.info(
+        f"[DB Service] get_program_by_name_and_institution called for: {program_name} in {institution_id}"
+    )
 
     try:
         with db_operation_timeout():
             programs_ref = db.collection("programs")
-            query = programs_ref.where("name", "==", program_name).where("institution_id", "==", institution_id)
+            query = programs_ref.where("name", "==", program_name).where(
+                "institution_id", "==", institution_id
+            )
             docs = query.limit(1).get()
 
             if docs:
