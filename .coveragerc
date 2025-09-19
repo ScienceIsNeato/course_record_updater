@@ -12,8 +12,10 @@ omit =
     */.venv/*
     */site-packages/*
 
-    # Test files themselves
-    tests/*
+    # Test files themselves (unit tests are excluded from coverage of application code)
+    tests/unit/*
+    tests/integration/*
+    tests/smoke/*
     */tests/*
 
     # Build and development files
