@@ -1056,27 +1056,28 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         return []
 
     try:
-        with db_operation_timeout(
-            10
-        ):  # Longer timeout for potentially large result sets
-            query = db.collection(COURSES_COLLECTION).where(
-                filter=firestore.FieldFilter("institution_id", "==", institution_id)
-            )
+        # Temporarily disable timeout to fix threading issue
+        # with db_operation_timeout(
+        #     10
+        # ):  # Longer timeout for potentially large result sets
+        query = db.collection(COURSES_COLLECTION).where(
+            filter=firestore.FieldFilter("institution_id", "==", institution_id)
+        )
 
-            docs = query.stream()
-            courses = []
+        docs = query.stream()
+        courses = []
 
-            for doc in docs:
-                course = doc.to_dict()
-                course["course_id"] = doc.id
-                courses.append(course)
+        for doc in docs:
+            course = doc.to_dict()
+            course["course_id"] = doc.id
+            courses.append(course)
 
-            logger.info(
-                "[DB Service] Found %d courses for institution: %s",
-                len(courses),
-                sanitize_for_logging(institution_id),
-            )
-            return courses
+        logger.info(
+            "[DB Service] Found %d courses for institution: %s",
+            len(courses),
+            sanitize_for_logging(institution_id),
+        )
+        return courses
 
     except DatabaseTimeoutError:
         logger.error(
