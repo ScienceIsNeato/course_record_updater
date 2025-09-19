@@ -905,15 +905,25 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
 
     try:
         # Validate required fields
-        if "course_number" not in course_data:
-            logger.info("[DB Service] Missing required field: course_number")
-            return None
+        required_fields = ["course_number", "institution_id"]
+        for field in required_fields:
+            if field not in course_data or not course_data[field]:
+                logger.error(f"[DB Service] Missing required field: {field}")
+                return None
 
         # Validate course number format
         if not validate_course_number(course_data["course_number"]):
             logger.info(
                 "[DB Service] Invalid course number format: %s",
                 sanitize_for_logging(course_data["course_number"]),
+            )
+            return None
+
+        # Validate institution exists
+        institution_id = course_data["institution_id"]
+        if not get_institution_by_id(institution_id):
+            logger.error(
+                f"[DB Service] Invalid institution_id: {sanitize_for_logging(institution_id)}"
             )
             return None
 

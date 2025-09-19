@@ -743,6 +743,22 @@ def create_course_api():
                 400,
             )
 
+        # Add institutional context - all courses must be associated with an institution
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Institution context required to create courses",
+                    }
+                ),
+                400,
+            )
+
+        # Ensure institution_id is set in the course data
+        data["institution_id"] = institution_id
+
         course_id = create_course(data)
 
         if course_id:

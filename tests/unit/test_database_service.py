@@ -493,10 +493,93 @@ class TestExtendedDatabaseFunctions:
         mock_collection.add.return_value = (None, mock_doc_ref)
         mock_db.collection.return_value = mock_collection
 
-        course_data = {"course_number": "MATH-101", "course_title": "Algebra"}
+        # Mock institution validation
+        with patch("database_service.get_institution_by_id") as mock_get_institution:
+            mock_get_institution.return_value = {
+                "institution_id": "test-inst",
+                "name": "Test",
+            }
+
+            course_data = {
+                "course_number": "MATH-101",
+                "course_title": "Algebra",
+                "institution_id": "test-inst",
+            }
+            result = create_course(course_data)
+
+            assert result == "course123"
+            mock_collection.add.assert_called_once_with(course_data)
+
+    def test_create_course_missing_institution_id(self):
+        """Test create_course fails when institution_id is missing"""
+        course_data = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+            "department": "Mathematics",
+        }
+
+        result = create_course(course_data)
+
+        assert result is None
+
+    def test_create_course_empty_institution_id(self):
+        """Test create_course fails when institution_id is empty"""
+        course_data = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+            "department": "Mathematics",
+            "institution_id": "",
+        }
+
+        result = create_course(course_data)
+
+        assert result is None
+
+    @patch("database_service.get_institution_by_id")
+    def test_create_course_invalid_institution_id(self, mock_get_institution):
+        """Test create_course fails when institution_id doesn't exist"""
+        mock_get_institution.return_value = None  # Institution doesn't exist
+
+        course_data = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+            "department": "Mathematics",
+            "institution_id": "invalid-institution-id",
+        }
+
+        result = create_course(course_data)
+
+        assert result is None
+        mock_get_institution.assert_called_once_with("invalid-institution-id")
+
+    @patch("database_service.get_institution_by_id")
+    @patch("database_service.db")
+    def test_create_course_with_valid_institution(self, mock_db, mock_get_institution):
+        """Test create_course succeeds with valid institution_id"""
+        # Mock institution exists
+        mock_get_institution.return_value = {
+            "institution_id": "valid-inst-123",
+            "name": "Test University",
+        }
+
+        # Mock database creation
+        mock_collection = Mock()
+        mock_doc_ref = Mock()
+        mock_doc_ref.id = "course123"
+        mock_collection.add.return_value = (None, mock_doc_ref)
+        mock_db.collection.return_value = mock_collection
+
+        course_data = {
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+            "department": "Mathematics",
+            "institution_id": "valid-inst-123",
+        }
+
         result = create_course(course_data)
 
         assert result == "course123"
+        mock_get_institution.assert_called_once_with("valid-inst-123")
         mock_collection.add.assert_called_once_with(course_data)
 
     @patch("database_service.db")
@@ -1397,22 +1480,32 @@ class TestSectionAndTermFunctions:
         mock_collection = Mock()
         mock_db.collection.return_value = mock_collection
 
-        # Test course creation with minimal data
-        minimal_course = {"course_number": "MIN-001", "course_title": "Minimal Course"}
+        # Test course creation with minimal data (now requires institution_id)
+        with patch("database_service.get_institution_by_id") as mock_get_institution:
+            mock_get_institution.return_value = {
+                "institution_id": "test-inst",
+                "name": "Test",
+            }
 
-        mock_doc_ref = Mock()
-        mock_doc_ref.id = "course123"
-        mock_collection.add.return_value = (None, mock_doc_ref)
+            minimal_course = {
+                "course_number": "MIN-001",
+                "course_title": "Minimal Course",
+                "institution_id": "test-inst",
+            }
 
-        result = create_course(minimal_course)
+            mock_doc_ref = Mock()
+            mock_doc_ref.id = "course123"
+            mock_collection.add.return_value = (None, mock_doc_ref)
 
-        assert result == "course123"
+            result = create_course(minimal_course)
 
-        # Verify the course was created properly
-        call_args = mock_collection.add.call_args[0][0]
-        assert call_args["course_number"] == "MIN-001"
-        assert call_args["course_title"] == "Minimal Course"
-        # institution_id and created_at may or may not be added by the function
+            assert result == "course123"
+
+            # Verify the course was created properly
+            call_args = mock_collection.add.call_args[0][0]
+            assert call_args["course_number"] == "MIN-001"
+            assert call_args["course_title"] == "Minimal Course"
+            assert call_args["institution_id"] == "test-inst"
 
 
 class TestDatabaseServiceOperations:

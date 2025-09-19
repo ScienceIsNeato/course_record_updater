@@ -106,7 +106,13 @@ class DashboardService:
                 }
             )
 
-            all_programs.extend(self._with_institution(programs, inst_id, inst_name))
+            # Add course counts to programs
+            programs_with_counts = self._add_course_counts_to_programs(
+                programs, courses
+            )
+            all_programs.extend(
+                self._with_institution(programs_with_counts, inst_id, inst_name)
+            )
             all_courses.extend(self._with_institution(courses, inst_id, inst_name))
             all_users.extend(self._with_institution(users, inst_id, inst_name))
             all_instructors.extend(
@@ -831,6 +837,38 @@ class DashboardService:
         last = data.get("last_name") or ""
         name = f"{first} {last}".strip()
         return name or data.get("full_name") or ""
+
+    def _add_course_counts_to_programs(
+        self, programs: List[Dict[str, Any]], courses: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Add course_count to each program based on courses that reference the program.
+
+        Args:
+            programs: List of program dictionaries
+            courses: List of course dictionaries
+
+        Returns:
+            List of programs with course_count added
+        """
+        programs_with_counts = []
+
+        for program in programs:
+            program_copy = program.copy()
+            program_id = program.get("id", program.get("program_id"))
+
+            # Count courses that have this program in their program_ids
+            course_count = 0
+            if program_id:
+                for course in courses:
+                    program_ids = course.get("program_ids", [])
+                    if program_id in program_ids:
+                        course_count += 1
+
+            program_copy["course_count"] = course_count
+            programs_with_counts.append(program_copy)
+
+        return programs_with_counts
 
 
 def build_dashboard_service() -> DashboardService:

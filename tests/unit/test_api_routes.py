@@ -1378,6 +1378,60 @@ class TestCourseEndpoints:
         assert "message" in data
         assert "course_id" in data
 
+    @patch("api_routes.get_current_institution_id")
+    def test_create_course_requires_institution_context(self, mock_get_institution_id):
+        """Test POST /api/courses fails when no institution context is available."""
+        self._login_site_admin()
+        mock_get_institution_id.return_value = None  # No institution context
+
+        course_data = {
+            "course_number": "TEST-101",
+            "course_title": "Test Course",
+            "department": "TEST",
+        }
+
+        response = self.client.post(
+            "/api/courses", json=course_data, content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Institution context required" in data["error"]
+
+    @patch("api_routes.create_course")
+    @patch("api_routes.get_current_institution_id")
+    def test_create_course_adds_institution_context(
+        self, mock_get_institution_id, mock_create_course
+    ):
+        """Test POST /api/courses automatically adds institution_id from context."""
+        self._login_site_admin()
+        mock_get_institution_id.return_value = "test-institution-123"
+        mock_create_course.return_value = "course-456"
+
+        course_data = {
+            "course_number": "TEST-101",
+            "course_title": "Test Course",
+            "department": "TEST",
+        }
+
+        response = self.client.post(
+            "/api/courses", json=course_data, content_type="application/json"
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["course_id"] == "course-456"
+
+        # Verify that institution_id was added to the course data
+        mock_create_course.assert_called_once()
+        call_args = mock_create_course.call_args[0][0]
+        assert call_args["institution_id"] == "test-institution-123"
+        assert call_args["course_number"] == "TEST-101"
+        assert call_args["course_title"] == "Test Course"
+        assert call_args["department"] == "TEST"
+
     @patch("api_routes.get_course_by_number", return_value=None)
     def test_get_course_by_number_endpoint_exists(self, mock_get_course):
         """Test that GET /api/courses/<course_number> endpoint exists."""
