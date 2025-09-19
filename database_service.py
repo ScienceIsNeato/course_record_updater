@@ -1052,8 +1052,9 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_all_courses called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    if not check_db_connection():
-        return []
+    # Temporarily disable connection check to fix threading issue
+    # if not check_db_connection():
+    #     return []
 
     try:
         # Temporarily disable timeout to fix threading issue
