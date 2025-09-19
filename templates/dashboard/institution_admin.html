@@ -3,7 +3,7 @@
 {% block title %}Institution Administrator Dashboard - CEI Course Admin{% endblock %}
 
 {% block nav_items %}
-<a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
 <a class="nav-link" href="#" onclick="showPrograms()"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
 <a class="nav-link" href="#" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</a>
 <a class="nav-link" href="#" onclick="showReports()"><i class="fas fa-chart-bar me-1"></i>Reports</a>
@@ -218,7 +218,9 @@
 
     async function loadProgramCount() {
         try {
-            const response = await fetch('/api/programs');
+            const response = await fetch('/api/programs', {
+                credentials: 'include'
+            });
             const data = await response.json();
             document.getElementById('programCount').textContent = data.count || 0;
         } catch (error) {
@@ -228,7 +230,9 @@
 
     async function loadCourseCount() {
         try {
-            const response = await fetch('/api/courses');
+            const response = await fetch('/api/courses', {
+                credentials: 'include'
+            });
             const data = await response.json();
             document.getElementById('courseCount').textContent = data.count || 0;
         } catch (error) {
@@ -238,7 +242,9 @@
 
     async function loadFacultyCount() {
         try {
-            const response = await fetch('/api/instructors');
+            const response = await fetch('/api/instructors', {
+                credentials: 'include'
+            });
             const data = await response.json();
             document.getElementById('facultyCount').textContent = data.count || 0;
         } catch (error) {
@@ -248,7 +254,9 @@
 
     async function loadSectionCount() {
         try {
-            const response = await fetch('/api/sections');
+            const response = await fetch('/api/sections', {
+                credentials: 'include'
+            });
             const data = await response.json();
             document.getElementById('sectionCount').textContent = data.count || 0;
         } catch (error) {
@@ -258,7 +266,9 @@
 
     async function loadProgramsList() {
         try {
-            const response = await fetch('/api/programs');
+            const response = await fetch('/api/programs', {
+                credentials: 'include'
+            });
             const data = await response.json();
             
             const container = document.getElementById('programsList');
@@ -289,7 +299,9 @@
 
     async function loadUsersList() {
         try {
-            const response = await fetch('/api/users');
+            const response = await fetch('/api/users', {
+                credentials: 'include'
+            });
             const data = await response.json();
             
             const container = document.getElementById('usersList');

@@ -225,6 +225,11 @@ class TestAPIEndpointSecuritySmoke:
         """Smoke test: Protected endpoints should require authentication"""
         app = Flask(__name__)
 
+        # Add a login route to prevent routing errors
+        @app.route("/login")
+        def login():
+            return "login page"
+
         with app.test_request_context():
             from auth_service import login_required, permission_required
 
@@ -232,18 +237,15 @@ class TestAPIEndpointSecuritySmoke:
             def protected_endpoint():
                 return "protected content"
 
-            # Test with no authentication
+            # Test with no authentication - should redirect to login
             with patch("auth_service.auth_service.is_authenticated") as mock_auth:
                 mock_auth.return_value = False
 
-                with patch("auth_service.jsonify") as mock_jsonify:
-                    mock_jsonify.return_value = (MagicMock(), 401)
+                result = protected_endpoint()
 
-                    result = protected_endpoint()
-
-                    # Should return 401 Unauthorized
-                    assert isinstance(result, tuple)
-                    assert result[1] == 401
+                # Should redirect to login (new behavior after refactoring)
+                assert hasattr(result, "status_code")
+                assert result.status_code == 302
 
     def test_permission_endpoints_enforce_permissions_smoke(self):
         """Smoke test: Permission-required endpoints should enforce permissions"""
