@@ -408,7 +408,9 @@ def list_users():
     """
     try:
         from auth_service import get_current_institution_id
+        from constants import SITE_ADMIN_INSTITUTION_ID
 
+        current_user = get_current_user()
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
@@ -419,12 +421,26 @@ def list_users():
         role_filter = request.args.get("role")
         department_filter = request.args.get("department")
 
-        if role_filter:
-            users = get_users_by_role(role_filter)
-            # Filter by institution
-            users = [u for u in users if u.get("institution_id") == institution_id]
+        # Site admins see all users across all institutions
+        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
+            if role_filter:
+                users = get_users_by_role(role_filter)
+            else:
+                # Get all users across all institutions
+                from database_service import get_all_institutions
+                institutions = get_all_institutions()
+                all_users = []
+                for inst in institutions:
+                    inst_users = get_all_users(inst["institution_id"])
+                    all_users.extend(inst_users)
+                users = all_users
         else:
-            users = get_all_users(institution_id)
+            if role_filter:
+                users = get_users_by_role(role_filter)
+                # Filter by institution
+                users = [u for u in users if u.get("institution_id") == institution_id]
+            else:
+                users = get_all_users(institution_id)
 
         # Filter by department if specified
         if department_filter and users:
@@ -577,7 +593,10 @@ def list_courses():
     - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
+        from constants import SITE_ADMIN_INSTITUTION_ID
+        
         # Get institution context - for development, use CEI
+        current_user = get_current_user()
         institution_id = get_current_institution_id()
         if not institution_id:
             return (
@@ -591,7 +610,6 @@ def list_courses():
 
         # Use override if provided and user has access
         if program_id_override:
-            current_user = get_current_user()
             accessible_programs = current_user.get("accessible_programs", [])
             if program_id_override in accessible_programs:
                 current_program_id = program_id_override
@@ -608,26 +626,45 @@ def list_courses():
 
         department_filter = request.args.get("department")
 
-        # Apply filters based on context and parameters
-        if current_program_id:
-            # Program context active - get courses for this program
-            courses = get_courses_by_program(current_program_id)
-
+        # Site admins see all courses across all institutions
+        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
+            # Get all institutions and collect all courses
+            from database_service import get_all_institutions
+            institutions = get_all_institutions()
+            all_courses = []
+            for inst in institutions:
+                inst_courses = get_all_courses(inst["institution_id"])
+                all_courses.extend(inst_courses)
+            courses = all_courses
+            context_info = "system-wide"
+            
             # Apply department filter if specified
             if department_filter:
                 courses = [
                     c for c in courses if c.get("department") == department_filter
                 ]
-
-            context_info = f"program {current_program_id}"
-        elif department_filter:
-            # Institution-wide with department filter
-            courses = get_courses_by_department(institution_id, department_filter)
-            context_info = f"department {department_filter}"
+                context_info = f"system-wide, department {department_filter}"
         else:
-            # Institution-wide, all courses
-            courses = get_all_courses(institution_id)
-            context_info = "institution-wide"
+            # Apply filters based on context and parameters
+            if current_program_id:
+                # Program context active - get courses for this program
+                courses = get_courses_by_program(current_program_id)
+
+                # Apply department filter if specified
+                if department_filter:
+                    courses = [
+                        c for c in courses if c.get("department") == department_filter
+                    ]
+
+                context_info = f"program {current_program_id}"
+            elif department_filter:
+                # Institution-wide with department filter
+                courses = get_courses_by_department(institution_id, department_filter)
+                context_info = f"department {department_filter}"
+            else:
+                # Institution-wide, all courses
+                courses = get_all_courses(institution_id)
+                context_info = "institution-wide"
 
         return jsonify(
             {
@@ -894,13 +931,28 @@ def create_term_api():
 @api.route("/programs", methods=["GET"])
 @permission_required("view_program_data")
 def list_programs():
-    """Get list of programs for the current institution"""
+    """Get list of programs for the current institution (or all programs for site admins)"""
     try:
+        from constants import SITE_ADMIN_INSTITUTION_ID
+        
+        current_user = get_current_user()
         institution_id = get_current_institution_id()
+        
         if not institution_id:
             return jsonify({"success": False, "error": "Institution ID not found"}), 400
 
-        programs = get_programs_by_institution(institution_id)
+        # Site admins see all programs across all institutions
+        if current_user.get("role") == "site_admin" or institution_id == SITE_ADMIN_INSTITUTION_ID:
+            # Get all institutions and collect all programs
+            from database_service import get_all_institutions
+            institutions = get_all_institutions()
+            all_programs = []
+            for inst in institutions:
+                inst_programs = get_programs_by_institution(inst["institution_id"])
+                all_programs.extend(inst_programs)
+            programs = all_programs
+        else:
+            programs = get_programs_by_institution(institution_id)
 
         return jsonify({"success": True, "programs": programs})
 
