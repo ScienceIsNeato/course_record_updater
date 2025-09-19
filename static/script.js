@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   } else {
-    Logger.info('No course table found - skipping table event listeners (expected in cleaned UI)');
+    console.log('No course table found - skipping table event listeners (expected in cleaned UI)');
   }
 
   // --- Helper Functions ---
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         revertRowToActionButtons(row);
       } else {
-        Logger.error('Update failed:', result.error || `HTTP ${response.status}`);
+        console.error('Update failed:', result.error || `HTTP ${response.status}`);
         // Try to show backend validation error if available
         const backendError = result.error || 'Server error';
         if (
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Leave editable on failure
       }
     } catch (error) {
-      Logger.error('Network or fetch error during save:', error);
+      console.error('Network or fetch error during save:', error);
       alert('Failed to send update request.');
     }
   }
@@ -264,12 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
           row.remove(); // Remove row from table
           alert(`Course ${courseNumber} deleted successfully.`);
         } else {
-          Logger.error('Delete failed on server:', result.error);
+          console.error('Delete failed on server:', result.error);
           alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
         }
       })
       .catch(error => {
-        Logger.error('Network or other error during delete:', error);
+        console.error('Network or other error during delete:', error);
         alert(`Failed to delete course: ${error.message}`);
       });
   }
@@ -356,7 +356,7 @@ async function loadDashboardData() {
         element.innerHTML = '<small class="text-danger">Failed to load</small>';
       }
     } catch (error) {
-      Logger.error(`Failed to load ${endpoint.key}:`, error);
+      console.error(`Failed to load ${endpoint.key}:`, error);
       const element = document.getElementById(endpoint.id);
       if (element) {
         element.innerHTML = '<small class="text-danger">Error loading data</small>';
@@ -376,7 +376,7 @@ function initializeImportForm() {
   const progressDiv = document.getElementById('importProgress');
   const resultsDiv = document.getElementById('importResults');
 
-  Logger.debug('Import form elements found:', {
+  console.log('Import form elements found:', {
     importForm: !!importForm,
     validateBtn: !!validateBtn,
     executeBtn: !!executeBtn,
@@ -385,7 +385,7 @@ function initializeImportForm() {
   });
 
   if (!importForm) {
-    Logger.error('Import form not found!');
+    console.error('Import form not found!');
     return; // Exit if import form doesn't exist
   }
 
@@ -672,7 +672,7 @@ function initializeImportForm() {
 
   function showImportResults(result, success) {
     if (!resultsDiv) {
-      Logger.error('Results div not found!');
+      console.error('Results div not found!');
       return;
     }
 
