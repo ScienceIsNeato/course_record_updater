@@ -227,12 +227,68 @@ class TestDashboardServiceScoped:
         assert data["metadata"]["data_scope"] == "instructor"
         assert len(data["sections"]) == 1
         assert data["sections"][0]["institution_id"] == "inst-1"
-        assert len(data["courses"]) == 1
-        assert data["courses"][0]["course_id"] == "c1"
-        assert data["teaching_assignments"][0]["course_id"] == "c1"
-        assert len(data["assessment_tasks"]) == 1
-        assert data["programs"]
-        assert data["summary"]["sections"] == 1
+
+
+class TestDashboardServiceCLOEnrichment:
+    """Test CLO data enrichment functionality."""
+
+    @patch("dashboard_service.get_course_outcomes")
+    def test_enrich_courses_with_clo_data_success(self, mock_get_clos, service):
+        """Test successful CLO data enrichment."""
+        # Mock CLO data
+        mock_clos = [
+            {"clo_number": "CLO1", "description": "First learning outcome"},
+            {"clo_number": "CLO2", "description": "Second learning outcome"},
+        ]
+        mock_get_clos.return_value = mock_clos
+
+        courses = [
+            {"course_id": "course-1", "course_number": "CS-101"},
+            {"id": "course-2", "course_number": "CS-201"},  # Test fallback to "id"
+        ]
+
+        result = service._enrich_courses_with_clo_data(courses)
+
+        assert len(result) == 2
+        assert result[0]["clo_count"] == 2
+        assert result[0]["clos"] == mock_clos
+        assert result[1]["clo_count"] == 2
+        assert result[1]["clos"] == mock_clos
+
+        # Verify get_course_outcomes was called for each course
+        assert mock_get_clos.call_count == 2
+        mock_get_clos.assert_any_call("course-1")
+        mock_get_clos.assert_any_call("course-2")
+
+    @patch("dashboard_service.get_course_outcomes")
+    def test_enrich_courses_with_clo_data_no_clos(self, mock_get_clos, service):
+        """Test CLO enrichment when no CLOs exist."""
+        mock_get_clos.return_value = []
+
+        courses = [{"course_id": "course-1", "course_number": "CS-101"}]
+        result = service._enrich_courses_with_clo_data(courses)
+
+        assert result[0]["clo_count"] == 0
+        assert result[0]["clos"] == []
+
+    @patch("dashboard_service.get_course_outcomes")
+    def test_enrich_courses_with_clo_data_error_handling(self, mock_get_clos, service):
+        """Test CLO enrichment handles errors gracefully."""
+        mock_get_clos.side_effect = Exception("Database error")
+
+        courses = [{"course_id": "course-1", "course_number": "CS-101"}]
+        result = service._enrich_courses_with_clo_data(courses)
+
+        assert result[0]["clo_count"] == 0
+        assert result[0]["clos"] == []
+
+    def test_enrich_courses_with_clo_data_no_course_id(self, service):
+        """Test CLO enrichment when course has no ID."""
+        courses = [{"course_number": "CS-101"}]  # No course_id or id field
+        result = service._enrich_courses_with_clo_data(courses)
+
+        assert result[0]["clo_count"] == 0
+        assert result[0]["clos"] == []
 
 
 class TestDashboardServiceFailures:

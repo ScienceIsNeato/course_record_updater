@@ -13,6 +13,7 @@ from database_service import (
     get_all_instructors,
     get_all_sections,
     get_all_users,
+    get_course_outcomes,
     get_courses_by_program,
     get_institution_by_id,
     get_programs_by_institution,
@@ -113,7 +114,11 @@ class DashboardService:
             all_programs.extend(
                 self._with_institution(programs_with_counts, inst_id, inst_name)
             )
-            all_courses.extend(self._with_institution(courses, inst_id, inst_name))
+            # Enrich courses with CLO data before adding to all_courses
+            courses_with_clo = self._enrich_courses_with_clo_data(courses)
+            all_courses.extend(
+                self._with_institution(courses_with_clo, inst_id, inst_name)
+            )
             all_users.extend(self._with_institution(users, inst_id, inst_name))
             all_instructors.extend(
                 self._with_institution(instructors, inst_id, inst_name)
@@ -161,6 +166,8 @@ class DashboardService:
 
         programs = get_programs_by_institution(institution_id) or []
         courses = get_all_courses(institution_id) or []
+        # Enrich courses with CLO data
+        courses = self._enrich_courses_with_clo_data(courses)
         users = get_all_users(institution_id) or []
         instructors = get_all_instructors(institution_id) or []
         sections = get_all_sections(institution_id) or []
@@ -257,6 +264,17 @@ class DashboardService:
                 enriched = self._with_program([course], program, institution_id)[0]
                 courses.append(enriched)
                 courses_by_program[pid].append(enriched)
+
+        # Enrich all courses with CLO data
+        courses = self._enrich_courses_with_clo_data(courses)
+
+        # Update courses_by_program with enriched data
+        courses_by_program = defaultdict(list)
+        for course in courses:
+            for program in scoped_programs:
+                pid = self._get_program_id(program)
+                if pid in course.get("program_ids", []):
+                    courses_by_program[pid].append(course)
 
         all_sections = get_all_sections(institution_id) or []
         course_index = self._index_by_keys(courses, ["course_id", "id"])
@@ -869,6 +887,44 @@ class DashboardService:
             programs_with_counts.append(program_copy)
 
         return programs_with_counts
+
+    def _enrich_courses_with_clo_data(
+        self, courses: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich courses with CLO (Course Learning Outcomes) data.
+
+        Args:
+            courses: List of course dictionaries
+
+        Returns:
+            List of courses with clo_count added
+        """
+        enriched_courses = []
+
+        for course in courses:
+            course_copy = course.copy()
+            course_id = course.get("course_id", course.get("id"))
+
+            if course_id:
+                try:
+                    # Get CLOs for this course
+                    clos = get_course_outcomes(course_id)
+                    course_copy["clo_count"] = len(clos) if clos else 0
+                    course_copy["clos"] = clos  # Include full CLO data for frontend
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to fetch CLOs for course {course_id}: {e}"
+                    )
+                    course_copy["clo_count"] = 0
+                    course_copy["clos"] = []
+            else:
+                course_copy["clo_count"] = 0
+                course_copy["clos"] = []
+
+            enriched_courses.append(course_copy)
+
+        return enriched_courses
 
 
 def build_dashboard_service() -> DashboardService:
