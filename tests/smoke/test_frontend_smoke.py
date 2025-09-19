@@ -4,7 +4,7 @@ Frontend Smoke Tests - SMOKE TESTS
 These tests verify that the complete application works end-to-end using real browsers.
 They test full user workflows and catch issues that unit and integration tests might miss.
 
-⚠️  IMPORTANT: These are SMOKE tests that use Selenium and should run separately from 
+⚠️  IMPORTANT: These are SMOKE tests that use Selenium and should run separately from
    unit tests and integration tests. They are excluded from coverage reports.
 """
 
