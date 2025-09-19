@@ -10,6 +10,33 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from flask import Flask
 
+
+def _login_test_user(client, overrides=None):
+    """Populate test client session with authenticated user data"""
+    user_data = {
+        "user_id": "test-admin",
+        "email": "admin@test.edu",
+        "role": "site_admin",
+        "institution_id": "inst-123",
+        "program_ids": ["prog-123"],
+        "accessible_programs": ["prog-123"],
+        "display_name": "Test Admin",
+    }
+    if overrides:
+        user_data.update(overrides)
+
+    with client.session_transaction() as session:
+        session["user_id"] = user_data["user_id"]
+        session["email"] = user_data.get("email")
+        session["role"] = user_data.get("role")
+        session["institution_id"] = user_data.get("institution_id")
+        session["program_ids"] = user_data.get("program_ids", [])
+        session["accessible_programs"] = user_data.get("accessible_programs", [])
+        session["display_name"] = user_data.get("display_name")
+
+    return user_data
+
+
 from auth_service import (
     clear_current_program_id,
     get_current_program_id,
@@ -133,7 +160,10 @@ class TestProgramContextAPI:
         """Test GET /api/context/program success"""
         mock_user = {
             "user_id": "test-user",
+            "role": "program_admin",
+            "institution_id": "inst-123",
             "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
         mock_programs = [
             {"id": "prog-123", "name": "Computer Science"},
@@ -153,6 +183,14 @@ class TestProgramContextAPI:
                     (p for p in mock_programs if p["id"] == pid), None
                 )
 
+                _login_test_user(
+                    client,
+                    {
+                        **mock_user,
+                        "program_ids": mock_user["accessible_programs"],
+                    },
+                )
+
                 response = client.get("/api/context/program")
                 assert response.status_code == 200
 
@@ -166,7 +204,10 @@ class TestProgramContextAPI:
         """Test POST /api/context/program/<program_id> success"""
         mock_user = {
             "user_id": "test-user",
+            "role": "program_admin",
+            "institution_id": "inst-123",
             "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
         mock_program = {"id": "prog-123", "name": "Computer Science"}
 
@@ -178,6 +219,14 @@ class TestProgramContextAPI:
                 patch("auth_service.get_current_user", return_value=mock_user),
                 patch("auth_service.has_permission", return_value=True),
             ):
+
+                _login_test_user(
+                    client,
+                    {
+                        **mock_user,
+                        "program_ids": mock_user["accessible_programs"],
+                    },
+                )
 
                 response = client.post("/api/context/program/prog-123")
                 assert response.status_code == 200
@@ -191,7 +240,10 @@ class TestProgramContextAPI:
         """Test POST /api/context/program/<program_id> with unauthorized program"""
         mock_user = {
             "user_id": "test-user",
+            "role": "program_admin",
+            "institution_id": "inst-123",
             "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
 
         with app.app_context():
@@ -200,6 +252,14 @@ class TestProgramContextAPI:
                 patch("auth_service.get_current_user", return_value=mock_user),
                 patch("auth_service.has_permission", return_value=True),
             ):
+                _login_test_user(
+                    client,
+                    {
+                        **mock_user,
+                        "program_ids": mock_user["accessible_programs"],
+                    },
+                )
+
                 response = client.post("/api/context/program/prog-999")
                 assert response.status_code == 403
 
@@ -213,10 +273,13 @@ class TestProgramContextAPI:
             with (
                 patch("api_routes.clear_current_program_id", return_value=True),
                 patch(
-                    "auth_service.get_current_user", return_value={"user_id": "test"}
+                    "auth_service.get_current_user",
+                    return_value={"user_id": "test", "role": "site_admin"},
                 ),
                 patch("auth_service.has_permission", return_value=True),
             ):
+                _login_test_user(client, {"user_id": "test", "role": "site_admin"})
+
                 response = client.delete("/api/context/program")
                 assert response.status_code == 200
 
@@ -264,6 +327,7 @@ class TestUnassignedCoursesAPI:
                 ),
                 patch("auth_service.has_permission", return_value=True),
             ):
+                _login_test_user(client, {"user_id": "test", "role": "site_admin"})
 
                 response = client.get("/api/courses/unassigned")
                 assert response.status_code == 200
@@ -285,6 +349,7 @@ class TestUnassignedCoursesAPI:
                 ),
                 patch("auth_service.has_permission", return_value=True),
             ):
+                _login_test_user(client, {"user_id": "test", "role": "site_admin"})
 
                 response = client.post("/api/courses/course-123/assign-default")
                 assert response.status_code == 200

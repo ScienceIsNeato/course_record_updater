@@ -8,10 +8,14 @@ Tests the program management functionality including:
 - Default program handling and course reassignment
 """
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from flask import Flask, session
+
+from tests.test_utils import CommonAuthMixin
 
 
 # Test the database service functions
@@ -203,15 +207,35 @@ class TestProgramDatabaseService:
         mock_batch.commit.assert_called_once()
 
 
-class TestProgramAPIEndpoints:
+class TestProgramAPIEndpoints(CommonAuthMixin):
     """Test program API endpoints"""
 
     def setup_method(self):
         """Set up test fixtures"""
-        from flask import Flask
-
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
+
+    def _seed_session(self, overrides=None):
+        """Populate session with an authenticated site admin user"""
+        user_data = {**self._get_default_site_admin_user()}
+        if overrides:
+            user_data.update(overrides)
+
+        session["user_id"] = user_data["user_id"]
+        session["email"] = user_data.get("email", "admin@test.com")
+        session["role"] = user_data.get("role", "site_admin")
+        session["institution_id"] = user_data.get("institution_id", "inst-123")
+        session["program_ids"] = user_data.get("program_ids", ["default-program"])
+        session["display_name"] = user_data.get("display_name", "Test Admin")
+
+    @contextmanager
+    def _authenticated_request_context(self, *args, overrides=None, **kwargs):
+        """Request context preloaded with real-auth session data"""
+        with self.app.test_request_context(*args, **kwargs):
+            self._seed_session(overrides)
+            yield
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_programs_by_institution")
@@ -225,7 +249,7 @@ class TestProgramAPIEndpoints:
             {"id": "prog2", "name": "Mathematics", "short_name": "MATH"},
         ]
 
-        with self.app.app_context():
+        with self._authenticated_request_context():
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
@@ -256,7 +280,7 @@ class TestProgramAPIEndpoints:
 
         mock_get_institution.return_value = None
 
-        with self.app.app_context():
+        with self._authenticated_request_context():
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 400)
 
@@ -270,7 +294,7 @@ class TestProgramAPIEndpoints:
         """Test successful program creation"""
         from api_routes import create_program_api
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.get_current_institution_id") as mock_get_institution,
@@ -302,7 +326,7 @@ class TestProgramAPIEndpoints:
         """Test program creation with missing required fields"""
         from api_routes import create_program_api
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.jsonify") as mock_jsonify,
@@ -325,8 +349,6 @@ class TestProgramAPIEndpoints:
     @patch("api_routes.get_program_by_id")
     def test_get_program_success(self, mock_get_program):
         """Test successful program retrieval"""
-        from flask import Flask
-
         from api_routes import get_program
 
         mock_get_program.return_value = {
@@ -335,8 +357,7 @@ class TestProgramAPIEndpoints:
             "short_name": "CS",
         }
 
-        app = Flask(__name__)
-        with app.test_request_context("/programs/test-program"):
+        with self._authenticated_request_context("/programs/test-program"):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
@@ -356,14 +377,11 @@ class TestProgramAPIEndpoints:
     @patch("api_routes.get_program_by_id")
     def test_get_program_not_found(self, mock_get_program):
         """Test program retrieval when program doesn't exist"""
-        from flask import Flask
-
         from api_routes import get_program
 
         mock_get_program.return_value = None
 
-        app = Flask(__name__)
-        with app.test_request_context("/programs/nonexistent-program"):
+        with self._authenticated_request_context("/programs/nonexistent-program"):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 404)
 
@@ -377,7 +395,7 @@ class TestProgramAPIEndpoints:
         """Test successful program update"""
         from api_routes import update_program_api
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.get_program_by_id") as mock_get_program,

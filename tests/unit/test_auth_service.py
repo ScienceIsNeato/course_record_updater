@@ -758,13 +758,19 @@ class TestAuthServiceCoverage:
 
     def test_context_extraction_in_decorators(self):
         """Test context extraction in permission decorators."""
-        from flask import Flask, request
+        from flask import Flask, request, session
 
         from auth_service import permission_required
 
         app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret"
 
         with app.test_request_context("/test?institution_id=inst-123"):
+            session["user_id"] = "test-admin"
+            session["email"] = "admin@test.edu"
+            session["role"] = "site_admin"
+            session["institution_id"] = "inst-123"
+            session["program_ids"] = ["prog-123"]
 
             @permission_required("manage_users", context_keys=["institution_id"])
             def test_func():

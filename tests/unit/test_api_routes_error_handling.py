@@ -217,26 +217,66 @@ class TestImportEndpoints(CommonAuthMixin):
 
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
-        # Test unauthenticated request
         with patch("api_routes.import_excel", side_effect=Exception("Import failed")):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(b"fake excel data")
                 tmp_path = tmp.name
 
             try:
+                self._login_site_admin()
                 with open(tmp_path, "rb") as f:
                     response = self.client.post(
                         "/api/import/excel", data={"file": (f, "test.xlsx")}
                     )
 
-                # Real auth returns 401 for unauthenticated requests
-                assert response.status_code == 401
+                assert response.status_code == 202
                 data = response.get_json()
-                assert data["success"] is True
-                assert "progress_id" in data
+                assert data == {
+                    "success": True,
+                    "progress_id": data["progress_id"],
+                    "message": "Import started. Use /api/import/progress/{progress_id} to track progress.",
+                }
                 # Exception will be handled in background thread and reported via progress API
             finally:
                 os.unlink(tmp_path)
+
+    def test_import_progress_endpoints(self):
+        """Exercise import progress helper endpoints."""
+        from api_routes import (
+            cleanup_progress,
+            create_progress_tracker,
+            update_progress,
+        )
+
+        # Unknown progress ID returns 404
+        response = self.client.get("/api/import/progress/does-not-exist")
+        assert response.status_code == 404
+        assert response.get_json() == {"error": "Progress ID not found"}
+
+        # Create real progress and verify retrieval
+        progress_id = create_progress_tracker()
+        update_progress(
+            progress_id,
+            status="running",
+            percentage=42,
+            message="Steady progress",
+        )
+
+        response = self.client.get(f"/api/import/progress/{progress_id}")
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["status"] == "running"
+        assert data["percentage"] == 42
+        assert "message" in data
+
+        cleanup_progress(progress_id)
+
+    def test_validate_import_file_no_file(self):
+        """Validate import file endpoint without providing a file."""
+        self._login_site_admin()
+        response = self.client.post("/api/import/validate")
+        assert response.status_code == 400
+        assert response.get_json() == {"success": False, "error": "No file uploaded"}
 
 
 class TestSectionEndpoints(CommonAuthMixin):
@@ -390,15 +430,18 @@ class TestAdditionalErrorPaths(CommonAuthMixin):
         endpoints = ["/api/users", "/api/courses", "/api/terms", "/api/sections"]
 
         for endpoint in endpoints:
+            self._login_site_admin()
             response = self.client.post(endpoint, data="{}")
             # Should handle missing content type
             assert response.status_code in [400, 415, 500]
+            assert response.status_code != 401
 
     def test_empty_string_fields(self):
         """Test endpoints with empty string fields."""
         # Test user creation with empty strings
         user_data = {"email": "", "first_name": "", "last_name": "", "role": ""}
 
+        self._login_site_admin()
         response = self.client.post("/api/users", json=user_data)
         # Should validate empty strings as missing fields
         assert response.status_code == 400

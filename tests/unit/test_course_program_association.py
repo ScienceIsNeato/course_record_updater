@@ -8,10 +8,14 @@ Tests the course-program association functionality including:
 - Orphan course handling with default program assignment
 """
 
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from flask import Flask, session
+
+from tests.test_utils import CommonAuthMixin
 
 
 # Test the database service functions
@@ -335,15 +339,32 @@ class TestCourseProgramDatabaseService:
         mock_batch.commit.assert_called_once()
 
 
-class TestCourseProgramAPIEndpoints:
+class TestCourseProgramAPIEndpoints(CommonAuthMixin):
     """Test course-program association API endpoints"""
 
     def setup_method(self):
         """Set up test fixtures"""
-        from flask import Flask
-
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
+        self.app.secret_key = "test-secret-key"
+        self.client = self.app.test_client()
+
+    def _seed_session(self):
+        """Populate session with an authenticated site admin user"""
+        user_data = {**self._get_default_site_admin_user()}
+        session["user_id"] = user_data["user_id"]
+        session["email"] = user_data.get("email", "admin@test.com")
+        session["role"] = user_data["role"]
+        session["institution_id"] = user_data["institution_id"]
+        session["program_ids"] = user_data.get("program_ids", ["test-program-123"])
+        session["display_name"] = user_data.get("display_name", "Test Admin")
+
+    @contextmanager
+    def _authenticated_request_context(self):
+        """Request context preloaded with real-auth session data"""
+        with self.app.test_request_context():
+            self._seed_session()
+            yield
 
     @patch("api_routes.get_program_by_id")
     @patch("api_routes.get_courses_by_program")
@@ -351,7 +372,7 @@ class TestCourseProgramAPIEndpoints:
         """Test successful program courses retrieval"""
         from api_routes import get_program_courses
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             mock_get_program.return_value = {
                 "id": "cs-program",
                 "name": "Computer Science",
@@ -387,7 +408,7 @@ class TestCourseProgramAPIEndpoints:
         """Test program courses retrieval when program doesn't exist"""
         from api_routes import get_program_courses
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             mock_get_program.return_value = None
 
             with patch("api_routes.jsonify") as mock_jsonify:
@@ -403,7 +424,7 @@ class TestCourseProgramAPIEndpoints:
         """Test successful course addition to program"""
         from api_routes import add_course_to_program_api
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.get_program_by_id") as mock_get_program,
@@ -436,7 +457,7 @@ class TestCourseProgramAPIEndpoints:
         """Test course addition with missing required data"""
         from api_routes import add_course_to_program_api
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.jsonify") as mock_jsonify,
@@ -455,7 +476,7 @@ class TestCourseProgramAPIEndpoints:
         """Test successful bulk course addition"""
         from api_routes import bulk_manage_program_courses
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.get_program_by_id") as mock_get_program,
@@ -495,7 +516,7 @@ class TestCourseProgramAPIEndpoints:
         """Test bulk course management with invalid action"""
         from api_routes import bulk_manage_program_courses
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             with (
                 patch("api_routes.request") as mock_request,
                 patch("api_routes.jsonify") as mock_jsonify,
@@ -521,7 +542,7 @@ class TestCourseProgramAPIEndpoints:
         """Test successful course programs retrieval"""
         from api_routes import get_course_programs
 
-        with self.app.test_request_context():
+        with self._authenticated_request_context():
             mock_get_course.return_value = {
                 "course_id": "course1",
                 "course_title": "Introduction to Computer Science",

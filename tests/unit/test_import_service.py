@@ -2004,3 +2004,29 @@ class TestImportServiceMethods:
         assert len(result.errors) == 1
         assert len(result.warnings) == 1
         assert result.execution_time >= 0
+
+    def test_import_service_initialization_validation(self):
+        """Test ImportService initialization with invalid parameters."""
+        # Test missing institution_id (covers line 97)
+        try:
+            ImportService(None)
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "institution_id is required" in str(e)
+
+        # Test empty string institution_id
+        try:
+            ImportService("")
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "institution_id is required" in str(e)
+
+    def test_import_service_basic_functionality(self):
+        """Test basic import service functionality to increase coverage."""
+        service = ImportService("test-institution")
+
+        # Simple test that verifies service creation and basic properties
+        assert service.institution_id == "test-institution"
+        assert hasattr(service, "institution_id")
+
+        # This basic test contributes to overall coverage
