@@ -2782,6 +2782,7 @@ class TestAPIRoutesValidation:
         from app import app
 
         app.config["SECRET_KEY"] = "test-secret-key"
+        self.app = app
         self.client = app.test_client()
 
     @patch("api_routes.has_permission")
@@ -2791,6 +2792,17 @@ class TestAPIRoutesValidation:
         self, mock_get_institution_id, mock_import_excel, mock_has_permission
     ):
         """Test import file validation endpoint."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_get_institution_id.return_value = "test-institution"
 
@@ -2828,6 +2840,17 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_no_file(self):
         """Test validation endpoint with no file."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         with patch("api_routes.has_permission", return_value=True):
             response = self.client.post("/api/import/validate")
 
@@ -2837,6 +2860,17 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_empty_filename(self):
         """Test validation endpoint with empty filename."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2850,6 +2884,17 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_invalid_file_type(self):
         """Test validation endpoint with invalid file type."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2873,6 +2918,17 @@ class TestAPIRoutesValidation:
         mock_has_permission,
     ):
         """Test validation endpoint cleanup error handling."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
         mock_get_institution_id.return_value = "test-institution"
         mock_unlink.side_effect = OSError("Permission denied")
