@@ -2550,7 +2550,7 @@ class TestDatabaseQueryAggregations:
         mock_db.collection.return_value = courses_collection
 
         courses = database_service.get_courses_by_program("prog-9")
-        assert courses == [{"name": "Course", "id": "course-9"}]
+        assert courses == [{"name": "Course", "course_id": "course-9"}]
 
     @patch("database_service.db")
     def test_get_user_by_verification_token(self, mock_db):

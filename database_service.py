@@ -2004,7 +2004,7 @@ def get_courses_by_program(program_id: str) -> List[Dict[str, Any]]:
 
             for doc in query.stream():
                 course_data = doc.to_dict()
-                course_data["id"] = doc.id
+                course_data["course_id"] = doc.id
                 courses.append(course_data)
 
             logger.info(

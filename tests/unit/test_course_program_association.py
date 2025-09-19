@@ -56,9 +56,9 @@ class TestCourseProgramDatabaseService:
         result = get_courses_by_program("cs-program")
 
         assert len(result) == 2
-        assert result[0]["id"] == "course1"
+        assert result[0]["course_id"] == "course1"
         assert result[0]["course_number"] == "CS101"
-        assert result[1]["id"] == "course2"
+        assert result[1]["course_id"] == "course2"
         assert result[1]["course_number"] == "CS201"
 
         mock_collection.where.assert_called_once_with(
@@ -379,12 +379,12 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
             }
             mock_get_courses.return_value = [
                 {
-                    "id": "course1",
+                    "course_id": "course1",
                     "course_number": "CS101",
                     "course_title": "Intro to CS",
                 },
                 {
-                    "id": "course2",
+                    "course_id": "course2",
                     "course_number": "CS201",
                     "course_title": "Data Structures",
                 },
