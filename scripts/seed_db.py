@@ -41,6 +41,7 @@ class DatabaseSeeder:
             "courses": [],
             "terms": [],
             "sections": [],
+            "course_outcomes": [],
             "invitations": [],
         }
 
@@ -56,6 +57,7 @@ class DatabaseSeeder:
         collections = [
             "user_invitations",
             "course_sections",
+            "course_outcomes",
             "course_offerings",
             "terms",
             "courses",
@@ -782,6 +784,8 @@ class DatabaseSeeder:
                         "term_id": term_id,
                         "section_number": section_number,
                         "instructor_id": instructor_id,
+                        "institution_id": institution_id,  # Add institution_id for filtering
+                        "course_number": course.get('course_number', 'Unknown'),  # Add for display
                         "enrollment": 15 + (section_num * 5),  # Vary enrollment
                         "status": "assigned" if instructor_id else "unassigned",
                     }
@@ -811,6 +815,130 @@ class DatabaseSeeder:
 
         self.log(f"   Created {len(section_ids)} course sections")
         return section_ids
+
+    def create_course_outcomes(self, course_ids: List[str]) -> List[str]:
+        """Create course learning outcomes (CLOs) for courses"""
+        self.log("🎯 Creating course learning outcomes (CLOs)...")
+
+        from database_service import create_course_outcome, get_course_by_id
+        from models import CourseOutcome
+
+        outcome_ids = []
+
+        # Sample CLO templates by course subject
+        clo_templates = {
+            "CS": [
+                {
+                    "clo_number": "CLO1",
+                    "description": "Students will demonstrate proficiency in fundamental programming concepts including variables, control structures, and functions.",
+                    "assessment_method": "Programming assignments and exams"
+                },
+                {
+                    "clo_number": "CLO2", 
+                    "description": "Students will analyze and solve computational problems using appropriate algorithms and data structures.",
+                    "assessment_method": "Project deliverables and practical assessments"
+                },
+                {
+                    "clo_number": "CLO3",
+                    "description": "Students will effectively communicate technical solutions through documentation and presentations.",
+                    "assessment_method": "Technical reports and oral presentations"
+                }
+            ],
+            "EE": [
+                {
+                    "clo_number": "CLO1",
+                    "description": "Students will apply fundamental electrical engineering principles to analyze circuits and systems.",
+                    "assessment_method": "Laboratory reports and circuit analysis assignments"
+                },
+                {
+                    "clo_number": "CLO2",
+                    "description": "Students will design and implement electrical systems that meet specified requirements.",
+                    "assessment_method": "Design projects and practical demonstrations"
+                },
+                {
+                    "clo_number": "CLO3",
+                    "description": "Students will use industry-standard tools and measurement techniques in electrical engineering practice.",
+                    "assessment_method": "Laboratory exercises and equipment proficiency tests"
+                }
+            ],
+            "ENG": [
+                {
+                    "clo_number": "CLO1",
+                    "description": "Students will produce clear, coherent, and well-organized written compositions.",
+                    "assessment_method": "Essay assignments and portfolio review"
+                },
+                {
+                    "clo_number": "CLO2",
+                    "description": "Students will demonstrate critical thinking skills through analysis of texts and arguments.",
+                    "assessment_method": "Analytical essays and discussion participation"
+                }
+            ],
+            "BUS": [
+                {
+                    "clo_number": "CLO1",
+                    "description": "Students will understand fundamental business concepts and their practical applications.",
+                    "assessment_method": "Case study analysis and examinations"
+                },
+                {
+                    "clo_number": "CLO2",
+                    "description": "Students will analyze business problems and propose viable solutions.",
+                    "assessment_method": "Business plan presentations and problem-solving exercises"
+                }
+            ],
+            "ME": [
+                {
+                    "clo_number": "CLO1",
+                    "description": "Students will apply principles of mechanics to analyze engineering systems.",
+                    "assessment_method": "Problem sets and laboratory experiments"
+                },
+                {
+                    "clo_number": "CLO2",
+                    "description": "Students will design mechanical systems that meet specified performance criteria.",
+                    "assessment_method": "Design projects and CAD modeling assignments"
+                }
+            ]
+        }
+
+        for course_id in course_ids:
+            try:
+                # Get course details
+                course = get_course_by_id(course_id)
+                if not course:
+                    continue
+
+                course_number = course.get("course_number", "")
+                subject = course_number.split("-")[0] if "-" in course_number else "GENERAL"
+                
+                # Get appropriate CLO templates
+                templates = clo_templates.get(subject, clo_templates["CS"][:2])  # Default to 2 CS CLOs
+                
+                for template in templates:
+                    try:
+                        # Create CLO schema
+                        outcome_schema = CourseOutcome.create_schema(
+                            course_id=course_id,
+                            clo_number=template["clo_number"],
+                            description=template["description"],
+                            assessment_method=template["assessment_method"]
+                        )
+
+                        # Create outcome in database
+                        outcome_id = create_course_outcome(outcome_schema)
+                        outcome_ids.append(outcome_id)
+                        self.created_entities["course_outcomes"].append(outcome_id)
+
+                        self.log(
+                            f"   Created CLO: {course_number} {template['clo_number']}"
+                        )
+
+                    except Exception as e:
+                        self.log(f"   Error creating CLO for {course_number}: {e}")
+
+            except Exception as e:
+                self.log(f"   Error processing course {course_id}: {e}")
+
+        self.log(f"   Created {len(outcome_ids)} course learning outcomes")
+        return outcome_ids
 
     def create_sample_invitations(
         self, institution_ids: List[str], admin_ids: List[str]
@@ -905,6 +1033,10 @@ class DatabaseSeeder:
         # Create course sections
         if course_ids:
             self.create_sections(course_ids, institution_ids)
+
+        # Create course outcomes (CLOs)
+        if course_ids:
+            self.create_course_outcomes(course_ids)
 
         # Create sample invitations
         self.create_sample_invitations(institution_ids, admin_ids)

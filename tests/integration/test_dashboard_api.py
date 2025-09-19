@@ -24,29 +24,28 @@ class TestDashboardAPI:
         port = os.environ.get("COURSE_RECORD_UPDATER_PORT", "3001")
         return f"http://localhost:{port}"
 
-    def test_main_dashboard_endpoints(self, base_url: str):
-        """Test that all main dashboard endpoints are accessible (not 404)"""
-        endpoints = ["/api/courses", "/api/instructors", "/api/sections", "/api/terms"]
+    def test_dashboard_data_endpoint(self, base_url: str):
+        """Ensure the aggregated dashboard endpoint is reachable."""
+        endpoint = f"{base_url}/api/dashboard/data"
 
-        for endpoint in endpoints:
-            try:
-                response = requests.get(f"{base_url}{endpoint}", timeout=10)
-                # With authentication enabled, unauthenticated requests return 401
-                # Accept 401 (unauthorized) as proof the endpoint exists and auth is working
-                # Accept any non-404 response - endpoints may return empty data or require auth
-                assert response.status_code != 404, f"Endpoint {endpoint} returned 404"
-                if response.status_code == 401:
-                    print(
-                        f"✅ Endpoint {endpoint} requires authentication (status: 401)"
-                    )
-                else:
-                    print(
-                        f"✅ Endpoint {endpoint} accessible (status: {response.status_code})"
-                    )
-            except requests.exceptions.Timeout:
-                # If timeout, endpoint exists but is slow
-                print(f"Endpoint {endpoint} timed out - but exists!")
-                continue
+        try:
+            response = requests.get(
+                endpoint,
+                timeout=10,
+                headers={"Accept": "application/json"},
+            )
+        except requests.exceptions.ConnectionError as exc:
+            pytest.skip(f"Dashboard server unavailable: {exc}")
+        except requests.exceptions.Timeout:
+            pytest.skip("Dashboard server timed out while fetching data")
+
+        # Without authentication we should receive a 401 JSON response
+        if response.status_code == 401:
+            payload = response.json()
+            assert payload.get("error_code") == "AUTH_REQUIRED"
+        else:
+            assert response.status_code != 404, "Dashboard endpoint returned 404"
+            assert response.ok, f"Unexpected status code: {response.status_code}"
 
 
 class TestDashboardFrontend:
@@ -131,24 +130,29 @@ class TestDashboardFrontend:
             EC.presence_of_element_located((By.CLASS_NAME, "card"))
         )
 
-        # Look for the Course Management Dashboard card
-        dashboard = driver.find_element(
-            By.XPATH,
-            "//div[contains(@class, 'card-header') and contains(text(), 'Course Management Dashboard')]",
+        # Look for the panel-based dashboard layout
+        panels = driver.find_elements(By.CSS_SELECTOR, ".dashboard-panel")
+        assert panels, "Expected at least one dashboard panel"
+
+        # Ensure panel titles rendered
+        panel_titles = driver.find_elements(
+            By.CSS_SELECTOR, ".dashboard-panel .panel-title"
         )
-        assert dashboard is not None, "Course Management Dashboard card not found"
+        assert panel_titles, "Dashboard panel titles not found"
 
-        # Check that data loading spinners are eventually replaced
-        time.sleep(2)  # Give time for async loading
+        # Give async data fetch a moment to populate panels
+        time.sleep(2)
 
-        # Verify that at least some content is present (not just loading spinners)
-        content_areas = driver.find_elements(
-            By.CSS_SELECTOR, "#coursesData, #instructorsData, #sectionsData, #termsData"
+        # Verify that at least one panel replaced its loading placeholder
+        panel_contents = driver.find_elements(
+            By.CSS_SELECTOR, ".dashboard-panel .panel-content"
         )
-        assert len(content_areas) == 4, "Expected 4 dashboard data areas"
-
-        # At least one should not be showing a loading spinner anymore
-        loading_spinners = driver.find_elements(By.CSS_SELECTOR, ".spinner-border")
+        assert panel_contents, "Dashboard panel content areas missing"
+        fully_loaded = [
+            content
+            for content in panel_contents
+            if "panel-loading" not in content.get_attribute("innerHTML")
+        ]
         assert (
-            len(loading_spinners) < 4
-        ), "Dashboard still showing loading spinners after 2 seconds"
+            fully_loaded
+        ), "Dashboard panels still show only loading placeholders after wait"

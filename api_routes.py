@@ -22,6 +22,7 @@ from auth_service import (
     permission_required,
     set_current_program_id,
 )
+from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
     add_course_to_program,
     assign_course_to_default_program,
@@ -159,6 +160,20 @@ def validate_context():
         logger.error(f"Context validation error: {e}")
         # Don't block requests on validation errors, let them proceed
         return
+
+
+@api.route("/dashboard/data", methods=["GET"])
+@login_required
+def get_dashboard_data_route():
+    """Return aggregated dashboard data for the current user."""
+    try:
+        service = DashboardService()
+        payload = service.get_dashboard_data(get_current_user())
+        return jsonify({"success": True, "data": payload})
+    except DashboardServiceError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception as exc:
+        return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
 
 
 # Constants for error messages to avoid duplication

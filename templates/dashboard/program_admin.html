@@ -2,206 +2,194 @@
 
 {% block title %}Program Administrator Dashboard - CEI Course Admin{% endblock %}
 
-{% block nav_items %}
-<a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<a class="nav-link" href="#" onclick="showCourses()"><i class="fas fa-book me-1"></i>Courses</a>
-<a class="nav-link" href="#" onclick="showInstructors()"><i class="fas fa-chalkboard-teacher me-1"></i>Instructors</a>
-<a class="nav-link" href="#" onclick="showSections()"><i class="fas fa-list me-1"></i>Sections</a>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
 {% endblock %}
 
-{% block page_title %}Program Administrator Dashboard{% endblock %}
-{% block page_subtitle %}Manage your program's courses, instructors, and sections{% endblock %}
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-book me-1"></i>Courses</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-users me-1"></i>Faculty</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-bullseye me-1"></i>CLOs</a>
+{% endblock %}
+
+{% block page_title %}📚 Program Administration{% endblock %}
+{% block page_subtitle %}Manage curriculum and assessment outcomes{% endblock %}
 
 {% block content %}
-<!-- Program Info -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-success mb-1">{{ user.program_names[0] if user.program_names else 'Your Program' }}</h5>
-                        <p class="text-muted mb-0">{{ user.institution_name or 'Institution' }} • Program Administrator</p>
-                    </div>
-                    <div>
-                        {% if user.program_names|length > 1 %}
-                        <div class="dropdown">
-                            <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                Switch Program
-                            </button>
-                            <ul class="dropdown-menu">
-                                {% for program in user.program_names %}
-                                <li><a class="dropdown-item" href="#" onclick="switchProgram('{{ program }}')">{{ program }}</a></li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
-                        <button class="btn btn-outline-success ms-2" onclick="editProgramSettings()">
-                            <i class="fas fa-cog me-1"></i>Settings
-                        </button>
-                    </div>
-                </div>
+<div class="header-stats">
+    <span id="programAdminTitle">Program Overview</span>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="programCourseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="faculty">
+        [<span class="stat-number" id="programFacultyCount">0</span> Faculty]
+    </div>
+    <div class="stat-item" data-stat="students">
+        [<span class="stat-number" id="programStudentCount">0</span> Students]
+    </div>
+    <div class="stat-item" data-stat="sections">
+        [<span class="stat-number" id="programSectionCount">0</span> Sections]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="programRefreshButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="programLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Course Management -->
+<div class="dashboard-panel" id="program-courses-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📖</span>
+            Course Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Course
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-edit"></i> Edit CLOs
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programCoursesContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading courses...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Stats -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card border-primary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-primary">Courses</h5>
-                        <h3 class="mb-0" id="courseCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-primary">
-                        <i class="fas fa-book fa-2x"></i>
-                    </div>
-                </div>
-            </div>
+<!-- Panel 2: Faculty Assignments -->
+<div class="dashboard-panel" id="program-faculty-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">👨‍🏫</span>
+            Faculty Assignments
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-success" title="Coming soon" onclick="return false;">
+                <i class="fas fa-user-plus"></i> Assign Courses
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-envelope"></i> Send Reminders
+            </button>
         </div>
+        <button class="panel-toggle">▼</button>
     </div>
-    <div class="col-md-3">
-        <div class="card border-info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-info">Instructors</h5>
-                        <h3 class="mb-0" id="instructorCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-info">
-                        <i class="fas fa-chalkboard-teacher fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-warning">Active Sections</h5>
-                        <h3 class="mb-0" id="sectionCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-warning">
-                        <i class="fas fa-list fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-secondary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-secondary">Current Term</h5>
-                        <h3 class="mb-0" id="currentTerm">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-secondary">
-                        <i class="fas fa-calendar fa-2x"></i>
-                    </div>
-                </div>
+    <div class="panel-content">
+        <div id="programFacultyContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading faculty...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Management Sections -->
-<div class="row">
-    <!-- Course Management -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-book me-2"></i>Course Management</h5>
-                <button class="btn btn-primary btn-sm" onclick="createCourse()">
-                    <i class="fas fa-plus me-1"></i>New Course
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="coursesList">
-                    <div class="text-center py-3">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 text-muted">Loading courses...</p>
-                    </div>
-                </div>
-            </div>
+<!-- Panel 3: CLO Management -->
+<div class="dashboard-panel" id="program-clo-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🎯</span>
+            Course Learning Outcomes
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add CLO
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-layer-group"></i> Bulk Edit
+            </button>
         </div>
+        <button class="panel-toggle">▼</button>
     </div>
-
-    <!-- Instructor Management -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Instructor Management</h5>
-                <button class="btn btn-success btn-sm" onclick="inviteInstructor()">
-                    <i class="fas fa-user-plus me-1"></i>Invite Instructor
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="instructorsList">
-                    <div class="text-center py-3">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 text-muted">Loading instructors...</p>
-                    </div>
-                </div>
+    <div class="panel-content">
+        <div id="programCloContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading outcomes...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Section Management -->
-<div class="row">
-    <div class="col-12 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Section Management</h5>
-                <div>
-                    <button class="btn btn-info btn-sm me-2" onclick="createSection()">
-                        <i class="fas fa-plus me-1"></i>New Section
+<!-- Panel 4: Assessment Results -->
+<div class="dashboard-panel" id="program-assessment-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Assessment Results
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary" onclick="return false;">
+                <i class="fas fa-file-alt"></i> Detailed View
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programAssessmentContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading assessment results...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 5: Data Export -->
+<div class="dashboard-panel" id="program-export-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📄</span>
+            Data Export
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▲</button>
+    </div>
+    <div class="panel-content collapsed">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Quick Export Options</h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-book"></i> Courses
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="manageTerms()">
-                        <i class="fas fa-calendar me-1"></i>Terms
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-users"></i> Faculty Assignments
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-bullseye"></i> CLOs
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-chart-line"></i> Assessment Results
                     </button>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <select class="form-select" id="termFilter" onchange="filterSections()">
-                            <option value="">All Terms</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select class="form-select" id="courseFilter" onchange="filterSections()">
-                            <option value="">All Courses</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select class="form-select" id="statusFilter" onchange="filterSections()">
-                            <option value="">All Statuses</option>
-                            <option value="assigned">Assigned</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                    </div>
+            <div class="col-md-6">
+                <h6>Export Formats</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatCSV" value="csv" checked>
+                    <label class="form-check-label" for="programFormatCSV">CSV</label>
                 </div>
-                <div id="sectionsList">
-                    <div class="text-center py-3">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 text-muted">Loading sections...</p>
-                    </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatExcel" value="excel">
+                    <label class="form-check-label" for="programFormatExcel">Excel</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatJSON" value="json">
+                    <label class="form-check-label" for="programFormatJSON">JSON</label>
                 </div>
             </div>
         </div>
@@ -210,287 +198,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Program Admin Dashboard JavaScript
-    document.addEventListener('DOMContentLoaded', function() {
-        loadProgramAdminData();
-    });
-
-    async function loadProgramAdminData() {
-        try {
-            await Promise.all([
-                loadCourseCount(),
-                loadInstructorCount(),
-                loadSectionCount(),
-                loadCurrentTerm(),
-                loadCoursesList(),
-                loadInstructorsList(),
-                loadSectionsList(),
-                loadFilters()
-            ]);
-        } catch (error) {
-            console.error('Error loading program admin data:', error);
-        }
-    }
-
-    async function loadCourseCount() {
-        try {
-            const response = await fetch('/api/courses');
-            const data = await response.json();
-            document.getElementById('courseCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('courseCount').textContent = 'Error';
-        }
-    }
-
-    async function loadInstructorCount() {
-        try {
-            const response = await fetch('/api/instructors');
-            const data = await response.json();
-            document.getElementById('instructorCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('instructorCount').textContent = 'Error';
-        }
-    }
-
-    async function loadSectionCount() {
-        try {
-            const response = await fetch('/api/sections');
-            const data = await response.json();
-            document.getElementById('sectionCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('sectionCount').textContent = 'Error';
-        }
-    }
-
-    async function loadCurrentTerm() {
-        try {
-            const response = await fetch('/api/terms');
-            const data = await response.json();
-            if (data.success && data.terms && data.terms.length > 0) {
-                // Find current term or use the most recent
-                const currentTerm = data.terms[0]; // Assuming first is current
-                document.getElementById('currentTerm').textContent = currentTerm.name || 'N/A';
-            } else {
-                document.getElementById('currentTerm').textContent = 'N/A';
-            }
-        } catch (error) {
-            document.getElementById('currentTerm').textContent = 'Error';
-        }
-    }
-
-    async function loadCoursesList() {
-        try {
-            const response = await fetch('/api/courses');
-            const data = await response.json();
-            
-            const container = document.getElementById('coursesList');
-            if (data.success && data.courses) {
-                container.innerHTML = data.courses.slice(0, 5).map(course => `
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>${course.course_number} - ${course.name}</strong>
-                            <br><small class="text-muted">${course.credit_hours || 0} credit hours</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline-primary btn-sm me-1" onclick="editCourse('${course.course_id}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-info btn-sm" onclick="viewCourse('${course.course_id}')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p class="text-muted">No courses found</p>';
-            }
-        } catch (error) {
-            document.getElementById('coursesList').innerHTML = '<p class="text-danger">Error loading courses</p>';
-        }
-    }
-
-    async function loadInstructorsList() {
-        try {
-            const response = await fetch('/api/instructors');
-            const data = await response.json();
-            
-            const container = document.getElementById('instructorsList');
-            if (data.success && data.instructors) {
-                container.innerHTML = data.instructors.slice(0, 5).map(instructor => `
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>${instructor.first_name} ${instructor.last_name}</strong>
-                            <br><small class="text-muted">${instructor.email}</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline-info btn-sm" onclick="viewInstructor('${instructor.user_id}')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p class="text-muted">No instructors found</p>';
-            }
-        } catch (error) {
-            document.getElementById('instructorsList').innerHTML = '<p class="text-danger">Error loading instructors</p>';
-        }
-    }
-
-    async function loadSectionsList() {
-        try {
-            const response = await fetch('/api/sections');
-            const data = await response.json();
-            
-            const container = document.getElementById('sectionsList');
-            if (data.success && data.sections) {
-                container.innerHTML = `
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Course</th>
-                                    <th>Section</th>
-                                    <th>Instructor</th>
-                                    <th>Term</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.sections.map(section => `
-                                    <tr>
-                                        <td>${section.course_number || 'N/A'}</td>
-                                        <td>${section.section_number || 'N/A'}</td>
-                                        <td>${section.instructor_name || 'Unassigned'}</td>
-                                        <td>${section.term_name || 'N/A'}</td>
-                                        <td>
-                                            <span class="badge bg-${getStatusColor(section.status)}">${section.status || 'N/A'}</span>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-outline-primary btn-sm me-1" onclick="editSection('${section.section_id}')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline-info btn-sm" onclick="viewSection('${section.section_id}')">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = '<p class="text-muted">No sections found</p>';
-            }
-        } catch (error) {
-            document.getElementById('sectionsList').innerHTML = '<p class="text-danger">Error loading sections</p>';
-        }
-    }
-
-    async function loadFilters() {
-        try {
-            // Load terms for filter
-            const termsResponse = await fetch('/api/terms');
-            const termsData = await termsResponse.json();
-            if (termsData.success && termsData.terms) {
-                const termFilter = document.getElementById('termFilter');
-                termsData.terms.forEach(term => {
-                    const option = document.createElement('option');
-                    option.value = term.term_id;
-                    option.textContent = term.name;
-                    termFilter.appendChild(option);
-                });
-            }
-
-            // Load courses for filter
-            const coursesResponse = await fetch('/api/courses');
-            const coursesData = await coursesResponse.json();
-            if (coursesData.success && coursesData.courses) {
-                const courseFilter = document.getElementById('courseFilter');
-                coursesData.courses.forEach(course => {
-                    const option = document.createElement('option');
-                    option.value = course.course_id;
-                    option.textContent = `${course.course_number} - ${course.name}`;
-                    courseFilter.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error('Error loading filters:', error);
-        }
-    }
-
-    function getStatusColor(status) {
-        switch (status) {
-            case 'assigned': return 'warning';
-            case 'in_progress': return 'primary';
-            case 'completed': return 'success';
-            default: return 'secondary';
-        }
-    }
-
-    function filterSections() {
-        // Reload sections with filters
-        loadSectionsList();
-    }
-
-    // Action functions
-    function createCourse() {
-        alert('Create Course feature coming soon!');
-    }
-
-    function editCourse(id) {
-        alert(`Edit Course ${id} feature coming soon!`);
-    }
-
-    function viewCourse(id) {
-        alert(`View Course ${id} feature coming soon!`);
-    }
-
-    function inviteInstructor() {
-        alert('Invite Instructor feature coming soon!');
-    }
-
-    function viewInstructor(id) {
-        alert(`View Instructor ${id} feature coming soon!`);
-    }
-
-    function createSection() {
-        alert('Create Section feature coming soon!');
-    }
-
-    function editSection(id) {
-        alert(`Edit Section ${id} feature coming soon!`);
-    }
-
-    function viewSection(id) {
-        alert(`View Section ${id} feature coming soon!`);
-    }
-
-    function manageTerms() {
-        alert('Manage Terms feature coming soon!');
-    }
-
-    function editProgramSettings() {
-        alert('Program Settings feature coming soon!');
-    }
-
-    function switchProgram(programName) {
-        alert(`Switch to Program ${programName} feature coming soon!`);
-    }
-
-    function showCourses() {
-        alert('Courses management feature coming soon!');
-    }
-
-    function showInstructors() {
-        alert('Instructors management feature coming soon!');
-    }
-
-    function showSections() {
-        alert('Sections management feature coming soon!');
-    }
-</script>
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
 {% endblock %}

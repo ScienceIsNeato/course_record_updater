@@ -2,191 +2,195 @@
 
 {% block title %}Institution Administrator Dashboard - CEI Course Admin{% endblock %}
 
-{% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<a class="nav-link" href="#" onclick="showPrograms()"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
-<a class="nav-link" href="#" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</a>
-<a class="nav-link" href="#" onclick="showReports()"><i class="fas fa-chart-bar me-1"></i>Reports</a>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
 {% endblock %}
 
-{% block page_title %}Institution Administrator Dashboard{% endblock %}
-{% block page_subtitle %}Manage programs, users, and institutional data{% endblock %}
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-users me-1"></i>Faculty</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-chart-bar me-1"></i>Outcomes</a>
+{% endblock %}
+
+{% block page_title %}🏛️ Institution Administration{% endblock %}
+{% block page_subtitle %}Manage programs, faculty, and outcomes{% endblock %}
 
 {% block content %}
-<!-- Institution Info -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card border-primary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-primary mb-1">{{ user.institution_name or 'Your Institution' }}</h5>
-                        <p class="text-muted mb-0">Institution ID: {{ user.institution_id }}</p>
-                    </div>
-                    <button class="btn btn-outline-primary" onclick="editInstitutionSettings()">
-                        <i class="fas fa-cog me-1"></i>Settings
-                    </button>
-                </div>
+<div class="header-stats">
+    <span id="institutionName">{{ user.institution_name or 'Institution Overview' }}</span>
+    <span>Current Term: <strong id="currentTermName">--</strong></span>
+    <div class="stat-item" data-stat="programs">
+        [<span class="stat-number" id="programCount">0</span> Programs]
+    </div>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="courseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="faculty">
+        [<span class="stat-number" id="facultyCount">0</span> Faculty]
+    </div>
+    <div class="stat-item" data-stat="sections">
+        [<span class="stat-number" id="sectionCount">0</span> Sections]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="institutionRefreshButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="institutionLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Program Management -->
+<div class="dashboard-panel" id="institution-program-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📚</span>
+            Program Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Program
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-sliders-h"></i> Configure Programs
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading programs...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Stats -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card border-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-success">Programs</h5>
-                        <h3 class="mb-0" id="programCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-success">
-                        <i class="fas fa-graduation-cap fa-2x"></i>
-                    </div>
-                </div>
-            </div>
+<!-- Panel 2: Faculty Overview -->
+<div class="dashboard-panel" id="institution-faculty-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">👨‍🏫</span>
+            Faculty Overview
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-success" title="Coming soon" onclick="return false;">
+                <i class="fas fa-user-plus"></i> Invite Faculty
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-envelope"></i> Send Reminders
+            </button>
         </div>
+        <button class="panel-toggle">▼</button>
     </div>
-    <div class="col-md-3">
-        <div class="card border-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-warning">Active Courses</h5>
-                        <h3 class="mb-0" id="courseCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-warning">
-                        <i class="fas fa-book fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-info">Faculty</h5>
-                        <h3 class="mb-0" id="facultyCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-info">
-                        <i class="fas fa-chalkboard-teacher fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card border-secondary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title text-secondary">Sections</h5>
-                        <h3 class="mb-0" id="sectionCount">
-                            <div class="spinner-border spinner-border-sm" role="status"></div>
-                        </h3>
-                    </div>
-                    <div class="text-secondary">
-                        <i class="fas fa-list fa-2x"></i>
-                    </div>
-                </div>
+    <div class="panel-content">
+        <div id="facultyOverviewContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading faculty...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Management Sections -->
-<div class="row">
-    <!-- Program Management -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Program Management</h5>
-                <button class="btn btn-primary btn-sm" onclick="createProgram()">
-                    <i class="fas fa-plus me-1"></i>New Program
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="programsList">
-                    <div class="text-center py-3">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 text-muted">Loading programs...</p>
-                    </div>
-                </div>
-            </div>
+<!-- Panel 3: Course Sections -->
+<div class="dashboard-panel" id="institution-sections-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📖</span>
+            Course Sections (Current Term)
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Section
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-upload"></i> Bulk Actions
+            </button>
         </div>
+        <button class="panel-toggle">▼</button>
     </div>
-
-    <!-- User Management -->
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-users me-2"></i>User Management</h5>
-                <button class="btn btn-success btn-sm" onclick="inviteUser()">
-                    <i class="fas fa-user-plus me-1"></i>Invite User
-                </button>
-            </div>
-            <div class="card-body">
-                <div id="usersList">
-                    <div class="text-center py-3">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 text-muted">Loading users...</p>
-                    </div>
-                </div>
+    <div class="panel-content">
+        <div id="courseSectionContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading sections...
             </div>
         </div>
     </div>
 </div>
 
-<!-- Data Import and Reports -->
-<div class="row">
-    <div class="col-md-8 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Data Import</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">Import course data from Excel files</p>
-                <div class="d-grid gap-2 d-md-flex">
-                    <button class="btn btn-outline-primary" onclick="importCourseData()">
-                        <i class="fas fa-file-excel me-1"></i>Import Excel
-                    </button>
-                    <button class="btn btn-outline-secondary" onclick="downloadTemplate()">
-                        <i class="fas fa-download me-1"></i>Download Template
-                    </button>
-                    <button class="btn btn-outline-info" onclick="viewImportHistory()">
-                        <i class="fas fa-history me-1"></i>Import History
-                    </button>
-                </div>
+<!-- Panel 4: Assessment Progress -->
+<div class="dashboard-panel" id="institution-assessment-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Assessment Progress
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-warning" title="Coming soon" onclick="return false;">
+                <i class="fas fa-bell"></i> Send Reminders
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="assessmentProgressContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading assessment data...
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-md-4 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Quick Reports</h5>
-            </div>
-            <div class="card-body">
+<!-- Panel 5: Data Export -->
+<div class="dashboard-panel" id="institution-export-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📄</span>
+            Data Export
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▲</button>
+    </div>
+    <div class="panel-content collapsed">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Quick Export Options</h6>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" onclick="generateEnrollmentReport()">
-                        <i class="fas fa-users me-1"></i>Enrollment Report
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-graduation-cap"></i> Programs
                     </button>
-                    <button class="btn btn-outline-success btn-sm" onclick="generateCourseReport()">
-                        <i class="fas fa-book me-1"></i>Course Report
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-users"></i> Faculty
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="generateFacultyReport()">
-                        <i class="fas fa-chalkboard-teacher me-1"></i>Faculty Report
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-book"></i> Courses
                     </button>
+                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                        <i class="fas fa-tasks"></i> Assessments
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Export Formats</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatCSV" value="csv" checked>
+                    <label class="form-check-label" for="institutionFormatCSV">CSV</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatExcel" value="excel">
+                    <label class="form-check-label" for="institutionFormatExcel">Excel</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatJSON" value="json">
+                    <label class="form-check-label" for="institutionFormatJSON">JSON</label>
                 </div>
             </div>
         </div>
@@ -195,190 +199,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Institution Admin Dashboard JavaScript
-    document.addEventListener('DOMContentLoaded', function() {
-        loadInstitutionAdminData();
-    });
-
-    async function loadInstitutionAdminData() {
-        try {
-            await Promise.all([
-                loadProgramCount(),
-                loadCourseCount(),
-                loadFacultyCount(),
-                loadSectionCount(),
-                loadProgramsList(),
-                loadUsersList()
-            ]);
-        } catch (error) {
-            console.error('Error loading institution admin data:', error);
-        }
-    }
-
-    async function loadProgramCount() {
-        try {
-            const response = await fetch('/api/programs', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            document.getElementById('programCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('programCount').textContent = 'Error';
-        }
-    }
-
-    async function loadCourseCount() {
-        try {
-            const response = await fetch('/api/courses', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            document.getElementById('courseCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('courseCount').textContent = 'Error';
-        }
-    }
-
-    async function loadFacultyCount() {
-        try {
-            const response = await fetch('/api/instructors', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            document.getElementById('facultyCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('facultyCount').textContent = 'Error';
-        }
-    }
-
-    async function loadSectionCount() {
-        try {
-            const response = await fetch('/api/sections', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            document.getElementById('sectionCount').textContent = data.count || 0;
-        } catch (error) {
-            document.getElementById('sectionCount').textContent = 'Error';
-        }
-    }
-
-    async function loadProgramsList() {
-        try {
-            const response = await fetch('/api/programs', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            
-            const container = document.getElementById('programsList');
-            if (data.success && data.programs) {
-                container.innerHTML = data.programs.map(program => `
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>${program.name}</strong>
-                            <br><small class="text-muted">${program.short_name}</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline-primary btn-sm me-1" onclick="editProgram('${program.program_id}')">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-info btn-sm" onclick="viewProgram('${program.program_id}')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p class="text-muted">No programs found</p>';
-            }
-        } catch (error) {
-            document.getElementById('programsList').innerHTML = '<p class="text-danger">Error loading programs</p>';
-        }
-    }
-
-    async function loadUsersList() {
-        try {
-            const response = await fetch('/api/users', {
-                credentials: 'include'
-            });
-            const data = await response.json();
-            
-            const container = document.getElementById('usersList');
-            if (data.success && data.users) {
-                container.innerHTML = data.users.slice(0, 5).map(user => `
-                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                        <div>
-                            <strong>${user.first_name} ${user.last_name}</strong>
-                            <br><small class="text-muted">${user.email}</small>
-                        </div>
-                        <span class="badge bg-secondary">${user.role.replace('_', ' ')}</span>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = '<p class="text-muted">No users found</p>';
-            }
-        } catch (error) {
-            document.getElementById('usersList').innerHTML = '<p class="text-danger">Error loading users</p>';
-        }
-    }
-
-    // Action functions
-    function createProgram() {
-        alert('Create Program feature coming soon!');
-    }
-
-    function editProgram(id) {
-        alert(`Edit Program ${id} feature coming soon!`);
-    }
-
-    function viewProgram(id) {
-        alert(`View Program ${id} feature coming soon!`);
-    }
-
-    function inviteUser() {
-        alert('Invite User feature coming soon!');
-    }
-
-    function importCourseData() {
-        // Redirect to main import page
-        window.location.href = '/';
-    }
-
-    function downloadTemplate() {
-        alert('Download Template feature coming soon!');
-    }
-
-    function viewImportHistory() {
-        alert('Import History feature coming soon!');
-    }
-
-    function generateEnrollmentReport() {
-        alert('Enrollment Report feature coming soon!');
-    }
-
-    function generateCourseReport() {
-        alert('Course Report feature coming soon!');
-    }
-
-    function generateFacultyReport() {
-        alert('Faculty Report feature coming soon!');
-    }
-
-    function editInstitutionSettings() {
-        alert('Institution Settings feature coming soon!');
-    }
-
-    function showPrograms() {
-        alert('Programs management feature coming soon!');
-    }
-
-    function showUsers() {
-        alert('Users management feature coming soon!');
-    }
-
-    function showReports() {
-        alert('Reports feature coming soon!');
-    }
-</script>
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script src="{{ url_for('static', filename='institution_dashboard.js') }}"></script>
 {% endblock %}

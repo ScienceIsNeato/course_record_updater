@@ -1023,6 +1023,126 @@ def get_courses_by_department(
         return []
 
 
+def create_course_outcome(outcome_data: Dict[str, Any]) -> str:
+    """
+    Create a new course outcome (CLO).
+
+    Args:
+        outcome_data: Course outcome data dictionary
+
+    Returns:
+        Created outcome ID
+    """
+    logger.info("[DB Service] create_course_outcome called")
+    if not check_db_connection():
+        raise Exception("Database connection not available")
+
+    try:
+        with db_operation_timeout():
+            # Add timestamp
+            outcome_data["created_at"] = datetime.now(timezone.utc)
+            outcome_data["last_modified"] = datetime.now(timezone.utc)
+
+            # Create document
+            doc_ref = db.collection(COURSE_OUTCOMES_COLLECTION).add(outcome_data)
+            outcome_id = doc_ref[1].id
+
+            logger.info(f"[DB Service] Course outcome created with ID: {outcome_id}")
+            return outcome_id
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error creating course outcome: {e}")
+        raise
+
+
+def get_course_outcomes(course_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all outcomes for a specific course.
+
+    Args:
+        course_id: Course ID to get outcomes for
+
+    Returns:
+        List of course outcome dictionaries
+    """
+    logger.info(
+        "[DB Service] get_course_outcomes called for course: %s",
+        sanitize_for_logging(course_id),
+    )
+    if not check_db_connection():
+        return []
+
+    try:
+        with db_operation_timeout():
+            query = (
+                db.collection(COURSE_OUTCOMES_COLLECTION)
+                .where(filter=firestore.FieldFilter("course_id", "==", course_id))
+                .where(filter=firestore.FieldFilter("active", "==", True))
+            )
+
+            outcomes = []
+            for doc in query.stream():
+                outcome = doc.to_dict()
+                outcome["outcome_id"] = doc.id
+                outcomes.append(outcome)
+
+            logger.info(
+                "[DB Service] Found %d outcomes for course: %s",
+                len(outcomes),
+                sanitize_for_logging(course_id),
+            )
+            return outcomes
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course outcomes: {e}")
+        return []
+
+
+def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a course by its ID.
+
+    Args:
+        course_id: Course ID to look up
+
+    Returns:
+        Course dictionary if found, None otherwise
+    """
+    logger.info(
+        "[DB Service] get_course_by_id called for course: %s",
+        sanitize_for_logging(course_id),
+    )
+    if not check_db_connection():
+        return None
+
+    try:
+        with db_operation_timeout(5):
+            doc_ref = db.collection(COURSES_COLLECTION).document(course_id)
+            doc = doc_ref.get()
+
+            if doc.exists:
+                course = doc.to_dict()
+                course["course_id"] = doc.id
+                logger.info(
+                    "[DB Service] Found course: %s",
+                    sanitize_for_logging(course.get("course_number", course_id)),
+                )
+                return course
+            else:
+                logger.info(
+                    "[DB Service] No course found with ID: %s",
+                    sanitize_for_logging(course_id),
+                )
+                return None
+
+    except DatabaseTimeoutError:
+        logger.error(f"[DB Service] Timeout getting course by ID: {course_id}")
+        return None
+    except Exception as e:
+        logger.error(f"[DB Service] Error getting course by ID: {e}")
+        return None
+
+
 def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
     """
     Get all courses for a specific institution.

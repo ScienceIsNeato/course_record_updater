@@ -423,7 +423,14 @@ class PanelManager {
    * Load stat preview data based on stat type
    */
   async loadStatPreviewData(statId) {
-    // This would be customized based on the specific stat type
+    const cache = window.dashboardDataCache;
+    if (cache) {
+      const cached = this.buildPreviewFromCache(statId, cache);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const statConfigs = {
       institutions: {
         endpoint: '/api/institutions',
@@ -482,6 +489,117 @@ class PanelManager {
       title: config.title,
       items: config.transform(data)
     };
+  }
+
+  buildPreviewFromCache(statId, cache) {
+    const formatItems = (items, labelFn, valueFn) =>
+      items
+        .slice(0, 5)
+        .map(item => ({ label: labelFn(item), value: valueFn(item) }))
+        .filter(entry => entry.label);
+
+    switch (statId) {
+    case 'institutions': {
+      const institutions = cache.institutions || [];
+      if (!institutions.length) return null;
+      return {
+        title: 'Institutions',
+        items: formatItems(
+          institutions,
+          inst => inst.name || inst.institution_id,
+          inst => `${inst.user_count || 0} users`
+        )
+      };
+    }
+    case 'programs': {
+      const programs = cache.program_overview || cache.programs || [];
+      if (!programs.length) return null;
+      return {
+        title: 'Programs',
+        items: formatItems(
+          programs,
+          prog => prog.program_name || prog.name || prog.program_id,
+          prog => `${prog.course_count || 0} courses`
+        )
+      };
+    }
+    case 'courses': {
+      const courses = cache.courses || [];
+      if (!courses.length) return null;
+      return {
+        title: 'Courses',
+        items: formatItems(
+          courses,
+          course => course.course_number || course.course_id,
+          course => course.course_title || course.title || '—'
+        )
+      };
+    }
+    case 'users': {
+      const users = cache.users || cache.faculty || [];
+      if (!users.length) return null;
+      return {
+        title: 'Users',
+        items: formatItems(
+          users,
+          user =>
+            (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
+              user.email,
+          user => (user.role || 'user').replace(/_/g, ' ')
+        )
+      };
+    }
+    case 'faculty': {
+      const faculty = cache.faculty_assignments || cache.faculty || cache.instructors || [];
+      if (!faculty.length) return null;
+      return {
+        title: 'Faculty',
+        items: formatItems(
+          faculty,
+          member => member.full_name || member.name || 'Instructor',
+          member => `${member.course_count || 0} courses`
+        )
+      };
+    }
+    case 'sections': {
+      const sections = cache.sections || [];
+      if (!sections.length) return null;
+      return {
+        title: 'Sections',
+        items: formatItems(
+          sections,
+          section => section.section_number || section.section_id || 'Section',
+          section => `${section.enrollment || 0} students`
+        )
+      };
+    }
+    case 'students': {
+      const summary = cache.summary || {};
+      if (typeof summary.students === 'undefined') return null;
+      return {
+        title: 'Students',
+        items: [
+          { label: 'Total Students', value: summary.students.toString() },
+          { label: 'Sections', value: (summary.sections ?? 0).toString() },
+          { label: 'Courses', value: (summary.courses ?? 0).toString() }
+        ]
+      };
+    }
+    case 'assessments': {
+      const tasks = cache.assessment_tasks || [];
+      if (!tasks.length) return null;
+      return {
+        title: 'Assessments',
+        items: formatItems(
+          tasks,
+          task => task.course_number || task.course_title || task.section_id,
+          task => (task.status || 'pending').replace(/_/g, ' ')
+        )
+      };
+    }
+    default:
+      return null;
+    }
   }
 
   /**
@@ -575,7 +693,5 @@ class PanelManager {
 let panelManager;
 document.addEventListener('DOMContentLoaded', () => {
   panelManager = new PanelManager();
+  window.panelManager = panelManager; // Export after initialization
 });
-
-// Export for global access
-window.panelManager = panelManager;

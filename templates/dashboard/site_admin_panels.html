@@ -32,6 +32,12 @@
     <div class="stat-item" data-stat="users">
         [<span class="stat-number" id="userCount">0</span> Users]
     </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="refreshDashboardButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="dashboardLastUpdated">Last updated: --</span>
+    </div>
 </div>
 
 <!-- Panel 1: Institution Overview -->
@@ -171,196 +177,208 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script>
-    // Site Admin Dashboard with Panel-Based UI
-    document.addEventListener('DOMContentLoaded', function() {
-        loadSiteAdminData();
+    const DASHBOARD_REFRESH_MS = 5 * 60 * 1000;
+    let dashboardRefreshTimer = null;
+    let lastDashboardFetch = 0;
+    let dashboardCache = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeDashboard();
     });
 
-    async function loadSiteAdminData() {
-        try {
-            await Promise.all([
-                loadHeaderStats(),
-                loadInstitutionTable(),
-                loadSystemActivity(),
-                loadUserTable()
-            ]);
-        } catch (error) {
-            console.error('Error loading site admin data:', error);
+    function initializeDashboard() {
+        const refreshButton = document.getElementById('refreshDashboardButton');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', () => loadDashboardData({ silent: false }));
         }
-    }
-
-    async function loadHeaderStats() {
-        try {
-            console.log('🔍 Starting to fetch header stats...');
-            
-            const [institutionsResp, programsResp, coursesResp, usersResp] = await Promise.all([
-                fetch('/api/institutions', { credentials: 'include' }),
-                fetch('/api/programs', { credentials: 'include' }),
-                fetch('/api/courses', { credentials: 'include' }),
-                fetch('/api/users', { credentials: 'include' })
-            ]);
-
-            console.log('✅ All fetch requests completed');
-            console.log('Status codes:', {
-                institutions: institutionsResp.status,
-                programs: programsResp.status, 
-                courses: coursesResp.status,
-                users: usersResp.status
-            });
-
-            const [institutionsJSON, programsJSON, coursesJSON, usersJSON] = await Promise.all([
-                institutionsResp.json(),
-                programsResp.json(),
-                coursesResp.json(),
-                usersResp.json()
-            ]);
-
-            console.log('📊 Data received:', {
-                institutions: institutionsJSON.institutions?.length || 0,
-                programs: programsJSON.programs?.length || 0,
-                courses: coursesJSON.courses?.length || 0,
-                users: usersJSON.users?.length || 0
-            });
-
-            document.getElementById('institutionCount').textContent = institutionsJSON.institutions?.length || 0;
-            document.getElementById('programCount').textContent = programsJSON.programs?.length || 0;
-            document.getElementById('courseCount').textContent = coursesJSON.courses?.length || 0;
-            document.getElementById('userCount').textContent = usersJSON.users?.length || 0;
-        } catch (error) {
-            console.error('❌ Error loading header stats:', error);
-        }
-    }
-
-    async function loadInstitutionTable() {
-        try {
-            const response = await fetch('/api/institutions', { credentials: 'include' });
-            const data = await response.json();
-            
-            const container = document.getElementById('institutionTableContainer');
-            
-            if (data.success && data.institutions && data.institutions.length > 0) {
-                const table = panelManager.createSortableTable({
-                    id: 'institutions-table',
-                    columns: [
-                        { key: 'name', label: 'Institution', sortable: true },
-                        { key: 'user_count', label: 'Users', sortable: true },
-                        { key: 'program_count', label: 'Programs', sortable: true },
-                        { key: 'course_count', label: 'Courses', sortable: true },
-                        { key: 'status', label: 'Status', sortable: true },
-                        { key: 'actions', label: 'Actions', sortable: false }
-                    ],
-                    data: data.institutions.map(inst => ({
-                        name: inst.name,
-                        user_count: inst.user_count || 0,
-                        program_count: inst.program_count || 0,
-                        course_count: inst.course_count || 0,
-                        status: '<span class="status-badge active">Active</span>',
-                        actions: `<button class="btn btn-sm btn-outline-primary" onclick="editInstitution('${inst.institution_id}')"><i class="fas fa-edit"></i></button>`
-                    }))
-                });
-                
-                container.innerHTML = '';
-                container.appendChild(table);
-            } else {
-                container.innerHTML = `
-                    <div class="panel-empty">
-                        <div class="panel-empty-icon">🏛️</div>
-                        <p>No institutions found</p>
-                        <button class="btn btn-primary" onclick="createInstitution()">Create First Institution</button>
-                    </div>
-                `;
+        loadDashboardData();
+        dashboardRefreshTimer = setInterval(() => loadDashboardData({ silent: true }), DASHBOARD_REFRESH_MS);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && Date.now() - lastDashboardFetch > DASHBOARD_REFRESH_MS) {
+                loadDashboardData({ silent: true });
             }
-        } catch (error) {
-            document.getElementById('institutionTableContainer').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error loading institutions
-                </div>
-            `;
-        }
+        });
     }
 
-    async function loadSystemActivity() {
+    async function loadDashboardData(options = {}) {
+        const { silent = false } = options;
+        if (!silent) {
+            setLoadingPlaceholder('institutionTableContainer');
+            setLoadingPlaceholder('userTableContainer');
+        }
+
         try {
-            // Mock system activity data - in real implementation, this would come from an API
-            const mockActivity = [
-                { timestamp: '2:34 PM', institution: 'CEI', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
-                { timestamp: '1:15 PM', institution: 'RCC', user: 'Mike Admin', action: 'User Created', details: 'New Instructor' },
-                { timestamp: '11:30 AM', institution: 'PTU', user: 'System', action: 'Term Created', details: 'Spring 2025' },
-                { timestamp: '10:45 AM', institution: 'CEI', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
-            ];
-            
-            const container = document.getElementById('activityTableContainer');
-            
-            const table = panelManager.createSortableTable({
-                id: 'activity-table',
-                columns: [
-                    { key: 'timestamp', label: 'Timestamp', sortable: true },
-                    { key: 'institution', label: 'Institution', sortable: true },
-                    { key: 'user', label: 'User', sortable: true },
-                    { key: 'action', label: 'Action', sortable: true },
-                    { key: 'details', label: 'Details', sortable: false }
-                ],
-                data: mockActivity
+            const response = await fetch('/api/dashboard/data', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             });
-            
-            container.innerHTML = '';
-            container.appendChild(table);
-        } catch (error) {
-            document.getElementById('activityTableContainer').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error loading system activity
-                </div>
-            `;
-        }
-    }
-
-    async function loadUserTable() {
-        try {
-            const response = await fetch('/api/users', { credentials: 'include' });
-            const data = await response.json();
-            
-            const container = document.getElementById('userTableContainer');
-            
-            if (data.success && data.users && data.users.length > 0) {
-                const table = panelManager.createSortableTable({
-                    id: 'users-table',
-                    columns: [
-                        { key: 'name', label: 'Name', sortable: true },
-                        { key: 'email', label: 'Email', sortable: true },
-                        { key: 'role', label: 'Role', sortable: true },
-                        { key: 'institution', label: 'Institution', sortable: true },
-                        { key: 'status', label: 'Status', sortable: true }
-                    ],
-                    data: data.users.map(user => ({
-                        name: `${user.first_name} ${user.last_name}`,
-                        email: user.email,
-                        role: user.role.replace('_', ' '),
-                        institution: user.institution_name || 'N/A',
-                        status: '<span class="status-badge active">Active</span>'
-                    }))
-                });
-                
-                container.innerHTML = '';
-                container.appendChild(table);
-            } else {
-                container.innerHTML = `
-                    <div class="panel-empty">
-                        <div class="panel-empty-icon">👥</div>
-                        <p>No users found</p>
-                        <button class="btn btn-success" onclick="inviteUser()">Invite First User</button>
-                    </div>
-                `;
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.error || 'Unable to load dashboard data');
             }
+
+            dashboardCache = payload.data || {};
+            window.dashboardDataCache = dashboardCache;
+            lastDashboardFetch = Date.now();
+            renderDashboard(dashboardCache);
         } catch (error) {
-            document.getElementById('userTableContainer').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error loading users
-                </div>
-            `;
+            console.error('Error loading dashboard data:', error);
+            showPanelError('institutionTableContainer', 'Error loading institutions');
+            showPanelError('userTableContainer', 'Error loading users');
         }
     }
 
-    // Action Functions
+    function renderDashboard(data) {
+        updateHeaderStats(data);
+        renderInstitutionTable(data.institutions || []);
+        renderUserTable(data.users || []);
+        renderSystemActivity(data.activity || []);
+        updateLastUpdated(data.metadata && data.metadata.last_updated);
+    }
+
+    function updateHeaderStats(data) {
+        const summary = data.summary || {};
+        const institutions = data.institutions || [];
+        const programs = data.programs || [];
+        const courses = data.courses || [];
+        const users = data.users || [];
+
+        document.getElementById('institutionCount').textContent = summary.institutions ?? institutions.length;
+        document.getElementById('programCount').textContent = summary.programs ?? programs.length;
+        document.getElementById('courseCount').textContent = summary.courses ?? courses.length;
+        document.getElementById('userCount').textContent = summary.users ?? users.length;
+    }
+
+    function renderInstitutionTable(institutions) {
+        const container = document.getElementById('institutionTableContainer');
+        if (!institutions.length) {
+            container.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">🏛️</div>
+                    <p>No institutions found</p>
+                    <button class="btn btn-primary" onclick="createInstitution()">Create First Institution</button>
+                </div>
+            `;
+            return;
+        }
+
+        const table = panelManager.createSortableTable({
+            id: 'institutions-table',
+            columns: [
+                { key: 'name', label: 'Institution', sortable: true },
+                { key: 'user_count', label: 'Users', sortable: true },
+                { key: 'program_count', label: 'Programs', sortable: true },
+                { key: 'course_count', label: 'Courses', sortable: true },
+                { key: 'status', label: 'Status', sortable: false },
+                { key: 'actions', label: 'Actions', sortable: false }
+            ],
+            data: institutions.map(inst => ({
+                name: inst.name || inst.institution_id,
+                user_count: inst.user_count || 0,
+                program_count: inst.program_count || 0,
+                course_count: inst.course_count || 0,
+                status: '<span class="status-badge active">Active</span>',
+                actions: `<button class="btn btn-sm btn-outline-primary" onclick="editInstitution('${inst.institution_id}')"><i class="fas fa-edit"></i></button>`
+            }))
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderUserTable(users) {
+        const container = document.getElementById('userTableContainer');
+        if (!users.length) {
+            container.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">👥</div>
+                    <p>No users found</p>
+                    <button class="btn btn-success" onclick="inviteUser()">Invite First User</button>
+                </div>
+            `;
+            return;
+        }
+
+        const table = panelManager.createSortableTable({
+            id: 'users-table',
+            columns: [
+                { key: 'name', label: 'Name', sortable: true },
+                { key: 'email', label: 'Email', sortable: true },
+                { key: 'role', label: 'Role', sortable: true },
+                { key: 'institution_name', label: 'Institution', sortable: true },
+                { key: 'status', label: 'Status', sortable: false }
+            ],
+            data: users.map(user => ({
+                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Unknown',
+                email: user.email || 'N/A',
+                role: (user.role || 'unknown').replace(/_/g, ' '),
+                institution_name: user.institution_name || user.institution_id || 'N/A',
+                status: '<span class="status-badge active">Active</span>'
+            }))
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderSystemActivity(activityItems) {
+        const container = document.getElementById('activityTableContainer');
+        const data = activityItems.length ? activityItems : [
+            { timestamp: '2:34 PM', institution: 'CEI', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
+            { timestamp: '1:15 PM', institution: 'RCC', user: 'Mike Admin', action: 'User Created', details: 'New Instructor' },
+            { timestamp: '11:30 AM', institution: 'PTU', user: 'System', action: 'Term Created', details: 'Spring 2025' },
+            { timestamp: '10:45 AM', institution: 'CEI', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
+        ];
+
+        const table = panelManager.createSortableTable({
+            id: 'activity-table',
+            columns: [
+                { key: 'timestamp', label: 'Timestamp', sortable: true },
+                { key: 'institution', label: 'Institution', sortable: true },
+                { key: 'user', label: 'User', sortable: true },
+                { key: 'action', label: 'Action', sortable: true },
+                { key: 'details', label: 'Details', sortable: false }
+            ],
+            data
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function updateLastUpdated(timestamp) {
+        const target = document.getElementById('dashboardLastUpdated');
+        if (!target) return;
+
+        const value = timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString();
+        target.textContent = `Last updated: ${value}`;
+    }
+
+    function setLoadingPlaceholder(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading ...
+            </div>
+        `;
+    }
+
+    function showPanelError(containerId, message) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> ${message}
+            </div>
+        `;
+    }
+
+    // Action Functions (stubs)
     function createInstitution() {
         alert('Create Institution feature coming soon!');
     }
