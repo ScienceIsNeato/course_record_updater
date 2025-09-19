@@ -141,12 +141,11 @@ class TestDashboardRoutes:
 
     def test_dashboard_no_user(self):
         """Test dashboard when no user is logged in"""
-        from tests.test_utils import is_using_real_auth
-
         # No session created - user is unauthenticated
         response = self.client.get("/api/dashboard")
 
-        if is_using_real_auth():
+        use_real_auth = self.app.config.get("USE_REAL_AUTH", False)
+        if use_real_auth:
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -185,6 +184,8 @@ class TestDashboardEndpoint:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
 
     @patch("api_routes.render_template")
@@ -383,21 +384,33 @@ class TestInvitationEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    @patch("invitation_service.InvitationService")
-    def test_create_invitation_success(self, mock_invitation_service):
-        """Test successful invitation creation."""
-        from tests.test_utils import create_test_session
-
-        # Create real session instead of mocking
-        user_data = {
+        self.institution_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst-123",
         }
+
+    def _login_institution_admin(self, overrides=None):
+        """Authenticate requests as an institution admin."""
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.institution_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    def _using_real_auth(self):
+        return self.app.config.get("USE_REAL_AUTH", False)
+
+    @patch("invitation_service.InvitationService")
+    def test_create_invitation_success(self, mock_invitation_service):
+        """Test successful invitation creation."""
+        self._login_institution_admin()
 
         # Mock the class methods, not instance methods
         mock_invitation_service.create_invitation.return_value = {
@@ -429,11 +442,9 @@ class TestInvitationEndpoints:
 
     def test_create_invitation_no_json(self):
         """Test invitation creation with no JSON data."""
-        from tests.test_utils import is_using_real_auth
-
         response = self.client.post("/api/auth/invite")
 
-        if is_using_real_auth():
+        if self._using_real_auth():
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -442,14 +453,12 @@ class TestInvitationEndpoints:
 
     def test_create_invitation_missing_email(self):
         """Test invitation creation with missing email."""
-        from tests.test_utils import is_using_real_auth
-
         response = self.client.post(
             "/api/auth/invite",
             json={"invitee_role": "instructor", "personal_message": "Welcome!"},
         )
 
-        if is_using_real_auth():
+        if self._using_real_auth():
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -458,8 +467,6 @@ class TestInvitationEndpoints:
 
     def test_create_invitation_missing_role(self):
         """Test invitation creation with missing role."""
-        from tests.test_utils import is_using_real_auth
-
         response = self.client.post(
             "/api/auth/invite",
             json={
@@ -468,7 +475,7 @@ class TestInvitationEndpoints:
             },
         )
 
-        if is_using_real_auth():
+        if self._using_real_auth():
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -479,16 +486,8 @@ class TestInvitationEndpoints:
     def test_create_invitation_invalid_email(self, mock_invitation_service):
         """Test invitation creation with invalid email format."""
         from invitation_service import InvitationError
-        from tests.test_utils import create_test_session
 
-        # Create real session instead of mocking
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
 
         # Mock the service to raise an error for invalid email
         mock_invitation_service.create_invitation.side_effect = InvitationError(
@@ -512,16 +511,8 @@ class TestInvitationEndpoints:
     def test_create_invitation_service_error(self, mock_invitation_service):
         """Test invitation creation with service error."""
         from invitation_service import InvitationError
-        from tests.test_utils import create_test_session
 
-        # Create real session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
 
         mock_invitation_service.create_invitation.side_effect = InvitationError(
             "User already exists"
@@ -543,16 +534,7 @@ class TestInvitationEndpoints:
     @patch("invitation_service.InvitationService")
     def test_create_invitation_server_error(self, mock_invitation_service):
         """Test invitation creation with unexpected server error."""
-        from tests.test_utils import create_test_session
-
-        # Create real session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
 
         mock_invitation_service.create_invitation.side_effect = Exception(
             "Database error"
@@ -574,16 +556,7 @@ class TestInvitationEndpoints:
     @patch("invitation_service.InvitationService")
     def test_create_invitation_with_program_ids(self, mock_invitation_service):
         """Test invitation creation with program IDs for program_admin role."""
-        from tests.test_utils import create_test_session
-
-        # Create real session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
 
         mock_invitation_service.create_invitation.return_value = {
             "id": "inv-789",
@@ -822,21 +795,29 @@ class TestListInvitationsEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    @patch("invitation_service.InvitationService")
-    def test_list_invitations_success(self, mock_invitation_service):
-        """Test successful invitation listing."""
-        from tests.test_utils import create_test_session
-
-        # Create real session instead of mocking
-        user_data = {
+        self.institution_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "institution_admin",
             "institution_id": "inst-123",
         }
+
+    def _login_institution_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.institution_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    @patch("invitation_service.InvitationService")
+    def test_list_invitations_success(self, mock_invitation_service):
+        """Test successful invitation listing."""
+        self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = [
             {
                 "id": "inv-1",
@@ -870,15 +851,7 @@ class TestListInvitationsEndpoints:
     @patch("invitation_service.InvitationService")
     def test_list_invitations_with_filters(self, mock_invitation_service):
         """Test invitation listing with filters."""
-        from tests.test_utils import create_test_session
-
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get(
@@ -896,12 +869,10 @@ class TestListInvitationsEndpoints:
 
     def test_list_invitations_no_institution(self):
         """Test invitation listing without institution context."""
-        from tests.test_utils import is_using_real_auth
-
         # Don't create session - test unauthenticated request
         response = self.client.get("/api/auth/invitations")
 
-        if is_using_real_auth():
+        if self.app.config.get("USE_REAL_AUTH", False):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -911,15 +882,7 @@ class TestListInvitationsEndpoints:
     @patch("invitation_service.InvitationService")
     def test_list_invitations_limit_clamping(self, mock_invitation_service):
         """Test invitation listing with limit over 100 gets clamped."""
-        from tests.test_utils import create_test_session
-
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get("/api/auth/invitations?limit=150")  # Over max 100
@@ -937,15 +900,7 @@ class TestListInvitationsEndpoints:
     @patch("invitation_service.InvitationService")
     def test_list_invitations_service_error(self, mock_invitation_service):
         """Test invitation listing with service error."""
-        from tests.test_utils import create_test_session
-
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
         mock_invitation_service.list_invitations.side_effect = Exception(
             "Database error"
         )
@@ -960,15 +915,7 @@ class TestListInvitationsEndpoints:
     @patch("invitation_service.InvitationService")
     def test_list_invitations_empty_result(self, mock_invitation_service):
         """Test invitation listing with empty results."""
-        from tests.test_utils import create_test_session
-
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "institution_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_institution_admin()
         mock_invitation_service.list_invitations.return_value = []
 
         response = self.client.get("/api/auth/invitations")
@@ -1137,26 +1084,23 @@ class TestResendVerificationEndpoints:
             )
 
 
-class TestUserEndpoints:
+from tests.test_utils import CommonAuthMixin
+
+
+class TestUserEndpoints(CommonAuthMixin):
     """Test user management endpoints."""
 
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
 
-    def test_get_users_endpoint_exists(self):
+    @patch("api_routes.get_all_users", return_value=[])
+    def test_get_users_endpoint_exists(self, mock_get_all_users):
         """Test that GET /api/users endpoint exists and returns valid JSON."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
 
         response = self.client.get("/api/users")
         assert response.status_code == 200
@@ -1164,20 +1108,14 @@ class TestUserEndpoints:
         data = json.loads(response.data)
         assert "users" in data
         assert isinstance(data["users"], list)
+        mock_get_all_users.assert_called_once_with("inst-123")
 
     @patch("api_routes.get_users_by_role")
     def test_get_users_with_department_filter(self, mock_get_users):
         """Test GET /api/users with department filter"""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "test-user",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin(
+            {"user_id": "test-user", "institution_id": "test-institution"}
+        )
         mock_get_users.return_value = [
             {
                 "user_id": "1",
@@ -1214,16 +1152,7 @@ class TestUserEndpoints:
     @patch("api_routes.get_users_by_role")
     def test_get_users_exception_handling(self, mock_get_users):
         """Test GET /api/users exception handling"""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
         mock_get_users.side_effect = Exception("Database connection failed")
 
         response = self.client.get("/api/users?role=instructor")
@@ -1235,12 +1164,10 @@ class TestUserEndpoints:
 
     def test_create_user_no_json_data(self):
         """Test POST /api/users with no JSON data"""
-        from tests.test_utils import is_using_real_auth
-
         # Don't create session - test unauthenticated request
         response = self.client.post("/api/users", content_type="application/json")
 
-        if is_using_real_auth():
+        if self.app.config.get("USE_REAL_AUTH", False):
             # Real auth returns 401 for unauthenticated requests
             assert response.status_code == 401
         else:
@@ -1249,16 +1176,7 @@ class TestUserEndpoints:
 
     def test_create_user_database_failure(self):
         """Test POST /api/users when database creation fails"""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data_session = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data_session)
+        self._login_site_admin()
 
         user_data = {
             "email": "test@example.com",
@@ -1307,18 +1225,10 @@ class TestUserEndpoints:
         assert data["success"] is True
         assert data["user_id"] == "stub-user-id"
 
-    def test_get_users_without_permission_stub_mode(self):
+    @patch("api_routes.get_all_users", return_value=[])
+    def test_get_users_without_permission_stub_mode(self, mock_get_all_users):
         """Test GET /api/users in stub mode (auth always passes)."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         response = self.client.get("/api/users")
         # Should succeed in stub mode, but return empty list
@@ -1326,6 +1236,7 @@ class TestUserEndpoints:
 
         data = json.loads(response.data)
         assert "users" in data
+        mock_get_all_users.assert_called_once_with("inst-123")
 
     @patch("api_routes.get_users_by_role")
     def test_get_users_with_role_filter(self, mock_get_users):
@@ -1413,21 +1324,38 @@ class TestCourseEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
+
+    def _login_user(self, overrides=None):
+        return self._login_site_admin(overrides)
+
+    def _login_user(self, overrides=None):
+        return self._login_site_admin(overrides)
+
+    def _login_user(self, overrides=None):
+        return self._login_site_admin(overrides)
 
     @patch("api_routes.get_all_courses")
     def test_get_courses_endpoint_exists(self, mock_get_all_courses):
         """Test that GET /api/courses endpoint exists and returns valid JSON."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_all_courses.return_value = []
 
         response = self.client.get("/api/courses")
@@ -1440,16 +1368,7 @@ class TestCourseEndpoints:
     @patch("api_routes.get_courses_by_department")
     def test_get_courses_with_department_filter(self, mock_get_courses):
         """Test GET /api/courses with department filter."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_courses.return_value = [
             {
                 "course_number": "MATH-101",
@@ -1466,16 +1385,7 @@ class TestCourseEndpoints:
     @patch("api_routes.create_course")
     def test_create_course_success(self, mock_create_course):
         """Test POST /api/courses with valid data."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
         mock_create_course.return_value = "course-123"
 
         course_data = {
@@ -1494,38 +1404,22 @@ class TestCourseEndpoints:
         assert "message" in data
         assert "course_id" in data
 
-    def test_get_course_by_number_endpoint_exists(self):
+    @patch("api_routes.get_course_by_number", return_value=None)
+    def test_get_course_by_number_endpoint_exists(self, mock_get_course):
         """Test that GET /api/courses/<course_number> endpoint exists."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         response = self.client.get("/api/courses/MATH-101")
         # Endpoint exists and correctly returns 404 for non-existent course
         assert response.status_code == 404
         data = json.loads(response.data)
         assert "error" in data
+        mock_get_course.assert_called_once_with("MATH-101")
 
     @patch("api_routes.get_course_by_number")
     def test_get_course_by_number_not_found(self, mock_get_course):
         """Test GET /api/courses/<course_number> when course doesn't exist."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "inst-123",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
         mock_get_course.return_value = None
 
         response = self.client.get("/api/courses/NONEXISTENT-999")
@@ -1542,22 +1436,30 @@ class TestTermEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_active_terms")
-    def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
-        """Test GET /api/terms."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
+        self.site_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "site_admin",
             "institution_id": "riverside-tech-institute",
         }
+
+    def _login_user(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_active_terms")
+    def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
+        """Test GET /api/terms."""
+        self._login_user()
 
         # Mock the institution ID
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
@@ -1583,16 +1485,7 @@ class TestTermEndpoints:
 
     def test_create_term_endpoint_exists(self):
         """Test that POST /api/terms endpoint exists."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
 
         response = self.client.post("/api/terms", json={})
         # Should not be 404 (endpoint exists)
@@ -1605,7 +1498,27 @@ class TestSectionEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
+
+    def _login_user(self, overrides=None):
+        return self._login_site_admin(overrides)
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_sections")
@@ -1613,16 +1526,7 @@ class TestSectionEndpoints:
         self, mock_get_all_sections, mock_get_current_institution_id
     ):
         """Test that GET /api/sections endpoint exists."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
 
         # Mock the institution ID and sections
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
@@ -1637,16 +1541,7 @@ class TestSectionEndpoints:
 
     def test_create_section_endpoint_exists(self):
         """Test that POST /api/sections endpoint exists."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
 
         response = self.client.post("/api/sections", json={})
         # Should not be 404 (endpoint exists)
@@ -1659,20 +1554,28 @@ class TestImportEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    def test_excel_import_endpoint_exists(self):
-        """Test that POST /api/import/excel endpoint exists."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
+        self.site_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "site_admin",
             "institution_id": "riverside-tech-institute",
         }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    def test_excel_import_endpoint_exists(self):
+        """Test that POST /api/import/excel endpoint exists."""
+        self._login_site_admin()
 
         response = self.client.post("/api/import/excel")
         # Should not be 404 (endpoint exists), but will be 400 due to missing file
@@ -1681,16 +1584,7 @@ class TestImportEndpoints:
     @patch("api_routes.has_permission")
     def test_excel_import_missing_file(self, mock_has_permission):
         """Test POST /api/import/excel without file."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         mock_has_permission.return_value = True
 
@@ -1729,21 +1623,29 @@ class TestRequestValidation:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    @patch("api_routes.has_permission")
-    def test_course_creation_validation(self, mock_has_permission):
-        """Test course creation with various validation scenarios."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
+        self.site_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "site_admin",
             "institution_id": "riverside-tech-institute",
         }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    @patch("api_routes.has_permission")
+    def test_course_creation_validation(self, mock_has_permission):
+        """Test course creation with various validation scenarios."""
+        self._login_site_admin()
 
         mock_has_permission.return_value = True
 
@@ -1761,16 +1663,7 @@ class TestRequestValidation:
     @patch("api_routes.has_permission")
     def test_term_creation_validation(self, mock_has_permission):
         """Test term creation with date validation."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         mock_has_permission.return_value = True
 
@@ -1813,22 +1706,34 @@ class TestInstitutionEndpoints:
     def setup_method(self):
         """Set up test fixtures."""
         self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
         self.client = self.app.test_client()
-
-    @patch("api_routes.get_all_institutions")
-    @patch("api_routes.get_institution_instructor_count")
-    def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
-        """Test GET /api/institutions endpoint."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
+        self.site_admin_user = {
             "user_id": "admin-456",
             "email": "admin@test.com",
             "role": "site_admin",
             "institution_id": "riverside-tech-institute",
         }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
         create_test_session(self.client, user_data)
+        return user_data
+
+    def _login_user(self, overrides=None):
+        """Alias for _login_site_admin for backward compatibility"""
+        return self._login_site_admin(overrides)
+
+    @patch("api_routes.get_all_institutions")
+    @patch("api_routes.get_institution_instructor_count")
+    def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
+        """Test GET /api/institutions endpoint."""
+        self._login_site_admin()
 
         mock_get_institutions.return_value = [
             {"institution_id": "inst1", "name": "University 1"},
@@ -1846,16 +1751,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
         """Test POST /api/institutions endpoint success."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         mock_create_institution.return_value = ("institution123", "user123")
 
@@ -1884,16 +1780,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_institution_by_id")
     def test_get_institution_details_success(self, mock_get_institution, mock_get_user):
         """Test GET /api/institutions/<id> endpoint success."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         mock_get_user.return_value = {
             "user_id": "user123",
@@ -1917,16 +1804,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_all_instructors")
     def test_list_instructors_success(self, mock_get_instructors, mock_get_cei):
         """Test GET /api/instructors endpoint success."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_site_admin()
 
         mock_get_cei.return_value = "cei-institution-id"
         mock_get_instructors.return_value = [
@@ -2039,16 +1917,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_all_institutions")
     def test_list_institutions_exception(self, mock_get_institutions):
         """Test GET /api/institutions exception handling."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "riverside-tech-institute",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user()
 
         mock_get_institutions.side_effect = Exception("Database error")
 
@@ -2064,16 +1933,14 @@ class TestInstitutionEndpoints:
         self, mock_get_institution, mock_get_user
     ):
         """Test GET /api/institutions/<id> access denied."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session with limited permissions
-        user_data = {
-            "user_id": "user123",
-            "email": "instructor@test.com",
-            "role": "instructor",
-            "institution_id": "different-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user(
+            {
+                "user_id": "user123",
+                "email": "instructor@test.com",
+                "role": "instructor",
+                "institution_id": "different-institution",
+            }
+        )
 
         mock_get_user.return_value = {
             "user_id": "user123",
@@ -2091,16 +1958,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.create_course")
     def test_create_course_data_validation(self, mock_create_course):
         """Test course creation with comprehensive data validation."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         mock_create_course.return_value = "course123"
 
@@ -2130,16 +1988,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.create_term")
     def test_create_term_data_validation(self, mock_create_term):
         """Test term creation with proper data validation."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         mock_create_term.return_value = "term123"
 
@@ -2160,16 +2009,7 @@ class TestInstitutionEndpoints:
 
     def test_api_error_handling_comprehensive(self):
         """Test comprehensive API error handling scenarios."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         # Test invalid JSON data
         response = self.client.post(
@@ -2210,16 +2050,7 @@ class TestInstitutionEndpoints:
         self, mock_has_permission, mock_get_current_user
     ):
         """Test user retrieval endpoint with permission checking."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         mock_get_current_user.return_value = {"user_id": "user123"}
         mock_has_permission.return_value = True
@@ -2238,16 +2069,7 @@ class TestInstitutionEndpoints:
         self, mock_update_progress, mock_create_progress
     ):
         """Test Excel import API validation and error handling."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         mock_create_progress.return_value = "progress123"
 
@@ -2285,16 +2107,7 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_current_institution_id")
     def test_institution_context_handling(self, mock_get_institution_id):
         """Test institution context handling across endpoints."""
-        from tests.test_utils import create_test_session
-
-        # Create authenticated session
-        user_data = {
-            "user_id": "admin-456",
-            "email": "admin@test.com",
-            "role": "site_admin",
-            "institution_id": "test-institution",
-        }
-        create_test_session(self.client, user_data)
+        self._login_user({"institution_id": "test-institution"})
 
         mock_get_institution_id.return_value = "institution123"
 
@@ -2314,8 +2127,26 @@ class TestUserManagementAPI:
         """Set up test client and mock data."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "test-user",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        """Authenticate requests as a site admin user."""
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
 
     @patch("auth_service.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -2329,6 +2160,7 @@ class TestUserManagementAPI:
         mock_get_institution_id,
     ):
         """Test listing users with role filter."""
+        self._login_site_admin()
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "test-user",
@@ -2371,6 +2203,7 @@ class TestUserManagementAPI:
         mock_get_institution_id,
     ):
         """Test listing users with department filter."""
+        self._login_site_admin()
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "test-user",
@@ -2405,6 +2238,7 @@ class TestUserManagementAPI:
     @patch("api_routes.has_permission")
     def test_create_user_validation(self, mock_has_permission):
         """Test create user with validation."""
+        self._login_site_admin()
         mock_has_permission.return_value = True
 
         # Test with no JSON data
@@ -2424,6 +2258,7 @@ class TestUserManagementAPI:
         self, mock_has_permission, mock_get_current_user
     ):
         """Test user trying to access other user's details without permission."""
+        self._login_site_admin({"user_id": "user123", "role": "instructor"})
         mock_get_current_user.return_value = {"user_id": "user123"}
         mock_has_permission.return_value = False
 
@@ -2441,9 +2276,10 @@ class TestCourseManagementOperations:
         """Set up test client."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
         self.app = app
-        self.client = app.test_client()
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
 
     @patch("api_routes.create_course")
     @patch("api_routes.has_permission")
@@ -2638,16 +2474,39 @@ class TestAPIRoutesErrorHandling:
         """Set up test client."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
 
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
+
+    @patch("api_routes.get_all_users", return_value=[])
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_list_users_no_role_filter_coverage(
-        self, mock_has_permission, mock_get_current_user, mock_get_cei_id
+        self,
+        mock_has_permission,
+        mock_get_current_user,
+        mock_get_cei_id,
+        mock_get_all_users,
     ):
         """Test list_users endpoint without role filter."""
+        self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "test-user",
@@ -2660,14 +2519,21 @@ class TestAPIRoutesErrorHandling:
         assert response.status_code == 200
         data = response.get_json()
         assert data["users"] == []
+        mock_get_all_users.assert_called_once_with("riverside-tech-institute")
 
+    @patch("api_routes.get_user_by_id", return_value=None)
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_get_user_not_found_coverage(
-        self, mock_has_permission, mock_get_current_user, mock_get_cei_id
+        self,
+        mock_has_permission,
+        mock_get_current_user,
+        mock_get_cei_id,
+        mock_get_user,
     ):
         """Test get_user endpoint when user not found."""
+        self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_get_current_user.return_value = {
             "user_id": "admin-user",
             "role": "site_admin",
@@ -2680,6 +2546,7 @@ class TestAPIRoutesErrorHandling:
         assert response.status_code == 404
         data = response.get_json()
         assert data["error"] == "User not found"
+        mock_get_user.assert_called_once_with("nonexistent-user")
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")
@@ -2688,6 +2555,7 @@ class TestAPIRoutesErrorHandling:
         self, mock_has_permission, mock_get_current_user, mock_get_cei_id
     ):
         """Test create_user endpoint stub implementation."""
+        self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "admin-user",
@@ -2711,6 +2579,8 @@ class TestAPIRoutesErrorHandling:
 
     def test_import_excel_empty_filename_coverage(self):
         """Test import_excel endpoint with empty filename."""
+        self._login_site_admin()
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2724,6 +2594,8 @@ class TestAPIRoutesErrorHandling:
 
     def test_import_excel_invalid_file_type_coverage(self):
         """Test import_excel endpoint with invalid file type."""
+        self._login_site_admin()
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2743,8 +2615,10 @@ class TestAPIRoutesProgressTracking:
         """Set up test client."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
 
     @patch("api_routes.create_progress_tracker")
     @patch("api_routes.update_progress")
@@ -2786,8 +2660,25 @@ class TestAPIRoutesValidation:
         """Set up test client."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
 
     @patch("api_routes.has_permission")
     @patch("api_routes.import_excel")
@@ -2796,6 +2687,7 @@ class TestAPIRoutesValidation:
         self, mock_get_institution_id, mock_import_excel, mock_has_permission
     ):
         """Test import file validation endpoint."""
+        self._login_site_admin()
         mock_has_permission.return_value = True
         mock_get_institution_id.return_value = "test-institution"
 
@@ -2833,6 +2725,8 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_no_file(self):
         """Test validation endpoint with no file."""
+        self._login_site_admin()
+
         with patch("api_routes.has_permission", return_value=True):
             response = self.client.post("/api/import/validate")
 
@@ -2842,6 +2736,8 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_empty_filename(self):
         """Test validation endpoint with empty filename."""
+        self._login_site_admin()
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2855,6 +2751,8 @@ class TestAPIRoutesValidation:
 
     def test_validate_import_invalid_file_type(self):
         """Test validation endpoint with invalid file type."""
+        self._login_site_admin()
+
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
@@ -2878,6 +2776,7 @@ class TestAPIRoutesValidation:
         mock_has_permission,
     ):
         """Test validation endpoint cleanup error handling."""
+        self._login_site_admin()
         mock_has_permission.return_value = True
         mock_get_institution_id.return_value = "test-institution"
         mock_unlink.side_effect = OSError("Permission denied")
@@ -2920,7 +2819,10 @@ class TestAPIRoutesHealthCheck:
         """Set up test client."""
         from app import app
 
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
 
     def test_health_check_endpoint(self):
         """Test health check endpoint."""
@@ -2947,8 +2849,25 @@ class TestAPIRoutesExtended:
         """Set up test client."""
         from app import app
 
-        app.config["SECRET_KEY"] = "test-secret-key"
-        self.client = app.test_client()
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.client = self.app.test_client()
+        self.site_admin_user = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        from tests.test_utils import create_test_session
+
+        user_data = {**self.site_admin_user}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
 
     def test_api_error_handler_comprehensive(self):
         """Test API error handler function directly."""
@@ -2976,6 +2895,7 @@ class TestAPIRoutesExtended:
     @patch("api_routes.get_current_institution_id")
     def test_list_courses_institution_error(self, mock_get_cei_id):
         """Test list_courses when institution ID is None."""
+        self._login_site_admin()
         mock_get_cei_id.return_value = None
 
         response = self.client.get("/api/courses")
@@ -2988,6 +2908,7 @@ class TestAPIRoutesExtended:
     @patch("api_routes.get_courses_by_department")
     def test_list_courses_with_department(self, mock_get_courses, mock_get_cei_id):
         """Test list_courses with department filter."""
+        self._login_site_admin()
         mock_get_cei_id.return_value = "institution123"
         mock_get_courses.return_value = [{"course_id": "1", "department": "MATH"}]
 
