@@ -155,7 +155,8 @@ def dashboard():
     elif role == "institution_admin":
         return render_template("dashboard/institution_admin.html", user=user)
     elif role == "site_admin":
-        return render_template("dashboard/site_admin.html", user=user)
+        # Use new panel-based UI for site admin
+        return render_template("dashboard/site_admin_panels.html", user=user)
     else:
         flash("Unknown user role. Please contact administrator.", "danger")
         return redirect(url_for("index"))
