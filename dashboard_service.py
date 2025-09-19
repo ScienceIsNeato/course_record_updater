@@ -44,7 +44,7 @@ class DashboardService:
             scope = "institution"
         elif role == "program_admin":
             payload = self._get_program_admin_data(
-                user.get("institution_id"), user.get("accessible_programs", [])
+                user.get("institution_id"), user.get("program_ids", [])
             )
             scope = "program"
         elif role == "instructor":

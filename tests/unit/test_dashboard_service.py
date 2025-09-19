@@ -167,7 +167,7 @@ class TestDashboardServiceScoped:
             {
                 "role": "program_admin",
                 "institution_id": "inst-1",
-                "accessible_programs": ["prog-1"],
+                "program_ids": ["prog-1"],
             }
         )
 
