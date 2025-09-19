@@ -2091,6 +2091,17 @@ class TestInstitutionEndpoints:
     @patch("api_routes.create_course")
     def test_create_course_data_validation(self, mock_create_course):
         """Test course creation with comprehensive data validation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_create_course.return_value = "course123"
 
         # Test with complete, valid course data
@@ -2102,20 +2113,19 @@ class TestInstitutionEndpoints:
             "description": "An introductory course covering fundamental concepts.",
         }
 
-        with app.test_client() as client:
-            response = client.post("/api/courses", json=course_data)
-            assert response.status_code == 201
+        response = self.client.post("/api/courses", json=course_data)
+        assert response.status_code == 201
 
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert "course_id" in data
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert "course_id" in data
 
-            # Verify the course was created with proper data
-            mock_create_course.assert_called_once()
-            call_args = mock_create_course.call_args[0][0]
-            assert call_args["course_number"] == "CS-101"
-            assert call_args["department"] == "CS"
-            assert call_args["credit_hours"] == 3
+        # Verify the course was created with proper data
+        mock_create_course.assert_called_once()
+        call_args = mock_create_course.call_args[0][0]
+        assert call_args["course_number"] == "CS-101"
+        assert call_args["department"] == "CS"
+        assert call_args["credit_hours"] == 3
 
     @patch("api_routes.create_term")
     def test_create_term_data_validation(self, mock_create_term):
