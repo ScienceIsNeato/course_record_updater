@@ -1846,6 +1846,17 @@ class TestInstitutionEndpoints:
     @patch("api_routes.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
         """Test POST /api/institutions endpoint success."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_create_institution.return_value = ("institution123", "user123")
 
         institution_data = {
@@ -1862,18 +1873,28 @@ class TestInstitutionEndpoints:
             },
         }
 
-        with app.test_client() as client:
-            response = client.post("/api/institutions", json=institution_data)
-            assert response.status_code == 201
+        response = self.client.post("/api/institutions", json=institution_data)
+        assert response.status_code == 201
 
-            data = json.loads(response.data)
-            assert data["success"] is True
-            assert "institution_id" in data
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert "institution_id" in data
 
     @patch("api_routes.get_current_user")
     @patch("api_routes.get_institution_by_id")
     def test_get_institution_details_success(self, mock_get_institution, mock_get_user):
         """Test GET /api/institutions/<id> endpoint success."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_user.return_value = {
             "user_id": "user123",
             "institution_id": "institution123",
@@ -1885,31 +1906,40 @@ class TestInstitutionEndpoints:
             "domain": "test.edu",
         }
 
-        with app.test_client() as client:
-            response = client.get("/api/institutions/institution123")
-            assert response.status_code == 200
+        response = self.client.get("/api/institutions/institution123")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "institution" in data
-            assert data["institution"]["name"] == "Test University"
+        data = json.loads(response.data)
+        assert "institution" in data
+        assert data["institution"]["name"] == "Test University"
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_instructors")
     def test_list_instructors_success(self, mock_get_instructors, mock_get_cei):
         """Test GET /api/instructors endpoint success."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_cei.return_value = "cei-institution-id"
         mock_get_instructors.return_value = [
             {"user_id": "inst1", "first_name": "John", "last_name": "Doe"},
             {"user_id": "inst2", "first_name": "Jane", "last_name": "Smith"},
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/instructors")
-            assert response.status_code == 200
+        response = self.client.get("/api/instructors")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "instructors" in data
-            assert len(data["instructors"]) == 2
+        data = json.loads(response.data)
+        assert "instructors" in data
+        assert len(data["instructors"]) == 2
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_missing_data(self, mock_create_institution):
@@ -2009,14 +2039,24 @@ class TestInstitutionEndpoints:
     @patch("api_routes.get_all_institutions")
     def test_list_institutions_exception(self, mock_get_institutions):
         """Test GET /api/institutions exception handling."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_institutions.side_effect = Exception("Database error")
 
-        with app.test_client() as client:
-            response = client.get("/api/institutions")
-            assert response.status_code == 500
+        response = self.client.get("/api/institutions")
+        assert response.status_code == 500
 
-            data = json.loads(response.data)
-            assert data["success"] is False
+        data = json.loads(response.data)
+        assert data["success"] is False
 
     @patch("api_routes.get_current_user")
     @patch("api_routes.get_institution_by_id")
@@ -2024,19 +2064,29 @@ class TestInstitutionEndpoints:
         self, mock_get_institution, mock_get_user
     ):
         """Test GET /api/institutions/<id> access denied."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session with limited permissions
+        user_data = {
+            "user_id": "user123",
+            "email": "instructor@test.com",
+            "role": "instructor",
+            "institution_id": "different-institution",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_user.return_value = {
             "user_id": "user123",
             "institution_id": "different-institution",
             "role": "instructor",
         }
 
-        with app.test_client() as client:
-            response = client.get("/api/institutions/target-institution")
-            assert response.status_code == 403
+        response = self.client.get("/api/institutions/target-institution")
+        assert response.status_code == 403
 
-            data = json.loads(response.data)
-            assert data["success"] is False
-            assert "access denied" in data["error"].lower()
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "permission denied" in data["error"].lower()
 
     @patch("api_routes.create_course")
     def test_create_course_data_validation(self, mock_create_course):
