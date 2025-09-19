@@ -19,8 +19,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from flask import current_app, request, session
-
 from flask_session import Session  # type: ignore
+
 from logging_config import get_logger
 
 # Get standardized logger
