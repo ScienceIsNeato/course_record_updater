@@ -166,6 +166,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Core JavaScript dependencies -->
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script>
     // Site Admin Dashboard with Panel-Based UI
@@ -188,6 +191,8 @@
 
     async function loadHeaderStats() {
         try {
+            console.log('🔍 Starting to fetch header stats...');
+            
             const [institutionsResp, programsResp, coursesResp, usersResp] = await Promise.all([
                 fetch('/api/institutions', { credentials: 'include' }),
                 fetch('/api/programs', { credentials: 'include' }),
@@ -195,19 +200,34 @@
                 fetch('/api/users', { credentials: 'include' })
             ]);
 
-            const [institutions, programs, courses, users] = await Promise.all([
+            console.log('✅ All fetch requests completed');
+            console.log('Status codes:', {
+                institutions: institutionsResp.status,
+                programs: programsResp.status, 
+                courses: coursesResp.status,
+                users: usersResp.status
+            });
+
+            const [institutionsJSON, programsJSON, coursesJSON, usersJSON] = await Promise.all([
                 institutionsResp.json(),
                 programsResp.json(),
                 coursesResp.json(),
                 usersResp.json()
             ]);
 
-            document.getElementById('institutionCount').textContent = institutions.institutions?.length || 0;
-            document.getElementById('programCount').textContent = programs.programs?.length || 0;
-            document.getElementById('courseCount').textContent = courses.courses?.length || 0;
-            document.getElementById('userCount').textContent = users.users?.length || 0;
+            console.log('📊 Data received:', {
+                institutions: institutionsJSON.institutions?.length || 0,
+                programs: programsJSON.programs?.length || 0,
+                courses: coursesJSON.courses?.length || 0,
+                users: usersJSON.users?.length || 0
+            });
+
+            document.getElementById('institutionCount').textContent = institutionsJSON.institutions?.length || 0;
+            document.getElementById('programCount').textContent = programsJSON.programs?.length || 0;
+            document.getElementById('courseCount').textContent = coursesJSON.courses?.length || 0;
+            document.getElementById('userCount').textContent = usersJSON.users?.length || 0;
         } catch (error) {
-            console.error('Error loading header stats:', error);
+            console.error('❌ Error loading header stats:', error);
         }
     }
 
