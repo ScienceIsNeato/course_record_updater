@@ -1539,10 +1539,26 @@ class TestCourseEndpoints:
 class TestTermEndpoints:
     """Test term management endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_active_terms")
     def test_get_terms_success(self, mock_get_terms, mock_get_current_institution_id):
         """Test GET /api/terms."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         # Mock the institution ID
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_terms.return_value = [
@@ -1558,24 +1574,38 @@ class TestTermEndpoints:
             },
         ]
 
-        with app.test_client() as client:
-            response = client.get("/api/terms")
-            assert response.status_code == 200
+        response = self.client.get("/api/terms")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "terms" in data
-            assert len(data["terms"]) == 2
+        data = json.loads(response.data)
+        assert "terms" in data
+        assert len(data["terms"]) == 2
 
     def test_create_term_endpoint_exists(self):
         """Test that POST /api/terms endpoint exists."""
-        with app.test_client() as client:
-            response = client.post("/api/terms", json={})
-            # Should not be 404 (endpoint exists)
-            assert response.status_code != 404
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
+        response = self.client.post("/api/terms", json={})
+        # Should not be 404 (endpoint exists)
+        assert response.status_code != 404
 
 
 class TestSectionEndpoints:
     """Test section management endpoints."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_sections")
@@ -1583,51 +1613,96 @@ class TestSectionEndpoints:
         self, mock_get_all_sections, mock_get_current_institution_id
     ):
         """Test that GET /api/sections endpoint exists."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         # Mock the institution ID and sections
         mock_get_current_institution_id.return_value = "riverside-tech-institute"
         mock_get_all_sections.return_value = []
 
-        with app.test_client() as client:
-            response = client.get("/api/sections")
-            assert response.status_code == 200
+        response = self.client.get("/api/sections")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "sections" in data
-            assert isinstance(data["sections"], list)
+        data = json.loads(response.data)
+        assert "sections" in data
+        assert isinstance(data["sections"], list)
 
     def test_create_section_endpoint_exists(self):
         """Test that POST /api/sections endpoint exists."""
-        with app.test_client() as client:
-            response = client.post("/api/sections", json={})
-            # Should not be 404 (endpoint exists)
-            assert response.status_code != 404
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
+        response = self.client.post("/api/sections", json={})
+        # Should not be 404 (endpoint exists)
+        assert response.status_code != 404
 
 
 class TestImportEndpoints:
     """Test import functionality endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     def test_excel_import_endpoint_exists(self):
         """Test that POST /api/import/excel endpoint exists."""
-        with app.test_client() as client:
-            response = client.post("/api/import/excel")
-            # Should not be 404 (endpoint exists), but will be 400 due to missing file
-            assert response.status_code != 404
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
+        response = self.client.post("/api/import/excel")
+        # Should not be 404 (endpoint exists), but will be 400 due to missing file
+        assert response.status_code != 404
 
     @patch("api_routes.has_permission")
     def test_excel_import_missing_file(self, mock_has_permission):
         """Test POST /api/import/excel without file."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/import/excel",
-                data={"conflict_strategy": "use_theirs", "dry_run": "false"},
-            )
-            assert response.status_code == 400
+        response = self.client.post(
+            "/api/import/excel",
+            data={"conflict_strategy": "use_theirs", "dry_run": "false"},
+        )
+        assert response.status_code == 400
 
-            data = json.loads(response.data)
-            assert "error" in data
-            assert "file" in data["error"].lower()
+        data = json.loads(response.data)
+        assert "error" in data
+        assert "file" in data["error"].lower()
 
 
 class TestErrorHandling:
@@ -1651,9 +1726,25 @@ class TestErrorHandling:
 class TestRequestValidation:
     """Test request data validation."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.has_permission")
     def test_course_creation_validation(self, mock_has_permission):
         """Test course creation with various validation scenarios."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
         # Test missing required field
@@ -1662,15 +1753,25 @@ class TestRequestValidation:
             # Missing course_number
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/courses", json=invalid_course, content_type="application/json"
-            )
-            assert response.status_code == 400
+        response = self.client.post(
+            "/api/courses", json=invalid_course, content_type="application/json"
+        )
+        assert response.status_code == 400
 
     @patch("api_routes.has_permission")
     def test_term_creation_validation(self, mock_has_permission):
         """Test term creation with date validation."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_has_permission.return_value = True
 
         # Test invalid date format
@@ -1680,11 +1781,10 @@ class TestRequestValidation:
             "end_date": "2024-12-15",
         }
 
-        with app.test_client() as client:
-            response = client.post(
-                "/api/terms", json=invalid_term, content_type="application/json"
-            )
-            assert response.status_code == 400
+        response = self.client.post(
+            "/api/terms", json=invalid_term, content_type="application/json"
+        )
+        assert response.status_code == 400
 
 
 class TestAuthenticationIntegration:
@@ -1710,23 +1810,38 @@ class TestAuthenticationIntegration:
 class TestInstitutionEndpoints:
     """Test institution management endpoints."""
 
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.client = self.app.test_client()
+
     @patch("api_routes.get_all_institutions")
     @patch("api_routes.get_institution_instructor_count")
     def test_list_institutions_success(self, mock_get_count, mock_get_institutions):
         """Test GET /api/institutions endpoint."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "riverside-tech-institute",
+        }
+        create_test_session(self.client, user_data)
+
         mock_get_institutions.return_value = [
             {"institution_id": "inst1", "name": "University 1"},
             {"institution_id": "inst2", "name": "University 2"},
         ]
         mock_get_count.return_value = 15
 
-        with app.test_client() as client:
-            response = client.get("/api/institutions")
-            assert response.status_code == 200
+        response = self.client.get("/api/institutions")
+        assert response.status_code == 200
 
-            data = json.loads(response.data)
-            assert "institutions" in data
-            assert len(data["institutions"]) == 2
+        data = json.loads(response.data)
+        assert "institutions" in data
+        assert len(data["institutions"]) == 2
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
