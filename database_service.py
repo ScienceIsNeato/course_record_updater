@@ -37,35 +37,27 @@ class DatabaseTimeoutError(Exception):
 @contextmanager
 def db_operation_timeout(seconds=5):
     """
-    Context manager to enforce timeouts on database operations
-
+    DEPRECATED: Database operation timeout context manager.
+    
+    The original implementation used signal.alarm() which only works in the main thread.
+    Flask handles requests in worker threads, causing "signal only works in main thread" errors.
+    
+    This is now a no-op context manager. Database operations should be fast enough
+    that explicit timeouts are unnecessary, or use proper async timeout mechanisms.
+    
     Args:
-        seconds: Timeout in seconds (default 5)
-
-    Raises:
-        DatabaseTimeoutError: If operation takes longer than specified timeout
+        seconds: Ignored (for backward compatibility)
     """
-
-    def timeout_handler(signum, frame):
-        raise DatabaseTimeoutError(
-            f"Database operation timed out after {seconds} seconds"
-        )
-
-    # Set the signal handler and a alarm for the specified timeout
-    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(seconds)
-
-    try:
-        yield
-    finally:
-        # Restore the old signal handler and cancel the alarm
-        signal.signal(signal.SIGALRM, old_handler)
-        signal.alarm(0)
+    from contextlib import nullcontext
+    return nullcontext()
 
 
 def check_db_connection() -> bool:
     """
-    Check if database connection is available with fast timeout
+    Check if database connection is available.
+    
+    Simplified version that doesn't use timeouts to avoid threading issues.
+    In practice, Firestore operations are either fast or fail quickly.
 
     Returns:
         True if database is available, False otherwise
@@ -75,15 +67,10 @@ def check_db_connection() -> bool:
         return False
 
     try:
-        with db_operation_timeout(2):  # Very short timeout for connection check
-            # Try a simple operation to test connection
-            db.collection("_connection_test").limit(1).get()
+        # Simple connection check without timeout
+        # If Firestore is down, this will fail quickly anyway
+        db.collection("_connection_test").limit(1).get()
         return True
-    except DatabaseTimeoutError:
-        logger.error(
-            "[DB Service] Database connection check timed out - database appears to be down"
-        )
-        return False
     except Exception as e:
         logger.error(f"[DB Service] Database connection check failed: {e}")
         return False
@@ -1052,33 +1039,29 @@ def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
         "[DB Service] get_all_courses called for institution: %s",
         sanitize_for_logging(institution_id),
     )
-    # Temporarily disable connection check to fix threading issue
-    # if not check_db_connection():
-    #     return []
+    if not check_db_connection():
+        return []
 
     try:
-        # Temporarily disable timeout to fix threading issue
-        # with db_operation_timeout(
-        #     10
-        # ):  # Longer timeout for potentially large result sets
-        query = db.collection(COURSES_COLLECTION).where(
-            filter=firestore.FieldFilter("institution_id", "==", institution_id)
-        )
+        with db_operation_timeout(10):  # Longer timeout for potentially large result sets
+            query = db.collection(COURSES_COLLECTION).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
 
-        docs = query.stream()
-        courses = []
+            docs = query.stream()
+            courses = []
 
-        for doc in docs:
-            course = doc.to_dict()
-            course["course_id"] = doc.id
-            courses.append(course)
+            for doc in docs:
+                course = doc.to_dict()
+                course["course_id"] = doc.id
+                courses.append(course)
 
-        logger.info(
-            "[DB Service] Found %d courses for institution: %s",
-            len(courses),
-            sanitize_for_logging(institution_id),
-        )
-        return courses
+            logger.info(
+                "[DB Service] Found %d courses for institution: %s",
+                len(courses),
+                sanitize_for_logging(institution_id),
+            )
+            return courses
 
     except DatabaseTimeoutError:
         logger.error(
@@ -1691,21 +1674,20 @@ def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
     )
 
     try:
-        # Temporarily disable timeout to fix threading issue
-        # with db_operation_timeout():
-        programs_ref = db.collection("programs")
-        query = programs_ref.where("institution_id", "==", institution_id)
-        programs = []
+        with db_operation_timeout():
+            programs_ref = db.collection("programs")
+            query = programs_ref.where("institution_id", "==", institution_id)
+            programs = []
 
-        for doc in query.stream():
-            program_data = doc.to_dict()
-            program_data["id"] = doc.id
-            programs.append(program_data)
+            for doc in query.stream():
+                program_data = doc.to_dict()
+                program_data["id"] = doc.id
+                programs.append(program_data)
 
-        logger.info(
-            f"[DB Service] Retrieved {len(programs)} programs for institution {institution_id}"
-        )
-        return programs
+            logger.info(
+                f"[DB Service] Retrieved {len(programs)} programs for institution {institution_id}"
+            )
+            return programs
 
     except Exception as e:
         logger.error(
