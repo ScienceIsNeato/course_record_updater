@@ -111,6 +111,7 @@ class LoginService:
                     "email": user["email"],
                     "role": user["role"],
                     "institution_id": user.get("institution_id"),
+                    "program_ids": user.get("program_ids", []),
                     "display_name": user.get(
                         "display_name", user["email"].split("@")[0]
                     ),
