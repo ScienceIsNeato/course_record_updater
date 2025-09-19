@@ -1742,6 +1742,40 @@ def get_program_by_id(program_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def get_program_by_name_and_institution(program_name: str, institution_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get a program by its name and institution ID (for idempotent seeding)
+
+    Args:
+        program_name: Program name
+        institution_id: Institution identifier
+
+    Returns:
+        Program dictionary if found, None otherwise
+    """
+    logger.info(f"[DB Service] get_program_by_name_and_institution called for: {program_name} in {institution_id}")
+
+    try:
+        with db_operation_timeout():
+            programs_ref = db.collection("programs")
+            query = programs_ref.where("name", "==", program_name).where("institution_id", "==", institution_id)
+            docs = query.limit(1).get()
+
+            if docs:
+                program_doc = docs[0]
+                program_data = program_doc.to_dict()
+                program_data["id"] = program_doc.id
+                logger.info(f"[DB Service] Found program: {program_name}")
+                return program_data
+            else:
+                logger.info(f"[DB Service] Program not found: {program_name}")
+                return None
+
+    except Exception as e:
+        logger.error(f"[DB Service] Error finding program {program_name}: {e}")
+        return None
+
+
 def update_program(program_id: str, updates: Dict[str, Any]) -> bool:
     """
     Update a program's information
