@@ -13,9 +13,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app import app
+from tests.test_utils import CommonAuthMixin
 
 
-class TestCourseProgramAPIIntegration:
+class TestCourseProgramAPIIntegration(CommonAuthMixin):
     """Test course-program association API endpoints with full Flask app context"""
 
     def setup_method(self):
@@ -23,6 +24,7 @@ class TestCourseProgramAPIIntegration:
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
+        self._login_site_admin()
 
     @patch("api_routes.get_program_by_id")
     @patch("api_routes.get_courses_by_program")
@@ -251,7 +253,7 @@ class TestCourseProgramAPIIntegration:
         assert data["error"] == "Program not found"
 
 
-class TestCourseProgramWorkflow:
+class TestCourseProgramWorkflow(CommonAuthMixin):
     """Test complete course-program association workflow"""
 
     def setup_method(self):
@@ -259,6 +261,7 @@ class TestCourseProgramWorkflow:
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
+        self._login_site_admin()
 
     @patch("api_routes.get_program_by_id")
     @patch("api_routes.get_course_by_number")

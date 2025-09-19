@@ -13,9 +13,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app import app
+from tests.test_utils import CommonAuthMixin
 
 
-class TestProgramAPIIntegration:
+class TestProgramAPIIntegration(CommonAuthMixin):
     """Test program API endpoints with full Flask app context"""
 
     def setup_method(self):
@@ -23,6 +24,7 @@ class TestProgramAPIIntegration:
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
+        self._login_site_admin()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_programs_by_institution")
@@ -221,7 +223,7 @@ class TestProgramAPIIntegration:
         assert data["error"] == "Institution ID not found"
 
 
-class TestProgramWorkflow:
+class TestProgramWorkflow(CommonAuthMixin):
     """Test complete program management workflow"""
 
     def setup_method(self):
@@ -229,6 +231,7 @@ class TestProgramWorkflow:
         self.app = app
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
+        self._login_site_admin()
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_current_user")

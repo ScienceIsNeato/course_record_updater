@@ -205,8 +205,9 @@ class TestIndexRoute:
         """Test that profile route requires authentication."""
         with app_module.app.test_client() as client:
             response = client.get("/profile")
-            # Real auth returns 401 for unauthenticated requests (now default)
-            assert response.status_code == 401
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
 
     def test_profile_route_renders_for_authenticated_user(self):
         """Test that profile route renders for authenticated users."""

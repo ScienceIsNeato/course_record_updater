@@ -142,9 +142,12 @@ class TestDashboardRoutes:
     def test_dashboard_no_user(self):
         """Test dashboard when no user is logged in"""
         # No session created - user is unauthenticated
-        response = self.client.get("/api/dashboard")
+        # Send AJAX headers to ensure API endpoint returns JSON (not redirect)
+        response = self.client.get(
+            "/api/dashboard", headers={"X-Requested-With": "XMLHttpRequest"}
+        )
 
-        # Real auth returns 401 for unauthenticated requests
+        # API requests with AJAX headers return 401 for unauthenticated requests
         assert response.status_code == 401
 
 

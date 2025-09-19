@@ -390,7 +390,7 @@ async function handleLogin(e) {
     if (response.ok && result.success) {
       showSuccess('Login successful! Redirecting...');
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/api/dashboard';
       }, 1000);
     } else {
       if (response.status === 423) {

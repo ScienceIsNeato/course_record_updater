@@ -367,22 +367,44 @@ auth_service = AuthService()
 
 # Authentication and Authorization Decorators
 def login_required(f):
-    """Decorator to require authentication."""
+    """Decorator to require authentication with smart response handling."""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not auth_service.is_authenticated():
             logger.warning(f"Unauthorized access attempt to {f.__name__}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Authentication required",
-                        "error_code": "AUTH_REQUIRED",
-                    }
-                ),
-                401,
+
+            # Detect if this is an API request or web page request
+            from flask import redirect, request, url_for
+
+            # Detect AJAX/programmatic requests vs browser requests
+            # AJAX requests should get JSON responses
+            # Browser requests (even to /api/ URLs) should redirect to login
+            is_ajax_request = (
+                request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                or request.headers.get("Content-Type") == "application/json"
+                or (
+                    request.headers.get("Accept", "").startswith("application/json")
+                    and "text/html" not in request.headers.get("Accept", "")
+                )
             )
+
+            if is_ajax_request:
+                # Return JSON response for AJAX requests
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Authentication required",
+                            "error_code": "AUTH_REQUIRED",
+                        }
+                    ),
+                    401,
+                )
+            else:
+                # Redirect to login page for browser requests (including /api/ URLs)
+                return redirect(url_for("login"))
+
         return f(*args, **kwargs)
 
     return decorated_function

@@ -17,6 +17,25 @@ def setup_integration_test_data():
     1. The CEI institution exists for auth service fallback
     2. Basic test data is available for integration tests
     """
+    import os
+
+    # Skip expensive Firestore setup when emulator isn't configured.
+    emulator_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
+    if not emulator_host:
+        print("ℹ️  Skipping CEI institution setup (FIRESTORE_EMULATOR_HOST not set)")
+        return
+
+    # Bail out quickly if the emulator host isn't reachable.
+    try:
+        host, port = emulator_host.split(":", 1)
+        import socket
+
+        with socket.create_connection((host, int(port)), timeout=1):
+            pass
+    except Exception:
+        print("ℹ️  Skipping CEI institution setup (Firestore emulator unreachable)")
+        return
+
     try:
         from database_service import create_default_cei_institution
 

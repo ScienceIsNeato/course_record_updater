@@ -263,14 +263,23 @@ class TestAPIEndpointSecuritySmoke:
                 with patch("auth_service.auth_service.has_permission") as mock_has_perm:
                     mock_has_perm.return_value = False
 
-                    with patch("auth_service.jsonify") as mock_jsonify:
-                        mock_jsonify.return_value = (MagicMock(), 403)
+                    with patch(
+                        "auth_service.auth_service.get_current_user"
+                    ) as mock_get_user:
+                        mock_get_user.return_value = {"user_id": "test-user"}
 
-                        result = admin_endpoint()
+                        with patch(
+                            "auth_service.get_current_user",
+                            return_value={"user_id": "test-user"},
+                        ):
+                            with patch("auth_service.jsonify") as mock_jsonify:
+                                mock_jsonify.return_value = (MagicMock(), 403)
 
-                        # Should return 403 Forbidden
-                        assert isinstance(result, tuple)
-                        assert result[1] == 403
+                                result = admin_endpoint()
+
+                            # Should return 403 Forbidden
+                            assert isinstance(result, tuple)
+                            assert result[1] == 403
 
     def test_context_aware_endpoints_validate_context_smoke(self):
         """Smoke test: Context-aware endpoints should validate context"""
@@ -291,14 +300,23 @@ class TestAPIEndpointSecuritySmoke:
                     # Should be called with context and return False for invalid context
                     mock_has_perm.return_value = False
 
-                    with patch("auth_service.jsonify") as mock_jsonify:
-                        mock_jsonify.return_value = (MagicMock(), 403)
+                    with patch(
+                        "auth_service.auth_service.get_current_user"
+                    ) as mock_get_user:
+                        mock_get_user.return_value = {"user_id": "test-user"}
 
-                        result = program_endpoint()
+                        with patch(
+                            "auth_service.get_current_user",
+                            return_value={"user_id": "test-user"},
+                        ):
+                            with patch("auth_service.jsonify") as mock_jsonify:
+                                mock_jsonify.return_value = (MagicMock(), 403)
 
-                        # Should validate context and deny access
-                        assert isinstance(result, tuple)
-                        assert result[1] == 403
+                                result = program_endpoint()
+
+                            # Should validate context and deny access
+                            assert isinstance(result, tuple)
+                            assert result[1] == 403
 
 
 class TestDataAccessPatternsSmoke:

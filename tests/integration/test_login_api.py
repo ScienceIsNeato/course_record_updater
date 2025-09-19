@@ -361,13 +361,16 @@ class TestUnlockAccountAPI:
     """Test account unlock API endpoint"""
 
     @patch("login_service.PasswordService")
+    @patch("auth_service.auth_service.get_current_user")
     @patch("auth_service.get_current_user")
     def test_unlock_account_success(
-        self, mock_get_current_user, mock_password_service, client
+        self, mock_module_get_user, mock_service_get_user, mock_password_service, client
     ):
         """Test successful account unlock"""
         # Setup
-        mock_get_current_user.return_value = {"id": "admin-123"}
+        user_context = {"id": "admin-123", "institution_id": "inst-123"}
+        mock_module_get_user.return_value = user_context
+        mock_service_get_user.return_value = user_context
         mock_password_service.clear_failed_attempts.return_value = None
 
         # Execute
@@ -384,11 +387,15 @@ class TestUnlockAccountAPI:
         assert data["unlock_success"] is True
         assert "has been unlocked" in data["message"]
 
+    @patch("auth_service.auth_service.get_current_user")
     @patch("auth_service.get_current_user")
-    def test_unlock_account_no_auth(self, mock_get_current_user, client):
+    def test_unlock_account_no_auth(
+        self, mock_module_get_user, mock_service_get_user, client
+    ):
         """Test unlock account when not authenticated"""
         # Setup
-        mock_get_current_user.return_value = None
+        mock_module_get_user.return_value = None
+        mock_service_get_user.return_value = None
 
         # Execute
         response = client.post(
@@ -406,6 +413,10 @@ class TestUnlockAccountAPI:
     def test_unlock_account_missing_email(self, client):
         """Test unlock account with missing email"""
         # Execute
+        with client.session_transaction() as sess:
+            sess["user_id"] = "admin-123"
+            sess["institution_id"] = "inst-123"
+
         response = client.post(
             "/api/auth/unlock-account",
             data=json.dumps(
