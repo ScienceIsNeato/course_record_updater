@@ -2,7 +2,7 @@ name: Quality Gate
 
 on:
   push:
-    branches: [ main, develop, 'feature/*' ]
+    branches: [ main, develop, 'feature/*', 'debug/*' ]
 
 jobs:
   setup:
