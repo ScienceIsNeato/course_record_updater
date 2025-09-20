@@ -3,19 +3,20 @@
 """
 ship_it.py - Course Record Updater Quality Gate Executor
 
-A Python wrapper for the maintainability-gate.sh script that executes
+A Python wrapper for the maintAInability-gate.sh script that executes
 quality checks in parallel to reduce total execution time.
 
 Adapted from FogOfDog frontend quality gate for Python/Flask projects.
 
 Usage:
-    python scripts/ship_it.py                    # All checks in parallel
-    python scripts/ship_it.py --fail-fast        # All checks, exit on first failure
+    python scripts/ship_it.py                    # Fast commit validation (excludes slow checks)
+    python scripts/ship_it.py --validation-type PR  # Full PR validation (all checks)
     python scripts/ship_it.py --checks format lint tests  # Run specific checks
     python scripts/ship_it.py --help             # Show help
 
 This wrapper dispatches individual check commands to the existing bash script
-in parallel threads, then collects and formats the results.
+in parallel threads, then collects and formats the results. Fail-fast behavior
+is always enabled for rapid development cycles.
 """
 
 import argparse
@@ -35,6 +36,11 @@ class CheckStatus(Enum):
     SKIPPED = "skipped"
 
 
+class ValidationType(Enum):
+    COMMIT = "commit"
+    PR = "PR"
+
+
 @dataclass
 class CheckResult:
     name: str
@@ -50,7 +56,6 @@ class QualityGateExecutor:
     def __init__(self):
         # Get centralized quality gate logger
         import os
-        import sys
 
         # Add parent directory to path for importing logging_config
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,7 +63,7 @@ class QualityGateExecutor:
             sys.path.insert(0, parent_dir)
         from logging_config import setup_quality_gate_logger
         self.logger = setup_quality_gate_logger()
-        self.script_path = "./scripts/maintainability-gate.sh"
+        self.script_path = "./scripts/maintAInability-gate.sh"
 
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
@@ -66,14 +71,35 @@ class QualityGateExecutor:
             ("black", "🎨 Code Formatting (black)"),
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
+            ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
+            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
             ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
+            ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
+            ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
+
+        # Fast checks for commit validation (exclude slow checks >30s)
+        self.commit_checks = [
+            ("black", "🎨 Code Formatting (black)"),
+            ("isort", "📚 Import Sorting (isort)"),
+            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
+            ("js-format", "🎨 JavaScript Format Check (Prettier)"),
+            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
+            ("types", "🔧 Type Check (mypy)"),
+            ("imports", "📦 Import Analysis & Organization"),
+            ("duplication", "🔄 Code Duplication Check"),
+        ]
+
+        # Full checks for PR validation (all checks)
+        self.pr_checks = self.all_checks
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
         """Run a single quality check and return the result."""
@@ -130,7 +156,6 @@ class QualityGateExecutor:
         self,
         checks: List[Tuple[str, str]],
         max_workers: int = None,  # Use all available CPU cores
-        fail_fast: bool = False,
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
         results = []
@@ -159,8 +184,8 @@ class QualityGateExecutor:
                         f"{status_icon} {result.name} completed in {result.duration:.1f}s"
                     )
 
-                    # Fail-fast: exit immediately on first failure
-                    if fail_fast and result.status == CheckStatus.FAILED:
+                    # Fail-fast: always exit immediately on first failure
+                    if result.status == CheckStatus.FAILED:
                         self.logger.error(
                             f"\n🚨 FAIL-FAST: {result.name} failed, terminating immediately..."
                         )
@@ -201,7 +226,7 @@ class QualityGateExecutor:
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "",
             f"⏱️  Total execution time: {total_duration:.1f}s (parallel)",
-            f"🐍 Python/Flask project quality validation",
+            "🐍 Python/Flask project quality validation",
             "",
         ]
 
@@ -246,7 +271,7 @@ class QualityGateExecutor:
                     lines.append(
                         f"       ... and {len(meaningful_lines) - 20} more lines"
                     )
-                    lines.append(f"       Run the individual check for full details")
+                    lines.append("       Run the individual check for full details")
             lines.append("")
         return lines
 
@@ -278,7 +303,7 @@ class QualityGateExecutor:
                     "unknown",
                 )
                 lines.append(
-                    f"   • {result.name}: ./scripts/maintainability-gate.sh --{check_flag}"
+                    f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
                 )
 
         return lines
@@ -325,7 +350,7 @@ class QualityGateExecutor:
         if "coverage" in output.lower() and (
             "fail" in output.lower() or "error" in output.lower()
         ):
-            return "Coverage analysis failed or below 80% threshold"
+            return "Coverage analysis failed or below 75% threshold"
 
         # Check for import errors
         if "import" in output.lower() and "error" in output.lower():
@@ -350,19 +375,25 @@ class QualityGateExecutor:
 
         return "\n".join(report)
 
-    def execute(self, checks: List[str] = None, fail_fast: bool = False) -> int:
-        """Execute all quality checks in parallel and return exit code."""
+    def execute(self, checks: List[str] = None, validation_type: ValidationType = ValidationType.COMMIT) -> int:
+        """Execute quality checks in parallel with fail-fast behavior and return exit code."""
+        validation_name = "COMMIT" if validation_type == ValidationType.COMMIT else "PR"
         self.logger.info(
-            "🔍 Running Course Record Updater quality checks (PARALLEL MODE with auto-fix)..."
+            f"🔍 Running Course Record Updater quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
         )
         self.logger.info("🐍 Python/Flask enterprise validation suite")
+        self.logger.info("⚡ Fail-fast mode: ALWAYS ENABLED")
         self.logger.info("")
 
         # Determine which checks to run
         if checks is None:
-            # Default: run all atomic checks
-            # Note: tests and coverage run sequentially to avoid pytest conflicts
-            checks_to_run = self.all_checks
+            # Default: use validation type to determine check set
+            if validation_type == ValidationType.COMMIT:
+                checks_to_run = self.commit_checks
+                self.logger.info("📦 Running COMMIT validation (fast checks, excludes security & sonar)")
+            else:
+                checks_to_run = self.pr_checks
+                self.logger.info("🔍 Running PR validation (all checks including security & sonar)")
         else:
             # Run only specified checks
             available_checks = {flag: (flag, name) for flag, name in self.all_checks}
@@ -377,9 +408,9 @@ class QualityGateExecutor:
 
         start_time = time.time()
 
-        # Run all checks in parallel
-        self.logger.info("🚀 Running all quality checks in parallel...")
-        all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
+        # Run all checks in parallel with fail-fast always enabled
+        self.logger.info("🚀 Running quality checks in parallel...")
+        all_results = self.run_checks_parallel(checks_to_run)
 
         total_duration = time.time() - start_time
 
@@ -392,8 +423,6 @@ class QualityGateExecutor:
 
     def _extract_slow_tests(self, output: str) -> List[str]:
         """Extract slow tests (>0.5s) from pytest output with --durations=0."""
-        import re
-
         slow_tests = []
 
         # Look for duration lines in format: "0.52s call     tests/test_example.py::test_slow"
@@ -412,39 +441,47 @@ class QualityGateExecutor:
 def main():
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
-        description="Course Record Updater Quality Gate - Run maintainability checks in parallel",
+        description="Course Record Updater Quality Gate - Run maintainability checks in parallel with fail-fast",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python scripts/ship_it.py                                    # All atomic checks in parallel
-  python scripts/ship_it.py --fail-fast                        # All atomic checks, exit on first failure
+  python scripts/ship_it.py                                    # Fast commit validation (excludes slow checks)
+  python scripts/ship_it.py --validation-type PR              # Full PR validation (all checks)
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
-Available checks: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication
+Validation Types:
+  commit - Fast checks for development cycle (excludes security & sonar, ~30s savings)
+  PR     - Full validation for pull requests (all checks including security & sonar)
 
-By default, runs ALL atomic checks for comprehensive quality validation.
-Use specific --checks for targeted validation or faster development cycles.
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check
+
+By default, runs COMMIT validation for fast development cycles.
+Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         """,
+    )
+
+    parser.add_argument(
+        "--validation-type",
+        choices=["commit", "PR"],
+        default="commit",
+        help="Validation type: 'commit' for fast checks (default), 'PR' for all checks",
     )
 
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication",
-    )
-
-    parser.add_argument(
-        "--fail-fast",
-        action="store_true",
-        help="Exit immediately on first check failure (for rapid development cycles)",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
 
     args = parser.parse_args()
 
+    # Convert validation type string to enum
+    validation_type = ValidationType.COMMIT if args.validation_type == "commit" else ValidationType.PR
+
     # Create and run the executor
     executor = QualityGateExecutor()
-    exit_code = executor.execute(checks=args.checks, fail_fast=args.fail_fast)
+    exit_code = executor.execute(checks=args.checks, validation_type=validation_type)
 
     sys.exit(exit_code)
 

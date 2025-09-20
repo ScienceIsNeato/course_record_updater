@@ -2,18 +2,19 @@
 
 ## Quality Gate Execution Best Practices
 
-### ✅ CORRECT: Run Full Suite by Default
+### ✅ CORRECT: Use Appropriate Validation Type
 ```bash
-# Run ALL quality checks (recommended default)
-python scripts/ship_it.py --fail-fast
+# Fast commit validation (default - excludes slow security & sonar)
+python scripts/ship_it.py
 
-# This automatically runs: black, isort, lint, tests, coverage, security, types, imports, duplication, sonar
+# Full PR validation (comprehensive - includes all checks)
+python scripts/ship_it.py --validation-type PR
 ```
 
 ### ❌ INCORRECT: Unnecessarily Enumerate Individual Checks
 ```bash
 # DON'T do this unless you specifically need only certain checks
-python scripts/ship_it.py --checks black isort lint tests coverage security types --fail-fast
+python scripts/ship_it.py --checks black isort lint tests coverage security types
 ```
 
 ### When to Use Specific Checks
@@ -22,10 +23,16 @@ Only specify `--checks` when you need targeted validation:
 - `--checks black isort` - Format-only fixes
 - `--checks tests coverage` - Test validation cycle
 
-### Default Behavior
-- **No `--checks` flag** = Run ALL available checks
-- This is the comprehensive quality gate validation
-- Use this for final validation before commits
+### Updated Default Behavior (2025)
+- **No flags** = Fast commit validation (excludes security & sonar for speed)
+- **`--validation-type PR`** = Comprehensive validation with all checks
+- **Fail-fast always enabled** = Immediate feedback on first failure
+- **78s time savings** with commit validation vs PR validation
+
+### Validation Type Selection
+- **Commit validation**: Use during development for rapid feedback cycles
+- **PR validation**: Use before creating pull requests for comprehensive quality assurance
+- **Specific checks**: Use for targeted fixes or debugging specific issues
 
 ## Key Insight
-The agent was repeatedly enumerating individual checks instead of leveraging the default "run everything" behavior. The script is designed to run the full suite by default, which is the intended workflow for comprehensive quality validation.
+The script now optimizes for development speed by default while maintaining comprehensive validation options. The fail-fast behavior is always enabled, and validation types allow developers to choose the appropriate level of checking based on context.

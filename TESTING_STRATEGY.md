@@ -1,4 +1,15 @@
-# Automated Testing Strategy
+# Testing Strategy
+
+## Overview
+This document outlines our comprehensive testing approach including automated testing, manual testing, and user acceptance testing.
+
+## Manual User Acceptance Testing
+For comprehensive authentication system validation:
+- **[UAT_GUIDE.md](UAT_GUIDE.md)**: Complete manual testing protocol with role-based scenarios
+- Covers all user roles: Site Admin, Institution Admin, Program Admin, Instructor
+- Includes security testing and multi-tenant validation
+
+## Automated Testing Strategy
 
 ## Problem Statement
 

@@ -1,0 +1,6 @@
+{
+    "sonarlint.connectedMode.project": {
+        "connectionId": "scienceisneato",
+        "projectKey": "course-record-updater"
+    }
+}

@@ -29,7 +29,7 @@
 
 ---
 
-## INSTITUTION_ADMINISTRATOR Abilities
+## INSTITUTION_ADMIN Abilities
 *Limited to their institution's data only*
 
 ### Course & Program Management
@@ -39,9 +39,12 @@
 - [ ] Duplicate courses from previous semesters
 - [ ] Create new academic programs/departments
 - [ ] Edit program information and settings
-- [ ] Archive old programs
+- [ ] Delete programs (with course reassignment)
+- [ ] Assign program administrators to programs
+- [ ] Remove program administrators from programs
 - [ ] Bulk import courses from spreadsheets
 - [ ] Export course data to Excel/CSV
+- [ ] Manage course-to-program associations institution-wide
 
 ### User Management (Institution-Level)
 - [ ] View all users within their institution
@@ -78,51 +81,62 @@
 
 ---
 
-## REGULAR_USER Abilities
-*Limited to courses they have access to*
+## PROGRAM_ADMIN Abilities
+*Limited to their assigned program(s) only*
 
-### Course Data Entry
-- [ ] Create new courses (for their department/program)
-- [ ] Edit courses they created
-- [ ] Edit courses they've been given access to
-- [ ] Upload documents for course information
-- [ ] Enter student enrollment numbers
-- [ ] Input grade distributions
-- [ ] Add learning outcome assessments
-- [ ] Attach supporting documents (syllabi, rubrics)
+### Course Management
+- [ ] View courses in assigned programs
+- [ ] Edit courses in assigned programs
+- [ ] Add existing courses to their programs
+- [ ] Remove courses from their programs
+- [ ] Create new courses and assign to their programs
+- [ ] Duplicate courses within their programs
+- [ ] Export course data for their programs
 
-### Data Viewing
-- [ ] View list of their own courses
-- [ ] View courses for their entire department
-- [ ] View courses for their entire institution
-- [ ] Search and filter course lists
-- [ ] View historical course data from previous semesters
+### User Management (Program-Level)
+- [ ] View instructors in their programs
+- [ ] Send email invitations to instructors
+- [ ] Assign instructors to courses in their programs
+- [ ] Remove instructor assignments in their programs
+- [ ] View instructor activity in their programs
+- [ ] Cannot create other program administrators
 
-### Basic Reporting
-- [ ] Generate reports for their own courses
-- [ ] Generate reports for their department
-- [ ] Export their course data to Excel
-- [ ] Print course information summaries
-- [ ] Create simple charts and graphs
+### Program Settings
+- [ ] Edit their assigned program information
+- [ ] Update program descriptions and settings
+- [ ] Cannot delete programs
+- [ ] Cannot create new programs
 
-### Account Management
-- [ ] Update their own profile information
-- [ ] Change their password
-- [ ] Set notification preferences
-- [ ] View their activity history
+### Reporting & Analytics
+- [ ] Generate reports for their assigned programs
+- [ ] View program-specific analytics and metrics
+- [ ] Export program data to Excel/CSV
+- [ ] Access historical data for their programs
+- [ ] Cannot access other programs' data
+
+### Multi-Program Access
+- [ ] Switch between assigned programs if managing multiple
+- [ ] View combined analytics across their assigned programs
+- [ ] Manage courses across all their assigned programs
 
 ---
 
-## DEPARTMENT_ADMIN Abilities (Optional Role)
-*Limited to their department within the institution*
+## INSTRUCTOR Abilities
+*Limited to courses they are assigned to*
 
-### Department Management
-- [ ] Manage users within their department
-- [ ] Create/edit courses for their department
-- [ ] Generate department-level reports
-- [ ] Set department-specific settings
-- [ ] Invite new department members
-- [ ] View department analytics dashboard
+### Course Data Management
+- [ ] View assigned course information
+- [ ] Edit course data for assigned courses
+- [ ] Submit assessment data and outcomes
+- [ ] Update enrollment and grade information
+- [ ] Export data for their assigned courses
+
+### Personal Management
+- [ ] Update personal profile information
+- [ ] Change password and account settings
+- [ ] View their course assignment history
+- [ ] Cannot invite other users
+- [ ] Cannot modify program or institution settings
 
 ---
 

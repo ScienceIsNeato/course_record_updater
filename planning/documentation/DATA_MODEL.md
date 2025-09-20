@@ -8,7 +8,7 @@
 - `user_id` (UUID, primary key)
 - `email` (unique, used for login)
 - `full_name`
-- `role` (enum: 'site_admin', 'multi_program_administrator', 'program_administrator', 'regular_user')
+- `role` (enum: 'site_admin', 'institution_admin', 'program_admin', 'instructor')
 - `primary_institution_id` (foreign key → Institution, optional for site_admin, used for default context)
 - `account_status` (enum: 'active', 'pending', 'suspended')
 - `created_at`, `updated_at`
@@ -50,7 +50,55 @@
 - Has many Users (via User.institution_id foreign key)
 
 ### 3. **Program**
-**Purpose:** Department/academic program within an institution
+**Purpose:** Department/academic program within an institution (new hierarchical layer)
+**Key Attributes:**
+- `program_id` (UUID, primary key)
+- `name` (e.g., "Biology Department", "Computer Science Program")
+- `short_name` (e.g., "BIO", "CS")
+- `description` (optional program description)
+- `institution_id` (foreign key → Institution)
+- `created_by` (foreign key → User, program creator)
+- `program_admins` (array of user_ids with admin access)
+- `is_default` (boolean, true for "Unclassified" default program)
+- `created_at`, `updated_at`
+- `is_active`
+
+**Relationships:**
+- Belongs to one Institution
+- Has many Courses (many-to-many relationship)
+- Has many Program Admins (via program_admins array)
+- Created by one User
+
+**Business Rules:**
+- Every institution has at least one program (default "Unclassified")
+- Courses can belong to multiple programs
+- Program admins can only manage courses within their assigned programs
+- Institution admins can manage all programs within their institution
+
+### 4. **Course** (Updated)
+**Purpose:** Abstract course definition (e.g., "MATH-101 College Algebra")
+**Key Attributes:**
+- `course_id` (UUID, primary key)
+- `course_number` (e.g., "MATH-101")
+- `course_title` (e.g., "College Algebra")
+- `department` (e.g., "MATH")
+- `credit_hours` (default 3)
+- `institution_id` (foreign key → Institution)
+- `program_ids` (array of program_ids this course belongs to)
+- `created_at`, `updated_at`
+
+**Relationships:**
+- Belongs to one Institution
+- Belongs to multiple Programs (via program_ids array)
+- Has many Course Offerings
+- Has many Course Sections (through offerings)
+
+**Business Rules:**
+- Courses without explicit program assignment go to default "Unclassified" program
+- Course can be shared across multiple programs within same institution
+- Course number must be unique within institution
+
+### 5. **CourseOffering** (Updated)
 **Key Attributes:**
 - `program_id` (UUID, primary key)
 - `institution_id` (foreign key → Institution)

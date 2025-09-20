@@ -24,18 +24,18 @@ fi
 
 echo -e "${GREEN}✅ Server is running${NC}"
 
-# Check for basic HTML structure
+# Check for basic HTML structure (login page since root redirects)
 echo -e "${BLUE}🔍 Checking HTML structure...${NC}"
-RESPONSE=$(curl -s http://localhost:3001)
+RESPONSE=$(curl -s http://localhost:3001/login)
 
-# Check for required elements
+# Check for required elements (authentication system)
 REQUIRED_ELEMENTS=(
-    "excelImportForm"
-    "excel_file"
-    "executeImportBtn"
-    "validateImportBtn"
-    "importResults"
-    "Course Management Dashboard"
+    "loginForm"
+    "email"
+    "password"
+    "auth-container"
+    "Welcome Back"
+    "CEI Course Admin"
 )
 
 MISSING_ELEMENTS=()

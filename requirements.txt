@@ -3,6 +3,8 @@ python-docx>=1.0
 google-cloud-firestore>=2.0
 gunicorn>=20.1 # Production WSGI server
 pandas>=2.3.2 # Data processing for Excel imports
+bcrypt>=4.0 # Secure password hashing
+Flask-Session>=0.8.0 # Secure session management
 
 # Version constraints to resolve dependency conflicts
 cachetools<6.0,>=2.0.0 # Keep compatible with google-auth (required by google-cloud-firestore)

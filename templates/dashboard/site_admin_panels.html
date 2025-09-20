@@ -1,0 +1,466 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Site Administrator Dashboard - CEI Course Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="showInstitutions()"><i class="fas fa-university me-1"></i>Institutions</a>
+<a class="nav-link" href="#" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</a>
+<a class="nav-link" href="#" onclick="showSystemSettings()"><i class="fas fa-cogs me-1"></i>System</a>
+{% endblock %}
+
+{% block page_title %}🏛️ Site Administration{% endblock %}
+{% block page_subtitle %}System-wide oversight and configuration{% endblock %}
+
+{% block content %}
+<!-- Interactive Header Stats -->
+<div class="header-stats">
+    <span>Current Term: <strong>Fall 2024</strong></span>
+    <div class="stat-item" data-stat="institutions">
+        [<span class="stat-number" id="institutionCount">0</span> Institutions]
+    </div>
+    <div class="stat-item" data-stat="programs">
+        [<span class="stat-number" id="programCount">0</span> Programs]
+    </div>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="courseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="users">
+        [<span class="stat-number" id="userCount">0</span> Users]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="refreshDashboardButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="dashboardLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Institution Overview -->
+<div class="dashboard-panel" id="institution-overview-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🏛️</span>
+            Institution Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="createInstitution()">
+                <i class="fas fa-plus"></i> Add Institution
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="institutionSettings()">
+                <i class="fas fa-cog"></i> Settings
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="institutionTableContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading institutions...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 2: System Activity -->
+<div class="dashboard-panel" id="system-activity-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Recent System Activity
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" onclick="viewAllActivity()">
+                <i class="fas fa-list"></i> View All
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="filterActivity()">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="activityTableContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading system activity...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 3: User Management -->
+<div class="dashboard-panel" id="user-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">👥</span>
+            User Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-success" onclick="inviteUser()">
+                <i class="fas fa-user-plus"></i> Add User
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="bulkImport()">
+                <i class="fas fa-upload"></i> Bulk Import
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="userTableContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading users...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 4: Data Management (Import/Export) -->
+<div class="dashboard-panel" id="data-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">💾</span>
+            Data Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-success" onclick="quickImport()">
+                <i class="fas fa-upload"></i> Quick Import
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="quickExport()">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div class="row">
+            <!-- Import Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                <p class="text-muted small">Site admins can import all data types</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('institutions')">
+                        <i class="fas fa-university"></i> Institutions
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('users')">
+                        <i class="fas fa-users"></i> Users
+                    </button>
+                </div>
+            </div>
+            <!-- Export Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatCSV" value="csv" checked>
+                        <label class="form-check-label" for="formatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatExcel" value="excel">
+                        <label class="form-check-label" for="formatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatJSON" value="json">
+                        <label class="form-check-label" for="formatJSON">JSON</label>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('institutions')">
+                        <i class="fas fa-university"></i> Institutions
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('users')">
+                        <i class="fas fa-users"></i> Users
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Core JavaScript dependencies -->
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script>
+    const DASHBOARD_REFRESH_MS = 5 * 60 * 1000;
+    let dashboardRefreshTimer = null;
+    let lastDashboardFetch = 0;
+    let dashboardCache = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeDashboard();
+    });
+
+    function initializeDashboard() {
+        const refreshButton = document.getElementById('refreshDashboardButton');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', () => loadDashboardData({ silent: false }));
+        }
+        loadDashboardData();
+        dashboardRefreshTimer = setInterval(() => loadDashboardData({ silent: true }), DASHBOARD_REFRESH_MS);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && Date.now() - lastDashboardFetch > DASHBOARD_REFRESH_MS) {
+                loadDashboardData({ silent: true });
+            }
+        });
+    }
+
+    async function loadDashboardData(options = {}) {
+        const { silent = false } = options;
+        if (!silent) {
+            setLoadingPlaceholder('institutionTableContainer');
+            setLoadingPlaceholder('userTableContainer');
+        }
+
+        try {
+            const response = await fetch('/api/dashboard/data', {
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.error || 'Unable to load dashboard data');
+            }
+
+            dashboardCache = payload.data || {};
+            window.dashboardDataCache = dashboardCache;
+            lastDashboardFetch = Date.now();
+            renderDashboard(dashboardCache);
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+            showPanelError('institutionTableContainer', 'Error loading institutions');
+            showPanelError('userTableContainer', 'Error loading users');
+        }
+    }
+
+    function renderDashboard(data) {
+        updateHeaderStats(data);
+        renderInstitutionTable(data.institutions || []);
+        renderUserTable(data.users || []);
+        renderSystemActivity(data.activity || []);
+        updateLastUpdated(data.metadata && data.metadata.last_updated);
+    }
+
+    function updateHeaderStats(data) {
+        const summary = data.summary || {};
+        const institutions = data.institutions || [];
+        const programs = data.programs || [];
+        const courses = data.courses || [];
+        const users = data.users || [];
+
+        document.getElementById('institutionCount').textContent = summary.institutions ?? institutions.length;
+        document.getElementById('programCount').textContent = summary.programs ?? programs.length;
+        document.getElementById('courseCount').textContent = summary.courses ?? courses.length;
+        document.getElementById('userCount').textContent = summary.users ?? users.length;
+    }
+
+    function renderInstitutionTable(institutions) {
+        const container = document.getElementById('institutionTableContainer');
+        if (!institutions.length) {
+            container.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">🏛️</div>
+                    <p>No institutions found</p>
+                    <button class="btn btn-primary" onclick="createInstitution()">Create First Institution</button>
+                </div>
+            `;
+            return;
+        }
+
+        const table = panelManager.createSortableTable({
+            id: 'institutions-table',
+            columns: [
+                { key: 'name', label: 'Institution', sortable: true },
+                { key: 'user_count', label: 'Users', sortable: true },
+                { key: 'program_count', label: 'Programs', sortable: true },
+                { key: 'course_count', label: 'Courses', sortable: true },
+                { key: 'status', label: 'Status', sortable: false },
+                { key: 'actions', label: 'Actions', sortable: false }
+            ],
+            data: institutions.map(inst => ({
+                name: inst.name || inst.institution_id,
+                user_count: inst.user_count || 0,
+                program_count: inst.program_count || 0,
+                course_count: inst.course_count || 0,
+                status: '<span class="status-badge active">Active</span>',
+                actions: `<button class="btn btn-sm btn-outline-primary" onclick="editInstitution('${inst.institution_id}')"><i class="fas fa-edit"></i></button>`
+            }))
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderUserTable(users) {
+        const container = document.getElementById('userTableContainer');
+        if (!users.length) {
+            container.innerHTML = `
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">👥</div>
+                    <p>No users found</p>
+                    <button class="btn btn-success" onclick="inviteUser()">Invite First User</button>
+                </div>
+            `;
+            return;
+        }
+
+        const table = panelManager.createSortableTable({
+            id: 'users-table',
+            columns: [
+                { key: 'name', label: 'Name', sortable: true },
+                { key: 'email', label: 'Email', sortable: true },
+                { key: 'role', label: 'Role', sortable: true },
+                { key: 'institution_name', label: 'Institution', sortable: true },
+                { key: 'status', label: 'Status', sortable: false }
+            ],
+            data: users.map(user => ({
+                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || 'Unknown',
+                email: user.email || 'N/A',
+                role: (user.role || 'unknown').replace(/_/g, ' '),
+                institution_name: user.institution_name || user.institution_id || 'N/A',
+                status: '<span class="status-badge active">Active</span>'
+            }))
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderSystemActivity(activityItems) {
+        const container = document.getElementById('activityTableContainer');
+        const data = activityItems.length ? activityItems : [
+            { timestamp: '2:34 PM', institution: 'CEI', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
+            { timestamp: '1:15 PM', institution: 'RCC', user: 'Mike Admin', action: 'User Created', details: 'New Instructor' },
+            { timestamp: '11:30 AM', institution: 'PTU', user: 'System', action: 'Term Created', details: 'Spring 2025' },
+            { timestamp: '10:45 AM', institution: 'CEI', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
+        ];
+
+        const table = panelManager.createSortableTable({
+            id: 'activity-table',
+            columns: [
+                { key: 'timestamp', label: 'Timestamp', sortable: true },
+                { key: 'institution', label: 'Institution', sortable: true },
+                { key: 'user', label: 'User', sortable: true },
+                { key: 'action', label: 'Action', sortable: true },
+                { key: 'details', label: 'Details', sortable: false }
+            ],
+            data
+        });
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function updateLastUpdated(timestamp) {
+        const target = document.getElementById('dashboardLastUpdated');
+        if (!target) return;
+
+        const value = timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString();
+        target.textContent = `Last updated: ${value}`;
+    }
+
+    function setLoadingPlaceholder(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading ...
+            </div>
+        `;
+    }
+
+    function showPanelError(containerId, message) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> ${message}
+            </div>
+        `;
+    }
+
+    // Action Functions (stubs)
+    function createInstitution() {
+        alert('Create Institution feature coming soon!');
+    }
+
+    function institutionSettings() {
+        alert('Institution Settings feature coming soon!');
+    }
+
+    function editInstitution(id) {
+        alert(`Edit Institution ${id} feature coming soon!`);
+    }
+
+    function viewAllActivity() {
+        alert('View All Activity feature coming soon!');
+    }
+
+    function filterActivity() {
+        alert('Filter Activity feature coming soon!');
+    }
+
+    function inviteUser() {
+        alert('Invite User feature coming soon!');
+    }
+
+    function bulkImport() {
+        alert('Bulk Import feature coming soon!');
+    }
+
+    function quickImport() {
+        alert('Quick Import feature coming soon! Select a specific data type to import.');
+    }
+
+    function importData(type) {
+        alert(`Import ${type} feature coming soon!`);
+    }
+
+    function quickExport() {
+        const format = document.querySelector('input[name="exportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function exportData(type) {
+        const format = document.querySelector('input[name="exportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+
+    function showInstitutions() {
+        alert('Institutions management feature coming soon!');
+    }
+
+    function showUsers() {
+        alert('Users management feature coming soon!');
+    }
+
+    function showSystemSettings() {
+        alert('System Settings feature coming soon!');
+    }
+</script>
+{% endblock %}

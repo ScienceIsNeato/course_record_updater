@@ -1,0 +1,248 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Program Administrator Dashboard - CEI Course Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-book me-1"></i>Courses</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-users me-1"></i>Faculty</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-bullseye me-1"></i>CLOs</a>
+{% endblock %}
+
+{% block page_title %}📚 Program Administration{% endblock %}
+{% block page_subtitle %}Manage curriculum and assessment outcomes{% endblock %}
+
+{% block content %}
+<div class="header-stats">
+    <span id="programAdminTitle">Program Overview</span>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="programCourseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="faculty">
+        [<span class="stat-number" id="programFacultyCount">0</span> Faculty]
+    </div>
+    <div class="stat-item" data-stat="students">
+        [<span class="stat-number" id="programStudentCount">0</span> Students]
+    </div>
+    <div class="stat-item" data-stat="sections">
+        [<span class="stat-number" id="programSectionCount">0</span> Sections]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="programRefreshButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="programLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Course Management -->
+<div class="dashboard-panel" id="program-courses-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📖</span>
+            Course Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Course
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-edit"></i> Edit CLOs
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programCoursesContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading courses...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 2: Faculty Assignments -->
+<div class="dashboard-panel" id="program-faculty-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">👨‍🏫</span>
+            Faculty Assignments
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-success" title="Coming soon" onclick="return false;">
+                <i class="fas fa-user-plus"></i> Assign Courses
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-envelope"></i> Send Reminders
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programFacultyContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading faculty...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 3: CLO Management -->
+<div class="dashboard-panel" id="program-clo-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">🎯</span>
+            Course Learning Outcomes
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add CLO
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-layer-group"></i> Bulk Edit
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programCloContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading outcomes...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 4: Assessment Results -->
+<div class="dashboard-panel" id="program-assessment-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Assessment Results
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary" onclick="return false;">
+                <i class="fas fa-file-alt"></i> Detailed View
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programAssessmentContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading assessment results...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 5: Data Management (Import/Export) -->
+<div class="dashboard-panel" id="program-data-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">💾</span>
+            Data Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-success" onclick="programQuickImport()">
+                <i class="fas fa-upload"></i> Quick Import
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="programQuickExport()">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div class="row">
+            <!-- Import Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                <p class="text-muted small">Program admins can import courses, sections, students, and assessments</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="programImportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="programImportData('sections')">
+                        <i class="fas fa-layer-group"></i> Sections
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="programImportData('students')">
+                        <i class="fas fa-user-graduate"></i> Students
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="programImportData('assessments')">
+                        <i class="fas fa-tasks"></i> Assessments
+                    </button>
+                </div>
+            </div>
+            <!-- Export Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatCSV" value="csv" checked>
+                        <label class="form-check-label" for="programFormatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatExcel" value="excel">
+                        <label class="form-check-label" for="programFormatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="programExportFormat" id="programFormatJSON" value="json">
+                        <label class="form-check-label" for="programFormatJSON">JSON</label>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="programExportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="programExportData('faculty')">
+                        <i class="fas fa-users"></i> Faculty
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="programExportData('students')">
+                        <i class="fas fa-user-graduate"></i> Students
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="programExportData('assessments')">
+                        <i class="fas fa-tasks"></i> Assessments
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
+<script>
+    // Program Data Management Functions
+    function programQuickImport() {
+        alert('Quick Import feature coming soon! Select a specific data type to import.');
+    }
+
+    function programImportData(type) {
+        alert(`Import ${type} feature coming soon!`);
+    }
+
+    function programQuickExport() {
+        const format = document.querySelector('input[name="programExportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function programExportData(type) {
+        const format = document.querySelector('input[name="programExportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+</script>
+{% endblock %}

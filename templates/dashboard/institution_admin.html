@@ -1,0 +1,249 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Institution Administrator Dashboard - CEI Course Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-users me-1"></i>Faculty</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-chart-bar me-1"></i>Outcomes</a>
+{% endblock %}
+
+{% block page_title %}🏛️ Institution Administration{% endblock %}
+{% block page_subtitle %}Manage programs, faculty, and outcomes{% endblock %}
+
+{% block content %}
+<div class="header-stats">
+    <span id="institutionName">{{ user.institution_name or 'Institution Overview' }}</span>
+    <span>Current Term: <strong id="currentTermName">--</strong></span>
+    <div class="stat-item" data-stat="programs">
+        [<span class="stat-number" id="programCount">0</span> Programs]
+    </div>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="courseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="faculty">
+        [<span class="stat-number" id="facultyCount">0</span> Faculty]
+    </div>
+    <div class="stat-item" data-stat="sections">
+        [<span class="stat-number" id="sectionCount">0</span> Sections]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="institutionRefreshButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="institutionLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Program Management -->
+<div class="dashboard-panel" id="institution-program-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📚</span>
+            Program Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Program
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-sliders-h"></i> Configure Programs
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programManagementContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading programs...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 2: Faculty Overview -->
+<div class="dashboard-panel" id="institution-faculty-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">👨‍🏫</span>
+            Faculty Overview
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-success" title="Coming soon" onclick="return false;">
+                <i class="fas fa-user-plus"></i> Invite Faculty
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-envelope"></i> Send Reminders
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="facultyOverviewContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading faculty...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 3: Course Sections -->
+<div class="dashboard-panel" id="institution-sections-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📖</span>
+            Course Sections (Current Term)
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-plus"></i> Add Section
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-upload"></i> Bulk Actions
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="courseSectionContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading sections...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 4: Assessment Progress -->
+<div class="dashboard-panel" id="institution-assessment-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Assessment Progress
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-warning" title="Coming soon" onclick="return false;">
+                <i class="fas fa-bell"></i> Send Reminders
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="assessmentProgressContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading assessment data...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 5: Data Management (Import/Export) -->
+<div class="dashboard-panel" id="institution-data-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">💾</span>
+            Data Management
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-success" onclick="institutionQuickImport()">
+                <i class="fas fa-upload"></i> Quick Import
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="institutionQuickExport()">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div class="row">
+            <!-- Import Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                <p class="text-muted small">Institution admins can import programs, courses, faculty, and students</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('faculty')">
+                        <i class="fas fa-users"></i> Faculty
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('students')">
+                        <i class="fas fa-user-graduate"></i> Students
+                    </button>
+                </div>
+            </div>
+            <!-- Export Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatCSV" value="csv" checked>
+                        <label class="form-check-label" for="institutionFormatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatExcel" value="excel">
+                        <label class="form-check-label" for="institutionFormatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatJSON" value="json">
+                        <label class="form-check-label" for="institutionFormatJSON">JSON</label>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('faculty')">
+                        <i class="fas fa-users"></i> Faculty
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('assessments')">
+                        <i class="fas fa-tasks"></i> Assessments
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script src="{{ url_for('static', filename='institution_dashboard.js') }}"></script>
+<script>
+    // Institution Data Management Functions
+    function institutionQuickImport() {
+        alert('Quick Import feature coming soon! Select a specific data type to import.');
+    }
+
+    function institutionImportData(type) {
+        alert(`Import ${type} feature coming soon!`);
+    }
+
+    function institutionQuickExport() {
+        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function institutionExportData(type) {
+        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+</script>
+{% endblock %}
