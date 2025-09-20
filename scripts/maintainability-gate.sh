@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# maintainability-gate - Course Record Updater Quality Framework
+# maintAInability-gate - Course Record Updater Quality Framework
 # This script ensures code maintainability through comprehensive quality checks
 # Mirrors Git Hooks & CI exactly - if this passes, your commit WILL succeed
 #
