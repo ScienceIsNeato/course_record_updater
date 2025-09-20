@@ -407,14 +407,13 @@ class TestSessionRefresh:
 class TestSecurityHelpers:
     """Test security helper functions"""
 
-    @pytest.mark.skip(
-        reason="Async mock issue with Flask request object - functionality works in practice"
-    )
     def test_get_client_ip_direct(self, request_context):
         """Test getting client IP from direct connection"""
         with patch("session.security.request") as mock_request:
-            # Mock headers.get to return None for all headers
-            mock_request.headers.get.side_effect = lambda key, default=None: default
+            # Create a proper mock for headers
+            mock_headers = MagicMock()
+            mock_headers.get.return_value = None
+            mock_request.headers = mock_headers
             mock_request.environ = {"REMOTE_ADDR": "192.168.1.1"}
 
             from session.security import SessionSecurity
@@ -422,16 +421,15 @@ class TestSecurityHelpers:
             ip = SessionSecurity.get_client_ip()
             assert ip == "192.168.1.1"
 
-    @pytest.mark.skip(
-        reason="Async mock issue with Flask request object - functionality works in practice"
-    )
     def test_get_client_ip_forwarded(self, request_context):
         """Test getting client IP from forwarded header"""
         with patch("session.security.request") as mock_request:
-            # Mock headers.get to return the forwarded header for X-Forwarded-For
-            mock_request.headers.get.side_effect = lambda key, default=None: (
+            # Create a proper mock for headers
+            mock_headers = MagicMock()
+            mock_headers.get.side_effect = lambda key, default=None: (
                 "10.0.0.1, 192.168.1.1" if key == "X-Forwarded-For" else default
             )
+            mock_request.headers = mock_headers
             mock_request.environ = {
                 "HTTP_X_FORWARDED_FOR": "10.0.0.1, 192.168.1.1",
                 "REMOTE_ADDR": "192.168.1.1",
