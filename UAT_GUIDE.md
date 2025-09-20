@@ -376,16 +376,39 @@ Validate instructor-level access and section management capabilities.
 - ❌ **STUB**: "Assessments feature coming soon!" alert
 
 #### **TC-IN-004: Profile Management**
-**Prerequisites**: Logged in as instructor
+**Prerequisites**: Logged in as any user role (instructor recommended for simplicity)
 
 **Steps**:
-1. Click "Edit Profile" button
-2. Navigate to profile page
-3. Attempt to change password
+1. Click user dropdown menu in top-right corner
+2. Click "Profile" option
+3. Verify profile page loads at `/profile`
+4. **Test Profile Information Update:**
+   - Modify "First Name" field
+   - Modify "Last Name" field  
+   - Click "Update Profile" button
+   - Verify success message appears
+5. **Test Password Change:**
+   - Click "Current Password" field and enter current password
+   - Test password visibility toggle (eye icon)
+   - Click "New Password" field and enter new password
+   - Verify password strength indicator updates (weak/medium/strong)
+   - Test new password visibility toggle
+   - Click "Change Password" button
+   - Verify success message appears
+6. **Test Form Validation:**
+   - Try submitting profile form with empty required fields
+   - Try submitting password form with empty current password
+   - Verify appropriate error messages appear
 
 **Expected Results**:
-- ❌ **STUB**: "Edit Profile feature coming soon!" alert
-- 🔍 **UNKNOWN**: Profile page functionality may exist
+- ✅ **FULLY FUNCTIONAL**: Profile page loads successfully
+- ✅ **FULLY FUNCTIONAL**: Profile information can be updated
+- ✅ **FULLY FUNCTIONAL**: Password can be changed with strength validation
+- ✅ **FULLY FUNCTIONAL**: Form validation works correctly
+- ✅ **FULLY FUNCTIONAL**: Password visibility toggles work
+- ✅ **FULLY FUNCTIONAL**: Success/error messages display appropriately
+
+**Notes**: Profile functionality is identical across all user roles, so testing with one role is sufficient.
 
 #### **TC-IN-005: Data Export Operations**
 **Prerequisites**: Logged in as instructor
@@ -531,7 +554,6 @@ Validate that users can only access data within their institutional/program scop
 - Section creation/editing (Program Admin)
 - Term management (Program Admin)
 - All reporting features
-- Profile editing (All users)
 - System settings and logs (Site Admin)
 - Import/export functionality (UI complete, backend stubs)
 
@@ -548,6 +570,7 @@ Validate that users can only access data within their institutional/program scop
 - Dashboard statistics and data loading
 - Multi-tenant data isolation
 - Password security and account lockout
+- **Profile management (all users)** - Update personal info and change passwords
 - Course Learning Outcomes (CLO) data display
 - Human-readable section numbers (001, 002) instead of UUIDs
 - Comprehensive seed data with realistic course sections and CLOs
