@@ -536,7 +536,8 @@ class TestExtendedDatabaseFunctions:
         assert result is None
 
     @patch("database_service.get_institution_by_id")
-    def test_create_course_invalid_institution_id(self, mock_get_institution):
+    @patch("database_service.db")
+    def test_create_course_invalid_institution_id(self, mock_db, mock_get_institution):
         """Test create_course fails when institution_id doesn't exist"""
         mock_get_institution.return_value = None  # Institution doesn't exist
 
