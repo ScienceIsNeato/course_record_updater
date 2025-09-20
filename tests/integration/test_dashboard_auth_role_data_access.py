@@ -427,7 +427,13 @@ class TestDashboardDataConsistency:
         response = self.client.get("/api/dashboard/data")
         assert response.status_code == 200
 
-        data = json.loads(response.data)
+        response_data = json.loads(response.data)
+
+        # Verify API response structure
+        assert response_data["success"] is True, "API response should indicate success"
+        assert "data" in response_data, "API response missing data field"
+
+        data = response_data["data"]
 
         # Verify required top-level structure
         required_fields = [
