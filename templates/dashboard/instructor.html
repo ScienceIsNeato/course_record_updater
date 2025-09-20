@@ -122,15 +122,15 @@
     </div>
 </div>
 
-<!-- Panel 5: Data Export -->
-<div class="dashboard-panel" id="instructor-export-panel">
+<!-- Panel 5: Data Management (Export Only) -->
+<div class="dashboard-panel" id="instructor-data-management-panel">
     <div class="panel-header">
         <h5 class="panel-title">
             <span class="panel-icon">📄</span>
             Data Export
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-outline-primary" onclick="instructorQuickExport()">
                 <i class="fas fa-download"></i> Quick Export
             </button>
         </div>
@@ -138,33 +138,43 @@
     </div>
     <div class="panel-content collapsed">
         <div class="row">
+            <!-- Note: Instructors have read-only access, so no import section -->
             <div class="col-md-6">
-                <h6>Quick Export Options</h6>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
-                        <i class="fas fa-tasks"></i> Assessment Tasks
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
-                        <i class="fas fa-chart-bar"></i> Course Summary
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
-                        <i class="fas fa-users"></i> Rosters
-                    </button>
+                <h6><i class="fas fa-info-circle text-info"></i> Import Access</h6>
+                <p class="text-muted small">Instructors have read-only access. Contact your program administrator to import data.</p>
+                <div class="alert alert-info">
+                    <small><strong>Need to import data?</strong><br>
+                    Contact your Program Administrator or Institution Administrator for assistance with data imports.</small>
                 </div>
             </div>
+            <!-- Export Section -->
             <div class="col-md-6">
-                <h6>Export Formats</h6>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatCSV" value="csv" checked>
-                    <label class="form-check-label" for="instructorFormatCSV">CSV</label>
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatCSV" value="csv" checked>
+                        <label class="form-check-label" for="instructorFormatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatExcel" value="excel">
+                        <label class="form-check-label" for="instructorFormatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatJSON" value="json">
+                        <label class="form-check-label" for="instructorFormatJSON">JSON</label>
+                    </div>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatExcel" value="excel">
-                    <label class="form-check-label" for="instructorFormatExcel">Excel</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatJSON" value="json">
-                    <label class="form-check-label" for="instructorFormatJSON">JSON</label>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('tasks')">
+                        <i class="fas fa-tasks"></i> Assessment Tasks
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('summary')">
+                        <i class="fas fa-chart-bar"></i> Course Summary
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('rosters')">
+                        <i class="fas fa-users"></i> Class Rosters
+                    </button>
                 </div>
             </div>
         </div>
@@ -177,4 +187,16 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='instructor_dashboard.js') }}"></script>
+<script>
+    // Instructor Data Management Functions (Export Only)
+    function instructorQuickExport() {
+        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function instructorExportData(type) {
+        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+</script>
 {% endblock %}

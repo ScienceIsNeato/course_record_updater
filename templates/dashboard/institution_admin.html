@@ -145,15 +145,18 @@
     </div>
 </div>
 
-<!-- Panel 5: Data Export -->
-<div class="dashboard-panel" id="institution-export-panel">
+<!-- Panel 5: Data Management (Import/Export) -->
+<div class="dashboard-panel" id="institution-data-management-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">📄</span>
-            Data Export
+            <span class="panel-icon">💾</span>
+            Data Management
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-primary" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-outline-success" onclick="institutionQuickImport()">
+                <i class="fas fa-upload"></i> Quick Import
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="institutionQuickExport()">
                 <i class="fas fa-download"></i> Quick Export
             </button>
         </div>
@@ -161,36 +164,56 @@
     </div>
     <div class="panel-content collapsed">
         <div class="row">
+            <!-- Import Section -->
             <div class="col-md-6">
-                <h6>Quick Export Options</h6>
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                <p class="text-muted small">Institution admins can import programs, courses, faculty, and students</p>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('programs')">
                         <i class="fas fa-graduation-cap"></i> Programs
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
-                        <i class="fas fa-users"></i> Faculty
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('courses')">
                         <i class="fas fa-book"></i> Courses
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" title="Coming soon" onclick="return false;">
-                        <i class="fas fa-tasks"></i> Assessments
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('faculty')">
+                        <i class="fas fa-users"></i> Faculty
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="institutionImportData('students')">
+                        <i class="fas fa-user-graduate"></i> Students
                     </button>
                 </div>
             </div>
+            <!-- Export Section -->
             <div class="col-md-6">
-                <h6>Export Formats</h6>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatCSV" value="csv" checked>
-                    <label class="form-check-label" for="institutionFormatCSV">CSV</label>
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatCSV" value="csv" checked>
+                        <label class="form-check-label" for="institutionFormatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatExcel" value="excel">
+                        <label class="form-check-label" for="institutionFormatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatJSON" value="json">
+                        <label class="form-check-label" for="institutionFormatJSON">JSON</label>
+                    </div>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatExcel" value="excel">
-                    <label class="form-check-label" for="institutionFormatExcel">Excel</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="institutionExportFormat" id="institutionFormatJSON" value="json">
-                    <label class="form-check-label" for="institutionFormatJSON">JSON</label>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('faculty')">
+                        <i class="fas fa-users"></i> Faculty
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="institutionExportData('assessments')">
+                        <i class="fas fa-tasks"></i> Assessments
+                    </button>
                 </div>
             </div>
         </div>
@@ -203,4 +226,24 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='institution_dashboard.js') }}"></script>
+<script>
+    // Institution Data Management Functions
+    function institutionQuickImport() {
+        alert('Quick Import feature coming soon! Select a specific data type to import.');
+    }
+
+    function institutionImportData(type) {
+        alert(`Import ${type} feature coming soon!`);
+    }
+
+    function institutionQuickExport() {
+        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function institutionExportData(type) {
+        const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+</script>
 {% endblock %}

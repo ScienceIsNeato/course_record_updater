@@ -121,14 +121,17 @@
     </div>
 </div>
 
-<!-- Panel 4: Data Export (Collapsed by default) -->
-<div class="dashboard-panel" id="data-export-panel">
+<!-- Panel 4: Data Management (Import/Export) -->
+<div class="dashboard-panel" id="data-management-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">📄</span>
-            Data Export
+            <span class="panel-icon">💾</span>
+            Data Management
         </h5>
         <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-success" onclick="quickImport()">
+                <i class="fas fa-upload"></i> Quick Import
+            </button>
             <button class="btn btn-sm btn-outline-primary" onclick="quickExport()">
                 <i class="fas fa-download"></i> Quick Export
             </button>
@@ -137,33 +140,56 @@
     </div>
     <div class="panel-content collapsed">
         <div class="row">
+            <!-- Import Section -->
             <div class="col-md-6">
-                <h6>Quick Export Options</h6>
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                <p class="text-muted small">Site admins can import all data types</p>
                 <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('users')">
-                        <i class="fas fa-users"></i> All Users
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('institutions')">
+                        <i class="fas fa-university"></i> Institutions
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('institutions')">
-                        <i class="fas fa-university"></i> All Institutions
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
                     </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('activity')">
-                        <i class="fas fa-chart-line"></i> System Activity
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="importData('users')">
+                        <i class="fas fa-users"></i> Users
                     </button>
                 </div>
             </div>
+            <!-- Export Section -->
             <div class="col-md-6">
-                <h6>Export Formats</h6>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="exportFormat" id="formatCSV" value="csv" checked>
-                    <label class="form-check-label" for="formatCSV">CSV</label>
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatCSV" value="csv" checked>
+                        <label class="form-check-label" for="formatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatExcel" value="excel">
+                        <label class="form-check-label" for="formatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="exportFormat" id="formatJSON" value="json">
+                        <label class="form-check-label" for="formatJSON">JSON</label>
+                    </div>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="exportFormat" id="formatExcel" value="excel">
-                    <label class="form-check-label" for="formatExcel">Excel</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="exportFormat" id="formatJSON" value="json">
-                    <label class="form-check-label" for="formatJSON">JSON</label>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('institutions')">
+                        <i class="fas fa-university"></i> Institutions
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('programs')">
+                        <i class="fas fa-graduation-cap"></i> Programs
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('courses')">
+                        <i class="fas fa-book"></i> Courses
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportData('users')">
+                        <i class="fas fa-users"></i> Users
+                    </button>
                 </div>
             </div>
         </div>
@@ -405,6 +431,14 @@
 
     function bulkImport() {
         alert('Bulk Import feature coming soon!');
+    }
+
+    function quickImport() {
+        alert('Quick Import feature coming soon! Select a specific data type to import.');
+    }
+
+    function importData(type) {
+        alert(`Import ${type} feature coming soon!`);
     }
 
     function quickExport() {
