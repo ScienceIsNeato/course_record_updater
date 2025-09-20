@@ -6,7 +6,7 @@
 - **Date**: September 2025
 - **Purpose**: Comprehensive manual testing guide for authentication system validation
 - **Target Audience**: Product owners, stakeholders, QA team, development team
-- **Recent Updates**: CLO data display fixed, section numbers now show properly (no more UUIDs), dashboard data loading verified
+- **Recent Updates**: CLO data display fixed, section numbers now show properly (no more UUIDs), dashboard data loading verified, unified Data Management panels with role-based import/export permissions implemented
 
 ---
 
@@ -121,18 +121,28 @@ Validate the highest-privilege user experience for system-wide management capabi
 - ❌ **STUB**: "Invite User feature coming soon!" alert
 - ❌ **STUB**: "Users management feature coming soon!" alert
 
-#### **TC-SA-004: System Overview and Reports**
+#### **TC-SA-004: Data Management and System Operations**
 **Prerequisites**: Logged in as site admin
 
 **Steps**:
 1. Check system statistics (institutions, users, programs, courses)
-2. Click "Export Data" button
-3. Click "View Logs" button
-4. Navigate to System Settings
+2. Scroll to "Data Management" panel (Panel 4)
+3. Click "Quick Import" and "Quick Export" buttons
+4. Expand the panel to see import/export options
+5. Test import buttons: Institutions, Programs, Courses, Users
+6. Test export buttons: Institutions, Programs, Courses, Users
+7. Test format selection: CSV, Excel, JSON
+8. Click "View Logs" button
+9. Navigate to System Settings
 
 **Expected Results**:
 - ✅ **SHOULD WORK**: Statistics load via API calls
-- ❌ **STUB**: "Export System Data feature coming soon!" alert
+- ✅ **SHOULD WORK**: Panel expands/collapses correctly
+- ❌ **STUB**: "Quick Import feature coming soon!" alert
+- ❌ **STUB**: "Quick Export (format) feature coming soon!" alert
+- ❌ **STUB**: "Import {type} feature coming soon!" alerts for each import type
+- ❌ **STUB**: "Export {type} (format) feature coming soon!" alerts for each export type
+- ✅ **SHOULD WORK**: Format selection (CSV/Excel/JSON) works correctly
 - ❌ **STUB**: "System Logs feature coming soon!" alert
 - ❌ **STUB**: "System Settings feature coming soon!" alert
 
@@ -188,18 +198,25 @@ Validate institution-level management capabilities and user onboarding flow.
 - ❌ **STUB**: "Invite User feature coming soon!" alert
 - ❌ **STUB**: "Users management feature coming soon!" alert
 
-#### **TC-IA-004: Data Import Operations**
+#### **TC-IA-004: Data Management Operations**
 **Prerequisites**: Logged in as institution admin
 
 **Steps**:
-1. Click "Import Excel" button
-2. Click "Download Template" button
-3. Click "Import History" button
+1. Scroll to "Data Management" panel (Panel 5)
+2. Click "Quick Import" button
+3. Click "Quick Export" button
+4. Expand the panel to see import/export options
+5. Test import buttons: Programs, Courses, Faculty, Students
+6. Test export buttons: Programs, Courses, Faculty, Assessments
+7. Test format selection: CSV, Excel, JSON
 
 **Expected Results**:
-- ✅ **SHOULD WORK**: "Import Excel" redirects to main import page
-- ❌ **STUB**: "Download Template feature coming soon!" alert
-- ❌ **STUB**: "Import History feature coming soon!" alert
+- ✅ **SHOULD WORK**: Panel expands/collapses correctly
+- ❌ **STUB**: "Quick Import feature coming soon!" alert
+- ❌ **STUB**: "Quick Export (format) feature coming soon!" alert
+- ❌ **STUB**: "Import {type} feature coming soon!" alerts for each import type
+- ❌ **STUB**: "Export {type} (format) feature coming soon!" alerts for each export type
+- ✅ **SHOULD WORK**: Format selection (CSV/Excel/JSON) works correctly
 
 #### **TC-IA-005: Institution Reports**
 **Prerequisites**: Logged in as institution admin
@@ -293,6 +310,26 @@ Validate program-level management and instructor oversight capabilities.
 - ❌ **STUB**: "Switch to Program feature coming soon!" alert
 - 🔍 **PARTIAL**: Context filtering may be partially implemented
 
+#### **TC-PA-006: Data Management Operations**
+**Prerequisites**: Logged in as program admin
+
+**Steps**:
+1. Scroll to "Data Management" panel (Panel 5)
+2. Click "Quick Import" button
+3. Click "Quick Export" button
+4. Expand the panel to see import/export options
+5. Test import buttons: Courses, Sections, Students, Assessments
+6. Test export buttons: Courses, Faculty, Students, Assessments
+7. Test format selection: CSV, Excel, JSON
+
+**Expected Results**:
+- ✅ **SHOULD WORK**: Panel expands/collapses correctly
+- ❌ **STUB**: "Quick Import feature coming soon!" alert
+- ❌ **STUB**: "Quick Export (format) feature coming soon!" alert
+- ❌ **STUB**: "Import {type} feature coming soon!" alerts for each import type
+- ❌ **STUB**: "Export {type} (format) feature coming soon!" alerts for each export type
+- ✅ **SHOULD WORK**: Format selection (CSV/Excel/JSON) works correctly
+
 ---
 
 ## 👨‍🏫 SCENARIO 4: Instructor Journey
@@ -349,6 +386,25 @@ Validate instructor-level access and section management capabilities.
 **Expected Results**:
 - ❌ **STUB**: "Edit Profile feature coming soon!" alert
 - 🔍 **UNKNOWN**: Profile page functionality may exist
+
+#### **TC-IN-005: Data Export Operations**
+**Prerequisites**: Logged in as instructor
+
+**Steps**:
+1. Scroll to "Data Export" panel (Panel 5)
+2. Click "Quick Export" button
+3. Expand the panel to see export options and import guidance
+4. Verify import guidance message is displayed
+5. Test export buttons: Assessment Tasks, Course Summary, Class Rosters
+6. Test format selection: CSV, Excel, JSON
+
+**Expected Results**:
+- ✅ **SHOULD WORK**: Panel expands/collapses correctly
+- ✅ **SHOULD WORK**: Import guidance message displayed (read-only access)
+- ❌ **STUB**: "Quick Export (format) feature coming soon!" alert
+- ❌ **STUB**: "Export {type} (format) feature coming soon!" alerts for each export type
+- ✅ **SHOULD WORK**: Format selection (CSV/Excel/JSON) works correctly
+- ✅ **SHOULD WORK**: No import buttons available (read-only role)
 
 ---
 
@@ -477,12 +533,12 @@ Validate that users can only access data within their institutional/program scop
 - All reporting features
 - Profile editing (All users)
 - System settings and logs (Site Admin)
-- Import history and templates
+- Import/export functionality (UI complete, backend stubs)
 
 ### Partial Implementations
 - Multi-program context switching (UI exists, functionality stubbed)
 - Password reset (Backend complete, UI link may be missing)
-- Data import (Redirects to existing import page)
+- Data Management panels (UI complete with role-based permissions, backend stubs)
 
 ### Fully Functional Features
 - User registration and email verification
