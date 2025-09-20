@@ -573,7 +573,13 @@ class PanelManager {
         title: 'Sections',
         items: formatItems(
           sections,
-          section => section.section_number || section.section_id || 'Section',
+          section => {
+            const courseNumber = section.course_number || '';
+            const sectionNumber = section.section_number || section.section_id || 'Section';
+            return courseNumber
+              ? `${courseNumber} Section ${sectionNumber}`
+              : `Section ${sectionNumber}`;
+          },
           section => `${section.enrollment || 0} students`
         )
       };
