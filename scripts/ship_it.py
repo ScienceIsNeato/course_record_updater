@@ -3,7 +3,7 @@
 """
 ship_it.py - Course Record Updater Quality Gate Executor
 
-A Python wrapper for the maintainability-gate.sh script that executes
+A Python wrapper for the maintAInability-gate.sh script that executes
 quality checks in parallel to reduce total execution time.
 
 Adapted from FogOfDog frontend quality gate for Python/Flask projects.
@@ -63,7 +63,7 @@ class QualityGateExecutor:
             sys.path.insert(0, parent_dir)
         from logging_config import setup_quality_gate_logger
         self.logger = setup_quality_gate_logger()
-        self.script_path = "./scripts/maintainability-gate.sh"
+        self.script_path = "./scripts/maintAInability-gate.sh"
 
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
@@ -303,7 +303,7 @@ class QualityGateExecutor:
                     "unknown",
                 )
                 lines.append(
-                    f"   • {result.name}: ./scripts/maintainability-gate.sh --{check_flag}"
+                    f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
                 )
 
         return lines
