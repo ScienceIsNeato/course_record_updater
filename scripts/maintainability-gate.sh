@@ -14,15 +14,15 @@
 # - Import organization and analysis
 #
 # Usage:
-#   ./scripts/maintainability-gate.sh           # All checks (strict mode with auto-fix)
-#   ./scripts/maintainability-gate.sh --format  # Check/fix formatting only
-#   ./scripts/maintainability-gate.sh --lint    # Check/fix linting only
-#   ./scripts/maintainability-gate.sh --types   # Check types only
-#   ./scripts/maintainability-gate.sh --tests   # Run tests with 80% coverage gate
-#   ./scripts/maintainability-gate.sh --security # Check security vulnerabilities
-#   ./scripts/maintainability-gate.sh --duplication # Check code duplication
-#   ./scripts/maintainability-gate.sh --imports # Check import organization
-#   ./scripts/maintainability-gate.sh --help    # Show this help
+#   ./scripts/maintAInability-gate.sh           # All checks (strict mode with auto-fix)
+#   ./scripts/maintAInability-gate.sh --format  # Check/fix formatting only
+#   ./scripts/maintAInability-gate.sh --lint    # Check/fix linting only
+#   ./scripts/maintAInability-gate.sh --types   # Check types only
+#   ./scripts/maintAInability-gate.sh --tests   # Run tests with 80% coverage gate
+#   ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities
+#   ./scripts/maintAInability-gate.sh --duplication # Check code duplication
+#   ./scripts/maintAInability-gate.sh --imports # Check import organization
+#   ./scripts/maintAInability-gate.sh --help    # Show this help
 
 set -e
 
@@ -108,26 +108,26 @@ else
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --help)
-        echo "maintainability-gate - Course Record Updater Quality Framework"
+        echo "maintAInability-gate - Course Record Updater Quality Framework"
         echo ""
         echo "Usage:"
-        echo "  ./scripts/maintainability-gate.sh           # All atomic checks (strict mode with auto-fix)"
-        echo "  ./scripts/maintainability-gate.sh --black   # Check/fix code formatting only"
-        echo "  ./scripts/maintainability-gate.sh --isort   # Check/fix import sorting only"
-        echo "  ./scripts/maintainability-gate.sh --lint    # Check/fix linting only"
-        echo "  ./scripts/maintainability-gate.sh --types   # Check types only"
-        echo "  ./scripts/maintainability-gate.sh --tests   # Run test suite only"
-        echo "  ./scripts/maintainability-gate.sh --coverage # Run coverage analysis only"
-        echo "  ./scripts/maintainability-gate.sh --security # Check security vulnerabilities"
-        echo "  ./scripts/maintainability-gate.sh --sonar   # Run SonarQube quality analysis"
-        echo "  ./scripts/maintainability-gate.sh --duplication # Check code duplication"
-        echo "  ./scripts/maintainability-gate.sh --imports # Check import organization"
-        echo "  ./scripts/maintainability-gate.sh --complexity # Check code complexity"
-        echo "  ./scripts/maintainability-gate.sh --js-lint    # Check JavaScript linting"
-        echo "  ./scripts/maintainability-gate.sh --js-format  # Check JavaScript formatting"
-        echo "  ./scripts/maintainability-gate.sh --smoke-tests # Run smoke tests (tests/smoke/)"
-        echo "  ./scripts/maintainability-gate.sh --frontend-check # Quick frontend validation"
-        echo "  ./scripts/maintainability-gate.sh --help    # Show this help"
+        echo "  ./scripts/maintAInability-gate.sh           # All atomic checks (strict mode with auto-fix)"
+        echo "  ./scripts/maintAInability-gate.sh --black   # Check/fix code formatting only"
+        echo "  ./scripts/maintAInability-gate.sh --isort   # Check/fix import sorting only"
+        echo "  ./scripts/maintAInability-gate.sh --lint    # Check/fix linting only"
+        echo "  ./scripts/maintAInability-gate.sh --types   # Check types only"
+        echo "  ./scripts/maintAInability-gate.sh --tests   # Run test suite only"
+        echo "  ./scripts/maintAInability-gate.sh --coverage # Run coverage analysis only"
+        echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
+        echo "  ./scripts/maintAInability-gate.sh --sonar   # Run SonarQube quality analysis"
+        echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
+        echo "  ./scripts/maintAInability-gate.sh --imports # Check import organization"
+        echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
+        echo "  ./scripts/maintAInability-gate.sh --js-lint    # Check JavaScript linting"
+        echo "  ./scripts/maintAInability-gate.sh --js-format  # Check JavaScript formatting"
+        echo "  ./scripts/maintAInability-gate.sh --smoke-tests # Run smoke tests (tests/smoke/)"
+        echo "  ./scripts/maintAInability-gate.sh --frontend-check # Quick frontend validation"
+        echo "  ./scripts/maintAInability-gate.sh --help    # Show this help"
         echo ""
         echo "This script ensures code maintainability through comprehensive quality checks"
         echo "and mirrors Git Hooks & CI exactly - if this passes, your commit WILL succeed."
