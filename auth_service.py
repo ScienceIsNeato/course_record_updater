@@ -144,7 +144,7 @@ class AuthService:
 
     def _get_real_session_user(self) -> Optional[Dict[str, Any]]:
         """Real session-based authentication (production mode)"""
-        from session_service import SessionService
+        from session import SessionService
 
         if not SessionService.is_user_logged_in():
             return None

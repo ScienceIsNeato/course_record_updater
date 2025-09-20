@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 
 import database_service as db
 from password_service import AccountLockedError, PasswordService
-from session_service import SessionService
+from session import SessionService
 
 logger = logging.getLogger(__name__)
 

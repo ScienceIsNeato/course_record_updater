@@ -49,7 +49,7 @@ class TestLoginAPI:
         self,
         mock_db,
         mock_password_service,
-        mock_session_service,
+        mock_session,
         client,
         sample_user_data,
     ):
@@ -60,7 +60,7 @@ class TestLoginAPI:
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
         mock_db.update_user.return_value = True
-        mock_session_service.create_user_session.return_value = None
+        mock_session.create_user_session.return_value = None
 
         # Execute
         response = client.post(
@@ -160,7 +160,7 @@ class TestLoginAPI:
         self,
         mock_db,
         mock_password_service,
-        mock_session_service,
+        mock_session,
         client,
         sample_user_data,
     ):
@@ -171,7 +171,7 @@ class TestLoginAPI:
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
         mock_db.update_user.return_value = True
-        mock_session_service.create_user_session.return_value = None
+        mock_session.create_user_session.return_value = None
 
         # Execute
         response = client.post(
@@ -193,8 +193,8 @@ class TestLoginAPI:
         assert data["login_success"] is True
 
         # Verify remember_me was passed to session service
-        mock_session_service.create_user_session.assert_called_once()
-        session_call = mock_session_service.create_user_session.call_args
+        mock_session.create_user_session.assert_called_once()
+        session_call = mock_session.create_user_session.call_args
         assert session_call[0][1] is True  # remember_me parameter
 
 
@@ -202,13 +202,11 @@ class TestLogoutAPI:
     """Test logout API endpoint"""
 
     @patch("login_service.SessionService")
-    def test_logout_success(self, mock_session_service, client):
+    def test_logout_success(self, mock_session, client):
         """Test successful logout via API"""
         # Setup
-        mock_session_service.get_session_info.return_value = {
-            "email": "test@example.com"
-        }
-        mock_session_service.destroy_session.return_value = None
+        mock_session.get_session_info.return_value = {"email": "test@example.com"}
+        mock_session.destroy_session.return_value = None
 
         # Execute
         response = client.post("/api/auth/logout")
@@ -221,11 +219,11 @@ class TestLogoutAPI:
         assert data["message"] == "Logout successful"
 
     @patch("login_service.SessionService")
-    def test_logout_with_error(self, mock_session_service, client):
+    def test_logout_with_error(self, mock_session, client):
         """Test logout when error occurs"""
         # Setup
-        mock_session_service.get_session_info.side_effect = Exception("Session error")
-        mock_session_service.destroy_session.return_value = None
+        mock_session.get_session_info.side_effect = Exception("Session error")
+        mock_session.destroy_session.return_value = None
 
         # Execute
         response = client.post("/api/auth/logout")
@@ -241,12 +239,12 @@ class TestLoginStatusAPI:
     """Test login status API endpoint"""
 
     @patch("login_service.SessionService")
-    def test_status_logged_in(self, mock_session_service, client):
+    def test_status_logged_in(self, mock_session, client):
         """Test getting status when user is logged in"""
         # Setup
-        mock_session_service.is_user_logged_in.return_value = True
-        mock_session_service.validate_session.return_value = True
-        mock_session_service.get_session_info.return_value = {
+        mock_session.is_user_logged_in.return_value = True
+        mock_session.validate_session.return_value = True
+        mock_session.get_session_info.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
             "role": "instructor",
@@ -266,10 +264,10 @@ class TestLoginStatusAPI:
         assert data["role"] == "instructor"
 
     @patch("login_service.SessionService")
-    def test_status_not_logged_in(self, mock_session_service, client):
+    def test_status_not_logged_in(self, mock_session, client):
         """Test getting status when user is not logged in"""
         # Setup
-        mock_session_service.is_user_logged_in.return_value = False
+        mock_session.is_user_logged_in.return_value = False
 
         # Execute
         response = client.get("/api/auth/status")
@@ -286,11 +284,11 @@ class TestSessionRefreshAPI:
     """Test session refresh API endpoint"""
 
     @patch("login_service.SessionService")
-    def test_refresh_success(self, mock_session_service, client):
+    def test_refresh_success(self, mock_session, client):
         """Test successful session refresh"""
         # Setup
-        mock_session_service.is_user_logged_in.return_value = True
-        mock_session_service.refresh_session.return_value = None
+        mock_session.is_user_logged_in.return_value = True
+        mock_session.refresh_session.return_value = None
 
         # Execute
         response = client.post("/api/auth/refresh")
@@ -303,10 +301,10 @@ class TestSessionRefreshAPI:
         assert data["message"] == "Session refreshed successfully"
 
     @patch("login_service.SessionService")
-    def test_refresh_no_session(self, mock_session_service, client):
+    def test_refresh_no_session(self, mock_session, client):
         """Test refresh when no active session"""
         # Setup
-        mock_session_service.is_user_logged_in.return_value = False
+        mock_session.is_user_logged_in.return_value = False
 
         # Execute
         response = client.post("/api/auth/refresh")
@@ -442,7 +440,7 @@ class TestLoginFlowIntegration:
         self,
         mock_db,
         mock_password_service,
-        mock_session_service,
+        mock_session,
         client,
         sample_user_data,
     ):
@@ -454,7 +452,7 @@ class TestLoginFlowIntegration:
         mock_password_service.verify_password.return_value = True
         mock_password_service.clear_failed_attempts.return_value = None
         mock_db.update_user.return_value = True
-        mock_session_service.create_user_session.return_value = None
+        mock_session.create_user_session.return_value = None
 
         login_response = client.post(
             "/api/auth/login",
@@ -467,9 +465,9 @@ class TestLoginFlowIntegration:
         assert login_data["login_success"] is True
 
         # Step 2: Check status
-        mock_session_service.is_user_logged_in.return_value = True
-        mock_session_service.validate_session.return_value = True
-        mock_session_service.get_session_info.return_value = {
+        mock_session.is_user_logged_in.return_value = True
+        mock_session.validate_session.return_value = True
+        mock_session.get_session_info.return_value = {
             "user_id": "user-123",
             "email": "test@example.com",
             "role": "instructor",
@@ -481,10 +479,8 @@ class TestLoginFlowIntegration:
         assert status_data["logged_in"] is True
 
         # Step 3: Logout
-        mock_session_service.get_session_info.return_value = {
-            "email": "test@example.com"
-        }
-        mock_session_service.destroy_session.return_value = None
+        mock_session.get_session_info.return_value = {"email": "test@example.com"}
+        mock_session.destroy_session.return_value = None
 
         logout_response = client.post("/api/auth/logout")
         assert logout_response.status_code == 200
@@ -492,8 +488,8 @@ class TestLoginFlowIntegration:
         assert logout_data["logout_success"] is True
 
         # Verify all services were called appropriately
-        mock_session_service.create_user_session.assert_called_once()
-        mock_session_service.destroy_session.assert_called_once()
+        mock_session.create_user_session.assert_called_once()
+        mock_session.destroy_session.assert_called_once()
 
     @patch("login_service.PasswordService")
     @patch("login_service.db")
