@@ -160,3 +160,45 @@ class AuthenticatedTestMixin:
 
         client = get_authenticated_client(self.app, user_data)
         return getattr(client, method.lower())(url, **kwargs)
+
+
+class CommonAuthMixin:
+    """
+    Common authentication mixin for test classes.
+    Provides standardized login methods to avoid duplication across test classes.
+    """
+
+    def _get_default_site_admin_user(self):
+        """Default site admin user data"""
+        return {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "inst-123",
+        }
+
+    def _login_site_admin(self, overrides=None):
+        """Authenticate requests as a site admin user."""
+        user_data = {**self._get_default_site_admin_user()}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
+
+    def _login_user(self, overrides=None):
+        """Alias for _login_site_admin for backward compatibility"""
+        return self._login_site_admin(overrides)
+
+    def _login_institution_admin(self, overrides=None):
+        """Authenticate as institution admin"""
+        defaults = {
+            "user_id": "inst-admin-123",
+            "email": "inst-admin@test.com",
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        user_data = {**defaults}
+        if overrides:
+            user_data.update(overrides)
+        create_test_session(self.client, user_data)
+        return user_data
