@@ -32,8 +32,11 @@ This project maintains enterprise-grade quality standards:
 # Install development dependencies
 pip install -r requirements-dev.txt
 
-# Run essential quality checks (2-3 minutes)
+# Run fast commit validation (excludes slow security & sonar checks)
 python scripts/ship_it.py
+
+# Run full PR validation (all checks including security & sonar)
+python scripts/ship_it.py --validation-type PR
 
 # Install pre-commit hooks
 pre-commit install

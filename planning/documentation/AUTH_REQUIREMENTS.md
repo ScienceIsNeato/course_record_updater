@@ -4,46 +4,57 @@
 
 ### 1. SITE_ADMIN (Global)
 **Who:** Site owner/developer
-**Scope:** All institutions and programs, all data
+**Scope:** All institutions, programs, and courses across entire system
 **Abilities:**
 - Full CRUD access to all institutions, programs, and courses
-- User management across all levels
+- User management across all levels and institutions
 - System configuration and maintenance
 - Billing/subscription management oversight
 - Analytics and reporting across all tenants
+- Can impersonate any user for support purposes
 
-### 2. MULTI_PROGRAM_ADMINISTRATOR
-**Who:** Manages multiple programs within an institution (e.g., department head overseeing Biology, Chemistry, Physics)
+### 2. INSTITUTION_ADMIN
+**Who:** Manages an entire institution (college, university)
+**Scope:** All programs and courses within their institution
+**Pricing:** TBD based on institution size
+**Abilities:**
+- **Institution Management:** Edit institution settings and details
+- **Program Management:** Create, edit, delete programs within their institution
+- **User Management:**
+  - Invite and manage Program Administrators
+  - Invite and manage Instructors
+  - Assign users to programs
+  - Manage user roles within their institution
+- **Course Management:** Full CRUD on all courses within their institution
+- **Data Views:** Access institution-wide reports and analytics
+- **Account Management:** Manage institution billing and settings
+
+### 3. PROGRAM_ADMIN
+**Who:** Manages one or more academic programs/departments
 **Scope:** Only the programs they are explicitly assigned to + all courses within those programs
-**Pricing:** $39.99/month + $X * 0.75 per course
+**Pricing:** TBD based on program size
 **Abilities:**
-- **Program Management:** Create/edit programs they manage (not institution-wide)
+- **Program Management:** Edit settings for their assigned programs only
 - **User Management:**
-  - Invite Program Administrators to their programs
-  - Invite Regular Users to their programs
-  - Manage access only within their assigned programs
-- **Course Management:** Full CRUD on courses within their assigned programs only
-- **Data Views:** Access live views across their assigned programs with export capabilities
-- **Account Management:** Manage billing and settings for their programs
+  - Invite Instructors to their programs
+  - Manage instructor assignments within their programs
+  - Cannot create other Program Admins (only Institution Admin can)
+- **Course Management:** 
+  - Full CRUD on courses within their assigned programs
+  - Add/remove courses from their programs
+  - Manage course-to-program associations
+- **Data Views:** Access program-specific reports and analytics
+- **Multi-Program:** Can be assigned to manage multiple programs
 
-### 3. PROGRAM_ADMINISTRATOR
-**Who:** Manages a single academic program/department
-**Scope:** One program + all courses within that program
-**Pricing:** $19.99/month + $X per course
-**Abilities:**
-- **Program Management:** Edit their single program settings
-- **User Management:**
-  - Invite Regular Users to their program
-  - Manage faculty assignments within their program
-- **Course Management:** Full CRUD on courses within their program
-- **Data Views:** Access live views for their program with export capabilities
-- **Account Management:** Manage their program's billing and settings
-
-### 4. REGULAR_USER
+### 4. INSTRUCTOR
 **Who:** Faculty, teaching assistants, program staff
 **Scope:** Courses they have access to within their assigned program(s)
 **Pricing:** Free
-**Multi-Institution Support:** Users can belong to multiple institutions with separate access controls
+**Abilities:**
+- **Course Data:** View and edit course data for assigned courses
+- **Assessment Management:** Submit and manage course assessments
+- **Reporting:** Access reports for their assigned courses
+- **Profile Management:** Manage their own profile and preferences
 **Abilities:**
 - **Data Entry:** Input course information via web forms
 - **Course Management:** Create/edit courses they have access to

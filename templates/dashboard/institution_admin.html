@@ -1,0 +1,372 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Institution Administrator Dashboard - CEI Course Admin{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="showPrograms()"><i class="fas fa-graduation-cap me-1"></i>Programs</a>
+<a class="nav-link" href="#" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</a>
+<a class="nav-link" href="#" onclick="showReports()"><i class="fas fa-chart-bar me-1"></i>Reports</a>
+{% endblock %}
+
+{% block page_title %}Institution Administrator Dashboard{% endblock %}
+{% block page_subtitle %}Manage programs, users, and institutional data{% endblock %}
+
+{% block content %}
+<!-- Institution Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-primary mb-1">{{ user.institution_name or 'Your Institution' }}</h5>
+                        <p class="text-muted mb-0">Institution ID: {{ user.institution_id }}</p>
+                    </div>
+                    <button class="btn btn-outline-primary" onclick="editInstitutionSettings()">
+                        <i class="fas fa-cog me-1"></i>Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-success">Programs</h5>
+                        <h3 class="mb-0" id="programCount">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                        </h3>
+                    </div>
+                    <div class="text-success">
+                        <i class="fas fa-graduation-cap fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-warning">Active Courses</h5>
+                        <h3 class="mb-0" id="courseCount">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                        </h3>
+                    </div>
+                    <div class="text-warning">
+                        <i class="fas fa-book fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-info">Faculty</h5>
+                        <h3 class="mb-0" id="facultyCount">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                        </h3>
+                    </div>
+                    <div class="text-info">
+                        <i class="fas fa-chalkboard-teacher fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title text-secondary">Sections</h5>
+                        <h3 class="mb-0" id="sectionCount">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                        </h3>
+                    </div>
+                    <div class="text-secondary">
+                        <i class="fas fa-list fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Management Sections -->
+<div class="row">
+    <!-- Program Management -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Program Management</h5>
+                <button class="btn btn-primary btn-sm" onclick="createProgram()">
+                    <i class="fas fa-plus me-1"></i>New Program
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="programsList">
+                    <div class="text-center py-3">
+                        <div class="spinner-border" role="status"></div>
+                        <p class="mt-2 text-muted">Loading programs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Management -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>User Management</h5>
+                <button class="btn btn-success btn-sm" onclick="inviteUser()">
+                    <i class="fas fa-user-plus me-1"></i>Invite User
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="usersList">
+                    <div class="text-center py-3">
+                        <div class="spinner-border" role="status"></div>
+                        <p class="mt-2 text-muted">Loading users...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Import and Reports -->
+<div class="row">
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Data Import</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Import course data from Excel files</p>
+                <div class="d-grid gap-2 d-md-flex">
+                    <button class="btn btn-outline-primary" onclick="importCourseData()">
+                        <i class="fas fa-file-excel me-1"></i>Import Excel
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="downloadTemplate()">
+                        <i class="fas fa-download me-1"></i>Download Template
+                    </button>
+                    <button class="btn btn-outline-info" onclick="viewImportHistory()">
+                        <i class="fas fa-history me-1"></i>Import History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Quick Reports</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="generateEnrollmentReport()">
+                        <i class="fas fa-users me-1"></i>Enrollment Report
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="generateCourseReport()">
+                        <i class="fas fa-book me-1"></i>Course Report
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="generateFacultyReport()">
+                        <i class="fas fa-chalkboard-teacher me-1"></i>Faculty Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Institution Admin Dashboard JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInstitutionAdminData();
+    });
+
+    async function loadInstitutionAdminData() {
+        try {
+            await Promise.all([
+                loadProgramCount(),
+                loadCourseCount(),
+                loadFacultyCount(),
+                loadSectionCount(),
+                loadProgramsList(),
+                loadUsersList()
+            ]);
+        } catch (error) {
+            console.error('Error loading institution admin data:', error);
+        }
+    }
+
+    async function loadProgramCount() {
+        try {
+            const response = await fetch('/api/programs');
+            const data = await response.json();
+            document.getElementById('programCount').textContent = data.count || 0;
+        } catch (error) {
+            document.getElementById('programCount').textContent = 'Error';
+        }
+    }
+
+    async function loadCourseCount() {
+        try {
+            const response = await fetch('/api/courses');
+            const data = await response.json();
+            document.getElementById('courseCount').textContent = data.count || 0;
+        } catch (error) {
+            document.getElementById('courseCount').textContent = 'Error';
+        }
+    }
+
+    async function loadFacultyCount() {
+        try {
+            const response = await fetch('/api/instructors');
+            const data = await response.json();
+            document.getElementById('facultyCount').textContent = data.count || 0;
+        } catch (error) {
+            document.getElementById('facultyCount').textContent = 'Error';
+        }
+    }
+
+    async function loadSectionCount() {
+        try {
+            const response = await fetch('/api/sections');
+            const data = await response.json();
+            document.getElementById('sectionCount').textContent = data.count || 0;
+        } catch (error) {
+            document.getElementById('sectionCount').textContent = 'Error';
+        }
+    }
+
+    async function loadProgramsList() {
+        try {
+            const response = await fetch('/api/programs');
+            const data = await response.json();
+            
+            const container = document.getElementById('programsList');
+            if (data.success && data.programs) {
+                container.innerHTML = data.programs.map(program => `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <strong>${program.name}</strong>
+                            <br><small class="text-muted">${program.short_name}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm me-1" onclick="editProgram('${program.program_id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="viewProgram('${program.program_id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p class="text-muted">No programs found</p>';
+            }
+        } catch (error) {
+            document.getElementById('programsList').innerHTML = '<p class="text-danger">Error loading programs</p>';
+        }
+    }
+
+    async function loadUsersList() {
+        try {
+            const response = await fetch('/api/users');
+            const data = await response.json();
+            
+            const container = document.getElementById('usersList');
+            if (data.success && data.users) {
+                container.innerHTML = data.users.slice(0, 5).map(user => `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                        <div>
+                            <strong>${user.first_name} ${user.last_name}</strong>
+                            <br><small class="text-muted">${user.email}</small>
+                        </div>
+                        <span class="badge bg-secondary">${user.role.replace('_', ' ')}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<p class="text-muted">No users found</p>';
+            }
+        } catch (error) {
+            document.getElementById('usersList').innerHTML = '<p class="text-danger">Error loading users</p>';
+        }
+    }
+
+    // Action functions
+    function createProgram() {
+        alert('Create Program feature coming soon!');
+    }
+
+    function editProgram(id) {
+        alert(`Edit Program ${id} feature coming soon!`);
+    }
+
+    function viewProgram(id) {
+        alert(`View Program ${id} feature coming soon!`);
+    }
+
+    function inviteUser() {
+        alert('Invite User feature coming soon!');
+    }
+
+    function importCourseData() {
+        // Redirect to main import page
+        window.location.href = '/';
+    }
+
+    function downloadTemplate() {
+        alert('Download Template feature coming soon!');
+    }
+
+    function viewImportHistory() {
+        alert('Import History feature coming soon!');
+    }
+
+    function generateEnrollmentReport() {
+        alert('Enrollment Report feature coming soon!');
+    }
+
+    function generateCourseReport() {
+        alert('Course Report feature coming soon!');
+    }
+
+    function generateFacultyReport() {
+        alert('Faculty Report feature coming soon!');
+    }
+
+    function editInstitutionSettings() {
+        alert('Institution Settings feature coming soon!');
+    }
+
+    function showPrograms() {
+        alert('Programs management feature coming soon!');
+    }
+
+    function showUsers() {
+        alert('Users management feature coming soon!');
+    }
+
+    function showReports() {
+        alert('Reports feature coming soon!');
+    }
+</script>
+{% endblock %}

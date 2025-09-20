@@ -41,25 +41,33 @@ We've successfully implemented a comprehensive quality gate system based on FogO
 ### 🚀 **Usage:**
 
 ```bash
-# Default: Essential checks (format, lint, tests)
+# Default: Fast commit validation (excludes slow security & sonar)
 python scripts/ship_it.py
+
+# Full PR validation (all checks including security & sonar)
+python scripts/ship_it.py --validation-type PR
 
 # Specific checks
 python scripts/ship_it.py --checks format lint
 
-# Full comprehensive suite
-python scripts/ship_it.py --checks format lint tests security types
-
-# Fail-fast development
-python scripts/ship_it.py --fail-fast
+# Run specific checks with PR validation
+python scripts/ship_it.py --validation-type PR --checks format lint tests security types
 ```
 
 ### ⏱️ **Performance Results:**
 
+**Commit Validation (Default):**
 - **Format Check**: ~5-10 seconds
 - **Lint Check**: ~5-30 seconds
 - **Test Suite**: ~60-180 seconds (depends on coverage)
-- **Total (essential checks)**: ~2-3 minutes
+- **Total (commit validation)**: ~2-3 minutes
+
+**PR Validation (Full Suite):**
+- **Security Audit**: ~30-45 seconds
+- **SonarCloud Analysis**: ~45-60 seconds
+- **Total (PR validation)**: ~3-5 minutes
+
+**Time Savings**: Commit validation saves ~78s by excluding security and sonar checks
 
 ### 🎯 **80% Coverage Gate:**
 
