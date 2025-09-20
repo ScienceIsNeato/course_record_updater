@@ -141,9 +141,7 @@ jobs:
         echo "CI=$CI"
         echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
         echo "PYTHONPATH=$PYTHONPATH"
-        echo "=== Running maintainability gate directly to see what's missing ==="
-        ./scripts/maintainability-gate.sh --tests || echo "Maintainability gate failed - let's see why"
-        echo "=== Now running via ship_it ==="
+        echo "=== Running unit tests ==="
         python scripts/ship_it.py --checks tests
       env:
         PYTHONPATH: .
