@@ -4,13 +4,18 @@ Core session management operations.
 Handles session creation, validation, destruction, and Flask-Session
 configuration. This is the main session management interface.
 """
+# isort: skip_file
+# NOTE: isort disabled for this file due to persistent CI import ordering conflicts
+# between flask/flask_session grouping that couldn't be resolved with standard
+# isort configuration. The imports are manually organized and functional.
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from flask import current_app, session
-
 from flask_session import Session  # type: ignore
+
+# Local imports
 from logging_config import get_logger
 
 from .config import FLASK_SESSION_CONFIG, get_session_lifetime
