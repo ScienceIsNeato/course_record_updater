@@ -13,7 +13,12 @@ import pytest
 
 @pytest.fixture(autouse=True, scope="session")
 def fail_fast_firestore_emulator():
-    """Force Firestore connections to fail immediately when emulator is absent."""
+    """Force Firestore connections to fail immediately when emulator is absent (local dev only)."""
+    # Skip this fixture in CI environments where emulator setup is handled differently
+    if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
+        yield
+        return
+
     original_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
     original_grpc = os.environ.get("FIRESTORE_EMULATOR_GRPC_ADDRESS")
 
