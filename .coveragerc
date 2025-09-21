@@ -36,9 +36,6 @@ omit =
 
     # CLI entry points (tested via integration)
     import_cli.py
-    
-    # Constants file (static definitions, no logic to test)
-    constants.py
 
 [report]
 # 75% coverage threshold - pragmatic quality gate  
@@ -68,8 +65,8 @@ exclude_lines =
     if __name__ == .__main__.:
 
 [html]
-directory = htmlcov
+directory = build-output/htmlcov
 title = Course Record Updater Coverage Report
 
 [xml]
-output = coverage.xml
+output = build-output/coverage.xml

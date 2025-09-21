@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main, develop, 'feature/*' ]
 
+env:
+  PYTHON_VERSION: '3.11'  # Source of truth for Python version - must match Dockerfile
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -12,10 +15,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: Generate cache key
       id: cache-key
@@ -40,10 +43,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -66,10 +69,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -92,10 +95,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -119,10 +122,10 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -148,7 +151,7 @@ jobs:
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: ./coverage.xml
+        file: ./build-output/coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -159,10 +162,10 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Set up Java 11 (required for Firestore emulator)
       uses: actions/setup-java@v4
       with:
@@ -241,10 +244,10 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -288,10 +291,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -314,10 +317,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -343,10 +346,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -369,10 +372,10 @@ jobs:
     needs: setup
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -399,10 +402,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-    - name: Set up Python 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:

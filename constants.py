@@ -5,6 +5,30 @@ SITE_ADMIN_INSTITUTION_ID = (
     "*"  # Wildcard institution ID for site admins (grants access to all institutions)
 )
 
+# Default timezone for institutions
+DEFAULT_INSTITUTION_TIMEZONE = "America/Denver"
+
+# Database collection names
+INSTITUTIONS_COLLECTION = "institutions"
+USERS_COLLECTION = "users"
+COURSES_COLLECTION = "courses"
+TERMS_COLLECTION = "terms"
+COURSE_OFFERINGS_COLLECTION = "course_offerings"
+COURSE_SECTIONS_COLLECTION = "course_sections"
+COURSE_OUTCOMES_COLLECTION = "course_outcomes"
+
+# API error messages
+NO_DATA_PROVIDED_MSG = "No data provided"
+INSTITUTION_CONTEXT_REQUIRED_MSG = "Institution context required"
+COURSE_NOT_FOUND_MSG = "Course not found"
+PROGRAM_NOT_FOUND_MSG = "Program not found"
+INVALID_EMAIL_FORMAT_MSG = "Invalid email format"
+NO_JSON_DATA_PROVIDED_MSG = "No JSON data provided"
+NOT_FOUND_MSG = "not found"
+INVITATION_NOT_FOUND_MSG = "Invitation not found"
+INVALID_CREDENTIALS_MSG = "Invalid email or password"
+DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Firestore client not available."
+
 
 # User role constants
 class UserRole:

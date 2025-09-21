@@ -1,10 +1,10 @@
 # User Acceptance Testing (UAT) Guide
-## Authentication System Manual Testing Protocol
+## Course Record Updater System Validation Protocol
 
 ### Document Information
 - **Version**: 1.1
 - **Date**: September 2025
-- **Purpose**: Comprehensive manual testing guide for authentication system validation
+- **Purpose**: Comprehensive manual testing guide for system validation
 - **Target Audience**: Product owners, stakeholders, QA team, development team
 - **Recent Updates**: CLO data display fixed, section numbers now show properly (no more UUIDs), dashboard data loading verified, unified Data Management panels with role-based import/export permissions implemented
 
@@ -13,7 +13,7 @@
 ## 📋 Testing Overview
 
 ### Scope
-This UAT guide covers the complete authentication and authorization system including:
+This UAT guide covers the complete Course Record Updater system including:
 - Multi-tenant user registration and onboarding
 - 4-tier role-based access control (Site Admin → Institution Admin → Program Admin → Instructor)
 - Session management and security features

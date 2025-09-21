@@ -5,10 +5,12 @@
 *.pyc
 cursor-rules/
 
+# Build and test output directory
+build-output/
+
 # Coverage files
 .coverage
 coverage.xml
-htmlcov/
 
 # Test artifacts
 .pytest_cache/
@@ -19,17 +21,7 @@ logs/
 # SonarCloud analysis artifacts
 .scannerwork/
 
-# CodeQL analysis artifacts
-python-database/
-codeql-results*.csv
-codeql-results*.sarif
-
 .DS_Store
-
-firebase-debug.log
-firestore-debug.log
-safety_detailed_output.txt
-safety_full_diagnostic.txt
 
 # Node.js dependencies and artifacts
 node_modules/

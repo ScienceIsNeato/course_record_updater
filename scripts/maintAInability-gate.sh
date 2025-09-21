@@ -260,7 +260,7 @@ if [[ "$RUN_LINT" == "true" ]]; then
 
   # Run flake8 for critical errors only (much faster)
   echo "🔧 Running flake8 critical error check..."
-  FLAKE8_OUTPUT=$(timeout 30s flake8 --max-line-length=88 --select=E9,F63,F7,F82 --exclude=venv,cursor-rules,.venv,logs,htmlcov *.py adapters/ tests/ 2>/dev/null) || FLAKE8_FAILED=true
+  FLAKE8_OUTPUT=$(timeout 30s flake8 --max-line-length=88 --select=E9,F63,F7,F82 --exclude=venv,cursor-rules,.venv,logs,build-output *.py adapters/ tests/ 2>/dev/null) || FLAKE8_FAILED=true
 
   if [[ "$FLAKE8_FAILED" == "true" ]]; then
     echo "❌ Flake8 critical errors found"

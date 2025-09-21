@@ -1,7 +1,7 @@
 """
 Integration tests for dashboard API endpoints
 
-Clean greenfield tests focusing on core functionality without legacy debug cruft.
+Clean tests focusing on core functionality.
 """
 
 import time

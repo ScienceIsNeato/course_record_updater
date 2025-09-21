@@ -13,6 +13,19 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import firestore
 
+# Import application constants
+from constants import (
+    COURSE_OFFERINGS_COLLECTION,
+    COURSE_OUTCOMES_COLLECTION,
+    COURSE_SECTIONS_COLLECTION,
+    COURSES_COLLECTION,
+    DB_CLIENT_NOT_AVAILABLE_MSG,
+    DEFAULT_INSTITUTION_TIMEZONE,
+    INSTITUTIONS_COLLECTION,
+    TERMS_COLLECTION,
+    USERS_COLLECTION,
+)
+
 # Import centralized logging
 from logging_config import get_database_logger
 
@@ -22,8 +35,7 @@ from models import User, validate_course_number, validate_email  # noqa: F401
 # Get standardized logger
 logger = get_database_logger()
 
-# Constants
-DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Firestore client not available."
+# Constants are now imported from constants.py
 
 
 class DatabaseTimeoutError(Exception):
@@ -134,14 +146,7 @@ except Exception as e:
         )
     db = None  # Ensure db is None if initialization fails
 
-# Relational model collections
-INSTITUTIONS_COLLECTION = "institutions"
-USERS_COLLECTION = "users"
-COURSES_COLLECTION = "courses"
-TERMS_COLLECTION = "terms"
-COURSE_OFFERINGS_COLLECTION = "course_offerings"
-COURSE_SECTIONS_COLLECTION = "course_sections"
-COURSE_OUTCOMES_COLLECTION = "course_outcomes"
+# Collection names are now imported from constants.py
 
 # ========================================
 # INSTITUTION MANAGEMENT FUNCTIONS
@@ -274,7 +279,7 @@ def create_default_cei_institution() -> Optional[str]:
         "name": "College of Eastern Idaho",
         "short_name": "CEI",
         "domain": "cei.edu",
-        "timezone": "America/Denver",
+        "timezone": DEFAULT_INSTITUTION_TIMEZONE,
         "created_at": datetime.now(timezone.utc),
         "is_active": True,
         "billing_settings": {

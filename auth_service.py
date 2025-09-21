@@ -152,7 +152,7 @@ class AuthService:
         return SessionService.get_current_user()
 
     def _get_mock_user(self) -> Optional[Dict[str, Any]]:
-        """Mock user for development and legacy tests"""
+        """Mock user for development and testing"""
         from flask import session
 
         base_user = {

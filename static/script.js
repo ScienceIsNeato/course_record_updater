@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const courseTableBody = document.querySelector('.table tbody'); // Target tbody directly
 
-  // Only set up table event listeners if the table exists (legacy functionality)
+  // Only set up table event listeners if the table exists
   if (courseTableBody) {
     // --- Event Delegation for Edit/Delete/Save/Cancel ---
     courseTableBody.addEventListener('click', async event => {

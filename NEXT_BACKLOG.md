@@ -87,10 +87,26 @@
 **Definition of Done**: Profile edits and password changes persist securely, TODOs removed, Story 6.1 checklist completed.  
 **Hand-off**: Focused development—ideal for background agent.
 
-## Priority 7 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
+## Priority 7 – Production Deployment & Infrastructure (Epic) **CRITICAL GAP**
+**Status**: Not started  
+**Docs**: None (needs creation)  
+**Goal**: Design and implement production deployment pipeline, environment separation, and hosting infrastructure to actually run the application for customers.
+**Key Tasks**:
+- [ ] **Environment Strategy**: Design dev/staging/prod environment separation with proper configuration management, secrets handling, and database isolation.
+- [ ] **Hosting Platform**: Choose and configure hosting platform (Cloud Run, App Engine, traditional VPS, etc.) with auto-scaling, health checks, and monitoring.
+- [ ] **CI/CD Pipeline**: Extend current quality gates to include deployment automation, environment promotion, and rollback capabilities.
+- [ ] **Domain & SSL**: Set up custom domain, SSL certificates, and DNS configuration for customer-facing URLs.
+- [ ] **Database Management**: Configure production Firestore instance, backup strategy, and migration procedures.
+- [ ] **Monitoring & Logging**: Implement application monitoring, error tracking, performance metrics, and centralized logging.
+- [ ] **Security Hardening**: Production security review, HTTPS enforcement, security headers, rate limiting, and vulnerability scanning.
+- [ ] **Documentation**: Create deployment runbook, incident response procedures, and operational documentation.
+**Definition of Done**: Application runs in production with proper monitoring, customers can access via custom domain, deployment is automated and repeatable.  
+**Hand-off**: Core infrastructure work—requires architectural decisions and production access.
+
+## Priority 8 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
 **Status**: Partial  
 **Docs**: `templates/dashboard/site_admin.html:7`, `templates/dashboard/program_admin.html`, `UAT_GUIDE.md`  
-**Goal**: Replace “coming soon” actions with real workflows or hide them until implemented to avoid UAT friction.
+**Goal**: Replace "coming soon" actions with real workflows or hide them until implemented to avoid UAT friction.
 **Key Tasks**:
 - [ ] Inventory dashboard buttons that still raise placeholder alerts and map desired destinations (e.g., link Site Admin quick actions to `admin/user_management.html`).
 - [ ] Either wire the buttons to real flows or hide them behind a feature flag until ready.

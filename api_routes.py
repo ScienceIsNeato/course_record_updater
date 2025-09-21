@@ -22,6 +22,16 @@ from auth_service import (
     permission_required,
     set_current_program_id,
 )
+from constants import (
+    COURSE_NOT_FOUND_MSG,
+    INSTITUTION_CONTEXT_REQUIRED_MSG,
+    INVALID_EMAIL_FORMAT_MSG,
+    INVITATION_NOT_FOUND_MSG,
+    NO_DATA_PROVIDED_MSG,
+    NO_JSON_DATA_PROVIDED_MSG,
+    NOT_FOUND_MSG,
+    PROGRAM_NOT_FOUND_MSG,
+)
 from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
     add_course_to_program,
@@ -176,16 +186,8 @@ def get_dashboard_data_route():
         return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
 
 
-# Constants for error messages to avoid duplication
-NO_DATA_PROVIDED_MSG = "No data provided"
-INSTITUTION_CONTEXT_REQUIRED_MSG = "Institution context required"
-COURSE_NOT_FOUND_MSG = "Course not found"
-PROGRAM_NOT_FOUND_MSG = "Program not found"
-XLSX_EXTENSION = ".xlsx"
-INVALID_EMAIL_FORMAT_MSG = "Invalid email format"
-NO_JSON_DATA_PROVIDED_MSG = "No JSON data provided"
-NOT_FOUND_MSG = "not found"
-INVITATION_NOT_FOUND_MSG = "Invitation not found"
+# Constants are now imported from constants.py
+XLSX_EXTENSION = ".xlsx"  # File extension constant specific to this module
 
 
 def handle_api_error(
