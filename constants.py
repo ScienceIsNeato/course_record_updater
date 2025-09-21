@@ -29,6 +29,14 @@ INVITATION_NOT_FOUND_MSG = "Invitation not found"
 INVALID_CREDENTIALS_MSG = "Invalid email or password"
 DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Firestore client not available."
 
+# SonarLint configuration constants
+SONAR_CLOUD_ORGANIZATION = "scienceisneato"
+SONAR_PROJECT_KEY = "course-record-updater"
+SONAR_REGION = "US"
+
+# Application route constants
+DASHBOARD_ENDPOINT = "dashboard"
+
 
 # User role constants
 class UserRole:

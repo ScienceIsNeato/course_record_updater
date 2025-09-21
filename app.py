@@ -4,12 +4,12 @@ import sys
 
 from flask import Flask, flash, redirect, render_template, url_for
 
-# Constants
-DASHBOARD_ENDPOINT = "dashboard"
-
 # Import new API routes and services
 from api_routes import api
 from auth_service import get_current_user, is_authenticated, login_required
+
+# Import constants
+from constants import DASHBOARD_ENDPOINT
 from database_service import db as database_client
 from logging_config import get_app_logger
 
@@ -128,6 +128,11 @@ def profile():
 @login_required
 def admin_users():
     """Admin user management page"""
+    # TODO: Add comprehensive UAT test cases for admin user management panel including:
+    # - User creation, editing, and deactivation workflows
+    # - Role assignment and permission validation
+    # - Bulk operations and filtering functionality
+    # - Cross-browser compatibility and responsive design
     from auth_service import has_permission
 
     # Check if user has permission to manage users
