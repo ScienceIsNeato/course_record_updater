@@ -181,7 +181,7 @@ def get_dashboard_data_route():
         payload = service.get_dashboard_data(get_current_user())
         return jsonify({"success": True, "data": payload})
     except DashboardServiceError as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
+        return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
     except Exception as exc:
         return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
 
@@ -191,7 +191,7 @@ XLSX_EXTENSION = ".xlsx"  # File extension constant specific to this module
 
 
 def handle_api_error(
-    e, operation_name="API operation", user_message="An error occurred"
+    e, operation_name="API operation", user_message="An error occurred", status_code=500
 ):
     """
     Securely handle API errors by logging full details while returning sanitized responses.
@@ -211,7 +211,7 @@ def handle_api_error(
     )
 
     # Return sanitized response to user
-    return jsonify({"success": False, "error": user_message}), 500
+    return jsonify({"success": False, "error": user_message}), status_code
 
 
 # ========================================
@@ -2531,11 +2531,11 @@ def login_api():
         logger.warning(
             f"Account locked during login attempt: {data.get('email', 'unknown')}"
         )
-        return jsonify({"success": False, "error": str(e)}), 423
+        return handle_api_error(e, "User login", "Account is temporarily locked")
     except Exception as e:
         logger.error(f"Login error: {e}")
         if "Invalid email or password" in str(e) or "Account" in str(e):
-            return jsonify({"success": False, "error": str(e)}), 401
+            return handle_api_error(e, "User login", "Invalid email or password")
         else:
             return jsonify({"success": False, "error": "Login failed"}), 500
 
