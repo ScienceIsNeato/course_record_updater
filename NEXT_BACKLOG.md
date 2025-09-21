@@ -103,7 +103,20 @@
 **Definition of Done**: Application runs in production with proper monitoring, customers can access via custom domain, deployment is automated and repeatable.  
 **Hand-off**: Core infrastructure work—requires architectural decisions and production access.
 
-## Priority 8 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
+## Priority 8 – Dashboard Pagination & Filtering (Story) **Hand-off Candidate**
+**Status**: Not started  
+**Docs**: `templates/dashboard/program_admin.html`, `templates/dashboard/site_admin.html`, `static/admin.js`, `static/script.js`, `UAT_GUIDE.md`  
+**Goal**: Add client-side pagination, consistent filtering, and "show X per page" controls so dashboards stay usable as data volume grows, while keeping the underlying API responses unpaginated for now.
+**Key Tasks**:
+- [ ] Introduce reusable pagination widgets (next/previous, page counts) for dashboard tables and admin user lists, slicing the existing API payloads in the browser with default page sizes (25/50/100).
+- [ ] Ensure search and filter inputs reset pagination to page 1 and keep their state visible so users understand what subset is shown.
+- [ ] Add a "Show X per page" selector and persist the choice per table (local storage/session storage is acceptable) to support power users.
+- [ ] Update UAT steps and smoke checks to exercise pagination paths and attach reference screenshots for stakeholder review.
+- [ ] Document in STATUS/backlog that API pagination remains a future optimization so the team is aware of the trade-off.
+**Definition of Done**: Major dashboard tables expose pagination plus configurable page size without regressing filters/search, documentation/tests refreshed, API untouched for now.  
+**Hand-off**: Well-scoped front-end effort that a background agent can own once UX wording is approved.
+
+## Priority 9 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
 **Status**: Partial  
 **Docs**: `templates/dashboard/site_admin.html:7`, `templates/dashboard/program_admin.html`, `UAT_GUIDE.md`  
 **Goal**: Replace "coming soon" actions with real workflows or hide them until implemented to avoid UAT friction.
@@ -114,3 +127,16 @@
 - [ ] Refresh `STATUS.md` to record the cleanup.
 **Definition of Done**: All exposed actions function or are intentionally hidden, documentation/tests updated.  
 **Hand-off**: UI polish that a background agent can execute once decisions are set.
+
+## Priority 10 – Monitoring & Alerting Foundations (Story)
+**Status**: Not started  
+**Docs**: `logging_config.py`, `STATUS.md` (needs update), vendor docs for Slack webhooks & Sentry  
+**Goal**: Establish lightweight observability (Slack alerts + Sentry capture) soon after the CEI POC demo so we can monitor live health without incurring costs.
+**Key Tasks**:
+- [ ] Draft a post-POC rollout plan confirming this work begins after the demo and record the sequencing in `STATUS.md`.
+- [ ] Configure a Slack incoming webhook (free workspace) and add notification hooks in `logging_config.py` for critical events (import failures, auth exceptions).
+- [ ] Integrate Sentry (free tier) with Flask to capture unhandled exceptions and key breadcrumbs while stripping sensitive data.
+- [ ] Document required environment variables and secrets management, including how to disable alerting in non-prod environments.
+- [ ] Add smoke/UAT steps to trigger a synthetic error and confirm Slack + Sentry both capture the event.
+**Definition of Done**: Slack channel receives critical alerts, Sentry records application errors, rollout order documented, and toggles/secrets clearly defined.  
+**Hand-off**: Requires coordination with product owner and workspace access—keep with core team.

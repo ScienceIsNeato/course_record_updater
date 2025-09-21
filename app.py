@@ -65,19 +65,10 @@ else:
 
 @app.route("/")
 def index():
-    """Render the main page with course management interface."""
-
-    # TODO: Create a proper landing page that showcases the app and encourages adoption/self-signup
-    # Currently just redirects to login, but eventually we want a marketing/showcase page
-    # that highlights features and allows self-signup before requiring authentication
-
-    # Redirect to login if not authenticated
-    if not is_authenticated():
-        return redirect(url_for("login"))
-
-    # For authenticated users, render the main interface
-    user = get_current_user()
-    return render_template("index.html", user=user)
+    """Render the splash page - marketing/showcase page for the application."""
+    # Always show splash page for unauthenticated users
+    # Authenticated users should go directly to /dashboard
+    return render_template("splash.html")
 
 
 # Authentication Routes

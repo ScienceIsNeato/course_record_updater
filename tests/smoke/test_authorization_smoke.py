@@ -110,7 +110,7 @@ class TestAuthorizationSmoke:
                 "user_id": "prog-admin-1",
                 "role": "program_admin",
                 "institution_id": "test-institution",
-                "accessible_programs": ["test-program-1", "test-program-2"],
+                "program_ids": ["test-program-1", "test-program-2"],
             }
 
             service = AuthService()
@@ -420,7 +420,7 @@ class TestSecurityBoundariesSmoke:
                 "user_id": "prog-admin-1",
                 "role": "program_admin",
                 "institution_id": "institution-a",
-                "accessible_programs": ["program-a1"],
+                "program_ids": ["program-a1"],
             }
 
             service = AuthService()

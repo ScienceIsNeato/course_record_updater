@@ -80,7 +80,7 @@ class TestInstitutionDataIsolation:
                     "user_id": "prog-admin-a",
                     "role": "program_admin",
                     "institution_id": "institution-a",
-                    "accessible_programs": ["program-a1"],
+                    "program_ids": ["program-a1"],
                 }
 
                 with patch("auth_service.auth_service.has_permission") as mock_has_perm:
@@ -176,7 +176,7 @@ class TestProgramScopedAccess:
                 "user_id": "prog-admin-multi",
                 "role": "program_admin",
                 "institution_id": "institution-a",
-                "accessible_programs": ["program-a1", "program-a2"],
+                "program_ids": ["program-a1", "program-a2"],
             }
 
             service = AuthService()
@@ -217,9 +217,7 @@ class TestProgramScopedAccess:
                 "user_id": "prog-admin-a",
                 "role": "program_admin",
                 "institution_id": "institution-a",
-                "accessible_programs": [
-                    "program-1"
-                ],  # Same ID exists in other institution
+                "program_ids": ["program-1"],  # Same ID exists in other institution
             }
 
             service = AuthService()
@@ -285,7 +283,7 @@ class TestCrossTenantAccessPrevention:
                     "user_id": "prog-admin-a",
                     "role": "program_admin",
                     "institution_id": "institution-a",
-                    "accessible_programs": ["program-a1"],
+                    "program_ids": ["program-a1"],
                 }
 
                 from auth_service import permission_required

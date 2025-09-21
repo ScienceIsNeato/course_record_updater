@@ -487,7 +487,7 @@ class TestAuthServiceCoverage:
                 "user_id": "prog-admin-123",
                 "role": "program_admin",
                 "institution_id": "inst-123",
-                "accessible_programs": ["prog-123", "prog-456"],
+                "program_ids": ["prog-123", "prog-456"],
             }
 
             service = AuthService()
@@ -584,7 +584,7 @@ class TestAuthServiceCoverage:
             mock_get_user.return_value = {
                 "user_id": "prog-admin-123",
                 "role": "program_admin",
-                "accessible_programs": ["prog-123"],
+                "program_ids": ["prog-123"],
             }
             programs = service.get_accessible_programs()
             assert programs == ["prog-123"]

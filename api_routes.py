@@ -347,7 +347,7 @@ def get_program_context():
     try:
         current_user = get_current_user()
         current_program_id = get_current_program_id()
-        accessible_programs = current_user.get("accessible_programs", [])
+        accessible_programs = current_user.get("program_ids", [])
 
         # Get program details for accessible programs
         program_details = []
@@ -360,7 +360,7 @@ def get_program_context():
             {
                 "success": True,
                 "current_program_id": current_program_id,
-                "accessible_programs": program_details,
+                "program_ids": program_details,
                 "has_multiple_programs": len(accessible_programs) > 1,
             }
         )
@@ -379,7 +379,7 @@ def switch_program_context(program_id: str):
         current_user = get_current_user()
 
         # Verify user has access to this program
-        accessible_programs = current_user.get("accessible_programs", [])
+        accessible_programs = current_user.get("program_ids", [])
         if program_id not in accessible_programs:
             return jsonify({"success": False, "error": "Access denied to program"}), 403
 
@@ -652,7 +652,7 @@ def list_courses():
 
         if program_id_override:
             accessible_programs = (
-                current_user.get("accessible_programs", []) if current_user else []
+                current_user.get("program_ids", []) if current_user else []
             )
             if program_id_override in accessible_programs or (
                 current_user and current_user.get("role") == "site_admin"
@@ -2842,3 +2842,151 @@ def reset_status_api(email):
     except Exception as e:
         logger.error(f"Reset status error: {e}")
         return jsonify({"success": False, "error": "Failed to get reset status"}), 500
+
+
+# ========================================
+# DATA IMPORT/EXPORT API
+# ========================================
+
+
+@api.route("/import/excel", methods=["POST"])
+@login_required
+def excel_import_api():
+    """
+    Import data from Excel file
+
+    Supports role-based data import with conflict resolution strategies.
+
+    Form Data:
+        excel_file: Excel file (.xlsx, .xls)
+        import_adapter: Adapter type (cei_excel_adapter, generic_excel_adapter)
+        conflict_strategy: How to handle conflicts (use_theirs, use_mine, merge, manual_review)
+        dry_run: Test mode without saving (true/false)
+        verbose_output: Detailed output (true/false)
+        delete_existing_db: Clear database before import (true/false)
+        import_data_type: Type of data being imported
+
+    Returns:
+        200: Import successful
+        400: Invalid request or file
+        403: Permission denied
+        500: Server error
+    """
+    try:
+        # Check if file was uploaded
+        if "excel_file" not in request.files:
+            return jsonify({"success": False, "error": "No Excel file provided"}), 400
+
+        file = request.files["excel_file"]
+        if file.filename == "":
+            return jsonify({"success": False, "error": "No file selected"}), 400
+
+        # Get form parameters
+        import_adapter = request.form.get("import_adapter", "cei_excel_adapter")
+        conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
+        dry_run = request.form.get("dry_run", "false").lower() == "true"
+        verbose_output = request.form.get("verbose_output", "false").lower() == "true"
+        delete_existing_db = (
+            request.form.get("delete_existing_db", "false").lower() == "true"
+        )
+        import_data_type = request.form.get("import_data_type", "courses")
+
+        # Get current user and check permissions
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+
+        user_role = current_user.get("role")
+        institution_id = current_user.get("institution_id")
+
+        # Role-based permission checks
+        allowed_data_types = {
+            "site_admin": ["institutions", "programs", "courses", "users"],
+            "institution_admin": ["programs", "courses", "faculty", "students"],
+            "program_admin": ["courses", "sections", "students", "assessments"],
+            "instructor": [],  # Instructors cannot import
+        }
+
+        if user_role not in allowed_data_types:
+            return jsonify({"success": False, "error": "Invalid user role"}), 403
+
+        if import_data_type not in allowed_data_types[user_role]:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Permission denied: {user_role} cannot import {import_data_type}",
+                    }
+                ),
+                403,
+            )
+
+        # Save uploaded file temporarily
+        import os
+        import tempfile
+
+        temp_dir = tempfile.gettempdir()
+        temp_filename = (
+            f"import_{current_user.get('user_id')}_{import_data_type}_{file.filename}"
+        )
+        temp_filepath = os.path.join(temp_dir, temp_filename)
+
+        try:
+            file.save(temp_filepath)
+
+            # Import the Excel processing function
+            from import_service import import_excel
+
+            # Execute the import
+            result = import_excel(
+                file_path=temp_filepath,
+                institution_id=institution_id,
+                conflict_strategy=conflict_strategy,
+                dry_run=dry_run,
+                adapter_name=import_adapter,
+                delete_existing_db=delete_existing_db,
+                verbose=verbose_output,
+                data_type_filter=import_data_type,  # Filter to specific data type
+            )
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": (
+                            "Import completed successfully"
+                            if not dry_run
+                            else "Validation completed successfully"
+                        ),
+                        "records_processed": result.get("records_processed", 0),
+                        "records_created": result.get("records_created", 0),
+                        "records_updated": result.get("records_updated", 0),
+                        "records_skipped": result.get("records_skipped", 0),
+                        "dry_run": dry_run,
+                    }
+                ),
+                200,
+            )
+
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+
+    except PermissionError as e:
+        logger.warning(f"Permission denied for import: {e}")
+        return jsonify({"success": False, "error": "Permission denied"}), 403
+
+    except Exception as e:
+        logger.error(f"Excel import error: {e}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        str(e) if "Permission denied" in str(e) else "Import failed"
+                    ),
+                }
+            ),
+            500,
+        )
