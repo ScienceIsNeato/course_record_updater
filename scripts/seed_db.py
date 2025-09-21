@@ -19,18 +19,15 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
-# Constants
-MECHANICAL_ENGINEERING_DEPT = "Mechanical Engineering"
-
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our services and models
 import database_service as db
 from constants import (
-    DEPARTMENT_COMPUTER_SCIENCE,
-    DEPARTMENT_ELECTRICAL_ENGINEERING,
+    PROGRAM_COMPUTER_SCIENCE,
     PROGRAM_DEFAULT_DESCRIPTION,
+    PROGRAM_ELECTRICAL_ENGINEERING,
     SITE_ADMIN_INSTITUTION_ID,
 )
 from models import Course, Institution, Program, Term, User, UserInvitation
@@ -291,23 +288,23 @@ class DatabaseSeeder:
         return [
             # CEI Programs
             {
-                "name": DEPARTMENT_COMPUTER_SCIENCE,
+                "name": PROGRAM_COMPUTER_SCIENCE,
                 "short_name": "CS",
                 "description": "Bachelor of Science in Computer Science",
                 "institution_idx": 0,
                 "admin_idx": 0,
             },
             {
-                "name": DEPARTMENT_ELECTRICAL_ENGINEERING,
+                "name": PROGRAM_ELECTRICAL_ENGINEERING,
                 "short_name": "EE",
                 "description": "Bachelor of Science in Electrical Engineering",
                 "institution_idx": 0,
                 "admin_idx": 0,
             },
             {
-                "name": "General Studies",
-                "short_name": "GEN",
-                "description": "General Studies and undeclared majors at CEI",
+                "name": "Unclassified",
+                "short_name": "UNCL",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 0,
                 "admin_idx": 0,
                 "is_default": True,
@@ -328,25 +325,25 @@ class DatabaseSeeder:
                 "admin_idx": 1,
             },
             {
-                "name": "Exploratory Studies",
-                "short_name": "EXPL",
-                "description": "Exploratory Studies for students exploring career options at RCC",
+                "name": "Unclassified",
+                "short_name": "UNCL",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 1,
                 "admin_idx": 1,
                 "is_default": True,
             },
             # PTU Programs
             {
-                "name": MECHANICAL_ENGINEERING_DEPT,
+                "name": "Mechanical Engineering",
                 "short_name": "ME",
                 "description": "Bachelor of Science in Mechanical Engineering",
                 "institution_idx": 2,
                 "admin_idx": 2,
             },
             {
-                "name": "Pre-Engineering",
-                "short_name": "PRE",
-                "description": "Pre-Engineering program for students preparing for engineering majors at PTU",
+                "name": "Unclassified",
+                "short_name": "UNCL",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 2,
                 "admin_idx": 2,
                 "is_default": True,
@@ -624,7 +621,7 @@ class DatabaseSeeder:
             {
                 "course_number": "CS-101",
                 "course_title": "Introduction to Computer Science",
-                "department": DEPARTMENT_COMPUTER_SCIENCE,
+                "department": "Computer Science",
                 "credit_hours": 3,
                 "institution_idx": 0,
                 "program_ids": [0],  # CS program
@@ -632,7 +629,7 @@ class DatabaseSeeder:
             {
                 "course_number": "CS-201",
                 "course_title": "Data Structures and Algorithms",
-                "department": DEPARTMENT_COMPUTER_SCIENCE,
+                "department": "Computer Science",
                 "credit_hours": 4,
                 "institution_idx": 0,
                 "program_ids": [0],  # CS program
@@ -641,7 +638,7 @@ class DatabaseSeeder:
             {
                 "course_number": "EE-101",
                 "course_title": "Circuit Analysis",
-                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
+                "department": "Electrical Engineering",
                 "credit_hours": 4,
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
@@ -649,40 +646,15 @@ class DatabaseSeeder:
             {
                 "course_number": "EE-201",
                 "course_title": "Digital Logic Design",
-                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
+                "department": "Electrical Engineering",
                 "credit_hours": 3,
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
-            },
-            {
-                "course_number": "EE-301",
-                "course_title": "Signals and Systems",
-                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
-                "credit_hours": 4,
-                "institution_idx": 0,
-                "program_ids": [1],  # EE program
-            },
-            # CEI General Studies
-            {
-                "course_number": "GEN-100",
-                "course_title": "First Year Seminar",
-                "department": "Academic Success",
-                "credit_hours": 1,
-                "institution_idx": 0,
-                "program_ids": [2],  # General Studies
             },
             # RCC Courses
             {
                 "course_number": "ENG-101",
                 "course_title": "English Composition",
-                "department": "English",
-                "credit_hours": 3,
-                "institution_idx": 1,
-                "program_ids": [3],  # Liberal Arts
-            },
-            {
-                "course_number": "ENG-102",
-                "course_title": "Literature and Critical Thinking",
                 "department": "English",
                 "credit_hours": 3,
                 "institution_idx": 1,
@@ -696,54 +668,14 @@ class DatabaseSeeder:
                 "institution_idx": 1,
                 "program_ids": [4],  # Business Administration
             },
-            {
-                "course_number": "BUS-201",
-                "course_title": "Business Ethics and Communication",
-                "department": "Business",
-                "credit_hours": 3,
-                "institution_idx": 1,
-                "program_ids": [4],  # Business Administration
-            },
-            {
-                "course_number": "HIST-101",
-                "course_title": "American History Survey",
-                "department": "History",
-                "credit_hours": 3,
-                "institution_idx": 1,
-                "program_ids": [3],  # Liberal Arts
-            },
             # PTU Courses
             {
                 "course_number": "ME-101",
                 "course_title": "Engineering Mechanics",
-                "department": MECHANICAL_ENGINEERING_DEPT,
+                "department": "Mechanical Engineering",
                 "credit_hours": 4,
                 "institution_idx": 2,
                 "program_ids": [6],  # Mechanical Engineering
-            },
-            {
-                "course_number": "ME-201",
-                "course_title": "Thermodynamics",
-                "department": MECHANICAL_ENGINEERING_DEPT,
-                "credit_hours": 4,
-                "institution_idx": 2,
-                "program_ids": [6],  # Mechanical Engineering
-            },
-            {
-                "course_number": "MATH-201",
-                "course_title": "Calculus for Engineers",
-                "department": "Mathematics",
-                "credit_hours": 4,
-                "institution_idx": 2,
-                "program_ids": [6, 7],  # ME and Pre-Engineering
-            },
-            {
-                "course_number": "PHYS-101",
-                "course_title": "Physics I: Mechanics",
-                "department": "Physics",
-                "credit_hours": 4,
-                "institution_idx": 2,
-                "program_ids": [6, 7],  # ME and Pre-Engineering
             },
         ]
 
@@ -787,138 +719,111 @@ class DatabaseSeeder:
 
         return course_ids
 
-    def _get_instructors_by_institution(self, institution_ids: List[str]) -> Dict[str, List[Dict]]:
-        """Get instructors organized by institution."""
-        from database_service import get_all_users
-        
-        instructors_by_institution = {}
-        for institution_id in institution_ids:
-            all_users = get_all_users(institution_id)
-            instructors = [u for u in all_users if u.get("role") == "instructor"]
-            instructors_by_institution[institution_id] = instructors
-            self.log(f"   Found {len(instructors)} instructors for institution {institution_id}")
-        
-        return instructors_by_institution
-
-    def _get_terms_by_institution(self, institution_ids: List[str]) -> Dict[str, List[Dict]]:
-        """Get active terms organized by institution."""
-        from database_service import get_active_terms
-        
-        terms_by_institution = {}
-        for institution_id in institution_ids:
-            terms = get_active_terms(institution_id)
-            terms_by_institution[institution_id] = terms[:1] if terms else []  # Use first term
-        
-        return terms_by_institution
-
-    def _get_course_details(self, course_id: str) -> Optional[Dict[str, Any]]:
-        """Get course details safely."""
-        from database_service import get_course_by_id
-        
-        course = get_course_by_id(course_id)
-        if not course or not course.get("institution_id"):
-            return None
-        return course
-
-    def _determine_sections_to_create(self, total_courses: int) -> int:
-        """Determine how many sections to create per course."""
-        return 1 if total_courses > 10 else 2
-
-    def _assign_instructor(self, instructors: List[Dict], section_num: int) -> Optional[str]:
-        """Assign instructor to section using round-robin."""
-        if not instructors:
-            return None
-        return instructors[(section_num - 1) % len(instructors)]["user_id"]
-
-    def _get_instructor_name(self, instructors: List[Dict], instructor_id: Optional[str]) -> str:
-        """Get instructor display name or 'Unassigned'."""
-        if not instructor_id:
-            return "Unassigned"
-        
-        instructor = next((i for i in instructors if i["user_id"] == instructor_id), None)
-        return instructor["display_name"] if instructor else "Unassigned"
-
-    def _create_section_data(self, course: Dict, term_id: str, section_num: int, 
-                            instructor_id: Optional[str]) -> Dict[str, Any]:
-        """Create section data dictionary."""
-        section_number = f"{section_num:03d}"  # 001, 002, etc.
-        
-        return {
-            "course_id": course["course_id"],
-            "term_id": term_id,
-            "section_number": section_number,
-            "instructor_id": instructor_id,
-            "institution_id": course["institution_id"],
-            "course_number": course.get('course_number', 'Unknown'),
-            "enrollment": 15 + (section_num * 5),  # Vary enrollment
-            "status": "assigned" if instructor_id else "unassigned",
-        }
-
-    def _create_single_section(self, section_data: Dict, instructors: List[Dict]) -> Optional[str]:
-        """Create a single section and handle logging."""
-        from database_service import create_course_section
-        
-        section_id = create_course_section(section_data)
-        if section_id:
-            self.created_entities["sections"].append(section_id)
-            instructor_name = self._get_instructor_name(instructors, section_data["instructor_id"])
-            course_number = section_data["course_number"]
-            section_number = section_data["section_number"]
-            self.log(f"   Created section: {course_number}-{section_number} ({instructor_name})")
-            return section_id
-        else:
-            course_number = section_data["course_number"]
-            self.log(f"   Failed to create section for course {course_number}")
-            return None
-
-    def _create_sections_for_course(self, course: Dict, terms: List[Dict], 
-                                   instructors: List[Dict], sections_per_course: int) -> List[str]:
-        """Create all sections for a single course."""
-        if not terms:
-            course_number = course.get('course_number', course.get('course_id', 'Unknown'))
-            self.log(f"   No terms available for course {course_number}")
-            return []
-
-        section_ids = []
-        term_id = terms[0]["term_id"]  # Use first available term
-
-        for section_num in range(1, sections_per_course + 1):
-            instructor_id = self._assign_instructor(instructors, section_num)
-            section_data = self._create_section_data(course, term_id, section_num, instructor_id)
-            
-            section_id = self._create_single_section(section_data, instructors)
-            if section_id:
-                section_ids.append(section_id)
-
-        return section_ids
-
     def create_sections(
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
         """Create course sections for the created courses"""
         self.log("📋 Creating course sections...")
 
-        # Prepare data by institution
-        instructors_by_institution = self._get_instructors_by_institution(institution_ids)
-        terms_by_institution = self._get_terms_by_institution(institution_ids)
-        sections_per_course = self._determine_sections_to_create(len(course_ids))
+        from database_service import (
+            create_course_section,
+            get_active_terms,
+            get_users_by_role,
+        )
+        from models import CourseSection
 
-        # Create sections for each course
         section_ids = []
+
+        # Get instructors for each institution (use get_all_users to ensure fresh data)
+        from database_service import get_all_users
+
+        instructors_by_institution = {}
+        for institution_id in institution_ids:
+            all_users = get_all_users(institution_id)
+            instructors = [u for u in all_users if u.get("role") == "instructor"]
+            instructors_by_institution[institution_id] = instructors
+            self.log(
+                f"   Found {len(instructors)} instructors for institution {institution_id}"
+            )
+
+        # Get terms for each institution
+        terms_by_institution = {}
+        for institution_id in institution_ids:
+            terms = get_active_terms(institution_id)
+            terms_by_institution[institution_id] = (
+                terms[:1] if terms else []
+            )  # Use first term
+
+        # Create 1-2 sections per course
         for course_id in course_ids:
             try:
-                course = self._get_course_details(course_id)
+                # Get course details to find institution
+                from database_service import get_course_by_id
+
+                course = get_course_by_id(course_id)
                 if not course:
                     continue
 
-                institution_id = course["institution_id"]
+                institution_id = course.get("institution_id")
+                if not institution_id:
+                    continue
+
+                # Get available instructors and terms for this institution
                 instructors = instructors_by_institution.get(institution_id, [])
                 terms = terms_by_institution.get(institution_id, [])
 
-                course_sections = self._create_sections_for_course(
-                    course, terms, instructors, sections_per_course
-                )
-                section_ids.extend(course_sections)
+                if not terms:
+                    self.log(
+                        f"   No terms available for course {course.get('course_number', course_id)}"
+                    )
+                    continue
+
+                term_id = terms[0]["term_id"]  # Use first available term
+
+                # Create 1-2 sections per course
+                sections_to_create = 1 if len(course_ids) > 10 else 2
+
+                for section_num in range(1, sections_to_create + 1):
+                    section_number = f"{section_num:03d}"  # 001, 002, etc.
+
+                    # Assign instructor if available
+                    instructor_id = None
+                    if instructors:
+                        instructor_id = instructors[
+                            (section_num - 1) % len(instructors)
+                        ]["user_id"]
+
+                    # Create section schema
+                    section_data = {
+                        "course_id": course_id,
+                        "term_id": term_id,
+                        "section_number": section_number,
+                        "instructor_id": instructor_id,
+                        "institution_id": institution_id,  # Add institution_id for filtering
+                        "course_number": course.get('course_number', 'Unknown'),  # Add for display
+                        "enrollment": 15 + (section_num * 5),  # Vary enrollment
+                        "status": "assigned" if instructor_id else "unassigned",
+                    }
+
+                    section_id = create_course_section(section_data)
+                    if section_id:
+                        section_ids.append(section_id)
+                        self.created_entities["sections"].append(section_id)
+                        instructor_name = next(
+                            (
+                                i["display_name"]
+                                for i in instructors
+                                if i["user_id"] == instructor_id
+                            ),
+                            "Unassigned",
+                        )
+                        self.log(
+                            f"   Created section: {course.get('course_number', 'Unknown')}-{section_number} ({instructor_name})"
+                        )
+                    else:
+                        self.log(
+                            f"   Failed to create section for course {course.get('course_number', course_id)}"
+                        )
 
             except Exception as e:
                 self.log(f"   Error creating sections for course {course_id}: {e}")
@@ -1209,7 +1114,7 @@ class DatabaseSeeder:
             short_name="UNCL",
             institution_id=institution_id,
             created_by=admin_id,
-            description=PROGRAM_DEFAULT_DESCRIPTION,
+            description="Default program",
             is_default=True,
         )
 
