@@ -321,7 +321,7 @@ class ImportService:
                     existing_course = get_course_by_number(course_number)
 
                     if existing_course:
-                        # TODO: Implement update_course function
+                        # NOTE: update_course function will be implemented when course update features are added
                         # update_course(existing_course['course_id'], course_data)
                         self.stats["records_updated"] += 1
                         self.logger.info(f"[Import] Updated course: {course_number}")
@@ -404,7 +404,7 @@ class ImportService:
                 existing_user = get_user_by_email(email)
 
                 if existing_user:
-                    # TODO: Implement update_user function in database_service_extended
+                    # NOTE: update_user function will be implemented when user update features are added
                     # update_user_extended(existing_user['user_id'], user_data)
                     self.stats["records_updated"] += 1
                     self.logger.info(f"[Import] Updated user: {email}")

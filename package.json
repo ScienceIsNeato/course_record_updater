@@ -1,0 +1,37 @@
+{
+  "name": "cei-course-admin",
+  "version": "1.0.0",
+  "description": "CEI Course Administration Tool",
+  "main": "static/script.js",
+  "scripts": {
+    "lint": "eslint static/**/*.js",
+    "lint:fix": "eslint static/**/*.js --fix",
+    "format": "prettier --write static/**/*.js",
+    "format:check": "prettier --check static/**/*.js",
+    "quality:js": "npm run lint && npm run format:check",
+    "test:js": "echo 'JS tests not implemented yet' && exit 0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "education",
+    "course-management",
+    "cei",
+    "flask",
+    "javascript"
+  ],
+  "author": "CEI Development Team",
+  "license": "UNLICENSED",
+  "private": true
+}
+

@@ -82,7 +82,7 @@ pytest tests/integration/
 ### Quality Gate
 ```bash
 # Quality gate runs unit tests by default for speed
-./scripts/maintainability-gate.sh --tests
+./scripts/maintAInability-gate.sh --tests
 ```
 
 ## Test Categorization Guidelines

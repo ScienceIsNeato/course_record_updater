@@ -121,8 +121,7 @@ TERMS_COLLECTION = 'terms'
 COURSE_SECTIONS_COLLECTION = 'course_sections'
 COURSE_OUTCOMES_COLLECTION = 'course_outcomes'
 
-# Keep existing for backward compatibility
-COURSES_COLLECTION = 'courses'  # Legacy flat model
+COURSES_COLLECTION = 'courses'  # Current flat model
 ```
 
 **New Service Functions:**

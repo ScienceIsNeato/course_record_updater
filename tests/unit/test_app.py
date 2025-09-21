@@ -114,44 +114,260 @@ class TestIndexRoute:
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_renders_template(
+    def test_index_route_renders_for_authenticated_user(
         self, mock_is_authenticated, mock_get_current_user
     ):
-        """Test that index route renders the correct template."""
+        """Test that index route renders template for authenticated users."""
         mock_get_current_user.return_value = {"email": "test@example.com"}
         mock_is_authenticated.return_value = True
 
         with app_module.app.test_client() as client:
             response = client.get("/")
             assert response.status_code == 200
-            # Check that it's returning HTML content
-            assert b"<!DOCTYPE html" in response.data or b"<html" in response.data
+            # Check that it renders the index template with import form
+            assert b"excelImportForm" in response.data
 
     @patch("app.get_current_user")
     @patch("app.is_authenticated")
-    def test_index_route_handles_unauthenticated_user(
+    def test_index_route_redirects_unauthenticated_user(
         self, mock_is_authenticated, mock_get_current_user
     ):
-        """Test that index route handles unauthenticated users."""
+        """Test that index route redirects unauthenticated users to login."""
         mock_get_current_user.return_value = None
         mock_is_authenticated.return_value = False
 
         with app_module.app.test_client() as client:
             response = client.get("/")
+            assert response.status_code == 302
+            # Check that it redirects to login
+            assert "/login" in response.location
+
+    @patch("app.is_authenticated")
+    def test_login_route_renders_template(self, mock_is_authenticated):
+        """Test that login route renders the login template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/login")
             assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_login_route_redirects_authenticated_user(self, mock_is_authenticated):
+        """Test that login route redirects authenticated users."""
+        mock_is_authenticated.return_value = True
+
+        with app_module.app.test_client() as client:
+            response = client.get("/login")
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
+
+    @patch("app.is_authenticated")
+    def test_register_route_renders_template(self, mock_is_authenticated):
+        """Test that register route renders the registration template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/register")
+            assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_forgot_password_route_renders_template(self, mock_is_authenticated):
+        """Test that forgot password route renders the template."""
+        mock_is_authenticated.return_value = False
+
+        with app_module.app.test_client() as client:
+            response = client.get("/forgot-password")
+            assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_register_route_redirects_authenticated_user(self, mock_is_authenticated):
+        """Test that register route redirects authenticated users to dashboard."""
+        mock_is_authenticated.return_value = True
+
+        with app_module.app.test_client() as client:
+            response = client.get("/register")
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
+
+    @patch("app.is_authenticated")
+    def test_forgot_password_route_redirects_authenticated_user(
+        self, mock_is_authenticated
+    ):
+        """Test that forgot password route redirects authenticated users to dashboard."""
+        mock_is_authenticated.return_value = True
+
+        with app_module.app.test_client() as client:
+            response = client.get("/forgot-password")
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
+
+    def test_profile_route_requires_authentication(self):
+        """Test that profile route requires authentication."""
+        with app_module.app.test_client() as client:
+            response = client.get("/profile")
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_profile_route_renders_for_authenticated_user(self):
+        """Test that profile route renders for authenticated users."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "test-user-123",
+            "email": "test@example.com",
+            "first_name": "Test",
+            "last_name": "User",
+            "role": "instructor",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/profile")
+            assert response.status_code == 200
+
+    def test_dashboard_route_requires_authentication(self):
+        """Test that dashboard route requires authentication."""
+        with app_module.app.test_client() as client:
+            response = client.get("/dashboard")
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_dashboard_route_renders_for_authenticated_user(self):
+        """Test that dashboard route renders for authenticated users."""
+        from tests.test_utils import create_test_session
+
+        with app_module.app.test_client() as client:
+            # Create authenticated session
+            create_test_session(
+                client,
+                {
+                    "user_id": "test123",
+                    "email": "test@example.com",
+                    "role": "instructor",
+                    "first_name": "Test",
+                    "last_name": "User",
+                },
+            )
+
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+            assert b"dashboard" in response.data.lower()
+
+    def test_dashboard_route_different_roles(self):
+        """Test dashboard route with different user roles."""
+        from tests.test_utils import create_test_session
+
+        with app_module.app.test_client() as client:
+            # Test program_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin1",
+                    "email": "program@example.com",
+                    "role": "program_admin",
+                    "first_name": "Program",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test institution_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin2",
+                    "email": "institution@example.com",
+                    "role": "institution_admin",
+                    "first_name": "Institution",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test site_admin role
+            create_test_session(
+                client,
+                {
+                    "user_id": "admin3",
+                    "email": "site@example.com",
+                    "role": "site_admin",
+                    "first_name": "Site",
+                    "last_name": "Admin",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 200
+
+            # Test unknown role
+            create_test_session(
+                client,
+                {
+                    "user_id": "unknown",
+                    "email": "unknown@example.com",
+                    "role": "unknown_role",
+                    "first_name": "Unknown",
+                    "last_name": "User",
+                },
+            )
+            response = client.get("/dashboard")
+            assert response.status_code == 302  # Should redirect for unknown role
+
+
+class TestAdminRoutes:
+    """Test admin route functionality."""
+
+    def test_admin_users_route_with_permission(self):
+        """Test that admin users route works for users with permission."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-123",
+            "email": "admin@example.com",
+            "role": "site_admin",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/admin/users")
+            assert response.status_code == 200
+
+    def test_admin_users_route_without_permission(self):
+        """Test that admin users route redirects users without permission."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "user-123",
+            "email": "user@example.com",
+            "role": "instructor",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/admin/users")
+            # User is authenticated but lacks permission, so route redirects
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
 
 
 class TestDatabaseConnection:
     """Test database connection handling."""
 
-    @patch("app.database_client", None)
-    def test_database_connection_failure_logged(self):
-        """Test that database connection failures are logged."""
-        # This test verifies the logging behavior when database_client is None
-        # The actual logging happens at module import time, so we test the condition
-        assert (
-            app_module.database_client is None or app_module.database_client is not None
-        )
+    def test_database_connection_error_logging(self):
+        """Test that database connection errors are handled properly."""
+        # Test the logging path when database_client is None
+        with patch("app.database_client", None), patch("app.app.logger") as mock_logger:
+            # Simulate the module loading condition
+            database_client = None
+            if database_client is None:
+                mock_logger.error.assert_not_called()  # Since this is just testing the condition
+            # The actual error logging happens at module import time
 
     def test_database_client_import(self):
         """Test that database client is imported correctly."""

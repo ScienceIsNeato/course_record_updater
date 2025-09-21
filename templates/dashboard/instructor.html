@@ -1,0 +1,202 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Instructor Dashboard - CEI Course Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-book-open me-1"></i>Teaching</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-tasks me-1"></i>Assessments</a>
+<a class="nav-link" href="#" onclick="return false;"><i class="fas fa-chart-line me-1"></i>Progress</a>
+{% endblock %}
+
+{% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
+{% block page_subtitle %}Complete course assessments and monitor progress{% endblock %}
+
+{% block content %}
+<div class="header-stats">
+    <span id="instructorName">{{ user.first_name }} {{ user.last_name }}</span>
+    <div class="stat-item" data-stat="courses">
+        [<span class="stat-number" id="instructorCourseCount">0</span> Courses]
+    </div>
+    <div class="stat-item" data-stat="sections">
+        [<span class="stat-number" id="instructorSectionCount">0</span> Sections]
+    </div>
+    <div class="stat-item" data-stat="students">
+        [<span class="stat-number" id="instructorStudentCount">0</span> Students]
+    </div>
+    <div class="stat-item" data-stat="assessments">
+        [<span class="stat-number" id="instructorAssessmentProgress">0%</span> CLO Progress]
+    </div>
+    <div class="header-actions ms-auto">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="instructorRefreshButton">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+        <span class="last-updated" id="instructorLastUpdated">Last updated: --</span>
+    </div>
+</div>
+
+<!-- Panel 1: Teaching Assignment -->
+<div class="dashboard-panel" id="instructor-teaching-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📚</span>
+            Teaching Assignment
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+                <i class="fas fa-users"></i> View Rosters
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="instructorTeachingContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading teaching assignments...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 2: Assessment Tasks -->
+<div class="dashboard-panel" id="instructor-assessment-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">⏰</span>
+            Assessment Tasks
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-success" title="Coming soon" onclick="return false;">
+                <i class="fas fa-check"></i> Bulk Complete
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="instructorAssessmentContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading assessment tasks...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 3: Recent Activity -->
+<div class="dashboard-panel" id="instructor-activity-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📝</span>
+            Recent Activity
+        </h5>
+        <button class="panel-toggle">▲</button>
+    </div>
+    <div class="panel-content collapsed">
+        <div id="instructorActivityContainer">
+            <ul class="list-unstyled mb-0" id="instructorActivityList"></ul>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 4: Course Summary -->
+<div class="dashboard-panel" id="instructor-summary-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📊</span>
+            Course Summary
+        </h5>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="instructorSummaryContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Building summary...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 5: Data Management (Export Only) -->
+<div class="dashboard-panel" id="instructor-data-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📄</span>
+            Data Export
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-primary" onclick="instructorQuickExport()">
+                <i class="fas fa-download"></i> Quick Export
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div class="row">
+            <!-- Note: Instructors have read-only access, so no import section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-info-circle text-info"></i> Import Access</h6>
+                <p class="text-muted small">Instructors have read-only access. Contact your program administrator to import data.</p>
+                <div class="alert alert-info">
+                    <small><strong>Need to import data?</strong><br>
+                    Contact your Program Administrator or Institution Administrator for assistance with data imports.</small>
+                </div>
+            </div>
+            <!-- Export Section -->
+            <div class="col-md-6">
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                <div class="mb-3">
+                    <label class="form-label small">Format:</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatCSV" value="csv" checked>
+                        <label class="form-check-label" for="instructorFormatCSV">CSV</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatExcel" value="excel">
+                        <label class="form-check-label" for="instructorFormatExcel">Excel</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="instructorExportFormat" id="instructorFormatJSON" value="json">
+                        <label class="form-check-label" for="instructorFormatJSON">JSON</label>
+                    </div>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('tasks')">
+                        <i class="fas fa-tasks"></i> Assessment Tasks
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('summary')">
+                        <i class="fas fa-chart-bar"></i> Course Summary
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="instructorExportData('rosters')">
+                        <i class="fas fa-users"></i> Class Rosters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='logger.js') }}"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='panels.js') }}"></script>
+<script src="{{ url_for('static', filename='instructor_dashboard.js') }}"></script>
+<script>
+    // Instructor Data Management Functions (Export Only)
+    function instructorQuickExport() {
+        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
+        alert(`Quick Export (${format}) feature coming soon!`);
+    }
+
+    function instructorExportData(type) {
+        const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
+        alert(`Export ${type} (${format}) feature coming soon!`);
+    }
+</script>
+{% endblock %}

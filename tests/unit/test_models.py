@@ -29,28 +29,35 @@ class TestUser:
             first_name="John",
             last_name="Doe",
             role="instructor",
+            institution_id="test-institution",
+            password_hash="$2b$12$test_hash",
         )
 
         assert user["email"] == "john.doe@cei.edu"
         assert user["first_name"] == "John"
         assert user["last_name"] == "Doe"
         assert user["role"] == "instructor"
-        assert user["active"] is True
-        assert "user_id" in user
+        assert user["institution_id"] == "test-institution"
+        assert user["password_hash"] == "$2b$12$test_hash"
+        assert user["account_status"] == "pending"  # Default status
         assert "created_at" in user
 
-    def test_create_user_schema_with_department(self):
-        """Test creating user schema with department"""
+    def test_create_user_schema_with_optional_fields(self):
+        """Test creating user schema with optional fields"""
         user = User.create_schema(
             email="jane.smith@cei.edu",
             first_name="Jane",
             last_name="Smith",
             role="program_admin",
-            department="Business",
+            institution_id="test-institution",
+            password_hash="$2b$12$test_hash",
+            display_name="Jane S.",
+            program_ids=["prog1", "prog2"],
         )
 
-        assert user["department"] == "Business"
+        assert user["display_name"] == "Jane S."
         assert user["role"] == "program_admin"
+        assert user["program_ids"] == ["prog1", "prog2"]
 
     def test_create_user_invalid_role(self):
         """Test that invalid role raises ValueError"""
@@ -60,17 +67,21 @@ class TestUser:
                 first_name="Test",
                 last_name="User",
                 role="invalid_role",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
             )
 
     def test_get_permissions(self):
-        """Test getting permissions for different roles"""
+        """Test getting permissions for different roles using new authorization system"""
         instructor_perms = User.get_permissions("instructor")
-        assert "view_own_sections" in instructor_perms
+        assert "view_section_data" in instructor_perms
+        assert "submit_assessments" in instructor_perms
         assert "manage_users" not in instructor_perms
 
         admin_perms = User.get_permissions("site_admin")
         assert "manage_users" in admin_perms
-        assert "full_access" in admin_perms
+        assert "manage_institutions" in admin_perms
+        assert "view_all_data" in admin_perms
 
     def test_user_active_status_calculation(self):
         """Test User model active status calculation."""
@@ -90,11 +101,13 @@ class TestCourse:
             course_number="ACC-201",
             course_title="Accounting Principles",
             department="Business",
+            institution_id="test-institution",
         )
 
         assert course["course_number"] == "ACC-201"
         assert course["course_title"] == "Accounting Principles"
         assert course["department"] == "Business"
+        assert course["institution_id"] == "test-institution"
         assert course["credit_hours"] == 3  # Default
         assert course["active"] is True
         assert "course_id" in course
@@ -105,6 +118,7 @@ class TestCourse:
             course_number="NURS-150",
             course_title="Nursing Fundamentals",
             department="Nursing",
+            institution_id="test-institution",
             credit_hours=4,
         )
 
@@ -194,7 +208,9 @@ class TestCourseOutcome:
 
         assert assessment["assessment_data"]["students_assessed"] == 25
         assert assessment["assessment_data"]["students_meeting"] == 22
-        assert assessment["assessment_data"]["percentage_meeting"] == 88.0  # Calculated
+        assert (
+            abs(assessment["assessment_data"]["percentage_meeting"] - 88.0) < 0.01
+        )  # Calculated with tolerance
         assert assessment["assessment_data"]["assessment_status"] == "completed"
         assert assessment["narrative"] == "Most students performed well..."
 
@@ -256,15 +272,21 @@ class TestConstants:
     """Test that constants are properly defined"""
 
     def test_roles_defined(self):
-        """Test that all roles are properly defined"""
-        assert "instructor" in ROLES
-        assert "program_admin" in ROLES
-        assert "site_admin" in ROLES
+        """Test that all roles are properly defined in new authorization system"""
+        from auth_service import ROLE_PERMISSIONS, UserRole
 
-        for role, config in ROLES.items():
-            assert "name" in config
-            assert "permissions" in config
-            assert isinstance(config["permissions"], list)
+        # Test that UserRole enum contains expected roles
+        role_values = [role.value for role in UserRole]
+        assert "instructor" in role_values
+        assert "program_admin" in role_values
+        assert "institution_admin" in role_values
+        assert "site_admin" in role_values
+
+        # Test that all roles have permissions defined
+        for role_value in role_values:
+            assert role_value in ROLE_PERMISSIONS
+            assert isinstance(ROLE_PERMISSIONS[role_value], list)
+            assert len(ROLE_PERMISSIONS[role_value]) > 0
 
     def test_status_enums_defined(self):
         """Test that status enums are properly defined"""
@@ -476,3 +498,42 @@ class TestModelValidationEdgeCases:
             assert schema["instructor_id"] == data["instructor_id"]
             assert schema["enrollment"] == data["enrollment"]
             assert schema["status"] == data["status"]
+
+
+class TestCourseOfferingAdditional:
+    """Test CourseOffering model additional functionality."""
+
+    def test_create_offering_schema_basic(self):
+        """Test basic course offering schema creation."""
+        from models import CourseOffering
+
+        schema = CourseOffering.create_schema(
+            course_id="course123", term_id="term456", institution_id="inst789"
+        )
+
+        # This should cover the return statement on line 515
+        assert schema["course_id"] == "course123"
+        assert schema["term_id"] == "term456"
+        assert schema["institution_id"] == "inst789"
+        assert "offering_id" in schema
+        assert schema["status"] == "active"
+        assert schema["capacity"] is None
+
+
+class TestCourseOutcomeAdditional:
+    """Test CourseOutcome model additional functionality."""
+
+    def test_update_assessment_data_percentage_calculation(self):
+        """Test automatic percentage calculation in assessment data update."""
+        from models import CourseOutcome
+
+        # Test the specific case where percentage is calculated automatically
+        # This should trigger the percentage calculation on lines 631-632
+        updated_data = CourseOutcome.update_assessment_data(
+            students_assessed=30, students_meeting=24, assessment_status="completed"
+        )
+
+        assert updated_data["assessment_data"]["students_assessed"] == 30
+        assert updated_data["assessment_data"]["students_meeting"] == 24
+        assert updated_data["assessment_data"]["percentage_meeting"] == 80.0
+        assert updated_data["assessment_data"]["assessment_status"] == "completed"

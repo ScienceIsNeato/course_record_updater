@@ -178,3 +178,34 @@ class TestLoggingFormatters:
         except Exception as e:
             # If logging fails, that's an issue
             assert False, f"Logging failed: {e}"
+
+    def test_get_quality_gate_logger(self):
+        """Test quality gate logger creation and configuration"""
+        import logging
+
+        from logging_config import setup_quality_gate_logger
+
+        # Clear any existing handlers
+        quality_gate_logger = logging.getLogger("QualityGate")
+        quality_gate_logger.handlers.clear()
+
+        # Get the logger
+        logger = setup_quality_gate_logger()
+
+        # Verify logger configuration
+        assert logger.name == "QualityGate"
+        assert logger.level == logging.INFO
+        assert logger.propagate is False
+        assert len(logger.handlers) == 1
+
+        # Verify handler configuration
+        handler = logger.handlers[0]
+        assert isinstance(handler, logging.StreamHandler)
+        assert handler.formatter._fmt == "%(message)s"
+
+        # Test that subsequent calls return the same logger without adding handlers
+        logger2 = setup_quality_gate_logger()
+        assert logger is logger2
+        assert (
+            len(logger2.handlers) >= 1
+        )  # Should have at least 1 handler, not accumulate

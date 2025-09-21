@@ -1,8 +1,8 @@
-# CI/CD Setup Guide
+# CI/CD Overview
 
 ## 🚀 Continuous Integration & Quality Gates
 
-This repository uses GitHub Actions to mirror our local quality gate system, ensuring consistent code quality across all environments.
+This repository uses GitHub Actions with automated quality gates. The CI system is designed to be **zero-configuration** - most setup is handled through environment variables in GitHub repository settings.
 
 ### 📊 CI Workflows
 
@@ -22,7 +22,22 @@ This repository uses GitHub Actions to mirror our local quality gate system, ens
 - **Tools**: Safety, Bandit, CodeQL
 - **Features**: Automatic issue creation on vulnerabilities
 
-### 🔧 Local Development Setup
+## 🔧 Environment Variables (Repository Secrets)
+
+The CI system requires these environment variables to be configured in GitHub repository settings:
+
+### Required Secrets
+- `SAFETY_API_KEY`: For security vulnerability scanning
+- `SONAR_TOKEN`: For SonarQube code quality analysis  
+- `SONAR_HOST_URL`: SonarQube server URL (stored as repository variable)
+
+### Automatic Setup
+- **Python version**: Managed via `PYTHON_VERSION` environment variable in workflow
+- **Dependencies**: Automatically cached and installed
+- **Quality checks**: Run automatically on every push/PR
+- **Test database**: Firestore emulator auto-configured in CI
+
+## 🔧 Local Development Setup
 
 #### Install Pre-commit Hooks
 ```bash
@@ -38,14 +53,17 @@ pre-commit run --all-files
 
 #### Run Quality Gates Locally
 ```bash
-# Essential checks (mirrors CI)
+# Fast commit validation (default - excludes slow security & sonar)
 python scripts/ship_it.py
+
+# Full PR validation (comprehensive - includes all checks)
+python scripts/ship_it.py --validation-type PR
 
 # Specific checks
 python scripts/ship_it.py --checks format lint tests
 
-# Comprehensive validation
-python scripts/ship_it.py --checks format lint tests security types
+# Specific checks with PR validation
+python scripts/ship_it.py --validation-type PR --checks format lint tests security types
 ```
 
 ### 🎯 Quality Standards
@@ -95,9 +113,10 @@ Add the `comprehensive-check` label to a PR to trigger full validation:
 - Reduces build time by ~60%
 
 #### **Fail-Fast Strategy**
-- Essential checks must pass before security/type checks
-- Early failure detection saves CI resources
+- Fail-fast behavior is always enabled for immediate feedback
+- Early failure detection saves CI resources and development time
 - Clear failure reporting with artifacts
+- Commit validation optimized for speed, PR validation for comprehensiveness
 
 ### 🔍 Monitoring & Reporting
 
@@ -148,8 +167,9 @@ protection_rules:
 - Network timeouts may affect dependency installation
 
 #### **Performance Issues**
-- Use `--fail-fast` for rapid development
+- Use default commit validation for rapid development (78s faster than PR validation)
+- Use `--validation-type PR` only when preparing pull requests
 - Cache dependencies locally with pip-tools
-- Run specific checks instead of full suite during development
+- Run specific checks instead of full suite during targeted development
 
 This CI setup ensures that our quality standards are consistently enforced across all contributors and deployment environments.

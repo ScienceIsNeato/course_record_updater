@@ -32,14 +32,36 @@ This project maintains enterprise-grade quality standards:
 # Install development dependencies
 pip install -r requirements-dev.txt
 
-# Run essential quality checks (2-3 minutes)
+# Run fast commit validation (excludes slow security & sonar checks)
 python scripts/ship_it.py
+
+# Run full PR validation (all checks including security & sonar)
+python scripts/ship_it.py --validation-type PR
 
 # Install pre-commit hooks
 pre-commit install
 ```
 
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
+
+## 🧪 Manual Testing & UAT
+
+For comprehensive user acceptance testing of the authentication system:
+- **[UAT_GUIDE.md](UAT_GUIDE.md)**: Complete manual testing protocol with role-based scenarios
+- **[SMOKE_TESTING_GUIDE.md](SMOKE_TESTING_GUIDE.md)**: Quick smoke test procedures
+- **[TESTING_STRATEGY.md](TESTING_STRATEGY.md)**: Overall testing approach and automation strategy
+
+### Quick Testing Commands
+```bash
+# Quick frontend validation (5 seconds)
+./check_frontend.sh
+
+# Comprehensive smoke tests (30-60 seconds)  
+./run_smoke_tests.sh
+
+# Seed database with test data
+python scripts/seed_db.py --clear
+```
 
 ## Project Structure
 
