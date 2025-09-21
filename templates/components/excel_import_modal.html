@@ -189,19 +189,6 @@ function executeImport() {
 
 // Function to execute import request
 function executeImportRequest(formData, isValidation) {
-    // Validate file is selected before proceeding
-    const fileInput = document.getElementById('excel_file');
-    if (!fileInput.files || fileInput.files.length === 0) {
-        alert('Please select an Excel file before proceeding.');
-        return;
-    }
-    
-    // Debug: Log form data contents
-    console.log('FormData contents:');
-    for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-    }
-    
     const progressDiv = document.getElementById('importProgress');
     const resultsDiv = document.getElementById('importResults');
     const progressBar = document.getElementById('importProgressBar');

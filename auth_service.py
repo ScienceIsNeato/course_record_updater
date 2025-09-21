@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional
 from flask import jsonify, request, session
 
 # Import our models and logging
-from constants import ERROR_AUTHENTICATION_REQUIRED
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -332,22 +331,10 @@ class AuthService:
 
         # Site admin can access all institutions
         if user_role == UserRole.SITE_ADMIN.value:
-            # Import here to avoid circular dependency
-            from database_service import get_all_institutions
+            # TODO: Return all institution IDs from database
+            return ["inst-123", "inst-456"]  # Mock data
 
-            institutions = get_all_institutions()
-            return [
-                inst.get("institution_id")
-                for inst in institutions
-                if inst.get("institution_id")
-            ]
-
-        # Institution admin and other roles can access their own institution
-        institution_id = user.get("institution_id")
-        if institution_id:
-            return [institution_id]
-
-        # Fall back to any stored accessible institutions
+        # Other roles can only access their institution
         return user.get("accessible_institutions", [])
 
     def get_accessible_programs(
@@ -360,51 +347,18 @@ class AuthService:
 
         user_role = user.get("role")
 
-        if user_role == UserRole.SITE_ADMIN.value:
-            return self._get_site_admin_programs(institution_id)
-        elif user_role == UserRole.INSTITUTION_ADMIN.value:
-            return self._get_institution_admin_programs(user, institution_id)
-        elif user_role in [UserRole.PROGRAM_ADMIN.value, UserRole.INSTRUCTOR.value]:
-            return self._get_user_specific_programs(user)
+        # Site admin and institution admin can access all programs in their scope
+        if user_role in [UserRole.SITE_ADMIN.value, UserRole.INSTITUTION_ADMIN.value]:
+            # TODO: Return programs from database based on institution scope
+            # For now, use institution_id if provided for future database filtering
+            _ = institution_id  # Acknowledge parameter for future use
+            return ["prog-123", "prog-456"]  # Mock data
+
+        # Program admin can only access their specific programs
+        elif user_role == UserRole.PROGRAM_ADMIN.value:
+            return user.get("program_ids", [])
 
         return []
-
-    def _get_site_admin_programs(self, institution_id: Optional[str]) -> List[str]:
-        """Get programs accessible to site admin."""
-        from database_service import (
-            get_all_institutions,
-            get_programs_by_institution,
-        )
-
-        if institution_id:
-            programs = get_programs_by_institution(institution_id)
-        else:
-            programs = []
-            institutions = get_all_institutions()
-            for inst in institutions:
-                inst_id = inst.get("institution_id")
-                if inst_id:
-                    programs.extend(get_programs_by_institution(inst_id))
-
-        return [prog.get("program_id") for prog in programs if prog.get("program_id")]
-
-    def _get_institution_admin_programs(
-        self, user: dict, institution_id: Optional[str]
-    ) -> List[str]:
-        """Get programs accessible to institution admin."""
-        from database_service import get_programs_by_institution
-
-        target_institution = institution_id or user.get("institution_id")
-        if target_institution:
-            programs = get_programs_by_institution(target_institution)
-            return [
-                prog.get("program_id") for prog in programs if prog.get("program_id")
-            ]
-        return []
-
-    def _get_user_specific_programs(self, user: dict) -> List[str]:
-        """Get programs for program admin and instructor users."""
-        return user.get("program_ids", [])
 
 
 # Global auth service instance
@@ -412,42 +366,6 @@ auth_service = AuthService()
 
 
 # Authentication and Authorization Decorators
-def _is_ajax_request() -> bool:
-    """Detect if the current request is an AJAX/programmatic request."""
-    from flask import request
-
-    return (
-        request.headers.get("X-Requested-With") == "XMLHttpRequest"
-        or request.headers.get("Content-Type") == "application/json"
-        or (
-            request.headers.get("Accept", "").startswith("application/json")
-            and "text/html" not in request.headers.get("Accept", "")
-        )
-        or request.path.startswith("/api/")  # All API endpoints should return JSON
-    )
-
-
-def _handle_unauthenticated_request():
-    """Handle unauthenticated request with appropriate response type."""
-    from flask import redirect, url_for
-
-    if _is_ajax_request():
-        # Return JSON response for AJAX requests
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": ERROR_AUTHENTICATION_REQUIRED,
-                    "error_code": "AUTH_REQUIRED",
-                }
-            ),
-            401,
-        )
-    else:
-        # Redirect to login page for browser requests
-        return redirect(url_for("api.login_api"))
-
-
 def login_required(f):
     """Decorator to require authentication with smart response handling."""
 
@@ -455,7 +373,37 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if not auth_service.is_authenticated():
             logger.warning(f"Unauthorized access attempt to {f.__name__}")
-            return _handle_unauthenticated_request()
+
+            # Detect if this is an API request or web page request
+            from flask import redirect, request, url_for
+
+            # Detect AJAX/programmatic requests vs browser requests
+            # AJAX requests should get JSON responses
+            # Browser requests (even to /api/ URLs) should redirect to login
+            is_ajax_request = (
+                request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                or request.headers.get("Content-Type") == "application/json"
+                or (
+                    request.headers.get("Accept", "").startswith("application/json")
+                    and "text/html" not in request.headers.get("Accept", "")
+                )
+            )
+
+            if is_ajax_request:
+                # Return JSON response for AJAX requests
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Authentication required",
+                            "error_code": "AUTH_REQUIRED",
+                        }
+                    ),
+                    401,
+                )
+            else:
+                # Redirect to login page for browser requests (including /api/ URLs)
+                return redirect(url_for("login"))
 
         return f(*args, **kwargs)
 
@@ -474,7 +422,7 @@ def role_required(required_role: str):
                     jsonify(
                         {
                             "success": False,
-                            "error": ERROR_AUTHENTICATION_REQUIRED,
+                            "error": "Authentication required",
                             "error_code": "AUTH_REQUIRED",
                         }
                     ),
@@ -519,108 +467,63 @@ def permission_required(
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Check authentication first
-            auth_error = _check_authentication(f)
-            if auth_error:
-                return auth_error
+            if not auth_service.is_authenticated():
+                logger.warning(f"Unauthorized access attempt to {f.__name__}")
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Authentication required",
+                            "error_code": "AUTH_REQUIRED",
+                        }
+                    ),
+                    401,
+                )
 
-            # Build context from request parameters
-            context = _extract_request_context(context_keys)
+            # Build context from request parameters if specified
+            context = {}
+            if context_keys:
+                # Check URL parameters, JSON body, and form data
+                for key in context_keys:
+                    value = None
+                    # Try URL parameters first
+                    if hasattr(request, "view_args") and request.view_args:
+                        value = request.view_args.get(key)
+                    # Try JSON body
+                    if not value and request.is_json:
+                        value = request.json.get(key)
+                    # Try form data
+                    if not value and request.form:
+                        value = request.form.get(key)
+                    # Try query parameters
+                    if not value:
+                        value = request.args.get(key)
 
-            # Check permission
-            permission_error = _check_permission(required_permission, context, f)
-            if permission_error:
-                return permission_error
+                    if value:
+                        context[key] = value
+
+            if not auth_service.has_permission(required_permission, context):
+                user = auth_service.get_current_user()
+                logger.warning(
+                    f"Permission denied: User {user.get('user_id')} attempted to access {f.__name__} requiring {required_permission}"
+                )
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Permission denied",
+                            "error_code": "PERMISSION_DENIED",
+                            "required_permission": required_permission,
+                        }
+                    ),
+                    403,
+                )
 
             return f(*args, **kwargs)
 
         return decorated_function
 
     return decorator
-
-
-def _check_authentication(f):
-    """Check if user is authenticated and return error if not."""
-    if not auth_service.is_authenticated():
-        logger.warning(f"Unauthorized access attempt to {f.__name__}")
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": ERROR_AUTHENTICATION_REQUIRED,
-                    "error_code": "AUTH_REQUIRED",
-                }
-            ),
-            401,
-        )
-    return None
-
-
-def _extract_request_context(context_keys: Optional[List[str]]) -> Dict[str, str]:
-    """Extract context parameters from request."""
-    context: Dict[str, str] = {}
-    if not context_keys:
-        return context
-
-    for key in context_keys:
-        value = _get_request_parameter(key)
-        if value:
-            context[key] = value
-
-    return context
-
-
-def _get_request_parameter(key: str) -> Optional[str]:
-    """Get parameter value from various request sources."""
-    # Try URL parameters first
-    if hasattr(request, "view_args") and request.view_args:
-        value = request.view_args.get(key)
-        if value:
-            return value
-
-    # Try JSON body
-    if request.is_json:
-        value = request.json.get(key)
-        if value:
-            return value
-
-    # Try form data
-    if request.form:
-        value = request.form.get(key)
-        if value:
-            return value
-
-    # Try query parameters
-    return request.args.get(key)
-
-
-def _check_permission(
-    required_permission: str, context: Dict[str, str], f
-) -> Optional[tuple]:
-    """Check if user has required permission and return error if not."""
-    if not auth_service.has_permission(required_permission, context):
-        user = auth_service.get_current_user()
-        # Sanitize user-controlled data for logging
-        sanitized_user_id = (
-            user.get("user_id", "unknown")[:50]
-            if user and user.get("user_id")
-            else "unknown"
-        )
-        logger.warning(
-            f"Permission denied: User {sanitized_user_id} attempted to access {f.__name__} requiring {required_permission}"
-        )
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "Permission denied",
-                    "error_code": "PERMISSION_DENIED",
-                    "required_permission": required_permission,
-                }
-            ),
-            403,
-        )
-    return None
 
 
 def admin_required(f):
@@ -697,27 +600,15 @@ def set_current_program_id(program_id: str) -> bool:
         # Verify user has access to this program
         accessible_programs = user.get("program_ids", [])
         if program_id not in accessible_programs:
-            # Sanitize user-controlled data for logging
-            sanitized_user_id = (
-                user.get("user_id", "unknown")[:50]
-                if user.get("user_id")
-                else "unknown"
-            )
-            sanitized_program_id = str(program_id)[:50] if program_id else "unknown"
             logger.warning(
-                f"User {sanitized_user_id} attempted to switch to unauthorized program {sanitized_program_id}"
+                f"User {user.get('user_id')} attempted to switch to unauthorized program {program_id}"
             )
             return False
 
         # Update session context
         session["current_program_id"] = program_id
-        # Sanitize user-controlled data for logging
-        sanitized_user_id = (
-            user.get("user_id", "unknown")[:50] if user.get("user_id") else "unknown"
-        )
-        sanitized_program_id = str(program_id)[:50] if program_id else "unknown"
         logger.info(
-            f"User {sanitized_user_id} switched to program context: {sanitized_program_id}"
+            f"User {user.get('user_id')} switched to program context: {program_id}"
         )
         return True
 
