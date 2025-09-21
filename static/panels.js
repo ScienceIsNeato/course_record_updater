@@ -1,6 +1,14 @@
 /**
  * Panel-Based UI JavaScript
  * Handles panel interactions, sorting, stats, and focus mode
+ *
+ * TODO: Add comprehensive UAT test cases for panel functionality including:
+ * - Panel expand/collapse behavior
+ * - Interactive stat previews and data loading
+ * - Sortable table functionality across all columns
+ * - Focus mode toggle and panel isolation
+ * - Cross-browser compatibility testing
+ * - Mobile responsiveness and touch interactions
  */
 
 class PanelManager {

@@ -134,16 +134,16 @@ class AuthService:
         Get the current authenticated user from session.
         Returns None if no user is authenticated.
         """
-        # Use real session-based authentication
+        # Use session-based authentication
         try:
-            return self._get_real_session_user()
+            return self._get_session_user()
         except RuntimeError:
             # Outside of application context (e.g., in standalone tests)
             # Default to mock user behavior for backward compatibility
             return self._get_mock_user()
 
-    def _get_real_session_user(self) -> Optional[Dict[str, Any]]:
-        """Real session-based authentication (production mode)"""
+    def _get_session_user(self) -> Optional[Dict[str, Any]]:
+        """Session-based authentication"""
         from session import SessionService
 
         if not SessionService.is_user_logged_in():

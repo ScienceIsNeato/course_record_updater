@@ -67,6 +67,10 @@ else:
 def index():
     """Render the main page with course management interface."""
 
+    # TODO: Create a proper landing page that showcases the app and encourages adoption/self-signup
+    # Currently just redirects to login, but eventually we want a marketing/showcase page
+    # that highlights features and allows self-signup before requiring authentication
+
     # Redirect to login if not authenticated
     if not is_authenticated():
         return redirect(url_for("login"))

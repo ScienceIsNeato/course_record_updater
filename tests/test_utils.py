@@ -32,9 +32,9 @@ INSTRUCTOR_USER_DATA = {
 }
 
 
-def require_real_auth_session(client, user_data):
+def require_auth_session(client, user_data):
     """
-    Create a test session that's compatible with real authentication.
+    Create a test session that's compatible with session authentication.
 
     It creates a proper Flask session that SessionService can read.
 
@@ -42,7 +42,7 @@ def require_real_auth_session(client, user_data):
         client: Flask test client
         user_data: Dictionary with user session data
     """
-    # Always create a proper session (real auth is now default)
+    # Always create a proper session (session auth is now default)
     create_test_session(client, user_data)
 
 
