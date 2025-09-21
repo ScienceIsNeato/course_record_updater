@@ -528,11 +528,18 @@ class TestAuthServiceCoverage:
         service = AuthService()
 
         # Test site admin - should return all institutions
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+        ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
                 "role": "site_admin",
             }
+            mock_get_all_institutions.return_value = [
+                {"institution_id": "inst-123"},
+                {"institution_id": "inst-456"},
+            ]
             institutions = service.get_accessible_institutions()
             assert "inst-123" in institutions
             assert "inst-456" in institutions
@@ -560,21 +567,41 @@ class TestAuthServiceCoverage:
         service = AuthService()
 
         # Test site admin
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
                 "role": "site_admin",
             }
+            mock_get_all_institutions.return_value = [
+                {"institution_id": "inst-123"},
+                {"institution_id": "inst-456"},
+            ]
+            mock_get_programs.return_value = [
+                {"program_id": "prog-123"},
+                {"program_id": "prog-456"},
+            ]
             programs = service.get_accessible_programs()
             assert "prog-123" in programs
             assert "prog-456" in programs
 
         # Test institution admin
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
             mock_get_user.return_value = {
                 "user_id": "inst-admin-123",
                 "role": "institution_admin",
+                "institution_id": "inst-123",
             }
+            mock_get_programs.return_value = [
+                {"program_id": "prog-123"},
+                {"program_id": "prog-456"},
+            ]
             programs = service.get_accessible_programs()
             assert "prog-123" in programs
             assert "prog-456" in programs

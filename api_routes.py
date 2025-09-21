@@ -7,11 +7,12 @@ with the existing single-page application.
 """
 
 import traceback
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 # Import our services
+import auth_service
 from auth_service import (
     clear_current_program_id,
     get_current_institution_id,
@@ -31,6 +32,7 @@ from constants import (
     NO_JSON_DATA_PROVIDED_MSG,
     NOT_FOUND_MSG,
     PROGRAM_NOT_FOUND_MSG,
+    UserRole,
 )
 from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
@@ -97,7 +99,7 @@ def _resolve_institution_scope(require: bool = True):
     if institution_id:
         return current_user, [institution_id], False
 
-    if current_user and current_user.get("role") == "site_admin":
+    if current_user and current_user.get("role") == UserRole.SITE_ADMIN:
         institutions = get_all_institutions()
         institution_ids = [
             inst["institution_id"]
@@ -115,10 +117,10 @@ def _resolve_institution_scope(require: bool = True):
 def _get_user_accessible_programs(institution_id: Optional[str] = None) -> List[str]:
     """
     Get list of program IDs accessible to the current user.
-    
+
     Args:
         institution_id: Optional institution ID to scope programs to
-        
+
     Returns:
         List of accessible program IDs
     """
@@ -153,7 +155,7 @@ def validate_context():
             return  # Let the auth decorators handle authentication
 
         # Site admins don't need context validation
-        if current_user.get("role") == "site_admin":
+        if current_user.get("role") == UserRole.SITE_ADMIN:
             return
 
         # Validate institution context for non-site-admin users
@@ -175,10 +177,12 @@ def validate_context():
 
         # Set default program context if needed (for non-site-admin users)
         current_program_id = get_current_program_id()
-        if not current_program_id and current_user.get("role") not in ["site_admin"]:
+        if not current_program_id and current_user.get("role") not in [
+            UserRole.SITE_ADMIN
+        ]:
             # Get user's accessible programs
             accessible_programs = auth_service.get_accessible_programs(institution_id)
-            
+
             if accessible_programs:
                 # Look for default program first
                 default_program_id = None
@@ -187,11 +191,11 @@ def validate_context():
                     if program and program.get("is_default"):
                         default_program_id = prog_id
                         break
-                
+
                 # If no default found, use first accessible program
                 if not default_program_id:
                     default_program_id = accessible_programs[0]
-                
+
                 # Set the default program context
                 if default_program_id:
                     set_current_program_id(default_program_id)
@@ -199,7 +203,7 @@ def validate_context():
                     logger.info(
                         f"Auto-set default program context for user {current_user.get('user_id')}: {default_program_id}"
                     )
-        
+
         # Log context for debugging
         logger.debug(
             f"Request context - User: {current_user.get('user_id')}, Institution: {institution_id}, Program: {current_program_id}"
@@ -355,7 +359,7 @@ def get_institution_details(institution_id: str):
         # Users can only view their own institution unless they're site admin
         if (
             current_user.get("institution_id") != institution_id
-            and current_user.get("role") != "site_admin"
+            and current_user.get("role") != UserRole.SITE_ADMIN
         ):
             return jsonify({"success": False, "error": "Access denied"}), 403
 
@@ -691,11 +695,11 @@ def list_courses():
 
         # Get user's accessible programs using the auth service
         accessible_programs = _get_user_accessible_programs()
-        
+
         # Validate program override access
         if program_id_override:
             if program_id_override not in accessible_programs and (
-                current_user and current_user.get("role") != "site_admin"
+                current_user and current_user.get("role") != UserRole.SITE_ADMIN
             ):
                 return (
                     jsonify(
@@ -736,16 +740,26 @@ def list_courses():
             else:
                 courses = get_all_courses(institution_id)
                 context_info = f"institution {institution_id}"
-        
+
         # Apply program filtering for non-site admins
-        if current_user and current_user.get("role") != "site_admin" and not current_program_id:
+        if (
+            current_user
+            and current_user.get("role") != UserRole.SITE_ADMIN
+            and not current_program_id
+        ):
             # Filter courses to only those in accessible programs
             if accessible_programs:
                 courses = [
-                    c for c in courses
-                    if any(prog_id in accessible_programs for prog_id in c.get("program_ids", []))
+                    c
+                    for c in courses
+                    if any(
+                        prog_id in accessible_programs
+                        for prog_id in c.get("program_ids", [])
+                    )
                 ]
-                context_info += f", filtered to {len(accessible_programs)} accessible programs"
+                context_info += (
+                    f", filtered to {len(accessible_programs)} accessible programs"
+                )
 
         return jsonify(
             {
@@ -892,7 +906,7 @@ def assign_course_to_default(course_id: str):
         institution_id = get_current_institution_id()
         if not institution_id:
             current_user = get_current_user()
-            if current_user and current_user.get("role") == "site_admin":
+            if current_user and current_user.get("role") == UserRole.SITE_ADMIN:
                 payload = request.get_json(silent=True) or {}
                 institution_id = payload.get("institution_id") or request.args.get(
                     "institution_id"
@@ -1107,7 +1121,7 @@ def create_program_api():
             return jsonify({"success": False, "error": "User not found"}), 400
 
         if not institution_id:
-            if current_user.get("role") == "site_admin":
+            if current_user.get("role") == UserRole.SITE_ADMIN:
                 institution_id = data.get("institution_id") or request.args.get(
                     "institution_id"
                 )
@@ -1498,7 +1512,7 @@ def list_sections():
         program_id_filter = request.args.get("program_id")
 
         current_user = get_current_user()
-        
+
         # Get institution context
         try:
             _, institution_ids, is_global = _resolve_institution_scope()
@@ -1526,21 +1540,24 @@ def list_sections():
                 sections.extend(get_all_sections(inst_id))
 
         # Apply program filtering for non-site admins
-        if current_user["role"] != "site_admin":
+        if current_user["role"] != UserRole.SITE_ADMIN:
             # Get user's accessible programs
             accessible_programs = _get_user_accessible_programs()
-            
+
             # If program filter specified, validate access
             if program_id_filter:
                 if program_id_filter not in accessible_programs:
                     return (
                         jsonify(
-                            {"success": False, "error": "Access denied to specified program"}
+                            {
+                                "success": False,
+                                "error": "Access denied to specified program",
+                            }
                         ),
                         403,
                     )
                 accessible_programs = [program_id_filter]
-            
+
             # Filter sections by accessible programs
             # Note: Sections are linked to courses, and courses have program_ids
             if accessible_programs:
@@ -1550,13 +1567,15 @@ def list_sections():
                     all_courses = get_all_courses(inst_id)
                     for course in all_courses:
                         course_programs = course.get("program_ids", [])
-                        if any(prog_id in accessible_programs for prog_id in course_programs):
+                        if any(
+                            prog_id in accessible_programs
+                            for prog_id in course_programs
+                        ):
                             accessible_courses.append(course.get("course_id"))
-                
+
                 # Filter sections to those linked to accessible courses
                 sections = [
-                    s for s in sections 
-                    if s.get("course_id") in accessible_courses
+                    s for s in sections if s.get("course_id") in accessible_courses
                 ]
 
         # Filter based on instructor permissions
