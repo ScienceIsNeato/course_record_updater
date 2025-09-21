@@ -1,8 +1,8 @@
-# CI/CD Setup Guide
+# CI/CD Overview
 
 ## 🚀 Continuous Integration & Quality Gates
 
-This repository uses GitHub Actions to mirror our local quality gate system, ensuring consistent code quality across all environments.
+This repository uses GitHub Actions with automated quality gates. The CI system is designed to be **zero-configuration** - most setup is handled through environment variables in GitHub repository settings.
 
 ### 📊 CI Workflows
 
@@ -22,7 +22,22 @@ This repository uses GitHub Actions to mirror our local quality gate system, ens
 - **Tools**: Safety, Bandit, CodeQL
 - **Features**: Automatic issue creation on vulnerabilities
 
-### 🔧 Local Development Setup
+## 🔧 Environment Variables (Repository Secrets)
+
+The CI system requires these environment variables to be configured in GitHub repository settings:
+
+### Required Secrets
+- `SAFETY_API_KEY`: For security vulnerability scanning
+- `SONAR_TOKEN`: For SonarQube code quality analysis  
+- `SONAR_HOST_URL`: SonarQube server URL (stored as repository variable)
+
+### Automatic Setup
+- **Python version**: Managed via `PYTHON_VERSION` environment variable in workflow
+- **Dependencies**: Automatically cached and installed
+- **Quality checks**: Run automatically on every push/PR
+- **Test database**: Firestore emulator auto-configured in CI
+
+## 🔧 Local Development Setup
 
 #### Install Pre-commit Hooks
 ```bash
