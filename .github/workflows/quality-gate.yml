@@ -2,7 +2,7 @@ name: Quality Gate
 
 on:
   push:
-    branches: [ main, develop, 'feature/*' ]
+  pull_request:
 
 env:
   PYTHON_VERSION: '3.11'  # Source of truth for Python version - must match Dockerfile
