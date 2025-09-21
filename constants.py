@@ -37,6 +37,33 @@ SONAR_REGION = "US"
 # Application route constants
 DASHBOARD_ENDPOINT = "dashboard"
 
+# Common error messages
+ERROR_USER_NOT_FOUND = "User not found"
+ERROR_COURSE_NOT_FOUND = "Course not found"
+ERROR_PROGRAM_NOT_FOUND = "Program not found"
+ERROR_INVITATION_NOT_FOUND = "Invitation not found"
+ERROR_NO_JSON_DATA = "No JSON data provided"
+ERROR_NO_DATA_PROVIDED = "No data provided"
+ERROR_INVALID_EMAIL_FORMAT = "Invalid email format"
+ERROR_INSTITUTION_CONTEXT_REQUIRED = "Institution context required"
+ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
+
+# File extensions
+EXCEL_EXTENSION = ".xlsx"
+
+# Database error messages
+DB_FIRESTORE_NOT_AVAILABLE = "[DB Service] Firestore client not available."
+
+# Default values
+DEFAULT_BASE_URL = "http://localhost:5000"
+TIMEZONE_UTC_SUFFIX = "+00:00"
+
+# Seed data constants
+PROGRAM_COMPUTER_SCIENCE = "Computer Science"
+PROGRAM_ELECTRICAL_ENGINEERING = "Electrical Engineering"
+PROGRAM_DEFAULT_DESCRIPTION = "Default program for unassigned courses"
+FACULTY_NAME_HEADER = "Faculty Name"
+
 
 # User role constants
 class UserRole:

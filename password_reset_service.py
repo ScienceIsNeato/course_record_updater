@@ -30,6 +30,25 @@ class PasswordResetService:
     MAX_RESET_REQUESTS_PER_HOUR = 3  # Maximum reset requests per email per hour
 
     @staticmethod
+    def _validate_account_status(user: Dict[str, Any]) -> None:
+        """Validate user account status for password reset"""
+        if user.get("account_status") != "active":
+            if user.get("account_status") == "pending":
+                raise PasswordResetError(
+                    "Account is pending activation. Please verify your email first."
+                )
+            elif user.get("account_status") == "suspended":
+                raise PasswordResetError(
+                    "Account is suspended. Please contact support."
+                )
+            elif user.get("account_status") == "deactivated":
+                raise PasswordResetError(
+                    "Account is deactivated. Please contact support."
+                )
+            else:
+                raise PasswordResetError("Account is not available for password reset.")
+
+    @staticmethod
     def request_password_reset(email: str) -> Dict[str, Any]:
         """
         Process password reset request and send reset email
@@ -64,23 +83,7 @@ class PasswordResetService:
                 }
 
             # Check if account is active
-            if user.get("account_status") != "active":
-                if user.get("account_status") == "pending":
-                    raise PasswordResetError(
-                        "Account is pending activation. Please verify your email first."
-                    )
-                elif user.get("account_status") == "suspended":
-                    raise PasswordResetError(
-                        "Account is suspended. Please contact support."
-                    )
-                elif user.get("account_status") == "deactivated":
-                    raise PasswordResetError(
-                        "Account is deactivated. Please contact support."
-                    )
-                else:
-                    raise PasswordResetError(
-                        "Account is not available for password reset."
-                    )
+            PasswordResetService._validate_account_status(user)
 
             # Generate reset token
             reset_token = PasswordService.generate_reset_token()

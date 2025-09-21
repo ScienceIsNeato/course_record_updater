@@ -38,9 +38,9 @@
             <!-- User Info -->
             <div class="navbar-nav">
                 <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="nav-link dropdown-toggle btn btn-link" id="navbarDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-user-circle"></i> {{ current_user.first_name }} {{ current_user.last_name }}
-                    </a>
+                    </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li><a class="dropdown-item" href="{{ url_for('profile') }}">
                             <i class="fas fa-user"></i> Account Settings
@@ -142,12 +142,12 @@
 
         <!-- Users and Invitations Tabs -->
         <ul class="nav nav-tabs" id="userTabs" role="tablist">
-            <li class="nav-item" role="presentation">
+            <li class="nav-item">
                 <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab" aria-controls="users-pane" aria-selected="true">
                     <i class="fas fa-users"></i> Users <span class="badge bg-secondary ms-1" id="usersCount">0</span>
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item">
                 <button class="nav-link" id="invitations-tab" data-bs-toggle="tab" data-bs-target="#invitations-pane" type="button" role="tab" aria-controls="invitations-pane" aria-selected="false">
                     <i class="fas fa-envelope"></i> Invitations <span class="badge bg-secondary ms-1" id="invitationsCount">0</span>
                 </button>
@@ -185,9 +185,9 @@
                         
                         <!-- Loading State -->
                         <div id="usersLoading" class="text-center p-4">
-                            <div class="spinner-border" role="status">
+                            <output class="spinner-border">
                                 <span class="visually-hidden">Loading...</span>
-                            </div>
+                            </output>
                             <p class="mt-2 text-muted">Loading users...</p>
                         </div>
                         
@@ -235,9 +235,9 @@
                         
                         <!-- Loading State -->
                         <div id="invitationsLoading" class="text-center p-4">
-                            <div class="spinner-border" role="status">
+                            <output class="spinner-border">
                                 <span class="visually-hidden">Loading...</span>
-                            </div>
+                            </output>
                             <p class="mt-2 text-muted">Loading invitations...</p>
                         </div>
                         

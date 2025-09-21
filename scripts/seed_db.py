@@ -24,7 +24,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our services and models
 import database_service as db
-from constants import SITE_ADMIN_INSTITUTION_ID
+from constants import (
+    PROGRAM_COMPUTER_SCIENCE,
+    PROGRAM_DEFAULT_DESCRIPTION,
+    PROGRAM_ELECTRICAL_ENGINEERING,
+    SITE_ADMIN_INSTITUTION_ID,
+)
 from models import Course, Institution, Program, Term, User, UserInvitation
 from password_service import hash_password
 
@@ -278,23 +283,19 @@ class DatabaseSeeder:
 
         return admin_ids
 
-    def create_programs(
-        self, institution_ids: List[str], admin_ids: List[str]
-    ) -> List[str]:
-        """Create academic programs"""
-        self.log("📚 Creating academic programs...")
-
-        programs_data = [
+    def _get_programs_data(self) -> List[dict]:
+        """Get program seed data"""
+        return [
             # CEI Programs
             {
-                "name": "Computer Science",
+                "name": PROGRAM_COMPUTER_SCIENCE,
                 "short_name": "CS",
                 "description": "Bachelor of Science in Computer Science",
                 "institution_idx": 0,
                 "admin_idx": 0,
             },
             {
-                "name": "Electrical Engineering",
+                "name": PROGRAM_ELECTRICAL_ENGINEERING,
                 "short_name": "EE",
                 "description": "Bachelor of Science in Electrical Engineering",
                 "institution_idx": 0,
@@ -303,7 +304,7 @@ class DatabaseSeeder:
             {
                 "name": "Unclassified",
                 "short_name": "UNCL",
-                "description": "Default program for unassigned courses",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 0,
                 "admin_idx": 0,
                 "is_default": True,
@@ -326,7 +327,7 @@ class DatabaseSeeder:
             {
                 "name": "Unclassified",
                 "short_name": "UNCL",
-                "description": "Default program for unassigned courses",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 1,
                 "admin_idx": 1,
                 "is_default": True,
@@ -342,63 +343,68 @@ class DatabaseSeeder:
             {
                 "name": "Unclassified",
                 "short_name": "UNCL",
-                "description": "Default program for unassigned courses",
+                "description": PROGRAM_DEFAULT_DESCRIPTION,
                 "institution_idx": 2,
                 "admin_idx": 2,
                 "is_default": True,
             },
         ]
 
+    def _create_single_program(self, prog_data: dict, institution_ids: List[str], admin_ids: List[str]) -> Optional[str]:
+        """Create a single program"""
+        institution_idx = cast(int, prog_data["institution_idx"])
+        admin_idx = cast(int, prog_data["admin_idx"])
+        
+        if institution_idx >= len(institution_ids) or admin_idx >= len(admin_ids):
+            return None
+
+        try:
+            institution_id = institution_ids[institution_idx]
+            program_name = cast(str, prog_data["name"])
+            
+            # Check if program already exists
+            existing_program = db.get_program_by_name_and_institution(program_name, institution_id)
+            if existing_program:
+                program_id = existing_program["id"]
+                self.created_entities["programs"].append(program_id)
+                self.log(f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})")
+                return program_id
+
+            # Create new program
+            schema = Program.create_schema(
+                name=cast(str, prog_data["name"]),
+                short_name=cast(str, prog_data["short_name"]),
+                institution_id=institution_id,
+                created_by=admin_ids[admin_idx],
+                description=cast(str, prog_data.get("description", "")),
+                is_default=cast(bool, prog_data.get("is_default", False)),
+            )
+            schema["id"] = schema.pop("program_id")
+
+            program_id = db.create_program(schema)
+            if program_id:
+                self.created_entities["programs"].append(program_id)
+                self.log(f"   Created program: {prog_data['name']} ({prog_data['short_name']})")
+                return program_id
+            else:
+                self.log(f"   Failed to create program: {prog_data['name']}")
+                return None
+
+        except Exception as e:
+            self.log(f"   Error creating program {prog_data['name']}: {e}")
+            return None
+
+    def create_programs(self, institution_ids: List[str], admin_ids: List[str]) -> List[str]:
+        """Create academic programs"""
+        self.log("📚 Creating academic programs...")
+        
+        programs_data = self._get_programs_data()
         program_ids = []
+        
         for prog_data in programs_data:
-            institution_idx = cast(int, prog_data["institution_idx"])
-            admin_idx = cast(int, prog_data["admin_idx"])
-            if institution_idx < len(institution_ids) and admin_idx < len(admin_ids):
-
-                try:
-                    institution_id = institution_ids[institution_idx]
-
-                    # Check if program already exists
-                    program_name = cast(str, prog_data["name"])
-                    existing_program = db.get_program_by_name_and_institution(
-                        program_name, institution_id
-                    )
-
-                    if existing_program:
-                        program_id = existing_program["id"]
-                        program_ids.append(program_id)
-                        self.created_entities["programs"].append(program_id)
-                        self.log(
-                            f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})"
-                        )
-                    else:
-                        # Create new program
-                        schema = Program.create_schema(
-                            name=cast(str, prog_data["name"]),
-                            short_name=cast(str, prog_data["short_name"]),
-                            institution_id=institution_id,
-                            created_by=admin_ids[admin_idx],
-                            description=cast(str, prog_data.get("description", "")),
-                            is_default=cast(bool, prog_data.get("is_default", False)),
-                        )
-
-                        # Database service expects 'id' field, not 'program_id'
-                        schema["id"] = schema.pop("program_id")
-
-                        program_id = db.create_program(schema)
-                        if program_id:
-                            program_ids.append(program_id)
-                            self.created_entities["programs"].append(program_id)
-                            self.log(
-                                f"   Created program: {prog_data['name']} ({prog_data['short_name']})"
-                            )
-                        else:
-                            self.log(
-                                f"   Failed to create program: {prog_data['name']}"
-                            )
-
-                except Exception as e:
-                    self.log(f"   Error creating program {prog_data['name']}: {e}")
+            program_id = self._create_single_program(prog_data, institution_ids, admin_ids)
+            if program_id:
+                program_ids.append(program_id)
 
         return program_ids
 
