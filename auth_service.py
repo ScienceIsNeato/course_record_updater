@@ -331,10 +331,18 @@ class AuthService:
 
         # Site admin can access all institutions
         if user_role == UserRole.SITE_ADMIN.value:
-            # TODO: Return all institution IDs from database
-            return ["inst-123", "inst-456"]  # Mock data
+            # Import here to avoid circular dependency
+            from database_service import get_all_institutions
+            
+            institutions = get_all_institutions()
+            return [inst.get("institution_id") for inst in institutions if inst.get("institution_id")]
 
-        # Other roles can only access their institution
+        # Institution admin and other roles can access their own institution
+        institution_id = user.get("institution_id")
+        if institution_id:
+            return [institution_id]
+        
+        # Fall back to any stored accessible institutions
         return user.get("accessible_institutions", [])
 
     def get_accessible_programs(
@@ -347,16 +355,39 @@ class AuthService:
 
         user_role = user.get("role")
 
-        # Site admin and institution admin can access all programs in their scope
-        if user_role in [UserRole.SITE_ADMIN.value, UserRole.INSTITUTION_ADMIN.value]:
-            # TODO: Return programs from database based on institution scope
-            # For now, use institution_id if provided for future database filtering
-            _ = institution_id  # Acknowledge parameter for future use
-            return ["prog-123", "prog-456"]  # Mock data
+        # Site admin can access all programs across all institutions
+        if user_role == UserRole.SITE_ADMIN.value:
+            # Import here to avoid circular dependency
+            from database_service import get_programs_by_institution, get_all_institutions
+            
+            if institution_id:
+                # If institution specified, get programs for that institution
+                programs = get_programs_by_institution(institution_id)
+            else:
+                # Get programs from all institutions
+                programs = []
+                institutions = get_all_institutions()
+                for inst in institutions:
+                    inst_id = inst.get("institution_id")
+                    if inst_id:
+                        programs.extend(get_programs_by_institution(inst_id))
+            
+            return [prog.get("program_id") for prog in programs if prog.get("program_id")]
 
-        # Program admin can only access their specific programs
-        elif user_role == UserRole.PROGRAM_ADMIN.value:
-            return user.get("accessible_programs", [])
+        # Institution admin can access all programs in their institution
+        elif user_role == UserRole.INSTITUTION_ADMIN.value:
+            from database_service import get_programs_by_institution
+            
+            # Use provided institution_id or fall back to user's institution
+            target_institution = institution_id or user.get("institution_id")
+            if target_institution:
+                programs = get_programs_by_institution(target_institution)
+                return [prog.get("program_id") for prog in programs if prog.get("program_id")]
+
+        # Program admin and instructor can only access their specific programs
+        elif user_role in [UserRole.PROGRAM_ADMIN.value, UserRole.INSTRUCTOR.value]:
+            # Return programs from user record (program_ids field)
+            return user.get("program_ids", [])
 
         return []
 

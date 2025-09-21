@@ -112,6 +112,19 @@ def _resolve_institution_scope(require: bool = True):
     return current_user, [], False
 
 
+def _get_user_accessible_programs(institution_id: Optional[str] = None) -> List[str]:
+    """
+    Get list of program IDs accessible to the current user.
+    
+    Args:
+        institution_id: Optional institution ID to scope programs to
+        
+    Returns:
+        List of accessible program IDs
+    """
+    return auth_service.get_accessible_programs(institution_id)
+
+
 @api.before_request
 def validate_context():
     """Validate institution and program context for API requests"""
@@ -160,8 +173,34 @@ def validate_context():
                 400,
             )
 
-        # Log context for debugging
+        # Set default program context if needed (for non-site-admin users)
         current_program_id = get_current_program_id()
+        if not current_program_id and current_user.get("role") not in ["site_admin"]:
+            # Get user's accessible programs
+            accessible_programs = auth_service.get_accessible_programs(institution_id)
+            
+            if accessible_programs:
+                # Look for default program first
+                default_program_id = None
+                for prog_id in accessible_programs:
+                    program = get_program_by_id(prog_id)
+                    if program and program.get("is_default"):
+                        default_program_id = prog_id
+                        break
+                
+                # If no default found, use first accessible program
+                if not default_program_id:
+                    default_program_id = accessible_programs[0]
+                
+                # Set the default program context
+                if default_program_id:
+                    set_current_program_id(default_program_id)
+                    current_program_id = default_program_id
+                    logger.info(
+                        f"Auto-set default program context for user {current_user.get('user_id')}: {default_program_id}"
+                    )
+        
+        # Log context for debugging
         logger.debug(
             f"Request context - User: {current_user.get('user_id')}, Institution: {institution_id}, Program: {current_program_id}"
         )
@@ -650,15 +689,14 @@ def list_courses():
         program_id_override = request.args.get("program_id")
         current_program_id = get_current_program_id()
 
+        # Get user's accessible programs using the auth service
+        accessible_programs = _get_user_accessible_programs()
+        
+        # Validate program override access
         if program_id_override:
-            accessible_programs = (
-                current_user.get("accessible_programs", []) if current_user else []
-            )
-            if program_id_override in accessible_programs or (
-                current_user and current_user.get("role") == "site_admin"
+            if program_id_override not in accessible_programs and (
+                current_user and current_user.get("role") != "site_admin"
             ):
-                current_program_id = program_id_override
-            else:
                 return (
                     jsonify(
                         {
@@ -668,6 +706,7 @@ def list_courses():
                     ),
                     403,
                 )
+            current_program_id = program_id_override
 
         department_filter = request.args.get("department")
 
@@ -697,6 +736,16 @@ def list_courses():
             else:
                 courses = get_all_courses(institution_id)
                 context_info = f"institution {institution_id}"
+        
+        # Apply program filtering for non-site admins
+        if current_user and current_user.get("role") != "site_admin" and not current_program_id:
+            # Filter courses to only those in accessible programs
+            if accessible_programs:
+                courses = [
+                    c for c in courses
+                    if any(prog_id in accessible_programs for prog_id in c.get("program_ids", []))
+                ]
+                context_info += f", filtered to {len(accessible_programs)} accessible programs"
 
         return jsonify(
             {
@@ -1441,19 +1490,29 @@ def list_sections():
     Query parameters:
     - instructor_id: Filter by instructor (optional)
     - term_id: Filter by term (optional)
+    - program_id: Filter by program (optional, requires appropriate permissions)
     """
     try:
         instructor_id = request.args.get("instructor_id")
         term_id = request.args.get("term_id")
+        program_id_filter = request.args.get("program_id")
 
         current_user = get_current_user()
+        
+        # Get institution context
+        try:
+            _, institution_ids, is_global = _resolve_institution_scope()
+        except InstitutionContextMissingError:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
 
         # If no filters specified, determine default based on role
         if not instructor_id and not term_id:
             if current_user["role"] == "instructor":
                 # Instructors see only their own sections
                 instructor_id = current_user["user_id"]
-            # Program admins and site admins see all sections (no filter)
 
         # Apply filters
         if instructor_id:
@@ -1461,18 +1520,46 @@ def list_sections():
         elif term_id:
             sections = get_sections_by_term(term_id)
         else:
-            # Get institution context - for development, use CEI
-            institution_id = get_current_institution_id()
-            if not institution_id:
-                return (
-                    jsonify(
-                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
-                    ),
-                    400,
-                )
-            sections = get_all_sections(institution_id)
+            # Get sections for all accessible institutions
+            sections = []
+            for inst_id in institution_ids:
+                sections.extend(get_all_sections(inst_id))
 
-        # Filter based on permissions
+        # Apply program filtering for non-site admins
+        if current_user["role"] != "site_admin":
+            # Get user's accessible programs
+            accessible_programs = _get_user_accessible_programs()
+            
+            # If program filter specified, validate access
+            if program_id_filter:
+                if program_id_filter not in accessible_programs:
+                    return (
+                        jsonify(
+                            {"success": False, "error": "Access denied to specified program"}
+                        ),
+                        403,
+                    )
+                accessible_programs = [program_id_filter]
+            
+            # Filter sections by accessible programs
+            # Note: Sections are linked to courses, and courses have program_ids
+            if accessible_programs:
+                # Get courses in accessible programs
+                accessible_courses = []
+                for inst_id in institution_ids:
+                    all_courses = get_all_courses(inst_id)
+                    for course in all_courses:
+                        course_programs = course.get("program_ids", [])
+                        if any(prog_id in accessible_programs for prog_id in course_programs):
+                            accessible_courses.append(course.get("course_id"))
+                
+                # Filter sections to those linked to accessible courses
+                sections = [
+                    s for s in sections 
+                    if s.get("course_id") in accessible_courses
+                ]
+
+        # Filter based on instructor permissions
         if current_user["role"] == "instructor" and not has_permission(
             "view_all_sections"
         ):
