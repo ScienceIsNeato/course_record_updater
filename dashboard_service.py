@@ -255,15 +255,32 @@ class DashboardService:
             program_lookup.get(pid) for pid in program_ids if program_lookup.get(pid)
         ]
 
-        courses: List[Dict[str, Any]] = []
+        courses_dict: Dict[str, Dict[str, Any]] = (
+            {}
+        )  # Use dict to deduplicate by course_id
         courses_by_program: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for program in scoped_programs:
             pid = self._get_program_id(program)
             program_courses = get_courses_by_program(pid) or []
             for course in program_courses:
                 enriched = self._with_program([course], program, institution_id)[0]
-                courses.append(enriched)
+                course_id = self._get_course_id(enriched)
+
+                # If course already exists, merge program_ids
+                if course_id in courses_dict:
+                    existing_program_ids = set(
+                        courses_dict[course_id].get("program_ids", [])
+                    )
+                    new_program_ids = set(enriched.get("program_ids", []))
+                    courses_dict[course_id]["program_ids"] = list(
+                        existing_program_ids | new_program_ids
+                    )
+                else:
+                    courses_dict[course_id] = enriched
+
                 courses_by_program[pid].append(enriched)
+
+        courses = list(courses_dict.values())  # Convert back to list
 
         # Enrich all courses with CLO data
         courses = self._enrich_courses_with_clo_data(courses)
@@ -479,6 +496,11 @@ class DashboardService:
         if not program:
             return None
         return program.get("id") or program.get("program_id")
+
+    def _get_course_id(self, course: Optional[Dict[str, Any]]) -> Optional[str]:
+        if not course:
+            return None
+        return course.get("id") or course.get("course_id")
 
     def _course_program_ids(self, course: Dict[str, Any]) -> List[str]:
         program_ids = course.get("program_ids") or []

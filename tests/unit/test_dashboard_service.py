@@ -299,3 +299,36 @@ class TestDashboardServiceFailures:
     def test_missing_institution_for_admin(self, service):
         with pytest.raises(DashboardServiceError):
             service.get_dashboard_data({"role": "institution_admin"})
+
+
+class TestDashboardServiceHelpers:
+    """Test helper methods in DashboardService"""
+
+    def test_get_course_id_with_course_id_field(self, service):
+        """Test _get_course_id with course_id field"""
+        course = {"course_id": "course-123", "name": "Test Course"}
+        result = service._get_course_id(course)
+        assert result == "course-123"
+
+    def test_get_course_id_with_id_field(self, service):
+        """Test _get_course_id with id field"""
+        course = {"id": "course-456", "name": "Test Course"}
+        result = service._get_course_id(course)
+        assert result == "course-456"
+
+    def test_get_course_id_prefers_id_over_course_id(self, service):
+        """Test _get_course_id prefers id field when both exist"""
+        course = {"id": "course-789", "course_id": "course-123", "name": "Test Course"}
+        result = service._get_course_id(course)
+        assert result == "course-789"
+
+    def test_get_course_id_with_none_course(self, service):
+        """Test _get_course_id with None course"""
+        result = service._get_course_id(None)
+        assert result is None
+
+    def test_get_course_id_with_empty_course(self, service):
+        """Test _get_course_id with course missing both id fields"""
+        course = {"name": "Test Course"}
+        result = service._get_course_id(course)
+        assert result is None
