@@ -302,9 +302,9 @@ class DatabaseSeeder:
                 "admin_idx": 0,
             },
             {
-                "name": "Unclassified",
-                "short_name": "UNCL",
-                "description": PROGRAM_DEFAULT_DESCRIPTION,
+                "name": "General Studies",
+                "short_name": "GEN",
+                "description": "General Studies and undeclared majors at CEI",
                 "institution_idx": 0,
                 "admin_idx": 0,
                 "is_default": True,
@@ -325,9 +325,9 @@ class DatabaseSeeder:
                 "admin_idx": 1,
             },
             {
-                "name": "Unclassified",
-                "short_name": "UNCL",
-                "description": PROGRAM_DEFAULT_DESCRIPTION,
+                "name": "Exploratory Studies",
+                "short_name": "EXPL",
+                "description": "Exploratory Studies for students exploring career options at RCC",
                 "institution_idx": 1,
                 "admin_idx": 1,
                 "is_default": True,
@@ -341,9 +341,9 @@ class DatabaseSeeder:
                 "admin_idx": 2,
             },
             {
-                "name": "Unclassified",
-                "short_name": "UNCL",
-                "description": PROGRAM_DEFAULT_DESCRIPTION,
+                "name": "Pre-Engineering",
+                "short_name": "PRE",
+                "description": "Pre-Engineering program for students preparing for engineering majors at PTU",
                 "institution_idx": 2,
                 "admin_idx": 2,
                 "is_default": True,
@@ -651,10 +651,35 @@ class DatabaseSeeder:
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
             },
+            {
+                "course_number": "EE-301",
+                "course_title": "Signals and Systems",
+                "department": "Electrical Engineering",
+                "credit_hours": 4,
+                "institution_idx": 0,
+                "program_ids": [1],  # EE program
+            },
+            # CEI General Studies
+            {
+                "course_number": "GEN-100",
+                "course_title": "First Year Seminar",
+                "department": "Academic Success",
+                "credit_hours": 1,
+                "institution_idx": 0,
+                "program_ids": [2],  # General Studies
+            },
             # RCC Courses
             {
                 "course_number": "ENG-101",
                 "course_title": "English Composition",
+                "department": "English",
+                "credit_hours": 3,
+                "institution_idx": 1,
+                "program_ids": [3],  # Liberal Arts
+            },
+            {
+                "course_number": "ENG-102",
+                "course_title": "Literature and Critical Thinking",
                 "department": "English",
                 "credit_hours": 3,
                 "institution_idx": 1,
@@ -668,6 +693,22 @@ class DatabaseSeeder:
                 "institution_idx": 1,
                 "program_ids": [4],  # Business Administration
             },
+            {
+                "course_number": "BUS-201",
+                "course_title": "Business Ethics and Communication",
+                "department": "Business",
+                "credit_hours": 3,
+                "institution_idx": 1,
+                "program_ids": [4],  # Business Administration
+            },
+            {
+                "course_number": "HIST-101",
+                "course_title": "American History Survey",
+                "department": "History",
+                "credit_hours": 3,
+                "institution_idx": 1,
+                "program_ids": [3],  # Liberal Arts
+            },
             # PTU Courses
             {
                 "course_number": "ME-101",
@@ -676,6 +717,30 @@ class DatabaseSeeder:
                 "credit_hours": 4,
                 "institution_idx": 2,
                 "program_ids": [6],  # Mechanical Engineering
+            },
+            {
+                "course_number": "ME-201",
+                "course_title": "Thermodynamics",
+                "department": "Mechanical Engineering",
+                "credit_hours": 4,
+                "institution_idx": 2,
+                "program_ids": [6],  # Mechanical Engineering
+            },
+            {
+                "course_number": "MATH-201",
+                "course_title": "Calculus for Engineers",
+                "department": "Mathematics",
+                "credit_hours": 4,
+                "institution_idx": 2,
+                "program_ids": [6, 7],  # ME and Pre-Engineering
+            },
+            {
+                "course_number": "PHYS-101",
+                "course_title": "Physics I: Mechanics",
+                "department": "Physics",
+                "credit_hours": 4,
+                "institution_idx": 2,
+                "program_ids": [6, 7],  # ME and Pre-Engineering
             },
         ]
 
