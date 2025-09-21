@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+> 📌 **Need the latest priorities or risk notes?** See `AGENT_LESSONS_LEARNED.md` for the current lessons log before you start coding.
+
 ## Project Structure & Module Organization
 Core Flask logic lives in `app.py`, with domain services split across `*_service.py` modules for auth, registration, invitations, and data access. File parsing adapters sit in `adapters/` and share a common base class for extension. Web assets are separated into `templates/` for Jinja views and `static/` for JavaScript and CSS. Automation lives in `scripts/`, notably `ship_it.py` for composite quality gates. Tests are organised under `tests/unit` and `tests/integration`; keep shared fixtures and marks in `tests/conftest.py`. Planning artefacts stay in `planning/` and stakeholder research in `research/` to keep delivery code uncluttered.
 

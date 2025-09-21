@@ -110,37 +110,26 @@ class TestLoggingSetup:
 
 
 class TestIndexRoute:
-    """Test the main index route."""
+    """Test the main index route - now serves splash page."""
 
-    @patch("app.get_current_user")
-    @patch("app.is_authenticated")
-    def test_index_route_renders_for_authenticated_user(
-        self, mock_is_authenticated, mock_get_current_user
-    ):
-        """Test that index route renders template for authenticated users."""
-        mock_get_current_user.return_value = {"email": "test@example.com"}
-        mock_is_authenticated.return_value = True
-
+    def test_index_route_renders_splash_page(self):
+        """Test that index route always renders the splash page."""
         with app_module.app.test_client() as client:
             response = client.get("/")
             assert response.status_code == 200
-            # Check that it renders the index template with import form
-            assert b"excelImportForm" in response.data
+            # Check that it renders the splash page
+            assert b"Course Assessment Management System" in response.data
+            assert b"Get Started" in response.data
+            assert b"Learn More" in response.data
 
-    @patch("app.get_current_user")
-    @patch("app.is_authenticated")
-    def test_index_route_redirects_unauthenticated_user(
-        self, mock_is_authenticated, mock_get_current_user
-    ):
-        """Test that index route redirects unauthenticated users to login."""
-        mock_get_current_user.return_value = None
-        mock_is_authenticated.return_value = False
-
+    def test_splash_page_has_login_links(self):
+        """Test that splash page contains login links."""
         with app_module.app.test_client() as client:
             response = client.get("/")
-            assert response.status_code == 302
-            # Check that it redirects to login
-            assert "/login" in response.location
+            assert response.status_code == 200
+            # Check for login links
+            assert b"/login" in response.data
+            assert b"Login" in response.data
 
     @patch("app.is_authenticated")
     def test_login_route_renders_template(self, mock_is_authenticated):

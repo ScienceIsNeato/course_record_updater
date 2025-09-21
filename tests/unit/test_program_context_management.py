@@ -19,7 +19,7 @@ def _login_test_user(client, overrides=None):
         "role": "site_admin",
         "institution_id": "inst-123",
         "program_ids": ["prog-123"],
-        "accessible_programs": ["prog-123"],
+        "program_ids": ["prog-123"],
         "display_name": "Test Admin",
     }
     if overrides:
@@ -31,7 +31,7 @@ def _login_test_user(client, overrides=None):
         session["role"] = user_data.get("role")
         session["institution_id"] = user_data.get("institution_id")
         session["program_ids"] = user_data.get("program_ids", [])
-        session["accessible_programs"] = user_data.get("accessible_programs", [])
+        session["program_ids"] = user_data.get("program_ids", [])
         session["display_name"] = user_data.get("display_name")
 
     return user_data
@@ -58,7 +58,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
         with patch("auth_service.get_current_user", return_value=mock_user):
             result = get_current_program_id()
@@ -69,7 +69,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
             "current_program_id": "prog-123",
         }
         with patch("auth_service.get_current_user", return_value=mock_user):
@@ -88,7 +88,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
         with patch("auth_service.get_current_user", return_value=mock_user):
             result = set_current_program_id("prog-999")  # Not in accessible list
@@ -102,7 +102,7 @@ class TestProgramContextUtilities:
         mock_user = {
             "user_id": "test-user",
             "role": "program_admin",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
         }
 
         with app.test_request_context():
@@ -162,7 +162,7 @@ class TestProgramContextAPI:
             "user_id": "test-user",
             "role": "program_admin",
             "institution_id": "inst-123",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
             "program_ids": ["prog-123", "prog-456"],
         }
         mock_programs = [
@@ -187,7 +187,7 @@ class TestProgramContextAPI:
                     client,
                     {
                         **mock_user,
-                        "program_ids": mock_user["accessible_programs"],
+                        "program_ids": mock_user["program_ids"],
                     },
                 )
 
@@ -197,7 +197,7 @@ class TestProgramContextAPI:
                 data = response.get_json()
                 assert data["success"] is True
                 assert data["current_program_id"] == "prog-123"
-                assert len(data["accessible_programs"]) == 2
+                assert len(data["program_ids"]) == 2
                 assert data["has_multiple_programs"] is True
 
     def test_switch_program_context_success(self, app, client):
@@ -206,7 +206,7 @@ class TestProgramContextAPI:
             "user_id": "test-user",
             "role": "program_admin",
             "institution_id": "inst-123",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
             "program_ids": ["prog-123", "prog-456"],
         }
         mock_program = {"id": "prog-123", "name": "Computer Science"}
@@ -224,7 +224,7 @@ class TestProgramContextAPI:
                     client,
                     {
                         **mock_user,
-                        "program_ids": mock_user["accessible_programs"],
+                        "program_ids": mock_user["program_ids"],
                     },
                 )
 
@@ -242,7 +242,7 @@ class TestProgramContextAPI:
             "user_id": "test-user",
             "role": "program_admin",
             "institution_id": "inst-123",
-            "accessible_programs": ["prog-123", "prog-456"],
+            "program_ids": ["prog-123", "prog-456"],
             "program_ids": ["prog-123", "prog-456"],
         }
 
@@ -256,7 +256,7 @@ class TestProgramContextAPI:
                     client,
                     {
                         **mock_user,
-                        "program_ids": mock_user["accessible_programs"],
+                        "program_ids": mock_user["program_ids"],
                     },
                 )
 

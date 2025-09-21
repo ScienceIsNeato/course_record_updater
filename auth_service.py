@@ -165,7 +165,7 @@ class AuthService:
             "institution_id": "inst-123",
             "primary_institution_id": "inst-123",
             "accessible_institutions": ["inst-123"],
-            "accessible_programs": [
+            "program_ids": [
                 "prog-123",
                 "prog-456",
                 "prog-789",
@@ -290,7 +290,7 @@ class AuthService:
 
             # Must have access to the specific program (if specified)
             if required_program:
-                accessible_programs = user.get("accessible_programs", [])
+                accessible_programs = user.get("program_ids", [])
                 if required_program not in accessible_programs:
                     logger.info(
                         f"Scoped permission denied: Program admin {user.get('user_id')} cannot access program {required_program}"
@@ -399,9 +399,8 @@ class AuthService:
 
         # Program admin and instructor can only access their specific programs
         elif user_role in [UserRole.PROGRAM_ADMIN.value, UserRole.INSTRUCTOR.value]:
-            # Return programs from user record.
-            # Some user records may use 'accessible_programs' instead of 'program_ids'
-            return user.get("program_ids") or user.get("accessible_programs", [])
+            # Return programs from user record - standardized on program_ids field
+            return user.get("program_ids", [])
 
         return []
 
@@ -643,7 +642,7 @@ def set_current_program_id(program_id: str) -> bool:
             return False
 
         # Verify user has access to this program
-        accessible_programs = user.get("accessible_programs", [])
+        accessible_programs = user.get("program_ids", [])
         if program_id not in accessible_programs:
             logger.warning(
                 f"User {user.get('user_id')} attempted to switch to unauthorized program {program_id}"
