@@ -7,7 +7,7 @@
     ],
     "authenticated": true,
     "authentication_method": "api_key",
-    "timestamp": "2025-09-21T00:14:04.269821",
+    "timestamp": "2025-09-22T12:36:43.388299",
     "telemetry": {
       "os_type": "Darwin",
       "os_release": "24.5.0",
@@ -37,9 +37,9 @@
           "source": "cloud"
         },
         "git": {
-          "branch": "feature/auth-system-design",
+          "branch": "cursor/start-multi-tenant-context-hardening-a3b1",
           "tag": "",
-          "commit": "f754c95e4871dd6bc311ce72b7e789bde0ab8ac2",
+          "commit": "17646d924c3ee47b8c74056a9aadad0427265105",
           "dirty": true,
           "origin": "https://github.com/ScienceIsNeato/course_record_updater.git"
         },
@@ -179,6 +179,24 @@
                       "vulnerabilities": {
                         "known_vulnerabilities": [
                           {
+                            "id": "76244",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<23.0.0"
+                          },
+                          {
+                            "id": "72780",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<21.2.0"
+                          },
+                          {
                             "id": "71600",
                             "ignored": {
                               "code": "unpinned-specification",
@@ -195,24 +213,6 @@
                               "expires": null
                             },
                             "vulnerable_spec": ">=22.0.0,<23.0.0"
-                          },
-                          {
-                            "id": "72780",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<21.2.0"
-                          },
-                          {
-                            "id": "76244",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<23.0.0"
                           }
                         ],
                         "remediation": null
@@ -293,6 +293,16 @@
                   ]
                 }
               ]
+            }
+          },
+          {
+            "location": "/Users/pacey/Documents/SourceCode/course_record_updater/venv/pyvenv.cfg",
+            "type": "pyvenv.cfg",
+            "categories": [
+              "python"
+            ],
+            "results": {
+              "dependencies": []
             }
           },
           {
@@ -593,15 +603,6 @@
                       "vulnerabilities": {
                         "known_vulnerabilities": [
                           {
-                            "id": "77745",
-                            "ignored": {
-                              "code": "environment-dependency",
-                              "reason": "Ignored environment by rule in policy file.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": ">=2.2.0,<2.5.0"
-                          },
-                          {
                             "id": "77744",
                             "ignored": {
                               "code": "environment-dependency",
@@ -609,6 +610,15 @@
                               "expires": null
                             },
                             "vulnerable_spec": "<2.5.0"
+                          },
+                          {
+                            "id": "77745",
+                            "ignored": {
+                              "code": "environment-dependency",
+                              "reason": "Ignored environment by rule in policy file.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": ">=2.2.0,<2.5.0"
                           }
                         ],
                         "remediation": null
@@ -749,16 +759,6 @@
                   ]
                 }
               ]
-            }
-          },
-          {
-            "location": "/Users/pacey/Documents/SourceCode/course_record_updater/venv/pyvenv.cfg",
-            "type": "pyvenv.cfg",
-            "categories": [
-              "python"
-            ],
-            "results": {
-              "dependencies": []
             }
           },
           {
@@ -1511,24 +1511,6 @@
                       "vulnerabilities": {
                         "known_vulnerabilities": [
                           {
-                            "id": "64227",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<3.1.3"
-                          },
-                          {
-                            "id": "76378",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<3.1.5"
-                          },
-                          {
                             "id": "75976",
                             "ignored": {
                               "code": "unpinned-specification",
@@ -1547,6 +1529,15 @@
                             "vulnerable_spec": "<3.1.4"
                           },
                           {
+                            "id": "76378",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<3.1.5"
+                          },
+                          {
                             "id": "74735",
                             "ignored": {
                               "code": "unpinned-specification",
@@ -1554,6 +1545,15 @@
                               "expires": null
                             },
                             "vulnerable_spec": ">=3.0.0a1,<3.1.5"
+                          },
+                          {
+                            "id": "64227",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<3.1.3"
                           }
                         ],
                         "remediation": null
@@ -1564,24 +1564,6 @@
                       "vulnerabilities": {
                         "known_vulnerabilities": [
                           {
-                            "id": "64227",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<3.1.3"
-                          },
-                          {
-                            "id": "76378",
-                            "ignored": {
-                              "code": "unpinned-specification",
-                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
-                              "expires": null
-                            },
-                            "vulnerable_spec": "<3.1.5"
-                          },
-                          {
                             "id": "75976",
                             "ignored": {
                               "code": "unpinned-specification",
@@ -1600,6 +1582,15 @@
                             "vulnerable_spec": "<3.1.4"
                           },
                           {
+                            "id": "76378",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<3.1.5"
+                          },
+                          {
                             "id": "74735",
                             "ignored": {
                               "code": "unpinned-specification",
@@ -1607,6 +1598,15 @@
                               "expires": null
                             },
                             "vulnerable_spec": ">=3.0.0a1,<3.1.5"
+                          },
+                          {
+                            "id": "64227",
+                            "ignored": {
+                              "code": "unpinned-specification",
+                              "reason": "This vulnerability is being ignored due to the 'ignore-unpinned-requirements' flag (default True). To change this, set 'ignore-unpinned-requirements' to False under 'security' in your policy file. See https://docs.pyup.io/docs/safety-20-policy-file for more information.",
+                              "expires": null
+                            },
+                            "vulnerable_spec": "<3.1.3"
                           }
                         ],
                         "remediation": null

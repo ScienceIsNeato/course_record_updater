@@ -35,10 +35,10 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --file cei_data.xlsx --use-theirs
-  %(prog)s --file cei_data.xlsx --use-mine --dry-run
-  %(prog)s --file cei_data.xlsx --manual-review --verbose
-  %(prog)s --file cei_data.xlsx --use-theirs --adapter cei_excel_adapter
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-mine --dry-run
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --manual-review --verbose
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs --adapter cei_excel_adapter
 
 Conflict Resolution Strategies:
   --use-mine       Keep existing data, skip import conflicts
@@ -84,6 +84,12 @@ Options:
         "--adapter",
         default="cei_excel_adapter",
         help="Import adapter to use (default: cei_excel_adapter)",
+    )
+
+    parser.add_argument(
+        "--institution-id",
+        required=True,
+        help="Institution ID to import data for",
     )
 
     parser.add_argument(
@@ -243,6 +249,7 @@ def main():
 
     # Show configuration
     print(f"📁 File: {args.file}")
+    print(f"🏢 Institution ID: {args.institution_id}")
     print(f"🔧 Adapter: {args.adapter}")
     print(f"🤝 Conflict strategy: {conflict_strategy}")
     print(f"🏃 Mode: {'DRY RUN' if args.dry_run else 'EXECUTE'}")
@@ -277,6 +284,7 @@ def main():
     try:
         result = import_excel(
             file_path=args.file,
+            institution_id=args.institution_id,
             conflict_strategy=conflict_strategy,
             dry_run=args.dry_run,
             adapter_name=args.adapter,
