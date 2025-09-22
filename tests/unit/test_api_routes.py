@@ -3,12 +3,18 @@
 import json
 
 # Unused imports removed
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 # Import the API blueprint and related modules
-from api_routes import api
+from api_routes import (
+    _auto_set_default_program_context,
+    _find_default_program,
+    _should_skip_context_validation,
+    _validate_institution_context,
+    api,
+)
 from app import app
 
 # Test constants to avoid hard-coded values
@@ -3159,3 +3165,163 @@ class TestAPIRoutesImportHelpers:
                 PermissionError, match="User has no associated institution"
             ):
                 _get_user_and_institution({"import_adapter": "test"})
+
+
+class TestContextValidationHelpers:
+    """Test context validation helper functions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.app.config["TESTING"] = True
+
+    def test_should_skip_context_validation_no_endpoint(self):
+        """Test _should_skip_context_validation with no endpoint."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = None
+                assert _should_skip_context_validation() is True
+
+    def test_should_skip_context_validation_non_api_endpoint(self):
+        """Test _should_skip_context_validation with non-API endpoint."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "main.index"
+                assert _should_skip_context_validation() is True
+
+    def test_should_skip_context_validation_options_request(self):
+        """Test _should_skip_context_validation with OPTIONS request."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.some_endpoint"
+                mock_request.method = "OPTIONS"
+                assert _should_skip_context_validation() is True
+
+    def test_should_skip_context_validation_context_management_endpoints(self):
+        """Test _should_skip_context_validation with context management endpoints."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.method = "GET"
+
+                # Test each skip endpoint
+                skip_endpoints = [
+                    "api.get_program_context",
+                    "api.switch_program_context",
+                    "api.clear_program_context",
+                    "api.create_institution",
+                    "api.list_institutions",
+                ]
+
+                for endpoint in skip_endpoints:
+                    mock_request.endpoint = endpoint
+                    assert _should_skip_context_validation() is True
+
+    def test_should_skip_context_validation_auth_endpoints(self):
+        """Test _should_skip_context_validation with auth endpoints."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.auth.login"
+                mock_request.method = "POST"
+                assert _should_skip_context_validation() is True
+
+    def test_should_skip_context_validation_regular_api_endpoint(self):
+        """Test _should_skip_context_validation with regular API endpoint."""
+        with self.app.test_request_context():
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.list_users"
+                mock_request.method = "GET"
+                assert _should_skip_context_validation() is False
+
+    def test_validate_institution_context_missing_institution(self):
+        """Test _validate_institution_context with missing institution."""
+        with self.app.test_request_context():
+            with patch("api_routes.get_current_institution_id", return_value=None):
+                with patch("api_routes.request") as mock_request:
+                    mock_request.endpoint = "api.list_users"
+                    with patch("api_routes.logger") as mock_logger:
+                        user = {"user_id": "test_user"}
+                        result = _validate_institution_context(user)
+
+                        assert result is not None
+                        response, status_code = result
+                        assert status_code == 400
+                        mock_logger.warning.assert_called_once()
+
+    def test_validate_institution_context_with_institution(self):
+        """Test _validate_institution_context with valid institution."""
+        with self.app.test_request_context():
+            with patch(
+                "api_routes.get_current_institution_id", return_value="inst_123"
+            ):
+                user = {"user_id": "test_user"}
+                result = _validate_institution_context(user)
+                assert result is None
+
+    def test_find_default_program_found(self):
+        """Test _find_default_program when default program exists."""
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.side_effect = [
+                {"is_default": False},  # First program
+                {"is_default": True},  # Second program (default)
+            ]
+
+            accessible_programs = ["prog_1", "prog_2"]
+            result = _find_default_program(accessible_programs)
+            assert result == "prog_2"
+
+    def test_find_default_program_not_found(self):
+        """Test _find_default_program when no default program exists."""
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.side_effect = [
+                {"is_default": False},  # First program
+                {"is_default": False},  # Second program
+            ]
+
+            accessible_programs = ["prog_1", "prog_2"]
+            result = _find_default_program(accessible_programs)
+            assert result is None
+
+    def test_auto_set_default_program_context_already_has_program(self):
+        """Test _auto_set_default_program_context when program already set."""
+        with patch("api_routes.get_current_program_id", return_value="existing_prog"):
+            user = {"user_id": "test_user", "role": "instructor"}
+            # Should return early without calling other functions
+            _auto_set_default_program_context(user, "inst_123")
+            # No assertions needed - function should return early
+
+    def test_auto_set_default_program_context_site_admin(self):
+        """Test _auto_set_default_program_context with site admin user."""
+        with patch("api_routes.get_current_program_id", return_value=None):
+            from constants import UserRole
+
+            user = {"user_id": "test_user", "role": UserRole.SITE_ADMIN}
+            # Should return early for site admin
+            _auto_set_default_program_context(user, "inst_123")
+            # No assertions needed - function should return early
+
+    def test_auto_set_default_program_context_sets_default(self):
+        """Test _auto_set_default_program_context sets default program."""
+        with patch("api_routes.get_current_program_id", return_value=None):
+            with patch(
+                "api_routes.auth_service.get_accessible_programs",
+                return_value=["prog_1", "prog_2"],
+            ):
+                with patch("api_routes._find_default_program", return_value="prog_2"):
+                    with patch("api_routes.set_current_program_id") as mock_set_program:
+                        with patch("api_routes.logger") as mock_logger:
+                            user = {"user_id": "test_user", "role": "instructor"}
+                            _auto_set_default_program_context(user, "inst_123")
+
+                            mock_set_program.assert_called_once_with("prog_2")
+                            mock_logger.info.assert_called_once()
+
+    def test_auto_set_default_program_context_no_accessible_programs(self):
+        """Test _auto_set_default_program_context with no accessible programs."""
+        with patch("api_routes.get_current_program_id", return_value=None):
+            with patch(
+                "api_routes.auth_service.get_accessible_programs", return_value=[]
+            ):
+                user = {"user_id": "test_user", "role": "instructor"}
+                # Should return early with no accessible programs
+                _auto_set_default_program_context(user, "inst_123")
+                # No assertions needed - function should return early

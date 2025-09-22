@@ -129,26 +129,97 @@ def _get_user_accessible_programs(institution_id: Optional[str] = None) -> List[
     return auth_service.get_accessible_programs(institution_id)
 
 
-@api.before_request
-def validate_context():
-    """Validate institution and program context for API requests"""
-    # Skip validation for context management endpoints
-    if request.endpoint and (
-        request.endpoint.startswith("api.get_program_context")
-        or request.endpoint.startswith("api.switch_program_context")
-        or request.endpoint.startswith("api.clear_program_context")
-        or request.endpoint.startswith("api.create_institution")
-        or request.endpoint.startswith("api.list_institutions")
-        or "auth" in request.endpoint  # Skip for auth endpoints
-    ):
-        return
+def _should_skip_context_validation() -> bool:
+    """Check if context validation should be skipped for the current request"""
+    if not request.endpoint:
+        return True
 
     # Skip validation for non-API endpoints
-    if not request.endpoint or not request.endpoint.startswith("api."):
-        return
+    if not request.endpoint.startswith("api."):
+        return True
 
     # Skip validation for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
+        return True
+
+    # Skip validation for context management endpoints
+    skip_endpoints = [
+        "api.get_program_context",
+        "api.switch_program_context",
+        "api.clear_program_context",
+        "api.create_institution",
+        "api.list_institutions",
+    ]
+
+    if any(request.endpoint.startswith(endpoint) for endpoint in skip_endpoints):
+        return True
+
+    # Skip for auth endpoints
+    if "auth" in request.endpoint:
+        return True
+
+    return False
+
+
+def _validate_institution_context(current_user: dict) -> Optional[tuple]:
+    """Validate institution context and return error response if invalid"""
+    institution_id = get_current_institution_id()
+    if not institution_id:
+        logger.warning(
+            f"Missing institution context for user {current_user.get('user_id')} on endpoint {request.endpoint}"
+        )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Institution context required",
+                    "code": "MISSING_INSTITUTION_CONTEXT",
+                }
+            ),
+            400,
+        )
+    return None
+
+
+def _auto_set_default_program_context(current_user: dict, institution_id: str) -> None:
+    """Auto-set default program context if none is currently set"""
+    current_program_id = get_current_program_id()
+    if current_program_id or current_user.get("role") == UserRole.SITE_ADMIN:
+        return
+
+    # Get user's accessible programs
+    accessible_programs = auth_service.get_accessible_programs(institution_id)
+    if not accessible_programs:
+        return
+
+    # Look for default program first
+    default_program_id = _find_default_program(accessible_programs)
+
+    # If no default found, use first accessible program
+    if not default_program_id:
+        default_program_id = accessible_programs[0]
+
+    # Set the default program context
+    if default_program_id:
+        set_current_program_id(default_program_id)
+        logger.info(
+            f"Auto-set default program context for user {current_user.get('user_id')}: {default_program_id}"
+        )
+
+
+def _find_default_program(accessible_programs: List[str]) -> Optional[str]:
+    """Find the default program from list of accessible programs"""
+    for prog_id in accessible_programs:
+        program = get_program_by_id(prog_id)
+        if program and program.get("is_default"):
+            return prog_id
+    return None
+
+
+@api.before_request
+def validate_context():
+    """Validate institution and program context for API requests"""
+    if _should_skip_context_validation():
         return
 
     try:
@@ -161,52 +232,16 @@ def validate_context():
             return
 
         # Validate institution context for non-site-admin users
+        error_response = _validate_institution_context(current_user)
+        if error_response:
+            return error_response
+
+        # Set default program context if needed
         institution_id = get_current_institution_id()
-        if not institution_id:
-            logger.warning(
-                f"Missing institution context for user {current_user.get('user_id')} on endpoint {request.endpoint}"
-            )
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Institution context required",
-                        "code": "MISSING_INSTITUTION_CONTEXT",
-                    }
-                ),
-                400,
-            )
-
-        # Set default program context if needed (for non-site-admin users)
-        current_program_id = get_current_program_id()
-        if not current_program_id and current_user.get("role") not in [
-            UserRole.SITE_ADMIN
-        ]:
-            # Get user's accessible programs
-            accessible_programs = auth_service.get_accessible_programs(institution_id)
-
-            if accessible_programs:
-                # Look for default program first
-                default_program_id = None
-                for prog_id in accessible_programs:
-                    program = get_program_by_id(prog_id)
-                    if program and program.get("is_default"):
-                        default_program_id = prog_id
-                        break
-
-                # If no default found, use first accessible program
-                if not default_program_id:
-                    default_program_id = accessible_programs[0]
-
-                # Set the default program context
-                if default_program_id:
-                    set_current_program_id(default_program_id)
-                    current_program_id = default_program_id
-                    logger.info(
-                        f"Auto-set default program context for user {current_user.get('user_id')}: {default_program_id}"
-                    )
+        _auto_set_default_program_context(current_user, institution_id)
 
         # Log context for debugging
+        current_program_id = get_current_program_id()
         logger.debug(
             f"Request context - User: {current_user.get('user_id')}, Institution: {institution_id}, Program: {current_program_id}"
         )
