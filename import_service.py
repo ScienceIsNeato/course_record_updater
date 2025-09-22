@@ -123,13 +123,7 @@ class ImportService:
             "conflicts": [],
         }
 
-        # Cache for entities to avoid duplicate lookups during a single import run
-        self.entity_cache: Dict[str, Dict] = {
-            "courses": {},  # course_number -> course_data
-            "terms": {},  # term_name -> term_data
-            "users": {},  # email -> user_data
-            "sections": {},  # composite_key -> section_data
-        }
+        # Cache for entities to avoid duplicate lookups
 
     def _log(self, message: str, level: str = "info"):
         """Smart logging that respects verbose mode"""
@@ -142,6 +136,12 @@ class ImportService:
         elif self.verbose:
             self.logger.debug(f"[Import] {message}")
         # Otherwise, skip debug-level messages in non-verbose mode
+        self.entity_cache: Dict[str, Dict] = {
+            "courses": {},  # course_number -> course_data
+            "terms": {},  # term_name -> term_data
+            "users": {},  # email -> user_data
+            "sections": {},  # composite_key -> section_data
+        }
 
     def detect_course_conflict(
         self, import_course: Dict[str, Any]
@@ -282,134 +282,6 @@ class ImportService:
             conflict.resolution = "unresolved"
             return f"Unresolved conflict: {conflict.field_name}"
 
-    def _extract_course_number(self, course_data: Dict[str, Any]) -> str:
-        """Extract course number from course data safely."""
-        return course_data.get("course_number", "unknown")
-
-    def _track_course_processing(
-        self, course_number: str, conflicts: List[ConflictRecord]
-    ):
-        """Track course processing for conflict resolution logging."""
-        if course_number not in self._processed_courses:
-            self._processed_courses.add(course_number)
-            self._log(
-                f"Resolving {len(conflicts)} conflicts for course: {course_number}",
-                "summary",
-            )
-
-    def _resolve_course_conflicts(
-        self,
-        conflicts: List[ConflictRecord],
-        course_number: str,
-        strategy: ConflictStrategy,
-    ):
-        """Resolve all conflicts for a course."""
-        self._track_course_processing(course_number, conflicts)
-
-        for conflict in conflicts:
-            resolution = self.resolve_conflict(conflict, strategy)
-            self._log(f"Course conflict resolved: {resolution}", "debug")
-
-    def _handle_course_conflicts(
-        self,
-        conflicts: List[ConflictRecord],
-        course_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-        dry_run: bool,
-    ) -> bool:
-        """Handle course conflicts based on strategy."""
-        if not conflicts:
-            return True
-
-        self.stats["conflicts_detected"] += len(conflicts)
-        course_number = self._extract_course_number(course_data)
-
-        # Resolve conflicts based on strategy
-        self._resolve_course_conflicts(conflicts, course_number, strategy)
-
-        # Apply resolution if not dry run
-        if not dry_run:
-            return self._apply_course_conflict_resolution(
-                conflicts, course_data, strategy
-            )
-
-        return True
-
-    def _apply_course_conflict_resolution(
-        self,
-        conflicts: List[ConflictRecord],
-        course_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-    ) -> bool:
-        """Apply conflict resolution strategy for courses."""
-        if strategy == ConflictStrategy.USE_THEIRS:
-            return self._update_existing_course(conflicts, course_data)
-        elif strategy == ConflictStrategy.USE_MINE:
-            return self._skip_course_import(course_data)
-        return True
-
-    def _update_existing_course(
-        self, conflicts: List[ConflictRecord], course_data: Dict[str, Any]
-    ) -> bool:
-        """Update existing course with import data."""
-        field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
-        course_number = self._extract_course_number(course_data)
-
-        if field_conflicts:
-            existing_course = get_course_by_number(course_number)
-            if existing_course:
-                # NOTE: update_course function will be implemented when course update features are added
-                # update_course(existing_course['course_id'], course_data)
-                self.stats["records_updated"] += 1
-                self.logger.info(f"[Import] Updated course: {course_number}")
-                return True
-            else:
-                self.stats["errors"].append(
-                    f"Course not found for update: {course_number}"
-                )
-                return False
-        else:
-            # Course exists with identical data - no action needed
-            self.stats["records_skipped"] += 1
-            self._log(
-                f"Course already exists with identical data: {course_number}", "debug"
-            )
-            return True
-
-    def _skip_course_import(self, course_data: Dict[str, Any]) -> bool:
-        """Skip course import, keeping existing data."""
-        self.stats["records_skipped"] += 1
-        course_number = self._extract_course_number(course_data)
-        self._log(f"Skipped course (keeping existing): {course_number}", "debug")
-        return True
-
-    def _create_new_course(self, course_data: Dict[str, Any], dry_run: bool) -> bool:
-        """Create a new course."""
-        course_number = self._extract_course_number(course_data)
-
-        if not dry_run:
-            return self._execute_course_creation(course_data, course_number)
-        else:
-            return self._handle_dry_run_course_creation(course_number)
-
-    def _execute_course_creation(
-        self, course_data: Dict[str, Any], course_number: str
-    ) -> bool:
-        """Execute actual course creation."""
-        course_id = create_course(course_data)
-        if course_id:
-            self.stats["records_created"] += 1
-            self.logger.info(f"[Import] Created course: {course_number}")
-            return True
-        else:
-            self.stats["errors"].append(f"Failed to create course: {course_number}")
-            return False
-
-    def _handle_dry_run_course_creation(self, course_number: str) -> bool:
-        """Handle course creation in dry run mode."""
-        self.logger.info(f"[Import] DRY RUN: Would create course: {course_number}")
-        return True
-
     def process_course_import(
         self,
         course_data: Dict[str, Any],
@@ -427,141 +299,86 @@ class ImportService:
         Returns:
             Tuple of (success, conflicts)
         """
-        # Detect conflicts
         conflicts = self.detect_course_conflict(course_data)
 
-        # Handle conflicts or create new course
         if conflicts:
-            success = self._handle_course_conflicts(
-                conflicts, course_data, strategy, dry_run
-            )
-            self.stats["conflicts_resolved"] += len(conflicts)
-        else:
-            success = self._create_new_course(course_data, dry_run)
+            self.stats["conflicts_detected"] += len(conflicts)
 
-        return success, conflicts
-
-    def _extract_user_email(self, user_data: Dict[str, Any]) -> str:
-        """Extract email from user data safely."""
-        return user_data.get("email", "unknown")
-
-    def _handle_user_conflicts(
-        self,
-        conflicts: List[ConflictRecord],
-        user_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-        dry_run: bool,
-    ) -> bool:
-        """Handle user conflicts based on strategy."""
-        if not conflicts:
-            return True
-
-        self.stats["conflicts_detected"] += len(conflicts)
-
-        # Resolve conflicts based on strategy
-        for conflict in conflicts:
-            resolution = self.resolve_conflict(conflict, strategy)
-            self.logger.info(f"[Import] User conflict resolved: {resolution}")
-
-        # Apply resolution if not dry run
-        if not dry_run:
-            return self._apply_conflict_resolution(conflicts, user_data, strategy)
-        else:
-            return self._handle_dry_run_conflicts(user_data)
-
-    def _apply_conflict_resolution(
-        self,
-        conflicts: List[ConflictRecord],
-        user_data: Dict[str, Any],
-        strategy: ConflictStrategy,
-    ) -> bool:
-        """Apply conflict resolution strategy."""
-        if strategy == ConflictStrategy.USE_THEIRS:
-            return self._update_existing_user(conflicts, user_data)
-        elif strategy == ConflictStrategy.USE_MINE:
-            return self._skip_user_import(user_data)
-        return True
-
-    def _update_existing_user(
-        self, conflicts: List[ConflictRecord], user_data: Dict[str, Any]
-    ) -> bool:
-        """Update existing user with import data."""
-        field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
-        email = self._extract_user_email(user_data)
-
-        if field_conflicts:
-            existing_user = get_user_by_email(email)
-            if existing_user:
-                # NOTE: update_user function will be implemented when user update features are added
-                # update_user_extended(existing_user['user_id'], user_data)
-                self.stats["records_updated"] += 1
-                self.logger.info(f"[Import] Updated user: {email}")
-                return True
-            else:
-                self.stats["errors"].append(f"User not found for update: {email}")
-                return False
-        else:
-            # User exists with identical data - no action needed
-            self.stats["records_skipped"] += 1
-            self._log(f"User already exists with identical data: {email}", "debug")
-            return True
-
-    def _skip_user_import(self, user_data: Dict[str, Any]) -> bool:
-        """Skip user import, keeping existing data."""
-        self.stats["records_skipped"] += 1
-        email = self._extract_user_email(user_data)
-        self.logger.info(f"[Import] Skipped user (keeping existing): {email}")
-        return True
-
-    def _handle_dry_run_conflicts(self, user_data: Dict[str, Any]) -> bool:
-        """Handle conflicts in dry run mode."""
-        email = self._extract_user_email(user_data)
-        if email and email not in self._processed_users:
-            self._processed_users.add(email)
-            self._log(f"DRY RUN: Would process user with conflicts: {email}", "summary")
-        elif email:
-            self._log(f"DRY RUN: User already processed: {email}", "debug")
-        return True
-
-    def _create_new_user(self, user_data: Dict[str, Any], dry_run: bool) -> bool:
-        """Create a new user."""
-        email = self._extract_user_email(user_data)
-
-        if not dry_run:
-            return self._execute_user_creation(user_data, email)
-        else:
-            return self._handle_dry_run_creation(email)
-
-    def _execute_user_creation(self, user_data: Dict[str, Any], email: str) -> bool:
-        """Execute actual user creation."""
-        try:
-            user_id = create_user(user_data)
-            if user_id:
-                self.stats["records_created"] += 1
-                if email not in self._processed_users:
-                    self._processed_users.add(email)
-                    self._log(f"Created user: {email}", "summary")
-                else:
-                    self._log(f"User already processed: {email}", "debug")
-                return True
-            else:
-                self.stats["errors"].append(
-                    f"Failed to create user: {email} - database returned None"
+            # Resolve conflicts based on strategy
+            course_number = course_data.get("course_number")
+            if course_number not in self._processed_courses:
+                self._processed_courses.add(course_number)
+                self._log(
+                    f"Resolving {len(conflicts)} conflicts for course: {course_number}",
+                    "summary",
                 )
-                return False
-        except Exception as e:
-            self.stats["errors"].append(f"Error creating user {email}: {str(e)}")
-            self.logger.error(f"Exception during user creation: {e}")
-            return False
+                for conflict in conflicts:
+                    resolution = self.resolve_conflict(conflict, strategy)
+                    self._log(f"Course conflict resolved: {resolution}", "debug")
+            else:
+                for conflict in conflicts:
+                    resolution = self.resolve_conflict(conflict, strategy)
+                    self._log(f"Course conflict resolved: {resolution}", "debug")
 
-    def _handle_dry_run_creation(self, email: str) -> bool:
-        """Handle user creation in dry run mode."""
-        if email not in self._processed_users:
-            self._processed_users.add(email)
-            self._log(f"DRY RUN: Would create user: {email}", "summary")
+            # Apply resolution if not dry run
+            if not dry_run and strategy == ConflictStrategy.USE_THEIRS:
+                # Check if there are actual field differences that need updating
+                field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
+
+                if field_conflicts:
+                    # Update existing course with import data
+                    course_number = course_data["course_number"]
+                    existing_course = get_course_by_number(course_number)
+
+                    if existing_course:
+                        # NOTE: update_course function will be implemented when course update features are added
+                        # update_course(existing_course['course_id'], course_data)
+                        self.stats["records_updated"] += 1
+                        self.logger.info(f"[Import] Updated course: {course_number}")
+                    else:
+                        self.stats["errors"].append(
+                            f"Course not found for update: {course_number}"
+                        )
+                        return False, conflicts
+                else:
+                    # Course exists with identical data - no action needed
+                    self.stats["records_skipped"] += 1
+                    course_number = course_data.get("course_number")
+                    self._log(
+                        f"Course already exists with identical data: {course_number}",
+                        "debug",
+                    )
+
+            elif strategy == ConflictStrategy.USE_MINE:
+                # Skip the import, keep existing
+                self.stats["records_skipped"] += 1
+                course_number = course_data.get("course_number")
+                self._log(
+                    f"Skipped course (keeping existing): {course_number}", "debug"
+                )
+
+            self.stats["conflicts_resolved"] += len(conflicts)
+
         else:
-            self._log(f"DRY RUN: User already processed: {email}", "debug")
-        return True
+            # No conflicts, create new course
+            if not dry_run:
+                course_id = create_course(course_data)
+                if course_id:
+                    self.stats["records_created"] += 1
+                    self.logger.info(
+                        f"[Import] Created course: {course_data.get('course_number')}"
+                    )
+                else:
+                    self.stats["errors"].append(
+                        f"Failed to create course: {course_data.get('course_number')}"
+                    )
+                    return False, conflicts
+            else:
+                self.logger.info(
+                    f"[Import] DRY RUN: Would create course: {course_data.get('course_number')}"
+                )
+
+        return True, conflicts
 
     def process_user_import(
         self,
@@ -580,63 +397,88 @@ class ImportService:
         Returns:
             Tuple of (success, conflicts)
         """
-        # Detect conflicts
         conflicts = self.detect_user_conflict(user_data)
 
-        # Handle conflicts or create new user
         if conflicts:
-            success = self._handle_user_conflicts(
-                conflicts, user_data, strategy, dry_run
-            )
+            self.stats["conflicts_detected"] += len(conflicts)
+
+            # Resolve conflicts based on strategy
+            for conflict in conflicts:
+                resolution = self.resolve_conflict(conflict, strategy)
+                self.logger.info(f"[Import] User conflict resolved: {resolution}")
+
+            # Apply resolution if not dry run
+            if not dry_run and strategy == ConflictStrategy.USE_THEIRS:
+                # Check if there are actual field differences that need updating
+                field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
+
+                if field_conflicts:
+                    # Update existing user with import data
+                    email = user_data["email"]
+                    existing_user = get_user_by_email(email)
+
+                    if existing_user:
+                        # NOTE: update_user function will be implemented when user update features are added
+                        # update_user_extended(existing_user['user_id'], user_data)
+                        self.stats["records_updated"] += 1
+                        self.logger.info(f"[Import] Updated user: {email}")
+                    else:
+                        self.stats["errors"].append(
+                            f"User not found for update: {email}"
+                        )
+                        return False, conflicts
+                else:
+                    # User exists with identical data - no action needed
+                    self.stats["records_skipped"] += 1
+                    email = user_data.get("email")
+                    self._log(
+                        f"User already exists with identical data: {email}",
+                        "debug",
+                    )
+
+            elif strategy == ConflictStrategy.USE_MINE:
+                # Skip the import, keep existing
+                self.stats["records_skipped"] += 1
+                self.logger.info(
+                    f"[Import] Skipped user (keeping existing): {user_data.get('email')}"
+                )
+
             self.stats["conflicts_resolved"] += len(conflicts)
+
         else:
-            success = self._create_new_user(user_data, dry_run)
-
-        return success, conflicts
-
-    def _validate_and_load_excel_file(self, file_path: str) -> Optional[pd.DataFrame]:
-        """Validate file exists and load Excel data."""
-        if not os.path.exists(file_path):
-            error_msg = f"File not found: {file_path}"
-            self.stats["errors"].append(error_msg)
-            return None
-
-        try:
-            df = pd.read_excel(file_path, sheet_name=0)  # First sheet
-            self._log(
-                f"Loaded Excel file: {len(df)} rows, {len(df.columns)} columns",
-                "summary",
-            )
-            return df
-        except Exception as e:
-            error_msg = f"Failed to read Excel file: {str(e)}"
-            self.stats["errors"].append(error_msg)
-            return None
-
-    def _handle_database_cleanup(self, delete_existing_db: bool, dry_run: bool) -> None:
-        """Handle database cleanup if requested."""
-        if delete_existing_db:
+            # No conflicts, create new user
             if not dry_run:
-                self._delete_all_data()
-                self.logger.info("[Import] 🗑️  Cleared existing database")
-            else:
-                self.logger.info("[Import] DRY RUN: Would clear existing database")
+                try:
+                    user_id = create_user(user_data)
 
-    def _log_import_start(
-        self,
-        file_path: str,
-        conflict_strategy: ConflictStrategy,
-        dry_run: bool,
-        delete_existing_db: bool,
-    ) -> None:
-        """Log import start information."""
-        self.logger.info(f"[Import] Starting import from: {file_path}")
-        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
-        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
-        if delete_existing_db:
-            self.logger.warning(
-                f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
-            )
+                    if user_id:
+                        self.stats["records_created"] += 1
+                        email = user_data.get("email")
+                        if email not in self._processed_users:
+                            self._processed_users.add(email)
+                            self._log(f"Created user: {email}", "summary")
+                        else:
+                            self._log(f"User already processed: {email}", "debug")
+                    else:
+                        self.stats["errors"].append(
+                            f"Failed to create user: {user_data.get('email')} - database returned None"
+                        )
+                        return False, conflicts
+                except Exception as e:
+                    self.stats["errors"].append(
+                        f"Error creating user {user_data.get('email')}: {str(e)}"
+                    )
+                    self.logger.error(f"Exception during user creation: {e}")
+                    return False, conflicts
+            else:
+                email = user_data.get("email")
+                if email not in self._processed_users:
+                    self._processed_users.add(email)
+                    self._log(f"DRY RUN: Would create user: {email}", "summary")
+                else:
+                    self._log(f"DRY RUN: User already processed: {email}", "debug")
+
+        return True, conflicts
 
     def import_excel_file(
         self,
@@ -661,23 +503,219 @@ class ImportService:
         """
         start_time = datetime.now(timezone.utc)
         self.reset_stats()
-        self._log_import_start(
-            file_path, conflict_strategy, dry_run, delete_existing_db
-        )
+
+        self.logger.info(f"[Import] Starting import from: {file_path}")
+        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
+        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+        if delete_existing_db:
+            self.logger.warning(
+                f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
+            )
 
         try:
-            # Validate and load Excel file
-            df = self._validate_and_load_excel_file(file_path)
-            if df is None:
+            # Validate file exists
+            if not os.path.exists(file_path):
+                error_msg = f"File not found: {file_path}"
+                self.stats["errors"].append(error_msg)
                 return self._create_import_result(start_time, dry_run)
 
-            # Handle database cleanup if requested
-            self._handle_database_cleanup(delete_existing_db, dry_run)
+            # Delete existing database if requested
+            if delete_existing_db:
+                if not dry_run:
+                    self._delete_all_data()
+                    self.logger.info("[Import] 🗑️  Cleared existing database")
+                else:
+                    self.logger.info("[Import] DRY RUN: Would clear existing database")
 
-            # Process all rows
-            all_conflicts = self._process_all_rows(
-                df, adapter_name, conflict_strategy, dry_run
-            )
+            # Load Excel file
+            try:
+                # For CEI, assume main sheet is the first one or named specifically
+                df = pd.read_excel(file_path, sheet_name=0)  # First sheet
+                self._log(
+                    f"Loaded Excel file: {len(df)} rows, {len(df.columns)} columns",
+                    "summary",
+                )
+            except Exception as e:
+                error_msg = f"Failed to read Excel file: {str(e)}"
+                self.stats["errors"].append(error_msg)
+                return self._create_import_result(start_time, dry_run)
+
+            # Process each row
+            all_conflicts = []
+            total_rows = len(df)
+            progress_interval = max(1, total_rows // 20)  # Show progress every 5%
+
+            for index, row in df.iterrows():
+                self.stats["records_processed"] += 1
+
+                # Show progress periodically
+                if index % progress_interval == 0 or index == total_rows - 1:
+                    progress = int((index + 1) / total_rows * 100)
+                    self._log(
+                        f"Processing row {index + 1}/{total_rows} ({progress}%)",
+                        "summary",
+                    )
+
+                    # Update progress callback if provided
+                    if self.progress_callback:
+                        self.progress_callback(
+                            percentage=progress,
+                            records_processed=index + 1,
+                            total_records=total_rows,
+                            message=f"Processing row {index + 1}/{total_rows} ({progress}%)",
+                        )
+
+                try:
+                    # Extract data based on adapter
+                    if adapter_name == "cei_excel_adapter":
+                        from adapters.cei_excel_adapter import parse_cei_excel_row
+
+                        entities = parse_cei_excel_row(row, self.institution_id)
+                    else:
+                        self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
+                        continue
+
+                    # Process entities in dependency order: course -> user -> term -> offering -> section
+                    processing_order = ["course", "user", "term", "offering", "section"]
+
+                    # Track the offering_id for section processing
+                    current_offering_id = None
+
+                    for entity_type in processing_order:
+                        entity_data = entities.get(entity_type)
+                        if not entity_data:
+                            continue
+
+                        if entity_type == "course":
+                            success, conflicts = self.process_course_import(
+                                entity_data, conflict_strategy, dry_run
+                            )
+                            all_conflicts.extend(conflicts)
+
+                        elif entity_type == "user":
+                            success, conflicts = self.process_user_import(
+                                entity_data, conflict_strategy, dry_run
+                            )
+                            all_conflicts.extend(conflicts)
+
+                        elif entity_type == "term" and entity_data:
+                            # Check if term already exists to avoid duplicates
+                            term_name = entity_data.get("term_name")
+                            institution_id = entity_data.get("institution_id")
+
+                            # Simple duplicate check - query for existing term
+                            from database_service import db
+
+                            existing_terms = (
+                                db.collection("terms")
+                                .where("term_name", "==", term_name)
+                                .where("institution_id", "==", institution_id)
+                                .limit(1)
+                                .stream()
+                            )
+
+                            existing_term = next(existing_terms, None)
+
+                            if existing_term:
+                                # Term already exists, skip creation
+                                self.logger.info(
+                                    f"[Import] Term already exists: {term_name}"
+                                )
+                            else:
+                                # Create new term
+                                if not dry_run:
+                                    term_id = create_term(entity_data)
+                                    if term_id:
+                                        self.stats["records_created"] += 1
+                                        self.logger.info(
+                                            f"[Import] Created term: {term_name}"
+                                        )
+                                else:
+                                    self.logger.info(
+                                        f"[Import] DRY RUN: Would create term: {term_name}"
+                                    )
+
+                        elif entity_type == "offering" and entity_data:
+                            # Process course offering (bridge between course and sections)
+                            course_id = entity_data.get(
+                                "course_id"
+                            )  # This is still course_number
+                            term_name = entity_data.get(
+                                "term_id"
+                            )  # This is still term_name
+                            institution_id = entity_data.get("institution_id")
+
+                            # Resolve course_id from course_number
+                            if course_id:
+                                course = get_course_by_number(course_id)
+                                if course:
+                                    entity_data["course_id"] = course.get("course_id")
+
+                                    # Check if offering already exists
+                                    existing_offering = (
+                                        get_course_offering_by_course_and_term(
+                                            course.get("course_id"),
+                                            term_name,
+                                            institution_id,
+                                        )
+                                    )
+
+                                    if existing_offering:
+                                        self.logger.info(
+                                            f"[Import] Course offering already exists: {course_id} in {term_name}"
+                                        )
+                                        # Store the offering_id for section processing
+                                        current_offering_id = existing_offering.get(
+                                            "offering_id"
+                                        )
+                                        entity_data["offering_id"] = current_offering_id
+                                    else:
+                                        # Create new course offering
+                                        entity_data["term_id"] = (
+                                            term_name  # Keep term_name for now
+                                        )
+                                        if not dry_run:
+                                            offering_id = create_course_offering(
+                                                entity_data
+                                            )
+                                            if offering_id:
+                                                self.stats["records_created"] += 1
+                                                current_offering_id = offering_id
+                                                entity_data["offering_id"] = offering_id
+                                                self.logger.info(
+                                                    f"[Import] Created course offering: {course_id} in {term_name}"
+                                                )
+                                        else:
+                                            self.logger.info(
+                                                f"[Import] DRY RUN: Would create offering: {course_id} in {term_name}"
+                                            )
+
+                        elif entity_type == "section" and entity_data:
+                            # Process section import - use the offering_id from the current row's processing
+                            if current_offering_id:
+                                entity_data["offering_id"] = current_offering_id
+
+                                if not dry_run:
+                                    section_id = create_course_section(entity_data)
+                                    if section_id:
+                                        self.stats["records_created"] += 1
+                                        self.logger.info(
+                                            f"[Import] Created section: {current_offering_id}"
+                                        )
+                                else:
+                                    self.logger.info(
+                                        f"[Import] DRY RUN: Would create section: {current_offering_id}"
+                                    )
+                            else:
+                                self.logger.warning(
+                                    f"[Import] No offering_id available for section creation"
+                                )
+
+                except Exception as e:
+                    error_msg = f"Error processing row {index + 1}: {str(e)}"
+                    self.stats["errors"].append(error_msg)
+                    self.logger.info(f"[Import] {error_msg}")
+
             self.stats["conflicts"].extend(all_conflicts)
 
         except Exception as e:
@@ -686,222 +724,6 @@ class ImportService:
             self.logger.info(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
-
-    def _process_all_rows(
-        self,
-        df: pd.DataFrame,
-        adapter_name: str,
-        conflict_strategy: ConflictStrategy,
-        dry_run: bool,
-    ) -> List[Any]:
-        """Process all rows in the DataFrame."""
-        all_conflicts = []
-        total_rows = len(df)
-        progress_interval = max(1, total_rows // 20)  # Show progress every 5%
-
-        for index, row in df.iterrows():
-            self.stats["records_processed"] += 1
-
-            # Update progress if needed
-            self._update_progress_if_needed(index, total_rows, progress_interval)
-
-            try:
-                conflicts = self._process_single_row(
-                    row, adapter_name, conflict_strategy, dry_run
-                )
-                all_conflicts.extend(conflicts)
-            except Exception as e:
-                error_msg = f"Error processing row {index + 1}: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                self.logger.info(f"[Import] {error_msg}")
-
-        return all_conflicts
-
-    def _update_progress_if_needed(
-        self, index: int, total_rows: int, progress_interval: int
-    ) -> None:
-        """Update progress tracking if needed."""
-        if index % progress_interval == 0 or index == total_rows - 1:
-            progress = int((index + 1) / total_rows * 100)
-            self._log(
-                f"Processing row {index + 1}/{total_rows} ({progress}%)",
-                "summary",
-            )
-
-            # Update progress callback if provided
-            if self.progress_callback:
-                self.progress_callback(
-                    percentage=progress,
-                    records_processed=index + 1,
-                    total_records=total_rows,
-                    message=f"Processing row {index + 1}/{total_rows} ({progress}%)",
-                )
-
-    def _process_single_row(
-        self,
-        row: pd.Series,
-        adapter_name: str,
-        conflict_strategy: ConflictStrategy,
-        dry_run: bool,
-    ) -> List[Any]:
-        """Process a single row and return any conflicts."""
-        # Extract entities from row
-        entities = self._extract_entities_from_row(row, adapter_name)
-        if not entities:
-            return []
-
-        # Process entities in dependency order
-        return self._process_entities_in_order(entities, conflict_strategy, dry_run)
-
-    def _extract_entities_from_row(
-        self, row: pd.Series, adapter_name: str
-    ) -> Optional[Dict[str, Any]]:
-        """Extract entities from a single row using the specified adapter."""
-        if adapter_name == "cei_excel_adapter":
-            from adapters.cei_excel_adapter import parse_cei_excel_row
-
-            return parse_cei_excel_row(row, self.institution_id)
-        else:
-            self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
-            return None
-
-    def _process_entities_in_order(
-        self,
-        entities: Dict[str, Any],
-        conflict_strategy: ConflictStrategy,
-        dry_run: bool,
-    ) -> List[Any]:
-        """Process entities in dependency order: course -> user -> term -> offering -> section."""
-        all_conflicts = []
-        processing_order = ["course", "user", "term", "offering", "section"]
-        current_offering_id = None
-
-        for entity_type in processing_order:
-            entity_data = entities.get(entity_type)
-            if not entity_data:
-                continue
-
-            if entity_type == "course":
-                success, conflicts = self.process_course_import(
-                    entity_data, conflict_strategy, dry_run
-                )
-                all_conflicts.extend(conflicts)
-
-            elif entity_type == "user":
-                success, conflicts = self.process_user_import(
-                    entity_data, conflict_strategy, dry_run
-                )
-                all_conflicts.extend(conflicts)
-
-            elif entity_type == "term":
-                self._process_term_entity(entity_data, dry_run)
-
-            elif entity_type == "offering":
-                current_offering_id = self._process_offering_entity(
-                    entity_data, dry_run
-                )
-
-            elif entity_type == "section":
-                self._process_section_entity(entity_data, current_offering_id, dry_run)
-
-        return all_conflicts
-
-    def _process_term_entity(self, entity_data: Dict[str, Any], dry_run: bool) -> None:
-        """Process term entity with duplicate checking."""
-        term_name = entity_data.get("term_name")
-        institution_id = entity_data.get("institution_id")
-
-        # Simple duplicate check - query for existing term
-        from database_service import db
-
-        existing_terms = (
-            db.collection("terms")
-            .where("term_name", "==", term_name)
-            .where("institution_id", "==", institution_id)
-            .limit(1)
-            .stream()
-        )
-
-        existing_term = next(existing_terms, None)
-
-        if existing_term:
-            # Term already exists, skip creation
-            self.logger.info(f"[Import] Term already exists: {term_name}")
-        else:
-            # Create new term
-            if not dry_run:
-                term_id = create_term(entity_data)
-                if term_id:
-                    self.stats["records_created"] += 1
-                    self.logger.info(f"[Import] Created term: {term_name}")
-            else:
-                self.logger.info(f"[Import] DRY RUN: Would create term: {term_name}")
-
-    def _process_offering_entity(
-        self, entity_data: Dict[str, Any], dry_run: bool
-    ) -> Optional[str]:
-        """Process course offering entity and return offering_id."""
-        course_id = entity_data.get("course_id")  # This is still course_number
-        term_name = entity_data.get("term_id")  # This is still term_name
-        institution_id = entity_data.get("institution_id")
-
-        # Resolve course_id from course_number
-        if not course_id:
-            return None
-
-        course = get_course_by_number(course_id)
-        if not course:
-            return None
-
-        entity_data["course_id"] = course.get("course_id")
-
-        # Check if offering already exists
-        existing_offering = get_course_offering_by_course_and_term(
-            course.get("course_id"), term_name, institution_id
-        )
-
-        if existing_offering:
-            self.logger.info(
-                f"[Import] Course offering already exists: {course_id} in {term_name}"
-            )
-            return existing_offering.get("offering_id")
-        else:
-            # Create new course offering
-            entity_data["term_id"] = term_name  # Keep term_name for now
-            if not dry_run:
-                offering_id = create_course_offering(entity_data)
-                if offering_id:
-                    self.stats["records_created"] += 1
-                    self.logger.info(
-                        f"[Import] Created course offering: {course_id} in {term_name}"
-                    )
-                    return offering_id
-            else:
-                self.logger.info(
-                    f"[Import] DRY RUN: Would create offering: {course_id} in {term_name}"
-                )
-            return None
-
-    def _process_section_entity(
-        self, entity_data: Dict[str, Any], offering_id: Optional[str], dry_run: bool
-    ) -> None:
-        """Process section entity."""
-        if offering_id:
-            entity_data["offering_id"] = offering_id
-
-            if not dry_run:
-                section_id = create_course_section(entity_data)
-                if section_id:
-                    self.stats["records_created"] += 1
-                    self.logger.info(f"[Import] Created section: {offering_id}")
-            else:
-                self.logger.info(
-                    f"[Import] DRY RUN: Would create section: {offering_id}"
-                )
-        else:
-            self.logger.warning(
-                f"[Import] No offering_id available for section creation"
-            )
 
     def _extract_department_from_course(self, course_number: str) -> str:
         """Extract department from course number"""
