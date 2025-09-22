@@ -227,14 +227,8 @@
 <script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
 <script>
     // Program Data Management Functions
-    function programQuickImport() {
-        alert('Quick Import feature coming soon! Select a specific data type to import.');
-    }
-
-    function programImportData(type) {
-        alert(`Import ${type} feature coming soon!`);
-    }
-
+    // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
+    
     function programQuickExport() {
         const format = document.querySelector('input[name="programExportFormat"]:checked').value;
         alert(`Quick Export (${format}) feature coming soon!`);
