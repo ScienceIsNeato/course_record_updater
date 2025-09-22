@@ -773,3 +773,128 @@ class TestAuthServiceCoverage:
             # Should extract institution_id from query parameters
             result = test_func()
             assert result == "success"
+
+
+class TestAuthServiceHelperMethods:
+    """Test the new helper methods created for refactoring."""
+
+    def test_get_site_admin_programs(self):
+        """Test _get_site_admin_programs helper method."""
+        from auth_service import AuthService
+
+        service = AuthService()
+
+        with (
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
+            mock_get_programs.return_value = [
+                {"program_id": "prog-1", "name": "Program 1"},
+                {"program_id": "prog-2", "name": "Program 2"},
+            ]
+
+            # Test with specific institution
+            result = service._get_site_admin_programs("inst-123")
+            assert result == ["prog-1", "prog-2"]
+            mock_get_programs.assert_called_once_with("inst-123")
+
+    def test_get_site_admin_programs_all_institutions(self):
+        """Test _get_site_admin_programs for all institutions."""
+        from auth_service import AuthService
+
+        service = AuthService()
+
+        with (
+            patch("database_service.get_all_institutions") as mock_get_all,
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
+            mock_get_all.return_value = [
+                {"institution_id": "inst-1"},
+                {"institution_id": "inst-2"},
+            ]
+            mock_get_programs.side_effect = [
+                [{"program_id": "prog-1"}],
+                [{"program_id": "prog-2"}],
+            ]
+
+            result = service._get_site_admin_programs(None)
+            assert result == ["prog-1", "prog-2"]
+
+    def test_get_institution_admin_programs(self):
+        """Test _get_institution_admin_programs helper method."""
+        from auth_service import AuthService
+
+        service = AuthService()
+        user = {"institution_id": "inst-123"}
+
+        with patch("database_service.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = [
+                {"program_id": "prog-1", "name": "Program 1"}
+            ]
+
+            result = service._get_institution_admin_programs(user, None)
+            assert result == ["prog-1"]
+
+    def test_get_user_specific_programs(self):
+        """Test _get_user_specific_programs helper method."""
+        from auth_service import AuthService
+
+        service = AuthService()
+        user = {"program_ids": ["prog-1", "prog-2"]}
+
+        result = service._get_user_specific_programs(user)
+        assert result == ["prog-1", "prog-2"]
+
+    def test_check_authentication_helper(self):
+        """Test _check_authentication helper function."""
+        from flask import Flask
+
+        from auth_service import _check_authentication
+
+        app = Flask(__name__)
+
+        def dummy_func():
+            return "test"
+
+        with app.app_context():
+            # Test unauthenticated
+            with patch(
+                "auth_service.auth_service.is_authenticated", return_value=False
+            ):
+                result = _check_authentication(dummy_func)
+                assert result is not None
+                assert result[1] == 401
+
+            # Test authenticated
+            with patch("auth_service.auth_service.is_authenticated", return_value=True):
+                result = _check_authentication(dummy_func)
+                assert result is None
+
+    def test_extract_request_context_helper(self):
+        """Test _extract_request_context helper function."""
+        from flask import Flask
+
+        from auth_service import _extract_request_context
+
+        app = Flask(__name__)
+
+        with app.test_request_context("/?param1=value1"):
+            result = _extract_request_context(["param1", "param2"])
+            assert result == {"param1": "value1"}
+
+    def test_get_request_parameter_helper(self):
+        """Test _get_request_parameter helper function."""
+        from flask import Flask
+
+        from auth_service import _get_request_parameter
+
+        app = Flask(__name__)
+
+        # Test query parameters
+        with app.test_request_context("/?test_param=test_value"):
+            result = _get_request_parameter("test_param")
+            assert result == "test_value"
+
+        # Test missing parameter
+        with app.test_request_context("/"):
+            result = _get_request_parameter("missing_param")
+            assert result is None
