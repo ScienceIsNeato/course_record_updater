@@ -74,7 +74,7 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
             ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
@@ -92,7 +92,7 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
@@ -350,7 +350,7 @@ class QualityGateExecutor:
         if "coverage" in output.lower() and (
             "fail" in output.lower() or "error" in output.lower()
         ):
-            return "Coverage analysis failed or below 75% threshold"
+            return "Coverage analysis failed or below 80% threshold"
 
         # Check for import errors
         if "import" in output.lower() and "error" in output.lower():

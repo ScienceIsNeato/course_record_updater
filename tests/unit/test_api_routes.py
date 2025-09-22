@@ -3012,3 +3012,150 @@ class TestAPIRoutesHelpers:
         progress_id = create_progress_tracker()
         cleanup_progress(progress_id)
         # Should not raise an exception
+
+
+class TestAPIRoutesImportHelpers:
+    """Test helper functions for import functionality."""
+
+    def test_validate_excel_file_upload_missing_file(self):
+        """Test _validate_excel_file_upload with missing file."""
+        from flask import Flask
+
+        from api_routes import _validate_excel_file_upload
+
+        app = Flask(__name__)
+
+        with app.test_request_context(method="POST"):
+            file, error = _validate_excel_file_upload()
+            assert file is None
+            assert error is not None
+            assert error[1] == 400
+
+    def test_extract_import_parameters(self):
+        """Test _extract_import_parameters function."""
+        from flask import Flask
+
+        from api_routes import _extract_import_parameters
+
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            method="POST",
+            data={
+                "import_adapter": "test_adapter",
+                "dry_run": "true",
+                "verbose_output": "false",
+            },
+        ):
+            params = _extract_import_parameters()
+            assert params["import_adapter"] == "test_adapter"
+            assert params["dry_run"] is True
+            assert params["verbose_output"] is False
+
+    def test_get_user_and_institution_no_user(self):
+        """Test _get_user_and_institution with no authenticated user."""
+        from api_routes import _get_user_and_institution
+
+        with patch("api_routes.get_current_user", return_value=None):
+            with pytest.raises(PermissionError, match="Authentication required"):
+                _get_user_and_institution({"import_adapter": "test"})
+
+    def test_validate_import_permissions_invalid_role(self):
+        """Test _validate_import_permissions with invalid role."""
+        from api_routes import _validate_import_permissions
+
+        user = {"role": "invalid_role"}
+        with pytest.raises(PermissionError, match="Invalid user role"):
+            _validate_import_permissions(user, "courses")
+
+    def test_validate_import_permissions_denied(self):
+        """Test _validate_import_permissions with permission denied."""
+        from api_routes import _validate_import_permissions
+
+        user = {"role": "instructor"}
+        with pytest.raises(PermissionError, match="Permission denied"):
+            _validate_import_permissions(user, "courses")
+
+    def test_create_success_response(self):
+        """Test _create_success_response function."""
+        from unittest.mock import Mock
+
+        from flask import Flask
+
+        from api_routes import _create_success_response
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            mock_result = Mock()
+            mock_result.records_processed = 10
+            mock_result.records_created = 5
+            mock_result.records_updated = 3
+            mock_result.records_skipped = 2
+
+            response, status_code = _create_success_response(mock_result, False)
+            assert status_code == 200
+
+            response_data = response.get_json()
+            assert response_data["success"] is True
+            assert response_data["records_processed"] == 10
+
+    def test_create_error_response(self):
+        """Test _create_error_response function."""
+        from flask import Flask
+
+        from api_routes import _create_error_response
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            error = Exception("Test error")
+            response, status_code = _create_error_response(error, True)
+            assert status_code == 500
+
+            response_data = response.get_json()
+            assert response_data["success"] is False
+            assert "Test error" in response_data["error"]
+
+    def test_get_site_admin_institution_cei_adapter(self):
+        """Test _get_site_admin_institution with CEI adapter."""
+        from api_routes import _get_site_admin_institution
+
+        with patch(
+            "database_service.create_default_cei_institution",
+            return_value="cei_inst_123",
+        ):
+            result = _get_site_admin_institution("cei_excel_adapter")
+            assert result == "cei_inst_123"
+
+    def test_get_site_admin_institution_other_adapter(self):
+        """Test _get_site_admin_institution with non-CEI adapter."""
+        from api_routes import _get_site_admin_institution
+
+        with pytest.raises(
+            ValueError, match="Site admin must specify target institution"
+        ):
+            _get_site_admin_institution("other_adapter")
+
+    def test_get_site_admin_institution_creation_fails(self):
+        """Test _get_site_admin_institution when institution creation fails."""
+        from api_routes import _get_site_admin_institution
+
+        with patch(
+            "database_service.create_default_cei_institution", return_value=None
+        ):
+            with pytest.raises(
+                RuntimeError, match="Failed to create/find CEI institution"
+            ):
+                _get_site_admin_institution("cei_excel_adapter")
+
+    def test_get_user_and_institution_no_institution_id(self):
+        """Test _get_user_and_institution with user having no institution_id."""
+        from api_routes import _get_user_and_institution
+
+        user = {"role": "institution_admin", "institution_id": None}
+        with patch("api_routes.get_current_user", return_value=user):
+            with pytest.raises(
+                PermissionError, match="User has no associated institution"
+            ):
+                _get_user_and_institution({"import_adapter": "test"})

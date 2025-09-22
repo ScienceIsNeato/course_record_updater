@@ -386,8 +386,17 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Run coverage analysis independently of test results (unit tests only)
   echo "  📊 Running coverage analysis (independent of test results)..."
   
+  # Ensure logs directory exists
+  mkdir -p logs
+  
+  # Coverage report file (overwrite previous)
+  COVERAGE_REPORT_FILE="logs/coverage_report.txt"
+  
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
   COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  
+  # Write detailed coverage report to file
+  echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
@@ -404,8 +413,17 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     # - Import conflict resolution logic may exercise different code paths
     # - Logging behavior can vary between environments
     THRESHOLD=80
-    ENV_DIFFERENCES_BUFFER=0.5
-    EFFECTIVE_THRESHOLD=$(echo "$THRESHOLD - $ENV_DIFFERENCES_BUFFER" | bc -l)
+    
+    # Apply environment buffer only in CI (not locally)
+    if [[ "${CI:-false}" == "true" ]]; then
+      ENV_DIFFERENCES_BUFFER=0.5
+      EFFECTIVE_THRESHOLD=$(echo "$THRESHOLD - $ENV_DIFFERENCES_BUFFER" | bc -l)
+      echo "  🔧 CI environment detected - applying ${ENV_DIFFERENCES_BUFFER}% buffer (effective threshold: ${EFFECTIVE_THRESHOLD}%)"
+    else
+      ENV_DIFFERENCES_BUFFER=0
+      EFFECTIVE_THRESHOLD=$THRESHOLD
+      echo "  🏠 Local environment - using full ${THRESHOLD}% threshold"
+    fi
     
     # Compare against effective threshold using bc for floating point
     if (( $(echo "$COVERAGE_NUM >= $EFFECTIVE_THRESHOLD" | bc -l) )); then
@@ -428,15 +446,48 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
       fi
       
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Show commit-specific coverage issues
+      echo "📋 Files in Current Commit Needing Coverage:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Get list of Python files in the current commit (staged and unstaged changes)
+      COMMIT_FILES=$(git diff --name-only HEAD 2>/dev/null | grep '\.py$' || echo "")
+      if [[ -z "$COMMIT_FILES" ]]; then
+        # If no diff with HEAD, try staged files
+        COMMIT_FILES=$(git diff --cached --name-only 2>/dev/null | grep '\.py$' || echo "")
+      fi
+      if [[ -z "$COMMIT_FILES" ]]; then
+        # If still no files, try unstaged changes
+        COMMIT_FILES=$(git diff --name-only 2>/dev/null | grep '\.py$' || echo "")
+      fi
+      
+      if [[ -n "$COMMIT_FILES" ]]; then
+        echo "  Files in commit: $(echo "$COMMIT_FILES" | tr '\n' ' ')"
+        echo ""
+        
+        # Filter coverage output to show only files in the commit
+        COMMIT_COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -E "$(echo "$COMMIT_FILES" | sed 's/\.py$//' | tr '\n' '|' | sed 's/|$//')")
+        if [[ -n "$COMMIT_COVERAGE" ]]; then
+          echo "  Coverage details for commit files:"
+          echo "$COMMIT_COVERAGE" | sed 's/^/    /'
+        else
+          echo "  No coverage issues found in commit files (issues may be in other files)"
+        fi
+      else
+        echo "  No Python files found in current commit"
+      fi
+      
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo ""
 
-      add_failure "Test Coverage" "Coverage at $COVERAGE (below ${EFFECTIVE_THRESHOLD}% threshold)" "Add tests to increase coverage above ${EFFECTIVE_THRESHOLD}%"
+      add_failure "Test Coverage" "Coverage at $COVERAGE (below ${EFFECTIVE_THRESHOLD}% threshold)" "Add tests to increase coverage above ${EFFECTIVE_THRESHOLD}%. Detailed report: $PWD/$COVERAGE_REPORT_FILE"
     fi
   else
     echo "❌ Coverage: ANALYSIS FAILED"
     echo "📋 Coverage Output (for debugging):"
     echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
-    add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration"
+    add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
   echo ""
 fi

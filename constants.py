@@ -82,3 +82,7 @@ PROGRAM_DEFAULT_DESCRIPTION = "Default program for unassigned courses"
 
 # Authentication error messages
 ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
+
+# API error messages
+ERROR_PERMISSION_DENIED = "Permission denied"
+ERROR_USER_NOT_FOUND = "User not found"
