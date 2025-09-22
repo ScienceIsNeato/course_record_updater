@@ -548,7 +548,8 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   
   # Also write to file to bypass GitHub truncation
   echo "$SAFETY_OUTPUT" > /tmp/safety_output.txt
-  echo "$SAFETY_OUTPUT" > safety_detailed_output.txt  # For artifact upload
+  mkdir -p logs
+  echo "$SAFETY_OUTPUT" > logs/safety_detailed_output.txt  # For artifact upload
   
   # Create comprehensive diagnostic file
   {
@@ -572,7 +573,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo ""
     echo "--- Safety check (deprecated) ---"
     timeout 10s safety check 2>&1 || echo "Failed"
-  } > safety_full_diagnostic.txt
+  } > logs/safety_full_diagnostic.txt
   set -e  # Re-enable exit on error
   
   echo "📋 Debug: Safety command completed with exit code: $SAFETY_EXIT_CODE"
