@@ -73,3 +73,9 @@ class Permission:
     # Data import/export
     IMPORT_DATA = "import_data"
     EXPORT_DATA = "export_data"
+
+
+# Seed data constants
+DEPARTMENT_COMPUTER_SCIENCE = "Computer Science"
+DEPARTMENT_ELECTRICAL_ENGINEERING = "Electrical Engineering"
+PROGRAM_DEFAULT_DESCRIPTION = "Default program for unassigned courses"

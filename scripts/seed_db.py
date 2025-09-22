@@ -24,7 +24,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import our services and models
 import database_service as db
-from constants import SITE_ADMIN_INSTITUTION_ID
+from constants import (
+    DEPARTMENT_COMPUTER_SCIENCE,
+    DEPARTMENT_ELECTRICAL_ENGINEERING,
+    PROGRAM_DEFAULT_DESCRIPTION,
+    SITE_ADMIN_INSTITUTION_ID,
+)
 from models import Course, Institution, Program, Term, User, UserInvitation
 from password_service import hash_password
 
@@ -287,14 +292,14 @@ class DatabaseSeeder:
         programs_data = [
             # CEI Programs
             {
-                "name": "Computer Science",
+                "name": DEPARTMENT_COMPUTER_SCIENCE,
                 "short_name": "CS",
                 "description": "Bachelor of Science in Computer Science",
                 "institution_idx": 0,
                 "admin_idx": 0,
             },
             {
-                "name": "Electrical Engineering",
+                "name": DEPARTMENT_ELECTRICAL_ENGINEERING,
                 "short_name": "EE",
                 "description": "Bachelor of Science in Electrical Engineering",
                 "institution_idx": 0,
@@ -615,7 +620,7 @@ class DatabaseSeeder:
             {
                 "course_number": "CS-101",
                 "course_title": "Introduction to Computer Science",
-                "department": "Computer Science",
+                "department": DEPARTMENT_COMPUTER_SCIENCE,
                 "credit_hours": 3,
                 "institution_idx": 0,
                 "program_ids": [0],  # CS program
@@ -623,7 +628,7 @@ class DatabaseSeeder:
             {
                 "course_number": "CS-201",
                 "course_title": "Data Structures and Algorithms",
-                "department": "Computer Science",
+                "department": DEPARTMENT_COMPUTER_SCIENCE,
                 "credit_hours": 4,
                 "institution_idx": 0,
                 "program_ids": [0],  # CS program
@@ -632,7 +637,7 @@ class DatabaseSeeder:
             {
                 "course_number": "EE-101",
                 "course_title": "Circuit Analysis",
-                "department": "Electrical Engineering",
+                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
                 "credit_hours": 4,
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
@@ -640,7 +645,7 @@ class DatabaseSeeder:
             {
                 "course_number": "EE-201",
                 "course_title": "Digital Logic Design",
-                "department": "Electrical Engineering",
+                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
                 "credit_hours": 3,
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
@@ -648,7 +653,7 @@ class DatabaseSeeder:
             {
                 "course_number": "EE-301",
                 "course_title": "Signals and Systems",
-                "department": "Electrical Engineering",
+                "department": DEPARTMENT_ELECTRICAL_ENGINEERING,
                 "credit_hours": 4,
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
@@ -1173,7 +1178,7 @@ class DatabaseSeeder:
             short_name="UNCL",
             institution_id=institution_id,
             created_by=admin_id,
-            description="Default program",
+            description=PROGRAM_DEFAULT_DESCRIPTION,
             is_default=True,
         )
 

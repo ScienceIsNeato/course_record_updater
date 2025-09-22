@@ -7,7 +7,7 @@
     ],
     "authenticated": true,
     "authentication_method": "api_key",
-    "timestamp": "2025-09-22T12:36:43.388299",
+    "timestamp": "2025-09-22T12:46:07.478859",
     "telemetry": {
       "os_type": "Darwin",
       "os_release": "24.5.0",
@@ -39,94 +39,11 @@
         "git": {
           "branch": "cursor/start-multi-tenant-context-hardening-a3b1",
           "tag": "",
-          "commit": "17646d924c3ee47b8c74056a9aadad0427265105",
-          "dirty": true,
+          "commit": "36b28e8651c5683313bd518e8e35611d0663d430",
+          "dirty": false,
           "origin": "https://github.com/ScienceIsNeato/course_record_updater.git"
         },
         "files": [
-          {
-            "location": "/Users/pacey/Documents/SourceCode/course_record_updater/cursor-rules/scripts/requirements.txt",
-            "type": "requirements.txt",
-            "categories": [
-              "python"
-            ],
-            "results": {
-              "dependencies": [
-                {
-                  "name": "google-api-python-client",
-                  "specifications": [
-                    {
-                      "raw": "google-api-python-client",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "google-auth-httplib2",
-                  "specifications": [
-                    {
-                      "raw": "google-auth-httplib2",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "google-auth-oauthlib",
-                  "specifications": [
-                    {
-                      "raw": "google-auth-oauthlib",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "jira",
-                  "specifications": [
-                    {
-                      "raw": "jira",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "python-dateutil",
-                  "specifications": [
-                    {
-                      "raw": "python-dateutil",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                },
-                {
-                  "name": "markdown",
-                  "specifications": [
-                    {
-                      "raw": "markdown",
-                      "vulnerabilities": {
-                        "known_vulnerabilities": [],
-                        "remediation": null
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          },
           {
             "location": "/Users/pacey/Documents/SourceCode/course_record_updater/requirements.txt",
             "type": "requirements.txt",
@@ -285,6 +202,89 @@
                   "specifications": [
                     {
                       "raw": "pytest-mock>=3.0 # For mocking dependencies",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "location": "/Users/pacey/Documents/SourceCode/course_record_updater/cursor-rules/scripts/requirements.txt",
+            "type": "requirements.txt",
+            "categories": [
+              "python"
+            ],
+            "results": {
+              "dependencies": [
+                {
+                  "name": "google-api-python-client",
+                  "specifications": [
+                    {
+                      "raw": "google-api-python-client",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "google-auth-httplib2",
+                  "specifications": [
+                    {
+                      "raw": "google-auth-httplib2",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "google-auth-oauthlib",
+                  "specifications": [
+                    {
+                      "raw": "google-auth-oauthlib",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "jira",
+                  "specifications": [
+                    {
+                      "raw": "jira",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "python-dateutil",
+                  "specifications": [
+                    {
+                      "raw": "python-dateutil",
+                      "vulnerabilities": {
+                        "known_vulnerabilities": [],
+                        "remediation": null
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "markdown",
+                  "specifications": [
+                    {
+                      "raw": "markdown",
                       "vulnerabilities": {
                         "known_vulnerabilities": [],
                         "remediation": null
