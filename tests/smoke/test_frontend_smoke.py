@@ -89,7 +89,7 @@ class TestFrontendSmoke:
         assert response.status_code == 200
         # With authentication enabled, unauthenticated users are redirected to login
         # Check for login page content instead of main page content
-        assert "Welcome Back" in response.text or "CEI Course Admin" in response.text
+        assert "Welcome Back" in response.text or "LASSIE" in response.text
 
     def test_page_loads_without_errors(self, driver, base_url):
         """Test that the main page loads without JavaScript errors"""

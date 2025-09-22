@@ -42,7 +42,7 @@ print(f'✅ CRUD working: {course}')
 ```bash
 # Start server and check basics
 ./restart_server.sh
-curl -s http://localhost:3001 | grep -q "CEI Course Admin" && echo "✅ Web server working"
+curl -s http://localhost:3001 | grep -q "LASSIE" && echo "✅ Web server working"
 
 # Check API health
 curl -s http://localhost:3001/api/health | jq .
