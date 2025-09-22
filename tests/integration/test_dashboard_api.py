@@ -111,7 +111,7 @@ class TestDashboardFrontend:
             assert "loginForm" in page_source or "email" in page_source
         else:
             # On main page - check for expected content
-            assert "CEI Course Admin" in page_source
+            assert "LASSIE" in page_source
 
         # Check that page loaded successfully (title varies based on page)
         title = driver.title

@@ -35,7 +35,7 @@ REQUIRED_ELEMENTS=(
     "password"
     "auth-container"
     "Welcome Back"
-    "CEI Course Admin"
+    "LASSIE"
 )
 
 MISSING_ELEMENTS=()
