@@ -218,7 +218,17 @@ class ImportService:
         existing_user = get_user_by_email(email)
 
         if existing_user:
-            # Check for field conflicts
+            # First, add an existence conflict to ensure we don't create duplicates
+            existence_conflict = ConflictRecord(
+                entity_type="user",
+                entity_key=email,
+                field_name="_existence",
+                existing_value="exists",
+                import_value="exists",
+            )
+            conflicts.append(existence_conflict)
+
+            # Then check for field conflicts
             conflict_fields = ["first_name", "last_name", "role", "department"]
 
             for field in conflict_fields:
@@ -399,18 +409,32 @@ class ImportService:
 
             # Apply resolution if not dry run
             if not dry_run and strategy == ConflictStrategy.USE_THEIRS:
-                # Update existing user with import data
-                email = user_data["email"]
-                existing_user = get_user_by_email(email)
+                # Check if there are actual field differences that need updating
+                field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
 
-                if existing_user:
-                    # NOTE: update_user function will be implemented when user update features are added
-                    # update_user_extended(existing_user['user_id'], user_data)
-                    self.stats["records_updated"] += 1
-                    self.logger.info(f"[Import] Updated user: {email}")
+                if field_conflicts:
+                    # Update existing user with import data
+                    email = user_data["email"]
+                    existing_user = get_user_by_email(email)
+
+                    if existing_user:
+                        # NOTE: update_user function will be implemented when user update features are added
+                        # update_user_extended(existing_user['user_id'], user_data)
+                        self.stats["records_updated"] += 1
+                        self.logger.info(f"[Import] Updated user: {email}")
+                    else:
+                        self.stats["errors"].append(
+                            f"User not found for update: {email}"
+                        )
+                        return False, conflicts
                 else:
-                    self.stats["errors"].append(f"User not found for update: {email}")
-                    return False, conflicts
+                    # User exists with identical data - no action needed
+                    self.stats["records_skipped"] += 1
+                    email = user_data.get("email")
+                    self._log(
+                        f"User already exists with identical data: {email}",
+                        "debug",
+                    )
 
             elif strategy == ConflictStrategy.USE_MINE:
                 # Skip the import, keep existing
