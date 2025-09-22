@@ -387,6 +387,9 @@ def login_required(f):
                     request.headers.get("Accept", "").startswith("application/json")
                     and "text/html" not in request.headers.get("Accept", "")
                 )
+                or request.path.startswith(
+                    "/api/"
+                )  # All API endpoints should return JSON
             )
 
             if is_ajax_request:
@@ -403,7 +406,7 @@ def login_required(f):
                 )
             else:
                 # Redirect to login page for browser requests (including /api/ URLs)
-                return redirect(url_for("login"))
+                return redirect(url_for("api.login_api"))
 
         return f(*args, **kwargs)
 

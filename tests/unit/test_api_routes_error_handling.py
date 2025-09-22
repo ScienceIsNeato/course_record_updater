@@ -192,7 +192,9 @@ class TestImportEndpoints(CommonAuthMixin):
     def test_import_excel_empty_filename(self):
         """Test Excel import with empty filename."""
         # Test unauthenticated request
-        response = self.client.post("/api/import/excel", data={"file": (None, "")})
+        response = self.client.post(
+            "/api/import/excel", data={"excel_file": (None, "")}
+        )
 
         # Real auth returns 401 for unauthenticated requests
         assert response.status_code == 401
@@ -207,7 +209,7 @@ class TestImportEndpoints(CommonAuthMixin):
         try:
             with open(tmp_path, "rb") as f:
                 response = self.client.post(
-                    "/api/import/excel", data={"file": (f, "test.txt")}
+                    "/api/import/excel", data={"excel_file": (f, "test.txt")}
                 )
 
             # Real auth returns 401 for unauthenticated requests
@@ -217,7 +219,9 @@ class TestImportEndpoints(CommonAuthMixin):
 
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
-        with patch("api_routes.import_excel", side_effect=Exception("Import failed")):
+        with patch(
+            "import_service.import_excel", side_effect=Exception("Import failed")
+        ):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(b"fake excel data")
                 tmp_path = tmp.name
@@ -226,17 +230,14 @@ class TestImportEndpoints(CommonAuthMixin):
                 self._login_site_admin()
                 with open(tmp_path, "rb") as f:
                     response = self.client.post(
-                        "/api/import/excel", data={"file": (f, "test.xlsx")}
+                        "/api/import/excel", data={"excel_file": (f, "test.xlsx")}
                     )
 
-                assert response.status_code == 202
+                assert response.status_code == 500
                 data = response.get_json()
-                assert data == {
-                    "success": True,
-                    "progress_id": data["progress_id"],
-                    "message": "Import started. Use /api/import/progress/{progress_id} to track progress.",
-                }
-                # Exception will be handled in background thread and reported via progress API
+                assert data["success"] is False
+                assert "error" in data
+                # Import exceptions are handled synchronously and returned immediately
             finally:
                 os.unlink(tmp_path)
 
@@ -276,7 +277,10 @@ class TestImportEndpoints(CommonAuthMixin):
         self._login_site_admin()
         response = self.client.post("/api/import/validate")
         assert response.status_code == 400
-        assert response.get_json() == {"success": False, "error": "No file uploaded"}
+        assert response.get_json() == {
+            "success": False,
+            "error": "No Excel file provided",
+        }
 
 
 class TestSectionEndpoints(CommonAuthMixin):

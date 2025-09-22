@@ -28,13 +28,10 @@ This document outlines the port allocation strategy to avoid conflicts between m
 ./start_with_db.sh 3005
 ```
 
-### Method 2: Demo Mode (No Database)
+### Method 2: Restart Server (Production Mode)
 ```bash
-# Start with automatic port detection
-./start_server.sh --demo
-
-# Start on a specific port
-./start_server.sh --demo 3005
+# Start with automatic port detection and environment setup
+./restart_server.sh
 ```
 
 ### Method 2: Direct Python Execution
@@ -69,7 +66,7 @@ If you encounter port conflicts:
 
 3. **Use an alternative port:**
    ```bash
-   ./start_server.sh 3005
+   ./restart_server.sh
    ```
 
 ## Application URLs
@@ -94,7 +91,7 @@ npm start  # or whatever starts FogOfDog
 
 # Terminal 2: Start Course Record Updater (port 3001)
 cd /path/to/course_record_updater
-./start_server.sh
+./restart_server.sh
 
 # Both applications now run without conflicts!
 ```
