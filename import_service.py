@@ -123,7 +123,13 @@ class ImportService:
             "conflicts": [],
         }
 
-        # Cache for entities to avoid duplicate lookups
+        # Cache for entities to avoid duplicate lookups during a single import run
+        self.entity_cache: Dict[str, Dict] = {
+            "courses": {},  # course_number -> course_data
+            "terms": {},  # term_name -> term_data
+            "users": {},  # email -> user_data
+            "sections": {},  # composite_key -> section_data
+        }
 
     def _log(self, message: str, level: str = "info"):
         """Smart logging that respects verbose mode"""
@@ -136,12 +142,6 @@ class ImportService:
         elif self.verbose:
             self.logger.debug(f"[Import] {message}")
         # Otherwise, skip debug-level messages in non-verbose mode
-        self.entity_cache: Dict[str, Dict] = {
-            "courses": {},  # course_number -> course_data
-            "terms": {},  # term_name -> term_data
-            "users": {},  # email -> user_data
-            "sections": {},  # composite_key -> section_data
-        }
 
     def detect_course_conflict(
         self, import_course: Dict[str, Any]

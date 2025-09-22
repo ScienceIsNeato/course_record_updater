@@ -247,51 +247,8 @@ class DashboardService:
             )
 
         program_ids = program_ids or []
-        available_programs = get_programs_by_institution(institution_id) or []
-        program_lookup = {
-            self._get_program_id(program): program for program in available_programs
-        }
-        scoped_programs = [
-            program_lookup.get(pid) for pid in program_ids if program_lookup.get(pid)
-        ]
-
-        courses_dict: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # Use dict to deduplicate by course_id
-        courses_by_program: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for program in scoped_programs:
-            pid = self._get_program_id(program)
-            program_courses = get_courses_by_program(pid) or []
-            for course in program_courses:
-                enriched = self._with_program([course], program, institution_id)[0]
-                course_id = self._get_course_id(enriched)
-
-                # If course already exists, merge program_ids
-                if course_id in courses_dict:
-                    existing_program_ids = set(
-                        courses_dict[course_id].get("program_ids", [])
-                    )
-                    new_program_ids = set(enriched.get("program_ids", []))
-                    courses_dict[course_id]["program_ids"] = list(
-                        existing_program_ids | new_program_ids
-                    )
-                else:
-                    courses_dict[course_id] = enriched
-
-                courses_by_program[pid].append(enriched)
-
-        courses = list(courses_dict.values())  # Convert back to list
-
-        # Enrich all courses with CLO data
-        courses = self._enrich_courses_with_clo_data(courses)
-
-        # Update courses_by_program with enriched data
-        courses_by_program = defaultdict(list)
-        for course in courses:
-            for program in scoped_programs:
-                pid = self._get_program_id(program)
-                if pid in course.get("program_ids", []):
-                    courses_by_program[pid].append(course)
+        scoped_programs = self._get_scoped_programs(institution_id, program_ids)
+        courses = self._get_program_admin_courses(scoped_programs, institution_id)
 
         all_sections = get_all_sections(institution_id) or []
         course_index = self._index_by_keys(courses, ["course_id", "id"])
@@ -301,15 +258,7 @@ class DashboardService:
             if self._matches_course(section, course_index)
         ]
 
-        users = get_all_users(institution_id) or []
-        instructors = get_all_instructors(institution_id) or []
-        faculty = self._build_faculty_directory(users, instructors)
-
-        scoped_faculty = [
-            member
-            for member in faculty
-            if set(member.get("program_ids") or []).intersection(program_ids)
-        ]
+        scoped_faculty = self._get_program_admin_faculty(institution_id, program_ids)
 
         program_metrics = self._build_program_metrics(
             scoped_programs,
@@ -318,6 +267,17 @@ class DashboardService:
             scoped_faculty,
             course_index,
         )
+
+        # Get all users for summary counts
+        users = get_all_users(institution_id) or []
+
+        # Build courses by program mapping
+        courses_by_program = defaultdict(list)
+        for course in courses:
+            for program in scoped_programs:
+                pid = self._get_program_id(program)
+                if pid in course.get("program_ids", []):
+                    courses_by_program[pid].append(course)
 
         summary = {
             "institutions": 1,
@@ -360,6 +320,60 @@ class DashboardService:
                 for pid in program_ids
             },
         }
+
+    def _get_scoped_programs(
+        self, institution_id: str, program_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Get programs scoped to the given program IDs within an institution."""
+        available_programs = get_programs_by_institution(institution_id) or []
+        program_lookup = {
+            self._get_program_id(program): program for program in available_programs
+        }
+        return [
+            program_lookup.get(pid) for pid in program_ids if program_lookup.get(pid)
+        ]
+
+    def _get_program_admin_courses(
+        self, scoped_programs: List[Dict[str, Any]], institution_id: str
+    ) -> List[Dict[str, Any]]:
+        """Get and deduplicate courses for program admin view."""
+        courses_dict: Dict[str, Dict[str, Any]] = {}
+
+        for program in scoped_programs:
+            pid = self._get_program_id(program)
+            program_courses = get_courses_by_program(pid) or []
+            for course in program_courses:
+                enriched = self._with_program([course], program, institution_id)[0]
+                course_id = self._get_course_id(enriched)
+
+                # If course already exists, merge program_ids
+                if course_id in courses_dict:
+                    existing_program_ids = set(
+                        courses_dict[course_id].get("program_ids", [])
+                    )
+                    new_program_ids = set(enriched.get("program_ids", []))
+                    courses_dict[course_id]["program_ids"] = list(
+                        existing_program_ids | new_program_ids
+                    )
+                else:
+                    courses_dict[course_id] = enriched
+
+        courses = list(courses_dict.values())
+        return self._enrich_courses_with_clo_data(courses)
+
+    def _get_program_admin_faculty(
+        self, institution_id: str, program_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Get faculty scoped to the given programs."""
+        users = get_all_users(institution_id) or []
+        instructors = get_all_instructors(institution_id) or []
+        faculty = self._build_faculty_directory(users, instructors)
+
+        return [
+            member
+            for member in faculty
+            if set(member.get("program_ids") or []).intersection(program_ids)
+        ]
 
     def _get_instructor_data(
         self,
