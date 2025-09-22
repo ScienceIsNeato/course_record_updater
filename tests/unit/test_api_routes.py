@@ -2107,7 +2107,7 @@ class TestInstitutionEndpoints:
 
         data = json.loads(response.data)
         assert data["success"] is False
-        assert "no file" in data["error"].lower()
+        assert "no excel file" in data["error"].lower()
 
     def test_import_progress_endpoint(self):
         """Test import progress tracking endpoint."""
@@ -2492,7 +2492,7 @@ class TestCourseManagementOperations:
         response = self.client.post("/api/import/excel")
         assert response.status_code == 400
         data = response.get_json()
-        assert data["error"] == "No file uploaded"
+        assert data["error"] == "No Excel file provided"
 
 
 class TestAPIRoutesErrorHandling:
@@ -2612,7 +2612,7 @@ class TestAPIRoutesErrorHandling:
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
-            data = {"file": (BytesIO(b"test"), "")}
+            data = {"excel_file": (BytesIO(b"test"), "")}
 
             response = self.client.post("/api/import/excel", data=data)
 
@@ -2627,7 +2627,7 @@ class TestAPIRoutesErrorHandling:
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
-            data = {"file": (BytesIO(b"test"), "test.txt")}
+            data = {"excel_file": (BytesIO(b"test"), "test.txt")}
 
             response = self.client.post("/api/import/excel", data=data)
 
@@ -2741,7 +2741,7 @@ class TestAPIRoutesValidation:
         # Test with valid Excel file
         from io import BytesIO
 
-        data = {"file": (BytesIO(b"test excel data"), "test.xlsx")}
+        data = {"excel_file": (BytesIO(b"test excel data"), "test.xlsx")}
 
         response = self.client.post("/api/import/validate", data=data)
 
@@ -2760,7 +2760,7 @@ class TestAPIRoutesValidation:
 
             assert response.status_code == 400
             data = response.get_json()
-            assert data["error"] == "No file uploaded"
+            assert data["error"] == "No Excel file provided"
 
     def test_validate_import_empty_filename(self):
         """Test validation endpoint with empty filename."""
@@ -2769,7 +2769,7 @@ class TestAPIRoutesValidation:
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
-            data = {"file": (BytesIO(b"test"), "")}
+            data = {"excel_file": (BytesIO(b"test"), "")}
 
             response = self.client.post("/api/import/validate", data=data)
 
@@ -2784,7 +2784,7 @@ class TestAPIRoutesValidation:
         with patch("api_routes.has_permission", return_value=True):
             from io import BytesIO
 
-            data = {"file": (BytesIO(b"test"), "test.txt")}
+            data = {"excel_file": (BytesIO(b"test"), "test.txt")}
 
             response = self.client.post("/api/import/validate", data=data)
 
@@ -2830,7 +2830,7 @@ class TestAPIRoutesValidation:
 
         from io import BytesIO
 
-        data = {"file": (BytesIO(b"excel data"), "test.xlsx")}
+        data = {"excel_file": (BytesIO(b"excel data"), "test.xlsx")}
 
         response = self.client.post("/api/import/validate", data=data)
 

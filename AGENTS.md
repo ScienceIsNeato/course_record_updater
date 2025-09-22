@@ -8,7 +8,7 @@ Core Flask logic lives in `app.py`, with domain services split across `*_service
 ## Build, Test, and Development Commands
 - `python -m venv venv && source venv/bin/activate`: Create and activate the virtual environment.
 - `pip install -r requirements-dev.txt`: Install runtime and contributor tooling.
-- `python app.py` or `./start_server.sh`: Run the Flask server locally (defaults to port 8080).
+- `./restart_server.sh`: Run the Flask server locally (defaults to port 3001).
 - `python scripts/ship_it.py`: Fast validation covering lint, typing, and unit tests.
 - `python scripts/ship_it.py --validation-type PR`: Full gate including security and sonar checks.
 - `pytest --cov=. --cov-report=term-missing --cov-fail-under=80`: Run the suite with the enforced coverage bar.

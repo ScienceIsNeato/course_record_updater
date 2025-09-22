@@ -7,12 +7,11 @@ with the existing single-page application.
 """
 
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
 # Import our services
-import auth_service
 from auth_service import (
     clear_current_program_id,
     get_current_institution_id,
@@ -32,7 +31,6 @@ from constants import (
     NO_JSON_DATA_PROVIDED_MSG,
     NOT_FOUND_MSG,
     PROGRAM_NOT_FOUND_MSG,
-    UserRole,
 )
 from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
@@ -99,7 +97,7 @@ def _resolve_institution_scope(require: bool = True):
     if institution_id:
         return current_user, [institution_id], False
 
-    if current_user and current_user.get("role") == UserRole.SITE_ADMIN:
+    if current_user and current_user.get("role") == "site_admin":
         institutions = get_all_institutions()
         institution_ids = [
             inst["institution_id"]
@@ -112,19 +110,6 @@ def _resolve_institution_scope(require: bool = True):
         raise InstitutionContextMissingError()
 
     return current_user, [], False
-
-
-def _get_user_accessible_programs(institution_id: Optional[str] = None) -> List[str]:
-    """
-    Get list of program IDs accessible to the current user.
-
-    Args:
-        institution_id: Optional institution ID to scope programs to
-
-    Returns:
-        List of accessible program IDs
-    """
-    return auth_service.get_accessible_programs(institution_id)
 
 
 @api.before_request
@@ -155,7 +140,7 @@ def validate_context():
             return  # Let the auth decorators handle authentication
 
         # Site admins don't need context validation
-        if current_user.get("role") == UserRole.SITE_ADMIN:
+        if current_user.get("role") == "site_admin":
             return
 
         # Validate institution context for non-site-admin users
@@ -175,36 +160,8 @@ def validate_context():
                 400,
             )
 
-        # Set default program context if needed (for non-site-admin users)
-        current_program_id = get_current_program_id()
-        if not current_program_id and current_user.get("role") not in [
-            UserRole.SITE_ADMIN
-        ]:
-            # Get user's accessible programs
-            accessible_programs = auth_service.get_accessible_programs(institution_id)
-
-            if accessible_programs:
-                # Look for default program first
-                default_program_id = None
-                for prog_id in accessible_programs:
-                    program = get_program_by_id(prog_id)
-                    if program and program.get("is_default"):
-                        default_program_id = prog_id
-                        break
-
-                # If no default found, use first accessible program
-                if not default_program_id:
-                    default_program_id = accessible_programs[0]
-
-                # Set the default program context
-                if default_program_id:
-                    set_current_program_id(default_program_id)
-                    current_program_id = default_program_id
-                    logger.info(
-                        f"Auto-set default program context for user {current_user.get('user_id')}: {default_program_id}"
-                    )
-
         # Log context for debugging
+        current_program_id = get_current_program_id()
         logger.debug(
             f"Request context - User: {current_user.get('user_id')}, Institution: {institution_id}, Program: {current_program_id}"
         )
@@ -359,7 +316,7 @@ def get_institution_details(institution_id: str):
         # Users can only view their own institution unless they're site admin
         if (
             current_user.get("institution_id") != institution_id
-            and current_user.get("role") != UserRole.SITE_ADMIN
+            and current_user.get("role") != "site_admin"
         ):
             return jsonify({"success": False, "error": "Access denied"}), 403
 
@@ -693,14 +650,15 @@ def list_courses():
         program_id_override = request.args.get("program_id")
         current_program_id = get_current_program_id()
 
-        # Get user's accessible programs using the auth service
-        accessible_programs = _get_user_accessible_programs()
-
-        # Validate program override access
         if program_id_override:
-            if program_id_override not in accessible_programs and (
-                current_user and current_user.get("role") != UserRole.SITE_ADMIN.value
+            accessible_programs = (
+                current_user.get("program_ids", []) if current_user else []
+            )
+            if program_id_override in accessible_programs or (
+                current_user and current_user.get("role") == "site_admin"
             ):
+                current_program_id = program_id_override
+            else:
                 return (
                     jsonify(
                         {
@@ -710,7 +668,6 @@ def list_courses():
                     ),
                     403,
                 )
-            current_program_id = program_id_override
 
         department_filter = request.args.get("department")
 
@@ -740,26 +697,6 @@ def list_courses():
             else:
                 courses = get_all_courses(institution_id)
                 context_info = f"institution {institution_id}"
-
-        # Apply program filtering for non-site admins
-        if (
-            current_user
-            and current_user.get("role") != UserRole.SITE_ADMIN
-            and not current_program_id
-        ):
-            # Filter courses to only those in accessible programs
-            if accessible_programs:
-                courses = [
-                    c
-                    for c in courses
-                    if any(
-                        prog_id in accessible_programs
-                        for prog_id in c.get("program_ids", [])
-                    )
-                ]
-                context_info += (
-                    f", filtered to {len(accessible_programs)} accessible programs"
-                )
 
         return jsonify(
             {
@@ -906,7 +843,7 @@ def assign_course_to_default(course_id: str):
         institution_id = get_current_institution_id()
         if not institution_id:
             current_user = get_current_user()
-            if current_user and current_user.get("role") == UserRole.SITE_ADMIN:
+            if current_user and current_user.get("role") == "site_admin":
                 payload = request.get_json(silent=True) or {}
                 institution_id = payload.get("institution_id") or request.args.get(
                     "institution_id"
@@ -1121,7 +1058,7 @@ def create_program_api():
             return jsonify({"success": False, "error": "User not found"}), 400
 
         if not institution_id:
-            if current_user.get("role") == UserRole.SITE_ADMIN:
+            if current_user.get("role") == "site_admin":
                 institution_id = data.get("institution_id") or request.args.get(
                     "institution_id"
                 )
@@ -1504,29 +1441,19 @@ def list_sections():
     Query parameters:
     - instructor_id: Filter by instructor (optional)
     - term_id: Filter by term (optional)
-    - program_id: Filter by program (optional, requires appropriate permissions)
     """
     try:
         instructor_id = request.args.get("instructor_id")
         term_id = request.args.get("term_id")
-        program_id_filter = request.args.get("program_id")
 
         current_user = get_current_user()
-
-        # Get institution context
-        try:
-            _, institution_ids, is_global = _resolve_institution_scope()
-        except InstitutionContextMissingError:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
 
         # If no filters specified, determine default based on role
         if not instructor_id and not term_id:
             if current_user["role"] == "instructor":
                 # Instructors see only their own sections
                 instructor_id = current_user["user_id"]
+            # Program admins and site admins see all sections (no filter)
 
         # Apply filters
         if instructor_id:
@@ -1534,51 +1461,18 @@ def list_sections():
         elif term_id:
             sections = get_sections_by_term(term_id)
         else:
-            # Get sections for all accessible institutions
-            sections = []
-            for inst_id in institution_ids:
-                sections.extend(get_all_sections(inst_id))
+            # Get institution context - for development, use CEI
+            institution_id = get_current_institution_id()
+            if not institution_id:
+                return (
+                    jsonify(
+                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
+                    ),
+                    400,
+                )
+            sections = get_all_sections(institution_id)
 
-        # Apply program filtering for non-site admins
-        if current_user["role"] != UserRole.SITE_ADMIN:
-            # Get user's accessible programs
-            accessible_programs = _get_user_accessible_programs()
-
-            # If program filter specified, validate access
-            if program_id_filter:
-                if program_id_filter not in accessible_programs:
-                    return (
-                        jsonify(
-                            {
-                                "success": False,
-                                "error": "Access denied to specified program",
-                            }
-                        ),
-                        403,
-                    )
-                accessible_programs = [program_id_filter]
-
-            # Filter sections by accessible programs
-            # Note: Sections are linked to courses, and courses have program_ids
-            if accessible_programs:
-                # Get courses in accessible programs
-                accessible_courses = []
-                for inst_id in institution_ids:
-                    all_courses = get_all_courses(inst_id)
-                    for course in all_courses:
-                        course_programs = course.get("program_ids", [])
-                        if any(
-                            prog_id in accessible_programs
-                            for prog_id in course_programs
-                        ):
-                            accessible_courses.append(course.get("course_id"))
-
-                # Filter sections to those linked to accessible courses
-                sections = [
-                    s for s in sections if s.get("course_id") in accessible_courses
-                ]
-
-        # Filter based on instructor permissions
+        # Filter based on permissions
         if current_user["role"] == "instructor" and not has_permission(
             "view_all_sections"
         ):
@@ -1708,6 +1602,146 @@ def get_import_progress(progress_id: str):
     return jsonify(progress)
 
 
+@api.route("/import/excel", methods=["POST"])
+@permission_required("import_data")
+def import_excel_api():
+    """
+    Import data from Excel file with conflict resolution
+
+    Form data:
+    - file: Excel file upload
+    - conflict_strategy: "use_mine", "use_theirs", "merge", or "manual_review"
+    - dry_run: "true" or "false" (optional, default false)
+    - adapter_name: Import adapter to use (optional, default "cei_excel_adapter")
+    """
+    try:
+        # Check if file was uploaded
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "No file uploaded"}), 400
+
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"success": False, "error": "No file selected"}), 400
+
+        # Get parameters
+        conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
+        dry_run = request.form.get("dry_run", "false").lower() == "true"
+        adapter_name = request.form.get("adapter_name", "cei_excel_adapter")
+        delete_existing_db = (
+            request.form.get("delete_existing_db", "false").lower() == "true"
+        )
+        verbose = request.form.get("verbose_output", "false").lower() == "true"
+
+        # Validate file type
+        if not file.filename.lower().endswith((XLSX_EXTENSION, ".xls")):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Invalid file type. Only Excel files (.xlsx, .xls) are supported.",
+                    }
+                ),
+                400,
+            )
+
+        # Save uploaded file temporarily
+        import os
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=XLSX_EXTENSION
+        ) as temp_file:
+            file.save(temp_file.name)
+            temp_file_path = temp_file.name
+
+        # Create progress tracker
+        progress_id = create_progress_tracker()
+
+        # Start import in background thread
+        import threading
+
+        def create_progress_callback(progress_id: str):
+            """Create a progress callback function for the given progress_id"""
+
+            def progress_callback(**kwargs):
+                update_progress(progress_id, **kwargs)
+
+            return progress_callback
+
+        def run_import():
+            try:
+                update_progress(
+                    progress_id, status="running", message="Starting import..."
+                )
+
+                # Perform the import
+                institution_id = get_current_institution_id()
+                if not institution_id:
+                    raise ValueError("Unable to determine current institution ID")
+
+                result = import_excel(
+                    file_path=temp_file_path,
+                    institution_id=institution_id,
+                    conflict_strategy=conflict_strategy,
+                    dry_run=dry_run,
+                    adapter_name=adapter_name,
+                    delete_existing_db=delete_existing_db,
+                    verbose=verbose,
+                    progress_callback=create_progress_callback(progress_id),
+                )
+
+                # Update with final results
+                update_progress(
+                    progress_id,
+                    status="completed",
+                    percentage=100,
+                    message=(
+                        "Import completed successfully!"
+                        if result.success
+                        else "Import failed"
+                    ),
+                    result=result,
+                )
+
+            except Exception as e:
+                update_progress(
+                    progress_id, status="error", message=f"Import failed: {str(e)}"
+                )
+            finally:
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_file_path)
+                except OSError:
+                    pass
+
+                # Clean up progress tracker after a delay to allow final status retrieval
+                def delayed_cleanup():
+                    time.sleep(30)  # Wait 30 seconds before cleanup
+                    cleanup_progress(progress_id)
+
+                cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
+                cleanup_thread.start()
+
+        # Start background thread
+        thread = threading.Thread(target=run_import, daemon=True)
+        thread.start()
+
+        # Return progress ID immediately
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "progress_id": progress_id,
+                    "message": "Import started. Use /api/import/progress/{progress_id} to track progress.",
+                }
+            ),
+            202,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "Excel import", "Failed to process file upload")
+
+
 @api.route("/import/validate", methods=["POST"])
 @permission_required("import_data")
 def validate_import_file():
@@ -1720,10 +1754,10 @@ def validate_import_file():
     """
     try:
         # Check if file was uploaded
-        if "excel_file" not in request.files:
-            return jsonify({"success": False, "error": "No Excel file provided"}), 400
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "No file uploaded"}), 400
 
-        file = request.files["excel_file"]
+        file = request.files["file"]
         if file.filename == "":
             return jsonify({"success": False, "error": "No file selected"}), 400
 
@@ -2818,6 +2852,9 @@ def reset_status_api(email):
 @api.route("/import/excel", methods=["POST"])
 @login_required
 def excel_import_api():
+    # TEMP DEBUG: Log function entry
+    import logging
+    logging.getLogger('werkzeug').info("TEMP DEBUG: excel_import_api function called")
     """
     Import data from Excel file
 
@@ -2857,19 +2894,6 @@ def excel_import_api():
         logger.info(
             f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
         )
-
-        # Validate file type
-        if not file.filename.lower().endswith((".xlsx", ".xls")):
-            logger.warning(f"Invalid file type: {file.filename}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid file type. Only Excel files (.xlsx, .xls) are supported.",
-                    }
-                ),
-                400,
-            )
 
         # Get form parameters
         import_adapter = request.form.get("import_adapter", "cei_excel_adapter")
