@@ -445,6 +445,18 @@ class ImportService:
 
             self.stats["conflicts_resolved"] += len(conflicts)
 
+            # Track processed users in dry run mode even when conflicts exist
+            if dry_run:
+                email = user_data.get("email")
+                if email and email not in self._processed_users:
+                    self._processed_users.add(email)
+                    self._log(
+                        f"DRY RUN: Would process user with conflicts: {email}",
+                        "summary",
+                    )
+                elif email:
+                    self._log(f"DRY RUN: User already processed: {email}", "debug")
+
         else:
             # No conflicts, create new user
             if not dry_run:

@@ -65,5 +65,4 @@ def setup_integration_test_data():
                 print("ℹ️  CEI institution already exists for integration tests")
         except Exception as fallback_e:
             print(f"⚠️  Warning: Fallback CEI creation also failed: {fallback_e}")
-        # Don't fail the tests if this setup fails - let individual tests handle it
-        pass
+            # Don't fail the tests if this setup fails - let individual tests handle it

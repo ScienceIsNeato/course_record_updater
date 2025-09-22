@@ -566,17 +566,8 @@ class DashboardService:
         course_index: Dict[Any, Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         faculty_lookup = {member.get("user_id"): member for member in faculty}
-
-        courses_by_program: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for course in courses:
-            for program_id in self._course_program_ids(course):
-                courses_by_program[program_id].append(course)
-
-        sections_by_course: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for section in sections:
-            course_id = section.get("course_id") or section.get("courseId")
-            if course_id:
-                sections_by_course[course_id].append(section)
+        courses_by_program = self._group_courses_by_program(courses)
+        sections_by_course = self._group_sections_by_course(sections)
 
         metrics: List[Dict[str, Any]] = []
         for program in programs:
@@ -584,58 +575,109 @@ class DashboardService:
             if not program_id:
                 continue
 
-            program_courses = courses_by_program.get(program_id, [])
-            seen_course_ids = set()
-            course_summaries = []
-            program_sections: List[Dict[str, Any]] = []
+            program_metric = self._build_single_program_metric(
+                program,
+                program_id,
+                courses_by_program,
+                sections_by_course,
+                faculty_lookup,
+            )
+            metrics.append(program_metric)
 
-            for course in program_courses:
-                course_id = course.get("course_id") or course.get("id")
-                if not course_id or course_id in seen_course_ids:
-                    continue
-                seen_course_ids.add(course_id)
-                course_sections = sections_by_course.get(course_id, [])
-                program_sections.extend(course_sections)
-                course_summaries.append(
-                    {
-                        "course_id": course_id,
-                        "course_number": course.get("course_number")
-                        or course.get("number")
-                        or course.get("code"),
-                        "course_title": course.get("course_title")
-                        or course.get("title")
-                        or course.get("name"),
-                        "section_count": len(course_sections),
-                        "enrollment": self._total_enrollment(course_sections),
-                    }
-                )
+        return metrics
 
-            faculty_ids = {
-                section.get("instructor_id")
-                for section in program_sections
-                if section.get("instructor_id")
-            }
-            faculty_details = [
-                faculty_lookup[fid] for fid in faculty_ids if fid in faculty_lookup
-            ]
+    def _group_courses_by_program(
+        self, courses: Sequence[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Group courses by their program IDs."""
+        courses_by_program: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for course in courses:
+            for program_id in self._course_program_ids(course):
+                courses_by_program[program_id].append(course)
+        return courses_by_program
 
-            metrics.append(
+    def _group_sections_by_course(
+        self, sections: Sequence[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Group sections by their course IDs."""
+        sections_by_course: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for section in sections:
+            course_id = section.get("course_id") or section.get("courseId")
+            if course_id:
+                sections_by_course[course_id].append(section)
+        return sections_by_course
+
+    def _build_single_program_metric(
+        self,
+        program: Dict[str, Any],
+        program_id: str,
+        courses_by_program: Dict[str, List[Dict[str, Any]]],
+        sections_by_course: Dict[str, List[Dict[str, Any]]],
+        faculty_lookup: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Build metrics for a single program."""
+        program_courses = courses_by_program.get(program_id, [])
+        course_summaries, program_sections = self._process_program_courses(
+            program_courses, sections_by_course
+        )
+
+        faculty_ids = {
+            section.get("instructor_id")
+            for section in program_sections
+            if section.get("instructor_id")
+        }
+        faculty_details = [
+            faculty_lookup[fid] for fid in faculty_ids if fid in faculty_lookup
+        ]
+
+        return {
+            "program_id": program_id,
+            "program_name": program.get("name") or program_id,
+            "program_short_name": program.get("short_name"),
+            "program_admins": program.get("program_admins", []),
+            "course_count": len(course_summaries),
+            "section_count": len(program_sections),
+            "faculty_count": len(faculty_ids),
+            "student_count": self._total_enrollment(program_sections),
+            "assessment_progress": self._calculate_progress(program_sections),
+            "courses": course_summaries,
+            "faculty": faculty_details,
+        }
+
+    def _process_program_courses(
+        self,
+        program_courses: List[Dict[str, Any]],
+        sections_by_course: Dict[str, List[Dict[str, Any]]],
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Process courses for a program, returning course summaries and all sections."""
+        seen_course_ids = set()
+        course_summaries = []
+        program_sections: List[Dict[str, Any]] = []
+
+        for course in program_courses:
+            course_id = course.get("course_id") or course.get("id")
+            if not course_id or course_id in seen_course_ids:
+                continue
+            seen_course_ids.add(course_id)
+
+            course_sections = sections_by_course.get(course_id, [])
+            program_sections.extend(course_sections)
+
+            course_summaries.append(
                 {
-                    "program_id": program_id,
-                    "program_name": program.get("name") or program_id,
-                    "program_short_name": program.get("short_name"),
-                    "program_admins": program.get("program_admins", []),
-                    "course_count": len(seen_course_ids),
-                    "section_count": len(program_sections),
-                    "faculty_count": len(faculty_ids),
-                    "student_count": self._total_enrollment(program_sections),
-                    "assessment_progress": self._calculate_progress(program_sections),
-                    "courses": course_summaries,
-                    "faculty": faculty_details,
+                    "course_id": course_id,
+                    "course_number": course.get("course_number")
+                    or course.get("number")
+                    or course.get("code"),
+                    "course_title": course.get("course_title")
+                    or course.get("title")
+                    or course.get("name"),
+                    "section_count": len(course_sections),
+                    "enrollment": self._total_enrollment(course_sections),
                 }
             )
 
-        return metrics
+        return course_summaries, program_sections
 
     def _annotate_program(
         self,

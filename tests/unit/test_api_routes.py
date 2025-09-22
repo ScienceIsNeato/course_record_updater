@@ -5,12 +5,11 @@ import json
 # Unused imports removed
 from unittest.mock import patch
 
+import pytest
+
 # Import the API blueprint and related modules
 from api_routes import api
 from app import app
-
-# pytest import removed
-# Flask import removed
 
 # Test constants to avoid hard-coded values
 TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
@@ -2961,3 +2960,55 @@ class TestAPIRoutesExtended:
         data = response.get_json()
         assert data["success"] is True
         assert len(data["courses"]) == 1
+
+
+class TestAPIRoutesHelpers:
+    """Test helper functions in API routes."""
+
+    def test_get_user_accessible_programs(self):
+        """Test _get_user_accessible_programs calls auth service correctly."""
+        from api_routes import _get_user_accessible_programs
+
+        with patch(
+            "api_routes.auth_service.get_accessible_programs",
+            return_value=["prog1", "prog2"],
+        ) as mock_get:
+            result = _get_user_accessible_programs("inst123")
+            assert result == ["prog1", "prog2"]
+            mock_get.assert_called_once_with("inst123")
+
+    def test_create_progress_tracker(self):
+        """Test create_progress_tracker function."""
+        from api_routes import create_progress_tracker
+
+        progress_id = create_progress_tracker()
+        assert isinstance(progress_id, str)
+        assert len(progress_id) > 0
+
+    def test_update_progress(self):
+        """Test update_progress function."""
+        from api_routes import create_progress_tracker, update_progress
+
+        progress_id = create_progress_tracker()
+        update_progress(progress_id, status="processing", message="Test update")
+        # Should not raise an exception
+
+    def test_get_progress(self):
+        """Test get_progress function."""
+        from api_routes import create_progress_tracker, get_progress, update_progress
+
+        progress_id = create_progress_tracker()
+        update_progress(progress_id, status="processing", message="Test message")
+
+        progress = get_progress(progress_id)
+        assert isinstance(progress, dict)
+        assert progress.get("status") == "processing"
+        assert progress.get("message") == "Test message"
+
+    def test_cleanup_progress(self):
+        """Test cleanup_progress function."""
+        from api_routes import cleanup_progress, create_progress_tracker
+
+        progress_id = create_progress_tracker()
+        cleanup_progress(progress_id)
+        # Should not raise an exception

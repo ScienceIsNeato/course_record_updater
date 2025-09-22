@@ -79,3 +79,6 @@ class Permission:
 DEPARTMENT_COMPUTER_SCIENCE = "Computer Science"
 DEPARTMENT_ELECTRICAL_ENGINEERING = "Electrical Engineering"
 PROGRAM_DEFAULT_DESCRIPTION = "Default program for unassigned courses"
+
+# Authentication error messages
+ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
