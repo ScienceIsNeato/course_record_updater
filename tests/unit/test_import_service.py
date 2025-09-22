@@ -805,9 +805,10 @@ class TestImportServiceEdgeCases:
 
         conflicts = service.detect_user_conflict(import_user)
 
-        # Should detect conflicts in last_name and department
-        assert len(conflicts) == 2
+        # Should detect existence conflict plus conflicts in last_name and department
+        assert len(conflicts) == 3
         conflict_fields = [c.field_name for c in conflicts]
+        assert "_existence" in conflict_fields  # New existence conflict
         assert "last_name" in conflict_fields
         assert "department" in conflict_fields
 
@@ -843,8 +844,10 @@ class TestImportServiceEdgeCases:
 
         conflicts = service.detect_user_conflict(import_user)
 
-        # Should detect no conflicts
-        assert len(conflicts) == 0
+        # Should detect existence conflict only (user exists but with identical data)
+        assert len(conflicts) == 1
+        assert conflicts[0].field_name == "_existence"
+        assert conflicts[0].entity_key == "john@example.com"
 
     def test_excel_file_read_exception(self):
         """Test import_excel_file when Excel reading fails"""
