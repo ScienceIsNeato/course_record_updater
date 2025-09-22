@@ -2887,13 +2887,57 @@ def excel_import_api():
             return jsonify({"success": False, "error": "Authentication required"}), 401
 
         user_role = current_user.get("role")
-        institution_id = current_user.get("institution_id")
+        user_institution_id = current_user.get("institution_id")
+
+        # Determine institution_id based on user role and adapter
+        if user_role == "site_admin":
+            # Site admins can import for any institution - let adapter determine it
+            if import_adapter == "cei_excel_adapter":
+                # CEI adapter always imports for CEI institution
+                from database_service import create_default_cei_institution
+
+                institution_id = create_default_cei_institution()
+                if not institution_id:
+                    return (
+                        jsonify(
+                            {
+                                "success": False,
+                                "error": "Failed to create/find CEI institution",
+                            }
+                        ),
+                        500,
+                    )
+            else:
+                # For other adapters, site admin needs to specify institution
+                # TODO: Add institution selection UI for site admins
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Site admin must specify target institution for non-CEI adapters",
+                        }
+                    ),
+                    400,
+                )
+        else:
+            # Institution/program admins use their own institution
+            institution_id = user_institution_id
+            if not institution_id:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "User has no associated institution",
+                        }
+                    ),
+                    403,
+                )
 
         # Role-based permission checks
         allowed_data_types = {
             "site_admin": ["institutions", "programs", "courses", "users"],
             "institution_admin": ["programs", "courses", "faculty", "students"],
-            "program_admin": ["courses", "sections", "students", "assessments"],
+            "program_admin": [],  # Program admins cannot import per requirements
             "instructor": [],  # Instructors cannot import
         }
 
