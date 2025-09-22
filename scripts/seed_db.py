@@ -28,7 +28,6 @@ from constants import (
     DEPARTMENT_COMPUTER_SCIENCE,
     DEPARTMENT_ELECTRICAL_ENGINEERING,
     PROGRAM_DEFAULT_DESCRIPTION,
-
     SITE_ADMIN_INSTITUTION_ID,
 )
 from models import Course, Institution, Program, Term, User, UserInvitation

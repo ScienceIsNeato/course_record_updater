@@ -707,22 +707,15 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Run SonarCloud analysis using sonar-project.properties
-      echo "🔧 Running SonarCloud analysis..."
-      SONAR_OUTPUT=$(sonar-scanner \
-        -Dsonar.host.url=https://sonarcloud.io \
-        -Dsonar.login="$SONAR_TOKEN" 2>&1) || SONAR_FAILED=true
-
-      if [[ "$SONAR_FAILED" != "true" ]]; then
+      # Run SonarCloud quality gate check (get actionable issues)
+      echo "🔧 Checking SonarCloud quality gate status..."
+      if python scripts/sonar_issues_scraper.py --project-key course-record-updater; then
         echo "✅ SonarCloud Analysis: PASSED"
-        add_success "SonarCloud Analysis" "Code quality analysis completed successfully"
+        add_success "SonarCloud Analysis" "All quality gate conditions met"
       else
         echo "❌ SonarCloud Analysis: FAILED"
-        echo "📋 SonarCloud Analysis Output:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "$SONAR_OUTPUT" | tail -20 | sed 's/^/  /'
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        add_failure "SonarCloud Analysis" "Quality analysis failed" "Check SonarCloud project configuration and fix quality issues"
+        echo "📋 See detailed issues above for specific fixes needed"
+        add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
         SONAR_PASSED=false
       fi
     fi
