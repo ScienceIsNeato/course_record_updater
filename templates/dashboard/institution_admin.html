@@ -228,14 +228,8 @@
 <script src="{{ url_for('static', filename='institution_dashboard.js') }}"></script>
 <script>
     // Institution Data Management Functions
-    function institutionQuickImport() {
-        alert('Quick Import feature coming soon! Select a specific data type to import.');
-    }
-
-    function institutionImportData(type) {
-        alert(`Import ${type} feature coming soon!`);
-    }
-
+    // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
+    
     function institutionQuickExport() {
         const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
         alert(`Quick Export (${format}) feature coming soon!`);
