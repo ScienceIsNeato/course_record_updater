@@ -42,6 +42,20 @@ python scripts/ship_it.py --validation-type PR
 pre-commit install
 ```
 
+### Git Operations - AI Integrity Protocol
+**ALL git operations must use the wrapper script:**
+```bash
+# Instead of: git status
+./git_wrapper.sh status
+
+# Instead of: git add .
+./git_wrapper.sh add .
+
+# For commits: Create COMMIT_MSG.txt with your message, then:
+./git_wrapper.sh commit
+```
+This wrapper prevents quality gate bypass violations and enforces proper commit message handling.
+
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
 ## 🧪 Manual Testing & UAT
