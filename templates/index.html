@@ -214,12 +214,12 @@
                 <!-- Progress and Results -->
                 <div id="importProgress" class="mt-4" style="display: none;">
                     <div class="progress mb-3">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        <progress class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%" value="0" max="100"></progress>
                     </div>
                     <div id="importStatus" class="text-center">
-                        <div class="spinner-border text-info" role="status">
+                        <output class="spinner-border text-info">
                             <span class="visually-hidden">Processing...</span>
-                        </div>
+                        </output>
                         <p class="mt-2">Processing import...</p>
                     </div>
                 </div>
@@ -245,9 +245,9 @@
                                 <h5 class="card-title">Courses</h5>
                                 <p class="card-text">Manage course catalog</p>
                                 <div id="coursesData">
-                                    <div class="spinner-border spinner-border-sm" role="status">
+                                    <output class="spinner-border spinner-border-sm">
                                         <span class="visually-hidden">Loading...</span>
-                                    </div>
+                                    </output>
                                     <small class="text-muted ms-2">Loading...</small>
                                 </div>
                             </div>
@@ -259,9 +259,9 @@
                                 <h5 class="card-title">Instructors</h5>
                                 <p class="card-text">Manage faculty</p>
                                 <div id="instructorsData">
-                                    <div class="spinner-border spinner-border-sm" role="status">
+                                    <output class="spinner-border spinner-border-sm">
                                         <span class="visually-hidden">Loading...</span>
-                                    </div>
+                                    </output>
                                     <small class="text-muted ms-2">Loading...</small>
                                 </div>
                             </div>
@@ -273,9 +273,9 @@
                                 <h5 class="card-title">Sections</h5>
                                 <p class="card-text">Manage course sections</p>
                                 <div id="sectionsData">
-                                    <div class="spinner-border spinner-border-sm" role="status">
+                                    <output class="spinner-border spinner-border-sm">
                                         <span class="visually-hidden">Loading...</span>
-                                    </div>
+                                    </output>
                                     <small class="text-muted ms-2">Loading...</small>
                                 </div>
                             </div>
@@ -287,9 +287,9 @@
                                 <h5 class="card-title">Terms</h5>
                                 <p class="card-text">Manage academic terms</p>
                                 <div id="termsData">
-                                    <div class="spinner-border spinner-border-sm" role="status">
+                                    <output class="spinner-border spinner-border-sm">
                                         <span class="visually-hidden">Loading...</span>
-                                    </div>
+                                    </output>
                                     <small class="text-muted ms-2">Loading...</small>
                                 </div>
                             </div>
@@ -344,11 +344,11 @@
                 // Show user info with dropdown
                 userInfo.innerHTML = `
                     <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <button class="nav-link dropdown-toggle text-light btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
                             ${user.first_name} ${user.last_name}
                             <span class="badge bg-secondary ms-1">${user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                        </a>
+                        </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
                             <li><a class="dropdown-item" href="/profile"><i class="fas fa-user me-2"></i>Profile</a></li>

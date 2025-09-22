@@ -6,8 +6,8 @@ This script provides a command-line interface for importing course data
 with various conflict resolution strategies and dry-run capabilities.
 
 Usage:
-    python import_cli.py --file data.xlsx --use-theirs
-    python import_cli.py --file data.xlsx --use-mine --dry-run
+    python import_cli.py --file data.xlsx --institution-id inst-123 --use-theirs
+    python import_cli.py --file data.xlsx --institution-id inst-123 --use-mine --dry-run
     python import_cli.py --file data.xlsx --manual-review
 """
 
@@ -55,6 +55,9 @@ Options:
     # Required arguments
     parser.add_argument(
         "--file", "-f", required=True, help="Path to the Excel file to import"
+    )
+    parser.add_argument(
+        "--institution-id", required=True, help="Institution ID for the import"
     )
 
     # Conflict resolution strategies (mutually exclusive)

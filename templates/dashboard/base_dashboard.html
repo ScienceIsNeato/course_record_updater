@@ -27,11 +27,11 @@
             <!-- User Info -->
             <div class="navbar-nav">
                 <div class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                    <button class="nav-link dropdown-toggle btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                         <i class="fas fa-user-circle me-1"></i>
                         {{ user.first_name }} {{ user.last_name }}
                         <span class="badge bg-secondary ms-1">{{ user.role.replace('_', ' ').title() }}</span>
-                    </a>
+                    </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
