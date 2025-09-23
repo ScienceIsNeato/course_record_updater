@@ -432,7 +432,7 @@ class TestInvitationServiceManagement:
     def test_resend_invitation_expired_extends_expiry(self, mock_db):
         """Test resending expired invitation extends expiry"""
         # Setup
-        past_date = datetime.utcnow() - timedelta(days=1)
+        past_date = datetime.now(timezone.utc) - timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -456,6 +456,9 @@ class TestInvitationServiceManagement:
             mock_db.update_invitation.assert_called_once()
             update_call = mock_db.update_invitation.call_args[0][1]
             new_expires_at = datetime.fromisoformat(update_call["expires_at"])
+            # Make timezone-aware if needed for comparison
+            if new_expires_at.tzinfo is None:
+                new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
             assert new_expires_at > datetime.now(timezone.utc)
 
     @patch("invitation_service.db")
