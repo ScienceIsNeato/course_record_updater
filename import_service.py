@@ -380,6 +380,128 @@ class ImportService:
 
         return True, conflicts
 
+    def _extract_user_email(self, user_data: Dict[str, Any]) -> str:
+        """Extract email from user data safely."""
+        return user_data.get("email", "unknown")
+
+    def _handle_user_conflicts(
+        self,
+        conflicts: List[ConflictRecord],
+        user_data: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> bool:
+        """Handle user conflicts based on strategy."""
+        if not conflicts:
+            return True
+
+        self.stats["conflicts_detected"] += len(conflicts)
+
+        # Resolve conflicts based on strategy
+        for conflict in conflicts:
+            resolution = self.resolve_conflict(conflict, strategy)
+            self.logger.info(f"[Import] User conflict resolved: {resolution}")
+
+        # Apply resolution if not dry run
+        if not dry_run:
+            return self._apply_conflict_resolution(conflicts, user_data, strategy)
+        else:
+            return self._handle_dry_run_conflicts(user_data)
+
+    def _apply_conflict_resolution(
+        self,
+        conflicts: List[ConflictRecord],
+        user_data: Dict[str, Any],
+        strategy: ConflictStrategy,
+    ) -> bool:
+        """Apply conflict resolution strategy."""
+        if strategy == ConflictStrategy.USE_THEIRS:
+            return self._update_existing_user(conflicts, user_data)
+        elif strategy == ConflictStrategy.USE_MINE:
+            return self._skip_user_import(user_data)
+        return True
+
+    def _update_existing_user(
+        self, conflicts: List[ConflictRecord], user_data: Dict[str, Any]
+    ) -> bool:
+        """Update existing user with import data."""
+        field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
+        email = self._extract_user_email(user_data)
+
+        if field_conflicts:
+            existing_user = get_user_by_email(email)
+            if existing_user:
+                # NOTE: update_user function will be implemented when user update features are added
+                # update_user_extended(existing_user['user_id'], user_data)
+                self.stats["records_updated"] += 1
+                self.logger.info(f"[Import] Updated user: {email}")
+                return True
+            else:
+                self.stats["errors"].append(f"User not found for update: {email}")
+                return False
+        else:
+            # User exists with identical data - no action needed
+            self.stats["records_skipped"] += 1
+            self._log(f"User already exists with identical data: {email}", "debug")
+            return True
+
+    def _skip_user_import(self, user_data: Dict[str, Any]) -> bool:
+        """Skip user import, keeping existing data."""
+        self.stats["records_skipped"] += 1
+        email = self._extract_user_email(user_data)
+        self.logger.info(f"[Import] Skipped user (keeping existing): {email}")
+        return True
+
+    def _handle_dry_run_conflicts(self, user_data: Dict[str, Any]) -> bool:
+        """Handle conflicts in dry run mode."""
+        email = self._extract_user_email(user_data)
+        if email and email not in self._processed_users:
+            self._processed_users.add(email)
+            self._log(f"DRY RUN: Would process user with conflicts: {email}", "summary")
+        elif email:
+            self._log(f"DRY RUN: User already processed: {email}", "debug")
+        return True
+
+    def _create_new_user(self, user_data: Dict[str, Any], dry_run: bool) -> bool:
+        """Create a new user."""
+        email = self._extract_user_email(user_data)
+
+        if not dry_run:
+            return self._execute_user_creation(user_data, email)
+        else:
+            return self._handle_dry_run_creation(email)
+
+    def _execute_user_creation(self, user_data: Dict[str, Any], email: str) -> bool:
+        """Execute actual user creation."""
+        try:
+            user_id = create_user(user_data)
+            if user_id:
+                self.stats["records_created"] += 1
+                if email not in self._processed_users:
+                    self._processed_users.add(email)
+                    self._log(f"Created user: {email}", "summary")
+                else:
+                    self._log(f"User already processed: {email}", "debug")
+                return True
+            else:
+                self.stats["errors"].append(
+                    f"Failed to create user: {email} - database returned None"
+                )
+                return False
+        except Exception as e:
+            self.stats["errors"].append(f"Error creating user {email}: {str(e)}")
+            self.logger.error(f"Exception during user creation: {e}")
+            return False
+
+    def _handle_dry_run_creation(self, email: str) -> bool:
+        """Handle user creation in dry run mode."""
+        if email not in self._processed_users:
+            self._processed_users.add(email)
+            self._log(f"DRY RUN: Would create user: {email}", "summary")
+        else:
+            self._log(f"DRY RUN: User already processed: {email}", "debug")
+        return True
+
     def process_user_import(
         self,
         user_data: Dict[str, Any],
@@ -397,100 +519,19 @@ class ImportService:
         Returns:
             Tuple of (success, conflicts)
         """
+        # Detect conflicts
         conflicts = self.detect_user_conflict(user_data)
 
+        # Handle conflicts or create new user
         if conflicts:
-            self.stats["conflicts_detected"] += len(conflicts)
-
-            # Resolve conflicts based on strategy
-            for conflict in conflicts:
-                resolution = self.resolve_conflict(conflict, strategy)
-                self.logger.info(f"[Import] User conflict resolved: {resolution}")
-
-            # Apply resolution if not dry run
-            if not dry_run and strategy == ConflictStrategy.USE_THEIRS:
-                # Check if there are actual field differences that need updating
-                field_conflicts = [c for c in conflicts if c.field_name != "_existence"]
-
-                if field_conflicts:
-                    # Update existing user with import data
-                    email = user_data["email"]
-                    existing_user = get_user_by_email(email)
-
-                    if existing_user:
-                        # NOTE: update_user function will be implemented when user update features are added
-                        # update_user_extended(existing_user['user_id'], user_data)
-                        self.stats["records_updated"] += 1
-                        self.logger.info(f"[Import] Updated user: {email}")
-                    else:
-                        self.stats["errors"].append(
-                            f"User not found for update: {email}"
-                        )
-                        return False, conflicts
-                else:
-                    # User exists with identical data - no action needed
-                    self.stats["records_skipped"] += 1
-                    email = user_data.get("email")
-                    self._log(
-                        f"User already exists with identical data: {email}",
-                        "debug",
-                    )
-
-            elif strategy == ConflictStrategy.USE_MINE:
-                # Skip the import, keep existing
-                self.stats["records_skipped"] += 1
-                self.logger.info(
-                    f"[Import] Skipped user (keeping existing): {user_data.get('email')}"
-                )
-
+            success = self._handle_user_conflicts(
+                conflicts, user_data, strategy, dry_run
+            )
             self.stats["conflicts_resolved"] += len(conflicts)
-
-            # Track processed users in dry run mode even when conflicts exist
-            if dry_run:
-                email = user_data.get("email")
-                if email and email not in self._processed_users:
-                    self._processed_users.add(email)
-                    self._log(
-                        f"DRY RUN: Would process user with conflicts: {email}",
-                        "summary",
-                    )
-                elif email:
-                    self._log(f"DRY RUN: User already processed: {email}", "debug")
-
         else:
-            # No conflicts, create new user
-            if not dry_run:
-                try:
-                    user_id = create_user(user_data)
+            success = self._create_new_user(user_data, dry_run)
 
-                    if user_id:
-                        self.stats["records_created"] += 1
-                        email = user_data.get("email")
-                        if email not in self._processed_users:
-                            self._processed_users.add(email)
-                            self._log(f"Created user: {email}", "summary")
-                        else:
-                            self._log(f"User already processed: {email}", "debug")
-                    else:
-                        self.stats["errors"].append(
-                            f"Failed to create user: {user_data.get('email')} - database returned None"
-                        )
-                        return False, conflicts
-                except Exception as e:
-                    self.stats["errors"].append(
-                        f"Error creating user {user_data.get('email')}: {str(e)}"
-                    )
-                    self.logger.error(f"Exception during user creation: {e}")
-                    return False, conflicts
-            else:
-                email = user_data.get("email")
-                if email not in self._processed_users:
-                    self._processed_users.add(email)
-                    self._log(f"DRY RUN: Would create user: {email}", "summary")
-                else:
-                    self._log(f"DRY RUN: User already processed: {email}", "debug")
-
-        return True, conflicts
+        return success, conflicts
 
     def _validate_and_load_excel_file(self, file_path: str) -> Optional[pd.DataFrame]:
         """Validate file exists and load Excel data."""
