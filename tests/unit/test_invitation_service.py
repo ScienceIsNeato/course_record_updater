@@ -4,7 +4,7 @@ Unit tests for invitation_service.py
 Tests the InvitationService class and its methods for user invitation functionality.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, patch
 
@@ -456,7 +456,7 @@ class TestInvitationServiceManagement:
             mock_db.update_invitation.assert_called_once()
             update_call = mock_db.update_invitation.call_args[0][1]
             new_expires_at = datetime.fromisoformat(update_call["expires_at"])
-            assert new_expires_at > datetime.utcnow()
+            assert new_expires_at > datetime.now(timezone.utc)
 
     @patch("invitation_service.db")
     def test_get_invitation_status_success(self, mock_db):
