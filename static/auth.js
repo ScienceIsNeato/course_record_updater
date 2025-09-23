@@ -182,7 +182,7 @@ function initializeFormValidation() {
 // Validation Functions
 function validateEmail() {
   const email = this.value.trim();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   if (!email) {
     setValidationState(this, false, 'Email is required');

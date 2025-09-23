@@ -149,7 +149,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending verification email to {email}")
+        logger.info(
+            f"[Email Service] Sending verification email to {logger.sanitize(email)}"
+        )
 
         verification_url = EmailService._build_verification_url(verification_token)
 
@@ -180,7 +182,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending password reset email to {email}")
+        logger.info(
+            f"[Email Service] Sending password reset email to {logger.sanitize(email)}"
+        )
 
         reset_url = EmailService._build_password_reset_url(reset_token)
 
@@ -247,7 +251,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending invitation email to {email}")
+        logger.info(
+            f"[Email Service] Sending invitation email to {logger.sanitize(email)}"
+        )
 
         invitation_url = EmailService._build_invitation_url(invitation_token)
 
@@ -288,7 +294,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending welcome email to {email}")
+        logger.info(
+            f"[Email Service] Sending welcome email to {logger.sanitize(email)}"
+        )
 
         dashboard_url = EmailService._build_dashboard_url()
 
@@ -381,14 +389,18 @@ class EmailService:
             server.send_message(msg)
             server.quit()
 
-            logger.info(f"[Email Service] Email sent successfully to {to_email}")
+            logger.info(
+                f"[Email Service] Email sent successfully to {logger.sanitize(to_email)}"
+            )
             return True
 
         except EmailServiceError:
             # Re-raise EmailServiceError (protection errors) to caller
             raise
         except Exception as e:
-            logger.error(f"[Email Service] Failed to send email to {to_email}: {e}")
+            logger.error(
+                f"[Email Service] Failed to send email to {logger.sanitize(to_email)}: {e}"
+            )
             return False
 
     @staticmethod

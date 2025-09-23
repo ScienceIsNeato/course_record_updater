@@ -1841,7 +1841,9 @@ def get_program_by_id(program_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Program dictionary if found, None otherwise
     """
-    logger.info(f"[DB Service] get_program_by_id called for: {program_id}")
+    logger.info(
+        f"[DB Service] get_program_by_id called for: {sanitize_for_logging(program_id)}"
+    )
 
     try:
         with db_operation_timeout():
@@ -1851,14 +1853,20 @@ def get_program_by_id(program_id: str) -> Optional[Dict[str, Any]]:
             if program_doc.exists:
                 program_data = program_doc.to_dict()
                 program_data["id"] = program_doc.id
-                logger.info(f"[DB Service] Retrieved program: {program_id}")
+                logger.info(
+                    f"[DB Service] Retrieved program: {sanitize_for_logging(program_id)}"
+                )
                 return program_data
             else:
-                logger.info(f"[DB Service] Program not found: {program_id}")
+                logger.info(
+                    f"[DB Service] Program not found: {sanitize_for_logging(program_id)}"
+                )
                 return None
 
     except Exception as e:
-        logger.error(f"[DB Service] Error retrieving program {program_id}: {e}")
+        logger.error(
+            f"[DB Service] Error retrieving program {sanitize_for_logging(program_id)}: {e}"
+        )
         return None
 
 

@@ -6,11 +6,52 @@ It ensures uniform formatting, levels, and handler configuration.
 """
 
 import logging
+import re
 import sys
 from pathlib import Path
+from typing import cast
 
 
-def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+class SecureLogger(logging.Logger):
+    """
+    Custom logger with built-in sanitization for user-controlled data.
+
+    Prevents log injection attacks by providing sanitized logging methods.
+    """
+
+    def sanitize(self, value, max_length: int = 50) -> str:
+        """
+        Sanitize user-controlled data for safe logging.
+
+        Prevents log injection attacks by:
+        - Limiting string length
+        - Removing newlines and control characters
+        - Converting to string safely
+
+        Args:
+            value: The value to sanitize (any type)
+            max_length: Maximum length of output string
+
+        Returns:
+            Sanitized string safe for logging
+        """
+        if value is None:
+            return "None"
+
+        # Convert to string and limit length
+        sanitized = str(value)[:max_length]
+
+        # Remove newlines, carriage returns, and other control characters
+        sanitized = re.sub(r"[\r\n\t\x00-\x1f\x7f-\x9f]", "_", sanitized)
+
+        # If truncated, add indicator
+        if len(str(value)) > max_length:
+            sanitized = sanitized[:-3] + "..."
+
+        return sanitized
+
+
+def setup_logger(name: str, level: int = logging.INFO) -> SecureLogger:
     """
     Create a standardized logger for the Course Record Updater project.
 
@@ -21,7 +62,9 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    logger = logging.getLogger(name)
+    # Set the custom logger class
+    logging.setLoggerClass(SecureLogger)
+    logger = cast(SecureLogger, logging.getLogger(name))
 
     # Avoid adding multiple handlers if logger already exists
     if logger.handlers:
@@ -82,7 +125,7 @@ def setup_quality_gate_logger() -> logging.Logger:
     return logger
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name: str) -> SecureLogger:
     """
     Get a logger instance with standardized configuration.
 
@@ -96,7 +139,7 @@ def get_logger(name: str) -> logging.Logger:
 
 
 # Module-specific logger shortcuts for common use cases
-def get_database_logger() -> logging.Logger:
+def get_database_logger() -> SecureLogger:
     """Get logger for database operations."""
     return setup_logger("DatabaseService")
 
