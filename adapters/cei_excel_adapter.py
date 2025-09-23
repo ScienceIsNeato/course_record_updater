@@ -66,6 +66,124 @@ def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
     return year, season_map[season_code]
 
 
+def _extract_course_data(
+    row: pd.Series, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """Extract course information from row."""
+    if "course" not in row or pd.isna(row["course"]):
+        return None
+
+    course_number = str(row.get("course", ""))
+    if not validate_course_number(course_number):
+        return None
+
+    return {
+        "course_number": course_number,
+        "course_title": f"Course {course_number}",  # CEI file doesn't have course titles
+        "department": _extract_department_from_course(course_number),
+        "credit_hours": 3,  # Default, CEI file doesn't have credit hours
+        "institution_id": institution_id,
+    }
+
+
+def _extract_user_data(
+    row: pd.Series, institution_id: str, course_data: Optional[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """Extract instructor information from row."""
+    if FACULTY_NAME_COLUMN not in row or pd.isna(row[FACULTY_NAME_COLUMN]):
+        return None
+
+    instructor_name = str(row[FACULTY_NAME_COLUMN])
+    first_name, last_name = _parse_name(instructor_name)
+    email = _generate_email(first_name, last_name)
+
+    return {
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "role": "instructor",
+        "department": course_data.get("department") if course_data else None,
+        "institution_id": institution_id,
+        "account_status": "imported",  # User created from import, not yet invited
+        "active_user": False,  # Will be calculated later based on active courses
+    }
+
+
+def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str, Any]]:
+    """Extract term information from row."""
+    if "effterm_c" not in row or pd.isna(row["effterm_c"]):
+        return None
+
+    effterm_c = str(row["effterm_c"]).strip()
+    if not effterm_c:
+        return None
+
+    try:
+        year, season = parse_cei_term(effterm_c)
+        return {
+            "name": f"{season} {year}",
+            "year": int(year),
+            "season": season,
+            "institution_id": institution_id,
+            "is_active": True,
+        }
+    except ValueError as e:
+        # Log the error but continue processing
+        print(f"Warning: Could not parse term '{effterm_c}': {e}")
+        return None
+
+
+def _extract_offering_data(
+    course_data: Optional[Dict[str, Any]],
+    term_data: Optional[Dict[str, Any]],
+    user_data: Optional[Dict[str, Any]],
+    institution_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Extract offering information from course and term data."""
+    if not course_data or not term_data:
+        return None
+
+    return {
+        "course_number": course_data["course_number"],
+        "term_name": term_data["name"],
+        "institution_id": institution_id,
+        "instructor_email": user_data.get("email") if user_data else None,
+        "is_active": True,
+    }
+
+
+def _extract_section_data(
+    row: pd.Series,
+    course_data: Optional[Dict[str, Any]],
+    term_data: Optional[Dict[str, Any]],
+    user_data: Optional[Dict[str, Any]],
+    institution_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Extract section information from row and related data."""
+    if (
+        not course_data
+        or not term_data
+        or "students" not in row
+        or pd.isna(row["students"])
+    ):
+        return None
+
+    try:
+        student_count = int(row["students"])
+        return {
+            "course_number": course_data["course_number"],
+            "term_name": term_data["name"],
+            "section_number": "001",  # CEI doesn't provide section numbers
+            "instructor_email": user_data.get("email") if user_data else None,
+            "student_count": student_count,
+            "institution_id": institution_id,
+            "status": "active",
+        }
+    except (ValueError, TypeError):
+        # Invalid student count, skip section
+        return None
+
+
 def parse_cei_excel_row(
     row: pd.Series, institution_id: str
 ) -> Dict[str, Optional[Dict[str, Any]]]:
@@ -80,84 +198,16 @@ def parse_cei_excel_row(
         Dictionary with entity types and their data
     """
     try:
-        # Extract course information
-        course_data = None
-        if "course" in row and pd.notna(row["course"]):
-            # Parse course number (e.g., "ACC-201")
-            course_number = str(row.get("course", ""))
-            if validate_course_number(course_number):
-                course_data = {
-                    "course_number": course_number,
-                    "course_title": f"Course {course_number}",  # CEI file doesn't have course titles
-                    "department": _extract_department_from_course(course_number),
-                    "credit_hours": 3,  # Default, CEI file doesn't have credit hours
-                    "institution_id": institution_id,
-                }
-
-        # Extract instructor information
-        user_data = None
-        if FACULTY_NAME_COLUMN in row and pd.notna(row[FACULTY_NAME_COLUMN]):
-            instructor_name = str(row[FACULTY_NAME_COLUMN])
-            first_name, last_name = _parse_name(instructor_name)
-            email = _generate_email(first_name, last_name)
-
-            user_data = {
-                "email": email,
-                "first_name": first_name,
-                "last_name": last_name,
-                "role": "instructor",
-                "department": course_data.get("department") if course_data else None,
-                "institution_id": institution_id,
-                "account_status": "imported",  # User created from import, not yet invited
-                "active_user": False,  # Will be calculated later based on active courses
-            }
-
-        # Extract term information
-        term_data = None
-        if "effterm_c" in row and pd.notna(row["effterm_c"]):
-            effterm_c = str(row["effterm_c"]).strip()
-            if effterm_c:
-                try:
-                    year, season = parse_cei_term(effterm_c)
-                    term_data = {
-                        "name": f"{season} {year}",
-                        "year": int(year),
-                        "season": season,
-                        "institution_id": institution_id,
-                        "is_active": True,
-                    }
-                except ValueError as e:
-                    # Log the error but continue processing
-                    print(f"Warning: Could not parse term '{effterm_c}': {e}")
-
-        # Extract offering information (course offering in a specific term)
-        offering_data = None
-        if course_data and term_data:
-            offering_data = {
-                "course_number": course_data["course_number"],
-                "term_name": term_data["name"],
-                "institution_id": institution_id,
-                "instructor_email": user_data.get("email") if user_data else None,
-                "is_active": True,
-            }
-
-        # Extract section information
-        section_data = None
-        if offering_data and "students" in row and pd.notna(row["students"]):
-            try:
-                student_count = int(row["students"])
-                section_data = {
-                    "course_number": course_data["course_number"],
-                    "term_name": term_data["name"],
-                    "section_number": "001",  # CEI doesn't provide section numbers
-                    "instructor_email": user_data.get("email") if user_data else None,
-                    "student_count": student_count,
-                    "institution_id": institution_id,
-                    "status": "active",
-                }
-            except (ValueError, TypeError):
-                # Invalid student count, skip section
-                pass
+        # Extract all entity data using focused helper functions
+        course_data = _extract_course_data(row, institution_id)
+        user_data = _extract_user_data(row, institution_id, course_data)
+        term_data = _extract_term_data(row, institution_id)
+        offering_data = _extract_offering_data(
+            course_data, term_data, user_data, institution_id
+        )
+        section_data = _extract_section_data(
+            row, course_data, term_data, user_data, institution_id
+        )
 
         return {
             "course": course_data,
