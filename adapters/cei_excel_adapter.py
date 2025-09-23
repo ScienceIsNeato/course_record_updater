@@ -13,6 +13,9 @@ import pandas as pd
 
 from models import validate_course_number
 
+# Constants for repeated strings
+FACULTY_NAME_COLUMN = "Faculty Name"
+
 
 def validate_cei_term_name(term_name: str) -> bool:
     """
@@ -93,8 +96,8 @@ def parse_cei_excel_row(
 
         # Extract instructor information
         user_data = None
-        if "Faculty Name" in row and pd.notna(row["Faculty Name"]):
-            instructor_name = str(row["Faculty Name"])
+        if FACULTY_NAME_COLUMN in row and pd.notna(row[FACULTY_NAME_COLUMN]):
+            instructor_name = str(row[FACULTY_NAME_COLUMN])
             first_name, last_name = _parse_name(instructor_name)
             email = _generate_email(first_name, last_name)
 

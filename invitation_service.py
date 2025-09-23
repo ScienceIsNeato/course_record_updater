@@ -10,7 +10,7 @@ Handles user invitation functionality including:
 
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import database_service as db
@@ -18,6 +18,10 @@ from auth_service import UserRole
 from email_service import EmailService
 from models import INVITATION_STATUSES, User, UserInvitation
 from password_service import PasswordService
+
+# Constants for repeated strings
+UTC_TIMEZONE_SUFFIX = "+00:00"
+INVITATION_NOT_FOUND_ERROR = "Invitation not found"
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +222,7 @@ class InvitationService:
 
             # Check expiry
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
             )
             if datetime.utcnow() > expires_at.replace(tzinfo=None):
                 # Mark as expired
@@ -317,7 +321,7 @@ class InvitationService:
             # Get invitation
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
 
             # Check if invitation can be resent
             if invitation["status"] not in ["pending", "sent"]:
@@ -327,7 +331,7 @@ class InvitationService:
 
             # Check if expired and extend if needed
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
             )
             if datetime.utcnow() > expires_at.replace(tzinfo=None):
                 # Extend expiry
@@ -369,11 +373,11 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_token(invitation_token)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
 
             # Check if expired
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
             )
             is_expired = datetime.utcnow() > expires_at.replace(tzinfo=None)
 
@@ -445,7 +449,7 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
 
             if invitation["status"] not in ["pending", "sent"]:
                 raise InvitationError(

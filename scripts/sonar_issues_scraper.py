@@ -210,37 +210,43 @@ class SonarCloudScraper:
         
         return False
 
-    def print_issues_summary(self):
+    def print_issues_summary(self, max_display: int = 50):
         """Print detailed issues breakdown"""
         print("\n🐛 Issues Breakdown:")
         print("-" * 40)
         
-        # Get critical and major issues
-        critical_issues = self.get_issues(severities=["BLOCKER", "CRITICAL"], limit=10)
-        major_issues = self.get_issues(severities=["MAJOR"], limit=10)
+        # Get critical and major issues (fetch more from API)
+        critical_issues = self.get_issues(severities=["BLOCKER", "CRITICAL"], limit=100)
+        major_issues = self.get_issues(severities=["MAJOR"], limit=100)
         
         if critical_issues:
             print(f"\n🔴 Critical Issues ({len(critical_issues)}):")
-            for issue in critical_issues[:5]:  # Show top 5
+            display_count = min(len(critical_issues), max_display)
+            for issue in critical_issues[:display_count]:
                 print(self.format_issue(issue))
-            if len(critical_issues) > 5:
-                print(f"  ... and {len(critical_issues) - 5} more critical issues")
+            if len(critical_issues) > display_count:
+                print(f"  ... and {len(critical_issues) - display_count} more critical issues")
+                print(f"  💡 Use --max-display {len(critical_issues)} to see all")
                 
         if major_issues:
             print(f"\n🟡 Major Issues ({len(major_issues)}):")
-            for issue in major_issues[:5]:  # Show top 5
+            display_count = min(len(major_issues), max_display)
+            for issue in major_issues[:display_count]:
                 print(self.format_issue(issue))
-            if len(major_issues) > 5:
-                print(f"  ... and {len(major_issues) - 5} more major issues")
+            if len(major_issues) > display_count:
+                print(f"  ... and {len(major_issues) - display_count} more major issues")
+                print(f"  💡 Use --max-display {len(major_issues)} to see all")
                 
-        # Get security hotspots
-        hotspots = self.get_security_hotspots(limit=10)
+        # Get security hotspots (fetch more from API)
+        hotspots = self.get_security_hotspots(limit=100)
         if hotspots:
             print(f"\n🔥 Security Hotspots ({len(hotspots)}):")
-            for hotspot in hotspots[:3]:  # Show top 3
+            display_count = min(len(hotspots), max_display)
+            for hotspot in hotspots[:display_count]:
                 print(self.format_hotspot(hotspot))
-            if len(hotspots) > 3:
-                print(f"  ... and {len(hotspots) - 3} more security hotspots")
+            if len(hotspots) > display_count:
+                print(f"  ... and {len(hotspots) - display_count} more security hotspots")
+                print(f"  💡 Use --max-display {len(hotspots)} to see all")
 
     def print_actionable_summary(self):
         """Print actionable next steps"""
@@ -259,6 +265,8 @@ def main():
                        help="SonarCloud project key")
     parser.add_argument("--severity", default="BLOCKER,CRITICAL,MAJOR",
                        help="Comma-separated severity levels to show")
+    parser.add_argument("--max-display", type=int, default=50,
+                       help="Maximum number of issues to display per category")
     
     args = parser.parse_args()
     
@@ -268,7 +276,7 @@ def main():
     quality_gate_passed = scraper.print_quality_gate_summary()
     
     if not quality_gate_passed:
-        scraper.print_issues_summary()
+        scraper.print_issues_summary(args.max_display)
         scraper.print_actionable_summary()
         sys.exit(1)
     else:

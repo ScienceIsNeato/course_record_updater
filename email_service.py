@@ -27,6 +27,9 @@ from flask import current_app
 # Import centralized logging
 from logging_config import get_logger
 
+# Constants for repeated strings
+DEFAULT_BASE_URL = "http://localhost:5000"
+
 # Get standardized logger
 logger = get_logger(__name__)
 
@@ -121,9 +124,7 @@ class EmailService:
         )
 
         # Base URL for email links
-        app.config.setdefault(
-            "BASE_URL", os.getenv("BASE_URL", "http://localhost:5000")
-        )
+        app.config.setdefault("BASE_URL", os.getenv("BASE_URL", DEFAULT_BASE_URL))
 
         # Development mode
         app.config.setdefault(
@@ -393,25 +394,25 @@ class EmailService:
     @staticmethod
     def _build_verification_url(token: str) -> str:
         """Build email verification URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/verify-email/{token}")
 
     @staticmethod
     def _build_password_reset_url(token: str) -> str:
         """Build password reset URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/reset-password/{token}")
 
     @staticmethod
     def _build_invitation_url(token: str) -> str:
         """Build invitation acceptance URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/register/accept/{token}")
 
     @staticmethod
     def _build_dashboard_url() -> str:
         """Build dashboard URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, "/dashboard")
 
     # Email template methods

@@ -44,7 +44,7 @@ class DatabaseTimeoutError(Exception):
     pass
 
 
-def db_operation_timeout(seconds=5):
+def db_operation_timeout(seconds=None):
     """
     DEPRECATED: Database operation timeout context manager.
 
@@ -1050,7 +1050,7 @@ def create_course_outcome(outcome_data: Dict[str, Any]) -> str:
     """
     logger.info("[DB Service] create_course_outcome called")
     if not check_db_connection():
-        raise Exception("Database connection not available")
+        raise ConnectionError("Database connection not available")
 
     try:
         with db_operation_timeout():
