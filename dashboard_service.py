@@ -700,6 +700,89 @@ class DashboardService:
         )
         return annotated
 
+    def _create_program_lookup(
+        self, program_metrics: Sequence[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Create lookup dictionary for program metrics."""
+        return {metric["program_id"]: metric for metric in program_metrics}
+
+    def _group_sections_by_instructor(
+        self, sections: Sequence[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Group sections by instructor ID."""
+        sections_by_instructor: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        for section in sections:
+            instructor_id = section.get("instructor_id")
+            if instructor_id:
+                sections_by_instructor[instructor_id].append(section)
+        return sections_by_instructor
+
+    def _extract_course_ids_from_sections(
+        self, member_sections: List[Dict[str, Any]]
+    ) -> set[str]:
+        """Extract unique course IDs from faculty member's sections."""
+        course_ids = {
+            section.get("course_id") or section.get("courseId")
+            for section in member_sections
+            if section.get("course_id") or section.get("courseId")
+        }
+        return course_ids
+
+    def _gather_programs_from_courses(
+        self, course_ids: set[str], course_index: Dict[Any, Dict[str, Any]]
+    ) -> set[str]:
+        """Gather all program IDs from the given course IDs."""
+        programs: set[str] = set()
+        for course_id in course_ids:
+            course = course_index.get(course_id)
+            if course:
+                programs.update(self._course_program_ids(course))
+        return programs
+
+    def _create_faculty_assignment(
+        self,
+        member: Dict[str, Any],
+        member_sections: List[Dict[str, Any]],
+        course_ids: set[str],
+        programs: set[str],
+        program_lookup: Dict[str, Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Create assignment dictionary for a faculty member."""
+        return {
+            "user_id": member.get("user_id"),
+            "full_name": member.get("full_name") or self._full_name(member),
+            "program_ids": list(programs),
+            "course_count": len(course_ids),
+            "section_count": len(member_sections),
+            "enrollment": self._total_enrollment(member_sections),
+            "program_summaries": [
+                program_lookup.get(pid) for pid in programs if program_lookup.get(pid)
+            ],
+        }
+
+    def _process_faculty_member(
+        self,
+        member: Dict[str, Any],
+        sections_by_instructor: Dict[str, List[Dict[str, Any]]],
+        course_index: Dict[Any, Dict[str, Any]],
+        program_lookup: Dict[str, Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        """Process a single faculty member to create their assignment data."""
+        user_id = member.get("user_id")
+        if not user_id:
+            return None
+
+        member_sections = sections_by_instructor.get(user_id, [])
+        course_ids = self._extract_course_ids_from_sections(member_sections)
+
+        if not course_ids:
+            return None
+
+        programs = self._gather_programs_from_courses(course_ids, course_index)
+        return self._create_faculty_assignment(
+            member, member_sections, course_ids, programs, program_lookup
+        )
+
     def _build_faculty_assignments(
         self,
         faculty: Sequence[Dict[str, Any]],
@@ -707,49 +790,19 @@ class DashboardService:
         course_index: Dict[Any, Dict[str, Any]],
         sections: Sequence[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        program_lookup = {metric["program_id"]: metric for metric in program_metrics}
-        sections_by_instructor: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        for section in sections:
-            instructor_id = section.get("instructor_id")
-            if instructor_id:
-                sections_by_instructor[instructor_id].append(section)
+        """Build faculty assignment data from faculty, program metrics, courses, and sections."""
+        # Prepare data structures
+        program_lookup = self._create_program_lookup(program_metrics)
+        sections_by_instructor = self._group_sections_by_instructor(sections)
 
+        # Process each faculty member
         assignments: List[Dict[str, Any]] = []
         for member in faculty:
-            user_id = member.get("user_id")
-            if not user_id:
-                continue
-            member_sections = sections_by_instructor.get(user_id, [])
-            course_ids = {
-                section.get("course_id") or section.get("courseId")
-                for section in member_sections
-                if section.get("course_id") or section.get("courseId")
-            }
-            if not course_ids:
-                continue
-
-            programs: set[str] = set()
-            for course_id in course_ids:
-                course = course_index.get(course_id)
-                if not course:
-                    continue
-                programs.update(self._course_program_ids(course))
-
-            assignments.append(
-                {
-                    "user_id": user_id,
-                    "full_name": member.get("full_name") or self._full_name(member),
-                    "program_ids": list(programs),
-                    "course_count": len(course_ids),
-                    "section_count": len(member_sections),
-                    "enrollment": self._total_enrollment(member_sections),
-                    "program_summaries": [
-                        program_lookup.get(pid)
-                        for pid in programs
-                        if program_lookup.get(pid)
-                    ],
-                }
+            assignment = self._process_faculty_member(
+                member, sections_by_instructor, course_index, program_lookup
             )
+            if assignment:
+                assignments.append(assignment)
 
         return assignments
 
