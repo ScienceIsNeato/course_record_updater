@@ -327,15 +327,15 @@ class QualityGateExecutor:
         ):
             # Try multiple patterns for coverage extraction
             coverage_match = re.search(
-                r"(\d+\.?\d*)%.*(?:not met|below|fail).*(\d+\.?\d*)%", output
+                r"(\d+\.?\d*)%[^%]*(?:not met|below|fail)[^%]*(\d+\.?\d*)%", output
             )
             if not coverage_match:
                 coverage_match = re.search(
-                    r"Coverage.*?(\d+\.?\d*)%.*below.*?(\d+\.?\d*)%", output
+                    r"Coverage[^%]*(\d+\.?\d*)%[^%]*below[^%]*(\d+\.?\d*)%", output
                 )
             if not coverage_match:
                 # Look for pytest-cov style output
-                coverage_match = re.search(r"TOTAL.*?(\d+)%", output)
+                coverage_match = re.search(r"TOTAL[^%]*(\d+)%", output)
                 if coverage_match:
                     actual = coverage_match.group(1)
                     return f"Coverage threshold not met: {actual}% < 80%"
