@@ -492,6 +492,50 @@ class ImportService:
 
         return True, conflicts
 
+    def _validate_and_load_excel_file(self, file_path: str) -> Optional[pd.DataFrame]:
+        """Validate file exists and load Excel data."""
+        if not os.path.exists(file_path):
+            error_msg = f"File not found: {file_path}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        try:
+            df = pd.read_excel(file_path, sheet_name=0)  # First sheet
+            self._log(
+                f"Loaded Excel file: {len(df)} rows, {len(df.columns)} columns",
+                "summary",
+            )
+            return df
+        except Exception as e:
+            error_msg = f"Failed to read Excel file: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+    def _handle_database_cleanup(self, delete_existing_db: bool, dry_run: bool) -> None:
+        """Handle database cleanup if requested."""
+        if delete_existing_db:
+            if not dry_run:
+                self._delete_all_data()
+                self.logger.info("[Import] 🗑️  Cleared existing database")
+            else:
+                self.logger.info("[Import] DRY RUN: Would clear existing database")
+
+    def _log_import_start(
+        self,
+        file_path: str,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+        delete_existing_db: bool,
+    ) -> None:
+        """Log import start information."""
+        self.logger.info(f"[Import] Starting import from: {file_path}")
+        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
+        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+        if delete_existing_db:
+            self.logger.warning(
+                f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
+            )
+
     def import_excel_file(
         self,
         file_path: str,
@@ -515,219 +559,23 @@ class ImportService:
         """
         start_time = datetime.now(timezone.utc)
         self.reset_stats()
-
-        self.logger.info(f"[Import] Starting import from: {file_path}")
-        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
-        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
-        if delete_existing_db:
-            self.logger.warning(
-                f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
-            )
+        self._log_import_start(
+            file_path, conflict_strategy, dry_run, delete_existing_db
+        )
 
         try:
-            # Validate file exists
-            if not os.path.exists(file_path):
-                error_msg = f"File not found: {file_path}"
-                self.stats["errors"].append(error_msg)
+            # Validate and load Excel file
+            df = self._validate_and_load_excel_file(file_path)
+            if df is None:
                 return self._create_import_result(start_time, dry_run)
 
-            # Delete existing database if requested
-            if delete_existing_db:
-                if not dry_run:
-                    self._delete_all_data()
-                    self.logger.info("[Import] 🗑️  Cleared existing database")
-                else:
-                    self.logger.info("[Import] DRY RUN: Would clear existing database")
+            # Handle database cleanup if requested
+            self._handle_database_cleanup(delete_existing_db, dry_run)
 
-            # Load Excel file
-            try:
-                # For CEI, assume main sheet is the first one or named specifically
-                df = pd.read_excel(file_path, sheet_name=0)  # First sheet
-                self._log(
-                    f"Loaded Excel file: {len(df)} rows, {len(df.columns)} columns",
-                    "summary",
-                )
-            except Exception as e:
-                error_msg = f"Failed to read Excel file: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                return self._create_import_result(start_time, dry_run)
-
-            # Process each row
-            all_conflicts = []
-            total_rows = len(df)
-            progress_interval = max(1, total_rows // 20)  # Show progress every 5%
-
-            for index, row in df.iterrows():
-                self.stats["records_processed"] += 1
-
-                # Show progress periodically
-                if index % progress_interval == 0 or index == total_rows - 1:
-                    progress = int((index + 1) / total_rows * 100)
-                    self._log(
-                        f"Processing row {index + 1}/{total_rows} ({progress}%)",
-                        "summary",
-                    )
-
-                    # Update progress callback if provided
-                    if self.progress_callback:
-                        self.progress_callback(
-                            percentage=progress,
-                            records_processed=index + 1,
-                            total_records=total_rows,
-                            message=f"Processing row {index + 1}/{total_rows} ({progress}%)",
-                        )
-
-                try:
-                    # Extract data based on adapter
-                    if adapter_name == "cei_excel_adapter":
-                        from adapters.cei_excel_adapter import parse_cei_excel_row
-
-                        entities = parse_cei_excel_row(row, self.institution_id)
-                    else:
-                        self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
-                        continue
-
-                    # Process entities in dependency order: course -> user -> term -> offering -> section
-                    processing_order = ["course", "user", "term", "offering", "section"]
-
-                    # Track the offering_id for section processing
-                    current_offering_id = None
-
-                    for entity_type in processing_order:
-                        entity_data = entities.get(entity_type)
-                        if not entity_data:
-                            continue
-
-                        if entity_type == "course":
-                            success, conflicts = self.process_course_import(
-                                entity_data, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-
-                        elif entity_type == "user":
-                            success, conflicts = self.process_user_import(
-                                entity_data, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-
-                        elif entity_type == "term" and entity_data:
-                            # Check if term already exists to avoid duplicates
-                            term_name = entity_data.get("term_name")
-                            institution_id = entity_data.get("institution_id")
-
-                            # Simple duplicate check - query for existing term
-                            from database_service import db
-
-                            existing_terms = (
-                                db.collection("terms")
-                                .where("term_name", "==", term_name)
-                                .where("institution_id", "==", institution_id)
-                                .limit(1)
-                                .stream()
-                            )
-
-                            existing_term = next(existing_terms, None)
-
-                            if existing_term:
-                                # Term already exists, skip creation
-                                self.logger.info(
-                                    f"[Import] Term already exists: {term_name}"
-                                )
-                            else:
-                                # Create new term
-                                if not dry_run:
-                                    term_id = create_term(entity_data)
-                                    if term_id:
-                                        self.stats["records_created"] += 1
-                                        self.logger.info(
-                                            f"[Import] Created term: {term_name}"
-                                        )
-                                else:
-                                    self.logger.info(
-                                        f"[Import] DRY RUN: Would create term: {term_name}"
-                                    )
-
-                        elif entity_type == "offering" and entity_data:
-                            # Process course offering (bridge between course and sections)
-                            course_id = entity_data.get(
-                                "course_id"
-                            )  # This is still course_number
-                            term_name = entity_data.get(
-                                "term_id"
-                            )  # This is still term_name
-                            institution_id = entity_data.get("institution_id")
-
-                            # Resolve course_id from course_number
-                            if course_id:
-                                course = get_course_by_number(course_id)
-                                if course:
-                                    entity_data["course_id"] = course.get("course_id")
-
-                                    # Check if offering already exists
-                                    existing_offering = (
-                                        get_course_offering_by_course_and_term(
-                                            course.get("course_id"),
-                                            term_name,
-                                            institution_id,
-                                        )
-                                    )
-
-                                    if existing_offering:
-                                        self.logger.info(
-                                            f"[Import] Course offering already exists: {course_id} in {term_name}"
-                                        )
-                                        # Store the offering_id for section processing
-                                        current_offering_id = existing_offering.get(
-                                            "offering_id"
-                                        )
-                                        entity_data["offering_id"] = current_offering_id
-                                    else:
-                                        # Create new course offering
-                                        entity_data["term_id"] = (
-                                            term_name  # Keep term_name for now
-                                        )
-                                        if not dry_run:
-                                            offering_id = create_course_offering(
-                                                entity_data
-                                            )
-                                            if offering_id:
-                                                self.stats["records_created"] += 1
-                                                current_offering_id = offering_id
-                                                entity_data["offering_id"] = offering_id
-                                                self.logger.info(
-                                                    f"[Import] Created course offering: {course_id} in {term_name}"
-                                                )
-                                        else:
-                                            self.logger.info(
-                                                f"[Import] DRY RUN: Would create offering: {course_id} in {term_name}"
-                                            )
-
-                        elif entity_type == "section" and entity_data:
-                            # Process section import - use the offering_id from the current row's processing
-                            if current_offering_id:
-                                entity_data["offering_id"] = current_offering_id
-
-                                if not dry_run:
-                                    section_id = create_course_section(entity_data)
-                                    if section_id:
-                                        self.stats["records_created"] += 1
-                                        self.logger.info(
-                                            f"[Import] Created section: {current_offering_id}"
-                                        )
-                                else:
-                                    self.logger.info(
-                                        f"[Import] DRY RUN: Would create section: {current_offering_id}"
-                                    )
-                            else:
-                                self.logger.warning(
-                                    f"[Import] No offering_id available for section creation"
-                                )
-
-                except Exception as e:
-                    error_msg = f"Error processing row {index + 1}: {str(e)}"
-                    self.stats["errors"].append(error_msg)
-                    self.logger.info(f"[Import] {error_msg}")
-
+            # Process all rows
+            all_conflicts = self._process_all_rows(
+                df, adapter_name, conflict_strategy, dry_run
+            )
             self.stats["conflicts"].extend(all_conflicts)
 
         except Exception as e:
@@ -736,6 +584,222 @@ class ImportService:
             self.logger.info(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
+
+    def _process_all_rows(
+        self,
+        df: pd.DataFrame,
+        adapter_name: str,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> List[Any]:
+        """Process all rows in the DataFrame."""
+        all_conflicts = []
+        total_rows = len(df)
+        progress_interval = max(1, total_rows // 20)  # Show progress every 5%
+
+        for index, row in df.iterrows():
+            self.stats["records_processed"] += 1
+
+            # Update progress if needed
+            self._update_progress_if_needed(index, total_rows, progress_interval)
+
+            try:
+                conflicts = self._process_single_row(
+                    row, adapter_name, conflict_strategy, dry_run
+                )
+                all_conflicts.extend(conflicts)
+            except Exception as e:
+                error_msg = f"Error processing row {index + 1}: {str(e)}"
+                self.stats["errors"].append(error_msg)
+                self.logger.info(f"[Import] {error_msg}")
+
+        return all_conflicts
+
+    def _update_progress_if_needed(
+        self, index: int, total_rows: int, progress_interval: int
+    ) -> None:
+        """Update progress tracking if needed."""
+        if index % progress_interval == 0 or index == total_rows - 1:
+            progress = int((index + 1) / total_rows * 100)
+            self._log(
+                f"Processing row {index + 1}/{total_rows} ({progress}%)",
+                "summary",
+            )
+
+            # Update progress callback if provided
+            if self.progress_callback:
+                self.progress_callback(
+                    percentage=progress,
+                    records_processed=index + 1,
+                    total_records=total_rows,
+                    message=f"Processing row {index + 1}/{total_rows} ({progress}%)",
+                )
+
+    def _process_single_row(
+        self,
+        row: pd.Series,
+        adapter_name: str,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> List[Any]:
+        """Process a single row and return any conflicts."""
+        # Extract entities from row
+        entities = self._extract_entities_from_row(row, adapter_name)
+        if not entities:
+            return []
+
+        # Process entities in dependency order
+        return self._process_entities_in_order(entities, conflict_strategy, dry_run)
+
+    def _extract_entities_from_row(
+        self, row: pd.Series, adapter_name: str
+    ) -> Optional[Dict[str, Any]]:
+        """Extract entities from a single row using the specified adapter."""
+        if adapter_name == "cei_excel_adapter":
+            from adapters.cei_excel_adapter import parse_cei_excel_row
+
+            return parse_cei_excel_row(row, self.institution_id)
+        else:
+            self.stats["errors"].append(f"Unknown adapter: {adapter_name}")
+            return None
+
+    def _process_entities_in_order(
+        self,
+        entities: Dict[str, Any],
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> List[Any]:
+        """Process entities in dependency order: course -> user -> term -> offering -> section."""
+        all_conflicts = []
+        processing_order = ["course", "user", "term", "offering", "section"]
+        current_offering_id = None
+
+        for entity_type in processing_order:
+            entity_data = entities.get(entity_type)
+            if not entity_data:
+                continue
+
+            if entity_type == "course":
+                success, conflicts = self.process_course_import(
+                    entity_data, conflict_strategy, dry_run
+                )
+                all_conflicts.extend(conflicts)
+
+            elif entity_type == "user":
+                success, conflicts = self.process_user_import(
+                    entity_data, conflict_strategy, dry_run
+                )
+                all_conflicts.extend(conflicts)
+
+            elif entity_type == "term":
+                self._process_term_entity(entity_data, dry_run)
+
+            elif entity_type == "offering":
+                current_offering_id = self._process_offering_entity(
+                    entity_data, dry_run
+                )
+
+            elif entity_type == "section":
+                self._process_section_entity(entity_data, current_offering_id, dry_run)
+
+        return all_conflicts
+
+    def _process_term_entity(self, entity_data: Dict[str, Any], dry_run: bool) -> None:
+        """Process term entity with duplicate checking."""
+        term_name = entity_data.get("term_name")
+        institution_id = entity_data.get("institution_id")
+
+        # Simple duplicate check - query for existing term
+        from database_service import db
+
+        existing_terms = (
+            db.collection("terms")
+            .where("term_name", "==", term_name)
+            .where("institution_id", "==", institution_id)
+            .limit(1)
+            .stream()
+        )
+
+        existing_term = next(existing_terms, None)
+
+        if existing_term:
+            # Term already exists, skip creation
+            self.logger.info(f"[Import] Term already exists: {term_name}")
+        else:
+            # Create new term
+            if not dry_run:
+                term_id = create_term(entity_data)
+                if term_id:
+                    self.stats["records_created"] += 1
+                    self.logger.info(f"[Import] Created term: {term_name}")
+            else:
+                self.logger.info(f"[Import] DRY RUN: Would create term: {term_name}")
+
+    def _process_offering_entity(
+        self, entity_data: Dict[str, Any], dry_run: bool
+    ) -> Optional[str]:
+        """Process course offering entity and return offering_id."""
+        course_id = entity_data.get("course_id")  # This is still course_number
+        term_name = entity_data.get("term_id")  # This is still term_name
+        institution_id = entity_data.get("institution_id")
+
+        # Resolve course_id from course_number
+        if not course_id:
+            return None
+
+        course = get_course_by_number(course_id)
+        if not course:
+            return None
+
+        entity_data["course_id"] = course.get("course_id")
+
+        # Check if offering already exists
+        existing_offering = get_course_offering_by_course_and_term(
+            course.get("course_id"), term_name, institution_id
+        )
+
+        if existing_offering:
+            self.logger.info(
+                f"[Import] Course offering already exists: {course_id} in {term_name}"
+            )
+            return existing_offering.get("offering_id")
+        else:
+            # Create new course offering
+            entity_data["term_id"] = term_name  # Keep term_name for now
+            if not dry_run:
+                offering_id = create_course_offering(entity_data)
+                if offering_id:
+                    self.stats["records_created"] += 1
+                    self.logger.info(
+                        f"[Import] Created course offering: {course_id} in {term_name}"
+                    )
+                    return offering_id
+            else:
+                self.logger.info(
+                    f"[Import] DRY RUN: Would create offering: {course_id} in {term_name}"
+                )
+            return None
+
+    def _process_section_entity(
+        self, entity_data: Dict[str, Any], offering_id: Optional[str], dry_run: bool
+    ) -> None:
+        """Process section entity."""
+        if offering_id:
+            entity_data["offering_id"] = offering_id
+
+            if not dry_run:
+                section_id = create_course_section(entity_data)
+                if section_id:
+                    self.stats["records_created"] += 1
+                    self.logger.info(f"[Import] Created section: {offering_id}")
+            else:
+                self.logger.info(
+                    f"[Import] DRY RUN: Would create section: {offering_id}"
+                )
+        else:
+            self.logger.warning(
+                f"[Import] No offering_id available for section creation"
+            )
 
     def _extract_department_from_course(self, course_number: str) -> str:
         """Extract department from course number"""
