@@ -93,81 +93,138 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
   }
 
-  async function handleSave(row, courseId) {
-    const inputs = row.querySelectorAll('.inline-edit-input');
-    const updatedData = {};
-    let hasError = false;
-    let validationErrorMsg = 'Please fill in all required fields correctly.'; // Default message
+  function validateFieldInput(input, updatedData) {
+    const fieldName = input.name;
+    const value = input.value.trim();
+    updatedData[fieldName] = value;
 
-    // References to specific inputs for validation feedback
+    // Reset validation state
+    input.classList.remove('is-invalid');
+
+    // Check required fields
+    if (!value && isFieldRequired(fieldName)) {
+      input.classList.add('is-invalid');
+      return { hasError: true, message: 'Please fill in all required fields correctly.' };
+    }
+
+    // Check numeric fields
+    if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
+      input.classList.add('is-invalid');
+      return { hasError: true, message: 'Numeric fields must contain valid non-negative numbers.' };
+    }
+
+    return { hasError: false, message: '' };
+  }
+
+  function collectInputReferences(inputs) {
     let numStudentsInput = null;
     const gradeInputs = [];
 
     inputs.forEach(input => {
-      const fieldName = input.name;
-      const value = input.value.trim();
-      updatedData[fieldName] = value; // Send trimmed string value
-
-      // Store references
-      if (fieldName === 'num_students') numStudentsInput = input;
-      if (fieldName.startsWith('grade_')) gradeInputs.push(input);
-
-      // --- Basic client-side validation ---
-      input.classList.remove('is-invalid'); // Reset border first
-
-      if (!value && isFieldRequired(fieldName)) {
-        input.classList.add('is-invalid');
-        hasError = true;
-      }
-      // Check number types (including grades)
-      if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
-        input.classList.add('is-invalid');
-        validationErrorMsg = 'Numeric fields must contain valid non-negative numbers.';
-        hasError = true;
-      }
+      if (input.name === 'num_students') numStudentsInput = input;
+      if (input.name.startsWith('grade_')) gradeInputs.push(input);
     });
 
-    // --- Grade Sum vs Num Students Validation ---
+    return { numStudentsInput, gradeInputs };
+  }
+
+  function validateGradeSum(updatedData, numStudentsInput, gradeInputs) {
     const numStudentsValue = updatedData.num_students ? Number(updatedData.num_students) : NaN;
     let gradeSum = 0;
     let anyGradeEntered = false;
-    const gradeValues = {};
 
+    // Calculate grade sum and check if any grades were entered
     gradeInputs.forEach(input => {
       const gradeValue = updatedData[input.name] ? Number(updatedData[input.name]) : 0;
       if (!isNaN(gradeValue) && gradeValue > 0) {
         anyGradeEntered = true;
-        gradeValues[input.name] = gradeValue;
         gradeSum += gradeValue;
-      } else if (isNaN(gradeValue)) {
-        // If a grade field has invalid number, error is already caught above
       }
-      // Store 0 even if empty for sum logic consistency if needed, but anyGradeEntered tracks actual input
-      if (!updatedData[input.name]) gradeValues[input.name] = 0;
+      if (!updatedData[input.name]) updatedData[input.name] = 0;
     });
 
-    // Only validate sum if num_students is a valid number AND at least one grade > 0 was entered
+    // Validate sum if conditions are met
     if (!isNaN(numStudentsValue) && numStudentsValue >= 0 && anyGradeEntered) {
       if (gradeSum !== numStudentsValue) {
-        hasError = true;
-        validationErrorMsg = `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`;
-        // Mark relevant fields as invalid
+        // Mark fields as invalid
         if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
         gradeInputs.forEach(input => input.classList.add('is-invalid'));
+        return {
+          hasError: true,
+          message: `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`
+        };
       }
     } else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
-      // Also check: if any grade was entered, num_students MUST be provided and valid
-      hasError = true;
-      validationErrorMsg =
-        'Number of Students is required and must be a valid non-negative number when entering grades.';
       if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-      // Keep grades marked invalid if they individually failed conversion earlier
+      return {
+        hasError: true,
+        message:
+          'Number of Students is required and must be a valid non-negative number when entering grades.'
+      };
     }
 
-    // --- Stop if errors found ---
+    return { hasError: false, message: '' };
+  }
+
+  function updateCellDisplayValues(inputs) {
+    inputs.forEach(input => {
+      const cell = input.closest('td');
+      let displayValue = input.value.trim();
+
+      // Handle display for empty optional numbers
+      if (input.type === 'number' && !displayValue) {
+        if (input.name === 'num_students') displayValue = 'N/A';
+        else if (input.name.startsWith('grade_')) displayValue = '-';
+      }
+      cell.textContent = displayValue;
+    });
+  }
+
+  function handleBackendError(result, response, numStudentsInput, gradeInputs) {
+    const backendError = result.error || 'Server error';
+
+    if (
+      backendError.includes('Sum of grades') ||
+      backendError.includes('Number of students is required')
+    ) {
+      if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+      gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
+    }
+
+    alert(`Error updating course: ${backendError}`);
+  }
+
+  async function handleSave(row, courseId) {
+    const inputs = row.querySelectorAll('.inline-edit-input');
+    const updatedData = {};
+    let hasError = false;
+    let validationErrorMsg = '';
+
+    // Collect input references
+    const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
+
+    // Validate all input fields
+    inputs.forEach(input => {
+      const validation = validateFieldInput(input, updatedData);
+      if (validation.hasError) {
+        hasError = true;
+        if (!validationErrorMsg) validationErrorMsg = validation.message;
+      }
+    });
+
+    // Validate grade sum logic
+    if (!hasError) {
+      const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
+      if (gradeValidation.hasError) {
+        hasError = true;
+        validationErrorMsg = gradeValidation.message;
+      }
+    }
+
+    // Stop if validation errors found
     if (hasError) {
-      alert(validationErrorMsg); // Show specific error
-      return; // Prevent saving
+      alert(validationErrorMsg);
+      return;
     }
 
     // --- Proceed with saving ---
@@ -186,34 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Update cell text content and revert row state
-        inputs.forEach(input => {
-          const cell = input.closest('td');
-          let displayValue = input.value.trim();
-          // Handle display for empty optional numbers
-          if (input.type === 'number' && !displayValue) {
-            if (input.name === 'num_students') displayValue = 'N/A';
-            else if (input.name.startsWith('grade_')) displayValue = '-';
-          }
-          cell.textContent = displayValue; // Update display
-        });
+        updateCellDisplayValues(inputs);
         revertRowToActionButtons(row);
       } else {
         // eslint-disable-next-line no-console
         console.error('Update failed:', result.error || `HTTP ${response.status}`);
-        // Try to show backend validation error if available
-        const backendError = result.error || 'Server error';
-        if (
-          backendError.includes('Sum of grades') ||
-          backendError.includes('Number of students is required')
-        ) {
-          // If backend caught the sum error, highlight fields
-          validationErrorMsg = backendError;
-          if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-          gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
-        }
-        alert(`Error updating course: ${backendError}`);
-        // Leave editable on failure
+        handleBackendError(result, response, numStudentsInput, gradeInputs);
       }
     } catch (error) {
       // eslint-disable-next-line no-console
