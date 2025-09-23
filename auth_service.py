@@ -356,7 +356,9 @@ class AuthService:
 
         # Program admin can only access their specific programs
         elif user_role == UserRole.PROGRAM_ADMIN.value:
-            return user.get("program_ids", [])
+            # Return programs from user record.
+            # Some user records may use 'accessible_programs' instead of 'program_ids'
+            return user.get("program_ids") or user.get("accessible_programs", [])
 
         return []
 

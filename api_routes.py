@@ -13,6 +13,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 # Import our services
 from auth_service import (
+    UserRole,
     clear_current_program_id,
     get_current_institution_id,
     get_current_program_id,
@@ -97,7 +98,7 @@ def _resolve_institution_scope(require: bool = True):
     if institution_id:
         return current_user, [institution_id], False
 
-    if current_user and current_user.get("role") == "site_admin":
+    if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
         institutions = get_all_institutions()
         institution_ids = [
             inst["institution_id"]
@@ -140,7 +141,7 @@ def validate_context():
             return  # Let the auth decorators handle authentication
 
         # Site admins don't need context validation
-        if current_user.get("role") == "site_admin":
+        if current_user.get("role") == UserRole.SITE_ADMIN.value:
             return
 
         # Validate institution context for non-site-admin users
@@ -316,7 +317,7 @@ def get_institution_details(institution_id: str):
         # Users can only view their own institution unless they're site admin
         if (
             current_user.get("institution_id") != institution_id
-            and current_user.get("role") != "site_admin"
+            and current_user.get("role") != UserRole.SITE_ADMIN.value
         ):
             return jsonify({"success": False, "error": "Access denied"}), 403
 
@@ -655,7 +656,7 @@ def list_courses():
                 current_user.get("program_ids", []) if current_user else []
             )
             if program_id_override in accessible_programs or (
-                current_user and current_user.get("role") == "site_admin"
+                current_user and current_user.get("role") == UserRole.SITE_ADMIN.value
             ):
                 current_program_id = program_id_override
             else:
@@ -843,7 +844,7 @@ def assign_course_to_default(course_id: str):
         institution_id = get_current_institution_id()
         if not institution_id:
             current_user = get_current_user()
-            if current_user and current_user.get("role") == "site_admin":
+            if current_user and current_user.get("role") == UserRole.SITE_ADMIN.value:
                 payload = request.get_json(silent=True) or {}
                 institution_id = payload.get("institution_id") or request.args.get(
                     "institution_id"
@@ -1058,7 +1059,7 @@ def create_program_api():
             return jsonify({"success": False, "error": "User not found"}), 400
 
         if not institution_id:
-            if current_user.get("role") == "site_admin":
+            if current_user.get("role") == UserRole.SITE_ADMIN.value:
                 institution_id = data.get("institution_id") or request.args.get(
                     "institution_id"
                 )
@@ -1450,7 +1451,7 @@ def list_sections():
 
         # If no filters specified, determine default based on role
         if not instructor_id and not term_id:
-            if current_user["role"] == "instructor":
+            if current_user["role"] == UserRole.INSTRUCTOR.value:
                 # Instructors see only their own sections
                 instructor_id = current_user["user_id"]
             # Program admins and site admins see all sections (no filter)
@@ -1473,7 +1474,7 @@ def list_sections():
             sections = get_all_sections(institution_id)
 
         # Filter based on permissions
-        if current_user["role"] == "instructor" and not has_permission(
+        if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
             "view_all_sections"
         ):
             # Ensure instructors only see their own sections
@@ -2000,7 +2001,7 @@ def create_invitation_api():
     JSON Body:
     {
         "invitee_email": "instructor@example.com",
-        "invitee_role": "instructor",
+        "invitee_role": UserRole.INSTRUCTOR.value,
         "program_ids": ["prog-123"],  // Optional, for program_admin role
         "personal_message": "Welcome to our team!"  // Optional
     }
@@ -2784,7 +2785,7 @@ def excel_import_api():
         user_institution_id = current_user.get("institution_id")
 
         # Determine institution_id based on user role and adapter
-        if user_role == "site_admin":
+        if user_role == UserRole.SITE_ADMIN.value:
             # Site admins can import for any institution - let adapter determine it
             if import_adapter == "cei_excel_adapter":
                 # CEI adapter always imports for CEI institution
@@ -2829,10 +2830,15 @@ def excel_import_api():
 
         # Role-based permission checks
         allowed_data_types = {
-            "site_admin": ["institutions", "programs", "courses", "users"],
-            "institution_admin": ["programs", "courses", "faculty", "students"],
-            "program_admin": [],  # Program admins cannot import per requirements
-            "instructor": [],  # Instructors cannot import
+            UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
+            UserRole.INSTITUTION_ADMIN.value: [
+                "programs",
+                "courses",
+                "faculty",
+                "students",
+            ],
+            UserRole.PROGRAM_ADMIN.value: [],  # Program admins cannot import per requirements
+            UserRole.INSTRUCTOR.value: [],  # Instructors cannot import
         }
 
         if user_role not in allowed_data_types:

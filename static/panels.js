@@ -237,15 +237,15 @@ class PanelManager {
                 <div class="stat-preview-header">${data.title}</div>
                 <div class="stat-preview-content">
                     ${data.items
-    .map(
-      item => `
+                      .map(
+                        item => `
                         <div class="stat-preview-item">
                             <span>${item.label}</span>
                             <span>${item.value}</span>
                         </div>
                     `
-    )
-    .join('')}
+                      )
+                      .join('')}
                 </div>
             `;
     } catch (error) {
@@ -608,16 +608,16 @@ class PanelManager {
                 </h5>
                 <div class="panel-actions">
                     ${
-  config.actions
-    ?.map(
-      action => `
+                      config.actions
+                        ?.map(
+                          action => `
                         <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
                             ${action.icon} ${action.label}
                         </button>
                     `
-    )
-    .join('') || ''
-}
+                        )
+                        .join('') || ''
+                    }
                 </div>
                 <button class="panel-toggle">▼</button>
             </div>
@@ -653,14 +653,14 @@ class PanelManager {
           row => `
             <tr>
                 ${config.columns
-    .map(
-      col => `
+                  .map(
+                    col => `
                     <td ${row[col.key + '_sort'] ? `data-sort="${row[col.key + '_sort']}"` : ''}>
                         ${row[col.key] || ''}
                     </td>
                 `
-    )
-    .join('')}
+                  )
+                  .join('')}
             </tr>
         `
         )

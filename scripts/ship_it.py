@@ -117,6 +117,14 @@ class QualityGateExecutor:
 
             duration = time.time() - start_time
 
+            # Auto-stage files after auto-fixers run successfully
+            if result.returncode == 0 and check_flag in ["black", "isort"]:
+                try:
+                    subprocess.run(["git", "add", "."], capture_output=True, check=True)
+                except subprocess.CalledProcessError:
+                    # Ignore git add failures (might not be in a git repo, etc.)
+                    pass
+
             if result.returncode == 0:
                 return CheckResult(
                     name=check_name,
@@ -503,6 +511,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         nargs="+",
         help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
+
 
     args = parser.parse_args()
 

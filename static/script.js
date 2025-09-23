@@ -451,7 +451,7 @@ function initializeImportForm() {
 
   // Validate file only
   if (validateBtn) {
-    validateBtn.addEventListener('click', async() => {
+    validateBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('excel_file');
       const adapterSelect = document.getElementById('import_adapter');
 
@@ -618,7 +618,7 @@ function initializeImportForm() {
     const maxPollTime = 300000; // Max 5 minutes
     const startTime = Date.now();
 
-    const poll = async() => {
+    const poll = async () => {
       try {
         const response = await fetch(`/api/import/progress/${progressId}`);
         if (!response.ok) {

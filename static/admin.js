@@ -380,8 +380,8 @@ function displayInvitations(invitations) {
             <td>
                 <div class="action-buttons">
                     ${
-  invitation.status === 'pending'
-    ? `
+                      invitation.status === 'pending'
+                        ? `
                         <button class="action-btn btn-resend" onclick="resendInvitation('${invitation.id}')" title="Resend Invitation">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -389,10 +389,10 @@ function displayInvitations(invitations) {
                             <i class="fas fa-times"></i>
                         </button>
                     `
-    : `
+                        : `
                         <span class="text-muted small">No actions</span>
                     `
-}
+                    }
                 </div>
             </td>
         </tr>

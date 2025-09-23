@@ -773,3 +773,48 @@ class TestAuthServiceCoverage:
             # Should extract institution_id from query parameters
             result = test_func()
             assert result == "success"
+
+    def test_get_accessible_programs_fallback_field(self):
+        """Test get_accessible_programs supports both program_ids and accessible_programs fields."""
+        from auth_service import AuthService, UserRole
+
+        service = AuthService()
+
+        # Test with accessible_programs field (fallback)
+        user_with_accessible_programs = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            "accessible_programs": ["prog-fallback-1", "prog-fallback-2"],
+        }
+
+        with patch.object(
+            service, "get_current_user", return_value=user_with_accessible_programs
+        ):
+            programs = service.get_accessible_programs()
+            assert programs == ["prog-fallback-1", "prog-fallback-2"]
+
+        # Test with both fields present (program_ids takes precedence)
+        user_with_both = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            "program_ids": ["prog-primary-1"],
+            "accessible_programs": ["prog-fallback-1", "prog-fallback-2"],
+        }
+
+        with patch.object(service, "get_current_user", return_value=user_with_both):
+            programs = service.get_accessible_programs()
+            assert programs == ["prog-primary-1"]
+
+    def test_get_accessible_programs_no_fields(self):
+        """Test get_accessible_programs with program_admin user having no program fields."""
+        from auth_service import AuthService, UserRole
+
+        service = AuthService()
+
+        # Test program_admin user with no program_ids or accessible_programs fields
+        user_no_programs = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            # No program_ids or accessible_programs fields
+        }
+
+        with patch.object(service, "get_current_user", return_value=user_no_programs):
+            programs = service.get_accessible_programs()
+            assert programs == []  # Should return empty list as fallback

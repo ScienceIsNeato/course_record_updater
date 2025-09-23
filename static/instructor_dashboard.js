@@ -1,4 +1,4 @@
-(function() {
+(function () {
   const API_ENDPOINT = '/api/dashboard/data';
   const SELECTORS = {
     name: 'instructorName',

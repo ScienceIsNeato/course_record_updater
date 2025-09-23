@@ -72,7 +72,7 @@ function initializeRegisterForm() {
   const agreeTerms = document.getElementById('agreeTerms');
   const submitBtn = document.getElementById('registerBtn');
   if (agreeTerms && submitBtn) {
-    agreeTerms.addEventListener('change', function() {
+    agreeTerms.addEventListener('change', function () {
       submitBtn.disabled = !this.checked;
     });
   }
@@ -80,7 +80,7 @@ function initializeRegisterForm() {
   // Real-time validation for all fields
   const inputs = form.querySelectorAll('input[required]');
   inputs.forEach(input => {
-    input.addEventListener('blur', function() {
+    input.addEventListener('blur', function () {
       if (this.type === 'email') {
         validateEmail.call(this);
       } else if (this.type === 'url') {
@@ -122,7 +122,7 @@ function initializeProfileForm() {
     // Password strength for new password
     const newPasswordInput = document.getElementById('newPassword');
     if (newPasswordInput) {
-      newPasswordInput.addEventListener('input', function() {
+      newPasswordInput.addEventListener('input', function () {
         updatePasswordStrength.call(this, 'newPassword');
       });
     }
@@ -130,7 +130,7 @@ function initializeProfileForm() {
     // Confirm password validation
     const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
     if (confirmNewPasswordInput) {
-      confirmNewPasswordInput.addEventListener('input', function() {
+      confirmNewPasswordInput.addEventListener('input', function () {
         validatePasswordMatch.call(this, 'newPassword', 'confirmNewPassword');
       });
     }
@@ -142,7 +142,7 @@ function initializePasswordToggles() {
   const toggleButtons = document.querySelectorAll('[id^="toggle"]');
 
   toggleButtons.forEach(button => {
-    button.addEventListener('click', function(e) {
+    button.addEventListener('click', function (e) {
       e.preventDefault();
 
       const targetId = this.id.replace('toggle', '').toLowerCase();
@@ -169,7 +169,7 @@ function initializeFormValidation() {
   // Disable HTML5 validation, use custom validation
   const forms = document.querySelectorAll('form[novalidate]');
   forms.forEach(form => {
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
       if (!this.checkValidity()) {
         e.preventDefault();
         e.stopPropagation();
