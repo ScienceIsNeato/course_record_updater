@@ -118,6 +118,7 @@ class QualityGateExecutor:
             duration = time.time() - start_time
 
             # Auto-stage files after auto-fixers run successfully
+            # Only auto-stage for tools that actually modify files and need staging
             if result.returncode == 0 and check_flag in ["black", "isort"]:
                 try:
                     subprocess.run(["git", "add", "."], capture_output=True, check=True)
