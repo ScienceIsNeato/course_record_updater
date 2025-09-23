@@ -487,74 +487,108 @@ function initializeImportForm() {
     });
   }
 
+  function validateImportForm(fileInput, conflictStrategy) {
+    if (!fileInput.files[0]) {
+      alert('Please select an Excel file first.');
+      return false;
+    }
+
+    if (!conflictStrategy) {
+      alert('Please select a conflict resolution strategy.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
+    let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
+
+    if (deleteExistingDb && deleteExistingDb.checked) {
+      confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
+    }
+
+    confirmMsg += ' Are you sure?';
+    return confirmMsg;
+  }
+
+  function buildImportFormData(
+    fileInput,
+    conflictStrategy,
+    dryRun,
+    adapterSelect,
+    deleteExistingDb
+  ) {
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('conflict_strategy', conflictStrategy.value);
+    formData.append('dry_run', dryRun.checked ? 'true' : 'false');
+    formData.append('adapter_name', adapterSelect.value);
+    formData.append(
+      'delete_existing_db',
+      deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
+    );
+    return formData;
+  }
+
+  async function executeImport(formData, dryRun) {
+    const actionText = dryRun.checked ? 'Testing import' : 'Executing import';
+    showProgress(actionText + '...');
+
+    try {
+      const response = await fetch('/api/import/excel', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.progress_id) {
+        await pollImportProgress(result.progress_id, !dryRun.checked);
+      } else {
+        hideProgress();
+        showError('Failed to start import: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      hideProgress();
+      showError('Network error during import: ' + error.message);
+    }
+  }
+
   // Execute import
   if (importForm) {
     importForm.addEventListener('submit', async e => {
       e.preventDefault();
 
+      // Get form elements
       const fileInput = document.getElementById('excel_file');
       const adapterSelect = document.getElementById('import_adapter');
       const conflictStrategy = document.querySelector('input[name="conflict_strategy"]:checked');
       const dryRun = document.getElementById('dry_run');
       const deleteExistingDb = document.getElementById('delete_existing_db');
 
-      if (!fileInput.files[0]) {
-        alert('Please select an Excel file first.');
-        return;
-      }
-
-      if (!conflictStrategy) {
-        alert('Please select a conflict resolution strategy.');
+      // Validate form inputs
+      if (!validateImportForm(fileInput, conflictStrategy)) {
         return;
       }
 
       // Confirm execution if not dry run
       if (!dryRun.checked) {
-        let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
-
-        if (deleteExistingDb && deleteExistingDb.checked) {
-          confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
-        }
-
-        confirmMsg += ' Are you sure?';
-
+        const confirmMsg = buildConfirmationMessage(conflictStrategy, deleteExistingDb);
         if (!confirm(confirmMsg)) {
           return;
         }
       }
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('conflict_strategy', conflictStrategy.value);
-      formData.append('dry_run', dryRun.checked ? 'true' : 'false');
-      formData.append('adapter_name', adapterSelect.value);
-      formData.append(
-        'delete_existing_db',
-        deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
+      // Build form data and execute import
+      const formData = buildImportFormData(
+        fileInput,
+        conflictStrategy,
+        dryRun,
+        adapterSelect,
+        deleteExistingDb
       );
-
-      const actionText = dryRun.checked ? 'Testing import' : 'Executing import';
-      showProgress(actionText + '...');
-
-      try {
-        const response = await fetch('/api/import/excel', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.progress_id) {
-          // Start polling for progress
-          await pollImportProgress(result.progress_id, !dryRun.checked);
-        } else {
-          hideProgress();
-          showError('Failed to start import: ' + (result.error || 'Unknown error'));
-        }
-      } catch (error) {
-        hideProgress();
-        showError('Network error during import: ' + error.message);
-      }
+      await executeImport(formData, dryRun);
     });
   }
 
