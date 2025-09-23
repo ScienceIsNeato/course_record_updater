@@ -241,6 +241,49 @@ class QualityGateExecutor:
         lines.append("")
         return lines
 
+    def _filter_meaningful_lines(self, output_lines: List[str]) -> List[str]:
+        """Filter out empty lines and pip noise from output."""
+        return [
+            line
+            for line in output_lines
+            if line.strip() and not line.startswith("pip")
+        ]
+
+    def _format_check_output(self, result: CheckResult) -> List[str]:
+        """Format output section for a failed check."""
+        if not result.output:
+            return []
+
+        lines = []
+        output_lines = result.output.strip().split("\n")
+        meaningful_lines = self._filter_meaningful_lines(output_lines)
+        display_lines = meaningful_lines[:20]  # Show up to 20 meaningful lines
+
+        if display_lines:
+            lines.append("     Output:")
+            for line in display_lines:
+                lines.append(f"       {line}")
+
+        if len(meaningful_lines) > 20:
+            lines.extend([
+                f"       ... and {len(meaningful_lines) - 20} more lines",
+                "       Run the individual check for full details"
+            ])
+
+        return lines
+
+    def _format_single_failed_check(self, result: CheckResult) -> List[str]:
+        """Format a single failed check with error and output."""
+        lines = [f"   • {result.name}"]
+        
+        if result.error:
+            lines.append(f"     Error: {result.error}")
+        
+        lines.extend(self._format_check_output(result))
+        lines.append("")
+        
+        return lines
+
     def _format_failed_checks(self, failed_checks: List[CheckResult]) -> List[str]:
         """Format failed checks section with detailed error output."""
         if not failed_checks:
@@ -248,31 +291,7 @@ class QualityGateExecutor:
 
         lines = [f"❌ FAILED CHECKS ({len(failed_checks)}):"]
         for result in failed_checks:
-            lines.append(f"   • {result.name}")
-            if result.error:
-                lines.append(f"     Error: {result.error}")
-            if result.output:
-                # Show more detailed output for failed checks (up to 20 lines)
-                output_lines = result.output.strip().split("\n")
-                # Filter out empty lines and pip noise
-                meaningful_lines = [
-                    line
-                    for line in output_lines
-                    if line.strip() and not line.startswith("pip")
-                ]
-                display_lines = meaningful_lines[:20]  # Show up to 20 meaningful lines
-
-                if display_lines:
-                    lines.append("     Output:")
-                    for line in display_lines:
-                        lines.append(f"       {line}")
-
-                if len(meaningful_lines) > 20:
-                    lines.append(
-                        f"       ... and {len(meaningful_lines) - 20} more lines"
-                    )
-                    lines.append("       Run the individual check for full details")
-            lines.append("")
+            lines.extend(self._format_single_failed_check(result))
         return lines
 
     def _format_summary(self, failed_checks: List[CheckResult]) -> List[str]:
