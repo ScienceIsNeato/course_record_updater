@@ -17,6 +17,10 @@ Usage:
 This wrapper dispatches individual check commands to the existing bash script
 in parallel threads, then collects and formats the results. Fail-fast behavior
 is always enabled for rapid development cycles.
+
+IMPORTANT: SonarCloud (--checks sonar) only analyzes 'main' branch on free tier.
+It will FAIL on feature branches even with fixes. See SONAR_ANALYSIS_RESULTS.md
+for the proper workflow when working with SonarCloud issues.
 """
 
 import argparse

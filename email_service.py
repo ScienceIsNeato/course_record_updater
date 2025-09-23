@@ -24,11 +24,11 @@ from urllib.parse import urljoin
 
 from flask import current_app
 
+# Import constants to avoid duplication
+from constants import DEFAULT_BASE_URL
+
 # Import centralized logging
 from logging_config import get_logger
-
-# Constants for repeated strings
-DEFAULT_BASE_URL = "http://localhost:5000"
 
 # Get standardized logger
 logger = get_logger(__name__)

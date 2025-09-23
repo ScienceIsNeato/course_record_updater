@@ -20,6 +20,7 @@ describe('admin module', () => {
       <span id="invitationsCount"></span>
       <select id="invitePrograms" multiple></select>
     `);
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: async () => ({ success: true }) }));
   });
 
   it('filters users according to search, role, and status', () => {
@@ -201,6 +202,139 @@ describe('admin module', () => {
     global.fetch.mockRejectedValue(new Error('boom'));
     expect(await admin.resendInvitation('inv1')).toBe(false);
     consoleErrorSpy.mockRestore();
+  });
+
+  it('handles bulk invitation resend and cancel flows', async () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <div id="invitationsLoading"></div>
+      <div id="invitationsEmpty" class="d-none"></div>
+      <table><tbody id="invitationsTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown" class="d-none"></button>
+      <span id="usersCount"></span>
+      <span id="invitationsCount"></span>
+      <div id="confirmModal"></div>
+      <div id="confirmModalLabel"></div>
+      <div id="confirmModalBody"></div>
+      <button id="confirmActionBtn"></button>
+    `);
+
+    admin.__resetAdminState();
+    admin.__setAdminState({
+      currentTab: 'invitations',
+      selectedInvitations: ['inv1', 'inv2']
+    });
+
+    const resendSpy = jest.spyOn(admin, 'resendInvitation').mockResolvedValue(true);
+    const cancelSpy = jest.spyOn(admin, 'cancelInvitation').mockResolvedValue(true);
+    const loadInvitationsSpy = jest.spyOn(admin, 'loadInvitations').mockImplementation(() => {});
+    const showSuccessSpy = jest.spyOn(admin, 'showSuccess').mockImplementation(() => {});
+    jest.spyOn(admin, 'showConfirmation').mockResolvedValue(true);
+
+    await admin.handleBulkResendInvitations();
+    expect(resendSpy).toHaveBeenCalledTimes(2);
+
+    admin.__setAdminState({
+      currentTab: 'invitations',
+      selectedInvitations: ['inv3']
+    });
+
+    await admin.handleBulkCancelInvitations();
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+
+    resendSpy.mockRestore();
+    cancelSpy.mockRestore();
+    loadInvitationsSpy.mockRestore();
+    showSuccessSpy.mockRestore();
+    admin.showConfirmation.mockRestore();
+  });
+
+  it('formats expiry dates and statuses for various scenarios', () => {
+    expect(admin.formatExpiryDate(new Date(Date.now() - 86400000).toISOString())).toBe('Expired');
+    expect(admin.formatExpiryDate(new Date(Date.now() + 60 * 60 * 1000).toISOString())).toBe('Today');
+    expect(admin.formatExpiryDate(new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString())).toBe('Tomorrow');
+    expect(admin.formatRole('institution_admin')).toBe('Institution Admin');
+  });
+
+  it('renders invitations with personal messages', () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="invitationsLoading"></div>
+      <div id="invitationsEmpty" class="d-none"></div>
+      <table><tbody id="invitationsTableBody"></tbody></table>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown" class="d-none"></button>
+    `);
+
+    admin.__resetAdminState();
+    admin.__setAdminState({
+      currentTab: 'invitations',
+      currentInvitations: [
+        {
+          id: 'inv1',
+          email: 'hello@example.com',
+          status: 'pending',
+          role: 'faculty',
+          invited_by: 'Admin',
+          personal_message: 'Welcome',
+          sent_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 86400000 * 5).toISOString()
+        }
+      ],
+      filters: { search: '', role: '', status: '' }
+    });
+
+    admin.updateDisplay();
+    expect(document.getElementById('invitationsTableBody').textContent).toContain('Welcome');
+  });
+
+  it('renders pagination with ellipsis when pages exceed window', () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <div id="invitationsLoading"></div>
+      <div id="invitationsEmpty" class="d-none"></div>
+      <table><tbody id="invitationsTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown" class="d-none"></button>
+    `);
+
+    const manyUsers = Array.from({ length: 95 }).map((_, idx) => ({
+      id: `user-${idx}`,
+      first_name: 'User',
+      last_name: `${idx}`,
+      email: `user${idx}@example.com`,
+      role: 'faculty',
+      account_status: idx % 2 === 0 ? 'active' : 'inactive',
+      last_login: new Date().toISOString(),
+      program_ids: []
+    }));
+
+    admin.__resetAdminState();
+    admin.__setAdminState({
+      currentTab: 'users',
+      currentUsers: manyUsers,
+      currentPage: 4,
+      filters: { search: '', role: '', status: '' }
+    });
+
+    admin.updateDisplay();
+    expect(document.getElementById('pagination').textContent).toContain('...');
   });
 
   it('loads invitations data and handles errors', async () => {

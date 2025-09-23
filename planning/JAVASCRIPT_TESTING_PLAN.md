@@ -70,9 +70,9 @@ course_record_updater/
 - Jest infrastructure, coverage config, and helper harness landed (`jest.config.js`, `tests/javascript/setupTests.js`, npm scripts).
 - Added unit suites for `auth.js`, `admin.js`, `institution_dashboard.js`, `instructor_dashboard.js`, `program_dashboard.js`, `panels.js`, `script.js`, and `logger.js`; modules export test hooks for isolation.
 - MSW remains on the roadmap; current suites rely on `fetch` spies rather than a service-worker façade.
-- Current coverage sits at ~56% statements / 41% branches / 58% lines, short of the 80% targets; large async paths (admin fetch flows, import execution, stat previews) remain only partially exercised.
+- Coverage now sits at ~70% lines / 65% statements / 50% branches (Jest report, 2025-09-23 18:00 UTC). Biggest gaps remain in `static/admin.js`, `static/panels.js`, and the dashboard modules where async fetch/error branches are still untested.
 - CI/quality gate integration (ship_it.py, GitHub workflows, Sonar wiring) has not been updated yet and remains in Phase 2 scope.
-- Next steps: deepen coverage on admin bulk flows and import routines, broaden panel/dashboard error-path testing, then wire suite into `scripts/ship_it.py` + workflows before attempting Sonar ingestion.
+- Recommended next steps: (1) finish admin coverage by exercising bulk confirmation flows, invitation load errors, and edit/invite modals end-to-end; (2) cover dashboard success/error render paths plus visibility refresh logic; (3) extend panel tests to timer/error branches using MSW or structured mocks; (4) once ≥80% is achieved, wire the JS checks into `scripts/ship_it.py`, GitHub workflows, and SonarCloud.
 
 ## Implementation Strategy
 
