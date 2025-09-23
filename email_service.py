@@ -63,12 +63,12 @@ class EmailService:
     ]
 
     @staticmethod
-    def _is_protected_email(email: str) -> bool:
+    def _is_protected_email(email: Optional[str]) -> bool:
         """
         Check if email address is from a protected domain (e.g., CEI)
 
         Args:
-            email: Email address to check
+            email: Email address to check (can be None)
 
         Returns:
             True if email is from protected domain, False otherwise
