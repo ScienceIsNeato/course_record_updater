@@ -319,4 +319,8 @@
       window.InstructorDashboard = InstructorDashboard;
     }, 100);
   });
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = InstructorDashboard;
+  }
 })();

@@ -379,4 +379,8 @@
       window.InstitutionDashboard = InstitutionDashboard;
     }, 100);
   });
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = InstitutionDashboard;
+  }
 })();

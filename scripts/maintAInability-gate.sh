@@ -84,6 +84,8 @@ RUN_IMPORTS=false
 RUN_COMPLEXITY=false
 RUN_JS_LINT=false
 RUN_JS_FORMAT=false
+RUN_JS_TESTS=false
+RUN_JS_COVERAGE=false
 RUN_ALL=false
 
 # Parse arguments
@@ -105,6 +107,8 @@ else
       --complexity) RUN_COMPLEXITY=true ;;
       --js-lint) RUN_JS_LINT=true ;;
       --js-format) RUN_JS_FORMAT=true ;;
+      --js-tests) RUN_JS_TESTS=true ;;
+      --js-coverage) RUN_JS_COVERAGE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --help)
@@ -120,6 +124,8 @@ else
         echo "  ./scripts/maintAInability-gate.sh --coverage # Run coverage analysis only"
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
         echo "  ./scripts/maintAInability-gate.sh --sonar   # Run SonarQube quality analysis"
+        echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
+        echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
         echo "  ./scripts/maintAInability-gate.sh --imports # Check import organization"
         echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
@@ -903,6 +909,81 @@ if [[ "$RUN_JS_FORMAT" == "true" ]]; then
       add_failure "JavaScript Format Check" \
                   "JavaScript files are not properly formatted after auto-fix" \
                   "Review Prettier output above and fix manually"
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🧪 JAVASCRIPT TEST SUITE (Jest) 🧪
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_TESTS" == "true" ]]; then
+  echo "🧪 JavaScript Test Suite (Jest)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "⚠️  npm not found, skipping JavaScript tests"
+    echo "✅ JavaScript Tests: SKIPPED (npm not available)"
+    add_success "JavaScript Tests" "npm not available, JavaScript tests skipped"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+    # Run Jest tests
+    if npm run test:js; then
+      echo "✅ JavaScript Tests: PASSED"
+      add_success "JavaScript Tests" "All JavaScript tests passed"
+    else
+      echo "❌ JavaScript Tests: FAILED"
+      add_failure "JavaScript Tests" \
+                  "One or more JavaScript tests failed" \
+                  "Run 'npm run test:js' to see detailed failures"
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 JAVASCRIPT COVERAGE ANALYSIS (80% threshold) 📊
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
+  echo "📊 JavaScript Coverage Analysis (80% threshold)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "⚠️  npm not found, skipping JavaScript coverage"
+    echo "✅ JavaScript Coverage: SKIPPED (npm not available)"
+    add_success "JavaScript Coverage" "npm not available, JavaScript coverage skipped"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+    # Run Jest with coverage
+    echo "  🔍 Running JavaScript coverage analysis..."
+    JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
+    
+    if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
+      echo "❌ JavaScript Coverage: FAILED"
+      echo ""
+      echo "📋 Coverage Output:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$JS_COVERAGE_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      
+      # Extract coverage percentage for failure message
+      COVERAGE_PERCENT=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+      add_failure "JavaScript Coverage" \
+                  "Coverage threshold not met: $COVERAGE_PERCENT (requires 80%)" \
+                  "Add more tests to increase coverage or run 'npm run test:coverage' for details"
+    else
+      echo "✅ JavaScript Coverage: PASSED"
+      COVERAGE_PERCENT=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+      add_success "JavaScript Coverage" "Coverage threshold met: $COVERAGE_PERCENT"
     fi
   fi
 fi

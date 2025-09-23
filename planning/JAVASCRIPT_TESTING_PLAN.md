@@ -8,7 +8,7 @@ This plan establishes comprehensive JavaScript testing coverage for the Course R
 
 ### JavaScript Codebase Inventory
 - **Total JS Files**: 8 files (~1,553 lines of code)
-- **Current Coverage**: 0% across all files
+- **Current Coverage**: ~56% line / 41% branch / 57% function (Jest, 2025-09-23)
 - **Architecture**: Vanilla JavaScript with modular organization
 - **Key Components**:
   - `auth.js` (287 lines) - Authentication, validation, form handling
@@ -17,7 +17,7 @@ This plan establishes comprehensive JavaScript testing coverage for the Course R
   - `instructor_dashboard.js` (128 lines) - Instructor-specific dashboard
   - `program_dashboard.js` (141 lines) - Program management
   - `panels.js` (212 lines) - UI panels and interactions
-  - `script.js` (32 lines) - Global utilities
+  - `script.js` (352 lines) - Global utilities, dashboard helpers, import UI
   - `logger.js` (19 lines) - Client-side logging
 
 ## Strategic Goals
@@ -64,6 +64,15 @@ course_record_updater/
 ├── package.json              # Node.js dependencies
 └── .github/workflows/        # CI configuration updates
 ```
+
+## Progress Update – 2025-09-23
+
+- Jest infrastructure, coverage config, and helper harness landed (`jest.config.js`, `tests/javascript/setupTests.js`, npm scripts).
+- Added unit suites for `auth.js`, `admin.js`, `institution_dashboard.js`, `instructor_dashboard.js`, `program_dashboard.js`, `panels.js`, `script.js`, and `logger.js`; modules export test hooks for isolation.
+- MSW remains on the roadmap; current suites rely on `fetch` spies rather than a service-worker façade.
+- Current coverage sits at ~56% statements / 41% branches / 58% lines, short of the 80% targets; large async paths (admin fetch flows, import execution, stat previews) remain only partially exercised.
+- CI/quality gate integration (ship_it.py, GitHub workflows, Sonar wiring) has not been updated yet and remains in Phase 2 scope.
+- Next steps: deepen coverage on admin bulk flows and import routines, broaden panel/dashboard error-path testing, then wire suite into `scripts/ship_it.py` + workflows before attempting Sonar ingestion.
 
 ## Implementation Strategy
 

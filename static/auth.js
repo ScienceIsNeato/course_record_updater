@@ -631,3 +631,39 @@ function handleChangePassword(event) {
 // Export functions for global use
 window.logout = logout;
 window.showLogin = showLogin;
+
+const authTestExports = {
+  initializePage,
+  initializeLoginForm,
+  initializeRegisterForm,
+  initializeForgotPasswordForm,
+  initializeProfileForm,
+  initializePasswordToggles,
+  initializeFormValidation,
+  validateEmail,
+  validateRequired,
+  validateUrl,
+  validatePassword,
+  validatePasswordMatch,
+  setValidationState,
+  clearValidation,
+  updatePasswordStrength,
+  getPasswordStrength,
+  updatePasswordRequirements,
+  handleLogin,
+  handleRegister,
+  handleForgotPassword,
+  validateForm,
+  setLoadingState,
+  showError,
+  showSuccess,
+  showMessage,
+  showAccountLockout,
+  isValidUrl,
+  logout,
+  showLogin
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = authTestExports;
+}
