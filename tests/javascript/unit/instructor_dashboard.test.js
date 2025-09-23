@@ -54,4 +54,22 @@ describe('InstructorDashboard', () => {
     InstructorDashboard.showError('instructorTeachingContainer', 'Unable to load');
     expect(document.getElementById('instructorTeachingContainer').textContent).toContain('Unable to load');
   });
+
+  it('handles different data scenarios', () => {
+    // Test with minimal data
+    const minimalData = {
+      instructor_metrics: {
+        course_count: 0,
+        assessment_progress: 0
+      },
+      instructor_courses: [],
+      metadata: { last_updated: '2024-02-01T12:00:00Z' }
+    };
+
+    InstructorDashboard.render(minimalData);
+
+    expect(document.getElementById('instructorCourseCount').textContent).toBe('0');
+    expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('0%');
+    expect(document.getElementById('instructorLastUpdated').textContent).toContain('Last updated:');
+  });
 });

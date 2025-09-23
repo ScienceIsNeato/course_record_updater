@@ -72,4 +72,141 @@ describe('InstitutionDashboard', () => {
     InstitutionDashboard.showError('programManagementContainer', 'Failed');
     expect(document.getElementById('programManagementContainer').textContent).toContain('Failed');
   });
+
+  describe('comprehensive institution dashboard functionality', () => {
+    it('handles refresh functionality', async () => {
+      const sampleData = {
+        institutions: [
+          {
+            name: 'Test University',
+            id: 'test-uni'
+          }
+        ],
+        summary: {
+          programs: 1,
+          courses: 10,
+          faculty: 5,
+          sections: 15
+        },
+        program_overview: [
+          { program_name: 'CS', course_count: 10, student_count: 200, completion_rate: 85 }
+        ],
+        assessment_progress: [
+          { program_name: 'CS', completed: 15, pending: 5, overdue: 2 }
+        ],
+        terms: [
+          { name: 'Fall 2024', active: true }
+        ],
+        metadata: { last_updated: '2024-02-01T12:00:00Z' }
+      };
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: sampleData
+        })
+      });
+
+      const renderSpy = jest.spyOn(InstitutionDashboard, 'render');
+
+      await InstitutionDashboard.refresh();
+
+      expect(fetch).toHaveBeenCalledWith('/api/dashboard/data', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      expect(renderSpy).toHaveBeenCalledWith(sampleData);
+
+      renderSpy.mockRestore();
+    });
+
+    it('handles refresh errors', async () => {
+      global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
+
+      const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
+
+      await InstitutionDashboard.refresh();
+
+      expect(showErrorSpy).toHaveBeenCalled();
+
+      showErrorSpy.mockRestore();
+    });
+
+    it('handles different loading states', () => {
+      // Test multiple containers
+      InstitutionDashboard.setLoading('programManagementContainer', 'Loading programs...');
+      InstitutionDashboard.setLoading('assessmentProgressContainer', 'Loading assessments...');
+
+      expect(document.getElementById('programManagementContainer').textContent).toContain('Loading programs');
+      expect(document.getElementById('assessmentProgressContainer').textContent).toContain('Loading assessments');
+    });
+
+    it('handles basic render functionality', () => {
+      const basicData = {
+        institutions: [
+          {
+            name: 'Basic University',
+            id: 'basic-uni'
+          }
+        ],
+        summary: {
+          programs: 1,
+          courses: 5,
+          faculty: 3,
+          sections: 8
+        },
+        program_overview: [
+          { program_name: 'CS', course_count: 5, student_count: 100, completion_rate: 80 }
+        ],
+        assessment_progress: [
+          { program_name: 'CS', completed: 10, pending: 2, overdue: 1 }
+        ],
+        terms: [
+          { name: 'Spring 2024', active: true }
+        ],
+        metadata: { last_updated: '2024-02-01T12:00:00Z' }
+      };
+
+      // Should not throw error
+      expect(() => InstitutionDashboard.render(basicData)).not.toThrow();
+    });
+
+    it('handles empty data gracefully', () => {
+      const emptyData = {
+        institutions: [],
+        summary: {
+          programs: 0,
+          courses: 0,
+          faculty: 0,
+          sections: 0
+        },
+        program_overview: [],
+        assessment_progress: [],
+        terms: [],
+        metadata: {}
+      };
+
+      // Should not throw error
+      expect(() => InstitutionDashboard.render(emptyData)).not.toThrow();
+    });
+
+    it('tests initialization functionality', () => {
+      // Test that init function exists and can be called
+      expect(typeof InstitutionDashboard.init).toBe('function');
+      
+      // Should not throw error when called
+      expect(() => InstitutionDashboard.init()).not.toThrow();
+    });
+
+    it('tests cache functionality', () => {
+      // Test that cache property exists
+      expect(InstitutionDashboard.hasOwnProperty('cache')).toBe(true);
+      expect(InstitutionDashboard.hasOwnProperty('lastFetch')).toBe(true);
+      expect(InstitutionDashboard.hasOwnProperty('refreshInterval')).toBe(true);
+    });
+  });
 });

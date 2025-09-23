@@ -166,4 +166,23 @@ describe('PanelManager', () => {
     cellFraction.textContent = '4/8';
     expect(manager.getCellValue(cellFraction)).toBe('0.5');
   });
+
+  it('handles basic panel management', () => {
+    setBody(`
+      <div class="panel" id="test-panel">
+        <div class="panel-header">
+          <h3>Test Panel</h3>
+        </div>
+        <div class="panel-body"></div>
+      </div>
+    `);
+
+    const manager = new PanelManager();
+    const panel = document.getElementById('test-panel');
+
+    // Just test that we can create a manager and access panels
+    expect(panel).toBeTruthy();
+    expect(manager).toBeTruthy();
+    expect(panel.querySelector('.panel-header')).toBeTruthy();
+  });
 });

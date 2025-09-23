@@ -420,4 +420,110 @@ const setupTableDom = () => {
     expect(document.getElementById('importResults').innerHTML).toContain('Import failed');
     jest.useRealTimers();
   });
+
+  describe('additional error handling and edge cases', () => {
+    it('handles network errors during save operations', async () => {
+      setupTableDom();
+      loadScript();
+      global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+      // Click edit first to create input fields
+      document.querySelector('.edit-btn').click();
+
+      // Fill valid data
+      document.querySelector('input[name="num_students"]').value = '25';
+      document.querySelector('input[name="grade_a"]').value = '5';
+      document.querySelector('input[name="grade_b"]').value = '10';
+      document.querySelector('input[name="grade_c"]').value = '8';
+      document.querySelector('input[name="grade_d"]').value = '2';
+      document.querySelector('input[name="grade_f"]').value = '0';
+
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+
+      expect(window.alert).toHaveBeenCalledWith('Failed to send update request.');
+    });
+
+    it('handles malformed JSON responses during save', async () => {
+      setupTableDom();
+      loadScript();
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => { throw new Error('Invalid JSON'); }
+      });
+
+      // Click edit first to create input fields
+      document.querySelector('.edit-btn').click();
+
+      // Fill valid data
+      document.querySelector('input[name="num_students"]').value = '25';
+      document.querySelector('input[name="grade_a"]').value = '5';
+      document.querySelector('input[name="grade_b"]').value = '10';
+      document.querySelector('input[name="grade_c"]').value = '8';
+      document.querySelector('input[name="grade_d"]').value = '2';
+      document.querySelector('input[name="grade_f"]').value = '0';
+
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+
+      expect(window.alert).toHaveBeenCalledWith('Failed to send update request.');
+    });
+
+    it('handles edge case grade values correctly', async () => {
+      setupTableDom();
+      loadScript();
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true })
+      });
+
+      // Click edit first to create input fields
+      document.querySelector('.edit-btn').click();
+
+      // Test with integer values that sum correctly
+      document.querySelector('input[name="num_students"]').value = '25';
+      document.querySelector('input[name="grade_a"]').value = '5';
+      document.querySelector('input[name="grade_b"]').value = '10';
+      document.querySelector('input[name="grade_c"]').value = '8';
+      document.querySelector('input[name="grade_d"]').value = '2';
+      document.querySelector('input[name="grade_f"]').value = '0';
+
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+
+      // Should not show error for valid sum
+      expect(window.alert).not.toHaveBeenCalled();
+    });
+
+    it('handles basic DOM setup', () => {
+      setupTableDom();
+      loadScript();
+
+      // Just test that the basic elements exist
+      const table = document.querySelector('table');
+      const editBtn = document.querySelector('.edit-btn');
+      
+      expect(table).toBeTruthy();
+      expect(editBtn).toBeTruthy();
+    });
+
+    it('handles successful data operations', async () => {
+      setupTableDom();
+      loadScript();
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true })
+      });
+
+      // Click edit to create inputs
+      document.querySelector('.edit-btn').click();
+
+      // Verify inputs were created
+      expect(document.querySelector('input[name="num_students"]')).toBeTruthy();
+      expect(document.querySelector('input[name="grade_a"]')).toBeTruthy();
+    });
+  });
 });
