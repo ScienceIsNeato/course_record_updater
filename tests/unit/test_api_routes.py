@@ -3332,3 +3332,82 @@ class TestContextValidationHelpers:
                 # Should return early with no accessible programs
                 _auto_set_default_program_context(user, "inst_123")
                 # No assertions needed - function should return early
+
+
+class TestShouldSkipContextValidation:
+    """Test _should_skip_context_validation function."""
+
+    def test_skip_when_no_endpoint(self):
+        """Should skip validation when request has no endpoint."""
+        with app.test_request_context("/test"):
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = None
+                assert _should_skip_context_validation() is True
+
+    def test_skip_when_non_api_endpoint(self):
+        """Should skip validation for non-API endpoints."""
+        with app.test_request_context("/test"):
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "main.dashboard"
+                assert _should_skip_context_validation() is True
+
+    def test_skip_when_options_request(self):
+        """Should skip validation for OPTIONS requests (CORS preflight)."""
+        with app.test_request_context("/test", method="OPTIONS"):
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.some_endpoint"
+                mock_request.method = "OPTIONS"
+                assert _should_skip_context_validation() is True
+
+    def test_skip_when_context_management_endpoint(self):
+        """Should skip validation for context management endpoints."""
+        endpoints_to_test = [
+            "api.get_program_context",
+            "api.switch_program_context",
+            "api.clear_program_context",
+            "api.create_institution",
+            "api.list_institutions",
+        ]
+
+        for endpoint in endpoints_to_test:
+            with app.test_request_context("/test"):
+                with patch("api_routes.request") as mock_request:
+                    mock_request.endpoint = endpoint
+                    mock_request.method = "GET"
+                    assert (
+                        _should_skip_context_validation() is True
+                    ), f"Should skip for {endpoint}"
+
+    def test_skip_when_auth_endpoint(self):
+        """Should skip validation for authentication endpoints."""
+        auth_endpoints = [
+            "api.auth.login",
+            "api.auth.logout",
+            "api.auth.register",
+            "api.user_auth_status",
+        ]
+
+        for endpoint in auth_endpoints:
+            with app.test_request_context("/test"):
+                with patch("api_routes.request") as mock_request:
+                    mock_request.endpoint = endpoint
+                    mock_request.method = "POST"
+                    assert (
+                        _should_skip_context_validation() is True
+                    ), f"Should skip for {endpoint}"
+
+    def test_do_not_skip_for_regular_api_endpoint(self):
+        """Should not skip validation for regular API endpoints."""
+        with app.test_request_context("/test"):
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.get_courses"
+                mock_request.method = "GET"
+                assert _should_skip_context_validation() is False
+
+    def test_do_not_skip_for_api_endpoint_without_auth(self):
+        """Should not skip validation for API endpoints that don't contain 'auth'."""
+        with app.test_request_context("/test"):
+            with patch("api_routes.request") as mock_request:
+                mock_request.endpoint = "api.update_course"
+                mock_request.method = "POST"
+                assert _should_skip_context_validation() is False

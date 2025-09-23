@@ -131,34 +131,33 @@ def _get_user_accessible_programs(institution_id: Optional[str] = None) -> List[
 
 def _should_skip_context_validation() -> bool:
     """Check if context validation should be skipped for the current request"""
-    if not request.endpoint:
-        return True
 
-    # Skip validation for non-API endpoints
-    if not request.endpoint.startswith("api."):
-        return True
+    # Helper functions for readability
+    def is_non_api_request() -> bool:
+        return not request.endpoint or not request.endpoint.startswith("api.")
 
-    # Skip validation for OPTIONS requests (CORS preflight)
-    if request.method == "OPTIONS":
-        return True
+    def is_options_request() -> bool:
+        return request.method == "OPTIONS"
 
-    # Skip validation for context management endpoints
-    skip_endpoints = [
-        "api.get_program_context",
-        "api.switch_program_context",
-        "api.clear_program_context",
-        "api.create_institution",
-        "api.list_institutions",
-    ]
+    def is_context_management_endpoint() -> bool:
+        skip_endpoints = [
+            "api.get_program_context",
+            "api.switch_program_context",
+            "api.clear_program_context",
+            "api.create_institution",
+            "api.list_institutions",
+        ]
+        return any(request.endpoint.startswith(endpoint) for endpoint in skip_endpoints)
 
-    if any(request.endpoint.startswith(endpoint) for endpoint in skip_endpoints):
-        return True
+    def is_auth_endpoint() -> bool:
+        return "auth" in request.endpoint
 
-    # Skip for auth endpoints
-    if "auth" in request.endpoint:
-        return True
-
-    return False
+    return (
+        is_non_api_request()
+        or is_options_request()
+        or is_context_management_endpoint()
+        or is_auth_endpoint()
+    )
 
 
 def _validate_institution_context(current_user: dict) -> Optional[tuple]:
