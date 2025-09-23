@@ -747,6 +747,121 @@ function initializeImportForm() {
     resultsDiv.style.display = 'block';
   }
 
+  function buildImportHeader(result, success) {
+    const alertClass = success ? 'alert-success' : 'alert-danger';
+    const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+    const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
+
+    return `
+      <div class="alert ${alertClass}">
+        <h5><i class="${icon}"></i> Import Results (${mode})</h5>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
+            <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
+            <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
+            <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
+            <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildErrorsSection(errors) {
+    if (!errors || errors.length === 0) return '';
+
+    const displayErrors = errors.slice(0, 10);
+    const moreErrorsText =
+      errors.length > 10 ? `<li><em>... and ${errors.length - 10} more errors</em></li>` : '';
+
+    return `
+      <div class="alert alert-danger">
+        <h6>Errors (${errors.length}):</h6>
+        <ul>
+          ${displayErrors.map(error => `<li>${error}</li>`).join('')}
+          ${moreErrorsText}
+        </ul>
+      </div>
+    `;
+  }
+
+  function buildWarningsSection(warnings) {
+    if (!warnings || warnings.length === 0) return '';
+
+    const displayWarnings = warnings.slice(0, 5);
+    const moreWarningsText =
+      warnings.length > 5 ? `<li><em>... and ${warnings.length - 5} more warnings</em></li>` : '';
+
+    return `
+      <div class="alert alert-warning">
+        <h6>Warnings (${warnings.length}):</h6>
+        <ul>
+          ${displayWarnings.map(warning => `<li>${warning}</li>`).join('')}
+          ${moreWarningsText}
+        </ul>
+      </div>
+    `;
+  }
+
+  function buildConflictsSection(conflicts) {
+    if (!conflicts || conflicts.length === 0) return '';
+
+    const displayConflicts = conflicts.slice(0, 20);
+    const moreConflictsRow =
+      conflicts.length > 20
+        ? `
+      <tr>
+        <td colspan="6" class="text-center">
+          <em>... and ${conflicts.length - 20} more conflicts</em>
+        </td>
+      </tr>
+    `
+        : '';
+
+    const conflictRows = displayConflicts
+      .map(
+        conflict => `
+      <tr>
+        <td>${conflict.entity_type}</td>
+        <td>${conflict.entity_key}</td>
+        <td>${conflict.field_name}</td>
+        <td>${conflict.existing_value}</td>
+        <td>${conflict.import_value}</td>
+        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
+      </tr>
+    `
+      )
+      .join('');
+
+    return `
+      <div class="alert alert-info">
+        <h6>Conflicts Resolved (${conflicts.length}):</h6>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th>Key</th>
+                <th>Field</th>
+                <th>Existing</th>
+                <th>Import</th>
+                <th>Resolution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${conflictRows}
+              ${moreConflictsRow}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   function showImportResults(result, success) {
     if (!resultsDiv) {
       // eslint-disable-next-line no-console
@@ -754,108 +869,12 @@ function initializeImportForm() {
       return;
     }
 
-    // Access result properties directly (not under statistics)
-    const alertClass = success ? 'alert-success' : 'alert-danger';
-    const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
-    const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
-
-    let html = `
-            <div class="alert ${alertClass}">
-                <h5><i class="${icon}"></i> Import Results (${mode})</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
-                        <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
-                        <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
-                        <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
-                        <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-    if (result.errors && result.errors.length > 0) {
-      html += `
-                <div class="alert alert-danger">
-                    <h6>Errors (${result.errors.length}):</h6>
-                    <ul>
-                        ${result.errors
-    .slice(0, 10)
-    .map(error => `<li>${error}</li>`)
-    .join('')}
-                        ${result.errors.length > 10 ? `<li><em>... and ${result.errors.length - 10} more errors</em></li>` : ''}
-                    </ul>
-                </div>
-            `;
-    }
-
-    if (result.warnings && result.warnings.length > 0) {
-      html += `
-                <div class="alert alert-warning">
-                    <h6>Warnings (${result.warnings.length}):</h6>
-                    <ul>
-                        ${result.warnings
-    .slice(0, 5)
-    .map(warning => `<li>${warning}</li>`)
-    .join('')}
-                        ${result.warnings.length > 5 ? `<li><em>... and ${result.warnings.length - 5} more warnings</em></li>` : ''}
-                    </ul>
-                </div>
-            `;
-    }
-
-    if (result.conflicts && result.conflicts.length > 0) {
-      html += `
-                <div class="alert alert-info">
-                    <h6>Conflicts Resolved (${result.conflicts.length}):</h6>
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Entity</th>
-                                    <th>Key</th>
-                                    <th>Field</th>
-                                    <th>Existing</th>
-                                    <th>Import</th>
-                                    <th>Resolution</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${result.conflicts
-    .slice(0, 20)
-    .map(
-      conflict => `
-                                    <tr>
-                                        <td>${conflict.entity_type}</td>
-                                        <td>${conflict.entity_key}</td>
-                                        <td>${conflict.field_name}</td>
-                                        <td>${conflict.existing_value}</td>
-                                        <td>${conflict.import_value}</td>
-                                        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
-                                    </tr>
-                                `
-    )
-    .join('')}
-                                ${
-  result.conflicts.length > 20
-    ? `
-                                    <tr>
-                                        <td colspan="6" class="text-center">
-                                            <em>... and ${result.conflicts.length - 20} more conflicts</em>
-                                        </td>
-                                    </tr>
-                                `
-    : ''
-}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-    }
+    // Build HTML sections using helper functions
+    const html =
+      buildImportHeader(result, success) +
+      buildErrorsSection(result.errors) +
+      buildWarningsSection(result.warnings) +
+      buildConflictsSection(result.conflicts);
 
     resultsDiv.innerHTML = html;
     resultsDiv.style.display = 'block';
