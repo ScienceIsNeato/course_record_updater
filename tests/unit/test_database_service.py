@@ -1358,7 +1358,7 @@ class TestSectionAndTermFunctions:
         mock_db.collection.return_value = mock_collection
         mock_collection.document.return_value = mock_doc_ref
 
-        result = update_user_active_status("user123", True)
+        _ = update_user_active_status("user123", True)
 
         # Verify the function was called properly
         mock_collection.document.assert_called_with("user123")

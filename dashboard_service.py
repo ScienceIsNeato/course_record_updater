@@ -356,8 +356,7 @@ class DashboardService:
                 scoped_faculty, program_metrics, course_index, scoped_sections
             ),
             "courses_by_program": {
-                pid: [course for course in courses_by_program.get(pid, [])]
-                for pid in program_ids
+                pid: list(courses_by_program.get(pid, [])) for pid in program_ids
             },
         }
 

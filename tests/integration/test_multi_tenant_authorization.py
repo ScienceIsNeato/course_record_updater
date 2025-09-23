@@ -61,7 +61,7 @@ class TestInstitutionDataIsolation:
                             with patch("api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
-                                result = list_programs()
+                                _ = list_programs()
 
                                 # Should successfully access own institution's programs
                                 mock_get_programs.assert_called_once_with(
@@ -111,7 +111,7 @@ class TestInstitutionDataIsolation:
                             with patch("api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
-                                result = list_courses()
+                                _ = list_courses()
 
                                 # Should only see courses from own institution
                                 mock_get_courses.assert_called_once_with(
@@ -155,7 +155,7 @@ class TestInstitutionDataIsolation:
                             with patch("api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
-                                result = list_sections()
+                                _ = list_sections()
 
                                 # Should access sections by instructor (which filters by institution internally)
                                 mock_get_sections.assert_called_once_with(
@@ -393,12 +393,12 @@ class TestContextAwareAPIEndpoints:
                     mock_has_perm.return_value = True
 
                     # The decorator should extract institution_id from URL
-                    result = test_endpoint()
+                    _ = test_endpoint()
 
                     # Should call has_permission with context containing institution_id
                     mock_has_perm.assert_called_once()
                     call_args = mock_has_perm.call_args
-                    context = call_args[0][1] if len(call_args[0]) > 1 else {}
+                    _ = call_args[0][1] if len(call_args[0]) > 1 else {}
                     # Note: In real implementation, this would extract from request.view_args
 
     def test_program_context_extraction_from_json_body(self):
@@ -422,7 +422,7 @@ class TestContextAwareAPIEndpoints:
                 with patch("auth_service.auth_service.has_permission") as mock_has_perm:
                     mock_has_perm.return_value = True
 
-                    result = test_create_course()
+                    _ = test_create_course()
 
                     # Should extract program_id from JSON body
                     mock_has_perm.assert_called_once()
@@ -447,7 +447,7 @@ class TestContextAwareAPIEndpoints:
                 with patch("auth_service.auth_service.has_permission") as mock_has_perm:
                     mock_has_perm.return_value = True
 
-                    result = test_update_course("prog-123", "course-456")
+                    _ = test_update_course("prog-123", "course-456")
 
                     # Should validate both program and course context
                     mock_has_perm.assert_called_once()
@@ -464,7 +464,7 @@ class TestAuthorizationSystemIntegration:
         from auth_service import AuthService, UserRole
 
         # Test that all components work together
-        service = AuthService()
+        _ = AuthService()
 
         # Test role validation
         assert UserRole.SITE_ADMIN.value == "site_admin"

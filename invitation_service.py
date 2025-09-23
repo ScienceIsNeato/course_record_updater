@@ -10,7 +10,7 @@ Handles user invitation functionality including:
 
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import database_service as db
@@ -18,10 +18,6 @@ from auth_service import UserRole
 from email_service import EmailService
 from models import INVITATION_STATUSES, User, UserInvitation
 from password_service import PasswordService
-
-# Constants for repeated strings
-UTC_TIMEZONE_SUFFIX = "+00:00"
-INVITATION_NOT_FOUND_ERROR = "Invitation not found"
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +87,7 @@ class InvitationService:
             invitation_token = secrets.token_urlsafe(32)
 
             # Calculate expiry date
-            expires_at = datetime.now(timezone.utc) + timedelta(
-                days=InvitationService.INVITATION_EXPIRY_DAYS
-            )
+            datetime.utcnow() + timedelta(days=InvitationService.INVITATION_EXPIRY_DAYS)
 
             # Create invitation data using the correct UserInvitation schema
             invitation_data = UserInvitation.create_schema(
@@ -168,10 +162,7 @@ class InvitationService:
                 # Update invitation status to sent
                 db.update_invitation(
                     invitation_data["id"],
-                    {
-                        "status": "sent",
-                        "sent_at": datetime.now(timezone.utc).isoformat(),
-                    },
+                    {"status": "sent", "sent_at": datetime.utcnow().isoformat()},
                 )
 
                 logger.info(
@@ -189,117 +180,6 @@ class InvitationService:
                 f"[Invitation Service] Error sending invitation email: {str(e)}"
             )
             raise InvitationError(f"Failed to send invitation email: {str(e)}")
-
-    @staticmethod
-    def _validate_invitation_status(invitation: Dict[str, Any]) -> None:
-        """Validate invitation status for acceptance."""
-        if invitation["status"] != "sent":
-            if invitation["status"] == "accepted":
-                raise InvitationError("Invitation has already been accepted")
-            elif invitation["status"] == "expired":
-                raise InvitationError("Invitation has expired")
-            else:
-                raise InvitationError("Invitation is not available for acceptance")
-
-    @staticmethod
-    def _check_invitation_expiry(invitation: Dict[str, Any]) -> None:
-        """Check if invitation has expired and mark as expired if needed."""
-        expires_at_str = invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
-        expires_at = datetime.fromisoformat(expires_at_str)
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-        if datetime.now(timezone.utc) > expires_at:
-            # Mark as expired
-            db.update_invitation(
-                invitation["id"],
-                {
-                    "status": "expired",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
-            )
-            raise InvitationError("Invitation has expired")
-
-    @staticmethod
-    def _extract_username_from_email(email: str) -> str:
-        """Extract username portion from email address."""
-        return email.split("@")[0]
-
-    @staticmethod
-    def _parse_display_name(display_name: Optional[str], email: str) -> tuple[str, str]:
-        """Parse display name into first and last name components."""
-        if display_name and " " in display_name:
-            # Split display name into first and last
-            parts = display_name.split(" ")
-            return parts[0], parts[-1]
-        else:
-            # Use display name as first name or fall back to email username
-            first_name = display_name or InvitationService._extract_username_from_email(
-                email
-            )
-            return first_name, ""
-
-    @staticmethod
-    def _create_user_data(
-        invitation: Dict[str, Any], password_hash: str, display_name: Optional[str]
-    ) -> Dict[str, Any]:
-        """Create user data dictionary for account creation."""
-        email = invitation["email"]
-        first_name, last_name = InvitationService._parse_display_name(
-            display_name, email
-        )
-
-        user_data = User.create_schema(
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            password_hash=password_hash,
-            role=invitation["role"],
-            institution_id=invitation["institution_id"],
-            program_ids=invitation.get("program_ids", []),
-            display_name=display_name
-            or InvitationService._extract_username_from_email(email),
-            account_status="active",  # Immediately active since invited
-        )
-
-        # Add additional fields not handled by create_schema
-        user_data.update(
-            {
-                "email_verified": True,  # Email verified through invitation process
-                "invited_by": invitation["invited_by"],
-            }
-        )
-
-        return user_data
-
-    @staticmethod
-    def _update_invitation_status(invitation: Dict[str, Any], user_id: str) -> None:
-        """Update invitation status to accepted."""
-        db.update_invitation(
-            invitation["id"],
-            {
-                "status": "accepted",
-                "accepted_at": datetime.now(timezone.utc).isoformat(),
-                "accepted_by_user_id": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-
-    @staticmethod
-    def _send_welcome_email(
-        invitation: Dict[str, Any], display_name: Optional[str]
-    ) -> None:
-        """Send welcome email to newly created user."""
-        institution = db.get_institution_by_id(invitation["institution_id"])
-        if institution:
-            user_name = display_name or InvitationService._extract_username_from_email(
-                invitation["email"]
-            )
-            EmailService.send_welcome_email(
-                email=invitation["email"],
-                user_name=user_name,
-                institution_name=institution["name"],
-            )
 
     @staticmethod
     def accept_invitation(
@@ -320,31 +200,93 @@ class InvitationService:
             InvitationError: If invitation acceptance fails
         """
         try:
-            # Get and validate invitation
+            # Get invitation by token
             invitation = db.get_invitation_by_token(invitation_token)
             if not invitation:
                 raise InvitationError("Invalid invitation token")
 
-            InvitationService._validate_invitation_status(invitation)
-            InvitationService._check_invitation_expiry(invitation)
+            # Check invitation status
+            if invitation["status"] != "sent":
+                if invitation["status"] == "accepted":
+                    raise InvitationError("Invitation has already been accepted")
+                elif invitation["status"] == "expired":
+                    raise InvitationError("Invitation has expired")
+                else:
+                    raise InvitationError("Invitation is not available for acceptance")
 
-            # Validate and hash password
+            # Check expiry
+            expires_at = datetime.fromisoformat(
+                invitation["expires_at"].replace("Z", "+00:00")
+            )
+            if datetime.utcnow() > expires_at.replace(tzinfo=None):
+                # Mark as expired
+                db.update_invitation(
+                    invitation["id"],
+                    {"status": "expired", "updated_at": datetime.utcnow().isoformat()},
+                )
+                raise InvitationError("Invitation has expired")
+
+            # Validate password strength
             PasswordService.validate_password_strength(password)
+
+            # Hash password
             password_hash = PasswordService.hash_password(password)
 
             # Create user account
-            user_data = InvitationService._create_user_data(
-                invitation, password_hash, display_name
+            user_data = User.create_schema(
+                email=invitation["email"],
+                first_name=(
+                    display_name.split(" ")[0]
+                    if display_name and " " in display_name
+                    else display_name or invitation["email"].split("@")[0]
+                ),
+                last_name=(
+                    display_name.split(" ")[-1]
+                    if display_name and " " in display_name
+                    else ""
+                ),
+                password_hash=password_hash,
+                role=invitation["role"],
+                institution_id=invitation["institution_id"],
+                program_ids=invitation.get("program_ids", []),
+                display_name=display_name or invitation["email"].split("@")[0],
+                account_status="active",  # Immediately active since invited
             )
+
+            # Add additional fields not handled by create_schema
+            user_data.update(
+                {
+                    "email_verified": True,  # Email verified through invitation process
+                    "invited_by": invitation["invited_by"],
+                }
+            )
+
+            # Save user to database
             user_id = db.create_user(user_data)
             if not user_id:
                 raise InvitationError("Failed to create user account")
 
             user_data["id"] = user_id
 
-            # Update invitation and send welcome email
-            InvitationService._update_invitation_status(invitation, user_id)
-            InvitationService._send_welcome_email(invitation, display_name)
+            # Update invitation status
+            db.update_invitation(
+                invitation["id"],
+                {
+                    "status": "accepted",
+                    "accepted_at": datetime.utcnow().isoformat(),
+                    "accepted_by_user_id": user_id,
+                    "updated_at": datetime.utcnow().isoformat(),
+                },
+            )
+
+            # Send welcome email
+            institution = db.get_institution_by_id(invitation["institution_id"])
+            if institution:
+                EmailService.send_welcome_email(
+                    email=invitation["email"],
+                    user_name=display_name or invitation["email"].split("@")[0],
+                    institution_name=institution["name"],
+                )
 
             logger.info(
                 f"[Invitation Service] Accepted invitation for {invitation['email']}, created user {user_id}"
@@ -373,7 +315,7 @@ class InvitationService:
             # Get invitation
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
+                raise InvitationError("Invitation not found")
 
             # Check if invitation can be resent
             if invitation["status"] not in ["pending", "sent"]:
@@ -382,20 +324,19 @@ class InvitationService:
                 )
 
             # Check if expired and extend if needed
-            expires_at_str = invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
-            expires_at = datetime.fromisoformat(expires_at_str)
-            if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) > expires_at:
+            expires_at = datetime.fromisoformat(
+                invitation["expires_at"].replace("Z", "+00:00")
+            )
+            if datetime.utcnow() > expires_at.replace(tzinfo=None):
                 # Extend expiry
-                new_expires_at = datetime.now(timezone.utc) + timedelta(
+                new_expires_at = datetime.utcnow() + timedelta(
                     days=InvitationService.INVITATION_EXPIRY_DAYS
                 )
                 db.update_invitation(
                     invitation_id,
                     {
                         "expires_at": new_expires_at.isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.utcnow().isoformat(),
                     },
                 )
                 invitation["expires_at"] = new_expires_at.isoformat()
@@ -426,23 +367,19 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_token(invitation_token)
             if not invitation:
-                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
+                raise InvitationError("Invitation not found")
 
             # Check if expired
-            expires_at_str = invitation["expires_at"].replace("Z", UTC_TIMEZONE_SUFFIX)
-            expires_at = datetime.fromisoformat(expires_at_str)
-            if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
-            is_expired = datetime.now(timezone.utc) > expires_at
+            expires_at = datetime.fromisoformat(
+                invitation["expires_at"].replace("Z", "+00:00")
+            )
+            is_expired = datetime.utcnow() > expires_at.replace(tzinfo=None)
 
             if is_expired and invitation["status"] not in ["accepted", "expired"]:
                 # Mark as expired
                 db.update_invitation(
                     invitation["id"],
-                    {
-                        "status": "expired",
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    },
+                    {"status": "expired", "updated_at": datetime.utcnow().isoformat()},
                 )
                 invitation["status"] = "expired"
 
@@ -506,7 +443,7 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError(INVITATION_NOT_FOUND_ERROR)
+                raise InvitationError("Invitation not found")
 
             if invitation["status"] not in ["pending", "sent"]:
                 raise InvitationError(
@@ -516,10 +453,7 @@ class InvitationService:
             # Update status to cancelled
             success = db.update_invitation(
                 invitation_id,
-                {
-                    "status": "cancelled",
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                },
+                {"status": "cancelled", "updated_at": datetime.utcnow().isoformat()},
             )
 
             if success:
