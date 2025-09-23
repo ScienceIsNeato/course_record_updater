@@ -31,7 +31,6 @@ def _login_test_user(client, overrides=None):
         session["role"] = user_data.get("role")
         session["institution_id"] = user_data.get("institution_id")
         session["program_ids"] = user_data.get("program_ids", [])
-        session["program_ids"] = user_data.get("program_ids", [])
         session["display_name"] = user_data.get("display_name")
 
     return user_data
@@ -183,13 +182,7 @@ class TestProgramContextAPI:
                     (p for p in mock_programs if p["id"] == pid), None
                 )
 
-                _login_test_user(
-                    client,
-                    {
-                        **mock_user,
-                        "program_ids": mock_user["program_ids"],
-                    },
-                )
+                _login_test_user(client, mock_user)
 
                 response = client.get("/api/context/program")
                 assert response.status_code == 200
@@ -220,13 +213,7 @@ class TestProgramContextAPI:
                 patch("auth_service.has_permission", return_value=True),
             ):
 
-                _login_test_user(
-                    client,
-                    {
-                        **mock_user,
-                        "program_ids": mock_user["program_ids"],
-                    },
-                )
+                _login_test_user(client, mock_user)
 
                 response = client.post("/api/context/program/prog-123")
                 assert response.status_code == 200
@@ -252,13 +239,7 @@ class TestProgramContextAPI:
                 patch("auth_service.get_current_user", return_value=mock_user),
                 patch("auth_service.has_permission", return_value=True),
             ):
-                _login_test_user(
-                    client,
-                    {
-                        **mock_user,
-                        "program_ids": mock_user["program_ids"],
-                    },
-                )
+                _login_test_user(client, mock_user)
 
                 response = client.post("/api/context/program/prog-999")
                 assert response.status_code == 403
