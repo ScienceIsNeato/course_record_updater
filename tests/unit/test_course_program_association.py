@@ -393,7 +393,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
-                result = get_program_courses("cs-program")
+                _ = get_program_courses("cs-program")
 
                 mock_jsonify.assert_called_once()
                 call_args = mock_jsonify.call_args[0][0]
@@ -414,7 +414,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 404)
 
-                result = get_program_courses("nonexistent")
+                _ = get_program_courses("nonexistent")
 
                 mock_jsonify.assert_called_once_with(
                     {"success": False, "error": "Program not found"}
@@ -445,7 +445,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
                 mock_add.return_value = True
                 mock_jsonify.return_value = Mock()
 
-                result = add_course_to_program_api("cs-program")
+                _ = add_course_to_program_api("cs-program")
 
                 mock_add.assert_called_once_with("course1", "cs-program")
                 mock_jsonify.assert_called_once()
@@ -466,7 +466,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
                 mock_request.get_json = Mock(return_value={"other_field": "value"})
                 mock_jsonify.return_value = (Mock(), 400)
 
-                result = add_course_to_program_api("cs-program")
+                _ = add_course_to_program_api("cs-program")
 
                 mock_jsonify.assert_called_once_with(
                     {"success": False, "error": "Missing required field: course_id"}
@@ -502,7 +502,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
                 }
                 mock_jsonify.return_value = Mock()
 
-                result = bulk_manage_program_courses("cs-program")
+                _ = bulk_manage_program_courses("cs-program")
 
                 mock_bulk_add.assert_called_once_with(
                     ["course1", "course2", "course3"], "cs-program"
@@ -527,7 +527,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
                 )
                 mock_jsonify.return_value = (Mock(), 400)
 
-                result = bulk_manage_program_courses("cs-program")
+                _ = bulk_manage_program_courses("cs-program")
 
                 mock_jsonify.assert_called_once_with(
                     {
@@ -556,7 +556,7 @@ class TestCourseProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
-                result = get_course_programs("CS101")
+                _ = get_course_programs("CS101")
 
                 mock_jsonify.assert_called_once()
                 call_args = mock_jsonify.call_args[0][0]

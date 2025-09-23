@@ -30,7 +30,9 @@ def setup_integration_test_data():
         host, port = emulator_host.split(":", 1)
         import socket
 
+        # Test connection to Firestore emulator
         with socket.create_connection((host, int(port)), timeout=1):
+            # Connection successful - emulator is running
             pass
     except Exception:
         print("ℹ️  Skipping CEI institution setup (Firestore emulator unreachable)")
@@ -66,4 +68,3 @@ def setup_integration_test_data():
         except Exception as fallback_e:
             print(f"⚠️  Warning: Fallback CEI creation also failed: {fallback_e}")
         # Don't fail the tests if this setup fails - let individual tests handle it
-        pass

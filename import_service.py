@@ -443,6 +443,15 @@ class ImportService:
                     f"[Import] Skipped user (keeping existing): {user_data.get('email')}"
                 )
 
+            # Track user processing in dry run mode for conflict resolution
+            if dry_run:
+                email = user_data.get("email")
+                if email not in self._processed_users:
+                    self._processed_users.add(email)
+                    self._log(
+                        f"DRY RUN: Processed user with conflicts: {email}", "debug"
+                    )
+
             self.stats["conflicts_resolved"] += len(conflicts)
 
         else:
@@ -587,13 +596,13 @@ class ImportService:
                             continue
 
                         if entity_type == "course":
-                            success, conflicts = self.process_course_import(
+                            _, conflicts = self.process_course_import(
                                 entity_data, conflict_strategy, dry_run
                             )
                             all_conflicts.extend(conflicts)
 
                         elif entity_type == "user":
-                            success, conflicts = self.process_user_import(
+                            _, conflicts = self.process_user_import(
                                 entity_data, conflict_strategy, dry_run
                             )
                             all_conflicts.extend(conflicts)

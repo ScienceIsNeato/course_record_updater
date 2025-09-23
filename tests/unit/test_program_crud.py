@@ -253,7 +253,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
-                result = list_programs()
+                _ = list_programs()
 
                 mock_jsonify.assert_called_once_with(
                     {
@@ -284,7 +284,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 200)
 
-                result = list_programs()
+                _ = list_programs()
 
                 # Should succeed and return programs (new behavior for site admin system-wide access)
                 mock_jsonify.assert_called_once()
@@ -319,7 +319,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
                 mock_create.return_value = "new-program"
                 mock_jsonify.return_value = (Mock(), 201)
 
-                result = create_program_api()
+                _ = create_program_api()
 
                 mock_schema.assert_called_once()
                 mock_create.assert_called_once_with({"id": "new-program"})
@@ -342,7 +342,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
                 )
                 mock_jsonify.return_value = (Mock(), 400)
 
-                result = create_program_api()
+                _ = create_program_api()
 
                 mock_jsonify.assert_called_once_with(
                     {"success": False, "error": "Missing required field: short_name"}
@@ -363,7 +363,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
-                result = get_program("test-program")
+                _ = get_program("test-program")
 
             mock_jsonify.assert_called_once_with(
                 {
@@ -387,7 +387,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 404)
 
-                result = get_program("nonexistent-program")
+                _ = get_program("nonexistent-program")
 
             mock_jsonify.assert_called_once_with(
                 {"success": False, "error": "Program not found"}
@@ -418,7 +418,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
                 mock_update.return_value = True
                 mock_jsonify.return_value = Mock()
 
-                result = update_program_api("test-program")
+                _ = update_program_api("test-program")
 
                 mock_update.assert_called_once_with(
                     "test-program",
@@ -454,7 +454,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = Mock()
 
-                result = delete_program_api("test-program")
+                _ = delete_program_api("test-program")
 
                 mock_delete.assert_called_once_with("test-program", "default-program")
 
@@ -469,7 +469,7 @@ class TestProgramAPIEndpoints(CommonAuthMixin):
             with patch("api_routes.jsonify") as mock_jsonify:
                 mock_jsonify.return_value = (Mock(), 400)
 
-                result = delete_program_api("default-program")
+                _ = delete_program_api("default-program")
 
                 mock_jsonify.assert_called_once_with(
                     {"success": False, "error": "Cannot delete default program"}

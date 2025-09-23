@@ -137,7 +137,7 @@ class TestImportService:
                 patch("database_service.get_course_by_number", return_value=None),
                 patch.object(service, "_delete_all_data") as mock_delete,
             ):
-                result = service.import_excel_file(
+                _ = service.import_excel_file(
                     tmp_file.name, delete_existing_db=True, dry_run=False
                 )
 
@@ -243,7 +243,7 @@ class TestImportService:
         with patch("database_service.db") as mock_db:
             # Mock collection method
             mock_collection = Mock()
-            mock_docs = [Mock(reference=Mock(delete=Mock())) for i in range(3)]
+            mock_docs = [Mock(reference=Mock(delete=Mock())) for _ in range(3)]
             mock_collection.stream.return_value = mock_docs
             mock_db.collection.return_value = mock_collection
 
@@ -456,7 +456,7 @@ class TestEnumsAndDataClasses:
         assert result.errors == []
         assert result.warnings == []
         assert result.conflicts == []
-        assert result.execution_time == 1.5
+        assert abs(result.execution_time - 1.5) < 0.001
         assert result.dry_run is False
 
 
@@ -892,7 +892,7 @@ class TestImportServiceEdgeCases:
         }
 
         # Test with USE_THEIRS strategy
-        result = service.process_course_import(
+        _ = service.process_course_import(
             course_data, ConflictStrategy.USE_THEIRS, dry_run=False
         )
 
@@ -1020,7 +1020,7 @@ class TestImportServiceEdgeCases:
         course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
 
         # Test course creation failure
-        success, conflicts = service.process_course_import(
+        success, _ = service.process_course_import(
             course_data, ConflictStrategy.USE_THEIRS, dry_run=False
         )
 
@@ -1038,7 +1038,7 @@ class TestImportServiceEdgeCases:
         course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
 
         # Test dry run mode
-        success, conflicts = service.process_course_import(
+        success, _ = service.process_course_import(
             course_data, ConflictStrategy.USE_THEIRS, dry_run=True
         )
 
@@ -1066,7 +1066,7 @@ class TestImportServiceEdgeCases:
         }
 
         # Test with USE_THEIRS strategy
-        success, conflicts = service.process_user_import(
+        service.process_user_import(
             user_data, ConflictStrategy.USE_THEIRS, dry_run=False
         )
 
@@ -1094,9 +1094,7 @@ class TestImportServiceEdgeCases:
         }
 
         # Test with USE_MINE strategy
-        success, conflicts = service.process_user_import(
-            user_data, ConflictStrategy.USE_MINE, dry_run=False
-        )
+        service.process_user_import(user_data, ConflictStrategy.USE_MINE, dry_run=False)
 
         # Should skip the import
         assert service.stats["records_skipped"] > 0
@@ -1187,7 +1185,7 @@ class TestImportServiceEdgeCases:
         }
 
         # Test user creation failure
-        success, conflicts = service.process_user_import(
+        success, _ = service.process_user_import(
             user_data, ConflictStrategy.USE_THEIRS, dry_run=False
         )
 
@@ -1209,12 +1207,12 @@ class TestImportServiceEdgeCases:
         }
 
         # Test first dry run
-        success1, conflicts1 = service.process_user_import(
+        success1, _ = service.process_user_import(
             user_data, ConflictStrategy.USE_THEIRS, dry_run=True
         )
 
         # Test second dry run with same user (should detect duplicate)
-        success2, conflicts2 = service.process_user_import(
+        success2, _ = service.process_user_import(
             user_data, ConflictStrategy.USE_THEIRS, dry_run=True
         )
 
@@ -1244,7 +1242,7 @@ class TestImportServiceEdgeCases:
 
         try:
             # Test with unknown adapter
-            result = service.import_excel_file(
+            _ = service.import_excel_file(
                 tmp_file_path, adapter_name="unknown_adapter", dry_run=True
             )
 
@@ -1644,7 +1642,7 @@ class TestImportServiceMethods:
     def test_conflict_detection_comprehensive(self):
         """Test comprehensive conflict detection scenarios."""
         # Test course conflict detection with different field mismatches
-        existing_course = {
+        _ = {
             "course_number": "MATH-101",
             "course_title": "Algebra I",
             "department": "MATH",

@@ -454,7 +454,7 @@ def list_users():
     """
     try:
         try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
+            _, institution_ids, is_global = _resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -803,7 +803,7 @@ def list_unassigned_courses():
     """Get list of courses not assigned to any program"""
     try:
         try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
+            _, institution_ids, is_global = _resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -893,7 +893,7 @@ def list_instructors():
     """Get list of all instructors"""
     try:
         try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
+            _, institution_ids, is_global = _resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -926,7 +926,7 @@ def list_terms():
     """Get list of active terms"""
     try:
         try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
+            _, institution_ids, is_global = _resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
@@ -1010,7 +1010,7 @@ def list_programs():
     """Get programs for the current institution (or all programs for site admins)."""
     try:
         try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
+            _, institution_ids, is_global = _resolve_institution_scope()
         except InstitutionContextMissingError:
             return (
                 jsonify({"success": False, "error": "Institution context required"}),
