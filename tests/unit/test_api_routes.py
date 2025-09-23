@@ -2972,6 +2972,30 @@ class TestAPIRoutesExtended:
 class TestAPIRoutesHelpers:
     """Test helper functions in API routes."""
 
+    def test_resolve_institution_scope_missing_context(self):
+        """Test _resolve_institution_scope raises error when context missing and required."""
+        from api_routes import (
+            InstitutionContextMissingError,
+            _resolve_institution_scope,
+        )
+
+        with patch("api_routes.get_current_user", return_value={"role": "instructor"}):
+            with patch("api_routes.get_current_institution_id", return_value=None):
+                with pytest.raises(InstitutionContextMissingError):
+                    _resolve_institution_scope(require=True)
+
+    def test_resolve_institution_scope_no_require(self):
+        """Test _resolve_institution_scope returns empty list when not required."""
+        from api_routes import _resolve_institution_scope
+
+        with patch("api_routes.get_current_user", return_value={"role": "instructor"}):
+            with patch("api_routes.get_current_institution_id", return_value=None):
+                user, institutions, is_global = _resolve_institution_scope(
+                    require=False
+                )
+                assert user == {"role": "instructor"}
+                assert institutions == []
+                assert is_global is False
 
     def test_create_progress_tracker(self):
         """Test create_progress_tracker function."""
