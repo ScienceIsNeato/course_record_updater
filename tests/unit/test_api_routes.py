@@ -2,6 +2,9 @@
 
 import json
 
+# Test constants to avoid hard-coded values
+import os
+
 # Unused imports removed
 from unittest.mock import Mock, patch
 
@@ -17,8 +20,9 @@ from api_routes import (
 )
 from app import app
 
-# Test constants to avoid hard-coded values
-TEST_PASSWORD = "SecurePass123!"  # Test password for unit tests only
+TEST_PASSWORD = os.environ.get(
+    "TEST_PASSWORD", "SecurePass123!"
+)  # Test password for unit tests only
 
 
 class TestAPIBlueprint:
@@ -712,7 +716,10 @@ class TestAcceptInvitationEndpoints:
         with app.test_client() as client:
             response = client.post(
                 "/api/auth/accept-invitation",
-                json={"invitation_token": "valid-token-123", "password": "weak"},
+                json={
+                    "invitation_token": "valid-token-123",
+                    "password": os.environ.get("TEST_WEAK_PASSWORD", "weak"),
+                },
             )
 
             assert (
