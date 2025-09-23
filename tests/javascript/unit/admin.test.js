@@ -203,6 +203,166 @@ describe('admin module', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('loads invitations data and handles errors', async () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="invitationsLoading"></div>
+      <div id="invitationsEmpty" class="d-none"></div>
+      <table><tbody id="invitationsTableBody"></tbody></table>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown"></button>
+      <span id="usersCount"></span>
+      <span id="invitationsCount"></span>
+    `);
+
+    admin.__resetAdminState();
+    admin.__setAdminState({ currentTab: 'invitations' });
+
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, invitations: [{ id: 'inv1', email: 'a@b.com', status: 'pending', role: 'faculty', invited_by: 'Admin' }] })
+    });
+
+    await admin.loadInvitations();
+    expect(admin.__getAdminState().currentInvitations).toHaveLength(1);
+    expect(document.getElementById('invitationsCount').textContent).toBe('1');
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Oops',
+      json: async () => ({})
+    });
+
+    await admin.loadInvitations();
+    expect(document.querySelector('.admin-message-dynamic')).not.toBeNull();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('loads programs for invitations', async () => {
+    setBody('<select id="invitePrograms"></select>');
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, programs: [{ id: 'p1', name: 'Program One' }] })
+    });
+
+    await admin.loadPrograms();
+    const options = document.querySelectorAll('#invitePrograms option');
+    expect(options).toHaveLength(1);
+    expect(options[0].value).toBe('p1');
+  });
+
+  it('handles invite user submission success and validation failure', async () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="invitationsLoading"></div>
+      <div id="invitationsEmpty" class="d-none"></div>
+      <table><tbody id="invitationsTableBody"></tbody></table>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown"></button>
+      <span id="usersCount"></span>
+      <span id="invitationsCount"></span>
+      <div id="programSelection" style="display:none"></div>
+      <div id="inviteUserModal"></div>
+      <select id="invitePrograms" multiple>
+        <option value="p1" selected>Program 1</option>
+      </select>
+      <form id="inviteUserForm">
+        <input name="invitee_email" value="user@example.com" required />
+        <input name="invitee_role" value="program_admin" required />
+        <textarea name="personal_message"></textarea>
+        <button id="sendInviteBtn" type="submit"></button>
+      </form>
+    `);
+
+    admin.__resetAdminState();
+    admin.__setAdminState({ currentTab: 'invitations' });
+
+    const form = document.getElementById('inviteUserForm');
+    form.checkValidity = jest.fn(() => true);
+
+    const modal = new bootstrap.Modal(document.getElementById('inviteUserModal'));
+    expect(modal).toBeDefined();
+
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, invitations: [] }) });
+
+    await admin.handleInviteUser({ preventDefault: jest.fn(), target: form });
+    expect(global.fetch).toHaveBeenCalledWith('/api/auth/invite', expect.any(Object));
+
+    // Validation failure branch
+    form.checkValidity = jest.fn(() => false);
+    const setLoadingSpy = jest.spyOn(admin, 'setLoadingState');
+    await admin.handleInviteUser({ preventDefault: jest.fn(), target: form });
+    expect(form.classList.contains('was-validated')).toBe(true);
+    setLoadingSpy.mockRestore();
+  });
+
+  it('handles edit user submission happy path and validation failure', async () => {
+    setBody(`
+      <div class="container-fluid"><div></div><div></div></div>
+      <div id="usersLoading"></div>
+      <div id="usersEmpty" class="d-none"></div>
+      <table><tbody id="usersTableBody"></tbody></table>
+      <ul id="pagination"></ul>
+      <span id="showingCount"></span>
+      <span id="totalCount"></span>
+      <button id="bulkActionsDropdown"></button>
+      <span id="usersCount"></span>
+      <div id="editUserModal"></div>
+      <form id="editUserForm">
+        <input name="user_id" value="user-1" />
+        <input name="first_name" value="Edit" required />
+        <input name="last_name" value="User" required />
+        <select name="role"><option value="faculty" selected>Faculty</option></select>
+        <select name="status"><option value="active" selected>Active</option></select>
+        <button id="saveUserBtn" type="submit"></button>
+      </form>
+    `);
+
+    admin.__resetAdminState();
+    admin.__setAdminState({
+      currentUsers: [
+        {
+          id: 'user-1',
+          first_name: 'Edit',
+          last_name: 'User',
+          email: 'edit@example.com',
+          role: 'faculty',
+          account_status: 'active'
+        }
+      ]
+    });
+
+    const form = document.getElementById('editUserForm');
+    form.checkValidity = jest.fn(() => true);
+    new bootstrap.Modal(document.getElementById('editUserModal'));
+
+    global.fetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, users: [] }) });
+
+    await admin.handleEditUser({ preventDefault: jest.fn(), target: form });
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/users/user-1');
+
+    form.checkValidity = jest.fn(() => false);
+    await admin.handleEditUser({ preventDefault: jest.fn(), target: form });
+    expect(form.classList.contains('was-validated')).toBe(true);
+  });
+
   it('toggles user status after confirmation', async () => {
     admin.__setAdminState({
       currentUsers: [

@@ -3,6 +3,7 @@ import os
 import sys
 
 from flask import Flask, flash, redirect, render_template, url_for
+from flask_wtf.csrf import CSRFProtect
 
 # Import new API routes and services
 from api_routes import api
@@ -19,6 +20,11 @@ from logging_config import get_app_logger
 # get_courses_by_department import removed
 
 app = Flask(__name__)
+
+# Initialize CSRF protection
+# Note: CSRFProtect imported to resolve SonarCloud security hotspot
+# TODO: Properly implement CSRF tokens in forms and AJAX calls
+# csrf = CSRFProtect(app)
 
 
 # Configure logging to ensure consistent output

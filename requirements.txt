@@ -5,6 +5,7 @@ gunicorn>=20.1 # Production WSGI server
 pandas>=2.3.2 # Data processing for Excel imports
 bcrypt>=4.0 # Secure password hashing
 Flask-Session>=0.8.0 # Secure session management
+Flask-WTF>=1.2.1 # CSRF protection and form handling
 
 # Version constraints to resolve dependency conflicts
 cachetools<6.0,>=2.0.0 # Keep compatible with google-auth (required by google-cloud-firestore)

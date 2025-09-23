@@ -209,4 +209,150 @@ describe('auth module', () => {
     expect(auth.isValidUrl('https://example.com')).toBe(true);
     expect(auth.isValidUrl('not-a-url')).toBe(false);
   });
+
+  it('handles login network errors gracefully', async () => {
+    setBody(`
+      <form id="loginForm" class="auth-form" novalidate>
+        <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
+        <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+        <button id="loginBtn" type="submit">Login</button>
+      </form>
+    `);
+
+    document.getElementById('email').value = 'user@example.com';
+    document.getElementById('password').value = 'Str0ng!Pass';
+
+    global.fetch.mockRejectedValue(new Error('Network down'));
+
+    const form = document.getElementById('loginForm');
+    await auth.handleLogin({ preventDefault: jest.fn(), target: form });
+
+    expect(document.querySelector('.alert-danger')).not.toBeNull();
+  });
+
+  it('handles registration error responses', async () => {
+    setBody(`
+      <form id="registerForm" class="auth-form" novalidate>
+        <div><input id="email" name="email" type="email" required /><div class="invalid-feedback"></div></div>
+        <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+        <div><input id="confirmPassword" name="confirmPassword" type="password" required /><div class="invalid-feedback"></div></div>
+        <div><input id="firstName" name="firstName" required /><div class="invalid-feedback"></div></div>
+        <div><input id="lastName" name="lastName" required /><div class="invalid-feedback"></div></div>
+        <div><input id="institutionName" name="institutionName" required /><div class="invalid-feedback"></div></div>
+        <div><input id="institutionWebsite" name="institutionWebsite" type="url" /><div class="invalid-feedback"></div></div>
+        <div><input id="agreeTerms" name="agreeTerms" type="checkbox" required checked /><div class="invalid-feedback"></div></div>
+        <button id="registerBtn" type="submit">Register</button>
+      </form>
+    `);
+
+    document.getElementById('email').value = 'newuser@example.com';
+    document.getElementById('password').value = 'StrongPass1!';
+    document.getElementById('confirmPassword').value = 'StrongPass1!';
+    document.getElementById('firstName').value = 'New';
+    document.getElementById('lastName').value = 'User';
+    document.getElementById('institutionName').value = 'Example University';
+
+    global.fetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ success: false, error: 'Duplicate' })
+    });
+
+    await auth.handleRegister({ preventDefault: jest.fn(), target: document.getElementById('registerForm') });
+    expect(document.querySelector('.alert-danger')).not.toBeNull();
+  });
+
+  it('handles forgot password failures', async () => {
+    setBody(`
+      <form id="forgotPasswordForm" class="auth-form" novalidate>
+        <div><input id="email" name="email" type="email" required /><div class="invalid-feedback"></div></div>
+        <button id="resetBtn" type="submit">Reset</button>
+      </form>
+      <div id="successState" class="d-none"></div>
+    `);
+
+    document.getElementById('email').value = 'user@example.com';
+
+    global.fetch.mockResolvedValue({
+      ok: false,
+      json: async () => ({ success: false, error: 'No account' })
+    });
+
+    await auth.handleForgotPassword({ preventDefault: jest.fn(), target: document.getElementById('forgotPasswordForm') });
+    expect(document.querySelector('.alert-danger')).not.toBeNull();
+  });
+
+  it('initializes password toggles and toggles input type', () => {
+    setBody(`
+      <button id="togglePassword"><i class="fas fa-eye"></i></button>
+      <input id="password" type="password" />
+    `);
+
+    auth.initializePasswordToggles();
+    document.getElementById('togglePassword').click();
+    expect(document.getElementById('password').type).toBe('text');
+  });
+
+  it('validates form with multiple input types', () => {
+    setBody(`
+      <form id="sample">
+        <input id="email" type="email" required value="user@example.com" />
+        <input id="password" type="password" required value="StrongPass1!" />
+        <input id="confirmPassword" type="password" required value="StrongPass1!" />
+        <input id="url" type="url" value="https://example.com" />
+        <input id="agree" type="checkbox" required />
+        <div class="invalid-feedback"></div>
+      </form>
+    `);
+
+    const form = document.getElementById('sample');
+    document.getElementById('agree').checked = false;
+    expect(auth.validateForm(form)).toBe(false);
+    document.getElementById('agree').checked = true;
+    expect(auth.validateForm(form)).toBe(true);
+  });
+
+  it('initializes page based on location', () => {
+    window.location.pathname = '/login';
+    setBody(`
+      <form id="loginForm" novalidate></form>
+      <input id="email" />
+      <input id="password" type="password" />
+    `);
+    const loginForm = document.getElementById('loginForm');
+    const loginListener = jest.spyOn(loginForm, 'addEventListener');
+    auth.initializePage();
+    expect(loginListener).toHaveBeenCalledWith('submit', auth.handleLogin);
+    loginListener.mockRestore();
+
+    window.location.pathname = '/register';
+    setBody(`
+      <form id="registerForm" novalidate>
+        <input id="password" type="password" />
+        <input id="confirmPassword" type="password" />
+      </form>
+    `);
+    const registerForm = document.getElementById('registerForm');
+    const registerListener = jest.spyOn(registerForm, 'addEventListener');
+    auth.initializePage();
+    expect(registerListener).toHaveBeenCalledWith('submit', auth.handleRegister);
+    registerListener.mockRestore();
+
+    window.location.pathname = '/forgot-password';
+    setBody(`
+      <form id="forgotPasswordForm" novalidate>
+        <input id="email" type="email" />
+      </form>
+    `);
+    const forgotForm = document.getElementById('forgotPasswordForm');
+    const forgotListener = jest.spyOn(forgotForm, 'addEventListener');
+    auth.initializePage();
+    expect(forgotListener).toHaveBeenCalledWith('submit', auth.handleForgotPassword);
+    forgotListener.mockRestore();
+  });
+
+  it('shows account lockout fallback when modal missing', () => {
+    setBody('<div class="auth-form"></div>');
+    auth.showAccountLockout();
+    expect(document.querySelector('.alert-danger')).not.toBeNull();
+  });
 });

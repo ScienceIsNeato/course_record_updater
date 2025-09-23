@@ -108,4 +108,62 @@ describe('PanelManager', () => {
     expect(preview.items[0].value).toBe('120');
     jest.useRealTimers();
   });
+
+  it('loads stat preview data via fetch when cache missing', async () => {
+    const manager = new PanelManager();
+    const originalFetch = global.fetch;
+    window.dashboardDataCache = null;
+    const responsePayload = {
+      programs: [{ name: 'History', course_count: 4 }]
+    };
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: async () => responsePayload
+      })
+    );
+
+    const data = await manager.loadStatPreviewData('programs');
+    expect(global.fetch).toHaveBeenCalledWith('/api/programs', expect.any(Object));
+    expect(data.items[0].label).toBe('History');
+    global.fetch = originalFetch;
+  });
+
+  it('handles stat preview fetch errors gracefully', async () => {
+    const manager = new PanelManager();
+    const originalFetch = global.fetch;
+    window.dashboardDataCache = null;
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500 }));
+
+    await expect(manager.loadStatPreviewData('programs')).rejects.toThrow('Failed to load programs data');
+    global.fetch = originalFetch;
+  });
+
+  it('hides all stat previews and clears pending timers', () => {
+    jest.useFakeTimers();
+    setBody(`
+      <div class="stat-item" data-stat="programs"></div>
+      <div class="stat-item" data-stat="users"></div>
+    `);
+    const manager = new PanelManager();
+    manager.statPreviews.set('programs', { preview: document.createElement('div'), timeout: setTimeout(() => {}, 500) });
+    manager.statPreviews.set('users', { preview: document.createElement('div'), timeout: setTimeout(() => {}, 500) });
+
+    manager.hideAllStatPreviews();
+    jest.runOnlyPendingTimers();
+    expect(manager.statPreviews.get('programs').preview).toBeNull();
+    expect(manager.statPreviews.get('users').preview).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it('computes cell values with fractions and dataset overrides', () => {
+    const manager = new PanelManager();
+    const cellWithData = document.createElement('td');
+    cellWithData.dataset.sort = '42';
+    expect(manager.getCellValue(cellWithData)).toBe('42');
+
+    const cellFraction = document.createElement('td');
+    cellFraction.textContent = '4/8';
+    expect(manager.getCellValue(cellFraction)).toBe('0.5');
+  });
 });
