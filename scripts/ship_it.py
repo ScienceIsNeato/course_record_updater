@@ -294,36 +294,47 @@ class QualityGateExecutor:
             lines.extend(self._format_single_failed_check(result))
         return lines
 
+    def _get_check_flag(self, result_name: str) -> str:
+        """Get the command-line flag for a specific check result."""
+        for flag, name in self.all_checks:
+            if name == result_name:
+                return flag
+        return "unknown"
+
+    def _format_success_summary(self) -> List[str]:
+        """Format summary section for successful validation."""
+        return [
+            "🎉 ALL CHECKS PASSED!",
+            "✅ Ready to commit with confidence!",
+            "",
+            "🚀 Python/Flask quality validation completed successfully!",
+        ]
+
+    def _format_failure_summary(self, failed_checks: List[CheckResult]) -> List[str]:
+        """Format summary section for failed validation."""
+        lines = [
+            "❌ QUALITY GATE FAILED",
+            f"🔧 {len(failed_checks)} check(s) need attention",
+            "",
+            "💡 Run individual checks for detailed output:",
+        ]
+        
+        for result in failed_checks:
+            check_flag = self._get_check_flag(result.name)
+            lines.append(
+                f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
+            )
+        
+        return lines
+
     def _format_summary(self, failed_checks: List[CheckResult]) -> List[str]:
         """Format the final summary section."""
         lines = ["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"]
 
         if not failed_checks:
-            lines.extend(
-                [
-                    "🎉 ALL CHECKS PASSED!",
-                    "✅ Ready to commit with confidence!",
-                    "",
-                    "🚀 Python/Flask quality validation completed successfully!",
-                ]
-            )
+            lines.extend(self._format_success_summary())
         else:
-            lines.extend(
-                [
-                    "❌ QUALITY GATE FAILED",
-                    f"🔧 {len(failed_checks)} check(s) need attention",
-                    "",
-                    "💡 Run individual checks for detailed output:",
-                ]
-            )
-            for result in failed_checks:
-                check_flag = next(
-                    (flag for flag, name in self.all_checks if name == result.name),
-                    "unknown",
-                )
-                lines.append(
-                    f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
-                )
+            lines.extend(self._format_failure_summary(failed_checks))
 
         return lines
 
