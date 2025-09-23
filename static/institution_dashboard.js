@@ -1,4 +1,4 @@
-(function() {
+(function () {
   const API_ENDPOINT = '/api/dashboard/data';
   const SELECTORS = {
     institutionName: 'institutionName',
@@ -111,18 +111,18 @@
       const programs = programOverview.length
         ? programOverview
         : rawPrograms.map(program => ({
-          program_id: program.program_id || program.id,
-          program_name: program.name,
-          course_count: program.course_count || 0,
-          faculty_count: program.faculty_count || 0,
-          student_count: program.student_count || 0,
-          section_count: program.section_count || 0,
-          assessment_progress: program.assessment_progress || {
-            percent_complete: 0,
-            completed: 0,
-            total: 0
-          }
-        }));
+            program_id: program.program_id || program.id,
+            program_name: program.name,
+            course_count: program.course_count || 0,
+            faculty_count: program.faculty_count || 0,
+            student_count: program.student_count || 0,
+            section_count: program.section_count || 0,
+            assessment_progress: program.assessment_progress || {
+              percent_complete: 0,
+              completed: 0,
+              total: 0
+            }
+          }));
 
       const table = window.panelManager.createSortableTable({
         id: 'institution-programs-table',
@@ -180,17 +180,17 @@
       const facultyRecords = assignments.length
         ? assignments
         : fallbackFaculty.map(member => ({
-          user_id: member.user_id,
-          full_name:
+            user_id: member.user_id,
+            full_name:
               member.full_name ||
               [member.first_name, member.last_name].filter(Boolean).join(' ') ||
               member.email,
-          program_ids: member.program_ids || [],
-          course_count: member.course_count || 0,
-          section_count: member.section_count || 0,
-          enrollment: member.enrollment || 0,
-          role: member.role || 'instructor'
-        }));
+            program_ids: member.program_ids || [],
+            course_count: member.course_count || 0,
+            section_count: member.section_count || 0,
+            enrollment: member.enrollment || 0,
+            role: member.role || 'instructor'
+          }));
 
       if (!facultyRecords.length) {
         container.innerHTML = this.renderEmptyState('No faculty assigned yet', 'Invite Faculty');

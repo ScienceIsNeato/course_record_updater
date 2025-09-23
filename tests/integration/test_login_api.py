@@ -504,7 +504,7 @@ class TestLoginFlowIntegration:
         mock_password_service.track_failed_login.return_value = None
 
         # Make multiple failed login attempts
-        for i in range(3):
+        for _ in range(3):
             response = client.post(
                 "/api/auth/login",
                 data=json.dumps(

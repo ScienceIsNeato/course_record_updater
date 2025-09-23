@@ -20,7 +20,7 @@ const Logger = {
    * @param {string} message - The message to log
    * @param {*} data - Optional additional data
    */
-  error: function(message, data) {
+  error: function (message, data) {
     if (this.currentLevel >= this.LEVELS.ERROR) {
       if (data) {
         console.error(`❌ ${message}`, data); // eslint-disable-line no-console
@@ -35,7 +35,7 @@ const Logger = {
    * @param {string} message - The message to log
    * @param {*} data - Optional additional data
    */
-  warn: function(message, data) {
+  warn: function (message, data) {
     if (this.currentLevel >= this.LEVELS.WARN) {
       if (data) {
         console.warn(`⚠️ ${message}`, data); // eslint-disable-line no-console
@@ -50,7 +50,7 @@ const Logger = {
    * @param {string} message - The message to log
    * @param {*} data - Optional additional data
    */
-  info: function(message, data) {
+  info: function (message, data) {
     if (this.currentLevel >= this.LEVELS.INFO) {
       if (data) {
         console.log(`ℹ️ ${message}`, data); // eslint-disable-line no-console
@@ -65,7 +65,7 @@ const Logger = {
    * @param {string} message - The message to log
    * @param {*} data - Optional additional data
    */
-  debug: function(message, data) {
+  debug: function (message, data) {
     if (this.currentLevel >= this.LEVELS.DEBUG) {
       if (data) {
         console.log(`🐛 ${message}`, data); // eslint-disable-line no-console
@@ -79,7 +79,7 @@ const Logger = {
    * Set the current log level
    * @param {number} level - The log level to set
    */
-  setLevel: function(level) {
+  setLevel: function (level) {
     this.currentLevel = level;
   }
 };

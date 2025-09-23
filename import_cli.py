@@ -35,10 +35,10 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --file cei_data.xlsx --use-theirs
-  %(prog)s --file cei_data.xlsx --use-mine --dry-run
-  %(prog)s --file cei_data.xlsx --manual-review --verbose
-  %(prog)s --file cei_data.xlsx --use-theirs --adapter cei_excel_adapter
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-mine --dry-run
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --manual-review --verbose
+  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs --adapter cei_excel_adapter
 
 Conflict Resolution Strategies:
   --use-mine       Keep existing data, skip import conflicts
@@ -87,6 +87,12 @@ Options:
         "--adapter",
         default="cei_excel_adapter",
         help="Import adapter to use (default: cei_excel_adapter)",
+    )
+
+    parser.add_argument(
+        "--institution-id",
+        required=True,
+        help="Institution ID to import data for",
     )
 
     parser.add_argument(
@@ -149,12 +155,15 @@ def validate_file(file_path: str) -> bool:
     return True
 
 
-def print_summary(result: ImportResult, verbose: bool = False):
-    """Print import summary to console"""
+def _print_header():
+    """Print summary header."""
     print("\n" + "=" * 60)
     print("IMPORT SUMMARY")
     print("=" * 60)
 
+
+def _print_status_info(result: ImportResult):
+    """Print import status and basic info."""
     # Status indicator
     if result.success:
         print("✅ Import completed successfully")
@@ -165,7 +174,9 @@ def print_summary(result: ImportResult, verbose: bool = False):
     print(f"⏱️  Execution time: {result.execution_time:.2f} seconds")
     print()
 
-    # Statistics
+
+def _print_statistics(result: ImportResult):
+    """Print import statistics."""
     print("📈 STATISTICS:")
     print(f"   Records processed: {result.records_processed}")
     print(f"   Records created: {result.records_created}")
@@ -173,47 +184,66 @@ def print_summary(result: ImportResult, verbose: bool = False):
     print(f"   Records skipped: {result.records_skipped}")
     print()
 
-    # Conflicts
-    if result.conflicts_detected > 0:
-        print(f"⚠️  CONFLICTS:")
-        print(f"   Conflicts detected: {result.conflicts_detected}")
-        print(f"   Conflicts resolved: {result.conflicts_resolved}")
 
-        if verbose and result.conflicts:
-            print("\n   Conflict Details:")
-            for i, conflict in enumerate(result.conflicts[:10], 1):  # Show first 10
-                print(
-                    f"   {i}. {conflict.entity_type} '{conflict.entity_key}' - {conflict.field_name}"
-                )
-                print(f"      Existing: {conflict.existing_value}")
-                print(f"      Import: {conflict.import_value}")
-                print(f"      Resolution: {conflict.resolution}")
+def _print_conflict_details(conflicts: list, verbose: bool):
+    """Print detailed conflict information."""
+    if not verbose or not conflicts:
+        return
 
-            if len(result.conflicts) > 10:
-                print(f"   ... and {len(result.conflicts) - 10} more conflicts")
-        print()
+    print("\n   Conflict Details:")
+    for i, conflict in enumerate(conflicts[:10], 1):  # Show first 10
+        print(
+            f"   {i}. {conflict.entity_type} '{conflict.entity_key}' - {conflict.field_name}"
+        )
+        print(f"      Existing: {conflict.existing_value}")
+        print(f"      Import: {conflict.import_value}")
+        print(f"      Resolution: {conflict.resolution}")
 
-    # Errors
-    if result.errors:
-        print(f"❌ ERRORS ({len(result.errors)}):")
-        for i, error in enumerate(result.errors[:5], 1):  # Show first 5
-            print(f"   {i}. {error}")
+    if len(conflicts) > 10:
+        print(f"   ... and {len(conflicts) - 10} more conflicts")
 
-        if len(result.errors) > 5:
-            print(f"   ... and {len(result.errors) - 5} more errors")
-        print()
 
-    # Warnings
-    if result.warnings:
-        print(f"⚠️  WARNINGS ({len(result.warnings)}):")
-        for i, warning in enumerate(result.warnings[:3], 1):  # Show first 3
-            print(f"   {i}. {warning}")
+def _print_conflicts_section(result: ImportResult, verbose: bool):
+    """Print conflicts section if conflicts exist."""
+    if result.conflicts_detected <= 0:
+        return
 
-        if len(result.warnings) > 3:
-            print(f"   ... and {len(result.warnings) - 3} more warnings")
-        print()
+    print(f"⚠️  CONFLICTS:")
+    print(f"   Conflicts detected: {result.conflicts_detected}")
+    print(f"   Conflicts resolved: {result.conflicts_resolved}")
 
+    _print_conflict_details(result.conflicts, verbose)
+    print()
+
+
+def _print_list_section(items: list, title: str, emoji: str, max_items: int):
+    """Print a section with a list of items (errors, warnings)."""
+    if not items:
+        return
+
+    print(f"{emoji} {title} ({len(items)}):")
+    for i, item in enumerate(items[:max_items], 1):
+        print(f"   {i}. {item}")
+
+    if len(items) > max_items:
+        print(f"   ... and {len(items) - max_items} more {title.lower()}")
+    print()
+
+
+def _print_footer():
+    """Print summary footer."""
     print("=" * 60)
+
+
+def print_summary(result: ImportResult, verbose: bool = False):
+    """Print import summary to console"""
+    _print_header()
+    _print_status_info(result)
+    _print_statistics(result)
+    _print_conflicts_section(result, verbose)
+    _print_list_section(result.errors, "ERRORS", "❌", 5)
+    _print_list_section(result.warnings, "WARNINGS", "⚠️", 3)
+    _print_footer()
 
 
 def save_report(result: ImportResult, report_file: str):
@@ -246,6 +276,7 @@ def main():
 
     # Show configuration
     print(f"📁 File: {args.file}")
+    print(f"🏢 Institution ID: {args.institution_id}")
     print(f"🔧 Adapter: {args.adapter}")
     print(f"🤝 Conflict strategy: {conflict_strategy}")
     print(f"🏃 Mode: {'DRY RUN' if args.dry_run else 'EXECUTE'}")

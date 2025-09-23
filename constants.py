@@ -100,3 +100,16 @@ class Permission:
     # Data import/export
     IMPORT_DATA = "import_data"
     EXPORT_DATA = "export_data"
+
+
+# Seed data constants
+DEPARTMENT_COMPUTER_SCIENCE = "Computer Science"
+DEPARTMENT_ELECTRICAL_ENGINEERING = "Electrical Engineering"
+PROGRAM_DEFAULT_DESCRIPTION = "Default program for unassigned courses"
+
+# Authentication error messages
+ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
+
+# API error messages
+ERROR_PERMISSION_DENIED = "Permission denied"
+ERROR_USER_NOT_FOUND = "User not found"

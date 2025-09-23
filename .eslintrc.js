@@ -32,14 +32,16 @@ module.exports = {
     // Enforce semicolons for clarity
     'semi': ['error', 'always'],
     
-    // Enforce consistent spacing
-    'space-before-function-paren': ['error', 'never'],
+    // Disable space-before-function-paren to avoid conflict with Prettier
+    // Prettier will handle function parenthesis spacing consistently
+    'space-before-function-paren': 'off',
     
     // Enforce consistent quote style
     'quotes': ['error', 'single', { 'avoidEscape': true }],
     
-    // Enforce consistent indentation
-    'indent': ['error', 2],
+    // Disable indent rule to avoid conflict with Prettier
+    // Prettier will handle all indentation consistently
+    'indent': 'off',
     
     // Enforce trailing commas for better diffs
     'comma-dangle': ['error', 'never'],

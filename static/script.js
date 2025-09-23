@@ -93,81 +93,138 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
   }
 
-  async function handleSave(row, courseId) {
-    const inputs = row.querySelectorAll('.inline-edit-input');
-    const updatedData = {};
-    let hasError = false;
-    let validationErrorMsg = 'Please fill in all required fields correctly.'; // Default message
+  function validateFieldInput(input, updatedData) {
+    const fieldName = input.name;
+    const value = input.value.trim();
+    updatedData[fieldName] = value;
 
-    // References to specific inputs for validation feedback
+    // Reset validation state
+    input.classList.remove('is-invalid');
+
+    // Check required fields
+    if (!value && isFieldRequired(fieldName)) {
+      input.classList.add('is-invalid');
+      return { hasError: true, message: 'Please fill in all required fields correctly.' };
+    }
+
+    // Check numeric fields
+    if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
+      input.classList.add('is-invalid');
+      return { hasError: true, message: 'Numeric fields must contain valid non-negative numbers.' };
+    }
+
+    return { hasError: false, message: '' };
+  }
+
+  function collectInputReferences(inputs) {
     let numStudentsInput = null;
     const gradeInputs = [];
 
     inputs.forEach(input => {
-      const fieldName = input.name;
-      const value = input.value.trim();
-      updatedData[fieldName] = value; // Send trimmed string value
-
-      // Store references
-      if (fieldName === 'num_students') numStudentsInput = input;
-      if (fieldName.startsWith('grade_')) gradeInputs.push(input);
-
-      // --- Basic client-side validation ---
-      input.classList.remove('is-invalid'); // Reset border first
-
-      if (!value && isFieldRequired(fieldName)) {
-        input.classList.add('is-invalid');
-        hasError = true;
-      }
-      // Check number types (including grades)
-      if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
-        input.classList.add('is-invalid');
-        validationErrorMsg = 'Numeric fields must contain valid non-negative numbers.';
-        hasError = true;
-      }
+      if (input.name === 'num_students') numStudentsInput = input;
+      if (input.name.startsWith('grade_')) gradeInputs.push(input);
     });
 
-    // --- Grade Sum vs Num Students Validation ---
+    return { numStudentsInput, gradeInputs };
+  }
+
+  function validateGradeSum(updatedData, numStudentsInput, gradeInputs) {
     const numStudentsValue = updatedData.num_students ? Number(updatedData.num_students) : NaN;
     let gradeSum = 0;
     let anyGradeEntered = false;
-    const gradeValues = {};
 
+    // Calculate grade sum and check if any grades were entered
     gradeInputs.forEach(input => {
       const gradeValue = updatedData[input.name] ? Number(updatedData[input.name]) : 0;
       if (!isNaN(gradeValue) && gradeValue > 0) {
         anyGradeEntered = true;
-        gradeValues[input.name] = gradeValue;
         gradeSum += gradeValue;
-      } else if (isNaN(gradeValue)) {
-        // If a grade field has invalid number, error is already caught above
       }
-      // Store 0 even if empty for sum logic consistency if needed, but anyGradeEntered tracks actual input
-      if (!updatedData[input.name]) gradeValues[input.name] = 0;
+      if (!updatedData[input.name]) updatedData[input.name] = 0;
     });
 
-    // Only validate sum if num_students is a valid number AND at least one grade > 0 was entered
+    // Validate sum if conditions are met
     if (!isNaN(numStudentsValue) && numStudentsValue >= 0 && anyGradeEntered) {
       if (gradeSum !== numStudentsValue) {
-        hasError = true;
-        validationErrorMsg = `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`;
-        // Mark relevant fields as invalid
+        // Mark fields as invalid
         if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
         gradeInputs.forEach(input => input.classList.add('is-invalid'));
+        return {
+          hasError: true,
+          message: `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`
+        };
       }
     } else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
-      // Also check: if any grade was entered, num_students MUST be provided and valid
-      hasError = true;
-      validationErrorMsg =
-        'Number of Students is required and must be a valid non-negative number when entering grades.';
       if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-      // Keep grades marked invalid if they individually failed conversion earlier
+      return {
+        hasError: true,
+        message:
+          'Number of Students is required and must be a valid non-negative number when entering grades.'
+      };
     }
 
-    // --- Stop if errors found ---
+    return { hasError: false, message: '' };
+  }
+
+  function updateCellDisplayValues(inputs) {
+    inputs.forEach(input => {
+      const cell = input.closest('td');
+      let displayValue = input.value.trim();
+
+      // Handle display for empty optional numbers
+      if (input.type === 'number' && !displayValue) {
+        if (input.name === 'num_students') displayValue = 'N/A';
+        else if (input.name.startsWith('grade_')) displayValue = '-';
+      }
+      cell.textContent = displayValue;
+    });
+  }
+
+  function handleBackendError(result, response, numStudentsInput, gradeInputs) {
+    const backendError = result.error || 'Server error';
+
+    if (
+      backendError.includes('Sum of grades') ||
+      backendError.includes('Number of students is required')
+    ) {
+      if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+      gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
+    }
+
+    alert(`Error updating course: ${backendError}`);
+  }
+
+  async function handleSave(row, courseId) {
+    const inputs = row.querySelectorAll('.inline-edit-input');
+    const updatedData = {};
+    let hasError = false;
+    let validationErrorMsg = '';
+
+    // Collect input references
+    const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
+
+    // Validate all input fields
+    inputs.forEach(input => {
+      const validation = validateFieldInput(input, updatedData);
+      if (validation.hasError) {
+        hasError = true;
+        if (!validationErrorMsg) validationErrorMsg = validation.message;
+      }
+    });
+
+    // Validate grade sum logic
+    if (!hasError) {
+      const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
+      if (gradeValidation.hasError) {
+        hasError = true;
+        validationErrorMsg = gradeValidation.message;
+      }
+    }
+
+    // Stop if validation errors found
     if (hasError) {
-      alert(validationErrorMsg); // Show specific error
-      return; // Prevent saving
+      alert(validationErrorMsg);
+      return;
     }
 
     // --- Proceed with saving ---
@@ -186,34 +243,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        // Update cell text content and revert row state
-        inputs.forEach(input => {
-          const cell = input.closest('td');
-          let displayValue = input.value.trim();
-          // Handle display for empty optional numbers
-          if (input.type === 'number' && !displayValue) {
-            if (input.name === 'num_students') displayValue = 'N/A';
-            else if (input.name.startsWith('grade_')) displayValue = '-';
-          }
-          cell.textContent = displayValue; // Update display
-        });
+        updateCellDisplayValues(inputs);
         revertRowToActionButtons(row);
       } else {
         // eslint-disable-next-line no-console
         console.error('Update failed:', result.error || `HTTP ${response.status}`);
-        // Try to show backend validation error if available
-        const backendError = result.error || 'Server error';
-        if (
-          backendError.includes('Sum of grades') ||
-          backendError.includes('Number of students is required')
-        ) {
-          // If backend caught the sum error, highlight fields
-          validationErrorMsg = backendError;
-          if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-          gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
-        }
-        alert(`Error updating course: ${backendError}`);
-        // Leave editable on failure
+        handleBackendError(result, response, numStudentsInput, gradeInputs);
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -416,7 +451,7 @@ function initializeImportForm() {
 
   // Validate file only
   if (validateBtn) {
-    validateBtn.addEventListener('click', async() => {
+    validateBtn.addEventListener('click', async () => {
       const fileInput = document.getElementById('excel_file');
       const adapterSelect = document.getElementById('import_adapter');
 
@@ -452,74 +487,108 @@ function initializeImportForm() {
     });
   }
 
+  function validateImportForm(fileInput, conflictStrategy) {
+    if (!fileInput.files[0]) {
+      alert('Please select an Excel file first.');
+      return false;
+    }
+
+    if (!conflictStrategy) {
+      alert('Please select a conflict resolution strategy.');
+      return false;
+    }
+
+    return true;
+  }
+
+  function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
+    let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
+
+    if (deleteExistingDb && deleteExistingDb.checked) {
+      confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
+    }
+
+    confirmMsg += ' Are you sure?';
+    return confirmMsg;
+  }
+
+  function buildImportFormData(
+    fileInput,
+    conflictStrategy,
+    dryRun,
+    adapterSelect,
+    deleteExistingDb
+  ) {
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('conflict_strategy', conflictStrategy.value);
+    formData.append('dry_run', dryRun.checked ? 'true' : 'false');
+    formData.append('adapter_name', adapterSelect.value);
+    formData.append(
+      'delete_existing_db',
+      deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
+    );
+    return formData;
+  }
+
+  async function executeImport(formData, dryRun) {
+    const actionText = dryRun.checked ? 'Testing import' : 'Executing import';
+    showProgress(actionText + '...');
+
+    try {
+      const response = await fetch('/api/import/excel', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.progress_id) {
+        await pollImportProgress(result.progress_id, !dryRun.checked);
+      } else {
+        hideProgress();
+        showError('Failed to start import: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      hideProgress();
+      showError('Network error during import: ' + error.message);
+    }
+  }
+
   // Execute import
   if (importForm) {
     importForm.addEventListener('submit', async e => {
       e.preventDefault();
 
+      // Get form elements
       const fileInput = document.getElementById('excel_file');
       const adapterSelect = document.getElementById('import_adapter');
       const conflictStrategy = document.querySelector('input[name="conflict_strategy"]:checked');
       const dryRun = document.getElementById('dry_run');
       const deleteExistingDb = document.getElementById('delete_existing_db');
 
-      if (!fileInput.files[0]) {
-        alert('Please select an Excel file first.');
-        return;
-      }
-
-      if (!conflictStrategy) {
-        alert('Please select a conflict resolution strategy.');
+      // Validate form inputs
+      if (!validateImportForm(fileInput, conflictStrategy)) {
         return;
       }
 
       // Confirm execution if not dry run
       if (!dryRun.checked) {
-        let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
-
-        if (deleteExistingDb && deleteExistingDb.checked) {
-          confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
-        }
-
-        confirmMsg += ' Are you sure?';
-
+        const confirmMsg = buildConfirmationMessage(conflictStrategy, deleteExistingDb);
         if (!confirm(confirmMsg)) {
           return;
         }
       }
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('conflict_strategy', conflictStrategy.value);
-      formData.append('dry_run', dryRun.checked ? 'true' : 'false');
-      formData.append('adapter_name', adapterSelect.value);
-      formData.append(
-        'delete_existing_db',
-        deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
+      // Build form data and execute import
+      const formData = buildImportFormData(
+        fileInput,
+        conflictStrategy,
+        dryRun,
+        adapterSelect,
+        deleteExistingDb
       );
-
-      const actionText = dryRun.checked ? 'Testing import' : 'Executing import';
-      showProgress(actionText + '...');
-
-      try {
-        const response = await fetch('/api/import/excel', {
-          method: 'POST',
-          body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.progress_id) {
-          // Start polling for progress
-          await pollImportProgress(result.progress_id, !dryRun.checked);
-        } else {
-          hideProgress();
-          showError('Failed to start import: ' + (result.error || 'Unknown error'));
-        }
-      } catch (error) {
-        hideProgress();
-        showError('Network error during import: ' + error.message);
-      }
+      await executeImport(formData, dryRun);
     });
   }
 
@@ -549,7 +618,7 @@ function initializeImportForm() {
     const maxPollTime = 300000; // Max 5 minutes
     const startTime = Date.now();
 
-    const poll = async() => {
+    const poll = async () => {
       try {
         const response = await fetch(`/api/import/progress/${progressId}`);
         if (!response.ok) {
@@ -678,6 +747,121 @@ function initializeImportForm() {
     resultsDiv.style.display = 'block';
   }
 
+  function buildImportHeader(result, success) {
+    const alertClass = success ? 'alert-success' : 'alert-danger';
+    const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+    const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
+
+    return `
+      <div class="alert ${alertClass}">
+        <h5><i class="${icon}"></i> Import Results (${mode})</h5>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
+            <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
+            <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
+            <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
+            <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildErrorsSection(errors) {
+    if (!errors || errors.length === 0) return '';
+
+    const displayErrors = errors.slice(0, 10);
+    const moreErrorsText =
+      errors.length > 10 ? `<li><em>... and ${errors.length - 10} more errors</em></li>` : '';
+
+    return `
+      <div class="alert alert-danger">
+        <h6>Errors (${errors.length}):</h6>
+        <ul>
+          ${displayErrors.map(error => `<li>${error}</li>`).join('')}
+          ${moreErrorsText}
+        </ul>
+      </div>
+    `;
+  }
+
+  function buildWarningsSection(warnings) {
+    if (!warnings || warnings.length === 0) return '';
+
+    const displayWarnings = warnings.slice(0, 5);
+    const moreWarningsText =
+      warnings.length > 5 ? `<li><em>... and ${warnings.length - 5} more warnings</em></li>` : '';
+
+    return `
+      <div class="alert alert-warning">
+        <h6>Warnings (${warnings.length}):</h6>
+        <ul>
+          ${displayWarnings.map(warning => `<li>${warning}</li>`).join('')}
+          ${moreWarningsText}
+        </ul>
+      </div>
+    `;
+  }
+
+  function buildConflictsSection(conflicts) {
+    if (!conflicts || conflicts.length === 0) return '';
+
+    const displayConflicts = conflicts.slice(0, 20);
+    const moreConflictsRow =
+      conflicts.length > 20
+        ? `
+      <tr>
+        <td colspan="6" class="text-center">
+          <em>... and ${conflicts.length - 20} more conflicts</em>
+        </td>
+      </tr>
+    `
+        : '';
+
+    const conflictRows = displayConflicts
+      .map(
+        conflict => `
+      <tr>
+        <td>${conflict.entity_type}</td>
+        <td>${conflict.entity_key}</td>
+        <td>${conflict.field_name}</td>
+        <td>${conflict.existing_value}</td>
+        <td>${conflict.import_value}</td>
+        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
+      </tr>
+    `
+      )
+      .join('');
+
+    return `
+      <div class="alert alert-info">
+        <h6>Conflicts Resolved (${conflicts.length}):</h6>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Entity</th>
+                <th>Key</th>
+                <th>Field</th>
+                <th>Existing</th>
+                <th>Import</th>
+                <th>Resolution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${conflictRows}
+              ${moreConflictsRow}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
   function showImportResults(result, success) {
     if (!resultsDiv) {
       // eslint-disable-next-line no-console
@@ -685,108 +869,12 @@ function initializeImportForm() {
       return;
     }
 
-    // Access result properties directly (not under statistics)
-    const alertClass = success ? 'alert-success' : 'alert-danger';
-    const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
-    const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
-
-    let html = `
-            <div class="alert ${alertClass}">
-                <h5><i class="${icon}"></i> Import Results (${mode})</h5>
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
-                        <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
-                        <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
-                        <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
-                        <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-    if (result.errors && result.errors.length > 0) {
-      html += `
-                <div class="alert alert-danger">
-                    <h6>Errors (${result.errors.length}):</h6>
-                    <ul>
-                        ${result.errors
-    .slice(0, 10)
-    .map(error => `<li>${error}</li>`)
-    .join('')}
-                        ${result.errors.length > 10 ? `<li><em>... and ${result.errors.length - 10} more errors</em></li>` : ''}
-                    </ul>
-                </div>
-            `;
-    }
-
-    if (result.warnings && result.warnings.length > 0) {
-      html += `
-                <div class="alert alert-warning">
-                    <h6>Warnings (${result.warnings.length}):</h6>
-                    <ul>
-                        ${result.warnings
-    .slice(0, 5)
-    .map(warning => `<li>${warning}</li>`)
-    .join('')}
-                        ${result.warnings.length > 5 ? `<li><em>... and ${result.warnings.length - 5} more warnings</em></li>` : ''}
-                    </ul>
-                </div>
-            `;
-    }
-
-    if (result.conflicts && result.conflicts.length > 0) {
-      html += `
-                <div class="alert alert-info">
-                    <h6>Conflicts Resolved (${result.conflicts.length}):</h6>
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Entity</th>
-                                    <th>Key</th>
-                                    <th>Field</th>
-                                    <th>Existing</th>
-                                    <th>Import</th>
-                                    <th>Resolution</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${result.conflicts
-    .slice(0, 20)
-    .map(
-      conflict => `
-                                    <tr>
-                                        <td>${conflict.entity_type}</td>
-                                        <td>${conflict.entity_key}</td>
-                                        <td>${conflict.field_name}</td>
-                                        <td>${conflict.existing_value}</td>
-                                        <td>${conflict.import_value}</td>
-                                        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
-                                    </tr>
-                                `
-    )
-    .join('')}
-                                ${
-  result.conflicts.length > 20
-    ? `
-                                    <tr>
-                                        <td colspan="6" class="text-center">
-                                            <em>... and ${result.conflicts.length - 20} more conflicts</em>
-                                        </td>
-                                    </tr>
-                                `
-    : ''
-}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-    }
+    // Build HTML sections using helper functions
+    const html =
+      buildImportHeader(result, success) +
+      buildErrorsSection(result.errors) +
+      buildWarningsSection(result.warnings) +
+      buildConflictsSection(result.conflicts);
 
     resultsDiv.innerHTML = html;
     resultsDiv.style.display = 'block';

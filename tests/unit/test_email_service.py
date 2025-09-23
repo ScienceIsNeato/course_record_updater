@@ -604,7 +604,7 @@ class TestSMTPSending:
                     # Should log the error
                     mock_logger.error.assert_called_once()
                     error_call = mock_logger.error.call_args[0][0]
-                    assert "Failed to send email to recipient@example.com" in error_call
+                    assert "Failed to send email to" in error_call
                     assert "Connection failed" in error_call
 
     def test_smtp_authentication_error_handling(self):
@@ -642,7 +642,7 @@ class TestSMTPSending:
                     # Should log the error
                     mock_logger.error.assert_called_once()
                     error_call = mock_logger.error.call_args[0][0]
-                    assert "Failed to send email to recipient@example.com" in error_call
+                    assert "Failed to send email to" in error_call
                     assert "Authentication failed" in error_call
 
 

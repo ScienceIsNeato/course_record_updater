@@ -1,5 +1,20 @@
 # Course Record Updater – Post-Auth Backlog
 
+## JavaScript Testing Implementation (Epic) **PLANNED**
+**Status**: Planning complete, awaiting SonarCloud resolution  
+**Docs**: `planning/JAVASCRIPT_TESTING_PLAN.md`  
+**Goal**: Establish enterprise-grade JavaScript testing coverage to match backend standards (80% coverage target).
+**Why Important**: Currently 0% JS test coverage across 1,553 lines of frontend code. Users interact with untested JavaScript as much as tested backend code.
+**Key Tasks**:
+- [ ] **Phase 1**: Set up Jest + jsdom testing infrastructure with CI integration
+- [ ] **Phase 2**: Test critical authentication and validation logic (auth.js - 287 lines)
+- [ ] **Phase 3**: Test admin interface and dashboard components (admin.js - 414 lines)  
+- [ ] **Phase 4**: Complete coverage of remaining UI components and utilities
+- [ ] **Integration**: Update SonarCloud to track JavaScript coverage alongside Python metrics
+**Definition of Done**: 80% JavaScript line coverage achieved, all critical user paths tested, CI pipeline includes JS testing, sustainable testing patterns established.  
+**Timeline**: 4-week implementation once SonarCloud security issues are resolved.
+**Hand-off**: Well-documented plan ready for systematic implementation.
+
 ## Priority 0 – Multi-Tenant Context Hardening (Story 5.6)
 **Status**: Not started  
 **Docs**: `planning/AUTH_SYSTEM_DESIGN.md:744`, `auth_service.py:334`, `auth_service.py:352`, `api_routes.py:443`  

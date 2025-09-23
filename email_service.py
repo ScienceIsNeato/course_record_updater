@@ -27,6 +27,9 @@ from flask import current_app
 # Import centralized logging
 from logging_config import get_logger
 
+# Constants for repeated strings
+DEFAULT_BASE_URL = "http://localhost:5000"
+
 # Get standardized logger
 logger = get_logger(__name__)
 
@@ -60,12 +63,12 @@ class EmailService:
     ]
 
     @staticmethod
-    def _is_protected_email(email: str) -> bool:
+    def _is_protected_email(email: Optional[str]) -> bool:
         """
         Check if email address is from a protected domain (e.g., CEI)
 
         Args:
-            email: Email address to check
+            email: Email address to check (can be None)
 
         Returns:
             True if email is from protected domain, False otherwise
@@ -121,9 +124,7 @@ class EmailService:
         )
 
         # Base URL for email links
-        app.config.setdefault(
-            "BASE_URL", os.getenv("BASE_URL", "http://localhost:5000")
-        )
+        app.config.setdefault("BASE_URL", os.getenv("BASE_URL", DEFAULT_BASE_URL))
 
         # Development mode
         app.config.setdefault(
@@ -148,7 +149,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending verification email to {email}")
+        logger.info(
+            f"[Email Service] Sending verification email to {logger.sanitize(email)}"
+        )
 
         verification_url = EmailService._build_verification_url(verification_token)
 
@@ -179,7 +182,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending password reset email to {email}")
+        logger.info(
+            f"[Email Service] Sending password reset email to {logger.sanitize(email)}"
+        )
 
         reset_url = EmailService._build_password_reset_url(reset_token)
 
@@ -246,7 +251,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending invitation email to {email}")
+        logger.info(
+            f"[Email Service] Sending invitation email to {logger.sanitize(email)}"
+        )
 
         invitation_url = EmailService._build_invitation_url(invitation_token)
 
@@ -287,7 +294,9 @@ class EmailService:
         Returns:
             True if email sent successfully, False otherwise
         """
-        logger.info(f"[Email Service] Sending welcome email to {email}")
+        logger.info(
+            f"[Email Service] Sending welcome email to {logger.sanitize(email)}"
+        )
 
         dashboard_url = EmailService._build_dashboard_url()
 
@@ -380,38 +389,42 @@ class EmailService:
             server.send_message(msg)
             server.quit()
 
-            logger.info(f"[Email Service] Email sent successfully to {to_email}")
+            logger.info(
+                f"[Email Service] Email sent successfully to {logger.sanitize(to_email)}"
+            )
             return True
 
         except EmailServiceError:
             # Re-raise EmailServiceError (protection errors) to caller
             raise
         except Exception as e:
-            logger.error(f"[Email Service] Failed to send email to {to_email}: {e}")
+            logger.error(
+                f"[Email Service] Failed to send email to {logger.sanitize(to_email)}: {e}"
+            )
             return False
 
     @staticmethod
     def _build_verification_url(token: str) -> str:
         """Build email verification URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/verify-email/{token}")
 
     @staticmethod
     def _build_password_reset_url(token: str) -> str:
         """Build password reset URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/reset-password/{token}")
 
     @staticmethod
     def _build_invitation_url(token: str) -> str:
         """Build invitation acceptance URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/register/accept/{token}")
 
     @staticmethod
     def _build_dashboard_url() -> str:
         """Build dashboard URL"""
-        base_url = current_app.config.get("BASE_URL", "http://localhost:5000")
+        base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, "/dashboard")
 
     # Email template methods

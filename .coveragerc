@@ -38,8 +38,8 @@ omit =
     import_cli.py
 
 [report]
-# 75% coverage threshold - pragmatic quality gate  
-fail_under = 75
+# 80% coverage threshold - pragmatic quality gate  
+fail_under = 80
 show_missing = true
 skip_covered = false
 precision = 2

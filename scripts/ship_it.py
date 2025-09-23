@@ -74,7 +74,7 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
             ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
@@ -92,7 +92,7 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (75% threshold)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
@@ -116,6 +116,15 @@ class QualityGateExecutor:
             )
 
             duration = time.time() - start_time
+
+            # Auto-stage files after auto-fixers run successfully
+            # Only auto-stage for tools that actually modify files and need staging
+            if result.returncode == 0 and check_flag in ["black", "isort"]:
+                try:
+                    subprocess.run(["git", "add", "."], capture_output=True, check=True)
+                except subprocess.CalledProcessError:
+                    # Ignore git add failures (might not be in a git repo, etc.)
+                    pass
 
             if result.returncode == 0:
                 return CheckResult(
@@ -241,6 +250,49 @@ class QualityGateExecutor:
         lines.append("")
         return lines
 
+    def _filter_meaningful_lines(self, output_lines: List[str]) -> List[str]:
+        """Filter out empty lines and pip noise from output."""
+        return [
+            line
+            for line in output_lines
+            if line.strip() and not line.startswith("pip")
+        ]
+
+    def _format_check_output(self, result: CheckResult) -> List[str]:
+        """Format output section for a failed check."""
+        if not result.output:
+            return []
+
+        lines = []
+        output_lines = result.output.strip().split("\n")
+        meaningful_lines = self._filter_meaningful_lines(output_lines)
+        display_lines = meaningful_lines[:20]  # Show up to 20 meaningful lines
+
+        if display_lines:
+            lines.append("     Output:")
+            for line in display_lines:
+                lines.append(f"       {line}")
+
+        if len(meaningful_lines) > 20:
+            lines.extend([
+                f"       ... and {len(meaningful_lines) - 20} more lines",
+                "       Run the individual check for full details"
+            ])
+
+        return lines
+
+    def _format_single_failed_check(self, result: CheckResult) -> List[str]:
+        """Format a single failed check with error and output."""
+        lines = [f"   • {result.name}"]
+        
+        if result.error:
+            lines.append(f"     Error: {result.error}")
+        
+        lines.extend(self._format_check_output(result))
+        lines.append("")
+        
+        return lines
+
     def _format_failed_checks(self, failed_checks: List[CheckResult]) -> List[str]:
         """Format failed checks section with detailed error output."""
         if not failed_checks:
@@ -248,31 +300,40 @@ class QualityGateExecutor:
 
         lines = [f"❌ FAILED CHECKS ({len(failed_checks)}):"]
         for result in failed_checks:
-            lines.append(f"   • {result.name}")
-            if result.error:
-                lines.append(f"     Error: {result.error}")
-            if result.output:
-                # Show more detailed output for failed checks (up to 20 lines)
-                output_lines = result.output.strip().split("\n")
-                # Filter out empty lines and pip noise
-                meaningful_lines = [
-                    line
-                    for line in output_lines
-                    if line.strip() and not line.startswith("pip")
-                ]
-                display_lines = meaningful_lines[:20]  # Show up to 20 meaningful lines
+            lines.extend(self._format_single_failed_check(result))
+        return lines
 
-                if display_lines:
-                    lines.append("     Output:")
-                    for line in display_lines:
-                        lines.append(f"       {line}")
+    def _get_check_flag(self, result_name: str) -> str:
+        """Get the command-line flag for a specific check result."""
+        for flag, name in self.all_checks:
+            if name == result_name:
+                return flag
+        return "unknown"
 
-                if len(meaningful_lines) > 20:
-                    lines.append(
-                        f"       ... and {len(meaningful_lines) - 20} more lines"
-                    )
-                    lines.append("       Run the individual check for full details")
-            lines.append("")
+    def _format_success_summary(self) -> List[str]:
+        """Format summary section for successful validation."""
+        return [
+            "🎉 ALL CHECKS PASSED!",
+            "✅ Ready to commit with confidence!",
+            "",
+            "🚀 Python/Flask quality validation completed successfully!",
+        ]
+
+    def _format_failure_summary(self, failed_checks: List[CheckResult]) -> List[str]:
+        """Format summary section for failed validation."""
+        lines = [
+            "❌ QUALITY GATE FAILED",
+            f"🔧 {len(failed_checks)} check(s) need attention",
+            "",
+            "💡 Run individual checks for detailed output:",
+        ]
+        
+        for result in failed_checks:
+            check_flag = self._get_check_flag(result.name)
+            lines.append(
+                f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
+            )
+        
         return lines
 
     def _format_summary(self, failed_checks: List[CheckResult]) -> List[str]:
@@ -280,31 +341,9 @@ class QualityGateExecutor:
         lines = ["━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"]
 
         if not failed_checks:
-            lines.extend(
-                [
-                    "🎉 ALL CHECKS PASSED!",
-                    "✅ Ready to commit with confidence!",
-                    "",
-                    "🚀 Python/Flask quality validation completed successfully!",
-                ]
-            )
+            lines.extend(self._format_success_summary())
         else:
-            lines.extend(
-                [
-                    "❌ QUALITY GATE FAILED",
-                    f"🔧 {len(failed_checks)} check(s) need attention",
-                    "",
-                    "💡 Run individual checks for detailed output:",
-                ]
-            )
-            for result in failed_checks:
-                check_flag = next(
-                    (flag for flag, name in self.all_checks if name == result.name),
-                    "unknown",
-                )
-                lines.append(
-                    f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
-                )
+            lines.extend(self._format_failure_summary(failed_checks))
 
         return lines
 
@@ -327,15 +366,15 @@ class QualityGateExecutor:
         ):
             # Try multiple patterns for coverage extraction
             coverage_match = re.search(
-                r"(\d+\.?\d*)%.*(?:not met|below|fail).*(\d+\.?\d*)%", output
+                r"(\d+\.?\d*)%[^%]*(?:not met|below|fail)[^%]*(\d+\.?\d*)%", output
             )
             if not coverage_match:
                 coverage_match = re.search(
-                    r"Coverage.*?(\d+\.?\d*)%.*below.*?(\d+\.?\d*)%", output
+                    r"Coverage[^%]*(\d+\.?\d*)%[^%]*below[^%]*(\d+\.?\d*)%", output
                 )
             if not coverage_match:
                 # Look for pytest-cov style output
-                coverage_match = re.search(r"TOTAL.*?(\d+)%", output)
+                coverage_match = re.search(r"TOTAL[^%]*(\d+)%", output)
                 if coverage_match:
                     actual = coverage_match.group(1)
                     return f"Coverage threshold not met: {actual}% < 80%"
@@ -350,7 +389,7 @@ class QualityGateExecutor:
         if "coverage" in output.lower() and (
             "fail" in output.lower() or "error" in output.lower()
         ):
-            return "Coverage analysis failed or below 75% threshold"
+            return "Coverage analysis failed or below 80% threshold"
 
         # Check for import errors
         if "import" in output.lower() and "error" in output.lower():
@@ -473,6 +512,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         nargs="+",
         help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
+
 
     args = parser.parse_args()
 

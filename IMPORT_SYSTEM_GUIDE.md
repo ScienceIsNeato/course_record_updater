@@ -130,6 +130,25 @@ python import_cli.py \
 
 ---
 
+## Round-Trip Validation Gate
+
+To guarantee the import pipeline can be losslessly exported, a sanitized
+fixture lives at `tests/data/sanitized_import.xlsx`. Run the automated guardrail
+to import the fixture, export it back out, and diff the results:
+
+```bash
+python scripts/round_trip_validate.py \
+  --input tests/data/sanitized_import.xlsx \
+  --export build-output/roundtrip_export.xlsx \
+  --institution-id cei-roundtrip
+```
+
+The script orchestrates the import, calls the new `ExportService`, and performs
+a column-aligned comparison. CI should treat any mismatch as a regression in the
+import/export flow.
+
+---
+
 ## API Integration
 
 ### Web Interface Upload

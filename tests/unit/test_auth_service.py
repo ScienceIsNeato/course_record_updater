@@ -528,11 +528,18 @@ class TestAuthServiceCoverage:
         service = AuthService()
 
         # Test site admin - should return all institutions
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+        ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
                 "role": "site_admin",
             }
+            mock_get_all_institutions.return_value = [
+                {"institution_id": "inst-123"},
+                {"institution_id": "inst-456"},
+            ]
             institutions = service.get_accessible_institutions()
             assert "inst-123" in institutions
             assert "inst-456" in institutions
@@ -560,21 +567,41 @@ class TestAuthServiceCoverage:
         service = AuthService()
 
         # Test site admin
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
                 "role": "site_admin",
             }
+            mock_get_all_institutions.return_value = [
+                {"institution_id": "inst-123"},
+                {"institution_id": "inst-456"},
+            ]
+            mock_get_programs.return_value = [
+                {"program_id": "prog-123"},
+                {"program_id": "prog-456"},
+            ]
             programs = service.get_accessible_programs()
             assert "prog-123" in programs
             assert "prog-456" in programs
 
         # Test institution admin
-        with patch.object(service, "get_current_user") as mock_get_user:
+        with (
+            patch.object(service, "get_current_user") as mock_get_user,
+            patch("database_service.get_programs_by_institution") as mock_get_programs,
+        ):
             mock_get_user.return_value = {
                 "user_id": "inst-admin-123",
                 "role": "institution_admin",
+                "institution_id": "inst-123",
             }
+            mock_get_programs.return_value = [
+                {"program_id": "prog-123"},
+                {"program_id": "prog-456"},
+            ]
             programs = service.get_accessible_programs()
             assert "prog-123" in programs
             assert "prog-456" in programs
@@ -746,3 +773,48 @@ class TestAuthServiceCoverage:
             # Should extract institution_id from query parameters
             result = test_func()
             assert result == "success"
+
+    def test_get_accessible_programs_fallback_field(self):
+        """Test get_accessible_programs supports both program_ids and accessible_programs fields."""
+        from auth_service import AuthService, UserRole
+
+        service = AuthService()
+
+        # Test with accessible_programs field (fallback)
+        user_with_accessible_programs = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            "accessible_programs": ["prog-fallback-1", "prog-fallback-2"],
+        }
+
+        with patch.object(
+            service, "get_current_user", return_value=user_with_accessible_programs
+        ):
+            programs = service.get_accessible_programs()
+            assert programs == ["prog-fallback-1", "prog-fallback-2"]
+
+        # Test with both fields present (program_ids takes precedence)
+        user_with_both = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            "program_ids": ["prog-primary-1"],
+            "accessible_programs": ["prog-fallback-1", "prog-fallback-2"],
+        }
+
+        with patch.object(service, "get_current_user", return_value=user_with_both):
+            programs = service.get_accessible_programs()
+            assert programs == ["prog-primary-1"]
+
+    def test_get_accessible_programs_no_fields(self):
+        """Test get_accessible_programs with program_admin user having no program fields."""
+        from auth_service import AuthService, UserRole
+
+        service = AuthService()
+
+        # Test program_admin user with no program_ids or accessible_programs fields
+        user_no_programs = {
+            "role": UserRole.PROGRAM_ADMIN.value,
+            # No program_ids or accessible_programs fields
+        }
+
+        with patch.object(service, "get_current_user", return_value=user_no_programs):
+            programs = service.get_accessible_programs()
+            assert programs == []  # Should return empty list as fallback

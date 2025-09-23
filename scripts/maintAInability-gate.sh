@@ -386,8 +386,17 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Run coverage analysis independently of test results (unit tests only)
   echo "  📊 Running coverage analysis (independent of test results)..."
   
+  # Ensure logs directory exists
+  mkdir -p logs
+  
+  # Coverage report file (overwrite previous)
+  COVERAGE_REPORT_FILE="logs/coverage_report.txt"
+  
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
   COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  
+  # Write detailed coverage report to file
+  echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
@@ -404,8 +413,17 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     # - Import conflict resolution logic may exercise different code paths
     # - Logging behavior can vary between environments
     THRESHOLD=80
-    ENV_DIFFERENCES_BUFFER=0.5
-    EFFECTIVE_THRESHOLD=$(echo "$THRESHOLD - $ENV_DIFFERENCES_BUFFER" | bc -l)
+    
+    # Apply environment buffer only in CI (not locally)
+    if [[ "${CI:-false}" == "true" ]]; then
+      ENV_DIFFERENCES_BUFFER=0.5
+      EFFECTIVE_THRESHOLD=$(echo "$THRESHOLD - $ENV_DIFFERENCES_BUFFER" | bc -l)
+      echo "  🔧 CI environment detected - applying ${ENV_DIFFERENCES_BUFFER}% buffer (effective threshold: ${EFFECTIVE_THRESHOLD}%)"
+    else
+      ENV_DIFFERENCES_BUFFER=0
+      EFFECTIVE_THRESHOLD=$THRESHOLD
+      echo "  🏠 Local environment - using full ${THRESHOLD}% threshold"
+    fi
     
     # Compare against effective threshold using bc for floating point
     if (( $(echo "$COVERAGE_NUM >= $EFFECTIVE_THRESHOLD" | bc -l) )); then
@@ -428,15 +446,48 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
       fi
       
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Show commit-specific coverage issues
+      echo "📋 Files in Current Commit Needing Coverage:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Get list of Python files in the current commit (staged and unstaged changes)
+      COMMIT_FILES=$(git diff --name-only HEAD 2>/dev/null | grep '\.py$' || echo "")
+      if [[ -z "$COMMIT_FILES" ]]; then
+        # If no diff with HEAD, try staged files
+        COMMIT_FILES=$(git diff --cached --name-only 2>/dev/null | grep '\.py$' || echo "")
+      fi
+      if [[ -z "$COMMIT_FILES" ]]; then
+        # If still no files, try unstaged changes
+        COMMIT_FILES=$(git diff --name-only 2>/dev/null | grep '\.py$' || echo "")
+      fi
+      
+      if [[ -n "$COMMIT_FILES" ]]; then
+        echo "  Files in commit: $(echo "$COMMIT_FILES" | tr '\n' ' ')"
+        echo ""
+        
+        # Filter coverage output to show only files in the commit
+        COMMIT_COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -E "$(echo "$COMMIT_FILES" | sed 's/\.py$//' | tr '\n' '|' | sed 's/|$//')")
+        if [[ -n "$COMMIT_COVERAGE" ]]; then
+          echo "  Coverage details for commit files:"
+          echo "$COMMIT_COVERAGE" | sed 's/^/    /'
+        else
+          echo "  No coverage issues found in commit files (issues may be in other files)"
+        fi
+      else
+        echo "  No Python files found in current commit"
+      fi
+      
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo ""
 
-      add_failure "Test Coverage" "Coverage at $COVERAGE (below ${EFFECTIVE_THRESHOLD}% threshold)" "Add tests to increase coverage above ${EFFECTIVE_THRESHOLD}%"
+      add_failure "Test Coverage" "Coverage at $COVERAGE (below ${EFFECTIVE_THRESHOLD}% threshold)" "Add tests to increase coverage above ${EFFECTIVE_THRESHOLD}%. Detailed report: $PWD/$COVERAGE_REPORT_FILE"
     fi
   else
     echo "❌ Coverage: ANALYSIS FAILED"
     echo "📋 Coverage Output (for debugging):"
     echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
-    add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration"
+    add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
   echo ""
 fi
@@ -497,7 +548,8 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   
   # Also write to file to bypass GitHub truncation
   echo "$SAFETY_OUTPUT" > /tmp/safety_output.txt
-  echo "$SAFETY_OUTPUT" > safety_detailed_output.txt  # For artifact upload
+  mkdir -p logs
+  echo "$SAFETY_OUTPUT" > logs/safety_detailed_output.txt  # For artifact upload
   
   # Create comprehensive diagnostic file
   {
@@ -521,7 +573,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
     echo ""
     echo "--- Safety check (deprecated) ---"
     timeout 10s safety check 2>&1 || echo "Failed"
-  } > safety_full_diagnostic.txt
+  } > logs/safety_full_diagnostic.txt
   set -e  # Re-enable exit on error
   
   echo "📋 Debug: Safety command completed with exit code: $SAFETY_EXIT_CODE"
@@ -655,22 +707,15 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Run SonarCloud analysis using sonar-project.properties
-      echo "🔧 Running SonarCloud analysis..."
-      SONAR_OUTPUT=$(sonar-scanner \
-        -Dsonar.host.url=https://sonarcloud.io \
-        -Dsonar.login="$SONAR_TOKEN" 2>&1) || SONAR_FAILED=true
-
-      if [[ "$SONAR_FAILED" != "true" ]]; then
+      # Run SonarCloud quality gate check (get actionable issues)
+      echo "🔧 Checking SonarCloud quality gate status..."
+      if python scripts/sonar_issues_scraper.py --project-key course-record-updater; then
         echo "✅ SonarCloud Analysis: PASSED"
-        add_success "SonarCloud Analysis" "Code quality analysis completed successfully"
+        add_success "SonarCloud Analysis" "All quality gate conditions met"
       else
         echo "❌ SonarCloud Analysis: FAILED"
-        echo "📋 SonarCloud Analysis Output:"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "$SONAR_OUTPUT" | tail -20 | sed 's/^/  /'
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        add_failure "SonarCloud Analysis" "Quality analysis failed" "Check SonarCloud project configuration and fix quality issues"
+        echo "📋 See detailed issues above for specific fixes needed"
+        add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
         SONAR_PASSED=false
       fi
     fi
