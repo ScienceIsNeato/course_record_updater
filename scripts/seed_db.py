@@ -784,111 +784,138 @@ class DatabaseSeeder:
 
         return course_ids
 
+    def _get_instructors_by_institution(self, institution_ids: List[str]) -> Dict[str, List[Dict]]:
+        """Get instructors organized by institution."""
+        from database_service import get_all_users
+        
+        instructors_by_institution = {}
+        for institution_id in institution_ids:
+            all_users = get_all_users(institution_id)
+            instructors = [u for u in all_users if u.get("role") == "instructor"]
+            instructors_by_institution[institution_id] = instructors
+            self.log(f"   Found {len(instructors)} instructors for institution {institution_id}")
+        
+        return instructors_by_institution
+
+    def _get_terms_by_institution(self, institution_ids: List[str]) -> Dict[str, List[Dict]]:
+        """Get active terms organized by institution."""
+        from database_service import get_active_terms
+        
+        terms_by_institution = {}
+        for institution_id in institution_ids:
+            terms = get_active_terms(institution_id)
+            terms_by_institution[institution_id] = terms[:1] if terms else []  # Use first term
+        
+        return terms_by_institution
+
+    def _get_course_details(self, course_id: str) -> Optional[Dict[str, Any]]:
+        """Get course details safely."""
+        from database_service import get_course_by_id
+        
+        course = get_course_by_id(course_id)
+        if not course or not course.get("institution_id"):
+            return None
+        return course
+
+    def _determine_sections_to_create(self, total_courses: int) -> int:
+        """Determine how many sections to create per course."""
+        return 1 if total_courses > 10 else 2
+
+    def _assign_instructor(self, instructors: List[Dict], section_num: int) -> Optional[str]:
+        """Assign instructor to section using round-robin."""
+        if not instructors:
+            return None
+        return instructors[(section_num - 1) % len(instructors)]["user_id"]
+
+    def _get_instructor_name(self, instructors: List[Dict], instructor_id: Optional[str]) -> str:
+        """Get instructor display name or 'Unassigned'."""
+        if not instructor_id:
+            return "Unassigned"
+        
+        instructor = next((i for i in instructors if i["user_id"] == instructor_id), None)
+        return instructor["display_name"] if instructor else "Unassigned"
+
+    def _create_section_data(self, course: Dict, term_id: str, section_num: int, 
+                            instructor_id: Optional[str]) -> Dict[str, Any]:
+        """Create section data dictionary."""
+        section_number = f"{section_num:03d}"  # 001, 002, etc.
+        
+        return {
+            "course_id": course["course_id"],
+            "term_id": term_id,
+            "section_number": section_number,
+            "instructor_id": instructor_id,
+            "institution_id": course["institution_id"],
+            "course_number": course.get('course_number', 'Unknown'),
+            "enrollment": 15 + (section_num * 5),  # Vary enrollment
+            "status": "assigned" if instructor_id else "unassigned",
+        }
+
+    def _create_single_section(self, section_data: Dict, instructors: List[Dict]) -> Optional[str]:
+        """Create a single section and handle logging."""
+        from database_service import create_course_section
+        
+        section_id = create_course_section(section_data)
+        if section_id:
+            self.created_entities["sections"].append(section_id)
+            instructor_name = self._get_instructor_name(instructors, section_data["instructor_id"])
+            course_number = section_data["course_number"]
+            section_number = section_data["section_number"]
+            self.log(f"   Created section: {course_number}-{section_number} ({instructor_name})")
+            return section_id
+        else:
+            course_number = section_data["course_number"]
+            self.log(f"   Failed to create section for course {course_number}")
+            return None
+
+    def _create_sections_for_course(self, course: Dict, terms: List[Dict], 
+                                   instructors: List[Dict], sections_per_course: int) -> List[str]:
+        """Create all sections for a single course."""
+        if not terms:
+            course_number = course.get('course_number', course.get('course_id', 'Unknown'))
+            self.log(f"   No terms available for course {course_number}")
+            return []
+
+        section_ids = []
+        term_id = terms[0]["term_id"]  # Use first available term
+
+        for section_num in range(1, sections_per_course + 1):
+            instructor_id = self._assign_instructor(instructors, section_num)
+            section_data = self._create_section_data(course, term_id, section_num, instructor_id)
+            
+            section_id = self._create_single_section(section_data, instructors)
+            if section_id:
+                section_ids.append(section_id)
+
+        return section_ids
+
     def create_sections(
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
         """Create course sections for the created courses"""
         self.log("📋 Creating course sections...")
 
-        from database_service import (
-            create_course_section,
-            get_active_terms,
-            get_users_by_role,
-        )
-        from models import CourseSection
+        # Prepare data by institution
+        instructors_by_institution = self._get_instructors_by_institution(institution_ids)
+        terms_by_institution = self._get_terms_by_institution(institution_ids)
+        sections_per_course = self._determine_sections_to_create(len(course_ids))
 
+        # Create sections for each course
         section_ids = []
-
-        # Get instructors for each institution (use get_all_users to ensure fresh data)
-        from database_service import get_all_users
-
-        instructors_by_institution = {}
-        for institution_id in institution_ids:
-            all_users = get_all_users(institution_id)
-            instructors = [u for u in all_users if u.get("role") == "instructor"]
-            instructors_by_institution[institution_id] = instructors
-            self.log(
-                f"   Found {len(instructors)} instructors for institution {institution_id}"
-            )
-
-        # Get terms for each institution
-        terms_by_institution = {}
-        for institution_id in institution_ids:
-            terms = get_active_terms(institution_id)
-            terms_by_institution[institution_id] = (
-                terms[:1] if terms else []
-            )  # Use first term
-
-        # Create 1-2 sections per course
         for course_id in course_ids:
             try:
-                # Get course details to find institution
-                from database_service import get_course_by_id
-
-                course = get_course_by_id(course_id)
+                course = self._get_course_details(course_id)
                 if not course:
                     continue
 
-                institution_id = course.get("institution_id")
-                if not institution_id:
-                    continue
-
-                # Get available instructors and terms for this institution
+                institution_id = course["institution_id"]
                 instructors = instructors_by_institution.get(institution_id, [])
                 terms = terms_by_institution.get(institution_id, [])
 
-                if not terms:
-                    self.log(
-                        f"   No terms available for course {course.get('course_number', course_id)}"
-                    )
-                    continue
-
-                term_id = terms[0]["term_id"]  # Use first available term
-
-                # Create 1-2 sections per course
-                sections_to_create = 1 if len(course_ids) > 10 else 2
-
-                for section_num in range(1, sections_to_create + 1):
-                    section_number = f"{section_num:03d}"  # 001, 002, etc.
-
-                    # Assign instructor if available
-                    instructor_id = None
-                    if instructors:
-                        instructor_id = instructors[
-                            (section_num - 1) % len(instructors)
-                        ]["user_id"]
-
-                    # Create section schema
-                    section_data = {
-                        "course_id": course_id,
-                        "term_id": term_id,
-                        "section_number": section_number,
-                        "instructor_id": instructor_id,
-                        "institution_id": institution_id,  # Add institution_id for filtering
-                        "course_number": course.get('course_number', 'Unknown'),  # Add for display
-                        "enrollment": 15 + (section_num * 5),  # Vary enrollment
-                        "status": "assigned" if instructor_id else "unassigned",
-                    }
-
-                    section_id = create_course_section(section_data)
-                    if section_id:
-                        section_ids.append(section_id)
-                        self.created_entities["sections"].append(section_id)
-                        instructor_name = next(
-                            (
-                                i["display_name"]
-                                for i in instructors
-                                if i["user_id"] == instructor_id
-                            ),
-                            "Unassigned",
-                        )
-                        self.log(
-                            f"   Created section: {course.get('course_number', 'Unknown')}-{section_number} ({instructor_name})"
-                        )
-                    else:
-                        self.log(
-                            f"   Failed to create section for course {course.get('course_number', course_id)}"
-                        )
+                course_sections = self._create_sections_for_course(
+                    course, terms, instructors, sections_per_course
+                )
+                section_ids.extend(course_sections)
 
             except Exception as e:
                 self.log(f"   Error creating sections for course {course_id}: {e}")
