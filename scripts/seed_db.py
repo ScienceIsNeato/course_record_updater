@@ -19,6 +19,9 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
+# Constants
+MECHANICAL_ENGINEERING_DEPT = "Mechanical Engineering"
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -334,7 +337,7 @@ class DatabaseSeeder:
             },
             # PTU Programs
             {
-                "name": "Mechanical Engineering",
+                "name": MECHANICAL_ENGINEERING_DEPT,
                 "short_name": "ME",
                 "description": "Bachelor of Science in Mechanical Engineering",
                 "institution_idx": 2,
@@ -713,7 +716,7 @@ class DatabaseSeeder:
             {
                 "course_number": "ME-101",
                 "course_title": "Engineering Mechanics",
-                "department": "Mechanical Engineering",
+                "department": MECHANICAL_ENGINEERING_DEPT,
                 "credit_hours": 4,
                 "institution_idx": 2,
                 "program_ids": [6],  # Mechanical Engineering
@@ -721,7 +724,7 @@ class DatabaseSeeder:
             {
                 "course_number": "ME-201",
                 "course_title": "Thermodynamics",
-                "department": "Mechanical Engineering",
+                "department": MECHANICAL_ENGINEERING_DEPT,
                 "credit_hours": 4,
                 "institution_idx": 2,
                 "program_ids": [6],  # Mechanical Engineering
