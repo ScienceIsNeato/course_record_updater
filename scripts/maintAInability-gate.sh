@@ -931,15 +931,62 @@ if [[ "$RUN_JS_TESTS" == "true" ]]; then
       npm install --silent
     fi
 
-    # Run Jest tests
-    if npm run test:js; then
-      echo "✅ JavaScript Tests: PASSED"
-      add_success "JavaScript Tests" "All JavaScript tests passed"
-    else
+    # Run Jest tests and capture detailed output
+    echo "  🔍 Running JavaScript test suite..."
+    JS_TEST_OUTPUT=$(npm run test:js 2>&1) || JS_TEST_FAILED=true
+    
+    if [[ "$JS_TEST_FAILED" == "true" ]]; then
       echo "❌ JavaScript Tests: FAILED"
+      echo ""
+      echo "📋 Test Results:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Extract test summary from Jest output
+      TEST_SUMMARY=$(echo "$JS_TEST_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+      if [[ -n "$TEST_SUMMARY" ]]; then
+        echo "$TEST_SUMMARY"
+      else
+        echo "  Unable to parse test summary"
+      fi
+      
+      # Extract failed test details
+      FAILED_TESTS=$(echo "$JS_TEST_OUTPUT" | grep -A 5 "FAIL " | sed 's/^/  /')
+      if [[ -n "$FAILED_TESTS" ]]; then
+        echo ""
+        echo "📋 Failed Tests:"
+        echo "$FAILED_TESTS"
+      fi
+      
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      
+      # Extract specific failure counts for better error message
+      FAILED_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* failed' | grep -o '[0-9]*' | head -1 || echo "unknown")
+      TOTAL_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* total' | grep -o '[0-9]*' | head -1 || echo "unknown")
+      
       add_failure "JavaScript Tests" \
-                  "One or more JavaScript tests failed" \
-                  "Run 'npm run test:js' to see detailed failures"
+                  "$FAILED_COUNT of $TOTAL_COUNT tests failed" \
+                  "Fix failing tests and run 'npm run test:js' for details"
+    else
+      echo "✅ JavaScript Tests: PASSED"
+      
+      # Extract and display test summary for successful runs
+      TEST_SUMMARY=$(echo "$JS_TEST_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+      if [[ -n "$TEST_SUMMARY" ]]; then
+        echo ""
+        echo "📊 Test Summary:"
+        echo "$TEST_SUMMARY"
+      fi
+      
+      # Extract passed count for success message
+      PASSED_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* passed' | grep -o '[0-9]*' | head -1 || echo "all")
+      TOTAL_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* total' | grep -o '[0-9]*' | head -1 || echo "")
+      
+      if [[ -n "$TOTAL_COUNT" ]]; then
+        add_success "JavaScript Tests" "$PASSED_COUNT of $TOTAL_COUNT tests passed"
+      else
+        add_success "JavaScript Tests" "All JavaScript tests passed"
+      fi
     fi
   fi
 fi
@@ -962,29 +1009,60 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
       npm install --silent
     fi
 
-    # Run Jest with coverage
-    echo "  🔍 Running JavaScript coverage analysis..."
-    JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
-    
-    if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
-      echo "❌ JavaScript Coverage: FAILED"
-      echo ""
-      echo "📋 Coverage Output:"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "$JS_COVERAGE_OUTPUT" | sed 's/^/  /'
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo ""
-      
-      # Extract coverage percentage for failure message
-      COVERAGE_PERCENT=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
-      add_failure "JavaScript Coverage" \
-                  "Coverage threshold not met: $COVERAGE_PERCENT (requires 80%)" \
-                  "Add more tests to increase coverage or run 'npm run test:coverage' for details"
-    else
-      echo "✅ JavaScript Coverage: PASSED"
-      COVERAGE_PERCENT=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-      add_success "JavaScript Coverage" "Coverage threshold met: $COVERAGE_PERCENT"
-    fi
+            # Run Jest with coverage
+            echo "  🔍 Running JavaScript coverage analysis..."
+            JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
+            
+            if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
+              echo "❌ JavaScript Coverage: FAILED"
+              echo ""
+              echo "📊 Coverage Results:"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              
+              # Extract and display coverage summary table
+              COVERAGE_TABLE=$(echo "$JS_COVERAGE_OUTPUT" | sed -n '/All files/,/^$/p' | head -10 | sed 's/^/  /')
+              if [[ -n "$COVERAGE_TABLE" ]]; then
+                echo "$COVERAGE_TABLE"
+              fi
+              
+              # Extract individual coverage percentages
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              
+              echo ""
+              echo "  📈 Coverage Summary:"
+              echo "    Statements: $STATEMENTS"
+              echo "    Branches:   $BRANCHES"
+              echo "    Functions:  $FUNCTIONS"
+              echo "    Lines:      $LINES"
+              echo "    Threshold:  80% (all categories)"
+              
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              
+              add_failure "JavaScript Coverage" \
+                          "Coverage threshold not met - Statements: $STATEMENTS, Branches: $BRANCHES, Functions: $FUNCTIONS, Lines: $LINES (requires 80%)" \
+                          "Add more tests to increase coverage or run 'npm run test:coverage' for details"
+            else
+              echo "✅ JavaScript Coverage: PASSED"
+              
+              # Extract and display coverage summary for successful runs
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              
+              echo ""
+              echo "📊 Coverage Summary:"
+              echo "  Statements: $STATEMENTS"
+              echo "  Branches:   $BRANCHES" 
+              echo "  Functions:  $FUNCTIONS"
+              echo "  Lines:      $LINES"
+              
+              add_success "JavaScript Coverage" "All coverage thresholds met - Statements: $STATEMENTS, Branches: $BRANCHES, Functions: $FUNCTIONS, Lines: $LINES"
+            fi
   fi
 fi
 

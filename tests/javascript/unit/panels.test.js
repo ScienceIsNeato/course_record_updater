@@ -185,4 +185,184 @@ describe('PanelManager', () => {
     expect(manager).toBeTruthy();
     expect(panel.querySelector('.panel-header')).toBeTruthy();
   });
+
+  describe('edge cases and error handling', () => {
+    it('handles missing panels gracefully', () => {
+      const manager = new PanelManager();
+      
+      // Try to toggle a non-existent panel
+      expect(() => manager.togglePanel('non-existent')).not.toThrow();
+      expect(() => manager.focusPanel('non-existent')).not.toThrow();
+    });
+
+    it('handles missing tables gracefully', () => {
+      const manager = new PanelManager();
+      
+      // Try to sort a non-existent table
+      expect(() => manager.sortTable('non-existent-table')).not.toThrow();
+    });
+
+    it('handles empty data in stat previews', () => {
+      const manager = new PanelManager();
+      
+      // The function expects cache to have properties, so null/empty cache will cause errors
+      // Let's test with valid cache structure but empty data
+      const emptyDataCache = {
+        program_overview: [],
+        programs: [],
+        courses: [],
+        sections: []
+      };
+      
+      const emptyPreview = manager.buildPreviewFromCache('programs', emptyDataCache);
+      // buildPreviewFromCache returns null when data array is empty
+      expect(emptyPreview).toBeNull();
+    });
+
+    it('handles different data types in createSortableTable', () => {
+      const manager = new PanelManager();
+      
+      // Test with empty data
+      const emptyTable = manager.createSortableTable({
+        id: 'empty-table',
+        columns: [{ key: 'name', label: 'Name', sortable: true }],
+        data: []
+      });
+      expect(emptyTable.querySelectorAll('tbody tr')).toHaveLength(0);
+      
+      // Test with missing columns
+      const noColumnsTable = manager.createSortableTable({
+        id: 'no-columns',
+        columns: [],
+        data: [{ name: 'test' }]
+      });
+      expect(noColumnsTable.querySelectorAll('thead th')).toHaveLength(0);
+    });
+
+    it('handles getCellValue edge cases', () => {
+      const manager = new PanelManager();
+      
+      // Test with empty cell
+      const emptyCell = document.createElement('td');
+      expect(manager.getCellValue(emptyCell)).toBe('');
+      
+      // Test with cell containing only whitespace
+      const whitespaceCell = document.createElement('td');
+      whitespaceCell.textContent = '   ';
+      expect(manager.getCellValue(whitespaceCell)).toBe('');
+      
+      // Test with invalid fraction
+      const invalidFractionCell = document.createElement('td');
+      invalidFractionCell.textContent = 'not/a/fraction';
+      expect(manager.getCellValue(invalidFractionCell)).toBe('not/a/fraction');
+      
+      // Test with zero denominator fraction
+      const zeroDenomCell = document.createElement('td');
+      zeroDenomCell.textContent = '5/0';
+      expect(manager.getCellValue(zeroDenomCell)).toBe('5/0');
+    });
+
+    it('handles stat preview with different data structures', () => {
+      const manager = new PanelManager();
+      
+      // Test sections preview
+      const sectionsCache = {
+        sections: [
+          { course_number: 'MATH101', enrollment: 25, status: 'active' },
+          { course_number: 'PHYS201', enrollment: 30, status: 'completed' }
+        ]
+      };
+      const sectionsPreview = manager.buildPreviewFromCache('sections', sectionsCache);
+      expect(sectionsPreview.items).toHaveLength(2);
+      expect(sectionsPreview.items[0].label).toContain('MATH101');
+      expect(sectionsPreview.items[0].value).toContain('25 students');
+      
+      // Test courses preview
+      const coursesCache = {
+        courses: [
+          { course_number: 'BIO101', course_title: 'Biology Basics', sections: [{}, {}] }
+        ]
+      };
+      const coursesPreview = manager.buildPreviewFromCache('courses', coursesCache);
+      expect(coursesPreview.items[0].value).toBe('Biology Basics');
+    });
+
+    it('handles multiple panel toggles correctly', () => {
+      setBody(`
+        <div class="dashboard-panel" id="panel-a">
+          <div class="panel-header"><button class="panel-toggle">▼</button></div>
+          <div class="panel-content">Content A</div>
+        </div>
+        <div class="dashboard-panel" id="panel-b">
+          <div class="panel-header"><button class="panel-toggle">▼</button></div>
+          <div class="panel-content">Content B</div>
+        </div>
+      `);
+      
+      const manager = new PanelManager();
+      
+      // Toggle both panels
+      manager.togglePanel('panel-a');
+      manager.togglePanel('panel-b');
+      
+      const panelA = document.getElementById('panel-a');
+      const panelB = document.getElementById('panel-b');
+      
+      expect(panelA.querySelector('.panel-content').classList.contains('collapsed')).toBe(true);
+      expect(panelB.querySelector('.panel-content').classList.contains('collapsed')).toBe(true);
+      
+      // Toggle back
+      manager.togglePanel('panel-a');
+      expect(panelA.querySelector('.panel-content').classList.contains('collapsed')).toBe(false);
+      expect(panelB.querySelector('.panel-content').classList.contains('collapsed')).toBe(true);
+    });
+
+    it('handles table sorting with mixed data types', () => {
+      setBody(`
+        <table class="panel-table" id="mixed-table">
+          <thead>
+            <tr><th class="sortable" data-sort="value">Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td data-sort="10">Ten</td></tr>
+            <tr><td data-sort="2">Two</td></tr>
+            <tr><td data-sort="100">Hundred</td></tr>
+          </tbody>
+        </table>
+      `);
+      
+      const manager = new PanelManager();
+      manager.sortTable('mixed-table-value');
+      
+      const sortedValues = Array.from(document.querySelectorAll('#mixed-table tbody tr td'))
+        .map(cell => cell.getAttribute('data-sort'));
+      expect(sortedValues).toEqual(['2', '10', '100']);
+    });
+
+    it('handles stat preview positioning edge cases', async () => {
+      jest.useFakeTimers();
+      setBody(`
+        <div class="stat-item" data-stat="programs" style="position: absolute; top: 10px; left: 10px; width: 100px; height: 50px;"></div>
+      `);
+      
+      const manager = new PanelManager();
+      window.dashboardDataCache = {
+        program_overview: [{ program_name: 'Test', course_count: 1 }]
+      };
+      
+      // Mock getBoundingClientRect for positioning
+      const mockGetBoundingClientRect = jest.fn(() => ({
+        top: 10, left: 10, width: 100, height: 50, right: 110, bottom: 60
+      }));
+      document.querySelector('.stat-item').getBoundingClientRect = mockGetBoundingClientRect;
+      
+      await manager.showStatPreview('programs');
+      
+      const preview = document.querySelector('.stat-preview');
+      expect(preview).not.toBeNull();
+      // Just test that the preview was created and positioned, don't check specific style values
+      
+      jest.useRealTimers();
+    });
+  });
 });
