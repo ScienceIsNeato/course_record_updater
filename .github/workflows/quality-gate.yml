@@ -399,3 +399,11 @@ jobs:
       run: python scripts/ship_it.py --checks js-format
       env:
         PYTHONPATH: .
+    - name: Run JavaScript Tests
+      run: python scripts/ship_it.py --checks js-tests
+      env:
+        PYTHONPATH: .
+    - name: Run JavaScript Coverage Analysis
+      run: python scripts/ship_it.py --checks js-coverage
+      env:
+        PYTHONPATH: .

@@ -159,6 +159,8 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_IMPORTS=true
   RUN_JS_LINT=true
   RUN_JS_FORMAT=true
+  RUN_JS_TESTS=true
+  RUN_JS_COVERAGE=true
 fi
 
 # Track failures with detailed information
