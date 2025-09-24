@@ -90,47 +90,102 @@ def _extract_user_data(
     row: pd.Series, institution_id: str, course_data: Optional[Dict[str, Any]]
 ) -> Optional[Dict[str, Any]]:
     """Extract instructor information from row."""
-    if FACULTY_NAME_COLUMN not in row or pd.isna(row[FACULTY_NAME_COLUMN]):
-        return None
 
-    instructor_name = str(row[FACULTY_NAME_COLUMN])
-    first_name, last_name = _parse_name(instructor_name)
-    email = _generate_email(first_name, last_name)
+    # Handle two different input formats:
+    # 1. Files with email column (test data format)
+    # 2. Files with Faculty Name column (original format)
 
-    return {
-        "email": email,
-        "first_name": first_name,
-        "last_name": last_name,
-        "role": "instructor",
-        "department": course_data.get("department") if course_data else None,
-        "institution_id": institution_id,
-        "account_status": "imported",  # User created from import, not yet invited
-        "active_user": False,  # Will be calculated later based on active courses
-    }
+    if "email" in row and not pd.isna(row["email"]):
+        # Format 1: Has email column - extract name from email if needed
+        email = str(row["email"]).strip()
+        if not email:
+            return None
+
+        # Try to extract name from email or use placeholder
+        first_name, last_name = _extract_name_from_email(email)
+
+        return {
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "role": "instructor",
+            "department": course_data.get("department") if course_data else None,
+            "institution_id": institution_id,
+            "account_status": "imported",
+            "active_user": False,
+        }
+
+    elif FACULTY_NAME_COLUMN in row and not pd.isna(row[FACULTY_NAME_COLUMN]):
+        # Format 2: Has Faculty Name but NO email - this is a problem!
+        # We cannot and should not generate fake emails
+        instructor_name = str(row[FACULTY_NAME_COLUMN])
+        first_name, last_name = _parse_name(instructor_name)
+
+        return {
+            "email": None,  # No email available - must be added manually later
+            "first_name": first_name,
+            "last_name": last_name,
+            "role": "instructor",
+            "department": course_data.get("department") if course_data else None,
+            "institution_id": institution_id,
+            "account_status": "needs_email",  # Flag that email is required
+            "active_user": False,
+        }
+
+    return None  # No instructor information available
 
 
 def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str, Any]]:
     """Extract term information from row."""
-    if "effterm_c" not in row or pd.isna(row["effterm_c"]):
-        return None
 
-    effterm_c = str(row["effterm_c"]).strip()
-    if not effterm_c:
-        return None
+    # Handle two different input formats:
+    # 1. Files with effterm_c column (original format like "FA2024")
+    # 2. Files with Term column (standard format like "2024 Fall")
 
-    try:
-        year, season = parse_cei_term(effterm_c)
-        return {
-            "name": f"{season} {year}",
-            "year": int(year),
-            "season": season,
-            "institution_id": institution_id,
-            "is_active": True,
-        }
-    except ValueError as e:
-        # Log the error but continue processing
-        print(f"Warning: Could not parse term '{effterm_c}': {e}")
-        return None
+    if "effterm_c" in row and not pd.isna(row["effterm_c"]):
+        # Format 1: CEI abbreviated format
+        effterm_c = str(row["effterm_c"]).strip()
+        if not effterm_c:
+            return None
+
+        try:
+            year, season = parse_cei_term(effterm_c)
+            return {
+                "name": f"{season} {year}",
+                "year": int(year),
+                "season": season,
+                "institution_id": institution_id,
+                "is_active": True,
+            }
+        except ValueError as e:
+            print(f"Warning: Could not parse term '{effterm_c}': {e}")
+            return None
+
+    elif "Term" in row and not pd.isna(row["Term"]):
+        # Format 2: Standard format like "2024 Fall"
+        term_name = str(row["Term"]).strip()
+        if not term_name:
+            return None
+
+        try:
+            # Parse standard format "YYYY Season"
+            parts = term_name.split()
+            if len(parts) >= 2 and parts[0].isdigit():
+                parsed_year = int(parts[0])
+                parsed_season = parts[1].title()  # Fall, Spring, etc.
+
+                return {
+                    "name": term_name,
+                    "year": parsed_year,
+                    "season": parsed_season,
+                    "institution_id": institution_id,
+                    "is_active": True,
+                }
+        except (ValueError, IndexError) as e:
+            print(f"Warning: Could not parse term '{term_name}': {e}")
+            return None
+
+    return None
 
 
 def _extract_offering_data(
@@ -277,9 +332,22 @@ def _parse_name(full_name: str) -> Tuple[str, str]:
         return parts[0], " ".join(parts[1:])
 
 
-def _generate_email(first_name: str, last_name: str) -> str:
-    """Generate email address for instructor (CEI-specific format)."""
-    # CEI uses firstname.lastname@cei.edu format
-    clean_first = first_name.lower().replace(" ", "").replace(".", "")
-    clean_last = last_name.lower().replace(" ", "").replace(".", "")
-    return f"{clean_first}.{clean_last}@cei.edu"
+def _extract_name_from_email(email: str) -> Tuple[str, str]:
+    """Extract first and last name from email address."""
+    if not email or "@" not in email:
+        return "Unknown", "Instructor"
+
+    local_part = email.split("@")[0]
+
+    # Handle common email formats
+    if "." in local_part:
+        # firstname.lastname format
+        parts = local_part.split(".")
+        first_name = parts[0].title()
+        last_name = ".".join(parts[1:]).title()
+    else:
+        # Single name or other format - use as last name
+        first_name = "Unknown"
+        last_name = local_part.title()
+
+    return first_name, last_name

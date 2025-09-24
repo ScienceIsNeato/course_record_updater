@@ -1,21 +1,22 @@
 # Course Record Updater – Post-Auth Backlog
 
-## JavaScript Testing Implementation (Epic) **PLANNED**
-**Status**: Planning complete, awaiting SonarCloud resolution  
-**Docs**: `planning/JAVASCRIPT_TESTING_PLAN.md`  
-**Goal**: Establish enterprise-grade JavaScript testing coverage to match backend standards (80% coverage target).
-**Why Important**: Currently 0% JS test coverage across 1,553 lines of frontend code. Users interact with untested JavaScript as much as tested backend code.
+## Priority 0 – Import/Export Roundtrip System (Epic) **NEW**
+**Status**: Not started  
+**Docs**: `IMPORT_SYSTEM_GUIDE.md`, `research/CEI/BRIDGE_STRATEGY.md`, `planning/documentation/DATA_ENTRY_STRATEGY.md`  
+**Goal**: Implement bidirectional adapter-based system for institution-specific data formats with lossless roundtrip validation. Build abstract system with pluggable adapters - default adapter first, then institution-specific adapters.
+**Why Critical**: Institutions need to export data back to their existing systems (Access, SIS, etc.). Roundtrip validation ensures import pipeline integrity. Adapter architecture supports diverse institutional requirements while maintaining data fidelity.
 **Key Tasks**:
-- [ ] **Phase 1**: Set up Jest + jsdom testing infrastructure with CI integration
-- [ ] **Phase 2**: Test critical authentication and validation logic (auth.js - 287 lines)
-- [ ] **Phase 3**: Test admin interface and dashboard components (admin.js - 414 lines)  
-- [ ] **Phase 4**: Complete coverage of remaining UI components and utilities
-- [ ] **Integration**: Update SonarCloud to track JavaScript coverage alongside Python metrics
-**Definition of Done**: 80% JavaScript line coverage achieved, all critical user paths tested, CI pipeline includes JS testing, sustainable testing patterns established.  
-**Timeline**: 4-week implementation once SonarCloud security issues are resolved.
-**Hand-off**: Well-documented plan ready for systematic implementation.
+- [ ] **Data Sanitization Script**: Create `scripts/sanitize_test_data.py` to safely anonymize real institutional data while preserving format/structure
+- [ ] **Default Adapter Implementation**: Create baseline `default_adapter` with two standard views (Academic Summary, Administrative) based on market research
+- [ ] **ExportService with Adapter Pattern**: Implement pluggable export system supporting institution-specific formatting
+- [ ] **Roundtrip Validation Framework**: Implement `scripts/round_trip_validate.py` for automated import→export→diff testing across all adapters
+- [ ] **Institution-Specific Adapter Validation**: Validate bidirectional flow for custom adapters (starting with existing import adapters)
+- [ ] **API Integration**: Add export endpoints supporting adapter selection and view options
+- [ ] **CI Quality Gate**: Integrate roundtrip validation into CI pipeline for all adapters
+**Definition of Done**: Default adapter handles standard academic formats bidirectionally, sanitization script creates safe test fixtures, roundtrip validation passes for all adapters, export API functional with adapter selection.  
+**Hand-off**: Core data architecture work - requires understanding of adapter pattern and institutional data requirements.
 
-## Priority 0 – Multi-Tenant Context Hardening (Story 5.6)
+## Priority 1 – Multi-Tenant Context Hardening (Story 5.6)
 **Status**: Not started  
 **Docs**: `planning/AUTH_SYSTEM_DESIGN.md:744`, `auth_service.py:334`, `auth_service.py:352`, `api_routes.py:443`  
 **Goal**: Eliminate mock institution/program context so role-based auth uses actual tenant scopes before we expose invites and emails to customers.
@@ -28,7 +29,7 @@
 **Definition of Done**: DB-backed context retrieval, scoped queries everywhere, regression tests in place, Story 5.6 checklist fully checked off.  
 **Hand-off**: Requires DB coordination—best handled by primary dev for now.
 
-## Priority 1 – Email Communication System Launch (Epic)
+## Priority 2 – Email Communication System Launch (Epic)
 **Status**: In progress  
 **Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:88`, `planning/AUTH_SYSTEM_DESIGN.md:215`, `email_service.py`, `invitation_service.py`, `templates/admin/user_management.html`  
 **Goal**: Deliver production-ready outbound email workflows (invites, verification, reset, welcome) aligned with CEI roadmap.
@@ -42,7 +43,7 @@
 **Definition of Done**: All outbound flows send approved templates through a configurable channel, admin UX surfaces resend/preview, deployment runbook updated.  
 **Hand-off**: Implementation work is well-scoped once template strategy is confirmed—background agent ready.
 
-## Priority 2 – Email Template Validation & Stakeholder Sign-off (Story) **Hand-off Candidate**
+## Priority 3 – Email Template Validation & Stakeholder Sign-off (Story) **Hand-off Candidate**
 **Status**: Not started  
 **Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:88`, `email_service.py`  
 **Goal**: Verify copy, branding, and layout with CEI stakeholders before enabling live emails.
@@ -53,7 +54,7 @@
 **Definition of Done**: Stakeholder approval recorded; final templates (and visuals) attached to planning docs.  
 **Hand-off**: Perfect for a background agent to coordinate and document.
 
-## Priority 3 – Email UAT & Monitoring Readiness (Story) **Hand-off Candidate**
+## Priority 4 – Email UAT & Monitoring Readiness (Story) **Hand-off Candidate**
 **Status**: Not started  
 **Docs**: `TESTING_STRATEGY.md`, `UAT_GUIDE.md`, `email_service.py`, `invitation_service.py`  
 **Goal**: Extend manual test coverage to include email workflows with observable send outcomes.
@@ -65,7 +66,7 @@
 **Definition of Done**: Updated UAT guide, observable email send telemetry, documented UAT execution.  
 **Hand-off**: Great background agent effort.
 
-## Priority 4 – Excel Import Validation Refresh (Epic)
+## Priority 5 – Excel Import Validation Refresh (Epic)
 **Status**: Needs scoping  
 **Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:16`, `IMPORT_SYSTEM_GUIDE.md`, `import_service.py`, `import_cli.py:269`, `STATUS.md`  
 **Goal**: Align import tooling with the new auth/multi-tenant model and close outstanding validation TODOs.
@@ -77,7 +78,7 @@
 **Definition of Done**: Validation-only mode works, imports are tenant-safe, section creation bug fixed, documentation/tests updated.  
 **Hand-off**: Substantial systems work; viable for background agent with clear acceptance tests.
 
-## Priority 5 – Billing Foundations (Epic)
+## Priority 6 – Billing Foundations (Epic)
 **Status**: Not started  
 **Docs**: `planning/documentation/PRICING_STRATEGY.md:23`, `planning/documentation/PERMISSION_MATRIX.md:25`, `models.py:303`, `database_service.py:260`  
 **Goal**: Implement billing data model, reporting, and admin controls to prepare for monetization.
@@ -90,7 +91,7 @@
 **Definition of Done**: Billing data persisted, admin UI exposes usage/invoices, exports ready, documentation refreshed.  
 **Hand-off**: Cross-cutting initiative—keep with core team.
 
-## Priority 6 – Account Settings Save & Password Change (Story) **Hand-off Candidate**
+## Priority 7 – Account Settings Save & Password Change (Story) **Hand-off Candidate**
 **Status**: Not started  
 **Docs**: `static/auth.js:623`, `templates/auth/profile.html`, `AUTH_SYSTEM_DESIGN.md:783`  
 **Goal**: Make the profile page functional for updating user info and passwords.
@@ -102,7 +103,7 @@
 **Definition of Done**: Profile edits and password changes persist securely, TODOs removed, Story 6.1 checklist completed.  
 **Hand-off**: Focused development—ideal for background agent.
 
-## Priority 7 – Production Deployment & Infrastructure (Epic) **CRITICAL GAP**
+## Priority 8 – Production Deployment & Infrastructure (Epic) **CRITICAL GAP**
 **Status**: Not started  
 **Docs**: None (needs creation)  
 **Goal**: Design and implement production deployment pipeline, environment separation, and hosting infrastructure to actually run the application for customers.
@@ -118,7 +119,7 @@
 **Definition of Done**: Application runs in production with proper monitoring, customers can access via custom domain, deployment is automated and repeatable.  
 **Hand-off**: Core infrastructure work—requires architectural decisions and production access.
 
-## Priority 8 – Dashboard Pagination & Filtering (Story) **Hand-off Candidate**
+## Priority 9 – Dashboard Pagination & Filtering (Story) **Hand-off Candidate**
 **Status**: Not started  
 **Docs**: `templates/dashboard/program_admin.html`, `templates/dashboard/site_admin.html`, `static/admin.js`, `static/script.js`, `UAT_GUIDE.md`  
 **Goal**: Add client-side pagination, consistent filtering, and "show X per page" controls so dashboards stay usable as data volume grows, while keeping the underlying API responses unpaginated for now.
@@ -131,7 +132,7 @@
 **Definition of Done**: Major dashboard tables expose pagination plus configurable page size without regressing filters/search, documentation/tests refreshed, API untouched for now.  
 **Hand-off**: Well-scoped front-end effort that a background agent can own once UX wording is approved.
 
-## Priority 9 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
+## Priority 10 – Dashboard Quick Actions & Button Audit (Story) **Hand-off Candidate**
 **Status**: Partial  
 **Docs**: `templates/dashboard/site_admin.html:7`, `templates/dashboard/program_admin.html`, `UAT_GUIDE.md`  
 **Goal**: Replace "coming soon" actions with real workflows or hide them until implemented to avoid UAT friction.
@@ -143,7 +144,7 @@
 **Definition of Done**: All exposed actions function or are intentionally hidden, documentation/tests updated.  
 **Hand-off**: UI polish that a background agent can execute once decisions are set.
 
-## Priority 10 – Monitoring & Alerting Foundations (Story)
+## Priority 11 – Monitoring & Alerting Foundations (Story)
 **Status**: Not started  
 **Docs**: `logging_config.py`, `STATUS.md` (needs update), vendor docs for Slack webhooks & Sentry  
 **Goal**: Establish lightweight observability (Slack alerts + Sentry capture) soon after the CEI POC demo so we can monitor live health without incurring costs.
