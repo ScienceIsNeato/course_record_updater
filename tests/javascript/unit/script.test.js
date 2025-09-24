@@ -421,7 +421,7 @@ const setupTableDom = () => {
     jest.useRealTimers();
   });
 
-  describe('additional error handling and edge cases', () => {
+  describe('comprehensive branch coverage and edge cases', () => {
     it('handles network errors during save operations', async () => {
       setupTableDom();
       loadScript();
