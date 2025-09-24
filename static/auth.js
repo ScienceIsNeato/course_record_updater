@@ -1,5 +1,22 @@
 // Authentication JavaScript - Form validation, password strength, and API integration
 
+// CSRF Token Helper
+function getCSRFToken() {
+  // Try to get from form first
+  const csrfInput = document.querySelector('input[name="csrf_token"]');
+  if (csrfInput) {
+    return csrfInput.value;
+  }
+
+  // Fallback to meta tag if available
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  if (csrfMeta) {
+    return csrfMeta.getAttribute('content');
+  }
+
+  return null;
+}
+
 // DOM Content Loaded
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize based on current page
@@ -376,7 +393,8 @@ async function handleLogin(e) {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
       },
       body: JSON.stringify({
         email: formData.get('email'),
@@ -425,7 +443,8 @@ async function handleRegister(e) {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
       },
       body: JSON.stringify({
         email: formData.get('email'),
@@ -473,7 +492,8 @@ async function handleForgotPassword(e) {
     const response = await fetch('/api/auth/forgot-password', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
       },
       body: JSON.stringify({
         email: formData.get('email')
@@ -600,7 +620,8 @@ function logout() {
     fetch('/api/auth/logout', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
       }
     })
       .then(() => {

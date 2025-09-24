@@ -230,7 +230,6 @@ class TestProgramContextAPI:
             "role": "program_admin",
             "institution_id": "inst-123",
             "program_ids": ["prog-123", "prog-456"],
-            "program_ids": ["prog-123", "prog-456"],
         }
 
         with app.app_context():

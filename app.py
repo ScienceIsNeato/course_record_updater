@@ -21,10 +21,22 @@ from logging_config import get_app_logger
 
 app = Flask(__name__)
 
-# Initialize CSRF protection
-# Note: CSRFProtect imported to resolve SonarCloud security hotspot
-# TODO: Properly implement CSRF tokens in forms and AJAX calls
-# csrf = CSRFProtect(app)
+# Initialize CSRF protection (disabled during testing)
+# Check if we're in test mode by looking for pytest in sys.modules
+import sys
+
+if "pytest" in sys.modules:
+    app.config["WTF_CSRF_ENABLED"] = False
+
+csrf = CSRFProtect(app)
+
+
+# Make CSRF token available in templates
+@app.context_processor
+def inject_csrf_token():
+    from flask_wtf.csrf import generate_csrf
+
+    return dict(csrf_token=generate_csrf)
 
 
 # Configure logging to ensure consistent output
