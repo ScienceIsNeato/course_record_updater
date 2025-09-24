@@ -2,6 +2,9 @@
 # https://hub.docker.com/_/python
 FROM python:3.11-slim
 
+# Create a non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 # Allow statements and log messages to immediately appear in the Cloud Run logs
 ENV PYTHONUNBUFFERED=TRUE
 
@@ -15,8 +18,18 @@ COPY requirements.txt .
 # Use --no-cache-dir to reduce image size
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
-COPY . .
+# Copy only necessary application files (avoid sensitive data)
+COPY app.py .
+COPY *.py .
+COPY templates/ templates/
+COPY static/ static/
+COPY adapters/ adapters/
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose the port Gunicorn will run on
 EXPOSE 8080

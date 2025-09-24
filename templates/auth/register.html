@@ -34,6 +34,7 @@
             {% endwith %}
 
             <form id="registerForm" class="auth-form" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <!-- Personal Information -->
                 <div class="form-section">
                     <h5 class="form-section-title">Personal Information</h5>

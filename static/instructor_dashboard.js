@@ -35,6 +35,10 @@
       setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
     },
 
+    async refresh() {
+      return this.loadData({ silent: false });
+    },
+
     async loadData(options = {}) {
       const { silent = false } = options;
       if (!silent) {
@@ -319,4 +323,8 @@
       window.InstructorDashboard = InstructorDashboard;
     }, 100);
   });
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = InstructorDashboard;
+  }
 })();

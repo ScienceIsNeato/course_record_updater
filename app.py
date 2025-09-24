@@ -3,6 +3,7 @@ import os
 import sys
 
 from flask import Flask, flash, redirect, render_template, url_for
+from flask_wtf.csrf import CSRFProtect
 
 # Import new API routes and services
 from api_routes import api
@@ -19,6 +20,23 @@ from logging_config import get_app_logger
 # get_courses_by_department import removed
 
 app = Flask(__name__)
+
+# Initialize CSRF protection (disabled during testing)
+# Check if we're in test mode by looking for pytest in sys.modules
+import sys
+
+if "pytest" in sys.modules:
+    app.config["WTF_CSRF_ENABLED"] = False
+
+csrf = CSRFProtect(app)
+
+
+# Make CSRF token available in templates
+@app.context_processor
+def inject_csrf_token():
+    from flask_wtf.csrf import generate_csrf
+
+    return dict(csrf_token=generate_csrf)
 
 
 # Configure logging to ensure consistent output

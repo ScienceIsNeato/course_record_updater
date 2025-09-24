@@ -18,6 +18,9 @@ module.exports = {
     // Our logger utility
     Logger: 'readonly',
     
+    // Node.js globals for conditional exports (testing)
+    module: 'readonly',
+    
     // Our custom globals (functions exposed on window)
     changePage: 'writable',
     editUser: 'writable',

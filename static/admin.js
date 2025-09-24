@@ -980,3 +980,122 @@ window.resendInvitation = resendInvitation;
 window.cancelInvitation = cancelInvitation;
 window.handleUserSelection = handleUserSelection;
 window.handleInvitationSelection = handleInvitationSelection;
+
+function __setAdminState(state = {}) {
+  if (Object.prototype.hasOwnProperty.call(state, 'currentUsers')) {
+    currentUsers = state.currentUsers;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'currentInvitations')) {
+    currentInvitations = state.currentInvitations;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'selectedUsers')) {
+    selectedUsers.clear();
+    state.selectedUsers.forEach(id => selectedUsers.add(id));
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'selectedInvitations')) {
+    selectedInvitations.clear();
+    state.selectedInvitations.forEach(id => selectedInvitations.add(id));
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'currentPage')) {
+    currentPage = state.currentPage;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'totalItems')) {
+    totalItems = state.totalItems;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'currentTab')) {
+    currentTab = state.currentTab;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'filters')) {
+    filters = {
+      search: state.filters.search || '',
+      role: state.filters.role || '',
+      status: state.filters.status || ''
+    };
+  }
+}
+
+function __resetAdminState() {
+  currentUsers = [];
+  currentInvitations = [];
+  selectedUsers.clear();
+  selectedInvitations.clear();
+  currentPage = 1;
+  totalItems = 0;
+  currentTab = 'users';
+  filters = {
+    search: '',
+    role: '',
+    status: ''
+  };
+}
+
+function __getAdminState() {
+  return {
+    currentUsers,
+    currentInvitations,
+    selectedUsers,
+    selectedInvitations,
+    currentPage,
+    itemsPerPage,
+    totalItems,
+    currentTab,
+    filters
+  };
+}
+
+const adminTestExports = {
+  __setAdminState,
+  __resetAdminState,
+  __getAdminState,
+  initializeAdminInterface,
+  initializeEventListeners,
+  initializeFilters,
+  initializeTabs,
+  initializeModals,
+  loadUsers,
+  loadInvitations,
+  loadPrograms,
+  getFilteredData,
+  updateDisplay,
+  displayUsers,
+  displayInvitations,
+  changePage,
+  updatePagination,
+  handleSelectAllUsers,
+  handleSelectAllInvitations,
+  handleUserSelection,
+  handleInvitationSelection,
+  updateBulkActions,
+  handleBulkResendInvitations,
+  handleBulkCancelInvitations,
+  handleBulkDeactivateUsers,
+  toggleUserStatus,
+  resendInvitation,
+  cancelInvitation,
+  handleInviteUser,
+  handleEditUser,
+  handleRoleSelectionChange,
+  showSuccess,
+  showError,
+  showMessage,
+  showConfirmation,
+  setLoadingState,
+  showLoading,
+  hideLoading,
+  showEmpty,
+  hideEmpty,
+  getInitials,
+  formatRole,
+  formatStatus,
+  getDisplayStatus,
+  getActivityStatus,
+  formatLastActive,
+  formatDate,
+  formatExpiryDate,
+  escapeHtml,
+  debounce
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = adminTestExports;
+}

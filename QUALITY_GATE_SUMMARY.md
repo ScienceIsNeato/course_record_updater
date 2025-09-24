@@ -28,6 +28,12 @@ We've successfully implemented a comprehensive quality gate system based on FogO
 
 5. **🔧 Type Checking**
    - mypy static type analysis
+
+6. **📊 SonarCloud Analysis** ⚠️ **LIMITED ON FREE TIER**
+   - Comprehensive code quality analysis
+   - **IMPORTANT**: Only analyzes `main` branch (free tier limitation)
+   - Branch analysis requires $40/month paid plan
+   - See `SONAR_ANALYSIS_RESULTS.md` for detailed workflow
    - Configurable strictness levels
 
 ### ⚡ **Performance Optimizations:**

@@ -21,6 +21,9 @@ from password_service import PasswordService
 
 logger = logging.getLogger(__name__)
 
+# Constants to avoid duplicate literals
+INVITATION_NOT_FOUND_MSG = "Invitation not found"
+
 
 class InvitationError(Exception):
     """Raised when invitation operations fail"""
@@ -315,7 +318,7 @@ class InvitationService:
             # Get invitation
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_MSG)
 
             # Check if invitation can be resent
             if invitation["status"] not in ["pending", "sent"]:
@@ -367,7 +370,7 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_token(invitation_token)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_MSG)
 
             # Check if expired
             expires_at = datetime.fromisoformat(
@@ -443,7 +446,7 @@ class InvitationService:
         try:
             invitation = db.get_invitation_by_id(invitation_id)
             if not invitation:
-                raise InvitationError("Invitation not found")
+                raise InvitationError(INVITATION_NOT_FOUND_MSG)
 
             if invitation["status"] not in ["pending", "sent"]:
                 raise InvitationError(

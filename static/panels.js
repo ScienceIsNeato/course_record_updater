@@ -685,3 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
   panelManager = new PanelManager();
   window.panelManager = panelManager; // Export after initialization
 });
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { PanelManager };
+}

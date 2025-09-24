@@ -12,6 +12,10 @@ build-output/
 .coverage
 coverage.xml
 
+# JavaScript/Jest coverage files
+coverage/
+lcov.info
+
 # Test artifacts
 .pytest_cache/
 

@@ -17,6 +17,10 @@ Usage:
 This wrapper dispatches individual check commands to the existing bash script
 in parallel threads, then collects and formats the results. Fail-fast behavior
 is always enabled for rapid development cycles.
+
+IMPORTANT: SonarCloud (--checks sonar) only analyzes 'main' branch on free tier.
+It will FAIL on feature branches even with fixes. See SONAR_ANALYSIS_RESULTS.md
+for the proper workflow when working with SonarCloud issues.
 """
 
 import argparse
@@ -74,7 +78,9 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
+            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
             ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
@@ -92,7 +98,9 @@ class QualityGateExecutor:
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
+            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
