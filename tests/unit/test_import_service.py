@@ -1,5 +1,5 @@
 """
-Unit tests for the new adapter-based ImportService
+Unit tests for the new adapter-based ImportService.
 
 Tests the ImportService with the new adapter registry system.
 """
@@ -378,56 +378,6 @@ class TestImportService:
 
             mock_create.assert_not_called()
             assert self.service.stats["records_skipped"] == 1
-
-    @patch("import_service.get_adapter_registry")
-    @patch("import_service.os.path.exists")
-    def test_import_excel_file_delete_existing_db(self, mock_exists, mock_get_registry):
-        """Test import with delete_existing_db option."""
-        mock_exists.return_value = True
-
-        # Mock adapter
-        mock_adapter = Mock()
-        mock_adapter.validate_file_compatibility.return_value = (
-            True,
-            "File is compatible",
-        )
-        mock_adapter.parse_file.return_value = {"users": []}
-
-        mock_registry = Mock()
-        mock_registry.get_adapter_by_id.return_value = mock_adapter
-        mock_get_registry.return_value = mock_registry
-
-        with patch.object(self.service, "_delete_all_data") as mock_delete:
-            result = self.service.import_excel_file(
-                "test.xlsx", delete_existing_db=True
-            )
-
-            mock_delete.assert_called_once()
-
-    def test_delete_all_data(self):
-        """Test _delete_all_data functionality."""
-        with patch("database_service.db") as mock_db:
-            # Mock collections and documents
-            mock_doc = Mock()
-            mock_collection = Mock()
-            mock_collection.stream.return_value = [mock_doc]
-            mock_db.collection.return_value = mock_collection
-
-            self.service._delete_all_data()
-
-            # Should delete from all collections
-            expected_collections = [
-                "courses",
-                "users",
-                "terms",
-                "course_offerings",
-                "course_sections",
-                "institutions",
-                "programs",
-            ]
-
-            assert mock_db.collection.call_count == len(expected_collections)
-            mock_doc.reference.delete.assert_called()
 
 
 class TestConvenienceFunction:

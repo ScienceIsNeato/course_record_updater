@@ -116,11 +116,19 @@ class TestLogoutCSRFIssue:
 
     def test_dashboard_logout_function_includes_csrf_token(self):
         """Test that the dashboard logout function now includes CSRF token (after fix)"""
-        # Read the dashboard template
-        with open(
-            "/Users/pacey/Documents/SourceCode/course_record_updater/templates/dashboard/base_dashboard.html",
-            "r",
-        ) as f:
+        import os
+
+        # Read the dashboard template using a relative path
+        # __file__ is tests/unit/test_logout_csrf_issue.py
+        # Go up two levels to get to project root: tests/unit -> tests -> project_root
+        project_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        template_path = os.path.join(
+            project_root, "templates", "dashboard", "base_dashboard.html"
+        )
+
+        with open(template_path, "r") as f:
             template_content = f.read()
 
         # Check that the logout function exists

@@ -226,6 +226,12 @@
 </div>
 
 <script>
+// Helper function to safely get CSRF token
+function getCSRFToken() {
+    const csrfInput = document.querySelector('input[name="csrf_token"]');
+    return csrfInput ? csrfInput.value : '';
+}
+
 // Load available adapters on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadAvailableAdapters();
@@ -237,7 +243,7 @@ async function loadAvailableAdapters() {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                'X-CSRFToken': getCSRFToken()
             }
         });
         

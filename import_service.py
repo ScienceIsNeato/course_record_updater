@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from google.cloud import firestore
+
 from adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
 from database_service import (
     create_course,
@@ -139,7 +141,6 @@ class ImportService:
         conflict_strategy: ConflictStrategy = ConflictStrategy.USE_THEIRS,
         dry_run: bool = False,
         adapter_id: str = "cei_excel_format_v1",
-        delete_existing_db: bool = False,
     ) -> ImportResult:
         """
         Import data from Excel file using the new adapter system
@@ -149,7 +150,6 @@ class ImportService:
             conflict_strategy: How to resolve conflicts
             dry_run: If True, simulate import without making changes
             adapter_id: ID of the adapter to use for parsing
-            delete_existing_db: If True, delete all existing data before import
 
         Returns:
             ImportResult with detailed statistics
@@ -160,10 +160,6 @@ class ImportService:
         self.logger.info(f"[Import] Starting import from: {file_path}")
         self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
         self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
-        if delete_existing_db:
-            self.logger.warning(
-                f"[Import] ⚠️  DELETE MODE: Will clear existing database before import"
-            )
 
         try:
             # Validate file exists
@@ -202,14 +198,6 @@ class ImportService:
                 error_msg = f"File validation failed: {str(e)}"
                 self.stats["errors"].append(error_msg)
                 return self._create_import_result(start_time, dry_run)
-
-            # Delete existing database if requested
-            if delete_existing_db:
-                if not dry_run:
-                    self._delete_all_data()
-                    self.logger.info("[Import] Deleted existing database")
-                else:
-                    self.logger.info("[Import] DRY RUN: Would delete existing database")
 
             # Parse file using adapter
             try:
@@ -450,8 +438,12 @@ class ImportService:
 
             existing_terms = (
                 db.collection("terms")
-                .where("term_name", "==", term_name)
-                .where("institution_id", "==", self.institution_id)
+                .where(filter=firestore.FieldFilter("term_name", "==", term_name))
+                .where(
+                    filter=firestore.FieldFilter(
+                        "institution_id", "==", self.institution_id
+                    )
+                )
                 .get()
             )
 
@@ -509,45 +501,6 @@ class ImportService:
         except Exception as e:
             self.stats["errors"].append(f"Error processing section: {str(e)}")
 
-    def _delete_all_data(self):
-        """
-        Delete all data from the database.
-        This is a destructive operation used when delete_existing_db=True.
-        """
-        from database_service import db
-
-        if not db:
-            self.stats["errors"].append("Database not available for deletion")
-            return
-
-        try:
-            # Delete all collections
-            collections_to_delete = [
-                "courses",
-                "users",
-                "terms",
-                "course_offerings",
-                "course_sections",
-                "institutions",
-                "programs",
-            ]
-
-            for collection_name in collections_to_delete:
-                collection = db.collection(collection_name)
-                docs = collection.stream()
-
-                for doc in docs:
-                    doc.reference.delete()
-
-                self.logger.info(
-                    f"[Import] 🗑️  Deleted all documents from {collection_name}"
-                )
-
-        except Exception as e:
-            error_msg = f"Failed to delete existing data: {str(e)}"
-            self.stats["errors"].append(error_msg)
-            self.logger.error(f"[Import] Error: {error_msg}")
-
     def _create_import_result(
         self, start_time: datetime, dry_run: bool
     ) -> ImportResult:
@@ -577,8 +530,7 @@ def import_excel(
     institution_id: str,
     conflict_strategy: str = "use_theirs",
     dry_run: bool = False,
-    adapter_id: str = "cei_excel_format",
-    delete_existing_db: bool = False,
+    adapter_id: str = "cei_excel_format_v1",
     verbose: bool = False,
     progress_callback: Optional[Callable] = None,
 ) -> ImportResult:
@@ -591,7 +543,6 @@ def import_excel(
         conflict_strategy: "use_mine", "use_theirs", "merge", or "manual_review"
         dry_run: If True, simulate import without making changes
         adapter_id: ID of the adapter to use
-        delete_existing_db: If True, delete all existing data before import
         verbose: Enable verbose logging
         progress_callback: Optional callback for progress updates
 
@@ -619,7 +570,6 @@ def import_excel(
         conflict_strategy=strategy,
         dry_run=dry_run,
         adapter_id=adapter_id,
-        delete_existing_db=delete_existing_db,
     )
 
 

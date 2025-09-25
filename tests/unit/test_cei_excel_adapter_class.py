@@ -548,10 +548,10 @@ class TestCEIExcelAdapterClass:
         # Test with year and season
         term = {"year": 2024, "season": "Fall"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "2024FA"
+        assert result == "FA2024"
 
         # Test with different seasons
-        seasons = {"Spring": "2024SP", "Summer": "2024SU", "Winter": "2024WI"}
+        seasons = {"Spring": "SP2024", "Summer": "SU2024", "Winter": "WI2024"}
 
         for season, expected in seasons.items():
             term = {"year": 2024, "season": season}
@@ -561,12 +561,12 @@ class TestCEIExcelAdapterClass:
         # Test with unknown season
         term = {"year": 2024, "season": "Unknown"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "2024UN"
+        assert result == "UN2024"
 
         # Test with fallback to name
         term = {"name": "Fall 2024"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "Fall 2024"
+        assert result == "FA2024"
 
         # Test with empty term
         result = self.adapter._format_term_for_cei_export({})

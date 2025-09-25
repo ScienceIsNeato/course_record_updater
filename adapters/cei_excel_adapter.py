@@ -155,10 +155,13 @@ def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str
             year, season = parse_cei_term(effterm_c)
             return {
                 "name": f"{season} {year}",
+                "term_name": f"{season} {year}",  # Add term_name for import service
                 "year": int(year),
                 "season": season,
                 "institution_id": institution_id,
                 "is_active": True,
+                "start_date": f"{year}-01-01",  # Default start date
+                "end_date": f"{year}-12-31",  # Default end date
             }
         except ValueError as e:
             print(f"Warning: Could not parse term '{effterm_c}': {e}")
@@ -179,10 +182,13 @@ def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str
 
                 return {
                     "name": term_name,
+                    "term_name": term_name,  # Add term_name for import service
                     "year": parsed_year,
                     "season": parsed_season,
                     "institution_id": institution_id,
                     "is_active": True,
+                    "start_date": f"{parsed_year}-01-01",  # Default start date
+                    "end_date": f"{parsed_year}-12-31",  # Default end date
                 }
         except (ValueError, IndexError) as e:
             print(f"Warning: Could not parse term '{term_name}': {e}")
@@ -824,48 +830,70 @@ class CEIExcelAdapter(FileBaseAdapter):
         offerings = data.get("offerings", [])
 
         # Build a lookup for instructors
-        instructors = {
-            user["user_id"]: user for user in users if user.get("role") == "instructor"
-        }
+        instructors = [user for user in users if user.get("role") == "instructor"]
 
-        # Build a lookup for terms
-        terms_lookup = {term["term_id"]: term for term in terms}
+        # If we have actual course offerings, use them
+        if offerings:
+            # Build lookups for existing offerings logic
+            instructors_lookup = {user["user_id"]: user for user in instructors}
+            terms_lookup = {term["term_id"]: term for term in terms}
 
-        # Process each course offering
-        for offering in offerings:
-            course_number = offering.get("course_number", "")
-            term_id = offering.get("term_id")
-            instructor_id = offering.get("instructor_id")
+            # Process each course offering
+            for offering in offerings:
+                course_number = offering.get("course_number", "")
+                term_id = offering.get("term_id")
+                instructor_id = offering.get("instructor_id")
 
-            # Find the course details
-            course = next(
-                (c for c in courses if c.get("course_number") == course_number), {}
-            )
+                # Find the course details
+                course = next(
+                    (c for c in courses if c.get("course_number") == course_number), {}
+                )
 
-            # Find the instructor
-            instructor = instructors.get(instructor_id, {})
+                # Find the instructor
+                instructor = instructors_lookup.get(instructor_id, {})
 
-            # Find the term
-            term = terms_lookup.get(term_id, {})
+                # Find the term
+                term = terms_lookup.get(term_id, {})
 
-            # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
-            term_formatted = self._format_term_for_cei_export(term)
+                # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
+                term_formatted = self._format_term_for_cei_export(term)
 
-            record = {
-                "course": course_number,
-                "section": offering.get("section_number", "01"),
-                "effterm_c": term_formatted,
-                "students": offering.get("enrollment_count", 0),
-                "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
-                "email": instructor.get("email", ""),
-            }
+                record = {
+                    "course": course_number,
+                    "section": offering.get("section_number", "01"),
+                    "effterm_c": term_formatted,
+                    "students": offering.get("enrollment_count", 0),
+                    "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                    "email": instructor.get("email", ""),
+                }
 
-            records.append(record)
+                records.append(record)
+        else:
+            # Synthesize course offerings from available data
+            # Create one record per course-instructor-term combination
+            for course in courses:
+                for instructor in instructors:
+                    # Use the first available term or create a default
+                    term = terms[0] if terms else {}
+
+                    # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
+                    term_formatted = self._format_term_for_cei_export(term)
+
+                    record = {
+                        "course": course.get("course_number", ""),
+                        "section": "01",  # Default section
+                        "effterm_c": term_formatted,
+                        "students": 25,  # Default student count
+                        "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                        "email": instructor.get("email", ""),
+                    }
+
+                    records.append(record)
 
         return records
 
     def _format_term_for_cei_export(self, term: Dict[str, Any]) -> str:
-        """Format term data for CEI export (e.g., 2024FA)."""
+        """Format term data for CEI export (e.g., SP2024)."""
         if not term:
             return ""
 
@@ -873,9 +901,33 @@ class CEIExcelAdapter(FileBaseAdapter):
         season = term.get("season", "")
 
         if year and season:
-            # Convert season to CEI format
+            # Convert season to CEI format (SP2024, not 2024SP)
             season_map = {"Spring": "SP", "Summer": "SU", "Fall": "FA", "Winter": "WI"}
             season_code = season_map.get(season, season[:2].upper())
-            return f"{year}{season_code}"
+            return f"{season_code}{year}"
 
-        return term.get("name", "")
+        # Fall back to parsing the term name if structured fields aren't available
+        term_name = term.get("name", "")
+        if term_name:
+            try:
+                # Parse term names like "Fall 2025", "Spring 2024", etc.
+                parts = term_name.split()
+                if len(parts) >= 2:
+                    season_name = parts[0]  # "Fall", "Spring", etc.
+                    year_str = parts[1]  # "2025", "2024", etc.
+
+                    # Convert season to CEI format
+                    season_map = {
+                        "Spring": "SP",
+                        "Summer": "SU",
+                        "Fall": "FA",
+                        "Winter": "WI",
+                    }
+                    season_code = season_map.get(season_name, season_name[:2].upper())
+
+                    return f"{season_code}{year_str}"
+            except (ValueError, IndexError):
+                pass
+
+        # If all else fails, return the original term name
+        return term_name

@@ -494,6 +494,7 @@ def main():
 Examples:
   python scripts/ship_it.py                                    # Fast commit validation (excludes slow checks)
   python scripts/ship_it.py --validation-type PR              # Full PR validation (all checks)
+  python scripts/ship_it.py --validation-type PR --interactive # Strategic PR review mode
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
@@ -521,8 +522,25 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
 
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Enable strategic PR review mode - analyze and address PR comments thematically",
+    )
+
 
     args = parser.parse_args()
+
+    # Handle interactive PR review mode
+    if args.interactive:
+        if args.validation_type != "PR":
+            print("❌ Interactive mode requires --validation-type PR")
+            sys.exit(1)
+        
+        from strategic_pr_review import StrategicPRReviewer
+        reviewer = StrategicPRReviewer()
+        exit_code = reviewer.run_interactive_review()
+        sys.exit(exit_code)
 
     # Convert validation type string to enum
     validation_type = ValidationType.COMMIT if args.validation_type == "commit" else ValidationType.PR

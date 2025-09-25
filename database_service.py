@@ -1811,7 +1811,9 @@ def get_programs_by_institution(institution_id: str) -> List[Dict[str, Any]]:
     try:
         with db_operation_timeout():
             programs_ref = db.collection("programs")
-            query = programs_ref.where("institution_id", "==", institution_id)
+            query = programs_ref.where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
             programs = []
 
             for doc in query.stream():
@@ -1890,8 +1892,10 @@ def get_program_by_name_and_institution(
     try:
         with db_operation_timeout():
             programs_ref = db.collection("programs")
-            query = programs_ref.where("name", "==", program_name).where(
-                "institution_id", "==", institution_id
+            query = programs_ref.where(
+                filter=firestore.FieldFilter("name", "==", program_name)
+            ).where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
             )
             docs = query.limit(1).get()
 
@@ -2050,7 +2054,9 @@ def get_unassigned_courses(institution_id: str) -> List[Dict[str, Any]]:
     try:
         with db_operation_timeout():
             courses_ref = db.collection("courses")
-            query = courses_ref.where("institution_id", "==", institution_id)
+            query = courses_ref.where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            )
             unassigned_courses = []
 
             for doc in query.stream():
@@ -2094,9 +2100,9 @@ def assign_course_to_default_program(course_id: str, institution_id: str) -> boo
         with db_operation_timeout():
             # Look for existing "General" program
             programs_ref = db.collection("programs")
-            query = programs_ref.where("institution_id", "==", institution_id).where(
-                "name", "==", "General"
-            )
+            query = programs_ref.where(
+                filter=firestore.FieldFilter("institution_id", "==", institution_id)
+            ).where(filter=firestore.FieldFilter("name", "==", "General"))
 
             general_program_id = None
             for doc in query.stream():

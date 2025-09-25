@@ -14,10 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database_service import (
     create_course,
-    create_institution,
     create_term,
     create_user,
-    get_institution_by_id,
 )
 from export_service import ExportConfig, ExportService
 
