@@ -10,7 +10,7 @@
     <div class="panel-content">
         <div class="row">
             <!-- Import Section -->
-            <div class="col-lg-6">
+            <div class="col-lg-6 pe-lg-4">
                 <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
                 
                 {% if user.role == 'instructor' %}
@@ -34,29 +34,6 @@
                     <div class="mb-3">
                         <label for="excel_file" class="form-label">Select Excel File:</label>
                         <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
-                    </div>
-
-                    <!-- Data Type Selection -->
-                    <div class="mb-3">
-                        <label for="import_data_type" class="form-label">Data Type:</label>
-                        <select class="form-select" id="import_data_type" name="import_data_type" required>
-                            {% if user.role == 'site_admin' %}
-                            <option value="institutions">Institutions</option>
-                            <option value="programs">Programs</option>
-                            <option value="courses">Courses</option>
-                            <option value="users">Users</option>
-                            {% elif user.role == 'institution_admin' %}
-                            <option value="programs">Programs</option>
-                            <option value="courses">Courses</option>
-                            <option value="faculty">Faculty</option>
-                            <option value="students">Students</option>
-                            {% elif user.role == 'program_admin' %}
-                            <option value="courses" selected>Courses</option>
-                            <option value="sections">Sections</option>
-                            <option value="students">Students</option>
-                            <option value="assessments">Assessments</option>
-                            {% endif %}
-                        </select>
                     </div>
 
                     <!-- Import Format -->
@@ -129,13 +106,10 @@
                         </div>
                     </div>
 
-                    <!-- Import Actions -->
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="button" class="btn btn-outline-success" onclick="validateImportFile()">
-                            <i class="fas fa-check-circle me-1"></i>Validate Only
-                        </button>
-                        <button type="button" class="btn btn-success" onclick="executeDataImport()">
-                            <i class="fas fa-upload me-1"></i>Import Data
+                    <!-- Import Actions - Centered and Full Width -->
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-import-primary btn-lg" onclick="executeDataImport()">
+                            <i class="fas fa-upload me-2"></i>Import Data
                         </button>
                     </div>
                 </form>
@@ -159,8 +133,13 @@
                 {% endif %}
             </div>
 
+            <!-- Vertical Divider -->
+            <div class="col-lg-auto d-none d-lg-block px-2">
+                <div class="data-management-divider"></div>
+            </div>
+
             <!-- Export Section -->
-            <div class="col-lg-6">
+            <div class="col-lg-6 ps-lg-4">
                 <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
                 
                 <form id="dataExportForm">
@@ -249,22 +228,14 @@
 
 <script>
 // Data Import Functions
-function validateImportFile() {
-    const form = document.getElementById('dataImportForm');
-    const formData = new FormData(form);
-    formData.set('dry_run', 'true'); // Force dry run for validation
-    
-    executeImportRequest(formData, true);
-}
-
 function executeDataImport() {
     const form = document.getElementById('dataImportForm');
     const formData = new FormData(form);
     
-    executeImportRequest(formData, false);
+    executeImportRequest(formData);
 }
 
-function executeImportRequest(formData, isValidation) {
+function executeImportRequest(formData) {
     // Show progress
     document.getElementById('importProgress').style.display = 'block';
     document.getElementById('importResults').style.display = 'none';
@@ -272,7 +243,7 @@ function executeImportRequest(formData, isValidation) {
     const progressBar = document.getElementById('importProgressBar');
     const status = document.getElementById('importStatus');
     
-    status.textContent = isValidation ? 'Validating file...' : 'Starting import...';
+    status.textContent = 'Starting import...';
     progressBar.style.width = '10%';
     
     // Execute the import via fetch API
