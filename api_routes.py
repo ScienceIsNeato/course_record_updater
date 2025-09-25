@@ -2720,7 +2720,7 @@ def excel_import_api():
 
     Form Data:
         excel_file: Excel file (.xlsx, .xls)
-        import_adapter: Adapter type (cei_excel_adapter, generic_excel_adapter)
+        import_adapter: Adapter ID (e.g., cei_excel_format_v1)
         conflict_strategy: How to handle conflicts (use_theirs, use_mine, merge, manual_review)
         dry_run: Test mode without saving (true/false)
         verbose_output: Detailed output (true/false)
@@ -2767,7 +2767,7 @@ def excel_import_api():
             )
 
         # Get form parameters
-        import_adapter = request.form.get("import_adapter", "cei_excel_adapter")
+        adapter_id = request.form.get("import_adapter", "cei_excel_format_v1")
         conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
         dry_run = request.form.get("dry_run", "false").lower() == "true"
         verbose_output = request.form.get("verbose_output", "false").lower() == "true"
@@ -2787,7 +2787,7 @@ def excel_import_api():
         # Determine institution_id based on user role and adapter
         if user_role == UserRole.SITE_ADMIN.value:
             # Site admins can import for any institution - let adapter determine it
-            if import_adapter == "cei_excel_adapter":
+            if adapter_id == "cei_excel_format_v1":
                 # CEI adapter always imports for CEI institution
                 from database_service import create_default_cei_institution
 
@@ -2877,7 +2877,7 @@ def excel_import_api():
                 institution_id=institution_id,
                 conflict_strategy=conflict_strategy,
                 dry_run=dry_run,
-                adapter_name=import_adapter,
+                adapter_id=adapter_id,
                 delete_existing_db=delete_existing_db,
                 verbose=verbose_output,
             )
@@ -2920,6 +2920,58 @@ def excel_import_api():
                         str(e) if "Permission denied" in str(e) else "Import failed"
                     ),
                 }
+            ),
+            500,
+        )
+
+
+# ============================================================================
+# ADAPTER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+
+@api.route("/adapters", methods=["GET"])
+@login_required
+def get_available_adapters():
+    """
+    Get available adapters for the current user based on their role and institution scope.
+
+    Returns:
+        JSON response with list of available adapters
+    """
+    try:
+        from adapters.adapter_registry import get_adapter_registry
+
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        registry = get_adapter_registry()
+        user_role = current_user.get("role")
+        user_institution_id = current_user.get("institution_id")
+        adapters = registry.get_adapters_for_user(user_role, user_institution_id)
+
+        # Format adapters for frontend consumption
+        adapter_list = []
+        for adapter_info in adapters:
+            adapter_list.append(
+                {
+                    "id": adapter_info["id"],
+                    "name": adapter_info["name"],
+                    "description": adapter_info["description"],
+                    "institution_id": adapter_info["institution_id"],
+                    "supported_formats": adapter_info["supported_formats"],
+                    "data_types": adapter_info["data_types"],
+                }
+            )
+
+        return jsonify({"success": True, "adapters": adapter_list})
+
+    except Exception as e:
+        logger.error(f"Error getting available adapters: {str(e)}")
+        return (
+            jsonify(
+                {"success": False, "error": "Failed to retrieve available adapters"}
             ),
             500,
         )

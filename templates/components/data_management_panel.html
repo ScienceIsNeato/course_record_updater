@@ -40,8 +40,7 @@
                     <div class="mb-3">
                         <label for="import_adapter" class="form-label">Import Format:</label>
                         <select class="form-select" id="import_adapter" name="import_adapter" required>
-                            <option value="cei_excel_adapter" selected>CEI Excel Format</option>
-                            <option value="generic_excel_adapter">Generic Excel Format</option>
+                            <option value="">Loading available formats...</option>
                         </select>
                     </div>
 
@@ -227,6 +226,65 @@
 </div>
 
 <script>
+// Load available adapters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAvailableAdapters();
+});
+
+async function loadAvailableAdapters() {
+    try {
+        const response = await fetch('/api/adapters', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.adapters) {
+            const adapterSelect = document.getElementById('import_adapter');
+            
+            // Clear loading option
+            adapterSelect.innerHTML = '';
+            
+            if (data.adapters.length === 0) {
+                adapterSelect.innerHTML = '<option value="">No adapters available</option>';
+                adapterSelect.disabled = true;
+                return;
+            }
+            
+            // Add adapters to dropdown
+            data.adapters.forEach((adapter, index) => {
+                const option = document.createElement('option');
+                option.value = adapter.id;
+                option.textContent = adapter.name;
+                option.title = adapter.description; // Tooltip with description
+                
+                // Select the first adapter by default
+                if (index === 0) {
+                    option.selected = true;
+                }
+                
+                adapterSelect.appendChild(option);
+            });
+            
+            adapterSelect.disabled = false;
+        } else {
+            console.error('Failed to load adapters:', data.error);
+            const adapterSelect = document.getElementById('import_adapter');
+            adapterSelect.innerHTML = '<option value="">Failed to load adapters</option>';
+            adapterSelect.disabled = true;
+        }
+    } catch (error) {
+        console.error('Error loading adapters:', error);
+        const adapterSelect = document.getElementById('import_adapter');
+        adapterSelect.innerHTML = '<option value="">Error loading adapters</option>';
+        adapterSelect.disabled = true;
+    }
+}
+
 // Data Import Functions
 function executeDataImport() {
     const form = document.getElementById('dataImportForm');
