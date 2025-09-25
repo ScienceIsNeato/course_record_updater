@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 
 class SessionSecurityError(Exception):
     """Raised when session security validation fails"""
+
     pass
 
 

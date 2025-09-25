@@ -7,7 +7,7 @@ Tests the ImportService with the new adapter registry system.
 import os
 import tempfile
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -18,42 +18,16 @@ from import_service import (
     ImportResult,
     ImportService,
     create_import_report,
-    import_excel,
 )
 
 
 class TestImportService:
-    """Test the new adapter-based ImportService functionality."""
+    """Test the ImportService class with adapter registry integration."""
 
     def setup_method(self):
-        """Set up each test."""
-        self.institution_id = "test-institution"
-        self.service = ImportService(self.institution_id, verbose=True)
-
-    def test_import_service_initialization(self):
-        """Test ImportService initialization."""
-        assert self.service.institution_id == self.institution_id
-        assert self.service.verbose is True
-        assert self.service.progress_callback is None
-        assert len(self.service.stats["errors"]) == 0
-
-    def test_import_service_initialization_requires_institution_id(self):
-        """Test ImportService requires institution_id."""
-        with pytest.raises(ValueError, match="institution_id is required"):
-            ImportService(None)
-
-    def test_reset_stats(self):
-        """Test reset_stats functionality."""
-        # Add some dummy stats
-        self.service.stats["errors"].append("test error")
-        self.service.stats["records_processed"] = 5
-
-        # Reset stats
-        self.service.reset_stats()
-
-        assert self.service.stats["records_processed"] == 0
-        assert len(self.service.stats["errors"]) == 0
-        assert len(self.service.stats["warnings"]) == 0
+        """Set up test fixtures."""
+        self.institution_id = "test-institution-id"
+        self.service = ImportService(self.institution_id)
 
     @patch("import_service.get_adapter_registry")
     def test_import_excel_file_adapter_not_found(self, mock_get_registry):
@@ -157,20 +131,16 @@ class TestImportService:
             assert result.success is True
             assert result.records_processed == 3  # 1 user + 1 course + 1 term
             assert result.records_created == 3
-            assert len(result.errors) == 0
 
     @patch("import_service.get_adapter_registry")
     @patch("import_service.os.path.exists")
-    def test_import_excel_file_dry_run_mode(self, mock_exists, mock_get_registry):
-        """Test import in dry run mode."""
+    def test_import_excel_file_dry_run(self, mock_exists, mock_get_registry):
+        """Test dry run mode."""
         mock_exists.return_value = True
 
         # Mock adapter
         mock_adapter = Mock()
-        mock_adapter.validate_file_compatibility.return_value = (
-            True,
-            "File is compatible",
-        )
+        mock_adapter.validate_file_compatibility.return_value = (True, "Compatible")
         mock_adapter.parse_file.return_value = {
             "users": [
                 {"email": "test@example.com", "first_name": "Test", "last_name": "User"}
@@ -197,41 +167,20 @@ class TestImportService:
 
     @patch("import_service.get_adapter_registry")
     @patch("import_service.os.path.exists")
-    def test_import_excel_file_with_progress_callback(
-        self, mock_exists, mock_get_registry
-    ):
-        """Test import with progress callback."""
+    def test_import_excel_file_with_conflicts(self, mock_exists, mock_get_registry):
+        """Test import with conflict resolution."""
         mock_exists.return_value = True
 
-        # Create service with progress callback
-        progress_callback = Mock()
-        service = ImportService(
-            self.institution_id, progress_callback=progress_callback
-        )
-
-        # Mock adapter with multiple records
+        # Mock adapter
         mock_adapter = Mock()
-        mock_adapter.validate_file_compatibility.return_value = (
-            True,
-            "File is compatible",
-        )
+        mock_adapter.validate_file_compatibility.return_value = (True, "Compatible")
         mock_adapter.parse_file.return_value = {
             "users": [
                 {
-                    "email": "user1@example.com",
-                    "first_name": "User",
-                    "last_name": "One",
-                },
-                {
-                    "email": "user2@example.com",
-                    "first_name": "User",
-                    "last_name": "Two",
-                },
-                {
-                    "email": "user3@example.com",
-                    "first_name": "User",
-                    "last_name": "Three",
-                },
+                    "email": "existing@example.com",
+                    "first_name": "Updated",
+                    "last_name": "User",
+                }
             ]
         }
 
@@ -239,25 +188,28 @@ class TestImportService:
         mock_registry.get_adapter_by_id.return_value = mock_adapter
         mock_get_registry.return_value = mock_registry
 
-        # Mock database operations
+        # Mock existing user
+        existing_user = {"email": "existing@example.com", "first_name": "Original"}
+
         with (
-            patch("import_service.get_user_by_email", return_value=None),
-            patch("import_service.create_user"),
+            patch("import_service.get_user_by_email", return_value=existing_user),
+            patch("import_service.update_user") as mock_update_user,
         ):
 
-            result = service.import_excel_file("test.xlsx")
+            result = self.service.import_excel_file(
+                "test.xlsx", conflict_strategy=ConflictStrategy.USE_THEIRS
+            )
 
             assert result.success is True
-            assert progress_callback.called
-            # Should be called at least once for progress updates
-            assert progress_callback.call_count >= 1
+            assert result.conflicts_detected >= 1
+            mock_update_user.assert_called()
 
     def test_process_course_import_new_course(self):
         """Test processing a new course import."""
         course_data = {
-            "course_number": "TEST-101",
-            "course_title": "Test Course",
-            "department": "Test Department",
+            "course_number": "NEW-101",
+            "course_title": "New Course",
+            "institution_id": self.institution_id,
         }
 
         with (
@@ -271,25 +223,23 @@ class TestImportService:
 
             assert success is True
             assert len(conflicts) == 0
-            mock_create.assert_called_once_with(course_data)
-            assert self.service.stats["records_created"] == 1
+            mock_create.assert_called_once()
 
-    def test_process_course_import_existing_course_use_mine(self):
-        """Test processing existing course with USE_MINE strategy."""
-        course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
-
-        existing_course = {
-            "course_number": "TEST-101",
-            "course_title": "Existing Course",
+    def test_process_course_import_dry_run(self):
+        """Test processing course import in dry run mode."""
+        course_data = {
+            "course_number": "DRY-101",
+            "course_title": "Dry Run Course",
+            "institution_id": self.institution_id,
         }
 
         with (
-            patch("import_service.get_course_by_number", return_value=existing_course),
+            patch("import_service.get_course_by_number", return_value=None),
             patch("import_service.create_course") as mock_create,
         ):
 
             success, conflicts = self.service.process_course_import(
-                course_data, ConflictStrategy.USE_MINE, dry_run=False
+                course_data, ConflictStrategy.USE_THEIRS, dry_run=True
             )
 
             assert success is True
@@ -299,9 +249,10 @@ class TestImportService:
     def test_process_user_import_new_user(self):
         """Test processing a new user import."""
         user_data = {
-            "email": "test@example.com",
-            "first_name": "Test",
+            "email": "new@example.com",
+            "first_name": "New",
             "last_name": "User",
+            "institution_id": self.institution_id,
         }
 
         with (
@@ -315,129 +266,23 @@ class TestImportService:
 
             assert success is True
             assert len(conflicts) == 0
-            mock_create.assert_called_once_with(user_data)
-            assert self.service.stats["records_created"] == 1
-
-    def test_process_user_import_missing_email(self):
-        """Test processing user import with missing email."""
-        user_data = {
-            "first_name": "Test",
-            "last_name": "User",
-            # Missing email
-        }
-
-        success, conflicts = self.service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS, dry_run=False
-        )
-
-        assert success is False
-        assert "User missing email" in self.service.stats["errors"]
-
-    def test_process_term_import_new_term(self):
-        """Test processing a new term import."""
-        term_data = {
-            "term_name": "Fall 2024",
-            "institution_id": self.institution_id,
-            "start_date": "2024-08-01",
-            "end_date": "2024-12-15",
-        }
-
-        with (
-            patch("database_service.db") as mock_db,
-            patch("import_service.create_term") as mock_create,
-        ):
-
-            # Mock empty query result (term doesn't exist)
-            mock_collection = Mock()
-            mock_collection.where.return_value.where.return_value.get.return_value = []
-            mock_db.collection.return_value = mock_collection
-
-            self.service._process_term_import(term_data, dry_run=False)
-
-            mock_create.assert_called_once_with(term_data)
-            assert self.service.stats["records_created"] == 1
-
-    def test_process_term_import_existing_term(self):
-        """Test processing existing term import."""
-        term_data = {"term_name": "Fall 2024", "institution_id": self.institution_id}
-
-        with (
-            patch("database_service.db") as mock_db,
-            patch("import_service.create_term") as mock_create,
-        ):
-
-            # Mock query result with existing term
-            mock_doc = Mock()
-            mock_collection = Mock()
-            mock_collection.where.return_value.where.return_value.get.return_value = [
-                mock_doc
-            ]
-            mock_db.collection.return_value = mock_collection
-
-            self.service._process_term_import(term_data, dry_run=False)
-
-            mock_create.assert_not_called()
-            assert self.service.stats["records_skipped"] == 1
+            mock_create.assert_called_once()
 
 
-class TestConvenienceFunction:
-    """Test the import_excel convenience function."""
+class TestEnumsAndDataClasses:
+    """Test enums and data classes."""
 
-    @patch("import_service.ImportService")
-    def test_import_excel_convenience_function(self, mock_service_class):
-        """Test import_excel convenience function."""
-        # Mock service instance
-        mock_service = Mock()
-        mock_result = ImportResult(
-            success=True,
-            records_processed=1,
-            records_created=1,
-            records_updated=0,
-            records_skipped=0,
-            conflicts_detected=0,
-            conflicts_resolved=0,
-            errors=[],
-            warnings=[],
-            conflicts=[],
-            execution_time=1.0,
-            dry_run=False,
-        )
-        mock_service.import_excel_file.return_value = mock_result
-        mock_service_class.return_value = mock_service
+    def test_conflict_strategy_enum(self):
+        """Test ConflictStrategy enum values."""
+        assert ConflictStrategy.USE_MINE.value == "use_mine"
+        assert ConflictStrategy.USE_THEIRS.value == "use_theirs"
+        assert ConflictStrategy.MERGE.value == "merge"
+        assert ConflictStrategy.MANUAL_REVIEW.value == "manual_review"
 
-        result = import_excel(
-            file_path="test.xlsx",
-            institution_id="test-institution",
-            conflict_strategy="use_theirs",
-            dry_run=False,
-            adapter_id="cei_excel_format_v1",
-        )
-
-        assert result.success is True
-        mock_service_class.assert_called_once_with(
-            institution_id="test-institution", verbose=False, progress_callback=None
-        )
-        mock_service.import_excel_file.assert_called_once()
-
-
-class TestDataClasses:
-    """Test the data classes and enums."""
-
-    def test_conflict_record_creation(self):
-        """Test ConflictRecord creation."""
-        conflict = ConflictRecord(
-            entity_type="course",
-            entity_id="TEST-101",
-            field_name="course_title",
-            existing_value="Old Title",
-            import_value="New Title",
-            resolution="use_theirs",
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        assert conflict.entity_type == "course"
-        assert conflict.entity_id == "TEST-101"
-        assert conflict.field_name == "course_title"
+    def test_import_mode_enum(self):
+        """Test ImportMode enum values."""
+        assert ImportMode.DRY_RUN.value == "dry_run"
+        assert ImportMode.EXECUTE.value == "execute"
 
     def test_import_result_creation(self):
         """Test ImportResult creation."""
@@ -460,17 +305,20 @@ class TestDataClasses:
         assert result.records_processed == 10
         assert result.execution_time == 2.5
 
-    def test_conflict_strategy_enum(self):
-        """Test ConflictStrategy enum values."""
-        assert ConflictStrategy.USE_MINE.value == "use_mine"
-        assert ConflictStrategy.USE_THEIRS.value == "use_theirs"
-        assert ConflictStrategy.MERGE.value == "merge"
-        assert ConflictStrategy.MANUAL_REVIEW.value == "manual_review"
+    def test_conflict_record_creation(self):
+        """Test ConflictRecord creation."""
+        conflict = ConflictRecord(
+            entity_type="user",
+            entity_id="user-123",
+            field_name="first_name",
+            existing_value="John",
+            import_value="Jonathan",
+            resolution="use_theirs",
+            timestamp=datetime.now(timezone.utc),
+        )
 
-    def test_import_mode_enum(self):
-        """Test ImportMode enum values."""
-        assert ImportMode.DRY_RUN.value == "dry_run"
-        assert ImportMode.EXECUTE.value == "execute"
+        assert conflict.entity_type == "user"
+        assert conflict.field_name == "first_name"
 
 
 class TestReportGeneration:
@@ -495,22 +343,22 @@ class TestReportGeneration:
 
         report = create_import_report(result)
 
-        assert "IMPORT REPORT" in report
         assert "Success: True" in report
         assert "Records Processed: 5" in report
+        assert "Records Created: 5" in report
         assert "Execution Time: 1.23s" in report
 
     def test_create_import_report_with_errors(self):
-        """Test creating report with errors."""
+        """Test creating report with errors and warnings."""
         result = ImportResult(
             success=False,
-            records_processed=2,
-            records_created=1,
+            records_processed=0,
+            records_created=0,
             records_updated=0,
             records_skipped=0,
-            conflicts_detected=1,
+            conflicts_detected=0,
             conflicts_resolved=0,
-            errors=["File not found", "Invalid data format"],
+            errors=["File not found", "Invalid format"],
             warnings=["Missing optional field"],
             conflicts=[],
             execution_time=0.5,

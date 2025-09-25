@@ -27,6 +27,7 @@ from database_service import (
     get_course_offering_by_course_and_term,
     get_institution_by_short_name,
     get_user_by_email,
+    update_user,
 )
 
 # Import our models and services
@@ -355,6 +356,7 @@ class ImportService:
                     self.stats["records_created"] += 1
                     self._log(f"Created course: {course_number}")
                 else:
+                    self.stats["records_skipped"] += 1
                     self._log(f"DRY RUN: Would create course: {course_number}")
 
             return True, conflicts
@@ -394,15 +396,39 @@ class ImportService:
             existing_user = get_user_by_email(email)
 
             if existing_user:
+                # Detect conflicts by comparing fields
+                detected_conflicts = []
+                for field, new_value in user_data.items():
+                    if field == "email":
+                        continue  # Skip email as it's the key
+                    existing_value = existing_user.get(field)
+                    if existing_value != new_value:
+                        conflict = ConflictRecord(
+                            entity_type="user",
+                            entity_id=existing_user.get("id", email),
+                            field_name=field,
+                            existing_value=existing_value,
+                            import_value=new_value,
+                            resolution=strategy.value,
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                        detected_conflicts.append(conflict)
+                        conflicts.append(conflict)
+
+                if detected_conflicts:
+                    self.stats["conflicts_detected"] += len(detected_conflicts)
+
                 # Handle conflict based on strategy
                 if strategy == ConflictStrategy.USE_MINE:
                     self.stats["records_skipped"] += 1
                     self._log(f"Skipping existing user: {email}")
                     return True, conflicts
                 elif strategy == ConflictStrategy.USE_THEIRS:
+                    if detected_conflicts:
+                        self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
                         # Update existing user
-                        # Note: This would need proper update logic
+                        update_user(existing_user.get("id", email), user_data)
                         self.stats["records_updated"] += 1
                         self._log(f"Updated user: {email}")
                     else:

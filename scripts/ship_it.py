@@ -66,6 +66,7 @@ class QualityGateExecutor:
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
         from logging_config import setup_quality_gate_logger
+
         self.logger = setup_quality_gate_logger()
         self.script_path = "./scripts/maintAInability-gate.sh"
 
@@ -177,7 +178,7 @@ class QualityGateExecutor:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
         results = []
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
-        
+
         try:
             # Submit all checks
             future_to_check = {
@@ -210,7 +211,7 @@ class QualityGateExecutor:
                         self.logger.info("━" * 60)
                         self.logger.info(result.output)
                         self.logger.info("━" * 60)
-                        
+
                         # Cancel all remaining futures and shutdown immediately
                         for f in future_to_check:
                             f.cancel()
@@ -233,7 +234,7 @@ class QualityGateExecutor:
         finally:
             # Ensure executor is properly cleaned up
             executor.shutdown(wait=True)
-            
+
         return results
 
     def _format_header(self, total_duration: float) -> List[str]:
@@ -261,9 +262,7 @@ class QualityGateExecutor:
     def _filter_meaningful_lines(self, output_lines: List[str]) -> List[str]:
         """Filter out empty lines and pip noise from output."""
         return [
-            line
-            for line in output_lines
-            if line.strip() and not line.startswith("pip")
+            line for line in output_lines if line.strip() and not line.startswith("pip")
         ]
 
     def _format_check_output(self, result: CheckResult) -> List[str]:
@@ -282,23 +281,25 @@ class QualityGateExecutor:
                 lines.append(f"       {line}")
 
         if len(meaningful_lines) > 20:
-            lines.extend([
-                f"       ... and {len(meaningful_lines) - 20} more lines",
-                "       Run the individual check for full details"
-            ])
+            lines.extend(
+                [
+                    f"       ... and {len(meaningful_lines) - 20} more lines",
+                    "       Run the individual check for full details",
+                ]
+            )
 
         return lines
 
     def _format_single_failed_check(self, result: CheckResult) -> List[str]:
         """Format a single failed check with error and output."""
         lines = [f"   • {result.name}"]
-        
+
         if result.error:
             lines.append(f"     Error: {result.error}")
-        
+
         lines.extend(self._format_check_output(result))
         lines.append("")
-        
+
         return lines
 
     def _format_failed_checks(self, failed_checks: List[CheckResult]) -> List[str]:
@@ -335,13 +336,13 @@ class QualityGateExecutor:
             "",
             "💡 Run individual checks for detailed output:",
         ]
-        
+
         for result in failed_checks:
             check_flag = self._get_check_flag(result.name)
             lines.append(
                 f"   • {result.name}: ./scripts/maintAInability-gate.sh --{check_flag}"
             )
-        
+
         return lines
 
     def _format_summary(self, failed_checks: List[CheckResult]) -> List[str]:
@@ -422,7 +423,11 @@ class QualityGateExecutor:
 
         return "\n".join(report)
 
-    def execute(self, checks: List[str] = None, validation_type: ValidationType = ValidationType.COMMIT) -> int:
+    def execute(
+        self,
+        checks: List[str] = None,
+        validation_type: ValidationType = ValidationType.COMMIT,
+    ) -> int:
         """Execute quality checks in parallel with fail-fast behavior and return exit code."""
         validation_name = "COMMIT" if validation_type == ValidationType.COMMIT else "PR"
         self.logger.info(
@@ -437,10 +442,14 @@ class QualityGateExecutor:
             # Default: use validation type to determine check set
             if validation_type == ValidationType.COMMIT:
                 checks_to_run = self.commit_checks
-                self.logger.info("📦 Running COMMIT validation (fast checks, excludes security & sonar)")
+                self.logger.info(
+                    "📦 Running COMMIT validation (fast checks, excludes security & sonar)"
+                )
             else:
                 checks_to_run = self.pr_checks
-                self.logger.info("🔍 Running PR validation (all checks including security & sonar)")
+                self.logger.info(
+                    "🔍 Running PR validation (all checks including security & sonar)"
+                )
         else:
             # Run only specified checks
             available_checks = {flag: (flag, name) for flag, name in self.all_checks}
@@ -450,7 +459,9 @@ class QualityGateExecutor:
                     checks_to_run.append(available_checks[check])
                 else:
                     self.logger.error(f"❌ Unknown check: {check}")
-                    self.logger.info(f"Available checks: {', '.join(available_checks.keys())}")
+                    self.logger.info(
+                        f"Available checks: {', '.join(available_checks.keys())}"
+                    )
                     return 1
 
         start_time = time.time()
@@ -485,6 +496,172 @@ class QualityGateExecutor:
         return sorted(slow_tests, key=lambda x: float(x.split("s")[0]), reverse=True)
 
 
+def check_pr_comments():
+    """
+    Check for unresolved PR comment threads using GitHub GraphQL API.
+
+    Returns:
+        List of unresolved comment thread dictionaries, empty if none found
+    """
+    try:
+        import json
+        import os
+        import subprocess
+
+        # Detect current PR number from branch or environment
+        pr_number = os.getenv("PR_NUMBER")
+        if not pr_number:
+            # Try to get from current branch if we're in a PR
+            try:
+                result = subprocess.run(
+                    ["gh", "pr", "view", "--json", "number"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                pr_data = json.loads(result.stdout)
+                pr_number = pr_data.get("number")
+            except:
+                # No PR context, skip check
+                return []
+
+        if not pr_number:
+            return []
+
+        # Get repository info
+        try:
+            repo_result = subprocess.run(
+                ["gh", "repo", "view", "--json", "owner,name"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            repo_data = json.loads(repo_result.stdout)
+            owner = repo_data.get("owner", {}).get("login", "")
+            name = repo_data.get("name", "")
+        except:
+            print("⚠️  Could not detect repository info")
+            return []
+
+        # GraphQL query for unresolved review threads
+        graphql_query = """
+        query($owner: String!, $name: String!, $number: Int!) {
+          repository(owner: $owner, name: $name) {
+            pullRequest(number: $number) {
+              reviewThreads(first: 50) {
+                nodes {
+                  id
+                  isResolved
+                  comments(first: 1) {
+                    nodes {
+                      body
+                      path
+                      line
+                      author {
+                        login
+                      }
+                      createdAt
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+
+        # Execute GraphQL query
+        result = subprocess.run(
+            [
+                "gh",
+                "api",
+                "graphql",
+                "-F",
+                f"owner={owner}",
+                "-F",
+                f"name={name}",
+                "-F",
+                f"number={pr_number}",
+                "-f",
+                f"query={graphql_query}",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        data = json.loads(result.stdout)
+        threads = (
+            data.get("data", {})
+            .get("repository", {})
+            .get("pullRequest", {})
+            .get("reviewThreads", {})
+            .get("nodes", [])
+        )
+
+        # Filter for unresolved threads
+        unresolved_threads = []
+        for thread in threads:
+            if not thread.get(
+                "isResolved", True
+            ):  # Default to resolved if field missing
+                comment = thread.get("comments", {}).get("nodes", [{}])[0]
+                unresolved_threads.append(
+                    {
+                        "thread_id": thread.get("id"),
+                        "body": comment.get("body", ""),
+                        "author": comment.get("author", {}).get("login", "unknown"),
+                        "created_at": comment.get("createdAt", ""),
+                        "path": comment.get("path"),
+                        "line": comment.get("line"),
+                        "type": "review_thread",
+                    }
+                )
+
+        return unresolved_threads
+
+    except Exception as e:
+        print(f"⚠️  Could not check PR comments: {e}")
+        return []
+
+
+def write_pr_comments_scratch(comments):
+    """Write detailed PR comments to scratch file for AI analysis."""
+    try:
+        with open("pr_comments_scratch.md", "w") as f:
+            f.write("# Outstanding PR Comments - Strategic Analysis Needed\n\n")
+            f.write("## Strategic PR Review Protocol\n")
+            f.write(
+                "1. **Conceptual Grouping**: Classify by underlying concept (authentication, validation, etc.)\n"
+            )
+            f.write(
+                "2. **Risk-First Priority**: Highest risk/surface area changes first\n"
+            )
+            f.write(
+                "3. **Thematic Implementation**: Address entire concepts with comprehensive commits\n"
+            )
+            f.write(
+                "4. **Cross-Reference Communication**: Reply to related comments together\n\n"
+            )
+
+            f.write("## Comments to Address\n\n")
+
+            for i, comment in enumerate(comments, 1):
+                f.write(f"### Comment #{comment['id']} - {comment['author']}\n")
+                if comment.get("path") and comment.get("line"):
+                    f.write(f"**Location**: `{comment['path']}:{comment['line']}`\n")
+                f.write(f"**Type**: {comment['type']}\n")
+                f.write(f"**Created**: {comment['created_at']}\n\n")
+                f.write(f"**Content**:\n{comment['body']}\n\n")
+                f.write("**Conceptual Theme**: _[AI to classify]_\n")
+                f.write("**Risk Priority**: _[AI to assess]_\n")
+                f.write("**Related Comments**: _[AI to identify]_\n\n")
+                f.write("---\n\n")
+
+    except Exception as e:
+        print(f"⚠️  Could not write scratch file: {e}")
+
+
 def main():
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
@@ -493,8 +670,7 @@ def main():
         epilog="""
 Examples:
   python scripts/ship_it.py                                    # Fast commit validation (excludes slow checks)
-  python scripts/ship_it.py --validation-type PR              # Full PR validation (all checks)
-  python scripts/ship_it.py --validation-type PR --interactive # Strategic PR review mode
+  python scripts/ship_it.py --validation-type PR              # Full PR validation (fails if unaddressed comments)
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
@@ -522,28 +698,43 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
     )
 
-    parser.add_argument(
-        "--interactive",
-        action="store_true",
-        help="Enable strategic PR review mode - analyze and address PR comments thematically",
-    )
-
-
     args = parser.parse_args()
 
-    # Handle interactive PR review mode
-    if args.interactive:
-        if args.validation_type != "PR":
-            print("❌ Interactive mode requires --validation-type PR")
+    # Handle PR validation with comment checking
+    if args.validation_type == "PR":
+        # Check for unaddressed PR comments before running quality gates
+        unaddressed_comments = check_pr_comments()
+        if unaddressed_comments:
+            print("❌ PR VALIDATION FAILED: Unaddressed review comments found")
+            print("\n📋 Outstanding PR Comments:")
+            print("=" * 50)
+            for i, comment in enumerate(unaddressed_comments, 1):
+                location = (
+                    f" ({comment['path']}:{comment['line']})"
+                    if comment.get("path") and comment.get("line")
+                    else ""
+                )
+                print(
+                    f"{i}. [{comment['author']}]{location}: {comment['body'][:100]}..."
+                )
+
+            print(f"\n💡 Strategic PR Review Protocol:")
+            print("1. Group comments by underlying concept (not file location)")
+            print(
+                "2. Prioritize by risk/surface area - lower-level changes obviate surface comments"
+            )
+            print("3. Address entire themes with comprehensive commits")
+            print("4. Use GitHub MCP tools to reply and cross-reference related fixes")
+            print(f"\n📄 Full comments written to: pr_comments_scratch.md")
+
+            # Write detailed scratch file
+            write_pr_comments_scratch(unaddressed_comments)
             sys.exit(1)
-        
-        from strategic_pr_review import StrategicPRReviewer
-        reviewer = StrategicPRReviewer()
-        exit_code = reviewer.run_interactive_review()
-        sys.exit(exit_code)
 
     # Convert validation type string to enum
-    validation_type = ValidationType.COMMIT if args.validation_type == "commit" else ValidationType.PR
+    validation_type = (
+        ValidationType.COMMIT if args.validation_type == "commit" else ValidationType.PR
+    )
 
     # Create and run the executor
     executor = QualityGateExecutor()

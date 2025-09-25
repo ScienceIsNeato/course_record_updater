@@ -24,6 +24,7 @@ FLASK_SESSION_CONFIG = {
     "SESSION_COOKIE_NAME": "course_session",
 }
 
+
 def get_session_lifetime(remember_me: bool = False) -> timedelta:
     """Get session lifetime based on remember_me setting"""
     if remember_me:

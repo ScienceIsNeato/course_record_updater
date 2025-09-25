@@ -350,24 +350,30 @@ class DatabaseSeeder:
             },
         ]
 
-    def _create_single_program(self, prog_data: dict, institution_ids: List[str], admin_ids: List[str]) -> Optional[str]:
+    def _create_single_program(
+        self, prog_data: dict, institution_ids: List[str], admin_ids: List[str]
+    ) -> Optional[str]:
         """Create a single program"""
         institution_idx = cast(int, prog_data["institution_idx"])
         admin_idx = cast(int, prog_data["admin_idx"])
-        
+
         if institution_idx >= len(institution_ids) or admin_idx >= len(admin_ids):
             return None
 
         try:
             institution_id = institution_ids[institution_idx]
             program_name = cast(str, prog_data["name"])
-            
+
             # Check if program already exists
-            existing_program = db.get_program_by_name_and_institution(program_name, institution_id)
+            existing_program = db.get_program_by_name_and_institution(
+                program_name, institution_id
+            )
             if existing_program:
                 program_id = existing_program["id"]
                 self.created_entities["programs"].append(program_id)
-                self.log(f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})")
+                self.log(
+                    f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})"
+                )
                 return program_id
 
             # Create new program
@@ -384,7 +390,9 @@ class DatabaseSeeder:
             program_id = db.create_program(schema)
             if program_id:
                 self.created_entities["programs"].append(program_id)
-                self.log(f"   Created program: {prog_data['name']} ({prog_data['short_name']})")
+                self.log(
+                    f"   Created program: {prog_data['name']} ({prog_data['short_name']})"
+                )
                 return program_id
             else:
                 self.log(f"   Failed to create program: {prog_data['name']}")
@@ -394,15 +402,19 @@ class DatabaseSeeder:
             self.log(f"   Error creating program {prog_data['name']}: {e}")
             return None
 
-    def create_programs(self, institution_ids: List[str], admin_ids: List[str]) -> List[str]:
+    def create_programs(
+        self, institution_ids: List[str], admin_ids: List[str]
+    ) -> List[str]:
         """Create academic programs"""
         self.log("📚 Creating academic programs...")
-        
+
         programs_data = self._get_programs_data()
         program_ids = []
-        
+
         for prog_data in programs_data:
-            program_id = self._create_single_program(prog_data, institution_ids, admin_ids)
+            program_id = self._create_single_program(
+                prog_data, institution_ids, admin_ids
+            )
             if program_id:
                 program_ids.append(program_id)
 
@@ -865,7 +877,9 @@ class DatabaseSeeder:
                         "section_number": section_number,
                         "instructor_id": instructor_id,
                         "institution_id": institution_id,  # Add institution_id for filtering
-                        "course_number": course.get('course_number', 'Unknown'),  # Add for display
+                        "course_number": course.get(
+                            "course_number", "Unknown"
+                        ),  # Add for display
                         "enrollment": 15 + (section_num * 5),  # Vary enrollment
                         "status": "assigned" if instructor_id else "unassigned",
                     }
@@ -911,72 +925,72 @@ class DatabaseSeeder:
                 {
                     "clo_number": "CLO1",
                     "description": "Students will demonstrate proficiency in fundamental programming concepts including variables, control structures, and functions.",
-                    "assessment_method": "Programming assignments and exams"
+                    "assessment_method": "Programming assignments and exams",
                 },
                 {
-                    "clo_number": "CLO2", 
+                    "clo_number": "CLO2",
                     "description": "Students will analyze and solve computational problems using appropriate algorithms and data structures.",
-                    "assessment_method": "Project deliverables and practical assessments"
+                    "assessment_method": "Project deliverables and practical assessments",
                 },
                 {
                     "clo_number": "CLO3",
                     "description": "Students will effectively communicate technical solutions through documentation and presentations.",
-                    "assessment_method": "Technical reports and oral presentations"
-                }
+                    "assessment_method": "Technical reports and oral presentations",
+                },
             ],
             "EE": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will apply fundamental electrical engineering principles to analyze circuits and systems.",
-                    "assessment_method": "Laboratory reports and circuit analysis assignments"
+                    "assessment_method": "Laboratory reports and circuit analysis assignments",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will design and implement electrical systems that meet specified requirements.",
-                    "assessment_method": "Design projects and practical demonstrations"
+                    "assessment_method": "Design projects and practical demonstrations",
                 },
                 {
                     "clo_number": "CLO3",
                     "description": "Students will use industry-standard tools and measurement techniques in electrical engineering practice.",
-                    "assessment_method": "Laboratory exercises and equipment proficiency tests"
-                }
+                    "assessment_method": "Laboratory exercises and equipment proficiency tests",
+                },
             ],
             "ENG": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will produce clear, coherent, and well-organized written compositions.",
-                    "assessment_method": "Essay assignments and portfolio review"
+                    "assessment_method": "Essay assignments and portfolio review",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will demonstrate critical thinking skills through analysis of texts and arguments.",
-                    "assessment_method": "Analytical essays and discussion participation"
-                }
+                    "assessment_method": "Analytical essays and discussion participation",
+                },
             ],
             "BUS": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will understand fundamental business concepts and their practical applications.",
-                    "assessment_method": "Case study analysis and examinations"
+                    "assessment_method": "Case study analysis and examinations",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will analyze business problems and propose viable solutions.",
-                    "assessment_method": "Business plan presentations and problem-solving exercises"
-                }
+                    "assessment_method": "Business plan presentations and problem-solving exercises",
+                },
             ],
             "ME": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will apply principles of mechanics to analyze engineering systems.",
-                    "assessment_method": "Problem sets and laboratory experiments"
+                    "assessment_method": "Problem sets and laboratory experiments",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will design mechanical systems that meet specified performance criteria.",
-                    "assessment_method": "Design projects and CAD modeling assignments"
-                }
-            ]
+                    "assessment_method": "Design projects and CAD modeling assignments",
+                },
+            ],
         }
 
         for course_id in course_ids:
@@ -987,11 +1001,15 @@ class DatabaseSeeder:
                     continue
 
                 course_number = course.get("course_number", "")
-                subject = course_number.split("-")[0] if "-" in course_number else "GENERAL"
-                
+                subject = (
+                    course_number.split("-")[0] if "-" in course_number else "GENERAL"
+                )
+
                 # Get appropriate CLO templates
-                templates = clo_templates.get(subject, clo_templates["CS"][:2])  # Default to 2 CS CLOs
-                
+                templates = clo_templates.get(
+                    subject, clo_templates["CS"][:2]
+                )  # Default to 2 CS CLOs
+
                 for template in templates:
                     try:
                         # Create CLO schema
@@ -999,7 +1017,7 @@ class DatabaseSeeder:
                             course_id=course_id,
                             clo_number=template["clo_number"],
                             description=template["description"],
-                            assessment_method=template["assessment_method"]
+                            assessment_method=template["assessment_method"],
                         )
 
                         # Create outcome in database
