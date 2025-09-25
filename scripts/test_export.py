@@ -112,7 +112,7 @@ def test_export():
         export_service = ExportService()
         config = ExportConfig(
             institution_id=institution_id,
-            adapter_name="cei_excel_adapter",
+            adapter_id="cei_excel_format_v1",
             export_view="standard"
         )
         

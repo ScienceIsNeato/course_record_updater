@@ -120,7 +120,7 @@ class RoundtripValidator:
             LOGGER.info("Exporting imported data...")
             export_config = ExportConfig(
                 institution_id=self.institution_id,
-                adapter_name=adapter_name,
+                adapter_id=adapter_name,
                 export_view="standard"
             )
             

@@ -53,6 +53,13 @@ class MockAdapter(FileBaseAdapter):
             ]
         }
 
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        # Mock export - just count records
+        total_records = sum(len(records) for records in data.values())
+        return True, f"Mock export to {output_path}", total_records
+
 
 class TestFileBaseAdapter:
     """Test suite for FileBaseAdapter abstract base class"""

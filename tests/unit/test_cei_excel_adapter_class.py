@@ -454,3 +454,133 @@ class TestCEIExcelAdapterClass:
         emails = [u["email"] for u in deduplicated["users"]]
         assert "test@example.com" in emails
         assert "jane@example.com" in emails
+
+    def test_export_data_success(self):
+        """Test successful export of data to CEI Excel format."""
+        import tempfile
+
+        # Sample data to export
+        data = {
+            "courses": [{"course_number": "MATH-101", "title": "Calculus I"}],
+            "users": [
+                {
+                    "user_id": "1",
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "email": "john@example.com",
+                    "role": "instructor",
+                }
+            ],
+            "terms": [
+                {"term_id": "1", "year": 2024, "season": "Fall", "name": "Fall 2024"}
+            ],
+            "offerings": [
+                {
+                    "course_number": "MATH-101",
+                    "term_id": "1",
+                    "instructor_id": "1",
+                    "section_number": "01",
+                    "enrollment_count": 25,
+                }
+            ],
+        }
+
+        options = {"institution_id": "test_institution"}
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
+            success, message, records_exported = self.adapter.export_data(
+                data, tmp.name, options
+            )
+
+            assert success is True
+            assert "Successfully exported" in message
+            assert records_exported == 1
+
+    def test_export_data_no_records(self):
+        """Test export with no records to export."""
+        import tempfile
+
+        data = {"courses": [], "users": [], "terms": [], "offerings": []}
+
+        options = {"institution_id": "test_institution"}
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
+            success, message, records_exported = self.adapter.export_data(
+                data, tmp.name, options
+            )
+
+            assert success is False
+            assert "No valid records to export" in message
+            assert records_exported == 0
+
+    def test_export_data_error(self):
+        """Test export data with invalid output path."""
+        # First create valid data that will generate records
+        data = {
+            "courses": [{"course_number": "MATH-101"}],
+            "users": [
+                {
+                    "user_id": "1",
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "role": "instructor",
+                }
+            ],
+            "terms": [{"term_id": "1", "year": 2024, "season": "Fall"}],
+            "offerings": [
+                {"course_number": "MATH-101", "term_id": "1", "instructor_id": "1"}
+            ],
+        }
+
+        options = {"institution_id": "test_institution"}
+
+        # Use an invalid path that should cause an error
+        success, message, records_exported = self.adapter.export_data(
+            data, "/invalid/path/file.xlsx", options
+        )
+
+        assert success is False
+        assert "Export failed:" in message
+        assert records_exported == 0
+
+    def test_format_term_for_cei_export(self):
+        """Test term formatting for CEI export format."""
+        # Test with year and season
+        term = {"year": 2024, "season": "Fall"}
+        result = self.adapter._format_term_for_cei_export(term)
+        assert result == "2024FA"
+
+        # Test with different seasons
+        seasons = {"Spring": "2024SP", "Summer": "2024SU", "Winter": "2024WI"}
+
+        for season, expected in seasons.items():
+            term = {"year": 2024, "season": season}
+            result = self.adapter._format_term_for_cei_export(term)
+            assert result == expected
+
+        # Test with unknown season
+        term = {"year": 2024, "season": "Unknown"}
+        result = self.adapter._format_term_for_cei_export(term)
+        assert result == "2024UN"
+
+        # Test with fallback to name
+        term = {"name": "Fall 2024"}
+        result = self.adapter._format_term_for_cei_export(term)
+        assert result == "Fall 2024"
+
+        # Test with empty term
+        result = self.adapter._format_term_for_cei_export({})
+        assert result == ""
+
+        # Test with None term
+        result = self.adapter._format_term_for_cei_export(None)
+        assert result == ""
+
+    def test_supports_export(self):
+        """Test that adapter supports export."""
+        assert self.adapter.supports_export() is True
+
+    def test_get_export_formats(self):
+        """Test getting export formats."""
+        formats = self.adapter.get_export_formats()
+        assert ".xlsx" in formats

@@ -40,6 +40,11 @@ class MockAdapterA(FileBaseAdapter):
     ) -> Dict[str, List[Dict]]:
         return {"courses": [{"id": "1", "name": "Test Course"}]}
 
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        return True, "Mock export successful", 1
+
 
 class MockAdapterB(FileBaseAdapter):
     """Mock adapter for testing - Institution B"""
@@ -66,6 +71,11 @@ class MockAdapterB(FileBaseAdapter):
     ) -> Dict[str, List[Dict]]:
         return {"students": [{"id": "1", "name": "Test Student"}]}
 
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        return True, "Mock export successful", 1
+
 
 class MockInvalidAdapter(FileBaseAdapter):
     """Mock adapter with invalid metadata for testing"""
@@ -87,6 +97,11 @@ class MockInvalidAdapter(FileBaseAdapter):
         self, file_path: str, options: Dict[str, Any]
     ) -> Dict[str, List[Dict]]:
         return {}
+
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        return False, "Invalid adapter export", 0
 
 
 class TestAdapterRegistry:

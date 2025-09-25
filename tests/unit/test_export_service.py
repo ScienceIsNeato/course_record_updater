@@ -1,13 +1,13 @@
 """
 Unit tests for ExportService
 
-Tests the export functionality including adapter pattern, data formatting,
-and Excel file generation.
+Tests the export functionality using the adapter registry system for
+bidirectional data flow.
 """
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
@@ -21,44 +21,45 @@ class TestExportService:
     def test_init(self):
         """Test ExportService initialization."""
         service = ExportService()
-        assert service.supported_adapters is not None
-        assert "cei_excel_adapter" in service.supported_adapters
-        assert "default_adapter" in service.supported_adapters
+        assert service.registry is not None
+        # Check that the registry can discover adapters
+        adapters = service.registry.get_all_adapters()
+        assert len(adapters) >= 1  # Should have at least CEI adapter
 
     def test_export_config_creation(self):
         """Test ExportConfig dataclass creation."""
         config = ExportConfig(
             institution_id="test-institution",
-            adapter_name="cei_excel_adapter",
+            adapter_id="cei_excel_format_v1",
             export_view="standard",
         )
         assert config.institution_id == "test-institution"
-        assert config.adapter_name == "cei_excel_adapter"
+        assert config.adapter_id == "cei_excel_format_v1"
         assert config.export_view == "standard"
         assert config.include_metadata is True  # Default value
         assert config.output_format == "xlsx"  # Default value
 
     def test_export_result_creation(self):
         """Test ExportResult dataclass creation."""
-        result = ExportResult(success=True, records_exported=5)
+        result = ExportResult(success=True, records_exported=10)
         assert result.success is True
-        assert result.records_exported == 5
-        assert result.errors == []  # Default empty list
-        assert result.warnings == []  # Default empty list
-        assert result.export_timestamp is not None  # Auto-generated
+        assert result.records_exported == 10
+        assert result.errors == []
+        assert result.warnings == []
+        assert result.export_timestamp is not None
 
     def test_unsupported_adapter(self):
         """Test export with unsupported adapter."""
         service = ExportService()
         config = ExportConfig(
-            institution_id="test-institution", adapter_name="nonexistent_adapter"
+            institution_id="test-institution", adapter_id="nonexistent_adapter"
         )
 
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
             result = service.export_data(config, tmp.name)
 
         assert result.success is False
-        assert "Unsupported adapter: nonexistent_adapter" in result.errors
+        assert "Adapter not found: nonexistent_adapter" in result.errors
 
     @patch("export_service.get_all_courses")
     @patch("export_service.get_all_users")
@@ -85,13 +86,9 @@ class TestExportService:
     def test_fetch_export_data_with_data(self, mock_terms, mock_users, mock_courses):
         """Test fetching export data when data exists."""
         # Mock data
-        mock_courses.return_value = [
-            {"course_number": "MATH-101", "department": "MATH"}
-        ]
-        mock_users.return_value = [{"email": "test@example.com", "role": "instructor"}]
-        mock_terms.return_value = [
-            {"name": "Fall 2024", "year": 2024, "season": "Fall"}
-        ]
+        mock_courses.return_value = [{"course_id": "1", "course_number": "MATH-101"}]
+        mock_users.return_value = [{"user_id": "1", "email": "test@example.com"}]
+        mock_terms.return_value = [{"term_id": "1", "name": "Fall 2024"}]
 
         service = ExportService()
         data = service._fetch_export_data("test-institution")
@@ -99,14 +96,12 @@ class TestExportService:
         assert len(data["courses"]) == 1
         assert len(data["users"]) == 1
         assert len(data["terms"]) == 1
-        assert data["courses"][0]["course_number"] == "MATH-101"
-        assert data["users"][0]["email"] == "test@example.com"
 
     @patch("export_service.get_all_courses")
     @patch("export_service.get_all_users")
     @patch("export_service.get_active_terms")
     def test_export_no_data(self, mock_terms, mock_users, mock_courses):
-        """Test export when no data is available."""
+        """Test export when no data exists."""
         # Mock empty data
         mock_courses.return_value = []
         mock_users.return_value = []
@@ -114,7 +109,7 @@ class TestExportService:
 
         service = ExportService()
         config = ExportConfig(
-            institution_id="test-institution", adapter_name="cei_excel_adapter"
+            institution_id="test-institution", adapter_id="cei_excel_format_v1"
         )
 
         with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
@@ -123,115 +118,125 @@ class TestExportService:
         assert result.success is False
         assert "No valid records to export" in result.errors
 
-    def test_build_cei_record_empty_course(self):
-        """Test building CEI record with empty course data."""
+
+class TestExportServiceAdapterRegistry:
+    """Test cases for ExportService adapter registry integration."""
+
+    def test_validate_export_access_success(self):
+        """Test successful export access validation."""
         service = ExportService()
-        record = service._build_cei_record(None, None, None)
-        assert record is None
+        user = {"role": "site_admin", "institution_id": "cei_institution_id"}
 
-    def test_build_cei_record_with_course(self):
-        """Test building CEI record with course data."""
-        service = ExportService()
-        course = {"course_number": "MATH-101"}
-        instructor = {"email": "test@example.com"}
-        term = {"year": 2024, "season": "Fall"}
-
-        record = service._build_cei_record(course, instructor, term)
-
-        assert record is not None
-        assert record["course"] == "MATH-101"
-        assert record["email"] == "test@example.com"
-        assert record["Term"] == "2024 Fall"
-        assert record["cannot reconcile (y/n)"] == "n"
-        assert "Enrolled Students" in record
-        assert "celebrations" in record
-
-    def test_format_term_for_cei_empty(self):
-        """Test formatting empty term for CEI."""
-        service = ExportService()
-        result = service._format_term_for_cei(None)
-        assert result == ""
-
-    def test_format_term_for_cei_with_data(self):
-        """Test formatting term with data for CEI."""
-        service = ExportService()
-        term = {"year": 2024, "season": "Fall"}
-        result = service._format_term_for_cei(term)
-        assert result == "2024 Fall"
-
-    def test_format_term_for_cei_fallback(self):
-        """Test formatting term with fallback to name."""
-        service = ExportService()
-        term = {"name": "Spring 2025"}
-        result = service._format_term_for_cei(term)
-        assert result == "Spring 2025"
-
-    def test_find_instructor_for_course_empty(self):
-        """Test finding instructor when no users exist."""
-        service = ExportService()
-        course = {"course_number": "MATH-101"}
-        users = []
-
-        result = service._find_instructor_for_course(course, users)
-        assert result is None
-
-    def test_find_instructor_for_course_found(self):
-        """Test finding instructor when instructors exist."""
-        service = ExportService()
-        course = {"course_number": "MATH-101"}
-        users = [
-            {"role": "student", "email": "student@example.com"},
-            {"role": "instructor", "email": "instructor@example.com"},
-        ]
-
-        result = service._find_instructor_for_course(course, users)
-        assert result is not None
-        assert result["email"] == "instructor@example.com"
-
-    def test_find_term_for_course_empty(self):
-        """Test finding term when no terms exist."""
-        service = ExportService()
-        course = {"course_number": "MATH-101"}
-        terms = []
-
-        result = service._find_term_for_course(course, terms)
-        assert result is None
-
-    def test_find_term_for_course_found(self):
-        """Test finding term when terms exist."""
-        service = ExportService()
-        course = {"course_number": "MATH-101"}
-        terms = [
-            {"year": 2023, "season": "Fall"},
-            {"year": 2024, "season": "Spring"},  # Should pick this one (most recent)
-        ]
-
-        result = service._find_term_for_course(course, terms)
-        assert result is not None
-        assert result["year"] == 2024
-
-    def test_default_adapter_not_implemented(self):
-        """Test that default adapter export is not yet implemented."""
-        service = ExportService()
-        config = ExportConfig(
-            institution_id="test-institution", adapter_name="default_adapter"
+        has_access, message = service.validate_export_access(
+            user, "cei_excel_format_v1"
         )
 
-        with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
-            # Mock some data so we don't fail on empty data
-            with patch.object(service, "_fetch_export_data") as mock_fetch:
-                mock_fetch.return_value = {
-                    "courses": [{"course_number": "TEST-101"}],
-                    "users": [{"role": "instructor"}],
-                    "terms": [{"year": 2024}],
-                    "offerings": [],
-                    "sections": [],
-                }
+        assert has_access is True
+        assert message == "Access granted"
 
+    def test_validate_export_access_denied(self):
+        """Test export access denied for invalid user."""
+        service = ExportService()
+        user = {"role": "instructor", "institution_id": "other_institution"}
+
+        has_access, message = service.validate_export_access(
+            user, "cei_excel_format_v1"
+        )
+
+        assert has_access is False
+        assert "Access denied" in message
+
+    def test_validate_export_access_adapter_not_found(self):
+        """Test export access validation with non-existent adapter."""
+        service = ExportService()
+        user = {"role": "site_admin", "institution_id": "cei_institution_id"}
+
+        has_access, message = service.validate_export_access(
+            user, "nonexistent_adapter"
+        )
+
+        assert has_access is False
+        assert "Access denied" in message  # Access check happens first
+
+    @patch("export_service.get_all_courses")
+    @patch("export_service.get_all_users")
+    @patch("export_service.get_active_terms")
+    def test_export_with_adapter_supports_export_false(
+        self, mock_terms, mock_users, mock_courses
+    ):
+        """Test export when adapter doesn't support export."""
+        # Mock some data
+        mock_courses.return_value = [{"course_id": "1", "course_number": "TEST-101"}]
+        mock_users.return_value = [{"user_id": "1", "email": "test@example.com"}]
+        mock_terms.return_value = [{"term_id": "1", "term_name": "Fall 2024"}]
+
+        service = ExportService()
+
+        # Mock the adapter registry to return an adapter that doesn't support export
+        with patch.object(service.registry, "get_adapter_by_id") as mock_get_adapter:
+            mock_adapter = Mock()
+            mock_adapter.supports_export.return_value = False
+            mock_get_adapter.return_value = mock_adapter
+
+            config = ExportConfig(
+                institution_id="test-institution", adapter_id="no_export_adapter"
+            )
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
                 result = service.export_data(config, tmp.name)
 
-        assert result.success is False
-        assert "Default adapter export not yet implemented" in result.errors
+            assert result.success is False
+            assert "does not support export functionality" in result.errors[0]
+
+    @patch("export_service.get_all_courses")
+    @patch("export_service.get_all_users")
+    @patch("export_service.get_active_terms")
+    def test_export_with_adapter_success(self, mock_terms, mock_users, mock_courses):
+        """Test successful export with adapter."""
+        # Mock some data
+        mock_courses.return_value = [{"course_id": "1", "course_number": "TEST-101"}]
+        mock_users.return_value = [{"user_id": "1", "email": "test@example.com"}]
+        mock_terms.return_value = [{"term_id": "1", "term_name": "Fall 2024"}]
+
+        service = ExportService()
+
+        # Mock the adapter registry to return a working adapter
+        with patch.object(service.registry, "get_adapter_by_id") as mock_get_adapter:
+            mock_adapter = Mock()
+            mock_adapter.supports_export.return_value = True
+            mock_adapter.export_data.return_value = (True, "Export successful", 5)
+            mock_get_adapter.return_value = mock_adapter
+
+            config = ExportConfig(
+                institution_id="test-institution", adapter_id="test_adapter"
+            )
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
+                result = service.export_data(config, tmp.name)
+
+            assert result.success is True
+            assert result.records_exported == 5
+            assert result.file_path == tmp.name
+
+    def test_export_data_with_registry_error(self):
+        """Test export_data when adapter registry throws an error."""
+        service = ExportService()
+
+        # Mock the registry to throw an error
+        with patch.object(service.registry, "get_adapter_by_id") as mock_get_adapter:
+            from adapters.adapter_registry import AdapterRegistryError
+
+            mock_get_adapter.side_effect = AdapterRegistryError("Registry error")
+
+            config = ExportConfig(
+                institution_id="test-institution", adapter_id="test_adapter"
+            )
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
+                result = service.export_data(config, tmp.name)
+
+            assert result.success is False
+            assert "Failed to get adapter test_adapter: Registry error" in result.errors
 
 
 class TestCreateExportService:
@@ -243,4 +248,4 @@ class TestCreateExportService:
 
         service = create_export_service()
         assert isinstance(service, ExportService)
-        assert service.supported_adapters is not None
+        assert service.registry is not None

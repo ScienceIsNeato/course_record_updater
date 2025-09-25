@@ -170,6 +170,77 @@ class FileBaseAdapter(ABC):
         """
         pass
 
+    @abstractmethod
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        """
+        Export structured data to a file in the adapter's specific format.
+
+        This method should:
+        1. Transform standardized data into adapter-specific format
+        2. Generate file content (Excel, CSV, etc.)
+        3. Write file to the specified output path
+        4. Return success status and metadata
+
+        Args:
+            data: Structured data organized by type (courses, users, terms, etc.)
+            output_path: Where to save the exported file
+            options: Export configuration options
+                - institution_id: Source institution ID
+                - export_view: Export format variant (standard, summary, etc.)
+                - include_metadata: Whether to include export metadata
+                - custom_options: Adapter-specific settings
+
+        Returns:
+            Tuple[bool, str, int]: (success, message, records_exported)
+
+        Example data format:
+            {
+                'courses': [
+                    {
+                        'course_number': 'MATH101',
+                        'title': 'Calculus I',
+                        'credits': 4,
+                        'institution_id': 'cei_institution_id'
+                    }
+                ],
+                'users': [
+                    {
+                        'email': 'prof.smith@cei.edu',
+                        'first_name': 'John',
+                        'last_name': 'Smith',
+                        'role': 'instructor'
+                    }
+                ]
+            }
+
+        Raises:
+            ValueError: If required options are missing
+            Exception: For export errors
+        """
+        pass
+
+    def supports_export(self) -> bool:
+        """
+        Check if this adapter supports export functionality.
+
+        Returns:
+            bool: True if adapter can export data
+        """
+        return True
+
+    def get_export_formats(self) -> List[str]:
+        """
+        Get list of supported export file formats.
+
+        Returns:
+            List[str]: Supported formats (e.g., ['.xlsx', '.csv'])
+        """
+        # By default, return the same formats as import
+        adapter_info = self.get_adapter_info()
+        return adapter_info.get("supported_formats", [".xlsx"])
+
     def get_file_size_limit(self) -> int:
         """
         Return the maximum file size this adapter can handle in bytes.

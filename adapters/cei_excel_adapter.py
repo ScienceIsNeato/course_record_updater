@@ -731,3 +731,151 @@ class CEIExcelAdapter(FileBaseAdapter):
             result[data_type] = unique_records
 
         return result
+
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        """
+        Export structured data to CEI Excel format.
+
+        Args:
+            data: Structured data from database
+            output_path: Where to save the Excel file
+            options: Export configuration options
+
+        Returns:
+            Tuple[bool, str, int]: (success, message, records_exported)
+        """
+        try:
+            from datetime import datetime
+
+            from openpyxl import Workbook
+
+            # Create workbook
+            workbook = Workbook()
+            worksheet = workbook.active
+            worksheet.title = "CEI Export Data"
+
+            # Build CEI-specific records by combining the data
+            cei_records = self._build_cei_export_records(data, options)
+
+            if not cei_records:
+                return False, "No valid records to export", 0
+
+            # Write headers (CEI format)
+            headers = [
+                "course",
+                "section",
+                "effterm_c",
+                "students",
+                "Faculty Name",
+                "email",  # Include email if available
+            ]
+
+            for col, header in enumerate(headers, 1):
+                worksheet.cell(row=1, column=col, value=header)
+
+            # Write data rows
+            for row, record in enumerate(cei_records, 2):
+                worksheet.cell(row=row, column=1, value=record.get("course", ""))
+                worksheet.cell(row=row, column=2, value=record.get("section", ""))
+                worksheet.cell(row=row, column=3, value=record.get("effterm_c", ""))
+                worksheet.cell(row=row, column=4, value=record.get("students", ""))
+                worksheet.cell(row=row, column=5, value=record.get("Faculty Name", ""))
+                worksheet.cell(row=row, column=6, value=record.get("email", ""))
+
+            # Auto-size columns
+            for col in range(1, len(headers) + 1):
+                worksheet.column_dimensions[
+                    worksheet.cell(row=1, column=col).column_letter
+                ].width = 15
+
+            # Save the workbook
+            workbook.save(output_path)
+
+            return (
+                True,
+                f"Successfully exported {len(cei_records)} records",
+                len(cei_records),
+            )
+
+        except Exception as e:
+            return False, f"Export failed: {str(e)}", 0
+
+    def _build_cei_export_records(
+        self, data: Dict[str, List[Dict]], options: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        Build CEI-format records from standardized database data.
+
+        Args:
+            data: Database data organized by type
+            options: Export options
+
+        Returns:
+            List of CEI-formatted records
+        """
+        records = []
+
+        # Get data collections
+        courses = data.get("courses", [])
+        users = data.get("users", [])
+        terms = data.get("terms", [])
+        offerings = data.get("offerings", [])
+
+        # Build a lookup for instructors
+        instructors = {
+            user["user_id"]: user for user in users if user.get("role") == "instructor"
+        }
+
+        # Build a lookup for terms
+        terms_lookup = {term["term_id"]: term for term in terms}
+
+        # Process each course offering
+        for offering in offerings:
+            course_number = offering.get("course_number", "")
+            term_id = offering.get("term_id")
+            instructor_id = offering.get("instructor_id")
+
+            # Find the course details
+            course = next(
+                (c for c in courses if c.get("course_number") == course_number), {}
+            )
+
+            # Find the instructor
+            instructor = instructors.get(instructor_id, {})
+
+            # Find the term
+            term = terms_lookup.get(term_id, {})
+
+            # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
+            term_formatted = self._format_term_for_cei_export(term)
+
+            record = {
+                "course": course_number,
+                "section": offering.get("section_number", "01"),
+                "effterm_c": term_formatted,
+                "students": offering.get("enrollment_count", 0),
+                "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                "email": instructor.get("email", ""),
+            }
+
+            records.append(record)
+
+        return records
+
+    def _format_term_for_cei_export(self, term: Dict[str, Any]) -> str:
+        """Format term data for CEI export (e.g., 2024FA)."""
+        if not term:
+            return ""
+
+        year = term.get("year", "")
+        season = term.get("season", "")
+
+        if year and season:
+            # Convert season to CEI format
+            season_map = {"Spring": "SP", "Summer": "SU", "Fall": "FA", "Winter": "WI"}
+            season_code = season_map.get(season, season[:2].upper())
+            return f"{year}{season_code}"
+
+        return term.get("name", "")
