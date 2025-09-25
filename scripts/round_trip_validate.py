@@ -104,7 +104,7 @@ class RoundtripValidator:
                 file_path=str(input_file),
                 conflict_strategy=ConflictStrategy.USE_THEIRS,
                 dry_run=False,
-                adapter_name=adapter_name,
+                adapter_id=adapter_name,
                 delete_existing_db=True
             )
             

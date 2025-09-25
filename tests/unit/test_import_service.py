@@ -1,15 +1,15 @@
 """
-Unit tests for import_service.py
+Unit tests for the new adapter-based ImportService
 
-Comprehensive tests for the ImportService class including file operations,
-data processing, conflict resolution, and database interactions.
+Tests the ImportService with the new adapter registry system.
 """
 
 import os
 import tempfile
-from unittest.mock import Mock, patch
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, Mock, patch
 
-import pandas as pd
+import pytest
 
 from import_service import (
     ConflictRecord,
@@ -21,385 +21,494 @@ from import_service import (
     import_excel,
 )
 
-# pytest import removed
-
 
 class TestImportService:
-    """Main test class for ImportService functionality."""
+    """Test the new adapter-based ImportService functionality."""
 
     def setup_method(self):
         """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
+        self.institution_id = "test-institution"
+        self.service = ImportService(self.institution_id, verbose=True)
 
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
+    def test_import_service_initialization(self):
+        """Test ImportService initialization."""
+        assert self.service.institution_id == self.institution_id
+        assert self.service.verbose is True
+        assert self.service.progress_callback is None
+        assert len(self.service.stats["errors"]) == 0
 
-    def test_import_excel_file_not_found_error(self):
+    def test_import_service_initialization_requires_institution_id(self):
+        """Test ImportService requires institution_id."""
+        with pytest.raises(ValueError, match="institution_id is required"):
+            ImportService(None)
+
+    def test_reset_stats(self):
+        """Test reset_stats functionality."""
+        # Add some dummy stats
+        self.service.stats["errors"].append("test error")
+        self.service.stats["records_processed"] = 5
+
+        # Reset stats
+        self.service.reset_stats()
+
+        assert self.service.stats["records_processed"] == 0
+        assert len(self.service.stats["errors"]) == 0
+        assert len(self.service.stats["warnings"]) == 0
+
+    @patch("import_service.get_adapter_registry")
+    def test_import_excel_file_adapter_not_found(self, mock_get_registry):
+        """Test import_excel_file with adapter not found."""
+        # Mock registry that returns None for adapter
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = None
+        mock_get_registry.return_value = mock_registry
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+            tmp_file.write(b"dummy content")
+            tmp_file.flush()
+
+            try:
+                result = self.service.import_excel_file(
+                    tmp_file.name, adapter_id="nonexistent_adapter"
+                )
+
+                assert result.success is False
+                assert len(result.errors) == 1
+                assert "Adapter not found: nonexistent_adapter" in result.errors[0]
+            finally:
+                os.unlink(tmp_file.name)
+
+    @patch("import_service.get_adapter_registry")
+    def test_import_excel_file_file_not_found(self, mock_get_registry):
         """Test import_excel_file with non-existent file."""
-        service = ImportService("northern-valley-cc")
+        result = self.service.import_excel_file("/nonexistent/file.xlsx")
 
-        # Test with non-existent file
-        result = service.import_excel_file("nonexistent_file.xlsx")
-
-        # Should handle file not found gracefully
         assert result.success is False
-        assert len(result.errors) > 0
-        assert any(
-            "not found" in error.lower() or "no such file" in error.lower()
-            for error in result.errors
+        assert len(result.errors) == 1
+        assert "File not found" in result.errors[0]
+
+    @patch("import_service.get_adapter_registry")
+    @patch("import_service.os.path.exists")
+    def test_import_excel_file_file_incompatible(self, mock_exists, mock_get_registry):
+        """Test import_excel_file with incompatible file."""
+        mock_exists.return_value = True
+
+        # Mock adapter that says file is incompatible
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.return_value = (
+            False,
+            "File format not supported",
         )
 
-    def test_import_excel_file_comprehensive_workflow(self):
-        """Test import_excel_file comprehensive workflow."""
-        service = ImportService("northern-valley-cc")
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+        mock_get_registry.return_value = mock_registry
 
-        # Create a real temporary Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            # Create DataFrame with test data using CEI format to trigger term processing
-            test_data = {
-                "course_number": ["TEST-101", "TEST-102"],
-                "course_title": ["Test Course 1", "Test Course 2"],
-                "first_name": ["John", "Jane"],
-                "last_name": ["Doe", "Smith"],
-                "email": ["john@example.com", "jane@example.com"],
-                "effterm_c": [
-                    "FA2024",
-                    "FA2024",
-                ],  # CEI term format to trigger term processing
-                "students": [25, 30],
-                "department": ["TEST", "TEST"],
-            }
-            df = pd.DataFrame(test_data)
-            df.to_excel(tmp_file.name, index=False)
+        result = self.service.import_excel_file("test.xlsx")
 
-        try:
-            with (
-                patch("database_service.get_user_by_email", return_value=None),
-                patch("database_service.get_course_by_number", return_value=None),
-                patch("database_service.create_user", return_value="user123"),
-                patch("database_service.create_course", return_value="course123"),
-                patch("database_service.create_term", return_value="term123"),
-                patch("database_service.db") as mock_db,
-            ):
-                # Mock the database query for term duplicate detection (lines 585-593)
-                mock_collection = Mock()
-                mock_where_name = Mock()
-                mock_where_institution = Mock()
-                mock_limit = Mock()
+        assert result.success is False
+        assert len(result.errors) == 1
+        assert "File incompatible" in result.errors[0]
 
-                mock_db.collection.return_value = mock_collection
-                mock_collection.where.return_value = mock_where_name
-                mock_where_name.where.return_value = mock_where_institution
-                mock_where_institution.limit.return_value = mock_limit
-                mock_limit.stream.return_value = iter([])  # No existing terms found
+    @patch("import_service.get_adapter_registry")
+    @patch("import_service.os.path.exists")
+    def test_import_excel_file_successful_import(self, mock_exists, mock_get_registry):
+        """Test successful import with mock adapter."""
+        mock_exists.return_value = True
 
-                result = service.import_excel_file(
-                    tmp_file.name,
-                    conflict_strategy=ConflictStrategy.USE_THEIRS,
-                    dry_run=False,
-                    delete_existing_db=False,
-                )
-
-                # Should process the Excel file successfully and trigger term processing
-                assert result.success is True
-                assert result.records_processed == 2
-                # Verify term processing was triggered
-                mock_db.collection.assert_called_with("terms")
-
-        finally:
-            os.unlink(tmp_file.name)
-
-    def test_import_excel_file_with_delete_existing_db_option(self):
-        """Test import_excel_file with delete_existing_db=True to hit deletion lines."""
-        service = ImportService("northern-valley-cc")
-
-        # Create minimal Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            test_data = {
-                "Course Number": ["TEST-101"],
-                "Course Title": ["Test Course"],
-                "Instructor First Name": ["John"],
-                "Instructor Last Name": ["Doe"],
-                "Instructor Email": ["john@example.com"],
-                "Term": ["FA24"],
-                "Students": [25],
-                "Department": ["TEST"],
-            }
-            df = pd.DataFrame(test_data)
-            df.to_excel(tmp_file.name, index=False)
-
-        try:
-            with (
-                patch("database_service.get_user_by_email", return_value=None),
-                patch("database_service.get_course_by_number", return_value=None),
-                patch.object(service, "_delete_all_data") as mock_delete,
-            ):
-                _ = service.import_excel_file(
-                    tmp_file.name, delete_existing_db=True, dry_run=False
-                )
-
-                # Should have called delete_all_data
-                mock_delete.assert_called_once()
-
-        finally:
-            os.unlink(tmp_file.name)
-
-    def test_import_excel_file_dry_run_mode(self):
-        """Test import_excel_file in dry_run mode to hit dry run logic."""
-        service = ImportService("northern-valley-cc")
-
-        # Create minimal Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            test_data = {
-                "Course Number": ["TEST-101"],
-                "Course Title": ["Test Course"],
-                "Instructor First Name": ["John"],
-                "Instructor Last Name": ["Doe"],
-                "Instructor Email": ["john@example.com"],
-                "Term": ["FA24"],
-                "Students": [25],
-                "Department": ["TEST"],
-            }
-            df = pd.DataFrame(test_data)
-            df.to_excel(tmp_file.name, index=False)
-
-        try:
-            with (
-                patch("database_service.get_user_by_email", return_value=None),
-                patch("database_service.get_course_by_number", return_value=None),
-            ):
-                result = service.import_excel_file(tmp_file.name, dry_run=True)
-
-                # Should be successful dry run
-                assert result.success is True
-                assert result.dry_run is True
-                assert result.records_processed == 1
-
-        finally:
-            os.unlink(tmp_file.name)
-
-    def test_process_user_import_with_existing_user(self):
-        """Test process_user_import with existing user to hit conflict resolution."""
-        service = ImportService("northern-valley-cc")
-
-        user_data = {
-            "email": "existing@example.com",
-            "first_name": "John",
-            "last_name": "Doe",
-            "role": "instructor",
+        # Mock adapter that successfully parses file
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.return_value = (
+            True,
+            "File is compatible",
+        )
+        mock_adapter.parse_file.return_value = {
+            "users": [
+                {"email": "test@example.com", "first_name": "Test", "last_name": "User"}
+            ],
+            "courses": [{"course_number": "TEST-101", "course_title": "Test Course"}],
+            "terms": [
+                {"term_name": "Fall 2024", "institution_id": self.institution_id}
+            ],
         }
 
-        # Mock existing user with different data
-        existing_user = {
-            "email": "existing@example.com",
-            "first_name": "Jane",  # Different name
-            "last_name": "Smith",  # Different name
-        }
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+        mock_get_registry.return_value = mock_registry
 
-        with patch("database_service.get_user_by_email", return_value=existing_user):
-            success, conflicts = service.process_user_import(
-                user_data, ConflictStrategy.USE_MINE, dry_run=False
-            )
-
-            # Should detect conflict
-            assert isinstance(success, bool)
-            assert isinstance(conflicts, list)
-
-    def test_process_course_import_with_existing_course(self):
-        """Test process_course_import with existing course to hit conflict resolution."""
-        service = ImportService("northern-valley-cc")
-
-        course_data = {
-            "course_number": "EXISTING-101",
-            "course_title": "New Title",
-            "department": "TEST",
-        }
-
-        # Mock existing course with different data
-        existing_course = {
-            "course_number": "EXISTING-101",
-            "course_title": "Old Title",  # Different title
-            "department": "TEST",
-        }
-
-        with patch(
-            "database_service.get_course_by_number", return_value=existing_course
+        # Mock database operations
+        with (
+            patch("import_service.get_user_by_email", return_value=None),
+            patch("import_service.get_course_by_number", return_value=None),
+            patch("import_service.create_user"),
+            patch("import_service.create_course"),
+            patch("import_service.create_term"),
+            patch("database_service.db") as mock_db,
         ):
-            success, conflicts = service.process_course_import(
+
+            # Mock Firestore query for terms
+            mock_collection = Mock()
+            mock_collection.where.return_value.where.return_value.get.return_value = []
+            mock_db.collection.return_value = mock_collection
+
+            result = self.service.import_excel_file("test.xlsx")
+
+            assert result.success is True
+            assert result.records_processed == 3  # 1 user + 1 course + 1 term
+            assert result.records_created == 3
+            assert len(result.errors) == 0
+
+    @patch("import_service.get_adapter_registry")
+    @patch("import_service.os.path.exists")
+    def test_import_excel_file_dry_run_mode(self, mock_exists, mock_get_registry):
+        """Test import in dry run mode."""
+        mock_exists.return_value = True
+
+        # Mock adapter
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.return_value = (
+            True,
+            "File is compatible",
+        )
+        mock_adapter.parse_file.return_value = {
+            "users": [
+                {"email": "test@example.com", "first_name": "Test", "last_name": "User"}
+            ]
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+        mock_get_registry.return_value = mock_registry
+
+        # Mock database operations
+        with (
+            patch("import_service.get_user_by_email", return_value=None),
+            patch("import_service.create_user") as mock_create_user,
+        ):
+
+            result = self.service.import_excel_file("test.xlsx", dry_run=True)
+
+            assert result.success is True
+            assert result.dry_run is True
+            assert result.records_processed == 1
+            # In dry run, no actual creation should happen
+            mock_create_user.assert_not_called()
+
+    @patch("import_service.get_adapter_registry")
+    @patch("import_service.os.path.exists")
+    def test_import_excel_file_with_progress_callback(
+        self, mock_exists, mock_get_registry
+    ):
+        """Test import with progress callback."""
+        mock_exists.return_value = True
+
+        # Create service with progress callback
+        progress_callback = Mock()
+        service = ImportService(
+            self.institution_id, progress_callback=progress_callback
+        )
+
+        # Mock adapter with multiple records
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.return_value = (
+            True,
+            "File is compatible",
+        )
+        mock_adapter.parse_file.return_value = {
+            "users": [
+                {
+                    "email": "user1@example.com",
+                    "first_name": "User",
+                    "last_name": "One",
+                },
+                {
+                    "email": "user2@example.com",
+                    "first_name": "User",
+                    "last_name": "Two",
+                },
+                {
+                    "email": "user3@example.com",
+                    "first_name": "User",
+                    "last_name": "Three",
+                },
+            ]
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+        mock_get_registry.return_value = mock_registry
+
+        # Mock database operations
+        with (
+            patch("import_service.get_user_by_email", return_value=None),
+            patch("import_service.create_user"),
+        ):
+
+            result = service.import_excel_file("test.xlsx")
+
+            assert result.success is True
+            assert progress_callback.called
+            # Should be called at least once for progress updates
+            assert progress_callback.call_count >= 1
+
+    def test_process_course_import_new_course(self):
+        """Test processing a new course import."""
+        course_data = {
+            "course_number": "TEST-101",
+            "course_title": "Test Course",
+            "department": "Test Department",
+        }
+
+        with (
+            patch("import_service.get_course_by_number", return_value=None),
+            patch("import_service.create_course") as mock_create,
+        ):
+
+            success, conflicts = self.service.process_course_import(
                 course_data, ConflictStrategy.USE_THEIRS, dry_run=False
             )
 
-            # Should detect conflict
-            assert isinstance(success, bool)
-            assert isinstance(conflicts, list)
+            assert success is True
+            assert len(conflicts) == 0
+            mock_create.assert_called_once_with(course_data)
+            assert self.service.stats["records_created"] == 1
 
-    def test_delete_all_data_functionality(self):
-        """Test _delete_all_data method to hit deletion logic."""
-        service = ImportService("northern-valley-cc")
+    def test_process_course_import_existing_course_use_mine(self):
+        """Test processing existing course with USE_MINE strategy."""
+        course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
 
-        with patch("database_service.db") as mock_db:
-            # Mock collection method
+        existing_course = {
+            "course_number": "TEST-101",
+            "course_title": "Existing Course",
+        }
+
+        with (
+            patch("import_service.get_course_by_number", return_value=existing_course),
+            patch("import_service.create_course") as mock_create,
+        ):
+
+            success, conflicts = self.service.process_course_import(
+                course_data, ConflictStrategy.USE_MINE, dry_run=False
+            )
+
+            assert success is True
+            mock_create.assert_not_called()
+            assert self.service.stats["records_skipped"] == 1
+
+    def test_process_user_import_new_user(self):
+        """Test processing a new user import."""
+        user_data = {
+            "email": "test@example.com",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+
+        with (
+            patch("import_service.get_user_by_email", return_value=None),
+            patch("import_service.create_user") as mock_create,
+        ):
+
+            success, conflicts = self.service.process_user_import(
+                user_data, ConflictStrategy.USE_THEIRS, dry_run=False
+            )
+
+            assert success is True
+            assert len(conflicts) == 0
+            mock_create.assert_called_once_with(user_data)
+            assert self.service.stats["records_created"] == 1
+
+    def test_process_user_import_missing_email(self):
+        """Test processing user import with missing email."""
+        user_data = {
+            "first_name": "Test",
+            "last_name": "User",
+            # Missing email
+        }
+
+        success, conflicts = self.service.process_user_import(
+            user_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert success is False
+        assert "User missing email" in self.service.stats["errors"]
+
+    def test_process_term_import_new_term(self):
+        """Test processing a new term import."""
+        term_data = {
+            "term_name": "Fall 2024",
+            "institution_id": self.institution_id,
+            "start_date": "2024-08-01",
+            "end_date": "2024-12-15",
+        }
+
+        with (
+            patch("database_service.db") as mock_db,
+            patch("import_service.create_term") as mock_create,
+        ):
+
+            # Mock empty query result (term doesn't exist)
             mock_collection = Mock()
-            mock_docs = [Mock(reference=Mock(delete=Mock())) for _ in range(3)]
-            mock_collection.stream.return_value = mock_docs
+            mock_collection.where.return_value.where.return_value.get.return_value = []
             mock_db.collection.return_value = mock_collection
 
-            with patch("builtins.print"):  # Suppress print output
-                # Test deletion
-                service._delete_all_data()
+            self.service._process_term_import(term_data, dry_run=False)
 
-            # Verify collection method was called for each collection type
-            assert mock_db.collection.call_count >= 1
+            mock_create.assert_called_once_with(term_data)
+            assert self.service.stats["records_created"] == 1
 
-    def test_logging_functionality(self):
-        """Test _log method with different combinations."""
-        # Test verbose mode
-        service_verbose = ImportService("northern-valley-cc", verbose=True)
-        with patch.object(service_verbose, "logger") as mock_logger:
-            service_verbose._log("Test message", "info")
-            service_verbose._log("Error message", "error")
-            service_verbose._log("Warning message", "warning")
-            service_verbose._log("Summary message", "summary")
-            assert (
-                mock_logger.error.call_count
-                + mock_logger.warning.call_count
-                + mock_logger.info.call_count
-                + mock_logger.debug.call_count
-                >= 3
-            )  # Should print most messages in verbose mode
+    def test_process_term_import_existing_term(self):
+        """Test processing existing term import."""
+        term_data = {"term_name": "Fall 2024", "institution_id": self.institution_id}
 
-        # Test non-verbose mode
-        service_quiet = ImportService("northern-valley-cc", verbose=False)
-        with patch.object(service_quiet, "logger") as mock_logger:
-            service_quiet._log("Test message", "info")  # Should not log at debug level
-            service_quiet._log("Error message", "error")  # Should log error
-            service_quiet._log("Summary message", "summary")  # Should log info
-            assert (
-                mock_logger.error.call_count + mock_logger.info.call_count >= 1
-            )  # Should log errors and summaries
+        with (
+            patch("database_service.db") as mock_db,
+            patch("import_service.create_term") as mock_create,
+        ):
 
-    def test_create_import_result_with_various_stats(self):
-        """Test _create_import_result with different stat combinations."""
-        service = ImportService("northern-valley-cc")
+            # Mock query result with existing term
+            mock_doc = Mock()
+            mock_collection = Mock()
+            mock_collection.where.return_value.where.return_value.get.return_value = [
+                mock_doc
+            ]
+            mock_db.collection.return_value = mock_collection
 
-        # Set up various stats conditions
-        service.stats["records_processed"] = 100
-        service.stats["records_created"] = 80
-        service.stats["records_updated"] = 20
-        service.stats["records_skipped"] = 5
-        service.stats["conflicts_detected"] = 3
-        service.stats["conflicts_resolved"] = 2
-        service.stats["errors"] = ["Error 1", "Error 2"]
-        service.stats["warnings"] = ["Warning 1"]
+            self.service._process_term_import(term_data, dry_run=False)
 
-        from datetime import datetime, timezone
+            mock_create.assert_not_called()
+            assert self.service.stats["records_skipped"] == 1
 
-        start_time = datetime.now(timezone.utc)
+    @patch("import_service.get_adapter_registry")
+    @patch("import_service.os.path.exists")
+    def test_import_excel_file_delete_existing_db(self, mock_exists, mock_get_registry):
+        """Test import with delete_existing_db option."""
+        mock_exists.return_value = True
 
-        # Test with dry_run=False
-        result = service._create_import_result(start_time, dry_run=False)
-        assert result.records_processed == 100
-        assert result.records_created == 80
-        assert result.records_updated == 20
-        assert result.records_skipped == 5
-        assert result.conflicts_detected == 3
-        assert result.conflicts_resolved == 2
-        assert len(result.errors) == 2
-        assert len(result.warnings) == 1
-        assert result.dry_run is False
+        # Mock adapter
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.return_value = (
+            True,
+            "File is compatible",
+        )
+        mock_adapter.parse_file.return_value = {"users": []}
 
-        # Test with dry_run=True
-        result_dry = service._create_import_result(start_time, dry_run=True)
-        assert result_dry.dry_run is True
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+        mock_get_registry.return_value = mock_registry
 
-    def test_processed_tracking_sets(self):
-        """Test processed users and courses tracking."""
-        service = ImportService("northern-valley-cc")
+        with patch.object(self.service, "_delete_all_data") as mock_delete:
+            result = self.service.import_excel_file(
+                "test.xlsx", delete_existing_db=True
+            )
 
-        # Test processed sets functionality
-        service._processed_users.add("user1@example.com")
-        service._processed_users.add("user2@example.com")
-        service._processed_courses.add("COURSE-101")
-        service._processed_courses.add("COURSE-102")
+            mock_delete.assert_called_once()
 
-        assert len(service._processed_users) == 2
-        assert len(service._processed_courses) == 2
-        assert "user1@example.com" in service._processed_users
-        assert "COURSE-101" in service._processed_courses
+    def test_delete_all_data(self):
+        """Test _delete_all_data functionality."""
+        with patch("database_service.db") as mock_db:
+            # Mock collections and documents
+            mock_doc = Mock()
+            mock_collection = Mock()
+            mock_collection.stream.return_value = [mock_doc]
+            mock_db.collection.return_value = mock_collection
 
-        # Test reset functionality - reset_stats doesn't clear processed sets
-        # The processed sets are maintained across reset_stats calls
-        service.reset_stats()
-        # Processed sets should still contain data (this is the actual behavior)
-        assert len(service._processed_users) == 2
-        assert len(service._processed_courses) == 2
+            self.service._delete_all_data()
 
-    def test_conflict_detection_edge_cases(self):
-        """Test detect_course_conflict with edge cases."""
-        service = ImportService("northern-valley-cc")
+            # Should delete from all collections
+            expected_collections = [
+                "courses",
+                "users",
+                "terms",
+                "course_offerings",
+                "course_sections",
+                "institutions",
+                "programs",
+            ]
 
-        # Test with course missing course_number
-        import_course_no_number = {
-            "course_title": "Test Course",
-            # Missing 'course_number'
-        }
-
-        conflicts = service.detect_course_conflict(import_course_no_number)
-        assert isinstance(conflicts, list)
-
-        # Test with complete course data
-        import_course_complete = {
-            "course_number": "TEST-101",
-            "course_title": "Test Course",
-            "department": "TEST",
-        }
-
-        conflicts2 = service.detect_course_conflict(import_course_complete)
-        assert isinstance(conflicts2, list)
-
-    def test_import_excel_file_large_dataset_progress(self):
-        """Test import_excel_file with large dataset to trigger progress reporting."""
-        service = ImportService("northern-valley-cc", verbose=True)
-
-        # Create larger dataset to trigger progress reporting (50+ records)
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            test_data = {
-                "Course Number": [f"TEST-{i:03d}" for i in range(60)],
-                "Course Title": [f"Test Course {i}" for i in range(60)],
-                "Instructor First Name": ["John"] * 60,
-                "Instructor Last Name": ["Doe"] * 60,
-                "Instructor Email": [f"john{i}@example.com" for i in range(60)],
-                "Term": ["FA24"] * 60,
-                "Students": [25] * 60,
-                "Department": ["TEST"] * 60,
-            }
-            df = pd.DataFrame(test_data)
-            df.to_excel(tmp_file.name, index=False)
-
-        try:
-            with (
-                patch("database_service.get_user_by_email", return_value=None),
-                patch("database_service.get_course_by_number", return_value=None),
-                patch.object(service, "logger") as mock_logger,
-            ):
-                result = service.import_excel_file(
-                    tmp_file.name,
-                    dry_run=True,  # Use dry run to avoid actual database operations
-                )
-
-                # Should have triggered progress reporting through logging
-                assert mock_logger.info.called
-                assert result.records_processed == 60
-
-        finally:
-            os.unlink(tmp_file.name)
+            assert mock_db.collection.call_count == len(expected_collections)
+            mock_doc.reference.delete.assert_called()
 
 
-class TestEnumsAndDataClasses:
-    """Test enums and data classes."""
+class TestConvenienceFunction:
+    """Test the import_excel convenience function."""
+
+    @patch("import_service.ImportService")
+    def test_import_excel_convenience_function(self, mock_service_class):
+        """Test import_excel convenience function."""
+        # Mock service instance
+        mock_service = Mock()
+        mock_result = ImportResult(
+            success=True,
+            records_processed=1,
+            records_created=1,
+            records_updated=0,
+            records_skipped=0,
+            conflicts_detected=0,
+            conflicts_resolved=0,
+            errors=[],
+            warnings=[],
+            conflicts=[],
+            execution_time=1.0,
+            dry_run=False,
+        )
+        mock_service.import_excel_file.return_value = mock_result
+        mock_service_class.return_value = mock_service
+
+        result = import_excel(
+            file_path="test.xlsx",
+            institution_id="test-institution",
+            conflict_strategy="use_theirs",
+            dry_run=False,
+            adapter_id="cei_excel_format_v1",
+        )
+
+        assert result.success is True
+        mock_service_class.assert_called_once_with(
+            institution_id="test-institution", verbose=False, progress_callback=None
+        )
+        mock_service.import_excel_file.assert_called_once()
+
+
+class TestDataClasses:
+    """Test the data classes and enums."""
+
+    def test_conflict_record_creation(self):
+        """Test ConflictRecord creation."""
+        conflict = ConflictRecord(
+            entity_type="course",
+            entity_id="TEST-101",
+            field_name="course_title",
+            existing_value="Old Title",
+            import_value="New Title",
+            resolution="use_theirs",
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        assert conflict.entity_type == "course"
+        assert conflict.entity_id == "TEST-101"
+        assert conflict.field_name == "course_title"
+
+    def test_import_result_creation(self):
+        """Test ImportResult creation."""
+        result = ImportResult(
+            success=True,
+            records_processed=10,
+            records_created=8,
+            records_updated=2,
+            records_skipped=0,
+            conflicts_detected=1,
+            conflicts_resolved=1,
+            errors=[],
+            warnings=["Test warning"],
+            conflicts=[],
+            execution_time=2.5,
+            dry_run=False,
+        )
+
+        assert result.success is True
+        assert result.records_processed == 10
+        assert result.execution_time == 2.5
 
     def test_conflict_strategy_enum(self):
         """Test ConflictStrategy enum values."""
@@ -413,1621 +522,56 @@ class TestEnumsAndDataClasses:
         assert ImportMode.DRY_RUN.value == "dry_run"
         assert ImportMode.EXECUTE.value == "execute"
 
-    def test_conflict_record_creation(self):
-        """Test ConflictRecord creation."""
-        record = ConflictRecord(
-            entity_type="course",
-            entity_key="MATH-101",
-            field_name="course_title",
-            existing_value="Old Title",
-            import_value="New Title",
-        )
 
-        assert record.entity_type == "course"
-        assert record.entity_key == "MATH-101"
-        assert record.field_name == "course_title"
-        assert record.existing_value == "Old Title"
-        assert record.import_value == "New Title"
+class TestReportGeneration:
+    """Test import report generation."""
 
-    def test_import_result_creation(self):
-        """Test ImportResult creation."""
-        result = ImportResult(
-            success=True,
-            records_processed=10,
-            records_created=5,
-            records_updated=3,
-            records_skipped=2,
-            conflicts_detected=1,
-            conflicts_resolved=1,
-            errors=[],
-            warnings=[],
-            conflicts=[],
-            execution_time=1.5,
-            dry_run=False,
-        )
-
-        assert result.success is True
-        assert result.records_processed == 10
-        assert result.records_created == 5
-        assert result.records_updated == 3
-        assert result.records_skipped == 2
-        assert result.conflicts_detected == 1
-        assert result.conflicts_resolved == 1
-        assert result.errors == []
-        assert result.warnings == []
-        assert result.conflicts == []
-        assert abs(result.execution_time - 1.5) < 0.001
-        assert result.dry_run is False
-
-
-class TestImportServiceInitialization:
-    """Test ImportService initialization and basic methods."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_import_service_initialization_default(self):
-        """Test ImportService initialization with defaults."""
-        service = ImportService("northern-valley-cc")
-
-        assert service.verbose is False
-        assert service._processed_users == set()
-        assert service._processed_courses == set()
-        assert isinstance(service.stats, dict)
-
-    def test_import_service_initialization_verbose(self):
-        """Test ImportService initialization with verbose mode."""
-        service = ImportService("northern-valley-cc", verbose=True)
-
-        assert service.verbose is True
-
-    def test_reset_stats(self):
-        """Test reset_stats method."""
-        service = ImportService("northern-valley-cc")
-
-        # Modify stats
-        service.stats["records_processed"] = 10
-        service.stats["errors"].append("test error")
-
-        # Reset
-        service.reset_stats()
-
-        # Verify reset
-        assert service.stats["records_processed"] == 0
-        assert service.stats["records_created"] == 0
-        assert service.stats["records_updated"] == 0
-        assert service.stats["records_skipped"] == 0
-        assert service.stats["conflicts_detected"] == 0
-        assert service.stats["conflicts_resolved"] == 0
-        assert service.stats["errors"] == []
-
-    def test_import_service_logger_functionality(self):
-        """Test import service logger functionality."""
-        service = ImportService("northern-valley-cc")
-
-        # Test that logger methods exist and are callable
-        assert hasattr(service.logger, "info")
-        assert hasattr(service.logger, "warning")
-        assert hasattr(service.logger, "error")
-        assert callable(service.logger.info)
-
-        # Test logging without errors
-        try:
-            service.logger.info("Test log message")
-            service.logger.warning("Test warning")
-            service.logger.error("Test error")
-            success = True
-        except Exception:
-            success = False
-
-        assert success, "Logger should work without errors"
-
-
-class TestImportServiceLogging:
-    """Test ImportService logging functionality."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_log_error_message(self):
-        """Test logging error messages."""
-        service = ImportService("northern-valley-cc", verbose=False)
-
-        with patch.object(service, "logger") as mock_logger:
-            service._log("Test error", "error")
-            mock_logger.error.assert_called_once_with("[Import] ERROR: Test error")
-
-    def test_log_warning_message(self):
-        """Test logging warning messages."""
-        service = ImportService("northern-valley-cc", verbose=False)
-
-        with patch.object(service, "logger") as mock_logger:
-            service._log("Test warning", "warning")
-            mock_logger.warning.assert_called_once_with(
-                "[Import] WARNING: Test warning"
-            )
-
-    def test_log_summary_message(self):
-        """Test logging summary messages."""
-        service = ImportService("northern-valley-cc", verbose=False)
-
-        with patch.object(service, "logger") as mock_logger:
-            service._log("Test summary", "summary")
-            mock_logger.info.assert_called_once_with("[Import] Test summary")
-
-    def test_log_verbose_mode_on(self):
-        """Test logging in verbose mode."""
-        service = ImportService("northern-valley-cc", verbose=True)
-
-        with patch.object(service, "logger") as mock_logger:
-            service._log("Test message", "info")
-            mock_logger.debug.assert_called_once_with("[Import] Test message")
-
-    def test_log_verbose_mode_off(self):
-        """Test logging in non-verbose mode."""
-        service = ImportService("northern-valley-cc", verbose=False)
-
-        with patch.object(service, "logger") as mock_logger:
-            service._log("Test message", "info")
-            # In non-verbose mode, info messages should not be logged at debug level
-            mock_logger.debug.assert_not_called()
-
-
-class TestDetectCourseConflict:
-    """Test detect_course_conflict method."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_detect_course_conflict_method_exists(self):
-        """Test that detect_course_conflict method exists."""
-        service = ImportService("northern-valley-cc")
-        assert hasattr(service, "detect_course_conflict")
-        assert callable(service.detect_course_conflict)
-
-    def test_detect_course_conflict_basic_functionality(self):
-        """Test detect_course_conflict basic functionality."""
-        service = ImportService("northern-valley-cc")
-
-        import_course = {
-            "course_number": "MATH-101",
-            "course_title": "Algebra",
-            "department": "MATH",
-        }
-
-        conflicts = service.detect_course_conflict(import_course)
-        assert isinstance(conflicts, list)
-
-
-class TestImportExcelFunction:
-    """Test the import_excel function - basic functionality."""
-
-    def test_import_excel_function_exists(self):
-        """Test that import_excel function exists and is callable."""
-        assert callable(import_excel)
-
-    def test_create_import_report_function_exists(self):
-        """Test that create_import_report function exists and is callable."""
-        assert callable(create_import_report)
-
-
-class TestImportServiceIntegration:
-    """Test ImportService integration aspects."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_import_service_stats_tracking(self):
-        """Test that ImportService properly tracks statistics."""
-        service = ImportService("northern-valley-cc")
-
-        # Verify initial state
-        assert service.stats["records_processed"] == 0
-        assert service.stats["errors"] == []
-
-        # Modify stats (simulating import operations)
-        service.stats["records_processed"] = 5
-        service.stats["records_created"] = 3
-        service.stats["errors"].append("Test error")
-
-        # Verify changes
-        assert service.stats["records_processed"] == 5
-        assert service.stats["records_created"] == 3
-        assert len(service.stats["errors"]) == 1
-
-    def test_import_service_processed_tracking(self):
-        """Test that ImportService tracks processed entities."""
-        service = ImportService("northern-valley-cc")
-
-        # Add some processed entities
-        service._processed_users.add("user1@example.com")
-        service._processed_users.add("user2@example.com")
-        service._processed_courses.add("MATH-101")
-
-        # Verify tracking
-        assert len(service._processed_users) == 2
-        assert len(service._processed_courses) == 1
-        assert "user1@example.com" in service._processed_users
-        assert "MATH-101" in service._processed_courses
-
-    def test_import_service_basic_functionality(self):
-        """Test ImportService basic functionality."""
-        service = ImportService("northern-valley-cc")
-        service.reset_stats()  # Initialize service
-
-        # Test basic service functionality
-        assert hasattr(service, "stats")
-        assert hasattr(service, "_processed_users")
-        assert hasattr(service, "_processed_courses")
-
-
-class TestImportServiceErrorHandling:
-    """Test ImportService error handling."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_import_service_handles_missing_dependencies(self):
-        """Test ImportService handles missing dependencies gracefully."""
-        service = ImportService("northern-valley-cc")
-
-        # This should not raise an exception
-        service.reset_stats()
-        service._log("Test message")
-
-        # Basic functionality should work
-        assert isinstance(service.stats, dict)
-        assert isinstance(service._processed_users, set)
-        assert isinstance(service._processed_courses, set)
-
-
-class TestImportServiceEdgeCases:
-    """Edge case testing for import service functionality."""
-
-    def setup_method(self):
-        """Set up each test."""
-        # No patching needed - ImportService now requires institution_id parameter
-        pass
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        # No cleanup needed
-        pass
-
-    def test_detect_course_conflict_no_course_number(self):
-        """Test detect_course_conflict with missing course_number."""
-        service = ImportService("northern-valley-cc")
-
-        # Test with import course missing course_number
-        import_course = {
-            "course_title": "Test Course",
-            # Missing 'course_number'
-        }
-
-        conflicts = service.detect_course_conflict(import_course)
-
-        # Should return empty conflicts due to missing course_number
-        assert conflicts == []
-
-    @patch("import_service.get_course_by_number")
-    def test_detect_course_conflict_with_conflicts(self, mock_get_course):
-        """Test detect_course_conflict when conflicts exist"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing course with different data
-        mock_get_course.return_value = {
-            "course_number": "TEST-101",
-            "course_title": "Old Course Title",
-            "credit_hours": 3,
-            "department": "OLD_DEPT",
-        }
-
-        # Import course with different values
-        import_course = {
-            "course_number": "TEST-101",
-            "course_title": "New Course Title",  # Different title
-            "credit_hours": 4,  # Different credits
-            "department": "NEW_DEPT",  # Different department
-        }
-
-        conflicts = service.detect_course_conflict(import_course)
-
-        # Should detect conflicts in title, credit_hours, and department, plus existence
-        assert len(conflicts) >= 3
-        conflict_fields = [c.field_name for c in conflicts]
-        assert "course_title" in conflict_fields
-        assert "credit_hours" in conflict_fields
-        assert "department" in conflict_fields
-
-        # Check specific conflict details
-        title_conflict = next(c for c in conflicts if c.field_name == "course_title")
-        assert title_conflict.existing_value == "Old Course Title"
-        assert title_conflict.import_value == "New Course Title"
-        assert title_conflict.entity_type == "course"
-
-    @patch("import_service.get_user_by_email")
-    def test_detect_user_conflict_with_conflicts(self, mock_get_user):
-        """Test detect_user_conflict when conflicts exist"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing user with different data
-        mock_get_user.return_value = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Smith",  # Different last name
-            "role": "instructor",
-            "department": "MATH",  # Different department
-        }
-
-        # Import user with different values
-        import_user = {
-            "email": "john@example.com",
-            "first_name": "John",  # Same first name
-            "last_name": "Doe",  # Different last name
-            "role": "instructor",  # Same role
-            "department": "CS",  # Different department
-        }
-
-        conflicts = service.detect_user_conflict(import_user)
-
-        # Should detect existence conflict plus conflicts in last_name and department
-        assert len(conflicts) == 3
-        conflict_fields = [c.field_name for c in conflicts]
-        assert "_existence" in conflict_fields  # New existence conflict
-        assert "last_name" in conflict_fields
-        assert "department" in conflict_fields
-
-        # Check specific conflict details
-        name_conflict = next(c for c in conflicts if c.field_name == "last_name")
-        assert name_conflict.existing_value == "Smith"
-        assert name_conflict.import_value == "Doe"
-        assert name_conflict.entity_type == "user"
-        assert name_conflict.entity_key == "john@example.com"
-
-    @patch("import_service.get_user_by_email")
-    def test_detect_user_conflict_no_conflicts(self, mock_get_user):
-        """Test detect_user_conflict when no conflicts exist."""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing user with same data
-        mock_get_user.return_value = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Doe",
-            "role": "instructor",
-            "department": "CS",
-        }
-
-        # Import user with same values
-        import_user = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Doe",
-            "role": "instructor",
-            "department": "CS",
-        }
-
-        conflicts = service.detect_user_conflict(import_user)
-
-        # Should detect existence conflict only (user exists but with identical data)
-        assert len(conflicts) == 1
-        assert conflicts[0].field_name == "_existence"
-        assert conflicts[0].entity_key == "john@example.com"
-
-    def test_excel_file_read_exception(self):
-        """Test import_excel_file when Excel reading fails"""
-        service = ImportService("northern-valley-cc")
-
-        # Create a file that exists but is not a valid Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            tmp_file.write(b"This is not an Excel file")
-            tmp_file_path = tmp_file.name
-
-        try:
-            result = service.import_excel_file(tmp_file_path)
-
-            # Should handle Excel read error gracefully
-            assert result.success is False
-            assert len(result.errors) > 0
-            assert any("Failed to read Excel file" in error for error in result.errors)
-        finally:
-            os.unlink(tmp_file_path)
-
-    @patch("import_service.get_course_by_number")
-    @patch("import_service.create_course")
-    def test_process_course_import_with_conflicts(
-        self, mock_create_course, mock_get_course
-    ):
-        """Test process_course_import with conflict resolution"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing course with different data
-        mock_get_course.return_value = {
-            "course_number": "TEST-101",
-            "course_title": "Old Title",
-            "credits": 3,
-        }
-        mock_create_course.return_value = "course123"
-
-        # Import course with conflicts
-        course_data = {
-            "course_number": "TEST-101",
-            "course_title": "New Title",
-            "credits": 4,
-        }
-
-        # Test with USE_THEIRS strategy
-        _ = service.process_course_import(
-            course_data, ConflictStrategy.USE_THEIRS, dry_run=False
-        )
-
-        # Should detect and resolve conflicts
-        assert service.stats["conflicts_detected"] > 0
-        assert "TEST-101" in service._processed_courses
-
-    def test_delete_all_data_dry_run(self):
-        """Test delete_existing_db in dry run mode"""
-        service = ImportService("northern-valley-cc")
-
-        # Create a temporary Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            # Create simple DataFrame
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["TEST-101"],
-                    "Course Title": ["Test Course"],
-                    "Instructor First Name": ["John"],
-                    "Instructor Last Name": ["Doe"],
-                    "Instructor Email": ["john@example.com"],
-                    "Term": "Fall 2024",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test dry run with delete_existing_db=True
-            result = service.import_excel_file(
-                tmp_file_path, dry_run=True, delete_existing_db=True
-            )
-
-            # Should complete without errors in dry run
-            assert result.dry_run is True
-            # In dry run, database shouldn't actually be deleted
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_progress_reporting_large_dataset(self):
-        """Test progress reporting for large datasets"""
-        service = ImportService("northern-valley-cc")
-
-        # Create a larger dataset to trigger progress reporting
-        large_data = []
-        for i in range(50):  # Create 50 rows to trigger progress intervals
-            large_data.append(
-                {
-                    "Course Number": f"TEST-{i:03d}",
-                    "Course Title": f"Test Course {i}",
-                    "Instructor First Name": "John",
-                    "Instructor Last Name": "Doe",
-                    "Instructor Email": f"john{i}@example.com",
-                    "Term": "Fall 2024",
-                }
-            )
-
-        df = pd.DataFrame(large_data)
-
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test with dry run to avoid database operations
-            result = service.import_excel_file(tmp_file_path, dry_run=True)
-
-            # Should process all records
-            assert result.records_processed == 50
-            assert result.dry_run is True
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_resolve_conflict_strategies(self):
-        """Test resolve_conflict with different strategies"""
-        service = ImportService("northern-valley-cc")
-
-        # Create a test conflict
-        conflict = ConflictRecord(
-            entity_type="course",
-            entity_key="TEST-101",
-            field_name="course_title",
-            existing_value="Old Title",
-            import_value="New Title",
-        )
-
-        # Test USE_MINE strategy
-        result = service.resolve_conflict(conflict, ConflictStrategy.USE_MINE)
-        assert "Kept existing" in result
-        assert conflict.resolution == "kept_existing"
-
-        # Test USE_THEIRS strategy
-        result = service.resolve_conflict(conflict, ConflictStrategy.USE_THEIRS)
-        assert "Updated" in result
-        assert conflict.resolution == "used_import"
-
-        # Test MERGE strategy
-        result = service.resolve_conflict(conflict, ConflictStrategy.MERGE)
-        assert "Merged" in result
-        assert conflict.resolution == "merged_import"
-
-        # Test MANUAL_REVIEW strategy
-        result = service.resolve_conflict(conflict, ConflictStrategy.MANUAL_REVIEW)
-        assert "Flagged for manual review" in result
-        assert conflict.resolution == "flagged_manual"
-
-        # Test invalid strategy
-        result = service.resolve_conflict(conflict, "invalid_strategy")
-        assert "Unresolved conflict" in result
-        assert conflict.resolution == "unresolved"
-
-    @patch("import_service.get_course_by_number")
-    @patch("import_service.create_course")
-    def test_process_course_import_creation_failure(
-        self, mock_create_course, mock_get_course
-    ):
-        """Test process_course_import when course creation fails"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock no existing course so it tries to create
-        mock_get_course.return_value = None
-        # Mock course creation failure
-        mock_create_course.return_value = None
-
-        course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
-
-        # Test course creation failure
-        success, _ = service.process_course_import(
-            course_data, ConflictStrategy.USE_THEIRS, dry_run=False
-        )
-
-        # Should handle failure gracefully
-        assert success is False
-        assert len(service.stats["errors"]) > 0
-        assert any(
-            "Failed to create course" in error for error in service.stats["errors"]
-        )
-
-    def test_process_course_import_dry_run_creation(self):
-        """Test process_course_import in dry run mode"""
-        service = ImportService("northern-valley-cc")
-
-        course_data = {"course_number": "TEST-101", "course_title": "Test Course"}
-
-        # Test dry run mode
-        success, _ = service.process_course_import(
-            course_data, ConflictStrategy.USE_THEIRS, dry_run=True
-        )
-
-        # Should succeed in dry run without actual creation
-        assert success is True
-
-    @patch("import_service.get_user_by_email")
-    def test_process_user_import_with_conflicts_use_theirs(self, mock_get_user):
-        """Test process_user_import with USE_THEIRS strategy"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing user
-        mock_get_user.return_value = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Smith",
-            "user_id": "user123",
-        }
-
-        # Import user with different data
-        user_data = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Doe",  # Different last name
-        }
-
-        # Test with USE_THEIRS strategy
-        service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS, dry_run=False
-        )
-
-        # Should detect conflicts and attempt to resolve
-        assert service.stats["conflicts_detected"] > 0
-        assert service.stats["records_updated"] > 0
-
-    @patch("import_service.get_user_by_email")
-    def test_process_user_import_with_conflicts_use_mine(self, mock_get_user):
-        """Test process_user_import with USE_MINE strategy"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock existing user
-        mock_get_user.return_value = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Smith",
-        }
-
-        # Import user with different data
-        user_data = {
-            "email": "john@example.com",
-            "first_name": "John",
-            "last_name": "Doe",
-        }
-
-        # Test with USE_MINE strategy
-        service.process_user_import(user_data, ConflictStrategy.USE_MINE, dry_run=False)
-
-        # Should skip the import
-        assert service.stats["records_skipped"] > 0
-
-    def test_import_excel_convenience_function(self):
-        """Test import_excel convenience function"""
-        # Create a temporary Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["TEST-101"],
-                    "Course Title": ["Test Course"],
-                    "Instructor First Name": ["John"],
-                    "Instructor Last Name": ["Doe"],
-                    "Instructor Email": ["john@example.com"],
-                    "Term": "Fall 2024",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test the convenience function with string strategy
-            result = import_excel(
-                file_path=tmp_file_path,
-                institution_id="northern-valley-cc",
-                conflict_strategy="use_theirs",
-                dry_run=True,
-                verbose=True,
-            )
-
-            # Should create ImportService and call import_excel_file
-            assert isinstance(result, ImportResult)
-            assert result.dry_run is True
-            assert result.records_processed > 0
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_import_excel_invalid_strategy(self):
-        """Test import_excel with invalid strategy defaults to USE_THEIRS"""
-        # Create a temporary Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["TEST-101"],
-                    "Course Title": ["Test Course"],
-                    "Instructor First Name": ["John"],
-                    "Instructor Last Name": ["Doe"],
-                    "Instructor Email": ["john@example.com"],
-                    "Term": "Fall 2024",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test with invalid strategy
-            result = import_excel(
-                file_path=tmp_file_path,
-                institution_id="northern-valley-cc",
-                conflict_strategy="invalid_strategy",
-                dry_run=True,
-            )
-
-            # Should default to USE_THEIRS and still work
-            assert isinstance(result, ImportResult)
-            assert result.dry_run is True
-        finally:
-            os.unlink(tmp_file_path)
-
-    @patch("import_service.create_user")
-    @patch("import_service.get_user_by_email")
-    def test_process_user_import_creation_failure(
-        self, mock_get_user, mock_create_user
-    ):
-        """Test process_user_import when user creation fails"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock no existing user so it tries to create
-        mock_get_user.return_value = None
-        # Mock user creation failure by making create_user return None
-        mock_create_user.return_value = None
-
-        user_data = {
-            "email": "test@example.com",
-            "first_name": "Test",
-            "last_name": "User",
-        }
-
-        # Test user creation failure
-        success, _ = service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS, dry_run=False
-        )
-
-        # Should handle failure gracefully
-        assert success is False
-        assert len(service.stats["errors"]) > 0
-        assert any(
-            "Failed to create user" in error for error in service.stats["errors"]
-        )
-
-    def test_process_user_import_dry_run_duplicate_tracking(self):
-        """Test process_user_import dry run with duplicate tracking"""
-        service = ImportService("northern-valley-cc")
-
-        user_data = {
-            "email": "test@example.com",
-            "first_name": "Test",
-            "last_name": "User",
-        }
-
-        # Test first dry run
-        success1, _ = service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS, dry_run=True
-        )
-
-        # Test second dry run with same user (should detect duplicate)
-        success2, _ = service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS, dry_run=True
-        )
-
-        # Both should succeed, but user should be tracked
-        assert success1 is True
-        assert success2 is True
-        assert "test@example.com" in service._processed_users
-
-    def test_import_excel_unknown_adapter(self):
-        """Test import_excel_file with unknown adapter"""
-        service = ImportService("northern-valley-cc")
-
-        # Create a temporary Excel file
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["TEST-101"],
-                    "Course Title": ["Test Course"],
-                    "Instructor First Name": ["John"],
-                    "Instructor Last Name": ["Doe"],
-                    "Instructor Email": ["john@example.com"],
-                    "Term": "Fall 2024",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test with unknown adapter
-            _ = service.import_excel_file(
-                tmp_file_path, adapter_name="unknown_adapter", dry_run=True
-            )
-
-            # Should handle unknown adapter gracefully
-            assert len(service.stats["errors"]) > 0
-            assert any("Unknown adapter" in error for error in service.stats["errors"])
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_import_excel_course_processing_path(self):
-        """Test import_excel_file course processing path"""
-        service = ImportService("northern-valley-cc")
-
-        # Create Excel file with course data
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["MATH-101", "CS-201"],
-                    "Course Title": ["Mathematics", "Computer Science"],
-                    "Instructor First Name": ["John", "Jane"],
-                    "Instructor Last Name": ["Doe", "Smith"],
-                    "Instructor Email": ["john@example.com", "jane@example.com"],
-                    "Term": ["Fall 2024", "Fall 2024"],
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test course processing
-            result = service.import_excel_file(tmp_file_path, dry_run=True)
-
-            # Should process courses successfully
-            assert result.records_processed == 2
-            assert result.dry_run is True
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_create_import_report_function(self):
-        """Test create_import_report function"""
-        # Create a sample ImportResult with various data
-        conflicts = [
-            ConflictRecord(
-                entity_type="course",
-                entity_key="TEST-101",
-                field_name="course_title",
-                existing_value="Old Title",
-                import_value="New Title",
-            )
-        ]
-
-        result = ImportResult(
-            success=True,
-            records_processed=10,
-            records_created=5,
-            records_updated=3,
-            records_skipped=2,
-            conflicts_detected=1,
-            conflicts_resolved=1,
-            conflicts=conflicts,
-            execution_time=1.5,
-            dry_run=False,
-            errors=[],
-            warnings=[],
-        )
-
-        # Test the report generation
-        report = create_import_report(result)
-
-        # Should contain key information
-        assert "DATA IMPORT REPORT" in report
-        assert "Records processed: 10" in report
-        assert "Records created: 5" in report
-        assert "Records updated: 3" in report
-        assert "Records skipped: 2" in report
-        assert "Conflicts detected: 1" in report
-        assert "Conflicts resolved: 1" in report
-        assert "Execution time: 1.50 seconds" in report
-        assert "Mode: EXECUTE" in report
-        assert "Overall success: YES" in report
-        assert "CONFLICTS:" in report
-        assert "TEST-101" in report
-
-    def test_create_import_report_dry_run(self):
-        """Test create_import_report with dry run mode."""
+    def test_create_import_report_success(self):
+        """Test creating report for successful import."""
         result = ImportResult(
             success=True,
             records_processed=5,
-            records_created=0,
+            records_created=5,
             records_updated=0,
             records_skipped=0,
             conflicts_detected=0,
             conflicts_resolved=0,
-            conflicts=[],
-            execution_time=0.8,
-            dry_run=True,
             errors=[],
             warnings=[],
+            conflicts=[],
+            execution_time=1.23,
+            dry_run=False,
         )
 
         report = create_import_report(result)
 
-        # Should indicate dry run mode
-        assert "Mode: DRY RUN" in report
-        assert "Records processed: 5" in report
-
-    def test_delete_all_data_exception(self):
-        """Test _delete_all_data with exception"""
-        service = ImportService("northern-valley-cc")
-
-        # Mock database collection to raise exception during stream() call
-        with patch("database_service.db") as mock_db:
-            mock_collection = Mock()
-            mock_db.collection.return_value = mock_collection
-            mock_collection.stream.side_effect = Exception("Database connection failed")
-
-            # Test delete operation with exception
-            service._delete_all_data()
-
-            # Should handle exception gracefully
-            assert len(service.stats["errors"]) > 0
-        assert any(
-            "Failed to delete existing data" in error
-            for error in service.stats["errors"]
-        )
-
-    def test_import_result_creation_with_stats(self):
-        """Test _create_import_result method"""
-        service = ImportService("northern-valley-cc")
-
-        # Set up some stats
-        service.stats["records_processed"] = 10
-        service.stats["records_created"] = 5
-        service.stats["records_updated"] = 3
-        service.stats["records_skipped"] = 2
-        service.stats["conflicts_detected"] = 1
-        service.stats["conflicts_resolved"] = 1
-        service.stats["errors"] = ["Test error"]
-        service.stats["warnings"] = ["Test warning"]
-        service.stats["conflicts"] = [
-            ConflictRecord(
-                entity_type="test",
-                entity_key="key1",
-                field_name="field1",
-                existing_value="old",
-                import_value="new",
-            )
-        ]
-
-        # Create import result
-        from datetime import datetime, timezone
-
-        start_time = datetime.now(timezone.utc)
-        result = service._create_import_result(start_time, dry_run=True)
-
-        # Should have all the stats
-        assert result.records_processed == 10
-        assert result.records_created == 5
-        assert result.records_updated == 3
-        assert result.records_skipped == 2
-        assert result.conflicts_detected == 1
-        assert result.conflicts_resolved == 1
-        assert result.dry_run is True
-        assert len(result.conflicts) == 1
-        assert result.execution_time >= 0
-
-    def test_import_excel_section_processing_path(self):
-        """Test import_excel_file section processing path"""
-        service = ImportService("northern-valley-cc")
-
-        # Create Excel file with section data
-        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
-            df = pd.DataFrame(
-                {
-                    "Course Number": ["MATH-101"],
-                    "Course Title": ["Mathematics"],
-                    "Instructor First Name": ["Jane"],
-                    "Instructor Last Name": ["Smith"],
-                    "Instructor Email": ["jane@example.com"],
-                    "Term": "Spring 2024",
-                    "Section Number": "001",
-                }
-            )
-            df.to_excel(tmp_file.name, index=False)
-            tmp_file_path = tmp_file.name
-
-        try:
-            # Test section processing in dry run
-            result = service.import_excel_file(tmp_file_path, dry_run=True)
-
-            # Should process sections successfully
-            assert result.records_processed == 1
-            assert result.dry_run is True
-        finally:
-            os.unlink(tmp_file_path)
-
-    def test_extract_department_from_course(self):
-        """Test _extract_department_from_course function"""
-        service = ImportService("northern-valley-cc")
-
-        # Test known department mappings
-        assert service._extract_department_from_course("ACC-101") == "Business"
-        assert service._extract_department_from_course("BUS-201") == "Business"
-        assert service._extract_department_from_course("NURS-301") == "Nursing"
-        assert service._extract_department_from_course("BIOL-401") == "Science"
-        assert service._extract_department_from_course("MATH-501") == "Mathematics"
-        assert service._extract_department_from_course("ENG-601") == "English"
-
-        # Test unknown department
-        assert (
-            service._extract_department_from_course("UNKNOWN-999") == "General Studies"
-        )
-
-        # Test course without dash
-        assert service._extract_department_from_course("INVALID") == "General Studies"
-
-    def test_parse_name_from_email(self):
-        """Test _parse_name_from_email function"""
-        service = ImportService("northern-valley-cc")
-
-        # Test email with dot separator
-        first, last = service._parse_name_from_email("john.doe")
-        assert first == "John"
-        assert last == "Doe"
-
-        # Test email with number
-        first, last = service._parse_name_from_email("instructor1")
-        assert first == "Instructor"
-        assert last == "1"
-
-        # Test simple name
-        first, last = service._parse_name_from_email("teacher")
-        assert first == "Teacher"
-        assert last == "Unknown"
-
-        # Test empty name
-        first, last = service._parse_name_from_email("")
-        assert first == "Unknown"
-        assert last == "Instructor"
-
-        # Test complex email prefix
-        first, last = service._parse_name_from_email("jane.smith")
-        assert first == "Jane"
-        assert last == "Smith"
-
-    def test_parse_name_function(self):
-        """Test _parse_name function"""
-        service = ImportService("northern-valley-cc")
-
-        # Test full name parsing
-        first, last = service._parse_name("John Doe")
-        assert first == "John"
-        assert last == "Doe"
-
-        # Test single name
-        first, last = service._parse_name("John")
-        assert first == "John"
-        assert last == "Unknown"
-
-        # Test multiple names
-        first, last = service._parse_name("John Michael Doe")
-        assert first == "John"
-        assert last == "Michael Doe"
-
-        # Test empty name
-        first, last = service._parse_name("")
-        assert first == "Unknown"
-        assert last == "Instructor"
-
-    def test_estimate_term_dates(self):
-        """Test term date estimation functions, 743-753."""
-        service = ImportService("northern-valley-cc")
-
-        # Test fall term
-        start_date = service._estimate_term_start("2024 Fall")
-        end_date = service._estimate_term_end("2024 Fall")
-        assert start_date == "2024-08-15"
-        assert end_date == "2024-12-15"
-
-        # Test spring term
-        start_date = service._estimate_term_start("2024 Spring")
-        end_date = service._estimate_term_end("2024 Spring")
-        assert start_date == "2024-01-15"
-        assert end_date == "2024-05-15"
-
-        # Test summer term
-        start_date = service._estimate_term_start("2024 Summer")
-        end_date = service._estimate_term_end("2024 Summer")
-        assert start_date == "2024-06-01"
-        assert end_date == "2024-08-15"
-
-        # Test invalid term format
-        start_date = service._estimate_term_start("Invalid")
-        end_date = service._estimate_term_end("Invalid")
-        assert start_date == "2024-01-01"
-        assert end_date == "2024-05-01"
-
-    def test_generate_email_function(self):
-        """Test _generate_email function"""
-        service = ImportService("northern-valley-cc")
-
-        # Test email generation
-        email = service._generate_email("John", "Doe")
-        assert email == "john.doe@cei.edu"
-
-        # Test with mixed case
-        email = service._generate_email("JANE", "SMITH")
-        assert email == "jane.smith@cei.edu"
-
-        # Test with empty strings
-        email = service._generate_email("", "")
-        assert email == ".@cei.edu"
-
-
-class TestImportServiceMethods:
-    """Test specific ImportService methods for coverage."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        # No patching needed - ImportService now requires institution_id parameter
-        self.import_service = ImportService("northern-valley-cc")
-
-    def teardown_method(self):
-        """Clean up after tests."""
-        pass
-
-    @patch("import_service.create_user")
-    def test_process_user_import_success(self, mock_create_user):
-        """Test successful user import processing."""
-        from import_service import ConflictStrategy
-
-        mock_create_user.return_value = "user123"
-
-        user_data = {
-            "email": "test@example.com",
-            "first_name": "Test",
-            "last_name": "User",
-            "role": "instructor",
-        }
-
-        success, conflicts = self.import_service.process_user_import(
-            user_data, ConflictStrategy.USE_THEIRS
-        )
-
-        assert success is True
-        assert isinstance(conflicts, list)
-
-    @patch("import_service.create_course")
-    def test_process_course_import_success(self, mock_create_course):
-        """Test successful course import processing."""
-        from import_service import ConflictStrategy
-
-        mock_create_course.return_value = "course123"
-
-        course_data = {
-            "course_number": "TEST-101",
-            "course_title": "Test Course",
-            "department": "TEST",
-            "credit_hours": 3,
-        }
-
-        success, conflicts = self.import_service.process_course_import(
-            course_data, ConflictStrategy.USE_THEIRS
-        )
-
-        assert success is True
-        assert isinstance(conflicts, list)
-
-    def test_import_service_stats(self):
-        """Test import service statistics tracking."""
-        # Test that stats are initialized properly
-        assert self.import_service.stats["records_processed"] == 0
-        assert self.import_service.stats["records_created"] == 0
-        assert self.import_service.stats["records_updated"] == 0
-        assert self.import_service.stats["records_skipped"] == 0
-
-        # Test reset_stats method
-        self.import_service.reset_stats()
-        assert self.import_service.stats["records_processed"] == 0
-
-    def test_import_service_verbose_mode(self):
-        """Test import service verbose mode functionality."""
-        verbose_service = ImportService("northern-valley-cc", verbose=True)
-        assert verbose_service.verbose is True
-
-        # Test progress callback
-        callback_calls = []
-
-        def test_callback(progress):
-            callback_calls.append(progress)
-
-        callback_service = ImportService(
-            "northern-valley-cc", progress_callback=test_callback
-        )
-        assert callback_service.progress_callback is not None
-
-    def test_conflict_detection_comprehensive(self):
-        """Test comprehensive conflict detection scenarios."""
-        # Test course conflict detection with different field mismatches
-        _ = {
-            "course_number": "MATH-101",
-            "course_title": "Algebra I",
-            "department": "MATH",
-            "credit_hours": 3,
-        }
-
-        import_course = {
-            "course_number": "MATH-101",
-            "course_title": "Advanced Algebra",  # Different title
-            "department": "MATH",
-            "credit_hours": 4,  # Different credit hours
-        }
-
-        conflicts = self.import_service.detect_course_conflict(import_course)
-
-        # Test that conflicts are detected (exact number may vary by implementation)
-        assert isinstance(conflicts, list)
-        if len(conflicts) > 0:
-            # If conflicts are detected, verify they're properly structured
-            for conflict in conflicts:
-                assert hasattr(conflict, "field_name")
-                assert hasattr(conflict, "existing_value")
-                assert hasattr(conflict, "import_value")
-
-    @patch("import_service.get_user_by_email")
-    def test_user_conflict_detection_comprehensive(self, mock_get_user):
-        """Test comprehensive user conflict detection."""
-        mock_get_user.return_value = {
-            "user_id": "existing123",
-            "email": "john.doe@cei.edu",
-            "first_name": "John",
-            "last_name": "Doe",
-            "role": "instructor",
-            "department": "MATH",
-        }
-
-        import_user = {
-            "email": "john.doe@cei.edu",
-            "first_name": "Johnny",  # Different first name
-            "last_name": "Doe",
-            "role": "program_admin",  # Different role
-            "department": "SCIENCE",  # Different department
-        }
-
-        conflicts = self.import_service.detect_user_conflict(import_user)
-
-        # Test that conflict detection works properly
-        assert isinstance(conflicts, list)
-        # The exact conflicts detected depend on the implementation
-
-    def test_data_validation_edge_cases(self):
-        """Test data validation for edge cases and malformed data."""
-        # Test with missing required fields
-        incomplete_course = {
-            "course_number": "TEST-101"
-            # Missing course_title, department, etc.
-        }
-
-        # Test that the service handles incomplete data gracefully
-        # This tests the robustness of the import validation
-        try:
-            conflicts = self.import_service.detect_course_conflict(incomplete_course)
-            # Should handle gracefully without crashing
-            assert isinstance(conflicts, list)
-        except Exception as e:
-            # If it throws an exception, it should be a validation error
-            assert "required" in str(e).lower() or "missing" in str(e).lower()
-
-    @patch("import_service.get_course_by_number")
-    def test_import_service_course_processing_edge_cases(self, mock_get_course):
-        """Test edge cases in course processing during import."""
-        # Test when course doesn't exist
-        mock_get_course.return_value = None
-
-        course_data = {
-            "course_number": "NEW-101",
-            "course_title": "New Course",
-            "department": "NEW",
-            "credit_hours": 3,
-        }
-
-        # Test conflict detection on non-existent course
-        conflicts = self.import_service.detect_course_conflict(course_data)
-
-        # Should return empty list for non-existent courses
-        assert isinstance(conflicts, list)
-        assert len(conflicts) == 0
-
-    def test_import_service_statistics_tracking(self):
-        """Test that import service properly tracks statistics."""
-        # Test initial stats
-        initial_stats = self.import_service.stats
-        assert "records_processed" in initial_stats
-        assert "records_created" in initial_stats
-        assert "errors" in initial_stats
-        assert "conflicts" in initial_stats
-
-        # Test reset functionality
-        self.import_service.reset_stats()
-        reset_stats = self.import_service.stats
-        assert reset_stats["records_processed"] == 0
-        assert reset_stats["records_created"] == 0
-        assert len(reset_stats["errors"]) == 0
-
-    def test_import_service_logging_integration(self):
-        """Test that import service integrates properly with logging."""
-        # Test that logger is available
-        assert hasattr(self.import_service, "logger")
-        assert self.import_service.logger is not None
-
-        # Test logging functionality
-        try:
-            self.import_service.logger.info("Test logging message")
-            self.import_service.logger.warning("Test warning message")
-            # If no exception, logging is working
-            assert True
-        except Exception as e:
-            assert False, f"Logging integration failed: {e}"
-
-    @patch("import_service.pd.read_excel")
-    @patch("import_service.os.path.exists")
-    def test_excel_file_processing_comprehensive(self, mock_exists, mock_read_excel):
-        """Test comprehensive Excel file processing scenarios."""
-        mock_exists.return_value = True
-
-        # Mock DataFrame with sample data
-        import pandas as pd
-
-        sample_data = pd.DataFrame(
-            {
-                "Course Number": ["MATH-101", "ENG-102"],
-                "Course Title": ["Algebra", "English"],
-                "Department": ["MATH", "ENG"],
-                "Instructor Email": ["prof1@cei.edu", "prof2@cei.edu"],
-            }
-        )
-        mock_read_excel.return_value = sample_data
-
-        # Test successful Excel processing
-        with patch("adapters.cei_excel_adapter.parse_cei_excel_row") as mock_parse:
-            mock_parse.return_value = {
-                "course": {
-                    "course_number": "MATH-101",
-                    "course_title": "Algebra",
-                    "department": "MATH",
-                    "institution_id": "northern-valley-cc",
-                },
-                "user": None,
-                "term": None,
-                "offering": None,
-                "section": None,
-            }
-
-            result = self.import_service.import_excel_file(
-                file_path="test.xlsx",
-                conflict_strategy=ConflictStrategy.USE_THEIRS,
-                dry_run=True,
-            )
-
-            # Should process the file successfully
-            assert isinstance(result, ImportResult)
-            assert result.dry_run is True
-
-    @patch("import_service.os.path.exists")
-    def test_file_not_found_error_handling(self, mock_exists):
-        """Test file not found error handling."""
-        mock_exists.return_value = False
-
-        result = self.import_service.import_excel_file(
-            file_path="nonexistent.xlsx",
-            conflict_strategy=ConflictStrategy.USE_THEIRS,
-            dry_run=False,
-        )
-
-        # Should handle file not found gracefully
-        assert isinstance(result, ImportResult)
-        assert result.success is False
-        assert len(result.errors) > 0
-        assert "not found" in result.errors[0].lower()
-
-    @patch("import_service.pd.read_excel")
-    @patch("import_service.os.path.exists")
-    def test_excel_read_error_handling(self, mock_exists, mock_read_excel):
-        """Test Excel file read error handling."""
-        mock_exists.return_value = True
-        mock_read_excel.side_effect = Exception("Failed to read Excel file")
-
-        result = self.import_service.import_excel_file(
-            file_path="corrupted.xlsx",
-            conflict_strategy=ConflictStrategy.USE_THEIRS,
-            dry_run=False,
-        )
-
-        # Should handle Excel read errors gracefully
-        assert isinstance(result, ImportResult)
-        assert result.success is False
-        assert len(result.errors) > 0
-        assert "failed to read" in result.errors[0].lower()
-
-    def test_delete_existing_database_dry_run(self):
-        """Test delete existing database in dry run mode."""
-        with patch("import_service.pd.read_excel") as mock_read_excel:
-            with patch("import_service.os.path.exists") as mock_exists:
-                mock_exists.return_value = True
-                mock_read_excel.return_value = pd.DataFrame()  # Empty DataFrame
-
-                result = self.import_service.import_excel_file(
-                    file_path="test.xlsx",
-                    conflict_strategy=ConflictStrategy.USE_THEIRS,
-                    dry_run=True,
-                    delete_existing_db=True,
-                )
-
-                # Should handle dry run delete database flag
-                assert isinstance(result, ImportResult)
-                assert result.dry_run is True
-
-    def test_progress_callback_integration(self):
-        """Test progress callback integration during import."""
-        progress_updates = []
-
-        def test_callback(**kwargs):
-            progress_updates.append(kwargs)
-
-        import_service = ImportService(
-            "northern-valley-cc", progress_callback=test_callback
-        )
-
-        # Test that progress callback is properly set
-        assert import_service.progress_callback is not None
-
-        # Test callback functionality
-        if import_service.progress_callback:
-            import_service.progress_callback(status="testing", percentage=50)
-            assert len(progress_updates) == 1
-            assert progress_updates[0]["status"] == "testing"
-            assert progress_updates[0]["percentage"] == 50
-
-    def test_conflict_strategy_validation(self):
-        """Test conflict strategy validation and handling."""
-        # Test all valid conflict strategies
-        strategies = [
-            ConflictStrategy.USE_MINE,
-            ConflictStrategy.USE_THEIRS,
-            ConflictStrategy.MERGE,
-            ConflictStrategy.MANUAL_REVIEW,
-        ]
-
-        for strategy in strategies:
-            with patch("import_service.os.path.exists") as mock_exists:
-                with patch("import_service.pd.read_excel") as mock_read_excel:
-                    mock_exists.return_value = True
-                    mock_read_excel.return_value = pd.DataFrame()
-
-                    result = self.import_service.import_excel_file(
-                        file_path="test.xlsx", conflict_strategy=strategy, dry_run=True
-                    )
-
-                    # Should handle all strategy types
-                    assert isinstance(result, ImportResult)
-
-    def test_import_excel_convenience_function_comprehensive(self):
-        """Test the import_excel convenience function comprehensively."""
-        with patch("import_service.ImportService") as mock_service_class:
-            mock_service = Mock()
-            mock_result = ImportResult(
-                success=True,
-                records_processed=10,
-                records_created=8,
-                records_updated=2,
-                records_skipped=0,
-                conflicts_detected=0,
-                conflicts_resolved=0,
-                errors=[],
-                warnings=[],
-                conflicts=[],
-                execution_time=1.5,
-                dry_run=False,
-            )
-            mock_service.import_excel_file.return_value = mock_result
-            mock_service_class.return_value = mock_service
-
-            # Test convenience function with all parameters
-            result = import_excel(
-                file_path="test.xlsx",
-                institution_id="northern-valley-cc",
-                conflict_strategy="use_theirs",
-                dry_run=False,
-                adapter_name="cei_excel_adapter",
-                delete_existing_db=False,
-                verbose=True,
-                progress_callback=lambda **kwargs: None,
-            )
-
-            # Should create service and call import_excel_file
-            mock_service_class.assert_called_once()
-            mock_service.import_excel_file.assert_called_once()
-            assert result == mock_result
-
-    def test_create_import_report_functionality(self):
-        """Test create_import_report function."""
-        from import_service import create_import_report
-
-        # Create sample import result
-        sample_result = ImportResult(
-            success=True,
-            records_processed=100,
-            records_created=80,
-            records_updated=15,
-            records_skipped=5,
-            conflicts_detected=3,
-            conflicts_resolved=3,
-            errors=[],
-            warnings=["Sample warning"],
+        assert "IMPORT REPORT" in report
+        assert "Success: True" in report
+        assert "Records Processed: 5" in report
+        assert "Execution Time: 1.23s" in report
+
+    def test_create_import_report_with_errors(self):
+        """Test creating report with errors."""
+        result = ImportResult(
+            success=False,
+            records_processed=2,
+            records_created=1,
+            records_updated=0,
+            records_skipped=0,
+            conflicts_detected=1,
+            conflicts_resolved=0,
+            errors=["File not found", "Invalid data format"],
+            warnings=["Missing optional field"],
             conflicts=[],
-            execution_time=2.5,
-            dry_run=False,
+            execution_time=0.5,
+            dry_run=True,
         )
 
-        # Test report generation
-        report = create_import_report(sample_result)
+        report = create_import_report(result)
 
-        # Should generate a comprehensive report
-        assert isinstance(report, str)
-        assert len(report) > 0
-        assert "100" in report  # Should include processed count
-        assert "80" in report  # Should include created count
-
-    def test_import_result_creation_comprehensive(self):
-        """Test comprehensive ImportResult creation."""
-        from datetime import datetime, timezone
-
-        # Test _create_import_result method
-        start_time = datetime.now(timezone.utc)
-
-        # Set up some stats
-        self.import_service.stats = {
-            "records_processed": 50,
-            "records_created": 40,
-            "records_updated": 8,
-            "records_skipped": 2,
-            "conflicts_detected": 5,
-            "conflicts_resolved": 4,
-            "errors": ["Test error"],
-            "warnings": ["Test warning"],
-            "conflicts": [],
-        }
-
-        result = self.import_service._create_import_result(start_time, dry_run=True)
-
-        # Should create proper ImportResult
-        assert isinstance(result, ImportResult)
-        assert result.records_processed == 50
-        assert result.records_created == 40
-        assert result.records_updated == 8
-        assert result.records_skipped == 2
-        assert result.conflicts_detected == 5
-        assert result.conflicts_resolved == 4
-        assert result.dry_run is True
-        assert len(result.errors) == 1
-        assert len(result.warnings) == 1
-        assert result.execution_time >= 0
-
-    def test_import_service_initialization_validation(self):
-        """Test ImportService initialization with invalid parameters."""
-        # Test missing institution_id (covers line 97)
-        try:
-            ImportService(None)
-            assert False, "Should have raised ValueError"
-        except ValueError as e:
-            assert "institution_id is required" in str(e)
-
-        # Test empty string institution_id
-        try:
-            ImportService("")
-            assert False, "Should have raised ValueError"
-        except ValueError as e:
-            assert "institution_id is required" in str(e)
-
-    def test_import_service_basic_functionality(self):
-        """Test basic import service functionality to increase coverage."""
-        service = ImportService("test-institution")
-
-        # Simple test that verifies service creation and basic properties
-        assert service.institution_id == "test-institution"
-        assert hasattr(service, "institution_id")
-
-        # This basic test contributes to overall coverage
+        assert "Success: False" in report
+        assert "Mode: DRY RUN" in report
+        assert "ERRORS:" in report
+        assert "File not found" in report
+        assert "WARNINGS:" in report
+        assert "Missing optional field" in report
