@@ -835,24 +835,32 @@ class DashboardService:
     ) -> List[Dict[str, Any]]:
         feed: List[Dict[str, Any]] = []
         timestamp = datetime.now(timezone.utc).isoformat()
+
+        # System activities should be attributed to SITE_ADMIN user
+        system_user = "System Administrator"
+
         for course in courses[:5]:
             feed.append(
                 {
                     "timestamp": timestamp,
                     "institution": institution_name,
-                    "user": None,
+                    "user": system_user,
                     "action": "Course Synced",
                     "details": course.get("course_number") or course.get("name"),
                 }
             )
         for section in sections[:5]:
+            # Replace GUID with meaningful identifier
+            section_detail = (
+                section.get("course_number") or section.get("course_id") or "Section"
+            )
             feed.append(
                 {
                     "timestamp": timestamp,
                     "institution": institution_name,
-                    "user": None,
+                    "user": system_user,
                     "action": "Section Update",
-                    "details": section.get("section_id"),
+                    "details": section_detail,
                 }
             )
         for user in users[:5]:

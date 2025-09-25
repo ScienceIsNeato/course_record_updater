@@ -368,7 +368,10 @@
                 { key: 'action', label: 'Action', sortable: true },
                 { key: 'details', label: 'Details', sortable: false }
             ],
-            data
+            data: data.map(item => ({
+                ...item,
+                timestamp: window.formatTimestamp ? window.formatTimestamp(item.timestamp) : item.timestamp
+            }))
         });
 
         container.innerHTML = '';
