@@ -2,7 +2,7 @@
 
 ## Priority 0 – Import/Export Roundtrip System (Epic) **NEW**
 **Status**: Not started  
-**Docs**: `IMPORT_SYSTEM_GUIDE.md`, `research/CEI/BRIDGE_STRATEGY.md`, `planning/documentation/DATA_ENTRY_STRATEGY.md`  
+**Docs**: `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md`, `planning/ADAPTER_DEVELOPMENT_GUIDE.md`, `research/CEI/BRIDGE_STRATEGY.md`, `planning/documentation/DATA_ENTRY_STRATEGY.md`  
 **Goal**: Implement bidirectional adapter-based system for institution-specific data formats with lossless roundtrip validation. Build abstract system with pluggable adapters - default adapter first, then institution-specific adapters.
 **Why Critical**: Institutions need to export data back to their existing systems (Access, SIS, etc.). Roundtrip validation ensures import pipeline integrity. Adapter architecture supports diverse institutional requirements while maintaining data fidelity.
 **Key Tasks**:
@@ -68,13 +68,13 @@
 
 ## Priority 5 – Excel Import Validation Refresh (Epic)
 **Status**: Needs scoping  
-**Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:16`, `IMPORT_SYSTEM_GUIDE.md`, `import_service.py`, `import_cli.py:269`, `STATUS.md`  
+**Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:16`, `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md`, `import_service.py`, `import_cli.py:269`, `STATUS.md`  
 **Goal**: Align import tooling with the new auth/multi-tenant model and close outstanding validation TODOs.
 **Key Tasks**:
 - [ ] Implement the `--validate-only` pathway in `import_cli.py:269` and expose it via API for UI preflight checks.
 - [ ] Ensure imports honor institution/program context (tie-in with Priority 0) and restrict user/course creation appropriately.
 - [ ] Resolve the "0 sections created" defect noted in `STATUS.md` and expand validation rules/tests accordingly.
-- [ ] Update `IMPORT_SYSTEM_GUIDE.md` and related docs to reflect the refreshed flow.
+- [ ] Update `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md` and related docs to reflect the refreshed flow.
 **Definition of Done**: Validation-only mode works, imports are tenant-safe, section creation bug fixed, documentation/tests updated.  
 **Hand-off**: Substantial systems work; viable for background agent with clear acceptance tests.
 
