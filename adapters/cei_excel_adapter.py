@@ -7,11 +7,14 @@ It contains all CEI-specific parsing logic, column mappings, and data transforma
 This keeps CEI-specific logic separate from the generic import system.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
 from models import validate_course_number
+
+from .file_base_adapter import FileBaseAdapter, FileCompatibilityError
 
 # Constants for repeated strings
 FACULTY_NAME_COLUMN = "Faculty Name"
@@ -351,3 +354,380 @@ def _extract_name_from_email(email: str) -> Tuple[str, str]:
         last_name = local_part.title()
 
     return first_name, last_name
+
+
+class CEIExcelAdapter(FileBaseAdapter):
+    """
+    Adapter for CEI's Excel format with automatic compatibility detection.
+
+    Handles CEI's specific Excel format with dual format support:
+    1. Original format with Faculty Name and effterm_c columns
+    2. Test format with email and Term columns
+
+    Automatically detects data types and validates file compatibility.
+    """
+
+    SUPPORTED_EXTENSIONS = [".xlsx", ".xls"]
+    MAX_FILE_SIZE_MB = 10
+    MAX_RECORDS_TO_PROCESS = 5000
+
+    def __init__(self):
+        """Initialize CEI Excel adapter with format specifications."""
+        super().__init__()
+
+        # Adapter identification
+        self.adapter_id = "cei_excel_format_v1"
+        self.institution_id = "cei_institution_id"
+
+        # Required columns for original format
+        self.original_format_columns = [
+            "course",
+            "Faculty Name",
+            "effterm_c",
+            "students",
+        ]
+
+        # Required columns for test format
+        self.test_format_columns = ["course", "email", "Term", "students"]
+
+        # Optional columns that may be present
+        self.optional_columns = ["Course Title", "Department", "Credits"]
+
+    def validate_file_compatibility(self, file_path: str) -> Tuple[bool, str]:
+        """
+        Validate that the file is compatible with CEI Excel format.
+
+        Checks for:
+        1. Excel file format (.xlsx or .xls)
+        2. Required column structure (either original or test format)
+        3. Valid data patterns in key columns
+
+        Returns:
+            Tuple[bool, str]: (is_compatible, message)
+        """
+        try:
+            # Check file extension first
+            if not file_path.lower().endswith((".xlsx", ".xls")):
+                return False, "Unsupported file extension. Expected .xlsx or .xls"
+
+            # Check if file exists
+            import os
+
+            if not os.path.exists(file_path):
+                return False, f"File not found: {file_path}"
+
+            # Check file size (basic check)
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            if file_size_mb > self.MAX_FILE_SIZE_MB:
+                return (
+                    False,
+                    f"File too large ({file_size_mb:.1f}MB). Maximum allowed: {self.MAX_FILE_SIZE_MB}MB",
+                )
+
+            # Read Excel file to check structure
+            try:
+                df = pd.read_excel(file_path, nrows=10)  # Sample first 10 rows
+            except Exception as e:
+                return False, f"Cannot read Excel file: {str(e)}"
+
+            if df.empty:
+                return False, "Excel file is empty"
+
+            # Check for either format structure
+            has_original_format = all(
+                col in df.columns for col in self.original_format_columns
+            )
+            has_test_format = all(col in df.columns for col in self.test_format_columns)
+
+            if not (has_original_format or has_test_format):
+                missing_original = [
+                    col for col in self.original_format_columns if col not in df.columns
+                ]
+                missing_test = [
+                    col for col in self.test_format_columns if col not in df.columns
+                ]
+
+                return False, (
+                    f"File doesn't match CEI format. "
+                    f"Missing for original format: {missing_original}. "
+                    f"Missing for test format: {missing_test}."
+                )
+
+            # Validate data patterns in key columns
+            validation_errors = []
+
+            # Check course column
+            if "course" in df.columns:
+                sample_courses = df["course"].dropna().head(3)
+                invalid_courses = [
+                    course
+                    for course in sample_courses
+                    if not validate_course_number(str(course))
+                ]
+                if (
+                    len(invalid_courses) == len(sample_courses)
+                    and len(sample_courses) > 0
+                ):
+                    validation_errors.append("No valid course numbers found")
+
+            # Check term format if using original format
+            if has_original_format and "effterm_c" in df.columns:
+                sample_terms = df["effterm_c"].dropna().head(3)
+                invalid_terms = [
+                    term
+                    for term in sample_terms
+                    if not validate_cei_term_name(str(term))
+                ]
+                if len(invalid_terms) == len(sample_terms) and len(sample_terms) > 0:
+                    validation_errors.append(
+                        "No valid term codes found (expected format: FA2024, SP2025)"
+                    )
+
+            # Check student count column
+            if "students" in df.columns:
+                sample_students = df["students"].dropna().head(3)
+                try:
+                    numeric_counts = [int(x) for x in sample_students if pd.notna(x)]
+                    if not numeric_counts and len(sample_students) > 0:
+                        validation_errors.append(
+                            "Student count column contains no valid numbers"
+                        )
+                except (ValueError, TypeError):
+                    validation_errors.append(
+                        "Student count column contains invalid data"
+                    )
+
+            if validation_errors:
+                return False, f"Data validation failed: {'; '.join(validation_errors)}"
+
+            # Determine format and provide success message
+            format_type = "original" if has_original_format else "test"
+            record_count = len(df)
+
+            return True, (
+                f"File compatible with CEI Excel format ({format_type}). "
+                f"Found {record_count} sample records."
+            )
+
+        except Exception as e:
+            return False, f"Error validating file: {str(e)}"
+
+    def detect_data_types(self, file_path: str) -> List[str]:
+        """
+        Automatically detect what types of data are present in the file.
+
+        CEI Excel files typically contain:
+        - courses: Course information
+        - faculty: Instructor information
+        - terms: Academic term data
+        - sections: Course section details
+        """
+        try:
+            df = pd.read_excel(file_path, nrows=50)  # Sample for analysis
+            detected_types = []
+
+            # Check for course data
+            if "course" in df.columns and not df["course"].isna().all():
+                detected_types.append("courses")
+
+            # Check for faculty data
+            if (
+                FACULTY_NAME_COLUMN in df.columns
+                and not df[FACULTY_NAME_COLUMN].isna().all()
+            ) or ("email" in df.columns and not df["email"].isna().all()):
+                detected_types.append("faculty")
+
+            # Check for term data
+            if ("effterm_c" in df.columns and not df["effterm_c"].isna().all()) or (
+                "Term" in df.columns and not df["Term"].isna().all()
+            ):
+                detected_types.append("terms")
+
+            # Check for section data (student counts indicate sections)
+            if "students" in df.columns and not df["students"].isna().all():
+                detected_types.append("sections")
+
+            return detected_types
+
+        except Exception:
+            # If we can't read the file, return empty list
+            return []
+
+    def get_adapter_info(self) -> Dict[str, Any]:
+        """
+        Return metadata about this adapter for UI display and filtering.
+        """
+        return {
+            "id": "cei_excel_format_v1",
+            "name": "CEI Excel Format v1.2",
+            "description": "Imports course, faculty, and section data from CEI's Excel exports. Supports both original format (Faculty Name, effterm_c) and test format (email, Term).",
+            "supported_formats": [".xlsx", ".xls"],
+            "institution_id": "cei_institution_id",
+            "data_types": ["courses", "faculty", "terms", "sections"],
+            "version": "1.2.0",
+            "created_by": "System Developer",
+            "last_updated": "2024-09-25",
+            "file_size_limit": "10MB",
+            "max_records": 5000,
+            "format_variants": [
+                "Original: course, Faculty Name, effterm_c, students",
+                "Test: course, email, Term, students",
+            ],
+        }
+
+    def get_file_size_limit(self) -> int:
+        """Get the file size limit in bytes for CEI files."""
+        return self.MAX_FILE_SIZE_MB * 1024 * 1024
+
+    def get_max_records(self) -> int:
+        """Get the maximum number of records this adapter can process."""
+        return self.MAX_RECORDS_TO_PROCESS
+
+    def parse_file(
+        self, file_path: str, options: Dict[str, Any]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Parse CEI Excel file into structured data ready for database import.
+
+        Args:
+            file_path: Path to the Excel file
+            options: Import options including institution_id
+
+        Returns:
+            Dict mapping data types to lists of records
+        """
+        try:
+            # Validate file first
+            is_compatible, compatibility_message = self.validate_file_compatibility(
+                file_path
+            )
+            if not is_compatible:
+                raise FileCompatibilityError(
+                    f"File incompatible: {compatibility_message}"
+                )
+
+            # Get institution ID from options
+            institution_id = options.get("institution_id")
+            if not institution_id:
+                raise ValueError("institution_id is required in options")
+
+            # Read the Excel file
+            try:
+                df = pd.read_excel(file_path)
+            except Exception as e:
+                raise FileCompatibilityError(f"Cannot read Excel file: {str(e)}") from e
+
+            if df.empty:
+                raise FileCompatibilityError("Excel file is empty")
+
+            # Initialize result structure
+            result: Dict[str, List[Dict]] = {
+                "courses": [],
+                "users": [],  # Note: using 'users' not 'faculty' to match database service
+                "terms": [],
+                "offerings": [],
+                "sections": [],
+            }
+
+            # Process each row using existing parsing logic
+            for _, row in df.iterrows():
+                try:
+                    # Use existing parse_cei_excel_row function
+                    entities = parse_cei_excel_row(row, institution_id)
+
+                    # Add timestamp to all entities
+                    timestamp = datetime.now().isoformat()
+
+                    # Collect entities by type
+                    if entities.get("course"):
+                        course = entities["course"].copy()
+                        course["created_at"] = timestamp
+                        result["courses"].append(course)
+
+                    if entities.get("user"):
+                        user = entities["user"].copy()
+                        user["created_at"] = timestamp
+                        result["users"].append(user)
+
+                    if entities.get("term"):
+                        term = entities["term"].copy()
+                        term["created_at"] = timestamp
+                        result["terms"].append(term)
+
+                    if entities.get("offering"):
+                        offering = entities["offering"].copy()
+                        offering["created_at"] = timestamp
+                        result["offerings"].append(offering)
+
+                    if entities.get("section"):
+                        section = entities["section"].copy()
+                        section["created_at"] = timestamp
+                        result["sections"].append(section)
+
+                except Exception as e:
+                    # Log error but continue processing other rows
+                    print(f"Warning: Error processing row {_}: {str(e)}")
+                    continue
+
+            # Remove duplicates from each data type
+            result = self._deduplicate_results(result)
+
+            # Validate we have some data
+            total_records = sum(len(records) for records in result.values())
+            if total_records == 0:
+                raise FileCompatibilityError("No valid records found in file")
+
+            return result
+
+        except FileCompatibilityError:
+            raise
+        except ValueError as e:
+            # Re-raise ValueError as-is (for missing institution_id, etc.)
+            raise
+        except Exception as e:
+            raise FileCompatibilityError(f"Error parsing file: {str(e)}") from e
+
+    def _deduplicate_results(
+        self, result: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """Remove duplicate records from parsed results."""
+
+        # Define key fields for each data type to identify duplicates
+        key_fields = {
+            "courses": ["course_number", "institution_id"],
+            "users": ["email", "first_name", "last_name", "institution_id"],
+            "terms": ["name", "year", "institution_id"],
+            "offerings": ["course_number", "term_name", "institution_id"],
+            "sections": [
+                "course_number",
+                "term_name",
+                "section_number",
+                "institution_id",
+            ],
+        }
+
+        for data_type, records in result.items():
+            if not records:
+                continue
+
+            keys = key_fields.get(data_type, ["id"])
+            seen = set()
+            unique_records = []
+
+            for record in records:
+                # Create key tuple from specified fields
+                key_values = []
+                for field in keys:
+                    value = record.get(field)
+                    # Handle None values and convert to string for hashing
+                    key_values.append(str(value) if value is not None else "")
+
+                key = tuple(key_values)
+
+                if key not in seen:
+                    seen.add(key)
+                    unique_records.append(record)
+
+            result[data_type] = unique_records
+
+        return result
