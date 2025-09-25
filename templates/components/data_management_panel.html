@@ -8,9 +8,9 @@
         <button class="panel-toggle">▼</button>
     </div>
     <div class="panel-content">
-        <div class="row">
+        <div class="row g-0">
             <!-- Import Section -->
-            <div class="col-lg-6 pe-lg-4">
+            <div class="col-lg-5 pe-lg-3">
                 <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
                 
                 {% if user.role == 'instructor' %}
@@ -134,12 +134,12 @@
             </div>
 
             <!-- Vertical Divider -->
-            <div class="col-lg-auto d-none d-lg-block px-2">
+            <div class="col-lg-1 d-none d-lg-flex justify-content-center align-items-stretch px-2">
                 <div class="data-management-divider"></div>
             </div>
 
             <!-- Export Section -->
-            <div class="col-lg-6 ps-lg-4">
+            <div class="col-lg-6 ps-lg-3">
                 <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
                 
                 <form id="dataExportForm">
