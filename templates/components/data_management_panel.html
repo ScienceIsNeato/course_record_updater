@@ -1,0 +1,363 @@
+<!-- Unified Data Management Panel -->
+<div class="dashboard-panel" id="data-management-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">💾</span>
+            Data Management
+        </h5>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div class="row">
+            <!-- Import Section -->
+            <div class="col-lg-6">
+                <h6><i class="fas fa-upload text-success"></i> Import Data</h6>
+                
+                {% if user.role == 'instructor' %}
+                <!-- Instructor Restriction Message -->
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Import Restricted:</strong> Instructors cannot import data directly. 
+                    Please contact your program administrator to request data imports.
+                </div>
+                {% else %}
+                <!-- Import Form for Admin Roles -->
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Import Data:</strong> Upload Excel files to import course, user, and assessment data.
+                </div>
+
+                <form id="dataImportForm" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <!-- File Selection -->
+                    <div class="mb-3">
+                        <label for="excel_file" class="form-label">Select Excel File:</label>
+                        <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                    </div>
+
+                    <!-- Data Type Selection -->
+                    <div class="mb-3">
+                        <label for="import_data_type" class="form-label">Data Type:</label>
+                        <select class="form-select" id="import_data_type" name="import_data_type" required>
+                            {% if user.role == 'site_admin' %}
+                            <option value="institutions">Institutions</option>
+                            <option value="programs">Programs</option>
+                            <option value="courses">Courses</option>
+                            <option value="users">Users</option>
+                            {% elif user.role == 'institution_admin' %}
+                            <option value="programs">Programs</option>
+                            <option value="courses">Courses</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="students">Students</option>
+                            {% elif user.role == 'program_admin' %}
+                            <option value="courses" selected>Courses</option>
+                            <option value="sections">Sections</option>
+                            <option value="students">Students</option>
+                            <option value="assessments">Assessments</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Import Format -->
+                    <div class="mb-3">
+                        <label for="import_adapter" class="form-label">Import Format:</label>
+                        <select class="form-select" id="import_adapter" name="import_adapter" required>
+                            <option value="cei_excel_adapter" selected>CEI Excel Format</option>
+                            <option value="generic_excel_adapter">Generic Excel Format</option>
+                        </select>
+                    </div>
+
+                    <!-- Conflict Resolution Strategy -->
+                    <div class="mb-3">
+                        <label class="form-label">Conflict Resolution:</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="use_theirs" value="use_theirs" checked>
+                                    <label class="form-check-label" for="use_theirs">
+                                        <strong>Use Import Data</strong><br>
+                                        <small class="text-muted">Overwrite existing</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="use_mine" value="use_mine">
+                                    <label class="form-check-label" for="use_mine">
+                                        <strong>Keep Existing</strong><br>
+                                        <small class="text-muted">Skip conflicts</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="merge" value="merge">
+                                    <label class="form-check-label" for="merge">
+                                        <strong>Merge Data</strong><br>
+                                        <small class="text-muted">Combine both</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="manual_review" value="manual_review">
+                                    <label class="form-check-label" for="manual_review">
+                                        <strong>Manual Review</strong><br>
+                                        <small class="text-muted">Flag conflicts</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Options -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="dry_run" name="dry_run">
+                            <label class="form-check-label" for="dry_run">
+                                <strong>Test Mode (Dry Run)</strong><br>
+                                <small class="text-muted">Preview changes without saving</small>
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="verbose_output" name="verbose_output">
+                            <label class="form-check-label" for="verbose_output">
+                                <strong>Detailed Output</strong><br>
+                                <small class="text-muted">Show progress information</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Import Actions -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-success" onclick="validateImportFile()">
+                            <i class="fas fa-check-circle me-1"></i>Validate Only
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="executeDataImport()">
+                            <i class="fas fa-upload me-1"></i>Import Data
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Import Progress -->
+                <div id="importProgress" class="mt-3" style="display: none;">
+                    <h6>Import Progress</h6>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="importProgressBar" role="progressbar" style="width: 0%" 
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <div id="importStatus" class="mt-2 small text-muted">Ready to start import...</div>
+                </div>
+
+                <!-- Import Results -->
+                <div id="importResults" class="mt-3" style="display: none;">
+                    <h6>Import Results</h6>
+                    <div id="importResultsContent"></div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Export Section -->
+            <div class="col-lg-6">
+                <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
+                
+                <form id="dataExportForm">
+                    <!-- Export Data Type -->
+                    <div class="mb-3">
+                        <label for="export_data_type" class="form-label">Data Type:</label>
+                        <select class="form-select" id="export_data_type" name="export_data_type" required>
+                            {% if user.role == 'site_admin' %}
+                            <option value="institutions">Institutions</option>
+                            <option value="programs">Programs</option>
+                            <option value="courses">Courses</option>
+                            <option value="users">Users</option>
+                            <option value="all_data">All Data</option>
+                            {% elif user.role == 'institution_admin' %}
+                            <option value="programs">Programs</option>
+                            <option value="courses">Courses</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="students">Students</option>
+                            {% elif user.role == 'program_admin' %}
+                            <option value="courses" selected>Courses</option>
+                            <option value="sections">Sections</option>
+                            <option value="students">Students</option>
+                            <option value="assessments">Assessments</option>
+                            {% else %}
+                            <option value="my_courses">My Courses</option>
+                            <option value="my_assessments">My Assessments</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <!-- Export Format -->
+                    <div class="mb-3">
+                        <label for="export_format" class="form-label">File Format:</label>
+                        <select class="form-select" id="export_format" name="export_format" required>
+                            <option value="excel" selected>Excel (.xlsx)</option>
+                            <option value="csv">CSV (.csv)</option>
+                            <option value="json">JSON (.json)</option>
+                        </select>
+                    </div>
+
+                    <!-- Export Adapter -->
+                    <div class="mb-3">
+                        <label for="export_adapter" class="form-label">Output Format:</label>
+                        <select class="form-select" id="export_adapter" name="export_adapter" required>
+                            <option value="cei_excel_adapter" selected>CEI Excel Format</option>
+                            <option value="generic_excel_adapter">Generic Excel Format</option>
+                            <option value="standard_format">Standard Format</option>
+                        </select>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="include_metadata" name="include_metadata" checked>
+                            <label class="form-check-label" for="include_metadata">
+                                Include metadata and timestamps
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="anonymize_data" name="anonymize_data">
+                            <label class="form-check-label" for="anonymize_data">
+                                Anonymize personal information
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Export Actions -->
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary" onclick="executeDataExport()">
+                            <i class="fas fa-download me-1"></i>Export Data
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Export Status -->
+                <div id="exportStatus" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        Preparing export... This may take a moment.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Data Import Functions
+function validateImportFile() {
+    const form = document.getElementById('dataImportForm');
+    const formData = new FormData(form);
+    formData.set('dry_run', 'true'); // Force dry run for validation
+    
+    executeImportRequest(formData, true);
+}
+
+function executeDataImport() {
+    const form = document.getElementById('dataImportForm');
+    const formData = new FormData(form);
+    
+    executeImportRequest(formData, false);
+}
+
+function executeImportRequest(formData, isValidation) {
+    // Show progress
+    document.getElementById('importProgress').style.display = 'block';
+    document.getElementById('importResults').style.display = 'none';
+    
+    const progressBar = document.getElementById('importProgressBar');
+    const status = document.getElementById('importStatus');
+    
+    status.textContent = isValidation ? 'Validating file...' : 'Starting import...';
+    progressBar.style.width = '10%';
+    
+    // Execute the import via fetch API
+    fetch('/api/import/excel', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        progressBar.style.width = '100%';
+        status.textContent = 'Import completed';
+        
+        // Show results
+        document.getElementById('importResults').style.display = 'block';
+        document.getElementById('importResultsContent').innerHTML = formatImportResults(data);
+    })
+    .catch(error => {
+        console.error('Import error:', error);
+        status.textContent = 'Import failed';
+        progressBar.classList.add('bg-danger');
+        
+        document.getElementById('importResults').style.display = 'block';
+        document.getElementById('importResultsContent').innerHTML = 
+            `<div class="alert alert-danger">Import failed: ${error.message}</div>`;
+    });
+}
+
+// Data Export Functions
+function executeDataExport() {
+    const form = document.getElementById('dataExportForm');
+    const formData = new FormData(form);
+    
+    // Show export status
+    document.getElementById('exportStatus').style.display = 'block';
+    
+    // Build export URL
+    const params = new URLSearchParams();
+    for (let [key, value] of formData.entries()) {
+        params.append(key, value);
+    }
+    
+    // Trigger download
+    const exportUrl = `/api/export/data?${params.toString()}`;
+    window.open(exportUrl, '_blank');
+    
+    // Hide status after a delay
+    setTimeout(() => {
+        document.getElementById('exportStatus').style.display = 'none';
+    }, 3000);
+}
+
+function formatImportResults(data) {
+    if (!data) return '<div class="alert alert-warning">No results returned</div>';
+    
+    let html = '<div class="card">';
+    html += '<div class="card-body">';
+    
+    if (data.success) {
+        html += '<div class="alert alert-success">';
+        html += '<i class="fas fa-check-circle me-2"></i>';
+        html += `<strong>Import Successful:</strong> ${data.message || 'Data imported successfully'}`;
+        html += '</div>';
+        
+        if (data.stats) {
+            html += '<h6>Import Statistics:</h6>';
+            html += '<ul class="list-unstyled">';
+            for (let [key, value] of Object.entries(data.stats)) {
+                html += `<li><strong>${key}:</strong> ${value}</li>`;
+            }
+            html += '</ul>';
+        }
+    } else {
+        html += '<div class="alert alert-danger">';
+        html += '<i class="fas fa-exclamation-triangle me-2"></i>';
+        html += `<strong>Import Failed:</strong> ${data.error || 'Unknown error occurred'}`;
+        html += '</div>';
+        
+        if (data.details) {
+            html += '<h6>Error Details:</h6>';
+            html += `<pre class="small">${JSON.stringify(data.details, null, 2)}</pre>`;
+        }
+    }
+    
+    html += '</div></div>';
+    return html;
+}
+</script>
