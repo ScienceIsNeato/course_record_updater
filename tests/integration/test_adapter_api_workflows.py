@@ -25,13 +25,15 @@ class TestAdapterAPIWorkflows:
 
     def test_site_admin_adapter_discovery_workflow(self, client):
         """Test site admin can discover all available adapters via API."""
-        # Mock site admin user session
+        # Mock site admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "site_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-site-admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         # Test adapter discovery endpoint
         response = client.get("/api/adapters")
@@ -53,13 +55,15 @@ class TestAdapterAPIWorkflows:
 
     def test_institution_admin_adapter_discovery_workflow(self, client):
         """Test institution admin only sees their institution's adapters."""
-        # Mock institution admin user session
+        # Mock institution admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "institution_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-institution-admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "institution_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Institution Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         # Test adapter discovery endpoint
         response = client.get("/api/adapters")
@@ -77,11 +81,13 @@ class TestAdapterAPIWorkflows:
         """Test instructor sees no adapters (no import permissions)."""
         # Mock instructor user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "instructor",
-                "institution_id": self.institution_id,
-                "email": "instructor@cei.edu",
-            }
+            sess["user_id"] = "test-instructor-123"
+            sess["email"] = "instructor@cei.edu"
+            sess["role"] = "instructor"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Instructor"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         # Test adapter discovery endpoint
         response = client.get("/api/adapters")
@@ -124,7 +130,7 @@ class TestAdapterAPIWorkflows:
         # Sample data
         worksheet.cell(row=2, column=1, value="TEST-101")
         worksheet.cell(row=2, column=2, value="01")
-        worksheet.cell(row=2, column=3, value="2024FA")
+        worksheet.cell(row=2, column=3, value="FA2024")
         worksheet.cell(row=2, column=4, value="10")
         worksheet.cell(row=2, column=5, value="Test Instructor")
         worksheet.cell(row=2, column=6, value="test@cei.edu")
@@ -135,11 +141,13 @@ class TestAdapterAPIWorkflows:
         """Test complete import workflow via API for site admin."""
         # Mock site admin user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "site_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-site_admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Create test file
@@ -149,7 +157,7 @@ class TestAdapterAPIWorkflows:
             # Test import via API
             with open(test_file, "rb") as f:
                 response = client.post(
-                    "/api/import_data",
+                    "/api/import/excel",
                     data={
                         "excel_file": (f, "test_import.xlsx"),
                         "import_adapter": "cei_excel_format_v1",
@@ -167,11 +175,13 @@ class TestAdapterAPIWorkflows:
         """Test that instructors cannot import via API."""
         # Mock instructor user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "instructor",
-                "institution_id": self.institution_id,
-                "email": "instructor@cei.edu",
-            }
+            sess["user_id"] = "test-instructor-123"
+            sess["email"] = "instructor@cei.edu"
+            sess["role"] = "instructor"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Instructor"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Create test file
@@ -181,7 +191,7 @@ class TestAdapterAPIWorkflows:
             # Attempt import via API - should be denied
             with open(test_file, "rb") as f:
                 response = client.post(
-                    "/api/import_data",
+                    "/api/import/excel",
                     data={
                         "excel_file": (f, "test_import.xlsx"),
                         "import_adapter": "cei_excel_format_v1",
@@ -199,11 +209,13 @@ class TestAdapterAPIWorkflows:
         """Test that adapter metadata is consistent across API calls."""
         # Mock site admin user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "site_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-site_admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         # Get adapters via API
         response = client.get("/api/adapters")
@@ -240,11 +252,13 @@ class TestAdapterAPIWorkflows:
         """Test API error handling for various failure scenarios."""
         # Mock site admin user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "site_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-site_admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Test 1: Invalid file format
@@ -253,7 +267,7 @@ class TestAdapterAPIWorkflows:
 
             with open(invalid_file, "rb") as f:
                 response = client.post(
-                    "/api/import_data",
+                    "/api/import/excel",
                     data={
                         "excel_file": (f, "invalid.txt"),
                         "import_adapter": "cei_excel_format_v1",
@@ -273,7 +287,7 @@ class TestAdapterAPIWorkflows:
 
             with open(test_file, "rb") as f:
                 response = client.post(
-                    "/api/import_data",
+                    "/api/import/excel",
                     data={
                         "excel_file": (f, "test.xlsx"),
                         "import_adapter": "nonexistent_adapter",
@@ -294,11 +308,13 @@ class TestAdapterAPIWorkflows:
         """Test dry run functionality via API."""
         # Mock site admin user session
         with client.session_transaction() as sess:
-            sess["user"] = {
-                "role": "site_admin",
-                "institution_id": self.institution_id,
-                "email": "admin@cei.edu",
-            }
+            sess["user_id"] = "test-site_admin-123"
+            sess["email"] = "admin@cei.edu"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = self.institution_id
+            sess["program_ids"] = []
+            sess["display_name"] = "Test Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             # Create test file
@@ -308,7 +324,7 @@ class TestAdapterAPIWorkflows:
             # Test dry run import
             with open(test_file, "rb") as f:
                 response = client.post(
-                    "/api/import_data",
+                    "/api/import/excel",
                     data={
                         "excel_file": (f, "test_dry_run.xlsx"),
                         "import_adapter": "cei_excel_format_v1",

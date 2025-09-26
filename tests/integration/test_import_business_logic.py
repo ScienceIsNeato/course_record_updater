@@ -75,7 +75,7 @@ class TestImportBusinessLogic:
                         "Total W's": 1,
                         "Faculty Name": f"Instructor{section} Name",  # REAL: 'Faculty Name'
                         "email": f"instructor{section}@cei.edu",  # Required for test format
-                        "effterm_c": "2023FA",
+                        "effterm_c": "FA2024",
                         "endterm_c": None,
                         "Term": "FA2024",  # REAL: 'Term'
                         "pass_course": None,
@@ -134,8 +134,8 @@ class TestImportBusinessLogic:
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
             assert (
-                result.records_processed == 4
-            ), "Should process 4 records (2 courses × 2 sections)"
+                result.records_processed == 9
+            ), "Should process 9 records (2 users + 2 courses + 1 term + 2 offerings + 2 sections)"
             assert result.records_created > 0, "Should create new records"
             assert (
                 result.conflicts_detected == 0

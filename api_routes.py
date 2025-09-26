@@ -2878,7 +2878,6 @@ def excel_import_api():
                 conflict_strategy=conflict_strategy,
                 dry_run=dry_run,
                 adapter_id=adapter_id,
-                delete_existing_db=delete_existing_db,
                 verbose=verbose_output,
             )
 
