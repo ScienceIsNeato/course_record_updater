@@ -112,7 +112,22 @@ class TestFrontendSmoke:
         """Test that essential form elements are present"""
         driver.get(base_url)
 
-        # Check if we're on the login page or main page
+        # Check if we're on the splash page (new behavior with authentication)
+        try:
+            # Look for splash page elements first
+            splash_element = driver.find_element(By.CLASS_NAME, "hero-section")
+            if splash_element:
+                # We're on the splash page - this is expected for unauthenticated users
+                # Check that login button exists to access the dashboard
+                login_btn = driver.find_element(By.XPATH, "//a[@href='/login']")
+                assert (
+                    login_btn is not None
+                ), "Login button should be present on splash page"
+                return
+        except NoSuchElementException:
+            pass
+
+        # Check if we're on the login page
         try:
             # Try to find the login form first (with short timeout)
             WebDriverWait(driver, 3).until(
@@ -132,10 +147,10 @@ class TestFrontendSmoke:
             return
 
         except TimeoutException:
-            # Not on login page, try to find import form
+            # Not on login page, try to find import form (authenticated dashboard)
             pass
 
-        # Wait for import form to load
+        # Wait for import form to load (authenticated dashboard)
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "excelImportForm"))
         )
@@ -171,7 +186,18 @@ class TestFrontendSmoke:
         # Wait for JavaScript to load and initialize
         time.sleep(3)
 
-        # Check if we're on the login page or main page
+        # Check if we're on the splash page (new behavior with authentication)
+        try:
+            splash_element = driver.find_element(By.CLASS_NAME, "hero-section")
+            if splash_element:
+                # We're on the splash page - test basic JavaScript functionality
+                login_btn = driver.find_element(By.XPATH, "//a[@href='/login']")
+                assert login_btn.is_enabled(), "Login button should be interactive"
+                return
+        except NoSuchElementException:
+            pass
+
+        # Check if we're on the login page
         try:
             # Try to find login form elements first
             email_field = driver.find_element(By.ID, "email")
@@ -185,10 +211,10 @@ class TestFrontendSmoke:
             return
 
         except NoSuchElementException:
-            # Not on login page, try import form
+            # Not on login page, try import form (authenticated dashboard)
             pass
 
-        # Test import form JavaScript functionality
+        # Test import form JavaScript functionality (authenticated dashboard)
         dry_run_checkbox = driver.find_element(By.ID, "dry_run")
         import_btn_text = driver.find_element(By.ID, "importBtnText")
 
@@ -207,14 +233,22 @@ class TestFrontendSmoke:
         """Test that conflict resolution radio buttons are present"""
         driver.get(base_url)
 
-        # Skip this test if we're on the login page
+        # Skip this test if we're on the splash page or login page (requires authentication)
         try:
-            driver.find_element(By.ID, "loginForm")
-            pytest.skip("Test requires authenticated access to main page")
+            # Check for splash page
+            driver.find_element(By.CLASS_NAME, "hero-section")
+            pytest.skip("Test requires authenticated access to dashboard")
         except NoSuchElementException:
             pass
 
-        # Check for conflict resolution options
+        try:
+            # Check for login page
+            driver.find_element(By.ID, "loginForm")
+            pytest.skip("Test requires authenticated access to dashboard")
+        except NoSuchElementException:
+            pass
+
+        # Check for conflict resolution options (only available on authenticated dashboard)
         conflict_options = ["use_theirs", "use_mine"]
 
         for option in conflict_options:
@@ -226,10 +260,18 @@ class TestFrontendSmoke:
         """Test that form validation works when no file is selected"""
         driver.get(base_url)
 
-        # Skip this test if we're on the login page
+        # Skip this test if we're on the splash page or login page (requires authentication)
         try:
+            # Check for splash page
+            driver.find_element(By.CLASS_NAME, "hero-section")
+            pytest.skip("Test requires authenticated access to dashboard")
+        except NoSuchElementException:
+            pass
+
+        try:
+            # Check for login page
             driver.find_element(By.ID, "loginForm")
-            pytest.skip("Test requires authenticated access to main page")
+            pytest.skip("Test requires authenticated access to dashboard")
         except NoSuchElementException:
             pass
 
@@ -285,10 +327,18 @@ class TestFrontendSmoke:
         """Test that dashboard cards are present"""
         driver.get(base_url)
 
-        # Skip this test if we're on the login page
+        # Skip this test if we're on the splash page or login page (requires authentication)
         try:
+            # Check for splash page
+            driver.find_element(By.CLASS_NAME, "hero-section")
+            pytest.skip("Test requires authenticated access to dashboard")
+        except NoSuchElementException:
+            pass
+
+        try:
+            # Check for login page
             driver.find_element(By.ID, "loginForm")
-            pytest.skip("Test requires authenticated access to main page")
+            pytest.skip("Test requires authenticated access to dashboard")
         except NoSuchElementException:
             pass
 
