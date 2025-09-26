@@ -42,19 +42,15 @@ python scripts/ship_it.py --validation-type PR
 pre-commit install
 ```
 
-### Git Operations - AI Integrity Protocol
-**ALL git operations must use the wrapper script:**
+### Git Operations & Commit Messages
+For commit messages, create a `COMMIT_MSG.txt` file with your message content to avoid quote escaping issues:
 ```bash
-# Instead of: git status
-./git_wrapper.sh status
+# Create commit message file
+echo "fix: resolve failing tests" > COMMIT_MSG.txt
 
-# Instead of: git add .
-./git_wrapper.sh add .
-
-# For commits: Create COMMIT_MSG.txt with your message, then:
-./git_wrapper.sh commit
+# Commit using the message file
+git commit --file=COMMIT_MSG.txt
 ```
-This wrapper prevents quality gate bypass violations and enforces proper commit message handling.
 
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
