@@ -1,8 +1,6 @@
 name: SonarCloud Analysis
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -10,6 +8,7 @@ jobs:
   sonarcloud:
     name: SonarCloud Code Analysis
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     
     steps:
     - name: Checkout code
