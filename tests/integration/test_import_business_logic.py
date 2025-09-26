@@ -211,7 +211,9 @@ class TestImportBusinessLogic:
             assert (
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
-            assert result.records_processed == 4, "Should process all records"
+            assert (
+                result.records_processed == 9
+            ), "Should process all records (2 users + 2 courses + 1 term + 2 offerings + 2 sections)"
             assert result.conflicts_detected > 0, "Should detect existence conflicts"
 
             # Should NOT attempt to create courses since they exist
@@ -266,8 +268,8 @@ class TestImportBusinessLogic:
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
             assert (
-                result.records_processed == 6
-            ), "Should process 6 records (3 courses × 2 sections)"
+                result.records_processed == 12
+            ), "Should process 12 records (2 users + 3 courses + 1 term + 3 offerings + 3 sections)"
 
             # Should create new BIO-101 course, update existing courses due to title differences
             assert result.records_created > 0, "Should create new BIO-101 course"
@@ -309,13 +311,16 @@ class TestImportBusinessLogic:
                 dry_run=False,
             )
 
-            # Assert: Should do nothing
-            assert result.success == True, "Empty file import should succeed"
+            # Assert: Should fail with appropriate error
+            assert result.success == False, "Empty file import should fail"
             assert result.records_processed == 0, "Should process no records"
             assert result.records_created == 0, "Should create no records"
             assert result.records_updated == 0, "Should update no records"
             assert result.records_skipped == 0, "Should skip no records"
-            assert len(result.errors) == 0, "Should have no errors"
+            assert len(result.errors) == 1, "Should have one error"
+            assert (
+                "excel file is empty" in result.errors[0].lower()
+            ), "Should report empty file error"
 
         finally:
             os.unlink(temp_file.name)

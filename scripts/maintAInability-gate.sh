@@ -76,6 +76,7 @@ RUN_ISORT=false
 RUN_LINT=false
 RUN_TYPES=false
 RUN_TESTS=false
+RUN_INTEGRATION_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
 RUN_SONAR=false
@@ -99,6 +100,7 @@ else
       --lint) RUN_LINT=true ;;
       --types) RUN_TYPES=true ;;
       --tests) RUN_TESTS=true ;;
+      --integration-tests) RUN_INTEGRATION_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
       --sonar) RUN_SONAR=true ;;
@@ -381,6 +383,56 @@ if [[ "$RUN_TESTS" == "true" ]]; then
   else
     echo "✅ Test Execution: PASSED"
     add_success "Test Execution" "All unit tests passed successfully"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# INTEGRATION TEST SUITE EXECUTION - COMPONENT INTERACTIONS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_INTEGRATION_TESTS" == "true" ]]; then
+  echo "🔗 Integration Test Suite Execution (tests/integration/)"
+  
+  # Check if Firestore emulator is running (required for integration tests)
+  echo "  🔍 Checking Firestore emulator availability..."
+  if ! curl -s "http://localhost:8080" >/dev/null 2>&1; then
+    echo "❌ Integration Tests: FAILED"
+    echo ""
+    echo "📋 Integration Test Failure Details:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔥 Firestore emulator is not running on localhost:8080"
+    echo ""
+    echo "💡 To start the Firestore emulator:"
+    echo "  gcloud beta emulators firestore start --host-port localhost:8080"
+    echo ""
+    echo "💡 Or run integration tests in CI where emulator is automatically started"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    add_failure "Integration Tests" "Firestore emulator not available" "Start emulator with: gcloud beta emulators firestore start --host-port localhost:8080"
+  else
+    echo "   ✅ Firestore emulator is available"
+    
+    # Run INTEGRATION tests (requires emulator, slower tests)
+    echo "  🔍 Running INTEGRATION test suite (component interactions)..."
+    INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+    
+    if [[ "$INTEGRATION_TEST_FAILED" == "true" ]]; then
+      echo "❌ Integration Tests: FAILED"
+      echo ""
+      echo "📋 Integration Test Failure Details:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      
+      # Extract summary stats for the failure record
+      FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+      add_failure "Integration Tests" "Integration test failures: $FAILED_INTEGRATION_TESTS" "See detailed output above and run 'python -m pytest tests/integration/ -v' for full details"
+    else
+      echo "✅ Integration Tests: PASSED"
+      add_success "Integration Tests" "All integration tests passed successfully"
+    fi
   fi
   echo ""
 fi

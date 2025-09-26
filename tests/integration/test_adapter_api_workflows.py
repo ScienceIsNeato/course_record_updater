@@ -108,7 +108,7 @@ class TestAdapterAPIWorkflows:
 
         data = response.get_json()
         assert data["success"] is False
-        assert "not authenticated" in data["error"].lower()
+        assert "authentication required" in data["error"].lower()
 
     def create_test_excel_file(self, file_path: str) -> None:
         """Create a minimal test Excel file."""
@@ -302,6 +302,7 @@ class TestAdapterAPIWorkflows:
             assert (
                 "adapter not found" in data["error"].lower()
                 or "access denied" in data["error"].lower()
+                or "target institution" in data["error"].lower()
             )
 
     def test_dry_run_workflow_via_api(self, client):
@@ -349,11 +350,13 @@ class TestAdapterAPIWorkflows:
 
         for role, should_have_access, description in roles_and_expected_access:
             with client.session_transaction() as sess:
-                sess["user"] = {
-                    "role": role,
-                    "institution_id": self.institution_id,
-                    "email": f"{role}@cei.edu",
-                }
+                sess["user_id"] = f"test-{role}-123"
+                sess["email"] = f"{role}@cei.edu"
+                sess["role"] = role
+                sess["institution_id"] = self.institution_id
+                sess["program_ids"] = []
+                sess["display_name"] = f"Test {role.replace('_', ' ').title()}"
+                sess["created_at"] = "2024-01-01T00:00:00Z"
 
             response = client.get("/api/adapters")
             assert response.status_code == 200

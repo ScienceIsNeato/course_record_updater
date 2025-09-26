@@ -43,6 +43,9 @@ class CheckStatus(Enum):
 class ValidationType(Enum):
     COMMIT = "commit"
     PR = "PR"
+    INTEGRATION = "integration"
+    SMOKE = "smoke"
+    FULL = "full"
 
 
 @dataclass
@@ -87,6 +90,7 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
+            ("integration-tests", "🔗 Integration Tests (component interactions)"),
             ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
@@ -109,6 +113,32 @@ class QualityGateExecutor:
 
         # Full checks for PR validation (all checks)
         self.pr_checks = self.all_checks
+        
+        # Integration test validation (requires Firestore emulator)
+        self.integration_checks = [
+            ("black", "🎨 Code Formatting (black)"),
+            ("isort", "📚 Import Sorting (isort)"),
+            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("integration-tests", "🔗 Integration Tests (component interactions)"),
+        ]
+        
+        # Smoke test validation (requires running server + browser)
+        self.smoke_checks = [
+            ("black", "🎨 Code Formatting (black)"),
+            ("isort", "📚 Import Sorting (isort)"),
+            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
+        ]
+        
+        # Full validation (everything)
+        self.full_checks = (
+            self.commit_checks +
+            [check for check in self.pr_checks if check not in self.commit_checks] +
+            [("integration-tests", "🔗 Integration Tests (component interactions)")] +
+            [("smoke-tests", "🔥 Smoke Tests (end-to-end validation)")]
+        )
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
         """Run a single quality check and return the result."""
@@ -429,7 +459,14 @@ class QualityGateExecutor:
         validation_type: ValidationType = ValidationType.COMMIT,
     ) -> int:
         """Execute quality checks in parallel with fail-fast behavior and return exit code."""
-        validation_name = "COMMIT" if validation_type == ValidationType.COMMIT else "PR"
+        validation_name_map = {
+            ValidationType.COMMIT: "COMMIT",
+            ValidationType.PR: "PR", 
+            ValidationType.INTEGRATION: "INTEGRATION",
+            ValidationType.SMOKE: "SMOKE",
+            ValidationType.FULL: "FULL",
+        }
+        validation_name = validation_name_map[validation_type]
         self.logger.info(
             f"🔍 Running Course Record Updater quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
         )
@@ -445,10 +482,25 @@ class QualityGateExecutor:
                 self.logger.info(
                     "📦 Running COMMIT validation (fast checks, excludes security & sonar)"
                 )
-            else:
+            elif validation_type == ValidationType.PR:
                 checks_to_run = self.pr_checks
                 self.logger.info(
                     "🔍 Running PR validation (all checks including security & sonar)"
+                )
+            elif validation_type == ValidationType.INTEGRATION:
+                checks_to_run = self.integration_checks
+                self.logger.info(
+                    "🔗 Running INTEGRATION validation (component interactions, requires Firestore emulator)"
+                )
+            elif validation_type == ValidationType.SMOKE:
+                checks_to_run = self.smoke_checks
+                self.logger.info(
+                    "🔥 Running SMOKE validation (end-to-end tests, requires running server + browser)"
+                )
+            elif validation_type == ValidationType.FULL:
+                checks_to_run = self.full_checks
+                self.logger.info(
+                    "🚀 Running FULL validation (comprehensive validation, all dependencies required)"
                 )
         else:
             # Run only specified checks
@@ -687,9 +739,9 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
 
     parser.add_argument(
         "--validation-type",
-        choices=["commit", "PR"],
+        choices=["commit", "PR", "integration", "smoke", "full"],
         default="commit",
-        help="Validation type: 'commit' for fast checks (default), 'PR' for all checks",
+        help="Validation type: 'commit' for fast checks (default), 'PR' for all checks, 'integration' for integration tests, 'smoke' for end-to-end tests, 'full' for everything",
     )
 
     parser.add_argument(
@@ -732,9 +784,14 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
             sys.exit(1)
 
     # Convert validation type string to enum
-    validation_type = (
-        ValidationType.COMMIT if args.validation_type == "commit" else ValidationType.PR
-    )
+    validation_type_map = {
+        "commit": ValidationType.COMMIT,
+        "PR": ValidationType.PR,
+        "integration": ValidationType.INTEGRATION,
+        "smoke": ValidationType.SMOKE,
+        "full": ValidationType.FULL,
+    }
+    validation_type = validation_type_map[args.validation_type]
 
     # Create and run the executor
     executor = QualityGateExecutor()
