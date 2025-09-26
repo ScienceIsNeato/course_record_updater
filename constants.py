@@ -57,6 +57,7 @@ DB_FIRESTORE_NOT_AVAILABLE = "[DB Service] Firestore client not available."
 # Default values
 DEFAULT_BASE_URL = "http://localhost:5000"
 TIMEZONE_UTC_SUFFIX = "+00:00"
+SYSTEM_USER_NAME = "System Administrator"
 
 # Seed data constants
 PROGRAM_COMPUTER_SCIENCE = "Computer Science"

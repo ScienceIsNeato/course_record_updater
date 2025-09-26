@@ -837,7 +837,9 @@ class DashboardService:
         timestamp = datetime.now(timezone.utc).isoformat()
 
         # System activities should be attributed to SITE_ADMIN user
-        system_user = "System Administrator"
+        from constants import SYSTEM_USER_NAME
+
+        system_user = SYSTEM_USER_NAME
 
         for course in courses[:5]:
             feed.append(

@@ -47,8 +47,8 @@ class TestCEIExcelAdapterClass:
 
     def test_file_size_and_record_limits(self):
         """Test custom limits for CEI adapter"""
-        assert self.adapter.get_file_size_limit() == 10 * 1024 * 1024  # 10MB
-        assert self.adapter.get_max_records() == 5000
+        assert self.adapter.get_file_size_limit() == 500 * 1024 * 1024  # 500MB
+        assert self.adapter.get_max_records() == 500000
 
     def test_validate_file_compatibility_original_format(self):
         """Test compatibility validation with original CEI format"""

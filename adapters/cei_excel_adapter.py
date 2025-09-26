@@ -1,7 +1,7 @@
 """
 CEI Excel Import Adapter
 
-This adapter handles the specific Excel format used by CEI (College of Education and Innovation).
+This adapter handles the specific Excel format used by CEI (College of Eastern Idaho).
 It contains all CEI-specific parsing logic, column mappings, and data transformations.
 
 This keeps CEI-specific logic separate from the generic import system.
@@ -374,8 +374,8 @@ class CEIExcelAdapter(FileBaseAdapter):
     """
 
     SUPPORTED_EXTENSIONS = [".xlsx", ".xls"]
-    MAX_FILE_SIZE_MB = 10
-    MAX_RECORDS_TO_PROCESS = 5000
+    MAX_FILE_SIZE_MB = 500
+    MAX_RECORDS_TO_PROCESS = 500000
 
     def __init__(self):
         """Initialize CEI Excel adapter with format specifications."""
@@ -573,8 +573,8 @@ class CEIExcelAdapter(FileBaseAdapter):
             "version": "1.2.0",
             "created_by": "System Developer",
             "last_updated": "2024-09-25",
-            "file_size_limit": "10MB",
-            "max_records": 5000,
+            "file_size_limit": "500MB",
+            "max_records": 500000,
             "format_variants": [
                 "Original: course, Faculty Name, effterm_c, students",
                 "Test: course, email, Term, students",

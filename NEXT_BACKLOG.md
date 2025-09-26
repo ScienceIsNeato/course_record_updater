@@ -9,7 +9,7 @@
 - [ ] **Data Sanitization Script**: Create `scripts/sanitize_test_data.py` to safely anonymize real institutional data while preserving format/structure
 - [ ] **Default Adapter Implementation**: Create baseline `default_adapter` with two standard views (Academic Summary, Administrative) based on market research
 - [ ] **ExportService with Adapter Pattern**: Implement pluggable export system supporting institution-specific formatting
-- [ ] **Roundtrip Validation Framework**: Implement `scripts/round_trip_validate.py` for automated import→export→diff testing across all adapters
+- [ ] **Roundtrip Validation Framework**: Implement automated import→export→diff testing across all adapters (integrate into smoke test suite)
 - [ ] **Institution-Specific Adapter Validation**: Validate bidirectional flow for custom adapters (starting with existing import adapters)
 - [ ] **API Integration**: Add export endpoints supporting adapter selection and view options
 - [ ] **CI Quality Gate**: Integrate roundtrip validation into CI pipeline for all adapters
