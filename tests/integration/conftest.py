@@ -8,6 +8,20 @@ including database setup and institution creation.
 import pytest
 
 
+@pytest.fixture
+def client():
+    """Create a Flask test client for integration tests."""
+    import app
+
+    # Configure the app for testing
+    app.app.config["TESTING"] = True
+    app.app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for testing
+
+    with app.app.test_client() as client:
+        with app.app.app_context():
+            yield client
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_integration_test_data():
     """

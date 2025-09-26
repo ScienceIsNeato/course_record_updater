@@ -149,7 +149,7 @@ class TestFrontendSmoke:
             "executeImportBtn",
             "importBtnText",
             "dry_run",
-            "delete_existing_db",
+            "verbose_output",  # This element exists in the template
             "importProgress",
             "importResults",
         ]

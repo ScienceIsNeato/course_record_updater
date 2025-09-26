@@ -225,10 +225,16 @@ class TestAPIEndpointSecuritySmoke:
         """Smoke test: Protected endpoints should require authentication"""
         app = Flask(__name__)
 
-        # Add a login route to prevent routing errors
-        @app.route("/login")
-        def login():
+        # Add the API blueprint and login route to prevent routing errors
+        from flask import Blueprint
+
+        api = Blueprint("api", __name__, url_prefix="/api")
+
+        @api.route("/auth/login", methods=["POST"])
+        def login_api():
             return "login page"
+
+        app.register_blueprint(api)
 
         with app.test_request_context():
             from auth_service import login_required, permission_required
