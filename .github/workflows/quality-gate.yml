@@ -155,6 +155,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+      continue-on-error: true  # Don't fail CI if Codecov upload fails
 
   smoke-tests:
     runs-on: ubuntu-latest
