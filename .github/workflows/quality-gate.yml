@@ -194,16 +194,16 @@ jobs:
     - name: Install and Start Firestore Emulator
       run: |
         echo "Setting up Firestore emulator..."
-        # Install Google Cloud SDK
-        curl https://sdk.cloud.google.com | bash
+        # Install Google Cloud SDK non-interactively
+        curl https://sdk.cloud.google.com | bash -s -- --quiet
         source $HOME/google-cloud-sdk/path.bash.inc
         
         # Verify Java is available
         java -version
         
         echo "Starting Firestore emulator..."
-        # Start emulator in background using gcloud
-        gcloud beta emulators firestore start --host-port localhost:8086 &
+        # Start emulator in background using gcloud (with quiet install if needed)
+        gcloud beta emulators firestore start --host-port localhost:8086 --quiet &
         EMULATOR_PID=$!
         
         echo "Waiting for Firestore emulator to start..."
@@ -270,16 +270,16 @@ jobs:
     - name: Install and Start Firestore Emulator
       run: |
         echo "Setting up Firestore emulator..."
-        # Install Google Cloud SDK
-        curl https://sdk.cloud.google.com | bash
+        # Install Google Cloud SDK non-interactively
+        curl https://sdk.cloud.google.com | bash -s -- --quiet
         source $HOME/google-cloud-sdk/path.bash.inc
         
         # Verify Java is available
         java -version
         
         echo "Starting Firestore emulator..."
-        # Start emulator in background using gcloud
-        gcloud beta emulators firestore start --host-port localhost:8086 &
+        # Start emulator in background using gcloud (with quiet install if needed)
+        gcloud beta emulators firestore start --host-port localhost:8086 --quiet &
         EMULATOR_PID=$!
         
         echo "Waiting for Firestore emulator to start..."
