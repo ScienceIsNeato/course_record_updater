@@ -273,7 +273,7 @@ def main():
         description="Scrape SonarCloud issues for actionable feedback"
     )
     parser.add_argument(
-        "--project-key", default="course-record-updater", help="SonarCloud project key"
+        "--project-key", default="scienceisneato_courserecordupdater", help="SonarCloud project key"
     )
     parser.add_argument(
         "--severity",

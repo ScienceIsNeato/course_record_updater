@@ -2357,7 +2357,7 @@ def login_api():
         500: Server error
     """
     try:
-        from login_service import LoginService
+        from login_service import LoginError, LoginService
         from password_service import AccountLockedError
 
         # Get request data
@@ -2392,13 +2392,13 @@ def login_api():
         logger.warning(
             f"Account locked during login attempt: {data.get('email', 'unknown')}"
         )
-        return handle_api_error(e, "User login", "Account is temporarily locked")
+        return jsonify({"success": False, "error": "Account is locked"}), 423
+    except LoginError as e:
+        logger.error(f"User login failed: {e}")
+        return jsonify({"success": False, "error": "Invalid email or password"}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
-        if "Invalid email or password" in str(e) or "Account" in str(e):
-            return handle_api_error(e, "User login", "Invalid email or password")
-        else:
-            return jsonify({"success": False, "error": "Login failed"}), 500
+        return handle_api_error(e, "User login", "An unexpected error occurred")
 
 
 @api.route("/auth/logout", methods=["POST"])

@@ -156,7 +156,7 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
-  # RUN_SONAR=true  # Disabled - will configure in separate branch
+  RUN_SONAR=false  # Disabled - requires SonarCloud project setup
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
   RUN_JS_LINT=true
@@ -769,7 +769,7 @@ if [[ "$RUN_SONAR" == "true" ]]; then
     else
       # Run SonarCloud quality gate check (get actionable issues)
       echo "🔧 Checking SonarCloud quality gate status..."
-      if python scripts/sonar_issues_scraper.py --project-key course-record-updater; then
+      if python scripts/sonar_issues_scraper.py --project-key scienceisneato_courserecordupdater; then
         echo "✅ SonarCloud Analysis: PASSED"
         add_success "SonarCloud Analysis" "All quality gate conditions met"
       else
@@ -1131,27 +1131,228 @@ fi
 # SMOKE TESTS EXECUTION - END-TO-END TESTING
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
-  echo "🔥 Smoke Tests Execution (tests/smoke/)"
+  echo "🔥 Smoke Tests Execution (End-to-End Validation)"
   
-  # Run smoke tests from the smoke folder
-  echo "  🔍 Running smoke test suite (end-to-end validation)..."
-  SMOKE_OUTPUT=$(python -m pytest tests/smoke/ -v 2>&1) || SMOKE_FAILED=true
+  # Colors for output
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  NC='\033[0m' # No Color
   
-  if [[ "$SMOKE_FAILED" == "true" ]]; then
-    echo "❌ Smoke Tests: FAILED"
-    echo ""
-    echo "📋 Smoke Test Output:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$SMOKE_OUTPUT" | sed 's/^/  /'
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+  # Test configuration
+  DEFAULT_PORT=${DEFAULT_PORT:-3001}
+  TEST_URL="http://localhost:$DEFAULT_PORT"
+  SERVER_PID=""
+  
+  # Function to check if Chrome/Chromium is available
+  check_chrome() {
+    # Check for Chrome in common locations (works with modern Selenium)
+    if command -v google-chrome >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chrome found in PATH${NC}"
+      return 0
+    elif command -v chromium-browser >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chromium found in PATH${NC}"
+      return 0
+    elif command -v chromium >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chromium found in PATH${NC}"
+      return 0
+    elif [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+      echo -e "${GREEN}✅ Chrome found in Applications (macOS)${NC}"
+      return 0
+    elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
+      echo -e "${GREEN}✅ Chromium found in Applications (macOS)${NC}"
+      return 0
+    elif [ -f "/usr/bin/google-chrome-stable" ]; then
+      echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+      return 0
+    elif [ -f "/usr/bin/google-chrome" ]; then
+      echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+      return 0
+    else
+      echo -e "${RED}❌ Chrome/Chromium not found. Please install Chrome or Chromium for frontend tests${NC}"
+      echo -e "${YELLOW}💡 On macOS: brew install --cask google-chrome${NC}"
+      echo -e "${YELLOW}💡 On Ubuntu/CI: sudo apt-get install google-chrome-stable${NC}"
+      return 1
+    fi
+  }
+  
+  # Function to start test server
+  start_test_server() {
+    echo -e "${BLUE}🚀 Starting test server on port $DEFAULT_PORT...${NC}"
     
-    # Extract summary stats for the failure record
-    FAILED_SMOKE_TESTS=$(echo "$SMOKE_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-    add_failure "Smoke Tests" "Smoke test failures: $FAILED_SMOKE_TESTS" "See detailed output above and run 'python -m pytest tests/smoke/ -v' for full details"
+    # Load environment variables
+    if [ -f ".envrc" ]; then
+      source .envrc
+    fi
+    
+    # Activate virtual environment if it exists
+    if [ -d "venv" ]; then
+      source venv/bin/activate
+    fi
+    
+    # Start server on test port in background
+    PORT=$DEFAULT_PORT python app.py > logs/test_server.log 2>&1 &
+    SERVER_PID=$!
+    
+    # Wait for server to start
+    echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
+    for i in {1..30}; do
+      if curl -s "$TEST_URL" > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Test server started successfully${NC}"
+        return 0
+      fi
+      sleep 1
+    done
+    
+    echo -e "${RED}❌ Test server failed to start${NC}"
+    kill $SERVER_PID 2>/dev/null || true
+    return 1
+  }
+  
+  # Function to stop test server
+  stop_test_server() {
+    if [ ! -z "$SERVER_PID" ]; then
+      echo -e "${BLUE}🛑 Stopping test server...${NC}"
+      kill $SERVER_PID 2>/dev/null || true
+      
+      # Wait for process to terminate
+      for i in {1..10}; do
+        if ! kill -0 $SERVER_PID 2>/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+      
+      # Force kill if still running
+      kill -9 $SERVER_PID 2>/dev/null || true
+      echo -e "${GREEN}✅ Test server stopped${NC}"
+    fi
+  }
+  
+  # Function to run smoke tests
+  run_smoke_tests() {
+    echo -e "${BLUE}🧪 Running smoke tests...${NC}"
+    
+    # Install test dependencies if needed
+    pip install -q pytest selenium requests 2>/dev/null || true
+    
+    # Test Selenium WebDriver setup
+    python -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+try:
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    driver = webdriver.Chrome(options=options)
+    print('✅ Selenium WebDriver setup verified')
+    driver.quit()
+except Exception as e:
+    print(f'❌ Selenium WebDriver setup failed: {e}')
+    exit(1)
+" || {
+      echo -e "${RED}❌ Selenium WebDriver setup failed${NC}"
+      return 1
+    }
+    
+    # Run the smoke tests
+    pytest tests/smoke/ -v --tb=short
+    TEST_EXIT_CODE=$?
+    
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+      echo -e "${GREEN}✅ All smoke tests passed!${NC}"
+    else
+      echo -e "${RED}❌ Some smoke tests failed${NC}"
+    fi
+    
+    return $TEST_EXIT_CODE
+  }
+  
+  # Main smoke test execution
+  echo "  🔍 Checking prerequisites..."
+  
+  # Create logs directory
+  mkdir -p logs
+  
+  # Check Chrome availability
+  if ! check_chrome; then
+    add_failure "Smoke Tests" "Chrome/Chromium not available" "Install Chrome or Chromium for frontend tests"
+    echo ""
+    return
+  fi
+  
+  # Start Firestore emulator if not running (port 8080 for integration tests)
+  if ! lsof -i :8080 > /dev/null 2>&1; then
+    echo -e "${BLUE}🚀 Starting Firestore emulator...${NC}"
+    
+    # Check if we're in CI (GitHub Actions)
+    if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
+      echo -e "${BLUE}🐳 CI environment detected - checking for Docker emulator...${NC}"
+      # In CI, the emulator should already be started by the workflow
+      # Wait a bit and check again
+      sleep 5
+      if ! lsof -i :8080 > /dev/null 2>&1; then
+        echo -e "${RED}❌ Firestore emulator not running in CI${NC}"
+        echo -e "${YELLOW}💡 The CI workflow should start the Firestore emulator before running this script${NC}"
+        add_failure "Smoke Tests" "Firestore emulator not available in CI" "Ensure CI workflow starts Firestore emulator"
+        echo ""
+        return
+      fi
+      echo -e "${GREEN}✅ Firestore emulator found in CI${NC}"
+    else
+      # Local environment - use firebase CLI
+      if command -v firebase >/dev/null 2>&1; then
+        firebase emulators:start --only firestore --host-port localhost:8080 > logs/test_firestore.log 2>&1 &
+        FIRESTORE_PID=$!
+        sleep 5
+        
+        if ! lsof -i :8080 > /dev/null 2>&1; then
+          echo -e "${RED}❌ Failed to start Firestore emulator${NC}"
+          add_failure "Smoke Tests" "Failed to start Firestore emulator" "Install Firebase CLI: npm install -g firebase-tools"
+          echo ""
+          return
+        fi
+        echo -e "${GREEN}✅ Firestore emulator started${NC}"
+      else
+        echo -e "${RED}❌ Firebase CLI not found. Please install: npm install -g firebase-tools${NC}"
+        add_failure "Smoke Tests" "Firebase CLI not available" "Install Firebase CLI: npm install -g firebase-tools"
+        echo ""
+        return
+      fi
+    fi
   else
-    echo "✅ Smoke Tests: PASSED"
+    echo -e "${GREEN}✅ Firestore emulator already running${NC}"
+  fi
+  
+  # Start test server
+  if ! start_test_server; then
+    add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $DEFAULT_PORT is available"
+    echo ""
+    return
+  fi
+  
+  # Run tests
+  run_smoke_tests
+  TEST_RESULT=$?
+  
+  # Stop test server
+  stop_test_server
+  
+  # Report results
+  if [ $TEST_RESULT -eq 0 ]; then
+    echo -e "${GREEN}🎉 All smoke tests completed successfully!${NC}"
+    echo -e "${GREEN}📊 The application UI is working correctly${NC}"
     add_success "Smoke Tests" "All smoke tests passed successfully"
+  else
+    echo -e "${RED}💥 Smoke tests failed!${NC}"
+    echo -e "${RED}🔍 Check test output above for details${NC}"
+    echo -e "${YELLOW}💡 Common issues:${NC}"
+    echo -e "${YELLOW}   - JavaScript errors in browser console${NC}"
+    echo -e "${YELLOW}   - Missing HTML elements${NC}"
+    echo -e "${YELLOW}   - API endpoints not responding${NC}"
+    echo -e "${YELLOW}   - Static assets not loading${NC}"
+    add_failure "Smoke Tests" "Smoke test failures detected" "See detailed output above and run 'pytest tests/smoke/ -v' for full details"
   fi
   echo ""
 fi

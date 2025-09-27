@@ -223,9 +223,9 @@ jobs:
           echo "Waiting for emulator... (${i}/30)"
           sleep 2
         done
-    - name: Run Smoke Tests (using unified script)
+    - name: Run Smoke Tests (using ship_it.py)
       run: |
-        # Set CI environment variables for the script
+        # Set CI environment variables
         export FIRESTORE_EMULATOR_HOST=localhost:8086
         export FIRESTORE_CLIENT_TIMEOUT=30
         export SELENIUM_IMPLICIT_WAIT=3
@@ -233,8 +233,8 @@ jobs:
         export PYTHONPATH=.
         export DEFAULT_PORT=3001
         
-        # Run the same script used locally
-        ./run_smoke_tests.sh
+        # Run smoke tests using ship_it.py
+        python scripts/ship_it.py --checks smoke
       env:
         CI: true
         GITHUB_ACTIONS: true

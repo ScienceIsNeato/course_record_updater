@@ -29,6 +29,34 @@ class TestImportService:
         self.institution_id = "test-institution-id"
         self.service = ImportService(self.institution_id)
 
+    def test_process_course_import_conflict_detection(self):
+        """Test that process_course_import detects conflicts correctly."""
+        # Test data with conflicts
+        course_data = {
+            "course_number": "CS-101",
+            "title": "Introduction to Computer Science",
+            "credits": 3,
+        }
+
+        # Mock existing course with different data
+        existing_course = {
+            "course_number": "CS-101",
+            "title": "Computer Science 101",  # Different title
+            "credits": 4,  # Different credits
+        }
+
+        with patch("import_service.get_course_by_number") as mock_get_course:
+            mock_get_course.return_value = existing_course
+
+            # Test conflict detection
+            result, conflicts = self.service.process_course_import(
+                course_data, ConflictStrategy.USE_MINE, dry_run=False
+            )
+
+            # Should detect conflict and skip
+            assert result is True  # Skipped due to conflict
+            assert len(conflicts) > 0  # Should have conflicts detected
+
     @patch("import_service.get_adapter_registry")
     def test_import_excel_file_adapter_not_found(self, mock_get_registry):
         """Test import_excel_file with adapter not found."""

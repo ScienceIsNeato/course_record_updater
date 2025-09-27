@@ -335,12 +335,36 @@ class ImportService:
             existing_course = get_course_by_number(course_number)
 
             if existing_course:
+                # Detect conflicts by comparing fields
+                detected_conflicts = []
+                for field, new_value in course_data.items():
+                    if field == "course_number":
+                        continue  # Skip course_number as it's the key
+                    existing_value = existing_course.get(field)
+                    if existing_value != new_value:
+                        conflict = ConflictRecord(
+                            entity_type="course",
+                            entity_id=existing_course.get("id", course_number),
+                            field_name=field,
+                            existing_value=existing_value,
+                            import_value=new_value,
+                            resolution=strategy.value,
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                        detected_conflicts.append(conflict)
+                        conflicts.append(conflict)
+
+                if detected_conflicts:
+                    self.stats["conflicts_detected"] += len(detected_conflicts)
+
                 # Handle conflict based on strategy
                 if strategy == ConflictStrategy.USE_MINE:
                     self.stats["records_skipped"] += 1
                     self._log(f"Skipping existing course: {course_number}")
                     return True, conflicts
                 elif strategy == ConflictStrategy.USE_THEIRS:
+                    if detected_conflicts:
+                        self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
                         # Update existing course
                         # Note: This would need proper update logic

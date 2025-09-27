@@ -86,12 +86,11 @@ class QualityGateExecutor:
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
-            ("sonar", "🔍 SonarCloud Quality Analysis"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
-            ("integration-tests", "🔗 Integration Tests (component interactions)"),
-            ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
+            ("integration", "🔗 Integration Tests (component interactions)"),
+            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
@@ -120,7 +119,7 @@ class QualityGateExecutor:
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("integration-tests", "🔗 Integration Tests (component interactions)"),
+            ("integration", "🔗 Integration Tests (component interactions)"),
         ]
         
         # Smoke test validation (requires running server + browser)
@@ -129,25 +128,32 @@ class QualityGateExecutor:
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("smoke-tests", "🔥 Smoke Tests (end-to-end validation)"),
+            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
         ]
         
         # Full validation (everything)
         self.full_checks = (
             self.commit_checks +
-            [check for check in self.pr_checks if check not in self.commit_checks] +
-            [("integration-tests", "🔗 Integration Tests (component interactions)")] +
-            [("smoke-tests", "🔥 Smoke Tests (end-to-end validation)")]
+            [check for check in self.pr_checks if check not in self.commit_checks]
         )
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
         """Run a single quality check and return the result."""
         start_time = time.time()
 
+        # Map shorthand flags to maintAInability-gate.sh flags
+        flag_mapping = {
+            "integration": "integration-tests",
+            "smoke": "smoke-tests",
+        }
+        
+        # Use mapped flag if available, otherwise use original flag
+        actual_flag = flag_mapping.get(check_flag, check_flag)
+
         try:
             # Run the individual check
             result = subprocess.run(
-                [self.script_path, f"--{check_flag}"],
+                [self.script_path, f"--{actual_flag}"],
                 capture_output=True,
                 text=True,
                 timeout=300,  # 5 minute timeout per check
@@ -730,7 +736,7 @@ Validation Types:
   commit - Fast checks for development cycle (excludes security & sonar, ~30s savings)
   PR     - Full validation for pull requests (all checks including security & sonar)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, types, imports, duplication, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -747,7 +753,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, smoke-tests, frontend-check",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, integration, smoke, frontend-check",
     )
 
     args = parser.parse_args()

@@ -139,10 +139,10 @@ class TestAdapterWorkflows:
 
     def test_institution_admin_adapter_access(self):
         """Test that institution admin can only access their institution's adapters."""
-        # Use the CEI institution ID that the adapter expects
+        # Use the actual CEI institution ID
         user = {
             "role": "institution_admin",
-            "institution_id": "cei_institution_id",  # This is what the CEI adapter expects
+            "institution_id": self.institution_id,  # Use the actual CEI institution ID
         }
 
         # Should have access to CEI adapter
@@ -300,12 +300,12 @@ class TestAdapterWorkflows:
         site_admin_adapters = self.registry.get_adapters_for_user(
             "site_admin", self.institution_id
         )
-        # Use the CEI institution ID that the adapter expects
+        # Use the actual CEI institution ID
         institution_admin_adapters = self.registry.get_adapters_for_user(
-            "institution_admin", "cei_institution_id"
+            "institution_admin", self.institution_id
         )
         instructor_adapters = self.registry.get_adapters_for_user(
-            "instructor", "cei_institution_id"
+            "instructor", self.institution_id
         )
 
         # Site admin should see all adapters

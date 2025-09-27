@@ -115,7 +115,9 @@ class DashboardService:
                 self._with_institution(programs_with_counts, inst_id, inst_name)
             )
             # Enrich courses with CLO data before adding to all_courses
-            courses_with_clo = self._enrich_courses_with_clo_data(courses)
+            courses_with_clo = self._enrich_courses_with_clo_data(
+                courses, load_clos=False
+            )
             all_courses.extend(
                 self._with_institution(courses_with_clo, inst_id, inst_name)
             )
@@ -167,7 +169,7 @@ class DashboardService:
         programs = get_programs_by_institution(institution_id) or []
         courses = get_all_courses(institution_id) or []
         # Enrich courses with CLO data
-        courses = self._enrich_courses_with_clo_data(courses)
+        courses = self._enrich_courses_with_clo_data(courses, load_clos=False)
         users = get_all_users(institution_id) or []
         instructors = get_all_instructors(institution_id) or []
         sections = get_all_sections(institution_id) or []
@@ -283,7 +285,7 @@ class DashboardService:
         courses = list(courses_dict.values())  # Convert back to list
 
         # Enrich all courses with CLO data
-        courses = self._enrich_courses_with_clo_data(courses)
+        courses = self._enrich_courses_with_clo_data(courses, load_clos=False)
 
         # Update courses_by_program with enriched data
         courses_by_program = defaultdict(list)
@@ -921,13 +923,14 @@ class DashboardService:
         return programs_with_counts
 
     def _enrich_courses_with_clo_data(
-        self, courses: List[Dict[str, Any]]
+        self, courses: List[Dict[str, Any]], load_clos: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Enrich courses with CLO (Course Learning Outcomes) data.
 
         Args:
             courses: List of course dictionaries
+            load_clos: Whether to actually load CLO data (for performance optimization)
 
         Returns:
             List of courses with clo_count added
@@ -938,7 +941,7 @@ class DashboardService:
             course_copy = course.copy()
             course_id = course.get("course_id", course.get("id"))
 
-            if course_id:
+            if course_id and load_clos:
                 try:
                     # Get CLOs for this course
                     clos = get_course_outcomes(course_id)
@@ -951,6 +954,7 @@ class DashboardService:
                     course_copy["clo_count"] = 0
                     course_copy["clos"] = []
             else:
+                # For performance optimization, skip CLO loading
                 course_copy["clo_count"] = 0
                 course_copy["clos"] = []
 
