@@ -2894,6 +2894,10 @@ def excel_import_api():
                         "records_created": result.records_created,
                         "records_updated": result.records_updated,
                         "records_skipped": result.records_skipped,
+                        "conflicts_detected": result.conflicts_detected,
+                        "execution_time": result.execution_time,
+                        "errors": result.errors,
+                        "warnings": result.warnings,
                         "dry_run": dry_run,
                     }
                 ),
