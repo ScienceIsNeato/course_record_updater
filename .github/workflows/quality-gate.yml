@@ -194,15 +194,16 @@ jobs:
     - name: Install and Start Firestore Emulator
       run: |
         echo "Setting up Firestore emulator..."
-        # Install Firebase CLI which includes Firestore emulator
-        sudo npm install -g firebase-tools
+        # Install Google Cloud SDK
+        curl https://sdk.cloud.google.com | bash
+        source $HOME/google-cloud-sdk/path.bash.inc
         
         # Verify Java is available
         java -version
         
         echo "Starting Firestore emulator..."
-        # Start emulator in background using Firebase CLI
-        firebase emulators:start --only firestore --project=test-project &
+        # Start emulator in background using gcloud
+        gcloud beta emulators firestore start --host-port localhost:8086 &
         EMULATOR_PID=$!
         
         echo "Waiting for Firestore emulator to start..."
@@ -235,6 +236,82 @@ jobs:
         
         # Run smoke tests using ship_it.py
         python scripts/ship_it.py --checks smoke
+      env:
+        CI: true
+        GITHUB_ACTIONS: true
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Set up Java 11 (required for Firestore emulator)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Install and Start Firestore Emulator
+      run: |
+        echo "Setting up Firestore emulator..."
+        # Install Google Cloud SDK
+        curl https://sdk.cloud.google.com | bash
+        source $HOME/google-cloud-sdk/path.bash.inc
+        
+        # Verify Java is available
+        java -version
+        
+        echo "Starting Firestore emulator..."
+        # Start emulator in background using gcloud
+        gcloud beta emulators firestore start --host-port localhost:8086 &
+        EMULATOR_PID=$!
+        
+        echo "Waiting for Firestore emulator to start..."
+        # Wait for emulator to be ready
+        for i in {1..30}; do
+          if curl -f http://localhost:8086 2>/dev/null; then
+            echo "✅ Firestore emulator is ready after ${i} attempts"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ ERROR: Firestore emulator failed to start after 30 attempts"
+            echo "Emulator process status:"
+            ps aux | grep firestore || echo "No firestore process found"
+            echo "Network status:"
+            netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
+            exit 1
+          fi
+          echo "Waiting for emulator... (${i}/30)"
+          sleep 2
+        done
+    - name: Run Integration Tests (using ship_it.py)
+      run: |
+        # Set CI environment variables
+        export FIRESTORE_EMULATOR_HOST=localhost:8086
+        export FIRESTORE_CLIENT_TIMEOUT=30
+        export SELENIUM_IMPLICIT_WAIT=3
+        export SELENIUM_PAGE_LOAD_TIMEOUT=8
+        export PYTHONPATH=.
+        export DEFAULT_PORT=3001
+        
+        # Run integration tests using ship_it.py
+        python scripts/ship_it.py --checks integration
       env:
         CI: true
         GITHUB_ACTIONS: true
