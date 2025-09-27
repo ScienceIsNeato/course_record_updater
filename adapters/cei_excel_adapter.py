@@ -224,28 +224,34 @@ def _extract_section_data(
     institution_id: str,
 ) -> Optional[Dict[str, Any]]:
     """Extract section information from row and related data."""
-    if (
-        not course_data
-        or not term_data
-        or "students" not in row
-        or pd.isna(row["students"])
-    ):
+    if not course_data or not term_data:
         return None
 
-    try:
-        student_count = int(row["students"])
-        return {
-            "course_number": course_data["course_number"],
-            "term_name": term_data["name"],
-            "section_number": "001",  # CEI doesn't provide section numbers
-            "instructor_email": user_data.get("email") if user_data else None,
-            "student_count": student_count,
-            "institution_id": institution_id,
-            "status": "active",
-        }
-    except (ValueError, TypeError):
-        # Invalid student count, skip section
+    # Check for either "Enrolled Students" (original format) or "students" (test format)
+    student_count = None
+    if "Enrolled Students" in row and not pd.isna(row["Enrolled Students"]):
+        try:
+            student_count = int(row["Enrolled Students"])
+        except (ValueError, TypeError):
+            pass
+    elif "students" in row and not pd.isna(row["students"]):
+        try:
+            student_count = int(row["students"])
+        except (ValueError, TypeError):
+            pass
+
+    if student_count is None:
         return None
+
+    return {
+        "course_number": course_data["course_number"],
+        "term_name": term_data["name"],
+        "section_number": "001",  # CEI doesn't provide section numbers
+        "instructor_email": user_data.get("email") if user_data else None,
+        "student_count": student_count,
+        "institution_id": institution_id,
+        "status": "active",
+    }
 
 
 def parse_cei_excel_row(
@@ -385,16 +391,22 @@ class CEIExcelAdapter(FileBaseAdapter):
         self.adapter_id = "cei_excel_format_v1"
         self.institution_id = "cei_institution_id"
 
-        # Required columns for original format
-        self.original_format_columns = [
-            "course",
-            "Faculty Name",
-            "effterm_c",
+        # Required columns for original format (flexible student column)
+        self.original_format_required = ["course", "Faculty Name", "effterm_c"]
+        self.original_format_student_columns = [
+            "Enrolled Students",
             "students",
-        ]
+        ]  # Either works
 
         # Required columns for test format
         self.test_format_columns = ["course", "email", "Term", "students"]
+
+        # Required columns for hybrid format (real CEI data with both email and Term)
+        self.hybrid_format_required = ["course", "email", "Term"]
+        self.hybrid_format_student_columns = [
+            "Enrolled Students",
+            "students",
+        ]  # Either works
 
         # Optional columns that may be present
         self.optional_columns = ["Course Title", "Department", "Credits"]
@@ -440,23 +452,58 @@ class CEIExcelAdapter(FileBaseAdapter):
                 return False, "Excel file is empty"
 
             # Check for either format structure
-            has_original_format = all(
-                col in df.columns for col in self.original_format_columns
+            has_original_required = all(
+                col in df.columns for col in self.original_format_required
             )
+            has_original_student_col = any(
+                col in df.columns for col in self.original_format_student_columns
+            )
+            has_original_format = has_original_required and has_original_student_col
+
             has_test_format = all(col in df.columns for col in self.test_format_columns)
 
-            if not (has_original_format or has_test_format):
-                missing_original = [
-                    col for col in self.original_format_columns if col not in df.columns
+            # Check for hybrid format (real CEI data with email and Term)
+            has_hybrid_required = all(
+                col in df.columns for col in self.hybrid_format_required
+            )
+            has_hybrid_student_col = any(
+                col in df.columns for col in self.hybrid_format_student_columns
+            )
+            has_hybrid_format = has_hybrid_required and has_hybrid_student_col
+
+            if not (has_original_format or has_test_format or has_hybrid_format):
+                missing_original_required = [
+                    col
+                    for col in self.original_format_required
+                    if col not in df.columns
                 ]
+                missing_original_student = (
+                    "students column" if not has_original_student_col else None
+                )
                 missing_test = [
                     col for col in self.test_format_columns if col not in df.columns
                 ]
 
+                missing_hybrid_required = [
+                    col for col in self.hybrid_format_required if col not in df.columns
+                ]
+                missing_hybrid_student = (
+                    "students column" if not has_hybrid_student_col else None
+                )
+
+                missing_original = missing_original_required + (
+                    [missing_original_student] if missing_original_student else []
+                )
+
+                missing_hybrid = missing_hybrid_required + (
+                    [missing_hybrid_student] if missing_hybrid_student else []
+                )
+
                 return False, (
                     f"File doesn't match CEI format. "
                     f"Missing for original format: {missing_original}. "
-                    f"Missing for test format: {missing_test}."
+                    f"Missing for test format: {missing_test}. "
+                    f"Missing for hybrid format: {missing_hybrid}."
                 )
 
             # Validate data patterns in key columns
@@ -489,25 +536,36 @@ class CEIExcelAdapter(FileBaseAdapter):
                         "No valid term codes found (expected format: FA2024, SP2025)"
                     )
 
-            # Check student count column
-            if "students" in df.columns:
-                sample_students = df["students"].dropna().head(3)
+            # Check student count column (either "Enrolled Students" or "students")
+            student_col = None
+            if "Enrolled Students" in df.columns:
+                student_col = "Enrolled Students"
+            elif "students" in df.columns:
+                student_col = "students"
+
+            if student_col:
+                sample_students = df[student_col].dropna().head(3)
                 try:
                     numeric_counts = [int(x) for x in sample_students if pd.notna(x)]
                     if not numeric_counts and len(sample_students) > 0:
                         validation_errors.append(
-                            "Student count column contains no valid numbers"
+                            f"Student count column ({student_col}) contains no valid numbers"
                         )
                 except (ValueError, TypeError):
                     validation_errors.append(
-                        "Student count column contains invalid data"
+                        f"Student count column ({student_col}) contains invalid data"
                     )
 
             if validation_errors:
                 return False, f"Data validation failed: {'; '.join(validation_errors)}"
 
             # Determine format and provide success message
-            format_type = "original" if has_original_format else "test"
+            if has_original_format:
+                format_type = "original"
+            elif has_test_format:
+                format_type = "test"
+            else:
+                format_type = "hybrid"
             record_count = len(df)
 
             return True, (
@@ -550,7 +608,10 @@ class CEIExcelAdapter(FileBaseAdapter):
                 detected_types.append("terms")
 
             # Check for section data (student counts indicate sections)
-            if "students" in df.columns and not df["students"].isna().all():
+            if (
+                "Enrolled Students" in df.columns
+                and not df["Enrolled Students"].isna().all()
+            ) or ("students" in df.columns and not df["students"].isna().all()):
                 detected_types.append("sections")
 
             return detected_types
@@ -566,7 +627,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         return {
             "id": "cei_excel_format_v1",
             "name": "CEI Excel Format v1.2",
-            "description": "Imports course, faculty, and section data from CEI's Excel exports. Supports both original format (Faculty Name, effterm_c) and test format (email, Term).",
+            "description": "Imports course, faculty, and section data from CEI's Excel exports. Supports original format (Faculty Name, effterm_c), test format (email, Term, students), and hybrid format (email, Term, Enrolled Students).",
             "supported_formats": [".xlsx", ".xls"],
             "institution_id": "QvRvpozEQeTolU0fAmaR",
             "data_types": ["courses", "faculty", "terms", "sections"],
@@ -578,6 +639,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             "format_variants": [
                 "Original: course, Faculty Name, effterm_c, students",
                 "Test: course, email, Term, students",
+                "Hybrid: course, email, Term, Enrolled Students",
             ],
         }
 
