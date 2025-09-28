@@ -83,6 +83,51 @@ class ImportResult:
     dry_run: bool
 
 
+def _convert_datetime_fields(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert string datetime fields to datetime objects for SQLite compatibility.
+
+    Args:
+        data: Dictionary that may contain datetime fields as strings
+
+    Returns:
+        Dictionary with datetime strings converted to datetime objects
+    """
+    datetime_fields = [
+        "created_at",
+        "updated_at",
+        "invited_at",
+        "expires_at",
+        "accepted_at",
+    ]
+    converted_data = data.copy()
+
+    for field in datetime_fields:
+        if field in converted_data and isinstance(converted_data[field], str):
+            try:
+                # Parse ISO format datetime strings to datetime objects
+                # Handle both with and without microseconds
+                datetime_str = converted_data[field]
+                if "." in datetime_str and datetime_str.endswith("Z"):
+                    # Handle format like "2025-09-28T17:41:27.935901Z"
+                    datetime_str = datetime_str[:-1] + "+00:00"
+                elif not datetime_str.endswith("+00:00") and not datetime_str.endswith(
+                    "Z"
+                ):
+                    # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
+                    if "." in datetime_str:
+                        datetime_str = datetime_str + "+00:00"
+                    else:
+                        datetime_str = datetime_str + ".000000+00:00"
+
+                converted_data[field] = datetime.fromisoformat(datetime_str)
+            except (ValueError, TypeError):
+                # If parsing fails, leave as is (might be None or already datetime)
+                pass
+
+    return converted_data
+
+
 class ImportService:
     """Service for handling data imports with conflict resolution using the adapter registry system"""
 
@@ -366,6 +411,8 @@ class ImportService:
                         self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
                         # Update existing course with import data
+                        # Convert datetime fields for SQLite compatibility
+                        converted_course_data = _convert_datetime_fields(course_data)
                         # TODO: Implement proper update_course function
                         # For now, log that update would happen
                         self.stats["records_updated"] += 1
@@ -453,12 +500,13 @@ class ImportService:
                     if detected_conflicts:
                         self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
-                        # Update existing user
+                        # Update existing user - convert datetime fields for SQLite compatibility
+                        converted_user_data = _convert_datetime_fields(user_data)
                         update_user(
                             existing_user.get(
                                 "user_id", existing_user.get("id", email)
                             ),
-                            user_data,
+                            converted_user_data,
                         )
                         self.stats["records_updated"] += 1
                         self._log(f"Updated user: {email}")

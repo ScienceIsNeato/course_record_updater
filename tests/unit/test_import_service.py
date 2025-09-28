@@ -17,8 +17,66 @@ from import_service import (
     ImportMode,
     ImportResult,
     ImportService,
+    _convert_datetime_fields,
     create_import_report,
 )
+
+
+class TestDatetimeConversion:
+    """Test datetime field conversion helper function."""
+
+    def test_convert_datetime_fields_with_string_timestamps(self):
+        """Test conversion of string timestamps to datetime objects."""
+        data = {
+            "name": "Test User",
+            "created_at": "2025-09-28T17:41:27.935901",
+            "updated_at": "2025-09-28T22:41:27.938209",
+            "other_field": "not a datetime",
+        }
+
+        result = _convert_datetime_fields(data)
+
+        assert isinstance(result["created_at"], datetime)
+        assert isinstance(result["updated_at"], datetime)
+        assert result["name"] == "Test User"
+        assert result["other_field"] == "not a datetime"
+
+    def test_convert_datetime_fields_with_existing_datetime_objects(self):
+        """Test that existing datetime objects are left unchanged."""
+        now = datetime.now(timezone.utc)
+        data = {
+            "created_at": now,
+            "updated_at": "2025-09-28T17:41:27.935901",
+        }
+
+        result = _convert_datetime_fields(data)
+
+        assert result["created_at"] is now  # Same object
+        assert isinstance(result["updated_at"], datetime)
+
+    def test_convert_datetime_fields_with_invalid_strings(self):
+        """Test that invalid datetime strings are left unchanged."""
+        data = {
+            "created_at": "not a valid datetime",
+            "updated_at": "2025-09-28T17:41:27.935901",
+        }
+
+        result = _convert_datetime_fields(data)
+
+        assert result["created_at"] == "not a valid datetime"  # Unchanged
+        assert isinstance(result["updated_at"], datetime)
+
+    def test_convert_datetime_fields_with_none_values(self):
+        """Test that None values are left unchanged."""
+        data = {
+            "created_at": None,
+            "updated_at": "2025-09-28T17:41:27.935901",
+        }
+
+        result = _convert_datetime_fields(data)
+
+        assert result["created_at"] is None
+        assert isinstance(result["updated_at"], datetime)
 
 
 class TestImportService:
