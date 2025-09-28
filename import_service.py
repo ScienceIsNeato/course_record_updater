@@ -517,12 +517,17 @@ class ImportService:
         """Process course offering import (placeholder implementation)"""
         try:
             # Simplified offering processing
+            # TODO: Implement proper offering creation using offering_data and strategy
             if not dry_run:
                 # This would need proper offering creation logic
                 self.stats["records_created"] += 1
-                self._log("Created offering")
+                self._log(
+                    f"Created offering for {offering_data.get('course_id', 'unknown course')}"
+                )
             else:
-                self._log("DRY RUN: Would create offering")
+                self._log(
+                    f"DRY RUN: Would create offering for {offering_data.get('course_id', 'unknown course')}"
+                )
 
         except Exception as e:
             self.stats["errors"].append(f"Error processing offering: {str(e)}")
@@ -536,12 +541,17 @@ class ImportService:
         """Process course section import (placeholder implementation)"""
         try:
             # Simplified section processing
+            # TODO: Implement proper section creation using section_data and strategy
             if not dry_run:
                 # This would need proper section creation logic
                 self.stats["records_created"] += 1
-                self._log("Created section")
+                self._log(
+                    f"Created section {section_data.get('section_number', 'unknown')} for {section_data.get('course_id', 'unknown course')}"
+                )
             else:
-                self._log("DRY RUN: Would create section")
+                self._log(
+                    f"DRY RUN: Would create section {section_data.get('section_number', 'unknown')} for {section_data.get('course_id', 'unknown course')}"
+                )
 
         except Exception as e:
             self.stats["errors"].append(f"Error processing section: {str(e)}")

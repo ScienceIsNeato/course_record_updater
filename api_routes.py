@@ -2743,7 +2743,7 @@ def excel_import_api():
     """
     try:
         # Debug: Log request information
-        logger.info(f"Excel import request received")
+        logger.info("Excel import request received")
         logger.info(f"Request files: {list(request.files.keys())}")
         logger.info(f"Request form: {dict(request.form)}")
 
@@ -2779,9 +2779,8 @@ def excel_import_api():
         conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
         dry_run = request.form.get("dry_run", "false").lower() == "true"
         verbose_output = request.form.get("verbose_output", "false").lower() == "true"
-        delete_existing_db = (
-            request.form.get("delete_existing_db", "false").lower() == "true"
-        )
+        # Note: delete_existing_db parameter available but not currently used
+        # delete_existing_db = request.form.get("delete_existing_db", "false").lower() == "true"
         import_data_type = request.form.get("import_data_type", "courses")
 
         # Get current user and check permissions
