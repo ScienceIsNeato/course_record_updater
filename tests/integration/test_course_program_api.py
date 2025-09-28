@@ -116,7 +116,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
         assert "course1 removed from program Computer Science" in data["message"]
-        mock_remove.assert_called_once_with("course1", "cs-program", "default-program")
+        mock_remove.assert_called_once_with("course1", "cs-program")
 
     @patch("api_routes.get_program_by_id")
     @patch("api_routes.bulk_add_courses_to_program")

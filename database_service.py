@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Initialize database service singleton
 _db_service = get_database_service()
 
-# Backwards compatibility alias (previously Firestore client instance)
+# Database service alias for backwards compatibility
 db = _db_service
 
 

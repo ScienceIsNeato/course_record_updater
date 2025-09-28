@@ -52,7 +52,7 @@ ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
 EXCEL_EXTENSION = ".xlsx"
 
 # Database error messages
-DB_FIRESTORE_NOT_AVAILABLE = "[DB Service] Database client not available."
+DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
 
 # Default values
 DEFAULT_BASE_URL = "http://localhost:5000"

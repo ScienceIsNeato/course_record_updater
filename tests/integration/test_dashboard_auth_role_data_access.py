@@ -49,7 +49,7 @@ class TestDashboardAuthRoleDataAccess:
             (
                 inst
                 for inst in institutions
-                if "California Engineering" in inst.get("name", "")
+                if "California Engineering Institute" in inst.get("name", "")
             ),
             None,
         )

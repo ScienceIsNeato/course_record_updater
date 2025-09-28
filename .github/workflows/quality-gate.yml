@@ -167,11 +167,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-    - name: Set up Java 11 (required for Firestore emulator)
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '11'
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -191,50 +186,28 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Install and Start Firestore Emulator
+    - name: Setup SQLite Database
       run: |
-        echo "Setting up Firestore emulator..."
-        # Install Google Cloud SDK non-interactively
-        curl https://sdk.cloud.google.com | bash -s -- --quiet
-        source $HOME/google-cloud-sdk/path.bash.inc
+        echo "Setting up SQLite database for testing..."
+        # Create database directory if it doesn't exist
+        mkdir -p $(dirname course_records.db)
         
-        # Verify Java is available
-        java -version
+        # Set database environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
         
-        echo "Starting Firestore emulator..."
-        # Start emulator in background using gcloud (with quiet install if needed)
-        gcloud beta emulators firestore start --host-port localhost:8086 --quiet &
-        EMULATOR_PID=$!
-        
-        echo "Waiting for Firestore emulator to start..."
-        # Wait for emulator to be ready
-        for i in {1..30}; do
-          if curl -f http://localhost:8086 2>/dev/null; then
-            echo "✅ Firestore emulator is ready after ${i} attempts"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "❌ ERROR: Firestore emulator failed to start after 30 attempts"
-            echo "Emulator process status:"
-            ps aux | grep firestore || echo "No firestore process found"
-            echo "Network status:"
-            netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
-            exit 1
-          fi
-          echo "Waiting for emulator... (${i}/30)"
-          sleep 2
-        done
+        echo "✅ SQLite database ready for testing"
     - name: Run Smoke Tests (using ship_it.py)
       run: |
-        # Set CI environment variables
-        export FIRESTORE_EMULATOR_HOST=localhost:8086
-        export FIRESTORE_CLIENT_TIMEOUT=30
+        # Set CI environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
         export DEFAULT_PORT=3001
         
-        # Run smoke tests using ship_it.py
+        # Run smoke tests using ship_it.py with SQLite backend
         python scripts/ship_it.py --checks smoke
       env:
         CI: true
@@ -250,11 +223,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-    - name: Set up Java 11 (required for Firestore emulator)
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '11'
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -267,50 +235,28 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Install and Start Firestore Emulator
+    - name: Setup SQLite Database
       run: |
-        echo "Setting up Firestore emulator..."
-        # Install Google Cloud SDK non-interactively
-        curl https://sdk.cloud.google.com | bash -s -- --quiet
-        source $HOME/google-cloud-sdk/path.bash.inc
+        echo "Setting up SQLite database for testing..."
+        # Create database directory if it doesn't exist
+        mkdir -p $(dirname course_records.db)
         
-        # Verify Java is available
-        java -version
+        # Set database environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
         
-        echo "Starting Firestore emulator..."
-        # Start emulator in background using gcloud (with quiet install if needed)
-        gcloud beta emulators firestore start --host-port localhost:8086 --quiet &
-        EMULATOR_PID=$!
-        
-        echo "Waiting for Firestore emulator to start..."
-        # Wait for emulator to be ready
-        for i in {1..30}; do
-          if curl -f http://localhost:8086 2>/dev/null; then
-            echo "✅ Firestore emulator is ready after ${i} attempts"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "❌ ERROR: Firestore emulator failed to start after 30 attempts"
-            echo "Emulator process status:"
-            ps aux | grep firestore || echo "No firestore process found"
-            echo "Network status:"
-            netstat -tlnp | grep 8086 || echo "Port 8086 not listening"
-            exit 1
-          fi
-          echo "Waiting for emulator... (${i}/30)"
-          sleep 2
-        done
+        echo "✅ SQLite database ready for testing"
     - name: Run Integration Tests (using ship_it.py)
       run: |
-        # Set CI environment variables
-        export FIRESTORE_EMULATOR_HOST=localhost:8086
-        export FIRESTORE_CLIENT_TIMEOUT=30
+        # Set CI environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
         export DEFAULT_PORT=3001
         
-        # Run integration tests using ship_it.py
+        # Run integration tests using ship_it.py with SQLite backend
         python scripts/ship_it.py --checks integration
       env:
         CI: true
