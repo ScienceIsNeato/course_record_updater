@@ -2960,7 +2960,9 @@ def get_available_adapters():
                     "id": adapter_info["id"],
                     "name": adapter_info["name"],
                     "description": adapter_info["description"],
-                    "institution_id": adapter_info["institution_id"],
+                    "institution_id": adapter_info.get(
+                        "institution_id"
+                    ),  # Use .get() for safety
                     "supported_formats": adapter_info["supported_formats"],
                     "data_types": adapter_info["data_types"],
                 }

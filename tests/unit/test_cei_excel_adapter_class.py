@@ -36,7 +36,8 @@ class TestCEIExcelAdapterClass:
 
         assert info["id"] == "cei_excel_format_v1"
         assert info["name"] == "CEI Excel Format v1.2"
-        assert info["institution_id"] == "b795f91d-5478-420e-be85-1ad00ad24613"
+        # Adapter should be tied to CEI institution by short_name (GUID-free)
+        assert info["institution_short_name"] == "CEI"
         assert ".xlsx" in info["supported_formats"]
         assert ".xls" in info["supported_formats"]
         assert "courses" in info["data_types"]

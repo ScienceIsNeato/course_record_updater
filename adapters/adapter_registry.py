@@ -127,13 +127,19 @@ class AdapterRegistry:
             required_fields = [
                 "id",
                 "name",
-                "institution_id",
                 "supported_formats",
                 "data_types",
             ]
             missing_fields = [
                 field for field in required_fields if field not in adapter_info
             ]
+
+            # Must have either institution_id OR institution_short_name for institution binding
+            has_institution_id = "institution_id" in adapter_info
+            has_institution_short_name = "institution_short_name" in adapter_info
+
+            if not has_institution_id and not has_institution_short_name:
+                missing_fields.append("institution_id or institution_short_name")
 
             if missing_fields:
                 logger.warning(
@@ -165,11 +171,35 @@ class AdapterRegistry:
         """
         self.discover_adapters()
 
-        return [
-            {**registration["info"], "active": registration["active"]}
-            for registration in self._adapters.values()
-            if registration["active"]
-        ]
+        all_adapters = []
+        for registration in self._adapters.values():
+            if not registration["active"]:
+                continue
+
+            adapter_info = registration["info"].copy()
+
+            # Resolve institution_id for adapters using institution_short_name
+            if (
+                "institution_short_name" in adapter_info
+                and "institution_id" not in adapter_info
+            ):
+                try:
+                    import database_service as db
+
+                    institution = db.get_institution_by_short_name(
+                        adapter_info["institution_short_name"]
+                    )
+                    if institution:
+                        adapter_info["institution_id"] = institution.get(
+                            "institution_id"
+                        )
+                except Exception:
+                    pass  # If resolution fails, leave institution_id as None
+
+            adapter_info["active"] = registration["active"]
+            all_adapters.append(adapter_info)
+
+        return all_adapters
 
     def get_adapters_for_institution(self, institution_id: str) -> List[Dict[str, Any]]:
         """
@@ -192,10 +222,37 @@ class AdapterRegistry:
             adapter_info = registration["info"]
 
             # Check if adapter serves this institution
-            if adapter_info.get("institution_id") == institution_id:
+            adapter_institution_id = adapter_info.get("institution_id")
+            adapter_institution_short_name = adapter_info.get("institution_short_name")
+
+            # Match by institution_id (legacy) or by short_name (stable identifier)
+            if adapter_institution_id == institution_id:
                 institution_adapters.append(
                     {**adapter_info, "active": registration["active"]}
                 )
+            elif adapter_institution_short_name:
+                # Look up institution by short_name to get current ID
+                try:
+                    import database_service as db
+
+                    institution = db.get_institution_by_short_name(
+                        adapter_institution_short_name
+                    )
+                    if (
+                        institution
+                        and institution.get("institution_id") == institution_id
+                    ):
+                        # Add the resolved institution_id to the adapter info
+                        adapter_info_with_id = {
+                            **adapter_info,
+                            "institution_id": institution_id,
+                        }
+                        institution_adapters.append(
+                            {**adapter_info_with_id, "active": registration["active"]}
+                        )
+                except Exception:
+                    # If database lookup fails, skip this adapter
+                    pass
 
         logger.debug(
             f"Found {len(institution_adapters)} adapters for institution {institution_id}"

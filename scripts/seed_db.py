@@ -768,6 +768,65 @@ class DatabaseSeeder:
 
         return course_ids
 
+    def create_course_offerings(
+        self, course_ids: List[str], institution_ids: List[str]
+    ) -> List[str]:
+        """Create course offerings for the created courses"""
+        self.log("📅 Creating course offerings...")
+
+        from database_service import (
+            create_course_offering,
+            get_active_terms,
+            get_course_by_id,
+        )
+
+        offering_ids = []
+
+        # Get terms for each institution
+        for institution_id in institution_ids:
+            terms = get_active_terms(institution_id)
+            if not terms:
+                self.log(f"   No terms found for institution {institution_id}")
+                continue
+
+            # Get courses for this institution
+            institution_courses = []
+            for course_id in course_ids:
+                course = get_course_by_id(course_id)
+                if course and course.get("institution_id") == institution_id:
+                    institution_courses.append(course)
+
+            # Create offerings for each course-term combination
+            for course in institution_courses:
+                for term in terms:
+                    try:
+                        offering_data = {
+                            "course_id": course["course_id"],
+                            "term_id": term["term_id"],
+                            "institution_id": institution_id,
+                            "credits": course.get("credits", 3),
+                            "status": "active",
+                        }
+
+                        offering_id = create_course_offering(offering_data)
+                        if offering_id:
+                            offering_ids.append(offering_id)
+                            self.created_entities["course_offerings"] = self.created_entities.get("course_offerings", [])
+                            self.created_entities["course_offerings"].append(offering_id)
+                            self.log(
+                                f"   Created offering: {course.get('course_number', 'Unknown')} for {term.get('name', 'Unknown')}"
+                            )
+                        else:
+                            self.log(
+                                f"   Failed to create offering for {course.get('course_number', course['course_id'])}"
+                            )
+
+                    except Exception as e:
+                        self.log(f"   Error creating offering for course {course.get('course_number', course['course_id'])}: {e}")
+
+        self.log(f"   Created {len(offering_ids)} course offerings")
+        return offering_ids
+
     def create_sections(
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
@@ -842,16 +901,18 @@ class DatabaseSeeder:
                             (section_num - 1) % len(instructors)
                         ]["user_id"]
 
+                    # Get course offering for this course and term
+                    from database_service import get_course_offering_by_course_and_term
+                    offering = get_course_offering_by_course_and_term(course_id, term_id)
+                    if not offering:
+                        self.log(f"   No offering found for course {course.get('course_number', course_id)} in term {term_id}")
+                        continue
+
                     # Create section schema
                     section_data = {
-                        "course_id": course_id,
-                        "term_id": term_id,
-                        "section_number": section_number,
+                        "offering_id": offering["offering_id"],  # Use offering_id instead of course_id + term_id
                         "instructor_id": instructor_id,
-                        "institution_id": institution_id,  # Add institution_id for filtering
-                        "course_number": course.get(
-                            "course_number", "Unknown"
-                        ),  # Add for display
+                        "section_number": section_number,
                         "enrollment": 15 + (section_num * 5),  # Vary enrollment
                         "status": "assigned" if instructor_id else "unassigned",
                     }
@@ -1099,6 +1160,10 @@ class DatabaseSeeder:
 
         # Create courses
         course_ids = self.create_courses(institution_ids, program_ids)
+
+        # Create course offerings (required for sections)
+        if course_ids:
+            self.create_course_offerings(course_ids, institution_ids)
 
         # Create course sections
         if course_ids:
