@@ -50,8 +50,8 @@ class TestDashboardAuthRoleDataAccess:
             db_service = get_database_service()
             if hasattr(db_service.sqlite, "remove_session"):
                 db_service.sqlite.remove_session()
-        except:
-            pass
+        except Exception:
+            pass  # Ignore database connection refresh errors
 
         # Get all institutions to find CEI
         institutions = db.get_all_institutions() or []
@@ -444,8 +444,8 @@ class TestDashboardDataConsistency:
             db_service = get_database_service()
             if hasattr(db_service.sqlite, "remove_session"):
                 db_service.sqlite.remove_session()
-        except:
-            pass
+        except Exception:
+            pass  # Ignore database connection refresh errors
 
         # Find site admin
         site_admin_email = "siteadmin@system.local"
