@@ -35,7 +35,7 @@ class AdapterRegistry:
     5. Cache adapter metadata for performance
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._adapters: Dict[str, Dict[str, Any]] = {}
         self._adapter_instances: Dict[str, FileBaseAdapter] = {}
         self._discovery_complete = False

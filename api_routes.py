@@ -1305,7 +1305,7 @@ def remove_course_from_program_api(program_id: str, course_id: str):
         default_program_id = default_program["id"] if default_program else None
 
         # Remove course from program
-        success = remove_course_from_program(course_id, program_id, default_program_id)
+        success = remove_course_from_program(course_id, program_id)
 
         if success:
             return jsonify(
@@ -1376,9 +1376,7 @@ def bulk_manage_program_courses(program_id: str):
             )
             default_program_id = default_program["id"] if default_program else None
 
-            result = bulk_remove_courses_from_program(
-                course_ids, program_id, default_program_id
-            )
+            result = bulk_remove_courses_from_program(course_ids, program_id)
             message = (
                 f"Bulk remove operation completed: {result['success_count']} removed"
             )

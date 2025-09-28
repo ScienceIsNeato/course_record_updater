@@ -11,7 +11,7 @@ from auth_service import get_current_user, is_authenticated, login_required
 
 # Import constants
 from constants import DASHBOARD_ENDPOINT
-from database_service import db as database_client
+from database_service import check_db_connection
 from logging_config import get_app_logger
 
 # Unused imports removed
@@ -73,12 +73,10 @@ app.register_blueprint(api)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 
 # Check database connection
-if database_client is None:
-    app.logger.error(
-        "database_service failed to initialize Firestore client. Database operations will fail."
-    )
+if not check_db_connection():
+    app.logger.error("Database connection unavailable; SQLite backend not reachable")
 else:
-    app.logger.info("Database connection established successfully")
+    app.logger.info("Database connection established successfully (SQLite)")
 
 
 @app.route("/")

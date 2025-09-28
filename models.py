@@ -120,8 +120,7 @@ class DataModel:
 
     @staticmethod
     def current_timestamp():
-        """Get current timestamp for Firestore"""
-        # Will be replaced with firestore.SERVER_TIMESTAMP in actual usage
+        """Get current timestamp for persistence operations"""
         return datetime.now(timezone.utc)
 
     @staticmethod

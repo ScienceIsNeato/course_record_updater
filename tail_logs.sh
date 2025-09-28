@@ -30,7 +30,7 @@ show_usage() {
     echo "  $0                      # Monitor default server log (follow mode)"
     echo "  $0 -n 50              # Show last 50 lines and exit"
     echo "  $0 -n 20 --follow     # Show last 20 lines then follow"
-    echo "  $0 -f logs/firestore.log  # Monitor Firestore emulator log"
+    echo "  $0 -f logs/database_location.txt  # View current SQLite database path"
 }
 
 # Parse command line arguments

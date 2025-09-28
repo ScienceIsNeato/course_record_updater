@@ -119,7 +119,7 @@ class FileBaseAdapter(ABC):
     @abstractmethod
     def parse_file(
         self, file_path: str, options: Dict[str, Any]
-    ) -> Dict[str, List[Dict]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Parse the file and return structured data ready for database import.
 
@@ -172,7 +172,10 @@ class FileBaseAdapter(ABC):
 
     @abstractmethod
     def export_data(
-        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+        self,
+        data: Dict[str, List[Dict[str, Any]]],
+        output_path: str,
+        options: Dict[str, Any],
     ) -> Tuple[bool, str, int]:
         """
         Export structured data to a file in the adapter's specific format.
@@ -239,7 +242,8 @@ class FileBaseAdapter(ABC):
         """
         # By default, return the same formats as import
         adapter_info = self.get_adapter_info()
-        return adapter_info.get("supported_formats", [".xlsx"])
+        formats = adapter_info.get("supported_formats", [".xlsx"])
+        return list(formats) if isinstance(formats, list) else [".xlsx"]
 
     def get_file_size_limit(self) -> int:
         """
@@ -323,7 +327,8 @@ class FileBaseAdapter(ABC):
             List[str]: Supported file extensions (e.g., ['.xlsx', '.xls'])
         """
         adapter_info = self.get_adapter_info()
-        return adapter_info.get("supported_formats", [])
+        formats = adapter_info.get("supported_formats", [])
+        return list(formats) if isinstance(formats, list) else []
 
     def validate_file_extension(self, file_path: str) -> Tuple[bool, str]:
         """
@@ -368,21 +373,21 @@ class AdapterValidationResult:
         self.validation_warnings: List[str] = []
         self.file_info: Dict[str, Any] = {}
 
-    def add_error(self, error: str):
+    def add_error(self, error: str) -> None:
         """Add a validation error."""
         self.validation_errors.append(error)
 
-    def add_warning(self, warning: str):
+    def add_warning(self, warning: str) -> None:
         """Add a validation warning."""
         self.validation_warnings.append(warning)
 
-    def set_compatible(self, message: str, data_types: List[str]):
+    def set_compatible(self, message: str, data_types: List[str]) -> None:
         """Mark file as compatible with detected data types."""
         self.is_compatible = True
         self.compatibility_message = message
         self.detected_data_types = data_types
 
-    def set_incompatible(self, message: str):
+    def set_incompatible(self, message: str) -> None:
         """Mark file as incompatible with error message."""
         self.is_compatible = False
         self.compatibility_message = message

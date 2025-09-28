@@ -9,7 +9,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 
 class SecureLogger(logging.Logger):
@@ -19,7 +19,7 @@ class SecureLogger(logging.Logger):
     Prevents log injection attacks by providing sanitized logging methods.
     """
 
-    def sanitize(self, value, max_length: int = 50) -> str:
+    def sanitize(self, value: Any, max_length: int = 50) -> str:
         """
         Sanitize user-controlled data for safe logging.
 

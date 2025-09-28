@@ -35,7 +35,7 @@ The CI system requires these environment variables to be configured in GitHub re
 - **Python version**: Managed via `PYTHON_VERSION` environment variable in workflow
 - **Dependencies**: Automatically cached and installed
 - **Quality checks**: Run automatically on every push/PR
-- **Test database**: Firestore emulator auto-configured in CI
+- **Test database**: SQLite database file created automatically during CI execution
 
 ## 🔧 Local Development Setup
 

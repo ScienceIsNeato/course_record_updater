@@ -12,7 +12,7 @@ A enterprise-grade Flask web application for managing course records with compre
 *   Upload of `.docx` files for automatic data extraction (using format-specific adapters).
 *   Display of course records in a table.
 *   Inline editing and deletion of records.
-*   Persistence using Google Cloud Firestore.
+*   Persistence using SQLite (SQLAlchemy ORM).
 *   **Enterprise-grade quality gates** with 80% test coverage threshold
 *   **Automated security scanning** and dependency vulnerability checks
 *   **CI/CD integration** with GitHub Actions
@@ -116,7 +116,7 @@ python scripts/seed_db.py --clear
 │   └── test_file_adapter_dispatcher.py
 ├── .gitignore            # Git ignore file
 ├── app.py                # Main Flask application
-├── database_service.py   # Handles Firestore interactions
+├── database_service.py   # Facade over SQLAlchemy-backed SQLite implementation
 ├── PROJECT_OVERVIEW.md   # High-level project goals and architecture
 ├── README.md             # This file
 ├── requirements.txt      # Python dependencies
@@ -143,8 +143,7 @@ When adding new documentation:
 
 1.  **Prerequisites:**
     *   Python 3 (tested with 3.13, adjust as needed)
-    *   Google Cloud SDK (`gcloud`) installed and configured (for Firestore access)
-    *   Credentials for Google Cloud Firestore (set up via `GOOGLE_APPLICATION_CREDENTIALS` environment variable or service account/default login).
+*   No external cloud prerequisites required for persistence (SQLite database created automatically).
 
 2.  **Clone the repository:**
     ```bash
@@ -168,9 +167,6 @@ When adding new documentation:
     Make sure the `GOOGLE_APPLICATION_CREDENTIALS` environment variable points to your service account key file, or that you are logged in via `gcloud auth application-default login`.
     ```bash
     # Example for service account key:
-    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/keyfile.json"
-    ```
-
 6.  **Run the application:**
     ```bash
     python app.py
@@ -184,35 +180,15 @@ When adding new documentation:
     ```bash
     python -m pytest
     ```
-3.  **Integration Tests (Requires Firestore Emulator):**
+3.  **Integration Tests:** No external emulator required.
 
-    **--> IMPORTANT: The Firestore emulator MUST be running in a separate terminal before executing these tests. <--**
-
-    *   **Install Emulator:** If you haven't already, install the emulator component:
-        ```bash
-        gcloud components install cloud-firestore-emulator
-        ```
-    *   **Run Emulator:** In a **separate terminal window**, navigate to your project directory (optional but good practice) and start the emulator. Note the host and port it outputs (usually `localhost:8086` or similar).
-        ```bash
-        # In Terminal 1 (Leave this running):
-        gcloud beta emulators firestore start --host-port=localhost:8086
-        ```
-    *   **Set Environment Variable & Run Tests:** In the **original terminal** (where your venv is active), set the `FIRESTORE_EMULATOR_HOST` variable and run pytest. The tests should automatically connect to the running emulator.
-        ```bash
-        # In Terminal 2 (Your testing terminal):
-        export FIRESTORE_EMULATOR_HOST="localhost:8086"
-        python -m pytest
-        # Or, combining the export and run:
-        # FIRESTORE_EMULATOR_HOST="localhost:8086" python -m pytest
-
-        # Optionally run only integration tests if tagged:
-        # FIRESTORE_EMULATOR_HOST="localhost:8086" python -m pytest -m integration
-        ```
-    *   **Stopping the Emulator:** When finished, go back to Terminal 1 and press `Ctrl+C` to stop the emulator process.
+    ```bash
+    python -m pytest tests/integration -m integration
+    ```
 
 ## Development Notes
 
-*   This project uses Flask, Firestore, and python-docx.
+*   This project uses Flask, SQLite (via SQLAlchemy), and python-docx.
 *   Follow TDD principles where possible.
 *   Run tests after any code changes.
 *   See `PROJECT_OVERVIEW.md` for architecture details.

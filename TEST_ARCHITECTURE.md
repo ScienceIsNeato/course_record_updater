@@ -21,7 +21,7 @@ tests/
 │   └── test_term_utils.py           # Term generation
 └── integration/             # Slow integration tests (14.09s)
     ├── __init__.py
-    ├── test_database_service_integration.py  # Firestore I/O
+    ├── test_database_service_integration.py  # SQLite-backed persistence flows
     ├── test_frontend_smoke.py        # Selenium browser tests
     └── test_import_business_logic.py  # File I/O + Database
 ```

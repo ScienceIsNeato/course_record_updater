@@ -143,16 +143,11 @@ class TestImportService:
         with (
             patch("import_service.get_user_by_email", return_value=None),
             patch("import_service.get_course_by_number", return_value=None),
+            patch("import_service.get_term_by_name", return_value=None),
             patch("import_service.create_user"),
             patch("import_service.create_course"),
             patch("import_service.create_term"),
-            patch("database_service.db") as mock_db,
         ):
-
-            # Mock Firestore query for terms
-            mock_collection = Mock()
-            mock_collection.where.return_value.where.return_value.get.return_value = []
-            mock_db.collection.return_value = mock_collection
 
             result = self.service.import_excel_file("test.xlsx")
 

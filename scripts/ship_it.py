@@ -113,7 +113,7 @@ class QualityGateExecutor:
         # Full checks for PR validation (all checks)
         self.pr_checks = self.all_checks
         
-        # Integration test validation (requires Firestore emulator)
+        # Integration test validation (component interactions using SQLite persistence)
         self.integration_checks = [
             ("black", "🎨 Code Formatting (black)"),
             ("isort", "📚 Import Sorting (isort)"),
@@ -496,7 +496,7 @@ class QualityGateExecutor:
             elif validation_type == ValidationType.INTEGRATION:
                 checks_to_run = self.integration_checks
                 self.logger.info(
-                    "🔗 Running INTEGRATION validation (component interactions, requires Firestore emulator)"
+                    "🔗 Running INTEGRATION validation (component interactions against SQLite persistence)"
                 )
             elif validation_type == ValidationType.SMOKE:
                 checks_to_run = self.smoke_checks

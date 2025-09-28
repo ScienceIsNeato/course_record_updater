@@ -44,49 +44,6 @@
                         </select>
                     </div>
 
-                    <!-- Conflict Resolution Strategy -->
-                    <div class="mb-3">
-                        <label class="form-label">Conflict Resolution:</label>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="use_theirs" value="use_theirs" checked>
-                                    <label class="form-check-label" for="use_theirs">
-                                        <strong>Use Import Data</strong><br>
-                                        <small class="text-muted">Overwrite existing</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="use_mine" value="use_mine">
-                                    <label class="form-check-label" for="use_mine">
-                                        <strong>Keep Existing</strong><br>
-                                        <small class="text-muted">Skip conflicts</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="merge" value="merge">
-                                    <label class="form-check-label" for="merge">
-                                        <strong>Merge Data</strong><br>
-                                        <small class="text-muted">Combine both</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="conflict_strategy" id="manual_review" value="manual_review">
-                                    <label class="form-check-label" for="manual_review">
-                                        <strong>Manual Review</strong><br>
-                                        <small class="text-muted">Flag conflicts</small>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Import Options -->
                     <div class="mb-3">
                         <div class="form-check form-switch">
@@ -94,13 +51,6 @@
                             <label class="form-check-label" for="dry_run">
                                 <strong>Test Mode (Dry Run)</strong><br>
                                 <small class="text-muted">Preview changes without saving</small>
-                            </label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="verbose_output" name="verbose_output">
-                            <label class="form-check-label" for="verbose_output">
-                                <strong>Detailed Output</strong><br>
-                                <small class="text-muted">Show progress information</small>
                             </label>
                         </div>
                     </div>
@@ -295,6 +245,10 @@ async function loadAvailableAdapters() {
 function executeDataImport() {
     const form = document.getElementById('dataImportForm');
     const formData = new FormData(form);
+    
+    // Add default values for removed UI options
+    formData.append('conflict_strategy', 'use_theirs'); // Always use import data by default
+    formData.append('verbose_output', 'true'); // Always show detailed output
     
     executeImportRequest(formData);
 }

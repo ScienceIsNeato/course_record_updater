@@ -21,6 +21,8 @@ lcov.info
 
 # Log files and directories
 logs/
+course_records.db
+*.db
 
 # SonarCloud analysis artifacts
 .scannerwork/

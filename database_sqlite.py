@@ -1,0 +1,879 @@
+"""SQLite-backed database implementation."""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy import and_, func, select
+
+from constants import DEFAULT_INSTITUTION_TIMEZONE
+from database_interface import DatabaseInterface
+from database_sql import SQLiteService
+from models_sql import (
+    Course,
+    CourseOffering,
+    CourseOutcome,
+    CourseSection,
+    Institution,
+    Program,
+    Term,
+    User,
+    UserInvitation,
+    course_program_table,
+    to_dict,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_uuid(value: Optional[str]) -> str:
+    return value or str(uuid.uuid4())
+
+
+class SQLiteDatabase(DatabaseInterface):
+    """Concrete database implementation using SQLite and SQLAlchemy."""
+
+    def __init__(self, db_url: Optional[str] = None) -> None:
+        self.sqlite = SQLiteService(db_url)
+
+    # ------------------------------------------------------------------
+    # Institution operations
+    # ------------------------------------------------------------------
+    def create_institution(self, institution_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(institution_data)
+        institution_id = _ensure_uuid(payload.pop("institution_id", None))
+        name = payload.get("name") or payload.get("institution_name")
+        short_name = payload.get("short_name")
+        if not name or not short_name:
+            logger.error("[SQLiteDatabase] Institution requires name and short_name")
+            return None
+
+        institution = Institution(
+            id=institution_id,
+            name=name,
+            short_name=short_name.upper(),
+            website_url=payload.get("website_url"),
+            created_by=payload.get("created_by"),
+            admin_email=(payload.get("admin_email") or "").lower(),
+            allow_self_registration=payload.get("allow_self_registration", False),
+            require_email_verification=payload.get("require_email_verification", True),
+            is_active=payload.get("is_active", True),
+            extras={**payload, "institution_id": institution_id},
+        )
+
+        with self.sqlite.session_scope() as session:
+            session.add(institution)
+            logger.info("[SQLiteDatabase] Created institution %s", institution_id)
+            return institution_id
+
+    def get_institution_by_id(self, institution_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            inst = session.get(Institution, institution_id)
+            return to_dict(inst) if inst else None
+
+    def get_all_institutions(self) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            records = (
+                session.execute(
+                    select(Institution).where(Institution.is_active.is_(True))
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(record) for record in records]
+
+    def create_default_cei_institution(self) -> Optional[str]:
+        existing = self.get_institution_by_short_name("CEI")
+        if existing:
+            return existing["institution_id"]
+
+        cei_payload = {
+            "name": "College of Eastern Idaho",
+            "short_name": "CEI",
+            "domain": "cei.edu",
+            "timezone": DEFAULT_INSTITUTION_TIMEZONE,
+            "is_active": True,
+            "billing_settings": {
+                "instructor_seat_limit": 100,
+                "current_instructor_count": 0,
+                "subscription_status": "active",
+            },
+            "settings": {
+                "default_credit_hours": 3,
+                "academic_year_start_month": 8,
+                "grading_scale": "traditional",
+            },
+            "created_at": datetime.utcnow(),
+        }
+        return self.create_institution(cei_payload)
+
+    def create_new_institution(
+        self, institution_data: Dict[str, Any], admin_user_data: Dict[str, Any]
+    ) -> Optional[Tuple[str, str]]:
+        institution_id = self.create_institution(institution_data)
+        if not institution_id:
+            return None
+
+        user_payload = dict(admin_user_data)
+        user_payload.setdefault("institution_id", institution_id)
+        user_id = self.create_user(user_payload)
+        if not user_id:
+            return None
+        return institution_id, user_id
+
+    def get_institution_instructor_count(self, institution_id: str) -> int:
+        with self.sqlite.session_scope() as session:
+            return (
+                session.execute(
+                    select(func.count(User.id)).where(
+                        and_(
+                            User.institution_id == institution_id,
+                            User.role == "instructor",
+                        )
+                    )
+                ).scalar()
+                or 0
+            )
+
+    def get_institution_by_short_name(
+        self, short_name: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            record = (
+                session.execute(
+                    select(Institution).where(
+                        func.lower(Institution.short_name) == short_name.lower()
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(record) if record else None
+
+    # ------------------------------------------------------------------
+    # User operations
+    # ------------------------------------------------------------------
+    def create_user(self, user_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(user_data)
+        user_id = _ensure_uuid(payload.pop("user_id", None))
+        email = payload.get("email")
+        if not email:
+            logger.error("[SQLiteDatabase] User requires email")
+            return None
+
+        user = User(
+            id=user_id,
+            email=email.lower(),
+            password_hash=payload.get("password_hash"),
+            first_name=payload.get("first_name", ""),
+            last_name=payload.get("last_name", ""),
+            display_name=payload.get("display_name"),
+            account_status=payload.get("account_status", "pending"),
+            email_verified=payload.get("email_verified", False),
+            email_verification_token=payload.get("email_verification_token"),
+            email_verification_sent_at=payload.get("email_verification_sent_at"),
+            role=payload.get("role", "instructor"),
+            institution_id=payload.get("institution_id"),
+            login_attempts=payload.get("login_attempts", 0),
+            locked_until=payload.get("locked_until"),
+            last_login_at=payload.get("last_login_at"),
+            invited_by=payload.get("invited_by"),
+            invited_at=payload.get("invited_at"),
+            registration_completed_at=payload.get("registration_completed_at"),
+            oauth_provider=payload.get("oauth_provider"),
+            oauth_id=payload.get("oauth_id"),
+            password_reset_token=payload.get("password_reset_token"),
+            password_reset_expires_at=payload.get("password_reset_expires_at"),
+            extras={**payload, "user_id": user_id},
+        )
+
+        with self.sqlite.session_scope() as session:
+            existing = (
+                session.execute(select(User).where(User.email == user.email))
+                .scalars()
+                .first()
+            )
+            if existing:
+                logger.error("[SQLiteDatabase] Duplicate email %s", user.email)
+                return None
+            session.add(user)
+            program_ids = payload.get("program_ids") or []
+            if program_ids:
+                programs = (
+                    session.execute(select(Program).where(Program.id.in_(program_ids)))
+                    .scalars()
+                    .all()
+                )
+                user.programs = programs
+            logger.info("[SQLiteDatabase] Created user %s", user_id)
+            return user_id
+
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            record = (
+                session.execute(select(User).where(User.email == email.lower()))
+                .scalars()
+                .first()
+            )
+            return to_dict(record) if record else None
+
+    def get_user_by_reset_token(self, reset_token: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            record = (
+                session.execute(
+                    select(User).where(User.password_reset_token == reset_token)
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(record) if record else None
+
+    def get_all_users(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            records = (
+                session.execute(
+                    select(User).where(User.institution_id == institution_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(user) for user in records]
+
+    def get_users_by_role(self, role: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            records = (
+                session.execute(select(User).where(User.role == role)).scalars().all()
+            )
+            return [to_dict(user) for user in records]
+
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            user = session.get(User, user_id)
+            return to_dict(user) if user else None
+
+    def update_user(self, user_id: str, user_data: Dict[str, Any]) -> bool:
+        with self.sqlite.session_scope() as session:
+            user = session.get(User, user_id)
+            if not user:
+                return False
+            for key, value in user_data.items():
+                if key == "program_ids":
+                    programs = (
+                        session.execute(
+                            select(Program).where(Program.id.in_(value or []))
+                        )
+                        .scalars()
+                        .all()
+                    )
+                    user.programs = programs
+                elif hasattr(User, key):
+                    setattr(user, key, value)
+                user.extras[key] = value
+            user.updated_at = datetime.utcnow()
+            return True
+
+    def update_user_active_status(self, user_id: str, active_user: bool) -> bool:
+        status = "active" if active_user else "inactive"
+        return self.update_user(user_id, {"account_status": status})
+
+    def calculate_and_update_active_users(self, institution_id: str) -> int:
+        with self.sqlite.session_scope() as session:
+            count = (
+                session.execute(
+                    select(func.count(User.id)).where(
+                        and_(
+                            User.institution_id == institution_id,
+                            User.account_status == "active",
+                        )
+                    )
+                ).scalar()
+                or 0
+            )
+            institution = session.get(Institution, institution_id)
+            if institution:
+                extras = institution.extras or {}
+                billing = extras.get("billing_settings", {})
+                billing["current_instructor_count"] = count
+                extras["billing_settings"] = billing
+                institution.extras = extras
+            return count
+
+    def update_user_extended(self, user_id: str, update_data: Dict[str, Any]) -> bool:
+        return self.update_user(user_id, update_data)
+
+    def get_user_by_verification_token(self, token: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            user = (
+                session.execute(
+                    select(User).where(User.email_verification_token == token)
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(user) if user else None
+
+    # ------------------------------------------------------------------
+    # Course operations
+    # ------------------------------------------------------------------
+    def create_course(self, course_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(course_data)
+        course_id = _ensure_uuid(payload.pop("course_id", None))
+        course = Course(
+            id=course_id,
+            course_number=payload.get("course_number", "").upper(),
+            course_title=payload.get("course_title", ""),
+            department=payload.get("department"),
+            credit_hours=payload.get("credit_hours", 3),
+            institution_id=payload.get("institution_id"),
+            active=payload.get("active", True),
+            extras={**payload, "course_id": course_id},
+        )
+
+        with self.sqlite.session_scope() as session:
+            session.add(course)
+            program_ids = payload.get("program_ids") or []
+            if program_ids:
+                programs = (
+                    session.execute(select(Program).where(Program.id.in_(program_ids)))
+                    .scalars()
+                    .all()
+                )
+                course.programs = programs
+            logger.info("[SQLiteDatabase] Created course %s", course_id)
+            return course_id
+
+    def get_course_by_number(self, course_number: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            record = (
+                session.execute(
+                    select(Course).where(
+                        func.upper(Course.course_number) == course_number.upper()
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(record) if record else None
+
+    def get_courses_by_department(
+        self, institution_id: str, department: str
+    ) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            records = (
+                session.execute(
+                    select(Course).where(
+                        and_(
+                            Course.institution_id == institution_id,
+                            Course.department == department,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(course) for course in records]
+
+    def create_course_outcome(self, outcome_data: Dict[str, Any]) -> str:
+        payload = dict(outcome_data)
+        outcome_id = _ensure_uuid(payload.pop("outcome_id", None))
+        outcome = CourseOutcome(
+            id=outcome_id,
+            course_id=payload.get("course_id"),
+            clo_number=payload.get("clo_number"),
+            description=payload.get("description", ""),
+            assessment_method=payload.get("assessment_method"),
+            active=payload.get("active", True),
+            assessment_data=payload.get("assessment_data")
+            or {
+                "students_assessed": None,
+                "students_meeting": None,
+                "percentage_meeting": None,
+                "assessment_status": "not_started",
+            },
+            narrative=payload.get("narrative"),
+            extras={**payload, "outcome_id": outcome_id},
+        )
+
+        with self.sqlite.session_scope() as session:
+            session.add(outcome)
+            return outcome_id
+
+    def get_course_outcomes(self, course_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            outcomes = (
+                session.execute(
+                    select(CourseOutcome).where(CourseOutcome.course_id == course_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(outcome) for outcome in outcomes]
+
+    def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            return to_dict(course) if course else None
+
+    def get_all_courses(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            courses = (
+                session.execute(
+                    select(Course).where(Course.institution_id == institution_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(course) for course in courses]
+
+    def get_all_instructors(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            instructors = (
+                session.execute(
+                    select(User).where(
+                        and_(
+                            User.institution_id == institution_id,
+                            User.role == "instructor",
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(user) for user in instructors]
+
+    def get_all_sections(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            sections = (
+                session.execute(
+                    select(CourseSection)
+                    .join(CourseOffering)
+                    .where(CourseOffering.institution_id == institution_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(section) for section in sections]
+
+    def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(offering_data)
+        offering_id = _ensure_uuid(payload.pop("offering_id", None))
+        offering = CourseOffering(
+            id=offering_id,
+            course_id=payload.get("course_id"),
+            term_id=payload.get("term_id"),
+            institution_id=payload.get("institution_id"),
+            status=payload.get("status", "active"),
+            capacity=payload.get("capacity"),
+            total_enrollment=payload.get("total_enrollment", 0),
+            section_count=payload.get("section_count", 0),
+            extras={**payload, "offering_id": offering_id},
+        )
+        with self.sqlite.session_scope() as session:
+            session.add(offering)
+            return offering_id
+
+    def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            offering = session.get(CourseOffering, offering_id)
+            return to_dict(offering) if offering else None
+
+    def get_course_offering_by_course_and_term(
+        self, course_id: str, term_id: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            offering = (
+                session.execute(
+                    select(CourseOffering).where(
+                        and_(
+                            CourseOffering.course_id == course_id,
+                            CourseOffering.term_id == term_id,
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(offering) if offering else None
+
+    def get_all_course_offerings(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            offerings = (
+                session.execute(
+                    select(CourseOffering).where(
+                        CourseOffering.institution_id == institution_id
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(offering) for offering in offerings]
+
+    # ------------------------------------------------------------------
+    # Term operations
+    # ------------------------------------------------------------------
+    def create_term(self, term_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(term_data)
+        term_id = _ensure_uuid(payload.pop("term_id", None))
+        term_name = payload.get("term_name")
+        if not term_name:
+            logger.error("[SQLiteDatabase] term_name is required")
+            return None
+        term = Term(
+            id=term_id,
+            term_name=term_name,
+            name=payload.get("name", term_name),
+            start_date=payload.get("start_date"),
+            end_date=payload.get("end_date"),
+            assessment_due_date=payload.get("assessment_due_date"),
+            active=payload.get("active", True),
+            institution_id=payload.get("institution_id"),
+            extras={**payload, "term_id": term_id},
+        )
+        with self.sqlite.session_scope() as session:
+            session.add(term)
+            return term_id
+
+    def get_term_by_name(
+        self, name: str, institution_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            filters = [Term.term_name == name]
+            if institution_id is not None:
+                filters.append(Term.institution_id == institution_id)
+
+            term = session.execute(select(Term).where(and_(*filters))).scalars().first()
+            return to_dict(term) if term else None
+
+    def get_active_terms(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            terms = (
+                session.execute(
+                    select(Term).where(
+                        and_(
+                            Term.institution_id == institution_id,
+                            Term.active.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(term) for term in terms]
+
+    def get_sections_by_term(self, term_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            sections = (
+                session.execute(
+                    select(CourseSection)
+                    .join(CourseOffering)
+                    .where(CourseOffering.term_id == term_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(section) for section in sections]
+
+    # ------------------------------------------------------------------
+    # Section operations
+    # ------------------------------------------------------------------
+    def create_course_section(self, section_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(section_data)
+        section_id = _ensure_uuid(payload.pop("section_id", None))
+        section = CourseSection(
+            id=section_id,
+            offering_id=payload.get("offering_id"),
+            instructor_id=payload.get("instructor_id"),
+            section_number=payload.get("section_number", "001"),
+            enrollment=payload.get("enrollment"),
+            status=payload.get("status", "assigned"),
+            grade_distribution=payload.get("grade_distribution", {}),
+            assigned_date=payload.get("assigned_date"),
+            completed_date=payload.get("completed_date"),
+            extras={**payload, "section_id": section_id},
+        )
+        with self.sqlite.session_scope() as session:
+            session.add(section)
+            return section_id
+
+    def get_sections_by_instructor(self, instructor_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            sections = (
+                session.execute(
+                    select(CourseSection).where(
+                        CourseSection.instructor_id == instructor_id
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(section) for section in sections]
+
+    # ------------------------------------------------------------------
+    # Program operations
+    # ------------------------------------------------------------------
+    def create_program(self, program_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(program_data)
+        program_id = _ensure_uuid(payload.pop("program_id", None))
+        program = Program(
+            id=program_id,
+            name=payload.get("name", ""),
+            short_name=payload.get("short_name", "").upper(),
+            description=payload.get("description"),
+            institution_id=payload.get("institution_id"),
+            created_by=payload.get("created_by"),
+            is_default=payload.get("is_default", False),
+            is_active=payload.get("is_active", True),
+            extras={**payload, "program_id": program_id},
+        )
+        with self.sqlite.session_scope() as session:
+            session.add(program)
+            return program_id
+
+    def get_programs_by_institution(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            programs = (
+                session.execute(
+                    select(Program).where(Program.institution_id == institution_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(program) for program in programs]
+
+    def get_program_by_id(self, program_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            return to_dict(program) if program else None
+
+    def get_program_by_name_and_institution(
+        self, program_name: str, institution_id: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            program = (
+                session.execute(
+                    select(Program).where(
+                        and_(
+                            Program.institution_id == institution_id,
+                            func.lower(Program.name) == program_name.lower(),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(program) if program else None
+
+    def update_program(self, program_id: str, updates: Dict[str, Any]) -> bool:
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            if not program:
+                return False
+            for key, value in updates.items():
+                if hasattr(Program, key):
+                    setattr(program, key, value)
+                program.extras[key] = value
+            program.updated_at = datetime.utcnow()
+            return True
+
+    def delete_program(self, program_id: str, reassign_to_program_id: str) -> bool:
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            if not program:
+                return False
+            reassignment = session.get(Program, reassign_to_program_id)
+            if not reassignment:
+                return False
+            for course in list(program.courses):
+                if course not in reassignment.courses:
+                    reassignment.courses.append(course)
+            session.delete(program)
+            return True
+
+    def get_courses_by_program(self, program_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            if not program:
+                return []
+            return [to_dict(course) for course in program.courses]
+
+    def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            courses = (
+                session.execute(
+                    select(Course)
+                    .outerjoin(
+                        course_program_table,
+                        Course.id == course_program_table.c.course_id,
+                    )
+                    .where(
+                        and_(
+                            Course.institution_id == institution_id,
+                            course_program_table.c.program_id.is_(None),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(course) for course in courses]
+
+    def assign_course_to_default_program(
+        self, course_id: str, institution_id: str
+    ) -> bool:
+        with self.sqlite.session_scope() as session:
+            default_program = (
+                session.execute(
+                    select(Program).where(
+                        and_(
+                            Program.institution_id == institution_id,
+                            Program.is_default.is_(True),
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            if not default_program:
+                return False
+            course = session.get(Course, course_id)
+            if not course:
+                return False
+            if course not in default_program.courses:
+                default_program.courses.append(course)
+            return True
+
+    def add_course_to_program(self, course_id: str, program_id: str) -> bool:
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            program = session.get(Program, program_id)
+            if not course or not program:
+                return False
+            if course not in program.courses:
+                program.courses.append(course)
+            return True
+
+    def remove_course_from_program(self, course_id: str, program_id: str) -> bool:
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            program = session.get(Program, program_id)
+            if not course or not program:
+                return False
+            if course in program.courses:
+                program.courses.remove(course)
+            return True
+
+    def bulk_add_courses_to_program(
+        self, course_ids: List[str], program_id: str
+    ) -> Dict[str, Any]:
+        success_count = 0
+        failures: List[str] = []
+        for course_id in course_ids:
+            if self.add_course_to_program(course_id, program_id):
+                success_count += 1
+            else:
+                failures.append(course_id)
+        return {"added": success_count, "failed": failures}
+
+    def bulk_remove_courses_from_program(
+        self, course_ids: List[str], program_id: str
+    ) -> Dict[str, Any]:
+        success_count = 0
+        failures: List[str] = []
+        for course_id in course_ids:
+            if self.remove_course_from_program(course_id, program_id):
+                success_count += 1
+            else:
+                failures.append(course_id)
+        return {"removed": success_count, "failed": failures}
+
+    # ------------------------------------------------------------------
+    # Invitation operations
+    # ------------------------------------------------------------------
+    def create_invitation(self, invitation_data: Dict[str, Any]) -> Optional[str]:
+        payload = dict(invitation_data)
+        invitation_id = _ensure_uuid(payload.pop("invitation_id", None))
+        invitation = UserInvitation(
+            id=invitation_id,
+            email=payload.get("email", "").lower(),
+            role=payload.get("role", "instructor"),
+            institution_id=payload.get("institution_id"),
+            token=payload.get("token", str(uuid.uuid4())),
+            invited_by=payload.get("invited_by"),
+            invited_at=payload.get("invited_at", datetime.utcnow()),
+            expires_at=payload.get("expires_at"),
+            status=payload.get("status", "pending"),
+            accepted_at=payload.get("accepted_at"),
+            personal_message=payload.get("personal_message"),
+            extras={**payload, "invitation_id": invitation_id},
+        )
+        with self.sqlite.session_scope() as session:
+            session.add(invitation)
+            return invitation_id
+
+    def get_invitation_by_id(self, invitation_id: str) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            invitation = session.get(UserInvitation, invitation_id)
+            return to_dict(invitation) if invitation else None
+
+    def get_invitation_by_token(
+        self, invitation_token: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            invitation = (
+                session.execute(
+                    select(UserInvitation).where(
+                        UserInvitation.token == invitation_token
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(invitation) if invitation else None
+
+    def get_invitation_by_email(
+        self, email: str, institution_id: str
+    ) -> Optional[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            invitation = (
+                session.execute(
+                    select(UserInvitation).where(
+                        and_(
+                            UserInvitation.email == email.lower(),
+                            UserInvitation.institution_id == institution_id,
+                        )
+                    )
+                )
+                .scalars()
+                .first()
+            )
+            return to_dict(invitation) if invitation else None
+
+    def update_invitation(self, invitation_id: str, updates: Dict[str, Any]) -> bool:
+        with self.sqlite.session_scope() as session:
+            invitation = session.get(UserInvitation, invitation_id)
+            if not invitation:
+                return False
+            for key, value in updates.items():
+                if hasattr(UserInvitation, key):
+                    setattr(invitation, key, value)
+                invitation.extras[key] = value
+            invitation.updated_at = datetime.utcnow()
+            return True
+
+    def list_invitations(
+        self, institution_id: str, status: Optional[str], limit: int, offset: int
+    ) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            query = select(UserInvitation).where(
+                UserInvitation.institution_id == institution_id
+            )
+            if status:
+                query = query.where(UserInvitation.status == status)
+            query = query.order_by(UserInvitation.invited_at.desc())
+            invitations = (
+                session.execute(query.offset(offset).limit(limit)).scalars().all()
+            )
+            return [to_dict(invitation) for invitation in invitations]

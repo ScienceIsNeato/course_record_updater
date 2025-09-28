@@ -13,8 +13,6 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from google.cloud import firestore
-
 from adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
 from database_service import (
     create_course,
@@ -26,6 +24,7 @@ from database_service import (
     get_course_by_number,
     get_course_offering_by_course_and_term,
     get_institution_by_short_name,
+    get_term_by_name,
     get_user_by_email,
     update_user,
 )
@@ -483,21 +482,9 @@ class ImportService:
                 self.stats["errors"].append("Term missing term_name")
                 return
 
-            # Check if term exists
-            from database_service import db
+            existing_term = get_term_by_name(term_name, self.institution_id)
 
-            existing_terms = (
-                db.collection("terms")
-                .where(filter=firestore.FieldFilter("term_name", "==", term_name))
-                .where(
-                    filter=firestore.FieldFilter(
-                        "institution_id", "==", self.institution_id
-                    )
-                )
-                .get()
-            )
-
-            if existing_terms:
+            if existing_term:
                 self.stats["records_skipped"] += 1
                 self._log(f"Term already exists: {term_name}")
             else:

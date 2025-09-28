@@ -348,22 +348,26 @@ class TestAdminRoutes:
 class TestDatabaseConnection:
     """Test database connection handling."""
 
-    def test_database_connection_error_logging(self):
-        """Test that database connection errors are handled properly."""
-        # Test the logging path when database_client is None
-        with patch("app.database_client", None), patch("app.app.logger") as mock_logger:
-            # Simulate the module loading condition
-            database_client = None
-            if database_client is None:
-                mock_logger.error.assert_not_called()  # Since this is just testing the condition
-            # The actual error logging happens at module import time
+    def test_database_service_availability(self):
+        """Test that database service is available."""
+        # Test that we can import the database factory
+        from database_factory import get_database_service
 
-    def test_database_client_import(self):
-        """Test that database client is imported correctly."""
+        # Get database service instance
+        db_service = get_database_service()
+        assert db_service is not None
+
+        # Test that it has the expected interface methods
+        assert hasattr(db_service, "get_all_institutions")
+        assert hasattr(db_service, "get_all_users")
+
+    def test_database_service_import(self):
+        """Test that database service is imported correctly."""
         # Test that the import doesn't fail
-        from app import database_client  # noqa: F401
+        from database_factory import _db_service
 
-        # database_client could be None or a valid client, both are acceptable
+        # Database service should be available
+        assert _db_service is not None
 
 
 class TestPortConfiguration:

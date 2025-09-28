@@ -17,7 +17,7 @@ Core Flask logic lives in `app.py`, with domain services split across `*_service
 Format Python with `black` (line length 88) and organise imports with `isort`. Lint changes with `flake8` and `pylint`; maintain type hints so `mypy` passes. Use 4-space indentation, `snake_case` for modules and functions, `PascalCase` for classes, and reserve `UPPER_SNAKE_CASE` for constants. Templates follow Jinja conventions; keep ES6-ready helpers in `static/` with filenames that mirror their template consumers.
 
 ## Testing Guidelines
-Add unit specs under `tests/unit/test_<feature>.py` and integration suites under `tests/integration/`. Use the existing markers (`unit`, `integration`, `slow`) to scope runs. Integration tests expect the Firestore emulator: `gcloud beta emulators firestore start --host-port localhost:8080`. Maintain ≥80% coverage; include regression fixtures when touching adapters or Firestore access paths.
+Add unit specs under `tests/unit/test_<feature>.py` and integration suites under `tests/integration/`. Use the existing markers (`unit`, `integration`, `slow`) to scope runs. Integration tests run against the SQLite database created in the workspace—no external services required. Maintain ≥80% coverage; include regression fixtures when touching adapters or persistence paths.
 
 ## Commit Message Guidelines
 Use `COMMIT_MSG.txt` files for commit messages to prevent quote escaping issues with multi-line messages:
@@ -36,4 +36,4 @@ git commit --file=COMMIT_MSG.txt
 Follow the Conventional Commit prefix (`feat:`, `fix:`, `refactor:`) used in the history (see `COMMIT_MSG.txt`). Keep subjects imperative and ≤72 characters, and squash noisy fixups before opening a PR. Each PR should include a crisp summary, linked issue, verification notes (commands run), and screenshots for UI-facing updates. Update docs, fixtures, or scripts alongside code changes to avoid blocking automation.
 
 ## Environment & Configuration Tips
-Set `GOOGLE_APPLICATION_CREDENTIALS` to a valid Firestore service account or log in through `gcloud auth application-default login`. Use local `.env` files or shell exports—never commit secrets. Adjust `PORT` and session settings via environment variables when running multiple instances so concurrent agents stay isolated.
+Set `DATABASE_URL` to point to your preferred SQLite or SQL database path (defaults to `sqlite:///course_records.db`). Use local `.env` files or shell exports—never commit secrets. Adjust `PORT` and session settings via environment variables when running multiple instances so concurrent agents stay isolated.

@@ -55,46 +55,18 @@ class DatabaseSeeder:
         if self.verbose:
             print(f"[SEED] {message}")
 
-    def clear_database(self):
-        """Clear existing test data (be careful in production!)"""
-        self.log("🧹 Clearing existing test data...")
+    def clear_database(self, preserve_site_admin=False):
+        """Clear existing test data by resetting the SQLite database."""
+        action = "except site admin" if preserve_site_admin else ""
+        self.log(f"🧹 Resetting database {action}...")
 
-        collections = [
-            "user_invitations",
-            "course_sections",
-            "course_outcomes",
-            "course_offerings",
-            "terms",
-            "courses",
-            "programs",
-            "users",
-            "institutions",
-        ]
+        if not db.reset_database():
+            self.log("   Warning: Database reset is not supported on this backend.")
+            return
 
-        for collection_name in collections:
-            try:
-                collection = db.db.collection(collection_name)
-                docs = collection.stream()
-                batch = db.db.batch()
-                count = 0
-
-                for doc in docs:
-                    batch.delete(doc.reference)
-                    count += 1
-
-                    # Commit in batches of 500 (Firestore limit)
-                    if count % 500 == 0:
-                        batch.commit()
-                        batch = db.db.batch()
-
-                # Commit remaining
-                if count % 500 != 0:
-                    batch.commit()
-
-                self.log(f"   Cleared {count} documents from {collection_name}")
-
-            except Exception as e:
-                self.log(f"   Warning: Could not clear {collection_name}: {e}")
+        if preserve_site_admin:
+            self.log("   Recreating preserved site admin user...")
+            self.create_site_admin()
 
     def create_institutions(self) -> List[str]:
         """Create test institutions (idempotent - checks for existing)"""
@@ -1253,6 +1225,8 @@ def main():
 Examples:
   python seed_db.py                 # Seed with full dataset
   python seed_db.py --clear         # Clear existing data first
+  python seed_db.py --clear-except-siteadmin  # Clear all except site admin, then seed
+  python seed_db.py --blank         # Truly blank DB - only site admin user
   python seed_db.py --minimal       # Create minimal dataset only
   python seed_db.py --clear --minimal  # Clear then create minimal dataset
         """,
@@ -1260,6 +1234,18 @@ Examples:
 
     parser.add_argument(
         "--clear", action="store_true", help="Clear existing test data before seeding"
+    )
+
+    parser.add_argument(
+        "--clear-except-siteadmin",
+        action="store_true", 
+        help="Clear all data except site admin user, then seed test data"
+    )
+
+    parser.add_argument(
+        "--blank",
+        action="store_true", 
+        help="Clear all data except site admin user - truly blank DB with only login ability"
     )
 
     parser.add_argument(
@@ -1278,7 +1264,7 @@ Examples:
     # Check database connection
     if not db.check_db_connection():
         print(
-            "❌ Database connection failed. Please check your Firestore configuration."
+            "❌ Database connection failed. Please verify DATABASE_URL and permissions."
         )
         sys.exit(1)
 
@@ -1286,6 +1272,12 @@ Examples:
         # Clear data if requested
         if args.clear:
             seeder.clear_database()
+        elif args.clear_except_siteadmin:
+            seeder.clear_database(preserve_site_admin=True)
+        elif args.blank:
+            seeder.clear_database(preserve_site_admin=True)
+            seeder.log("🎯 Database blanked - only site admin remains")
+            return  # Exit without seeding anything
 
         # Seed database
         if args.minimal:

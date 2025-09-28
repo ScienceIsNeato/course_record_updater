@@ -34,7 +34,8 @@ else
 
   REQUIRED_VARS=(
     "AGENT_HOME"
-    "FIRESTORE_EMULATOR_HOST" 
+    "DATABASE_TYPE"
+    "DATABASE_URL"
     "COURSE_RECORD_UPDATER_PORT"
     "SONAR_TOKEN"
     "SAFETY_API_KEY"
@@ -393,46 +394,24 @@ fi
 if [[ "$RUN_INTEGRATION_TESTS" == "true" ]]; then
   echo "🔗 Integration Test Suite Execution (tests/integration/)"
   
-  # Check if Firestore emulator is running (required for integration tests)
-  echo "  🔍 Checking Firestore emulator availability..."
-  if ! curl -s "http://localhost:8080" >/dev/null 2>&1; then
+  echo "  🔍 Running INTEGRATION test suite (component interactions)..."
+  INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+  
+  if [[ "$INTEGRATION_TEST_FAILED" == "true" ]]; then
     echo "❌ Integration Tests: FAILED"
     echo ""
     echo "📋 Integration Test Failure Details:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "🔥 Firestore emulator is not running on localhost:8080"
-    echo ""
-    echo "💡 To start the Firestore emulator:"
-    echo "  gcloud beta emulators firestore start --host-port localhost:8080"
-    echo ""
-    echo "💡 Or run integration tests in CI where emulator is automatically started"
+    echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
-    add_failure "Integration Tests" "Firestore emulator not available" "Start emulator with: gcloud beta emulators firestore start --host-port localhost:8080"
+    # Extract summary stats for the failure record
+    FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    add_failure "Integration Tests" "Integration test failures: $FAILED_INTEGRATION_TESTS" "See detailed output above and run 'python -m pytest tests/integration/ -v' for full details"
   else
-    echo "   ✅ Firestore emulator is available"
-    
-    # Run INTEGRATION tests (requires emulator, slower tests)
-    echo "  🔍 Running INTEGRATION test suite (component interactions)..."
-    INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
-    
-    if [[ "$INTEGRATION_TEST_FAILED" == "true" ]]; then
-      echo "❌ Integration Tests: FAILED"
-      echo ""
-      echo "📋 Integration Test Failure Details:"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo ""
-      
-      # Extract summary stats for the failure record
-      FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-      add_failure "Integration Tests" "Integration test failures: $FAILED_INTEGRATION_TESTS" "See detailed output above and run 'python -m pytest tests/integration/ -v' for full details"
-    else
-      echo "✅ Integration Tests: PASSED"
-      add_success "Integration Tests" "All integration tests passed successfully"
-    fi
+    echo "✅ Integration Tests: PASSED"
+    add_success "Integration Tests" "All integration tests passed successfully"
   fi
   echo ""
 fi
@@ -469,7 +448,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     # Coverage threshold with environment differences buffer
     # Base threshold: 80%
     # Environment buffer: 0.5% (accounts for differences between local macOS and CI Linux)
-    # - Database connection paths may differ (Firestore emulator vs real connection)
+    # - Database connection paths may differ depending on DATABASE_URL
     # - Import conflict resolution logic may exercise different code paths
     # - Logging behavior can vary between environments
     THRESHOLD=80
@@ -1282,49 +1261,8 @@ except Exception as e:
     return
   fi
   
-  # Start Firestore emulator if not running (port 8080 for integration tests)
-  if ! lsof -i :8080 > /dev/null 2>&1; then
-    echo -e "${BLUE}🚀 Starting Firestore emulator...${NC}"
-    
-    # Check if we're in CI (GitHub Actions)
-    if [ "$CI" = "true" ] || [ "$GITHUB_ACTIONS" = "true" ]; then
-      echo -e "${BLUE}🐳 CI environment detected - checking for Docker emulator...${NC}"
-      # In CI, the emulator should already be started by the workflow
-      # Wait a bit and check again
-      sleep 5
-      if ! lsof -i :8080 > /dev/null 2>&1; then
-        echo -e "${RED}❌ Firestore emulator not running in CI${NC}"
-        echo -e "${YELLOW}💡 The CI workflow should start the Firestore emulator before running this script${NC}"
-        add_failure "Smoke Tests" "Firestore emulator not available in CI" "Ensure CI workflow starts Firestore emulator"
-        echo ""
-        return
-      fi
-      echo -e "${GREEN}✅ Firestore emulator found in CI${NC}"
-    else
-      # Local environment - use firebase CLI
-      if command -v firebase >/dev/null 2>&1; then
-        firebase emulators:start --only firestore --host-port localhost:8080 > logs/test_firestore.log 2>&1 &
-        FIRESTORE_PID=$!
-        sleep 5
-        
-        if ! lsof -i :8080 > /dev/null 2>&1; then
-          echo -e "${RED}❌ Failed to start Firestore emulator${NC}"
-          add_failure "Smoke Tests" "Failed to start Firestore emulator" "Install Firebase CLI: npm install -g firebase-tools"
-          echo ""
-          return
-        fi
-        echo -e "${GREEN}✅ Firestore emulator started${NC}"
-      else
-        echo -e "${RED}❌ Firebase CLI not found. Please install: npm install -g firebase-tools${NC}"
-        add_failure "Smoke Tests" "Firebase CLI not available" "Install Firebase CLI: npm install -g firebase-tools"
-        echo ""
-        return
-      fi
-    fi
-  else
-    echo -e "${GREEN}✅ Firestore emulator already running${NC}"
-  fi
-  
+  # SQLite is used for persistence; no external emulator required.
+
   # Start test server
   if ! start_test_server; then
     add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $DEFAULT_PORT is available"
