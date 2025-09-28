@@ -22,15 +22,15 @@ def client():
             yield client
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(scope="class", autouse=True)
 def setup_integration_test_data():
     """
     Set up integration test data including default CEI institution.
 
-    This fixture runs before each test and ensures that:
+    This fixture runs once per test class and ensures that:
     1. A baseline CEI institution exists for historical test data
     2. Basic test data is available for integration tests
-    3. Data is always fresh and available for each test
+    3. Database connection is properly established
     """
     try:
         # Import and run the database seeder to create full test dataset

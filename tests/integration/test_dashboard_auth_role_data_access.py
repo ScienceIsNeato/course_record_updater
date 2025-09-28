@@ -43,6 +43,16 @@ class TestDashboardAuthRoleDataAccess:
         """Load actual seeded user data from database to avoid hardcoded IDs"""
         import database_service as db
 
+        # Force database connection refresh to handle SQLite session isolation
+        try:
+            from database_factory import get_database_service
+
+            db_service = get_database_service()
+            if hasattr(db_service.sqlite, "remove_session"):
+                db_service.sqlite.remove_session()
+        except:
+            pass
+
         # Get all institutions to find CEI
         institutions = db.get_all_institutions() or []
         self.cei_institution = next(
@@ -53,6 +63,34 @@ class TestDashboardAuthRoleDataAccess:
             ),
             None,
         )
+
+        # If CEI not found, try to re-seed the database
+        if not self.cei_institution:
+            try:
+                import sys
+                from pathlib import Path
+
+                scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+                sys.path.insert(0, str(scripts_dir))
+                from seed_db import DatabaseSeeder
+
+                seeder = DatabaseSeeder(verbose=False)
+                seeder.seed_full_dataset()
+                print("🔄 Re-seeded database due to missing test data")
+
+                # Try again after seeding
+                institutions = db.get_all_institutions() or []
+                self.cei_institution = next(
+                    (
+                        inst
+                        for inst in institutions
+                        if "California Engineering Institute" in inst.get("name", "")
+                    ),
+                    None,
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to re-seed database: {e}")
+
         assert self.cei_institution, "CEI institution not found in seeded data"
         self.cei_id = self.cei_institution["institution_id"]
 
@@ -399,9 +437,39 @@ class TestDashboardDataConsistency:
         """Load actual seeded user data from database to avoid hardcoded IDs"""
         import database_service as db
 
+        # Force database connection refresh to handle SQLite session isolation
+        try:
+            from database_factory import get_database_service
+
+            db_service = get_database_service()
+            if hasattr(db_service.sqlite, "remove_session"):
+                db_service.sqlite.remove_session()
+        except:
+            pass
+
         # Find site admin
         site_admin_email = "siteadmin@system.local"
         self.site_admin = db.get_user_by_email(site_admin_email)
+
+        # If site admin not found, try to re-seed the database
+        if not self.site_admin:
+            try:
+                import sys
+                from pathlib import Path
+
+                scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+                sys.path.insert(0, str(scripts_dir))
+                from seed_db import DatabaseSeeder
+
+                seeder = DatabaseSeeder(verbose=False)
+                seeder.seed_full_dataset()
+                print("🔄 Re-seeded database due to missing test data")
+
+                # Try again after seeding
+                self.site_admin = db.get_user_by_email(site_admin_email)
+            except Exception as e:
+                print(f"⚠️ Failed to re-seed database: {e}")
+
         assert self.site_admin, f"Site admin {site_admin_email} not found"
 
     def test_dashboard_data_structure_validation(self):
