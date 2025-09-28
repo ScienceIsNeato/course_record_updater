@@ -748,7 +748,7 @@ if [[ "$RUN_SONAR" == "true" ]]; then
     else
       # Run SonarCloud quality gate check (get actionable issues)
       echo "🔧 Checking SonarCloud quality gate status..."
-      if python scripts/sonar_issues_scraper.py --project-key scienceisneato_courserecordupdater; then
+      if python scripts/sonar_issues_scraper.py --project-key scienceisneato_course-record-updater; then
         echo "✅ SonarCloud Analysis: PASSED"
         add_success "SonarCloud Analysis" "All quality gate conditions met"
       else
