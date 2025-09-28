@@ -22,14 +22,15 @@ def client():
             yield client
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def setup_integration_test_data():
     """
     Set up integration test data including default CEI institution.
 
-    This fixture runs once per test session and ensures that:
+    This fixture runs before each test and ensures that:
     1. A baseline CEI institution exists for historical test data
     2. Basic test data is available for integration tests
+    3. Data is always fresh and available for each test
     """
     try:
         # Import and run the database seeder to create full test dataset
@@ -42,10 +43,22 @@ def setup_integration_test_data():
 
         from seed_db import DatabaseSeeder
 
-        # Create full seeded dataset for integration tests
-        seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
-        seeder.seed_full_dataset()
-        print("✅ Seeded full database for integration tests")
+        import database_service as db
+
+        # Check if data already exists to avoid duplicate seeding
+        institutions = db.get_all_institutions() or []
+        cei_exists = any(
+            "California Engineering Institute" in inst.get("name", "")
+            for inst in institutions
+        )
+
+        if not cei_exists:
+            # Create full seeded dataset for integration tests
+            seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
+            seeder.seed_full_dataset()
+            print("✅ Seeded full database for integration tests")
+        else:
+            print("✅ Integration test data already exists")
 
     except Exception as e:
         print(f"⚠️  Warning: Could not seed database for integration tests: {e}")
