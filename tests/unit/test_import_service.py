@@ -396,3 +396,73 @@ class TestReportGeneration:
         assert "File not found" in report
         assert "WARNINGS:" in report
         assert "Missing optional field" in report
+
+    def test_process_course_import_update_existing(self):
+        """Test updating existing course with USE_THEIRS strategy."""
+        course_data = {
+            "course_number": "CS101",
+            "title": "Updated Computer Science",
+            "department": "Computer Science",
+            "credits": 4,
+        }
+
+        with (
+            patch("import_service.get_course_by_number") as mock_get_course,
+            patch("import_service.create_course") as mock_create_course,
+        ):
+
+            # Mock existing course
+            mock_get_course.return_value = {
+                "course_id": "course_123",
+                "course_number": "CS101",
+                "title": "Old Computer Science",
+                "department": "Computer Science",
+                "credits": 3,
+            }
+
+            service = ImportService("inst_123")
+            success, conflicts = service.process_course_import(
+                course_data, ConflictStrategy.USE_THEIRS, dry_run=False
+            )
+
+            assert success is True
+            assert len(conflicts) > 0  # Should detect conflicts
+            assert service.stats["records_updated"] == 1
+            assert service.stats["conflicts_resolved"] > 0
+            mock_create_course.assert_not_called()  # Should not create new course
+
+    def test_process_user_import_update_existing(self):
+        """Test updating existing user with USE_THEIRS strategy."""
+        user_data = {
+            "email": "test@example.com",
+            "first_name": "John",
+            "last_name": "Updated",
+            "role": "instructor",
+        }
+
+        with (
+            patch("import_service.get_user_by_email") as mock_get_user,
+            patch("import_service.update_user") as mock_update_user,
+            patch("import_service.create_user") as mock_create_user,
+        ):
+
+            # Mock existing user
+            mock_get_user.return_value = {
+                "user_id": "user_123",
+                "email": "test@example.com",
+                "first_name": "John",
+                "last_name": "Old",
+                "role": "instructor",
+            }
+
+            service = ImportService("inst_123")
+            success, conflicts = service.process_user_import(
+                user_data, ConflictStrategy.USE_THEIRS, dry_run=False
+            )
+
+            assert success is True
+            assert len(conflicts) > 0  # Should detect conflicts
+            assert service.stats["records_updated"] == 1
+            assert service.stats["conflicts_resolved"] > 0
+            mock_update_user.assert_called_once_with("user_123", user_data)
+            mock_create_user.assert_not_called()  # Should not create new user

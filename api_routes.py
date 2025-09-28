@@ -1307,6 +1307,10 @@ def remove_course_from_program_api(program_id: str, course_id: str):
         # Remove course from program
         success = remove_course_from_program(course_id, program_id)
 
+        # If removal successful and default program exists, assign to default to prevent orphaning
+        if success and default_program_id:
+            assign_course_to_default_program(course_id, institution_id)
+
         if success:
             return jsonify(
                 {
@@ -1377,8 +1381,14 @@ def bulk_manage_program_courses(program_id: str):
             default_program_id = default_program["id"] if default_program else None
 
             result = bulk_remove_courses_from_program(course_ids, program_id)
+
+            # Assign successfully removed courses to default program to prevent orphaning
+            if result.get("removed", 0) > 0 and default_program_id:
+                for course_id in course_ids:
+                    assign_course_to_default_program(course_id, institution_id)
+
             message = (
-                f"Bulk remove operation completed: {result['success_count']} removed"
+                f"Bulk remove operation completed: {result.get('removed', 0)} removed"
             )
 
         return jsonify({"success": True, "message": message, "details": result})

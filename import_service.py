@@ -343,7 +343,7 @@ class ImportService:
                     if existing_value != new_value:
                         conflict = ConflictRecord(
                             entity_type="course",
-                            entity_id=existing_course.get("id", course_number),
+                            entity_id=existing_course.get("course_id", course_number),
                             field_name=field,
                             existing_value=existing_value,
                             import_value=new_value,
@@ -365,10 +365,13 @@ class ImportService:
                     if detected_conflicts:
                         self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
-                        # Update existing course
-                        # Note: This would need proper update logic
+                        # Update existing course with import data
+                        # TODO: Implement proper update_course function
+                        # For now, log that update would happen
                         self.stats["records_updated"] += 1
-                        self._log(f"Updated course: {course_number}")
+                        self._log(
+                            f"Updated course: {course_number} (update logic needs implementation)"
+                        )
                     else:
                         self._log(f"DRY RUN: Would update course: {course_number}")
                     return True, conflicts
@@ -428,7 +431,7 @@ class ImportService:
                     if existing_value != new_value:
                         conflict = ConflictRecord(
                             entity_type="user",
-                            entity_id=existing_user.get("id", email),
+                            entity_id=existing_user.get("user_id", email),
                             field_name=field,
                             existing_value=existing_value,
                             import_value=new_value,
@@ -451,7 +454,12 @@ class ImportService:
                         self.stats["conflicts_resolved"] += len(detected_conflicts)
                     if not dry_run:
                         # Update existing user
-                        update_user(existing_user.get("id", email), user_data)
+                        update_user(
+                            existing_user.get(
+                                "user_id", existing_user.get("id", email)
+                            ),
+                            user_data,
+                        )
                         self.stats["records_updated"] += 1
                         self._log(f"Updated user: {email}")
                     else:
