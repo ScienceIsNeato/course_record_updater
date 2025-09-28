@@ -197,6 +197,26 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
+    - name: Start Flask Server for Integration Tests
+      run: |
+        # Set CI environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
+        export PYTHONPATH=.
+        export DEFAULT_PORT=3001
+        
+        # Start Flask server in background for Selenium tests
+        nohup python app.py > server.log 2>&1 &
+        sleep 5  # Give server time to start
+        
+        # Verify server is running
+        curl -f http://localhost:3001/ || {
+          echo "❌ Flask server failed to start"
+          cat server.log
+          exit 1
+        }
+        
+        echo "✅ Flask server started successfully"
     - name: Run Smoke Tests (using ship_it.py)
       run: |
         # Set CI environment variables for SQLite
@@ -207,7 +227,7 @@ jobs:
         export PYTHONPATH=.
         export DEFAULT_PORT=3001
         
-        # Run smoke tests using ship_it.py with SQLite backend
+        # Run smoke tests using ship_it.py with SQLite backend (server already running)
         python scripts/ship_it.py --checks smoke
       env:
         CI: true
@@ -246,6 +266,26 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
+    - name: Start Flask Server for Integration Tests
+      run: |
+        # Set CI environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
+        export PYTHONPATH=.
+        export DEFAULT_PORT=3001
+        
+        # Start Flask server in background for Selenium tests
+        nohup python app.py > server.log 2>&1 &
+        sleep 5  # Give server time to start
+        
+        # Verify server is running
+        curl -f http://localhost:3001/ || {
+          echo "❌ Flask server failed to start"
+          cat server.log
+          exit 1
+        }
+        
+        echo "✅ Flask server started successfully"
     - name: Run Integration Tests (using ship_it.py)
       run: |
         # Set CI environment variables for SQLite
@@ -256,7 +296,7 @@ jobs:
         export PYTHONPATH=.
         export DEFAULT_PORT=3001
         
-        # Run integration tests using ship_it.py with SQLite backend
+        # Run integration tests using ship_it.py with SQLite backend (server already running)
         python scripts/ship_it.py --checks integration
       env:
         CI: true
