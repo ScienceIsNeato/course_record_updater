@@ -1,33 +1,31 @@
-# Course Record Updater – Post-Auth Backlog
+# Course Record Updater – Post-Adapter Implementation Backlog
 
-## Priority 0 – Import/Export Roundtrip System (Epic) **NEW**
-**Status**: Not started  
-**Docs**: `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md`, `planning/ADAPTER_DEVELOPMENT_GUIDE.md`, `research/CEI/BRIDGE_STRATEGY.md`, `planning/documentation/DATA_ENTRY_STRATEGY.md`  
-**Goal**: Implement bidirectional adapter-based system for institution-specific data formats with lossless roundtrip validation. Build abstract system with pluggable adapters - default adapter first, then institution-specific adapters.
-**Why Critical**: Institutions need to export data back to their existing systems (Access, SIS, etc.). Roundtrip validation ensures import pipeline integrity. Adapter architecture supports diverse institutional requirements while maintaining data fidelity.
-**Key Tasks**:
-- [ ] **Data Sanitization Script**: Create `scripts/sanitize_test_data.py` to safely anonymize real institutional data while preserving format/structure
-- [ ] **Default Adapter Implementation**: Create baseline `default_adapter` with two standard views (Academic Summary, Administrative) based on market research
-- [ ] **ExportService with Adapter Pattern**: Implement pluggable export system supporting institution-specific formatting
-- [ ] **Roundtrip Validation Framework**: Implement automated import→export→diff testing across all adapters (integrate into smoke test suite)
-- [ ] **Institution-Specific Adapter Validation**: Validate bidirectional flow for custom adapters (starting with existing import adapters)
-- [ ] **API Integration**: Add export endpoints supporting adapter selection and view options
-- [ ] **CI Quality Gate**: Integrate roundtrip validation into CI pipeline for all adapters
-**Definition of Done**: Default adapter handles standard academic formats bidirectionally, sanitization script creates safe test fixtures, roundtrip validation passes for all adapters, export API functional with adapter selection.  
-**Hand-off**: Core data architecture work - requires understanding of adapter pattern and institutional data requirements.
+## Priority 0 – Export System Enhancement (Epic) **UPDATED**
+**Status**: Import system completed, export needs refinement  
+**Docs**: `adapters/`, `import_service.py`, `export_service.py`, `scripts/ship_it.py`  
+**Goal**: Complete the bidirectional adapter-based system with enhanced export capabilities and roundtrip validation.
+**Progress**: ✅ Full adapter-based import system implemented with CEI Excel adapter, conflict resolution, dry-run mode, and comprehensive validation.
+**Remaining Tasks**:
+- [ ] **Enhanced Export Service**: Improve export service with better formatting and institution-specific adapters
+- [ ] **Roundtrip Validation Framework**: Implement automated import→export→diff testing across all adapters
+- [ ] **Default Adapter Export Views**: Create standard academic and administrative export formats
+- [ ] **API Export Endpoints**: Add export endpoints with adapter selection and format options
+- [ ] **CI Quality Gate**: Integrate roundtrip validation into CI pipeline
+**Definition of Done**: Export system matches import capabilities, roundtrip validation passes, export API functional.  
+**Hand-off**: Can be delegated once core architecture decisions are made.
 
-## Priority 1 – Multi-Tenant Context Hardening (Story 5.6)
-**Status**: Not started  
-**Docs**: `planning/AUTH_SYSTEM_DESIGN.md:744`, `auth_service.py:334`, `auth_service.py:352`, `api_routes.py:443`  
-**Goal**: Eliminate mock institution/program context so role-based auth uses actual tenant scopes before we expose invites and emails to customers.
-**Why Now**: Email flows, dashboard filtering, and billing accuracy rely on correct context; current TODO stubs create cross-tenant data risks.
-**Key Tasks**:
-- [ ] Replace stubbed data in `auth_service.py:334` and `auth_service.py:352` with Firestore-backed queries that honor each user's scoped institutions/programs.
-- [ ] Apply institution/program filters across list endpoints (e.g., `api_routes.py:443`, `api_routes.py:499`, `api_routes.py:555`) to satisfy Story 5.6 acceptance criteria.
-- [ ] Implement context middleware fallbacks and default program handling per the design plan, ensuring consistent behavior for program switching.
-- [ ] Expand unit/integration coverage for context switching and access control, closing unchecked boxes in Story 5.6.
-**Definition of Done**: DB-backed context retrieval, scoped queries everywhere, regression tests in place, Story 5.6 checklist fully checked off.  
-**Hand-off**: Requires DB coordination—best handled by primary dev for now.
+## Priority 1 – Multi-Tenant Context Hardening (Story 5.6) **UPDATED**
+**Status**: Partially completed - database migration done  
+**Docs**: `database_service.py`, `database_sqlite.py`, `api_routes.py`, `auth_service.py`  
+**Goal**: Complete transition from Firestore to SQLite and implement proper tenant scoping.
+**Progress**: ✅ Full migration from Firestore to SQLite database, ✅ Institution-agnostic design implemented.
+**Remaining Tasks**:
+- [ ] Apply institution/program filters across all list endpoints to honor multi-tenant scoping
+- [ ] Implement context middleware fallbacks and default program handling
+- [ ] Expand unit/integration coverage for context switching and access control
+- [ ] Remove any remaining Firestore references and complete SQLite transition
+**Definition of Done**: Full SQLite integration, proper tenant scoping, comprehensive test coverage.  
+**Hand-off**: Database coordination complete - can be delegated for remaining scoping work.
 
 ## Priority 2 – Email Communication System Launch (Epic)
 **Status**: In progress  
@@ -66,17 +64,21 @@
 **Definition of Done**: Updated UAT guide, observable email send telemetry, documented UAT execution.  
 **Hand-off**: Great background agent effort.
 
-## Priority 5 – Excel Import Validation Refresh (Epic)
-**Status**: Needs scoping  
-**Docs**: `planning/INSTRUCTOR_MANAGEMENT_TIMELINE.md:16`, `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md`, `import_service.py`, `import_cli.py:269`, `STATUS.md`  
-**Goal**: Align import tooling with the new auth/multi-tenant model and close outstanding validation TODOs.
-**Key Tasks**:
-- [ ] Implement the `--validate-only` pathway in `import_cli.py:269` and expose it via API for UI preflight checks.
-- [ ] Ensure imports honor institution/program context (tie-in with Priority 0) and restrict user/course creation appropriately.
-- [ ] Resolve the "0 sections created" defect noted in `STATUS.md` and expand validation rules/tests accordingly.
-- [ ] Update `planning/ADAPTIVE_IMPORT_SYSTEM_DESIGN.md` and related docs to reflect the refreshed flow.
-**Definition of Done**: Validation-only mode works, imports are tenant-safe, section creation bug fixed, documentation/tests updated.  
-**Hand-off**: Substantial systems work; viable for background agent with clear acceptance tests.
+## Priority 5 – Excel Import System (Epic) **COMPLETED** ✅
+**Status**: Completed  
+**Docs**: `import_service.py`, `adapters/`, `templates/components/data_management_panel.html`, `api_routes.py`  
+**Goal**: Implement comprehensive Excel import system with adapter architecture and validation.
+**Progress**: ✅ Complete adapter-based import system with CEI Excel adapter, ✅ Dry-run mode implemented, ✅ Conflict resolution strategies, ✅ Comprehensive validation and error handling, ✅ UI integration with data management panel.
+**Key Features Delivered**:
+- ✅ Adapter registry system for extensible import formats
+- ✅ CEI Excel format adapter with multiple format variants support
+- ✅ Conflict resolution (USE_THEIRS, USE_MINE, MERGE, MANUAL_REVIEW)
+- ✅ Dry-run mode for import validation without data persistence
+- ✅ Comprehensive import statistics and error reporting
+- ✅ UI integration with file upload and import options
+- ✅ Institution-agnostic design supporting multi-tenant operations
+**Definition of Done**: ✅ All features implemented and tested.  
+**Hand-off**: System complete and operational.
 
 ## Priority 6 – Billing Foundations (Epic)
 **Status**: Not started  
@@ -103,21 +105,21 @@
 **Definition of Done**: Profile edits and password changes persist securely, TODOs removed, Story 6.1 checklist completed.  
 **Hand-off**: Focused development—ideal for background agent.
 
-## Priority 8 – Production Deployment & Infrastructure (Epic) **CRITICAL GAP**
-**Status**: Not started  
-**Docs**: None (needs creation)  
-**Goal**: Design and implement production deployment pipeline, environment separation, and hosting infrastructure to actually run the application for customers.
-**Key Tasks**:
-- [ ] **Environment Strategy**: Design dev/staging/prod environment separation with proper configuration management, secrets handling, and database isolation.
-- [ ] **Hosting Platform**: Choose and configure hosting platform (Cloud Run, App Engine, traditional VPS, etc.) with auto-scaling, health checks, and monitoring.
-- [ ] **CI/CD Pipeline**: Extend current quality gates to include deployment automation, environment promotion, and rollback capabilities.
-- [ ] **Domain & SSL**: Set up custom domain, SSL certificates, and DNS configuration for customer-facing URLs.
-- [ ] **Database Management**: Configure production Firestore instance, backup strategy, and migration procedures.
-- [ ] **Monitoring & Logging**: Implement application monitoring, error tracking, performance metrics, and centralized logging.
-- [ ] **Security Hardening**: Production security review, HTTPS enforcement, security headers, rate limiting, and vulnerability scanning.
-- [ ] **Documentation**: Create deployment runbook, incident response procedures, and operational documentation.
-**Definition of Done**: Application runs in production with proper monitoring, customers can access via custom domain, deployment is automated and repeatable.  
-**Hand-off**: Core infrastructure work—requires architectural decisions and production access.
+## Priority 8 – Production Deployment & Infrastructure (Epic) **UPDATED**
+**Status**: Foundations in place, deployment pipeline needed  
+**Docs**: `scripts/ship_it.py`, `QUALITY_GATE_SUMMARY.md`, `sonar-project.properties`, `.github/workflows/`  
+**Goal**: Complete production deployment pipeline and hosting infrastructure.
+**Progress**: ✅ Comprehensive quality gates with ship_it.py, ✅ SonarCloud integration, ✅ SQLite database ready for production, ✅ Security scanning and linting pipeline.
+**Remaining Tasks**:
+- [ ] **Hosting Platform**: Choose and configure hosting platform with auto-scaling and health checks
+- [ ] **Environment Strategy**: Implement dev/staging/prod environment separation with proper configuration management
+- [ ] **CI/CD Pipeline**: Extend quality gates to include automated deployment and rollback capabilities
+- [ ] **Domain & SSL**: Set up custom domain, SSL certificates, and DNS configuration
+- [ ] **Database Management**: Configure production SQLite backup strategy and migration procedures
+- [ ] **Monitoring & Logging**: Implement application monitoring, error tracking, and centralized logging
+- [ ] **Security Hardening**: Production security review, HTTPS enforcement, and rate limiting
+**Definition of Done**: Application deployable to production with monitoring, domain configured, automated deployment pipeline.  
+**Hand-off**: Infrastructure work - requires hosting platform decisions and production access.
 
 ## Priority 9 – Dashboard Pagination & Filtering (Story) **Hand-off Candidate**
 **Status**: Not started  

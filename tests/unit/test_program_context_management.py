@@ -19,7 +19,6 @@ def _login_test_user(client, overrides=None):
         "role": "site_admin",
         "institution_id": "inst-123",
         "program_ids": ["prog-123"],
-        "program_ids": ["prog-123"],
         "display_name": "Test Admin",
     }
     if overrides:
@@ -162,7 +161,6 @@ class TestProgramContextAPI:
             "role": "program_admin",
             "institution_id": "inst-123",
             "program_ids": ["prog-123", "prog-456"],
-            "program_ids": ["prog-123", "prog-456"],
         }
         mock_programs = [
             {"id": "prog-123", "name": "Computer Science"},
@@ -199,7 +197,6 @@ class TestProgramContextAPI:
             "user_id": "test-user",
             "role": "program_admin",
             "institution_id": "inst-123",
-            "program_ids": ["prog-123", "prog-456"],
             "program_ids": ["prog-123", "prog-456"],
         }
         mock_program = {"id": "prog-123", "name": "Computer Science"}
