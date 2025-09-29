@@ -39,7 +39,7 @@ jobs:
     - name: Run tests with coverage
       run: |
         # Generate coverage data for SonarCloud
-        python -m pytest tests/unit/ --cov=. --cov-report=xml --cov-report=term-missing
+        python -m pytest tests/unit/ --cov=. --cov-report=xml --cov-report=term-missing --junitxml=test-results.xml
       env:
         PYTHONPATH: .
 

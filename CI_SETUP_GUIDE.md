@@ -28,8 +28,7 @@ The CI system requires these environment variables to be configured in GitHub re
 
 ### Required Secrets
 - `SAFETY_API_KEY`: For security vulnerability scanning
-- `SONAR_TOKEN`: For SonarQube code quality analysis  
-- `SONAR_HOST_URL`: SonarQube server URL (stored as repository variable)
+- `SONAR_TOKEN`: For SonarCloud code quality analysis (cloud service)
 
 ### Automatic Setup
 - **Python version**: Managed via `PYTHON_VERSION` environment variable in workflow
