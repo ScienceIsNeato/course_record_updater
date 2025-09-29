@@ -223,7 +223,7 @@ class TestInvitationServiceAcceptance:
     ):
         """Test successful invitation acceptance"""
         # Setup
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -291,7 +291,7 @@ class TestInvitationServiceAcceptance:
     def test_accept_invitation_expired(self, mock_db):
         """Test invitation acceptance when expired"""
         # Setup
-        past_date = datetime.utcnow() - timedelta(days=1)
+        past_date = datetime.now(timezone.utc) - timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -312,7 +312,7 @@ class TestInvitationServiceAcceptance:
     def test_accept_invitation_weak_password(self, mock_db, mock_password_service):
         """Test invitation acceptance with weak password"""
         # Setup
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation = {"status": "sent", "expires_at": future_date.isoformat()}
         mock_db.get_invitation_by_token.return_value = invitation
         mock_password_service.validate_password_strength.side_effect = Exception(
@@ -330,7 +330,7 @@ class TestInvitationServiceAcceptance:
     ):
         """Test invitation acceptance with user creation failure"""
         # Setup
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -383,7 +383,7 @@ class TestInvitationServiceManagement:
     def test_resend_invitation_success(self, mock_db):
         """Test successful invitation resending"""
         # Setup
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -465,7 +465,7 @@ class TestInvitationServiceManagement:
     def test_get_invitation_status_success(self, mock_db):
         """Test getting invitation status"""
         # Setup
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -489,7 +489,7 @@ class TestInvitationServiceManagement:
     def test_get_invitation_status_expired(self, mock_db):
         """Test getting status of expired invitation"""
         # Setup
-        past_date = datetime.utcnow() - timedelta(days=1)
+        past_date = datetime.now(timezone.utc) - timedelta(days=1)
         invitation = {
             "id": "inv-123",
             "status": "sent",
@@ -601,7 +601,7 @@ class TestInvitationServiceIntegration:
         assert email_sent is True
 
         # Step 3: Accept invitation
-        future_date = datetime.utcnow() + timedelta(days=1)
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
         invitation_for_acceptance = {
             "id": "inv-123",
             "status": "sent",
