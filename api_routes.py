@@ -1666,7 +1666,7 @@ def validate_import_file():
                 institution_id=institution_id,
                 conflict_strategy="use_theirs",
                 dry_run=True,  # Always dry run for validation
-                adapter_name=adapter_name,
+                adapter_id=adapter_name,
             )
 
             # Create validation response
@@ -2864,11 +2864,18 @@ def excel_import_api():
 
         # Save uploaded file temporarily
         import os
+        import re
         import tempfile
 
         temp_dir = tempfile.gettempdir()
+
+        # Sanitize filename to prevent path traversal attacks
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"upload_{hash(file.filename) % 10000}"
+
         temp_filename = (
-            f"import_{current_user.get('user_id')}_{import_data_type}_{file.filename}"
+            f"import_{current_user.get('user_id')}_{import_data_type}_{safe_filename}"
         )
         temp_filepath = os.path.join(temp_dir, temp_filename)
 

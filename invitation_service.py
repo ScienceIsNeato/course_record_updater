@@ -10,7 +10,7 @@ Handles user invitation functionality including:
 
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import database_service as db
@@ -90,7 +90,9 @@ class InvitationService:
             invitation_token = secrets.token_urlsafe(32)
 
             # Calculate expiry date
-            datetime.utcnow() + timedelta(days=InvitationService.INVITATION_EXPIRY_DAYS)
+            expires_at = datetime.now(timezone.utc) + timedelta(
+                days=InvitationService.INVITATION_EXPIRY_DAYS
+            )
 
             # Create invitation data using the correct UserInvitation schema
             invitation_data = UserInvitation.create_schema(
@@ -165,7 +167,10 @@ class InvitationService:
                 # Update invitation status to sent
                 db.update_invitation(
                     invitation_data["id"],
-                    {"status": "sent", "sent_at": datetime.utcnow().isoformat()},
+                    {
+                        "status": "sent",
+                        "sent_at": datetime.now(timezone.utc).isoformat(),
+                    },
                 )
 
                 logger.info(
@@ -221,11 +226,17 @@ class InvitationService:
             expires_at = datetime.fromisoformat(
                 invitation["expires_at"].replace("Z", "+00:00")
             )
-            if datetime.utcnow() > expires_at.replace(tzinfo=None):
+            # Ensure both datetimes are timezone-aware for comparison
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires_at:
                 # Mark as expired
                 db.update_invitation(
                     invitation["id"],
-                    {"status": "expired", "updated_at": datetime.utcnow().isoformat()},
+                    {
+                        "status": "expired",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    },
                 )
                 raise InvitationError("Invitation has expired")
 
@@ -276,9 +287,9 @@ class InvitationService:
                 invitation["id"],
                 {
                     "status": "accepted",
-                    "accepted_at": datetime.utcnow().isoformat(),
+                    "accepted_at": datetime.now(timezone.utc).isoformat(),
                     "accepted_by_user_id": user_id,
-                    "updated_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
@@ -330,16 +341,19 @@ class InvitationService:
             expires_at = datetime.fromisoformat(
                 invitation["expires_at"].replace("Z", "+00:00")
             )
-            if datetime.utcnow() > expires_at.replace(tzinfo=None):
+            # Ensure both datetimes are timezone-aware for comparison
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) > expires_at:
                 # Extend expiry
-                new_expires_at = datetime.utcnow() + timedelta(
+                new_expires_at = datetime.now(timezone.utc) + timedelta(
                     days=InvitationService.INVITATION_EXPIRY_DAYS
                 )
                 db.update_invitation(
                     invitation_id,
                     {
                         "expires_at": new_expires_at.isoformat(),
-                        "updated_at": datetime.utcnow().isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
                     },
                 )
                 invitation["expires_at"] = new_expires_at.isoformat()
@@ -376,13 +390,19 @@ class InvitationService:
             expires_at = datetime.fromisoformat(
                 invitation["expires_at"].replace("Z", "+00:00")
             )
-            is_expired = datetime.utcnow() > expires_at.replace(tzinfo=None)
+            # Ensure both datetimes are timezone-aware for comparison
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            is_expired = datetime.now(timezone.utc) > expires_at
 
             if is_expired and invitation["status"] not in ["accepted", "expired"]:
                 # Mark as expired
                 db.update_invitation(
                     invitation["id"],
-                    {"status": "expired", "updated_at": datetime.utcnow().isoformat()},
+                    {
+                        "status": "expired",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    },
                 )
                 invitation["status"] = "expired"
 
@@ -456,7 +476,10 @@ class InvitationService:
             # Update status to cancelled
             success = db.update_invitation(
                 invitation_id,
-                {"status": "cancelled", "updated_at": datetime.utcnow().isoformat()},
+                {
+                    "status": "cancelled",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                },
             )
 
             if success:

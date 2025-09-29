@@ -157,7 +157,7 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
-  RUN_SONAR=false  # Disabled - requires SonarCloud project setup
+  RUN_SONAR=true  # Enabled - SonarCloud project is configured
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
   RUN_JS_LINT=true

@@ -294,9 +294,11 @@ def main():
     # Print comprehensive analysis
     quality_gate_passed = scraper.print_quality_gate_summary()
 
+    # Always show security issues for review, even if quality gate passes
+    scraper.print_issues_summary(args.max_display)
+    scraper.print_actionable_summary()
+    
     if not quality_gate_passed:
-        scraper.print_issues_summary(args.max_display)
-        scraper.print_actionable_summary()
         sys.exit(1)
     else:
         print("\n🎉 All quality checks passed!")
