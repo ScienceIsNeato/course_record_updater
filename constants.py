@@ -27,7 +27,7 @@ NO_JSON_DATA_PROVIDED_MSG = "No JSON data provided"
 NOT_FOUND_MSG = "not found"
 INVITATION_NOT_FOUND_MSG = "Invitation not found"
 INVALID_CREDENTIALS_MSG = "Invalid email or password"
-DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Firestore client not available."
+DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
 
 # SonarLint configuration constants
 SONAR_CLOUD_ORGANIZATION = "scienceisneato"
@@ -52,11 +52,12 @@ ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
 EXCEL_EXTENSION = ".xlsx"
 
 # Database error messages
-DB_FIRESTORE_NOT_AVAILABLE = "[DB Service] Firestore client not available."
+DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
 
 # Default values
 DEFAULT_BASE_URL = "http://localhost:5000"
 TIMEZONE_UTC_SUFFIX = "+00:00"
+SYSTEM_USER_NAME = "System Administrator"
 
 # Seed data constants
 PROGRAM_COMPUTER_SCIENCE = "Computer Science"

@@ -21,6 +21,8 @@ lcov.info
 
 # Log files and directories
 logs/
+course_records.db
+*.db
 
 # SonarCloud analysis artifacts
 .scannerwork/
@@ -37,3 +39,6 @@ yarn-error.log*
 # Flask session files
 flask_session/
 COMMIT_MSG.txt
+
+# Scratch files
+pr_comments_scratch.md

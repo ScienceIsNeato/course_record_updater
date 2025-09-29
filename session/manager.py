@@ -4,6 +4,7 @@ Core session management operations.
 Handles session creation, validation, destruction, and Flask-Session
 configuration. This is the main session management interface.
 """
+
 # isort: skip_file
 # NOTE: isort disabled for this file due to persistent CI import ordering conflicts
 # between flask/flask_session grouping that couldn't be resolved with standard
@@ -100,13 +101,17 @@ class SessionService:
         # Set session as permanent if remember me is enabled
         if remember_me:
             session.permanent = True
-            current_app.permanent_session_lifetime = get_session_lifetime(remember_me=True)
+            current_app.permanent_session_lifetime = get_session_lifetime(
+                remember_me=True
+            )
             logger.info(
                 "[Session Service] Extended session lifetime enabled (remember me)"
             )
         else:
             session.permanent = False
-            current_app.permanent_session_lifetime = get_session_lifetime(remember_me=False)
+            current_app.permanent_session_lifetime = get_session_lifetime(
+                remember_me=False
+            )
 
         # Store IP address and user agent for security validation
         session["ip_address"] = SessionSecurity.get_client_ip()

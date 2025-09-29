@@ -26,15 +26,16 @@ python import_cli.py --file test_data/cei_sample.xlsx --dry-run --verbose
 
 ### 🔥 Database Operations
 ```bash
-# Test Firestore connection
-python -c "from database_service import db; print('✅ Database connected')"
+# Test SQLite connection
+python -c "import os, database_service; print('✅ Database connected:', os.environ.get('DATABASE_URL'))"
 
 # Test basic CRUD
 python -c "
-from database_service_extended import create_course, get_course_by_id
-course_id = create_course({'course_number': 'TEST-101', 'course_title': 'Test Course'})
-course = get_course_by_id(course_id)
-print(f'✅ CRUD working: {course}')
+import database_service
+inst_id = database_service.create_institution({'name': 'Smoke Test College', 'short_name': 'STC', 'admin_email': 'admin@stc.edu', 'created_by': 'smoke'})
+course_id = database_service.create_course({'course_number': 'TEST-101', 'course_title': 'Test Course', 'institution_id': inst_id})
+course = database_service.get_course_by_id(course_id)
+print(f'✅ CRUD working: {course["course_number"]} -> {course["course_title"]}')
 "
 ```
 
@@ -171,11 +172,11 @@ curl http://localhost:3001/api/health
 
 ### Database Issues
 ```bash
-# Check Firestore emulator
-curl http://localhost:8086
+# Inspect SQLite database location
+cat logs/database_location.txt
 
 # Test basic operations
-python -c "from database_service import db; print('Collections:', list(db.collections()))"
+python -c "import database_service; print('Institutions:', database_service.get_all_institutions())"
 ```
 
 This approach gives you confidence in your changes without the overhead of running the full test suite during development.

@@ -70,10 +70,12 @@ class TestImportBusinessLogic:
                         "course": course["course_number"],  # REAL: lowercase 'course'
                         "combo": f"{course['course_number']}:Instructor Name",
                         "cllo_text": f"Learning outcome for {course['course_number']}",
+                        "students": 25,  # Required column for CEI format
                         "Enrolled Students": 25,  # REAL: 'Enrolled Students'
                         "Total W's": 1,
                         "Faculty Name": f"Instructor{section} Name",  # REAL: 'Faculty Name'
-                        "effterm_c": "2023FA",
+                        "email": f"instructor{section}@cei.edu",  # Required for test format
+                        "effterm_c": "FA2024",
                         "endterm_c": None,
                         "Term": "FA2024",  # REAL: 'Term'
                         "pass_course": None,
@@ -132,8 +134,8 @@ class TestImportBusinessLogic:
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
             assert (
-                result.records_processed == 4
-            ), "Should process 4 records (2 courses × 2 sections)"
+                result.records_processed == 9
+            ), "Should process 9 records (2 users + 2 courses + 1 term + 2 offerings + 2 sections)"
             assert result.records_created > 0, "Should create new records"
             assert (
                 result.conflicts_detected == 0
@@ -209,7 +211,9 @@ class TestImportBusinessLogic:
             assert (
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
-            assert result.records_processed == 4, "Should process all records"
+            assert (
+                result.records_processed == 9
+            ), "Should process all records (2 users + 2 courses + 1 term + 2 offerings + 2 sections)"
             assert result.conflicts_detected > 0, "Should detect existence conflicts"
 
             # Should NOT attempt to create courses since they exist
@@ -264,8 +268,8 @@ class TestImportBusinessLogic:
                 result.success == True
             ), f"Import should succeed, errors: {result.errors}"
             assert (
-                result.records_processed == 6
-            ), "Should process 6 records (3 courses × 2 sections)"
+                result.records_processed == 12
+            ), "Should process 12 records (2 users + 3 courses + 1 term + 3 offerings + 3 sections)"
 
             # Should create new BIO-101 course, update existing courses due to title differences
             assert result.records_created > 0, "Should create new BIO-101 course"
@@ -307,13 +311,16 @@ class TestImportBusinessLogic:
                 dry_run=False,
             )
 
-            # Assert: Should do nothing
-            assert result.success == True, "Empty file import should succeed"
+            # Assert: Should fail with appropriate error
+            assert result.success == False, "Empty file import should fail"
             assert result.records_processed == 0, "Should process no records"
             assert result.records_created == 0, "Should create no records"
             assert result.records_updated == 0, "Should update no records"
             assert result.records_skipped == 0, "Should skip no records"
-            assert len(result.errors) == 0, "Should have no errors"
+            assert len(result.errors) == 1, "Should have one error"
+            assert (
+                "excel file is empty" in result.errors[0].lower()
+            ), "Should report empty file error"
 
         finally:
             os.unlink(temp_file.name)
@@ -368,100 +375,6 @@ class TestImportBusinessLogic:
                     assert (
                         course_number in imported_course_numbers
                     ), f"Should only query courses from import file, not {course_number}"
-
-        finally:
-            os.unlink(excel_file)
-
-    @patch("database_service.db")
-    def test_delete_existing_database_option(self, mock_db):
-        """
-        Test: delete_existing_db option clears database before import
-
-        Expected behavior:
-        - When delete_existing_db=True, all data is cleared first
-        - Then import proceeds normally
-        - When delete_existing_db=False, existing data is preserved
-        """
-        # Mock database operations
-        mock_collection = MagicMock()
-        mock_doc = MagicMock()
-        mock_doc.reference.delete = MagicMock()
-        mock_collection.stream.return_value = [mock_doc, mock_doc]  # 2 docs to delete
-        mock_db.collection.return_value = mock_collection
-
-        excel_file = self.create_test_excel_file(self.sample_courses)
-
-        try:
-            with (
-                patch("import_service.get_course_by_number") as mock_get_course,
-                patch("import_service.create_course") as mock_create,
-            ):
-                mock_get_course.return_value = None  # Empty after deletion
-                mock_create.return_value = "new_id"
-
-                # Act: Import with delete_existing_db=True
-                result = self.import_service.import_excel_file(
-                    file_path=excel_file,
-                    conflict_strategy=ConflictStrategy.USE_THEIRS,
-                    dry_run=False,
-                    delete_existing_db=True,
-                )
-
-                # Assert: Should delete existing data first
-                assert result.success == True
-
-                # Verify deletion was attempted for all collections
-                expected_collections = [
-                    "courses",
-                    "users",
-                    "terms",
-                    "course_sections",
-                    "course_outcomes",
-                ]
-
-                collection_calls = [
-                    call[0][0] for call in mock_db.collection.call_args_list
-                ]
-                for collection_name in expected_collections:
-                    assert (
-                        collection_name in collection_calls
-                    ), f"Should attempt to delete {collection_name} collection"
-
-                # Verify documents were deleted
-                assert (
-                    mock_doc.reference.delete.call_count > 0
-                ), "Should delete existing documents"
-
-        finally:
-            os.unlink(excel_file)
-
-    @patch("database_service.db")
-    def test_delete_existing_database_dry_run(self, mock_db):
-        """
-        Test: delete_existing_db in dry run mode should not actually delete
-        """
-        mock_collection = MagicMock()
-        mock_db.collection.return_value = mock_collection
-
-        excel_file = self.create_test_excel_file(self.sample_courses)
-
-        try:
-            # Act: Dry run with delete_existing_db=True
-            result = self.import_service.import_excel_file(
-                file_path=excel_file,
-                conflict_strategy=ConflictStrategy.USE_THEIRS,
-                dry_run=True,
-                delete_existing_db=True,
-            )
-
-            # Assert: Should not actually delete in dry run
-            assert result.success == True
-            assert result.dry_run == True
-
-            # Database may still be called for normal operations (user lookups, etc.)
-            # but deletion operations should not be called in dry run mode.
-            # This is verified by checking that no documents were actually deleted
-            # (which would happen if we called doc.reference.delete())
 
         finally:
             os.unlink(excel_file)

@@ -79,6 +79,39 @@
     transition: max-height 0.3s ease;
 }
 
+/* Scrollable Panel Content */
+.panel-content.scrollable {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Data Management Panel Specific Styles */
+.data-management-divider {
+    width: 2px;
+    background-color: #dee2e6;
+    margin: 0 auto;
+    min-height: 500px;
+    height: 100%;
+    border-radius: 1px;
+}
+
+/* Import/Export Button Styling */
+.btn-import-primary {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    padding: 12px 24px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-import-primary:hover {
+    background: linear-gradient(135deg, #218838, #1ba085);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
 .panel-content.collapsed {
     max-height: 0;
     padding-top: 0;

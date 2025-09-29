@@ -120,51 +120,6 @@
                         </div>
                     </div>
 
-                    <!-- Conflict Resolution Strategy -->
-                    <div class="row g-3 mt-2">
-                        <div class="col-12">
-                            <label class="form-label">Conflict Resolution Strategy:</label>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="use_theirs" value="use_theirs" checked>
-                                        <label class="form-check-label" for="use_theirs">
-                                            <strong>Use Import Data</strong><br>
-                                            <small class="text-muted">Overwrite existing with imported values</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="use_mine" value="use_mine">
-                                        <label class="form-check-label" for="use_mine">
-                                            <strong>Keep Existing</strong><br>
-                                            <small class="text-muted">Skip conflicts, keep database data</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="merge" value="merge">
-                                        <label class="form-check-label" for="merge">
-                                            <strong>Merge Data</strong><br>
-                                            <small class="text-muted">Intelligently combine both</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="conflict_strategy" id="manual_review" value="manual_review">
-                                        <label class="form-check-label" for="manual_review">
-                                            <strong>Manual Review</strong><br>
-                                            <small class="text-muted">Flag conflicts for review</small>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Options -->
                     <div class="row g-3 mt-2">
                         <div class="col-md-4">
@@ -176,23 +131,8 @@
                                 </label>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="verbose_output" name="verbose_output">
-                                <label class="form-check-label" for="verbose_output">
-                                    <strong>Detailed Output</strong><br>
-                                    <small class="text-muted">Show detailed progress information</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="delete_existing_db" name="delete_existing_db">
-                                <label class="form-check-label" for="delete_existing_db">
-                                    <strong>⚠️ Delete Existing Database</strong><br>
-                                    <small class="text-muted">Clear all data before import (DESTRUCTIVE)</small>
-                                </label>
-                            </div>
+                        <div class="col-md-8">
+                            <!-- Reserved for future import options -->
                         </div>
                     </div>
 

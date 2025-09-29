@@ -55,46 +55,18 @@ class DatabaseSeeder:
         if self.verbose:
             print(f"[SEED] {message}")
 
-    def clear_database(self):
-        """Clear existing test data (be careful in production!)"""
-        self.log("🧹 Clearing existing test data...")
+    def clear_database(self, preserve_site_admin=False):
+        """Clear existing test data by resetting the SQLite database."""
+        action = "except site admin" if preserve_site_admin else ""
+        self.log(f"🧹 Resetting database {action}...")
 
-        collections = [
-            "user_invitations",
-            "course_sections",
-            "course_outcomes",
-            "course_offerings",
-            "terms",
-            "courses",
-            "programs",
-            "users",
-            "institutions",
-        ]
+        if not db.reset_database():
+            self.log("   Warning: Database reset is not supported on this backend.")
+            return
 
-        for collection_name in collections:
-            try:
-                collection = db.db.collection(collection_name)
-                docs = collection.stream()
-                batch = db.db.batch()
-                count = 0
-
-                for doc in docs:
-                    batch.delete(doc.reference)
-                    count += 1
-
-                    # Commit in batches of 500 (Firestore limit)
-                    if count % 500 == 0:
-                        batch.commit()
-                        batch = db.db.batch()
-
-                # Commit remaining
-                if count % 500 != 0:
-                    batch.commit()
-
-                self.log(f"   Cleared {count} documents from {collection_name}")
-
-            except Exception as e:
-                self.log(f"   Warning: Could not clear {collection_name}: {e}")
+        if preserve_site_admin:
+            self.log("   Recreating preserved site admin user...")
+            self.create_site_admin()
 
     def create_institutions(self) -> List[str]:
         """Create test institutions (idempotent - checks for existing)"""
@@ -350,24 +322,30 @@ class DatabaseSeeder:
             },
         ]
 
-    def _create_single_program(self, prog_data: dict, institution_ids: List[str], admin_ids: List[str]) -> Optional[str]:
+    def _create_single_program(
+        self, prog_data: dict, institution_ids: List[str], admin_ids: List[str]
+    ) -> Optional[str]:
         """Create a single program"""
         institution_idx = cast(int, prog_data["institution_idx"])
         admin_idx = cast(int, prog_data["admin_idx"])
-        
+
         if institution_idx >= len(institution_ids) or admin_idx >= len(admin_ids):
             return None
 
         try:
             institution_id = institution_ids[institution_idx]
             program_name = cast(str, prog_data["name"])
-            
+
             # Check if program already exists
-            existing_program = db.get_program_by_name_and_institution(program_name, institution_id)
+            existing_program = db.get_program_by_name_and_institution(
+                program_name, institution_id
+            )
             if existing_program:
                 program_id = existing_program["id"]
                 self.created_entities["programs"].append(program_id)
-                self.log(f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})")
+                self.log(
+                    f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})"
+                )
                 return program_id
 
             # Create new program
@@ -384,7 +362,9 @@ class DatabaseSeeder:
             program_id = db.create_program(schema)
             if program_id:
                 self.created_entities["programs"].append(program_id)
-                self.log(f"   Created program: {prog_data['name']} ({prog_data['short_name']})")
+                self.log(
+                    f"   Created program: {prog_data['name']} ({prog_data['short_name']})"
+                )
                 return program_id
             else:
                 self.log(f"   Failed to create program: {prog_data['name']}")
@@ -394,15 +374,19 @@ class DatabaseSeeder:
             self.log(f"   Error creating program {prog_data['name']}: {e}")
             return None
 
-    def create_programs(self, institution_ids: List[str], admin_ids: List[str]) -> List[str]:
+    def create_programs(
+        self, institution_ids: List[str], admin_ids: List[str]
+    ) -> List[str]:
         """Create academic programs"""
         self.log("📚 Creating academic programs...")
-        
+
         programs_data = self._get_programs_data()
         program_ids = []
-        
+
         for prog_data in programs_data:
-            program_id = self._create_single_program(prog_data, institution_ids, admin_ids)
+            program_id = self._create_single_program(
+                prog_data, institution_ids, admin_ids
+            )
             if program_id:
                 program_ids.append(program_id)
 
@@ -784,6 +768,65 @@ class DatabaseSeeder:
 
         return course_ids
 
+    def create_course_offerings(
+        self, course_ids: List[str], institution_ids: List[str]
+    ) -> List[str]:
+        """Create course offerings for the created courses"""
+        self.log("📅 Creating course offerings...")
+
+        from database_service import (
+            create_course_offering,
+            get_active_terms,
+            get_course_by_id,
+        )
+
+        offering_ids = []
+
+        # Get terms for each institution
+        for institution_id in institution_ids:
+            terms = get_active_terms(institution_id)
+            if not terms:
+                self.log(f"   No terms found for institution {institution_id}")
+                continue
+
+            # Get courses for this institution
+            institution_courses = []
+            for course_id in course_ids:
+                course = get_course_by_id(course_id)
+                if course and course.get("institution_id") == institution_id:
+                    institution_courses.append(course)
+
+            # Create offerings for each course-term combination
+            for course in institution_courses:
+                for term in terms:
+                    try:
+                        offering_data = {
+                            "course_id": course["course_id"],
+                            "term_id": term["term_id"],
+                            "institution_id": institution_id,
+                            "credits": course.get("credits", 3),
+                            "status": "active",
+                        }
+
+                        offering_id = create_course_offering(offering_data)
+                        if offering_id:
+                            offering_ids.append(offering_id)
+                            self.created_entities["course_offerings"] = self.created_entities.get("course_offerings", [])
+                            self.created_entities["course_offerings"].append(offering_id)
+                            self.log(
+                                f"   Created offering: {course.get('course_number', 'Unknown')} for {term.get('name', 'Unknown')}"
+                            )
+                        else:
+                            self.log(
+                                f"   Failed to create offering for {course.get('course_number', course['course_id'])}"
+                            )
+
+                    except Exception as e:
+                        self.log(f"   Error creating offering for course {course.get('course_number', course['course_id'])}: {e}")
+
+        self.log(f"   Created {len(offering_ids)} course offerings")
+        return offering_ids
+
     def create_sections(
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
@@ -858,14 +901,18 @@ class DatabaseSeeder:
                             (section_num - 1) % len(instructors)
                         ]["user_id"]
 
+                    # Get course offering for this course and term
+                    from database_service import get_course_offering_by_course_and_term
+                    offering = get_course_offering_by_course_and_term(course_id, term_id)
+                    if not offering:
+                        self.log(f"   No offering found for course {course.get('course_number', course_id)} in term {term_id}")
+                        continue
+
                     # Create section schema
                     section_data = {
-                        "course_id": course_id,
-                        "term_id": term_id,
-                        "section_number": section_number,
+                        "offering_id": offering["offering_id"],  # Use offering_id instead of course_id + term_id
                         "instructor_id": instructor_id,
-                        "institution_id": institution_id,  # Add institution_id for filtering
-                        "course_number": course.get('course_number', 'Unknown'),  # Add for display
+                        "section_number": section_number,
                         "enrollment": 15 + (section_num * 5),  # Vary enrollment
                         "status": "assigned" if instructor_id else "unassigned",
                     }
@@ -911,72 +958,72 @@ class DatabaseSeeder:
                 {
                     "clo_number": "CLO1",
                     "description": "Students will demonstrate proficiency in fundamental programming concepts including variables, control structures, and functions.",
-                    "assessment_method": "Programming assignments and exams"
+                    "assessment_method": "Programming assignments and exams",
                 },
                 {
-                    "clo_number": "CLO2", 
+                    "clo_number": "CLO2",
                     "description": "Students will analyze and solve computational problems using appropriate algorithms and data structures.",
-                    "assessment_method": "Project deliverables and practical assessments"
+                    "assessment_method": "Project deliverables and practical assessments",
                 },
                 {
                     "clo_number": "CLO3",
                     "description": "Students will effectively communicate technical solutions through documentation and presentations.",
-                    "assessment_method": "Technical reports and oral presentations"
-                }
+                    "assessment_method": "Technical reports and oral presentations",
+                },
             ],
             "EE": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will apply fundamental electrical engineering principles to analyze circuits and systems.",
-                    "assessment_method": "Laboratory reports and circuit analysis assignments"
+                    "assessment_method": "Laboratory reports and circuit analysis assignments",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will design and implement electrical systems that meet specified requirements.",
-                    "assessment_method": "Design projects and practical demonstrations"
+                    "assessment_method": "Design projects and practical demonstrations",
                 },
                 {
                     "clo_number": "CLO3",
                     "description": "Students will use industry-standard tools and measurement techniques in electrical engineering practice.",
-                    "assessment_method": "Laboratory exercises and equipment proficiency tests"
-                }
+                    "assessment_method": "Laboratory exercises and equipment proficiency tests",
+                },
             ],
             "ENG": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will produce clear, coherent, and well-organized written compositions.",
-                    "assessment_method": "Essay assignments and portfolio review"
+                    "assessment_method": "Essay assignments and portfolio review",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will demonstrate critical thinking skills through analysis of texts and arguments.",
-                    "assessment_method": "Analytical essays and discussion participation"
-                }
+                    "assessment_method": "Analytical essays and discussion participation",
+                },
             ],
             "BUS": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will understand fundamental business concepts and their practical applications.",
-                    "assessment_method": "Case study analysis and examinations"
+                    "assessment_method": "Case study analysis and examinations",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will analyze business problems and propose viable solutions.",
-                    "assessment_method": "Business plan presentations and problem-solving exercises"
-                }
+                    "assessment_method": "Business plan presentations and problem-solving exercises",
+                },
             ],
             "ME": [
                 {
                     "clo_number": "CLO1",
                     "description": "Students will apply principles of mechanics to analyze engineering systems.",
-                    "assessment_method": "Problem sets and laboratory experiments"
+                    "assessment_method": "Problem sets and laboratory experiments",
                 },
                 {
                     "clo_number": "CLO2",
                     "description": "Students will design mechanical systems that meet specified performance criteria.",
-                    "assessment_method": "Design projects and CAD modeling assignments"
-                }
-            ]
+                    "assessment_method": "Design projects and CAD modeling assignments",
+                },
+            ],
         }
 
         for course_id in course_ids:
@@ -987,11 +1034,15 @@ class DatabaseSeeder:
                     continue
 
                 course_number = course.get("course_number", "")
-                subject = course_number.split("-")[0] if "-" in course_number else "GENERAL"
-                
+                subject = (
+                    course_number.split("-")[0] if "-" in course_number else "GENERAL"
+                )
+
                 # Get appropriate CLO templates
-                templates = clo_templates.get(subject, clo_templates["CS"][:2])  # Default to 2 CS CLOs
-                
+                templates = clo_templates.get(
+                    subject, clo_templates["CS"][:2]
+                )  # Default to 2 CS CLOs
+
                 for template in templates:
                     try:
                         # Create CLO schema
@@ -999,7 +1050,7 @@ class DatabaseSeeder:
                             course_id=course_id,
                             clo_number=template["clo_number"],
                             description=template["description"],
-                            assessment_method=template["assessment_method"]
+                            assessment_method=template["assessment_method"],
                         )
 
                         # Create outcome in database
@@ -1109,6 +1160,10 @@ class DatabaseSeeder:
 
         # Create courses
         course_ids = self.create_courses(institution_ids, program_ids)
+
+        # Create course offerings (required for sections)
+        if course_ids:
+            self.create_course_offerings(course_ids, institution_ids)
 
         # Create course sections
         if course_ids:
@@ -1235,6 +1290,8 @@ def main():
 Examples:
   python seed_db.py                 # Seed with full dataset
   python seed_db.py --clear         # Clear existing data first
+  python seed_db.py --clear-except-siteadmin  # Clear all except site admin, then seed
+  python seed_db.py --blank         # Truly blank DB - only site admin user
   python seed_db.py --minimal       # Create minimal dataset only
   python seed_db.py --clear --minimal  # Clear then create minimal dataset
         """,
@@ -1242,6 +1299,18 @@ Examples:
 
     parser.add_argument(
         "--clear", action="store_true", help="Clear existing test data before seeding"
+    )
+
+    parser.add_argument(
+        "--clear-except-siteadmin",
+        action="store_true", 
+        help="Clear all data except site admin user, then seed test data"
+    )
+
+    parser.add_argument(
+        "--blank",
+        action="store_true", 
+        help="Clear all data except site admin user - truly blank DB with only login ability"
     )
 
     parser.add_argument(
@@ -1260,7 +1329,7 @@ Examples:
     # Check database connection
     if not db.check_db_connection():
         print(
-            "❌ Database connection failed. Please check your Firestore configuration."
+            "❌ Database connection failed. Please verify DATABASE_URL and permissions."
         )
         sys.exit(1)
 
@@ -1268,6 +1337,12 @@ Examples:
         # Clear data if requested
         if args.clear:
             seeder.clear_database()
+        elif args.clear_except_siteadmin:
+            seeder.clear_database(preserve_site_admin=True)
+        elif args.blank:
+            seeder.clear_database(preserve_site_admin=True)
+            seeder.log("🎯 Database blanked - only site admin remains")
+            return  # Exit without seeding anything
 
         # Seed database
         if args.minimal:

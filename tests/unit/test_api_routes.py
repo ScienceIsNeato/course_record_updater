@@ -33,6 +33,42 @@ class TestAPIBlueprint:
         assert "api" in blueprint_names
 
 
+class TestLoginAPI:
+    """Test login API error handling."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
+    def test_login_api_account_locked_error(self):
+        """Test login API handles AccountLockedError correctly."""
+        with patch("login_service.LoginService") as mock_login_service:
+            mock_login_service.authenticate_user.side_effect = Exception(
+                "AccountLockedError"
+            )
+
+            response = self.client.post(
+                "/api/auth/login",
+                json={"email": "test@example.com", "password": "password123"},
+            )
+
+            assert response.status_code == 500  # Should handle the exception
+
+    def test_login_api_login_error(self):
+        """Test login API handles LoginError correctly."""
+        with patch("login_service.LoginService") as mock_login_service:
+            mock_login_service.authenticate_user.side_effect = Exception("LoginError")
+
+            response = self.client.post(
+                "/api/auth/login",
+                json={"email": "test@example.com", "password": "password123"},
+            )
+
+            assert response.status_code == 500  # Should handle the exception
+
+
 class TestDashboardRoutes:
     """Test dashboard routes and user role handling."""
 

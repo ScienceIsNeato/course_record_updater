@@ -231,24 +231,36 @@ function executeImportRequest(formData, isValidation) {
     })
     .then(response => response.json())
     .then(data => {
-        // Hide progress, show results
-        progressDiv.style.display = 'none';
-        resultsDiv.style.display = 'block';
-        
         if (data.success) {
-            resultsContent.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>
-                    <strong>${isValidation ? 'Validation' : 'Import'} completed successfully!</strong>
-                    <div class="mt-2">
-                        <div>Records processed: ${data.records_processed || 0}</div>
-                        <div>Records created: ${data.records_created || 0}</div>
-                        <div>Records updated: ${data.records_updated || 0}</div>
-                        <div>Records skipped: ${data.records_skipped || 0}</div>
+            // Update progress bar to 100% before hiding
+            progressBar.style.width = '100%';
+            progressBar.setAttribute('aria-valuenow', 100);
+            progressBar.textContent = '100%';
+            statusDiv.textContent = isValidation ? 'Validation completed!' : 'Import completed!';
+            
+            // Brief delay to show 100% completion
+            setTimeout(() => {
+                // Hide progress, show results
+                progressDiv.style.display = 'none';
+                resultsDiv.style.display = 'block';
+                
+                resultsContent.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>${isValidation ? 'Validation' : 'Import'} completed successfully!</strong>
+                        <div class="mt-2">
+                            <div>Records processed: ${data.records_processed || 0}</div>
+                            <div>Records created: ${data.records_created || 0}</div>
+                            <div>Records updated: ${data.records_updated || 0}</div>
+                            <div>Records skipped: ${data.records_skipped || 0}</div>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }, 500); // 500ms delay to show completion
         } else {
+            // Hide progress immediately on error
+            progressDiv.style.display = 'none';
+            resultsDiv.style.display = 'block';
             resultsContent.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>

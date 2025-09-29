@@ -88,10 +88,14 @@
         // Logout function
         async function logout() {
             try {
+                // Get CSRF token from the template
+                const csrfToken = "{{ csrf_token() }}";
+                
                 const response = await fetch('/api/auth/logout', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     }
                 });
                 
@@ -106,10 +110,37 @@
                 alert('Logout failed. Please try again.');
             }
         }
-    </script>
 
-    <!-- Include Excel Import Modal -->
-    {% include 'components/excel_import_modal.html' %}
+        // Timestamp formatting utility
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '-';
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMinutes = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            
+            // Less than 1 minute ago
+            if (diffMinutes < 1) return 'Just now';
+            
+            // Less than 1 hour ago
+            if (diffMinutes < 60) return `${diffMinutes}m ago`;
+            
+            // Less than 24 hours ago
+            if (diffHours < 24) return `${diffHours}h ago`;
+            
+            // Less than 7 days ago
+            if (diffDays < 7) return `${diffDays}d ago`;
+            
+            // More than 7 days ago - show date
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // Make timestamp formatter globally available
+        window.formatTimestamp = formatTimestamp;
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

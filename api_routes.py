@@ -1305,7 +1305,11 @@ def remove_course_from_program_api(program_id: str, course_id: str):
         default_program_id = default_program["id"] if default_program else None
 
         # Remove course from program
-        success = remove_course_from_program(course_id, program_id, default_program_id)
+        success = remove_course_from_program(course_id, program_id)
+
+        # If removal successful and default program exists, assign to default to prevent orphaning
+        if success and default_program_id:
+            assign_course_to_default_program(course_id, institution_id)
 
         if success:
             return jsonify(
@@ -1376,11 +1380,15 @@ def bulk_manage_program_courses(program_id: str):
             )
             default_program_id = default_program["id"] if default_program else None
 
-            result = bulk_remove_courses_from_program(
-                course_ids, program_id, default_program_id
-            )
+            result = bulk_remove_courses_from_program(course_ids, program_id)
+
+            # Assign successfully removed courses to default program to prevent orphaning
+            if result.get("removed", 0) > 0 and default_program_id:
+                for course_id in course_ids:
+                    assign_course_to_default_program(course_id, institution_id)
+
             message = (
-                f"Bulk remove operation completed: {result['success_count']} removed"
+                f"Bulk remove operation completed: {result.get('removed', 0)} removed"
             )
 
         return jsonify({"success": True, "message": message, "details": result})
@@ -2357,7 +2365,7 @@ def login_api():
         500: Server error
     """
     try:
-        from login_service import LoginService
+        from login_service import LoginError, LoginService
         from password_service import AccountLockedError
 
         # Get request data
@@ -2392,13 +2400,13 @@ def login_api():
         logger.warning(
             f"Account locked during login attempt: {data.get('email', 'unknown')}"
         )
-        return handle_api_error(e, "User login", "Account is temporarily locked")
+        return jsonify({"success": False, "error": "Account is locked"}), 423
+    except LoginError as e:
+        logger.error(f"User login failed: {e}")
+        return jsonify({"success": False, "error": "Invalid email or password"}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
-        if "Invalid email or password" in str(e) or "Account" in str(e):
-            return handle_api_error(e, "User login", "Invalid email or password")
-        else:
-            return jsonify({"success": False, "error": "Login failed"}), 500
+        return handle_api_error(e, "User login", "An unexpected error occurred")
 
 
 @api.route("/auth/logout", methods=["POST"])
@@ -2720,7 +2728,7 @@ def excel_import_api():
 
     Form Data:
         excel_file: Excel file (.xlsx, .xls)
-        import_adapter: Adapter type (cei_excel_adapter, generic_excel_adapter)
+        import_adapter: Adapter ID (e.g., cei_excel_format_v1)
         conflict_strategy: How to handle conflicts (use_theirs, use_mine, merge, manual_review)
         dry_run: Test mode without saving (true/false)
         verbose_output: Detailed output (true/false)
@@ -2735,7 +2743,7 @@ def excel_import_api():
     """
     try:
         # Debug: Log request information
-        logger.info(f"Excel import request received")
+        logger.info("Excel import request received")
         logger.info(f"Request files: {list(request.files.keys())}")
         logger.info(f"Request form: {dict(request.form)}")
 
@@ -2767,13 +2775,12 @@ def excel_import_api():
             )
 
         # Get form parameters
-        import_adapter = request.form.get("import_adapter", "cei_excel_adapter")
+        adapter_id = request.form.get("import_adapter", "cei_excel_format_v1")
         conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
         dry_run = request.form.get("dry_run", "false").lower() == "true"
         verbose_output = request.form.get("verbose_output", "false").lower() == "true"
-        delete_existing_db = (
-            request.form.get("delete_existing_db", "false").lower() == "true"
-        )
+        # Note: delete_existing_db parameter available but not currently used
+        # delete_existing_db = request.form.get("delete_existing_db", "false").lower() == "true"
         import_data_type = request.form.get("import_data_type", "courses")
 
         # Get current user and check permissions
@@ -2787,7 +2794,7 @@ def excel_import_api():
         # Determine institution_id based on user role and adapter
         if user_role == UserRole.SITE_ADMIN.value:
             # Site admins can import for any institution - let adapter determine it
-            if import_adapter == "cei_excel_adapter":
+            if adapter_id == "cei_excel_format_v1":
                 # CEI adapter always imports for CEI institution
                 from database_service import create_default_cei_institution
 
@@ -2877,8 +2884,7 @@ def excel_import_api():
                 institution_id=institution_id,
                 conflict_strategy=conflict_strategy,
                 dry_run=dry_run,
-                adapter_name=import_adapter,
-                delete_existing_db=delete_existing_db,
+                adapter_id=adapter_id,
                 verbose=verbose_output,
             )
 
@@ -2895,6 +2901,10 @@ def excel_import_api():
                         "records_created": result.records_created,
                         "records_updated": result.records_updated,
                         "records_skipped": result.records_skipped,
+                        "conflicts_detected": result.conflicts_detected,
+                        "execution_time": result.execution_time,
+                        "errors": result.errors,
+                        "warnings": result.warnings,
                         "dry_run": dry_run,
                     }
                 ),
@@ -2920,6 +2930,60 @@ def excel_import_api():
                         str(e) if "Permission denied" in str(e) else "Import failed"
                     ),
                 }
+            ),
+            500,
+        )
+
+
+# ============================================================================
+# ADAPTER MANAGEMENT ENDPOINTS
+# ============================================================================
+
+
+@api.route("/adapters", methods=["GET"])
+@login_required
+def get_available_adapters():
+    """
+    Get available adapters for the current user based on their role and institution scope.
+
+    Returns:
+        JSON response with list of available adapters
+    """
+    try:
+        from adapters.adapter_registry import get_adapter_registry
+
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        registry = get_adapter_registry()
+        user_role = current_user.get("role")
+        user_institution_id = current_user.get("institution_id")
+        adapters = registry.get_adapters_for_user(user_role, user_institution_id)
+
+        # Format adapters for frontend consumption
+        adapter_list = []
+        for adapter_info in adapters:
+            adapter_list.append(
+                {
+                    "id": adapter_info["id"],
+                    "name": adapter_info["name"],
+                    "description": adapter_info["description"],
+                    "institution_id": adapter_info.get(
+                        "institution_id"
+                    ),  # Use .get() for safety
+                    "supported_formats": adapter_info["supported_formats"],
+                    "data_types": adapter_info["data_types"],
+                }
+            )
+
+        return jsonify({"success": True, "adapters": adapter_list})
+
+    except Exception as e:
+        logger.error(f"Error getting available adapters: {str(e)}")
+        return (
+            jsonify(
+                {"success": False, "error": "Failed to retrieve available adapters"}
             ),
             500,
         )

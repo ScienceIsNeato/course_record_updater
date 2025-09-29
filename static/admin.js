@@ -312,8 +312,15 @@ function displayUsers(users) {
             </td>
             <td>
                 <div class="program-tags">
-                    ${(user.program_ids || []).map(id => `<span class="program-tag">Program ${id}</span>`).join('')}
-                    ${user.program_ids && user.program_ids.length === 0 ? '<span class="text-muted">No programs</span>' : ''}
+                    ${
+                      (user.programs || user.program_names || [])
+                        .map(name => `<span class="program-tag">${name}</span>`)
+                        .join('') ||
+                      (user.program_ids || [])
+                        .map(() => '<span class="program-tag">Program</span>')
+                        .join('')
+                    }
+                    ${!user.programs && !user.program_names && (!user.program_ids || user.program_ids.length === 0) ? '<span class="text-muted">No programs</span>' : ''}
                 </div>
             </td>
             <td>

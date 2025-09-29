@@ -449,7 +449,7 @@ class PanelManager {
         endpoint: '/api/institutions',
         title: 'Institutions',
         transform: data =>
-          data.institutions?.slice(0, 5).map(inst => ({
+          data.institutions?.map(inst => ({
             label: inst.name,
             value: `${inst.user_count || 0} users`
           })) || []
@@ -458,7 +458,7 @@ class PanelManager {
         endpoint: '/api/programs',
         title: 'Programs',
         transform: data =>
-          data.programs?.slice(0, 5).map(prog => ({
+          data.programs?.map(prog => ({
             label: prog.name,
             value: `${prog.course_count || 0} courses`
           })) || []
@@ -467,7 +467,7 @@ class PanelManager {
         endpoint: '/api/courses',
         title: 'Active Courses',
         transform: data =>
-          data.courses?.slice(0, 5).map(course => ({
+          data.courses?.map(course => ({
             label: `${course.course_number}`,
             value: course.title
           })) || []
@@ -476,7 +476,7 @@ class PanelManager {
         endpoint: '/api/users',
         title: 'Recent Users',
         transform: data =>
-          data.users?.slice(0, 5).map(user => ({
+          data.users?.map(user => ({
             label: `${user.first_name} ${user.last_name}`,
             value: user.role.replace('_', ' ')
           })) || []

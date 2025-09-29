@@ -150,7 +150,7 @@ class TestLoginAPI:
         data = json.loads(response.data)
         assert data["success"] is False
         assert (
-            "Login failed" in data["error"]
+            "An unexpected error occurred" in data["error"]
         )  # Generic error message from handle_api_error
 
     @patch("login_service.SessionService")

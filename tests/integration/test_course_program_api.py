@@ -116,7 +116,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
         assert "course1 removed from program Computer Science" in data["message"]
-        mock_remove.assert_called_once_with("course1", "cs-program", "default-program")
+        mock_remove.assert_called_once_with("course1", "cs-program")
 
     @patch("api_routes.get_program_by_id")
     @patch("api_routes.bulk_add_courses_to_program")
@@ -163,10 +163,8 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         mock_get_institution.return_value = "test-institution"
         mock_get_programs.return_value = [{"id": "default-program", "is_default": True}]
         mock_bulk_remove.return_value = {
-            "success_count": 2,
-            "failure_count": 0,
-            "not_assigned": 1,
-            "orphaned_assigned_to_default": 1,
+            "removed": 2,
+            "failed": [],
         }
 
         bulk_data = {
@@ -183,7 +181,6 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
         assert "Bulk remove operation completed: 2 removed" in data["message"]
-        assert data["details"]["orphaned_assigned_to_default"] == 1
 
     @patch("api_routes.get_course_by_number")
     @patch("api_routes.get_program_by_id")

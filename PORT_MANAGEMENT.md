@@ -14,21 +14,10 @@ This document outlines the port allocation strategy to avoid conflicts between m
 ### Course Record Updater Ports
 - **Port 3001**: Default port for Course Record Updater
 - **Port 3002-3004**: Fallback ports if 3001 is occupied
-- **Port 8086**: Firestore emulator
-- **Port 4000**: Firestore emulator UI (optional)
 
 ## Starting the Server
 
-### Method 1: Full Setup with Database (Recommended)
-```bash
-# Start both Firestore emulator and Flask app
-./start_with_db.sh
-
-# Start on a specific port
-./start_with_db.sh 3005
-```
-
-### Method 2: Restart Server (Production Mode)
+### Method 1: Restart Server (Production Mode)
 ```bash
 # Start with automatic port detection and environment setup
 ./restart_server.sh

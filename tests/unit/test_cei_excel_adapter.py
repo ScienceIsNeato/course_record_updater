@@ -5,7 +5,7 @@ import pytest
 
 from adapters.cei_excel_adapter import (
     _extract_department_from_course,
-    _generate_email,
+    _extract_name_from_email,
     _parse_name,
     parse_cei_excel_row,
     parse_cei_term,
@@ -86,11 +86,19 @@ class TestHelperFunctions:
         assert _parse_name("") == ("Unknown", "Instructor")
         assert _parse_name("   ") == ("Unknown", "Instructor")
 
-    def test_generate_email(self):
-        """Test email generation."""
-        assert _generate_email("John", "Doe") == "john.doe@cei.edu"
-        assert _generate_email("Mary Jane", "Smith") == "maryjane.smith@cei.edu"
-        assert _generate_email("Test", "User Name") == "test.username@cei.edu"
+    def test_extract_name_from_email(self):
+        """Test name extraction from email."""
+        assert _extract_name_from_email("john.doe@cei.edu") == ("John", "Doe")
+        assert _extract_name_from_email("mary.jane.smith@cei.edu") == (
+            "Mary",
+            "Jane.Smith",
+        )
+        assert _extract_name_from_email("singlename@cei.edu") == (
+            "Unknown",
+            "Singlename",
+        )
+        assert _extract_name_from_email("invalid-email") == ("Unknown", "Instructor")
+        assert _extract_name_from_email("") == ("Unknown", "Instructor")
 
 
 class TestParseCeiExcelRow:
@@ -115,15 +123,51 @@ class TestParseCeiExcelRow:
         assert result["course"]["department"] == "Mathematics"
         assert result["course"]["institution_id"] == "test-institution"
 
-        # Check user data
+        # Check user data - Faculty Name format should NOT generate fake emails
         assert result["user"] is not None
-        assert result["user"]["email"] == "john.smith@cei.edu"
+        assert result["user"]["email"] is None  # No fake email generation!
         assert result["user"]["first_name"] == "John"
         assert result["user"]["last_name"] == "Smith"
+        assert (
+            result["user"]["account_status"] == "needs_email"
+        )  # Flagged for manual email entry
 
         # Check term data
         assert result["term"] is not None
         assert result["term"]["name"] == "Fall 2024"
+        assert result["term"]["year"] == 2024
+        assert result["term"]["season"] == "Fall"
+
+    def test_parse_cei_excel_row_with_email_format(self):
+        """Test parsing with email-based format (test data format)."""
+        row = pd.Series(
+            {
+                "course": "MATH-101",
+                "email": "matthew.taylor@cei.edu",
+                "Term": "2024 Fall",
+            }
+        )
+
+        result = parse_cei_excel_row(row, "test-institution")
+
+        # Check course data
+        assert result["course"] is not None
+        assert result["course"]["course_number"] == "MATH-101"
+        assert result["course"]["department"] == "Mathematics"
+        assert result["course"]["institution_id"] == "test-institution"
+
+        # Check user data - email format should preserve real email
+        assert result["user"] is not None
+        assert (
+            result["user"]["email"] == "matthew.taylor@cei.edu"
+        )  # Real email preserved!
+        assert result["user"]["first_name"] == "Matthew"
+        assert result["user"]["last_name"] == "Taylor"
+        assert result["user"]["account_status"] == "imported"  # Normal import status
+
+        # Check term data - standard format
+        assert result["term"] is not None
+        assert result["term"]["name"] == "2024 Fall"
         assert result["term"]["year"] == 2024
         assert result["term"]["season"] == "Fall"
 

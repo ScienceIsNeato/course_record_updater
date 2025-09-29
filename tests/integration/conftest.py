@@ -8,36 +8,30 @@ including database setup and institution creation.
 import pytest
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture
+def client():
+    """Create a Flask test client for integration tests."""
+    import app
+
+    # Configure the app for testing
+    app.app.config["TESTING"] = True
+    app.app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for testing
+
+    with app.app.test_client() as client:
+        with app.app.app_context():
+            yield client
+
+
+@pytest.fixture(scope="class", autouse=True)
 def setup_integration_test_data():
     """
     Set up integration test data including default CEI institution.
 
-    This fixture runs once per test session and ensures that:
+    This fixture runs once per test class and ensures that:
     1. A baseline CEI institution exists for historical test data
     2. Basic test data is available for integration tests
+    3. Database connection is properly established
     """
-    import os
-
-    # Skip expensive Firestore setup when emulator isn't configured.
-    emulator_host = os.environ.get("FIRESTORE_EMULATOR_HOST")
-    if not emulator_host:
-        print("ℹ️  Skipping CEI institution setup (FIRESTORE_EMULATOR_HOST not set)")
-        return
-
-    # Bail out quickly if the emulator host isn't reachable.
-    try:
-        host, port = emulator_host.split(":", 1)
-        import socket
-
-        # Test connection to Firestore emulator
-        with socket.create_connection((host, int(port)), timeout=1):
-            # Connection successful - emulator is running
-            pass
-    except Exception:
-        print("ℹ️  Skipping CEI institution setup (Firestore emulator unreachable)")
-        return
-
     try:
         # Import and run the database seeder to create full test dataset
         import sys
@@ -49,22 +43,23 @@ def setup_integration_test_data():
 
         from seed_db import DatabaseSeeder
 
-        # Create full seeded dataset for integration tests
-        seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
-        seeder.seed_full_dataset()
-        print("✅ Seeded full database for integration tests")
+        import database_service as db
+
+        # Check if data already exists to avoid duplicate seeding
+        institutions = db.get_all_institutions() or []
+        cei_exists = any(
+            "California Engineering Institute" in inst.get("name", "")
+            for inst in institutions
+        )
+
+        if not cei_exists:
+            # Create full seeded dataset for integration tests
+            seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
+            seeder.seed_full_dataset()
+            print("✅ Seeded full database for integration tests")
+        else:
+            print("✅ Integration test data already exists")
 
     except Exception as e:
         print(f"⚠️  Warning: Could not seed database for integration tests: {e}")
-        # Fallback to minimal CEI institution setup
-        try:
-            from database_service import create_default_cei_institution
-
-            cei_id = create_default_cei_institution()
-            if cei_id:
-                print(f"✅ Created CEI institution for integration tests: {cei_id}")
-            else:
-                print("ℹ️  CEI institution already exists for integration tests")
-        except Exception as fallback_e:
-            print(f"⚠️  Warning: Fallback CEI creation also failed: {fallback_e}")
         # Don't fail the tests if this setup fails - let individual tests handle it

@@ -57,7 +57,6 @@ const setupTableDom = () => {
           <option value="adapter_a">Adapter A</option>
         </select>
         <input type="checkbox" id="dry_run" />
-        <input type="checkbox" id="delete_existing_db" />
         <div id="importBtnText"></div>
         <div id="importProgress"></div>
         <div id="importStatus"></div>
@@ -285,7 +284,6 @@ const setupTableDom = () => {
         <input type="file" id="excel_file" />
         <select id="import_adapter"><option value="adapter_a" selected>Adapter A</option></select>
         <input type="checkbox" id="dry_run" />
-        <input type="checkbox" id="delete_existing_db" />
         <div>
           <input type="radio" name="conflict_strategy" value="use_theirs" checked />
         </div>

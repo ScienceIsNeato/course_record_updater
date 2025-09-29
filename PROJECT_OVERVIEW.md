@@ -40,18 +40,18 @@ A web application built with Python (Flask) that allows:
     *   Specific File Adapters (e.g., `adapter_v1.py`): Contain logic to parse unique `.docx` layouts.
     *   Adapters **do not** directly interact with the database.
 *   **Database Service/Handler:**
-    *   Separate component/module responsible for all interactions with Firestore.
+    *   Separate component/module responsible for all interactions with SQLite via SQLAlchemy.
     *   Provides functions like `save_course`, `get_all_courses`, `update_course`, `delete_course`.
     *   Called by the Flask endpoint handlers *after* receiving validated data from an adapter.
 *   **Database:**
-    *   Google Firestore (NoSQL).
+    *   SQLite (SQLAlchemy ORM).
     *   Flexible schema, free tier, GCP integration.
 
 ## 5. Technical Stack
 
 *   **Language:** Python 3
 *   **Web Framework:** Flask
-*   **Database:** Google Firestore
+*   **Database:** SQLite (SQLAlchemy ORM)
 *   **DB Interaction:** `google-cloud-firestore` library (via Database Service)
 *   **Word Document Parsing:** `python-docx` library (within Adapters)
 *   **Frontend:** HTML, CSS, JavaScript (via Flask Templates)
@@ -71,7 +71,7 @@ A web application built with Python (Flask) that allows:
     *   The adapter returns the validated dictionary or an error indication to the handler.
 4.  **Storage (Handler + DB Service):**
     *   If the adapter returned valid data, the handler calls the Database Service (e.g., `save_course(validated_data)`).
-    *   The Database Service interacts with Firestore to persist the data.
+    *   The Database Service interacts with SQLite to persist the data.
 5.  **Display:** The user is redirected back to the main page (`/`). The index route fetches the latest data via the Database Service and renders the updated table.
 6.  **Management:** Future milestones for Edit/Delete will follow a similar pattern (fetch -> display -> user action -> handler -> adapter (maybe for validation) -> DB service -> redirect/update).
 
@@ -85,6 +85,6 @@ A web application built with Python (Flask) that allows:
 ## 8. Assumptions & Scope (v0.2)
 
 *   **No Authentication:** The initial version will be publicly accessible without login.
-*   **Single Data Store:** All data resides in one Firestore database.
+*   **Single Data Store:** All data resides in a single SQLite database file.
 *   **Adapter Focus:** Build the framework first, then specific adapters iteratively.
 *   **Deployment:** Target platform is Google Cloud Run.
