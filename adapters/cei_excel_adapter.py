@@ -18,6 +18,9 @@ from .file_base_adapter import FileBaseAdapter, FileCompatibilityError
 
 # Constants for repeated strings
 FACULTY_NAME_COLUMN = "Faculty Name"
+ENROLLED_STUDENTS_COLUMN = "Enrolled Students"
+XLSX_EXTENSION = ".xlsx"
+XLS_EXTENSION = ".xls"
 
 
 def validate_cei_term_name(term_name: str) -> bool:
@@ -229,9 +232,9 @@ def _extract_section_data(
 
     # Check for either "Enrolled Students" (original format) or "students" (test format)
     student_count = None
-    if "Enrolled Students" in row and not pd.isna(row["Enrolled Students"]):
+    if ENROLLED_STUDENTS_COLUMN in row and not pd.isna(row[ENROLLED_STUDENTS_COLUMN]):
         try:
-            student_count = int(row["Enrolled Students"])
+            student_count = int(row[ENROLLED_STUDENTS_COLUMN])
         except (ValueError, TypeError):
             pass
     elif "students" in row and not pd.isna(row["students"]):
@@ -379,7 +382,7 @@ class CEIExcelAdapter(FileBaseAdapter):
     Automatically detects data types and validates file compatibility.
     """
 
-    SUPPORTED_EXTENSIONS = [".xlsx", ".xls"]
+    SUPPORTED_EXTENSIONS = [XLSX_EXTENSION, XLS_EXTENSION]
     MAX_FILE_SIZE_MB = 500
     MAX_RECORDS_TO_PROCESS = 500000
 
@@ -392,9 +395,9 @@ class CEIExcelAdapter(FileBaseAdapter):
         self.institution_id = "cei_institution_id"
 
         # Required columns for original format (flexible student column)
-        self.original_format_required = ["course", "Faculty Name", "effterm_c"]
+        self.original_format_required = ["course", FACULTY_NAME_COLUMN, "effterm_c"]
         self.original_format_student_columns = [
-            "Enrolled Students",
+            ENROLLED_STUDENTS_COLUMN,
             "students",
         ]  # Either works
 
@@ -404,7 +407,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         # Required columns for hybrid format (real CEI data with both email and Term)
         self.hybrid_format_required = ["course", "email", "Term"]
         self.hybrid_format_student_columns = [
-            "Enrolled Students",
+            ENROLLED_STUDENTS_COLUMN,
             "students",
         ]  # Either works
 
@@ -425,7 +428,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         """
         try:
             # Check file extension first
-            if not file_path.lower().endswith((".xlsx", ".xls")):
+            if not file_path.lower().endswith((XLSX_EXTENSION, XLS_EXTENSION)):
                 return False, "Unsupported file extension. Expected .xlsx or .xls"
 
             # Check if file exists
@@ -538,8 +541,8 @@ class CEIExcelAdapter(FileBaseAdapter):
 
             # Check student count column (either "Enrolled Students" or "students")
             student_col = None
-            if "Enrolled Students" in df.columns:
-                student_col = "Enrolled Students"
+            if ENROLLED_STUDENTS_COLUMN in df.columns:
+                student_col = ENROLLED_STUDENTS_COLUMN
             elif "students" in df.columns:
                 student_col = "students"
 
@@ -609,8 +612,8 @@ class CEIExcelAdapter(FileBaseAdapter):
 
             # Check for section data (student counts indicate sections)
             if (
-                "Enrolled Students" in df.columns
-                and not df["Enrolled Students"].isna().all()
+                ENROLLED_STUDENTS_COLUMN in df.columns
+                and not df[ENROLLED_STUDENTS_COLUMN].isna().all()
             ) or ("students" in df.columns and not df["students"].isna().all()):
                 detected_types.append("sections")
 
@@ -628,7 +631,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             "id": "cei_excel_format_v1",
             "name": "CEI Excel Format v1.2",
             "description": "Imports course, faculty, and section data from CEI's Excel exports. Supports original format (Faculty Name, effterm_c), test format (email, Term, students), and hybrid format (email, Term, Enrolled Students).",
-            "supported_formats": [".xlsx", ".xls"],
+            "supported_formats": [XLSX_EXTENSION, XLS_EXTENSION],
             "institution_short_name": "CEI",  # Identify by stable short name instead of GUID
             "data_types": ["courses", "faculty", "terms", "sections"],
             "version": "1.2.0",
@@ -836,7 +839,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                 "section",
                 "effterm_c",
                 "students",
-                "Faculty Name",
+                FACULTY_NAME_COLUMN,
                 "email",  # Include email if available
             ]
 
@@ -849,7 +852,9 @@ class CEIExcelAdapter(FileBaseAdapter):
                 worksheet.cell(row=row, column=2, value=record.get("section", ""))
                 worksheet.cell(row=row, column=3, value=record.get("effterm_c", ""))
                 worksheet.cell(row=row, column=4, value=record.get("students", ""))
-                worksheet.cell(row=row, column=5, value=record.get("Faculty Name", ""))
+                worksheet.cell(
+                    row=row, column=5, value=record.get(FACULTY_NAME_COLUMN, "")
+                )
                 worksheet.cell(row=row, column=6, value=record.get("email", ""))
 
             # Auto-size columns
@@ -925,7 +930,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                     "section": offering.get("section_number", "01"),
                     "effterm_c": term_formatted,
                     "students": offering.get("enrollment_count", 0),
-                    "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                    FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
                     "email": instructor.get("email", ""),
                 }
 
@@ -946,7 +951,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                         "section": "01",  # Default section
                         "effterm_c": term_formatted,
                         "students": 25,  # Default student count
-                        "Faculty Name": f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                        FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
                         "email": instructor.get("email", ""),
                     }
 

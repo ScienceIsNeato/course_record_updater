@@ -11,6 +11,10 @@ from typing import Any, Dict, List
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
+# Constants for error messages
+PERMISSION_DENIED_MSG = "Permission denied"
+USER_NOT_FOUND_MSG = "User not found"
+
 # Import our services
 from auth_service import (
     UserRole,
@@ -568,14 +572,14 @@ def get_user_api(user_id: str):
 
         # Check permissions - users can view their own info, admins can view any
         if user_id != current_user["user_id"] and not has_permission("manage_users"):
-            return jsonify({"success": False, "error": "Permission denied"}), 403
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
         user = get_user_by_id(user_id)
 
         if user:
             return jsonify({"success": True, "user": user})
         else:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
     except Exception as e:
         return handle_api_error(e, "Get user by ID", "Failed to retrieve user")
@@ -602,7 +606,7 @@ def update_user_api(user_id: str):
         # Check if user exists
         existing_user = get_user_by_id(user_id)
         if not existing_user:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
         # Update user
         success = update_user(user_id, data)
@@ -1056,7 +1060,7 @@ def create_program_api():
         current_user = get_current_user()
 
         if not current_user:
-            return jsonify({"success": False, "error": "User not found"}), 400
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 400
 
         if not institution_id:
             if current_user.get("role") == UserRole.SITE_ADMIN.value:
@@ -2925,7 +2929,7 @@ def excel_import_api():
 
     except PermissionError as e:
         logger.warning(f"Permission denied for import: {e}")
-        return jsonify({"success": False, "error": "Permission denied"}), 403
+        return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
     except Exception as e:
         logger.error(f"Excel import error: {e}")

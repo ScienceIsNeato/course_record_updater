@@ -109,7 +109,7 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
-            ("sonar", "🔍 SonarCloud Quality Analysis"),
+            # ("sonar", "🔍 SonarCloud Quality Analysis"),  # Excluded from commit checks to avoid chicken-and-egg problem
         ]
 
         # Full checks for PR validation (all checks)

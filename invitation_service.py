@@ -13,6 +13,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+# Constants for datetime formatting
+UTC_OFFSET = "+00:00"
+
 import database_service as db
 from auth_service import UserRole
 from email_service import EmailService
@@ -224,7 +227,7 @@ class InvitationService:
 
             # Check expiry
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_OFFSET)
             )
             # Ensure both datetimes are timezone-aware for comparison
             if expires_at.tzinfo is None:
@@ -339,7 +342,7 @@ class InvitationService:
 
             # Check if expired and extend if needed
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_OFFSET)
             )
             # Ensure both datetimes are timezone-aware for comparison
             if expires_at.tzinfo is None:
@@ -388,7 +391,7 @@ class InvitationService:
 
             # Check if expired
             expires_at = datetime.fromisoformat(
-                invitation["expires_at"].replace("Z", "+00:00")
+                invitation["expires_at"].replace("Z", UTC_OFFSET)
             )
             # Ensure both datetimes are timezone-aware for comparison
             if expires_at.tzinfo is None:
