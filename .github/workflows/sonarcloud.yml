@@ -50,6 +50,8 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       with:
         args: >
+          -Dsonar.projectKey=ScienceIsNeato_course_record_updater
+          -Dsonar.organization=scienceisneato
           -Dsonar.branch.name=${{ github.ref_name == 'main' && 'main' || github.head_ref }}
           -Dsonar.python.coverage.reportPaths=coverage.xml
           -Dsonar.python.xunit.reportPath=test-results.xml
