@@ -644,64 +644,19 @@ def list_courses():
     - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
-        try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
-        except InstitutionContextMissingError:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
+        # Resolve institution scope and validate access
+        current_user, institution_ids, is_global = _resolve_courses_scope()
 
-        program_id_override = request.args.get("program_id")
-        current_program_id = get_current_program_id()
+        # Handle program ID override with permission check
+        current_program_id = _resolve_program_override(current_user)
 
-        if program_id_override:
-            accessible_programs = (
-                current_user.get("program_ids", []) if current_user else []
-            )
-            if program_id_override in accessible_programs or (
-                current_user and current_user.get("role") == UserRole.SITE_ADMIN.value
-            ):
-                current_program_id = program_id_override
-            else:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Access denied to specified program",
-                        }
-                    ),
-                    403,
-                )
-
+        # Get department filter
         department_filter = request.args.get("department")
 
-        if is_global:
-            courses: List[Dict[str, Any]] = []
-            for inst_id in institution_ids:
-                courses.extend(get_all_courses(inst_id))
-            context_info = "system-wide"
-
-            if department_filter:
-                courses = [
-                    c for c in courses if c.get("department") == department_filter
-                ]
-                context_info = f"system-wide, department {department_filter}"
-        else:
-            institution_id = institution_ids[0]
-            if current_program_id:
-                courses = get_courses_by_program(current_program_id)
-                if department_filter:
-                    courses = [
-                        c for c in courses if c.get("department") == department_filter
-                    ]
-                context_info = f"program {current_program_id}"
-            elif department_filter:
-                courses = get_courses_by_department(institution_id, department_filter)
-                context_info = f"department {department_filter}"
-            else:
-                courses = get_all_courses(institution_id)
-                context_info = f"institution {institution_id}"
+        # Get courses and context based on scope
+        courses, context_info = _get_courses_by_scope(
+            is_global, institution_ids, current_program_id, department_filter
+        )
 
         return jsonify(
             {
@@ -715,6 +670,95 @@ def list_courses():
 
     except Exception as e:
         return handle_api_error(e, "Get courses", "Failed to retrieve courses")
+
+
+def _resolve_courses_scope():
+    """Resolve institution scope for courses listing."""
+    try:
+        return _resolve_institution_scope()
+    except InstitutionContextMissingError:
+        raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
+
+
+def _resolve_program_override(current_user):
+    """Resolve program ID override with permission validation."""
+    program_id_override = request.args.get("program_id")
+    current_program_id = get_current_program_id()
+
+    if not program_id_override:
+        return current_program_id
+
+    # Check if user has access to the specified program
+    if _user_can_access_program(current_user, program_id_override):
+        return program_id_override
+    else:
+        raise PermissionError("Access denied to specified program")
+
+
+def _user_can_access_program(current_user, program_id):
+    """Check if user can access the specified program."""
+    if not current_user:
+        return False
+
+    # Site admins can access any program
+    if current_user.get("role") == UserRole.SITE_ADMIN.value:
+        return True
+
+    # Check if program is in user's accessible programs
+    accessible_programs = current_user.get("program_ids", [])
+    return program_id in accessible_programs
+
+
+def _get_courses_by_scope(
+    is_global, institution_ids, current_program_id, department_filter
+):
+    """Get courses and context info based on scope and filters."""
+    if is_global:
+        return _get_global_courses(institution_ids, department_filter)
+    else:
+        return _get_institution_courses(
+            institution_ids[0], current_program_id, department_filter
+        )
+
+
+def _get_global_courses(institution_ids, department_filter):
+    """Get courses across all institutions with optional department filter."""
+    courses: List[Dict[str, Any]] = []
+    for inst_id in institution_ids:
+        courses.extend(get_all_courses(inst_id))
+
+    context_info = "system-wide"
+
+    if department_filter:
+        courses = [c for c in courses if c.get("department") == department_filter]
+        context_info = f"system-wide, department {department_filter}"
+
+    return courses, context_info
+
+
+def _get_institution_courses(institution_id, current_program_id, department_filter):
+    """Get courses for a specific institution with optional program/department filters."""
+    if current_program_id:
+        return _get_program_courses(current_program_id, department_filter)
+    elif department_filter:
+        courses = get_courses_by_department(institution_id, department_filter)
+        context_info = f"department {department_filter}"
+        return courses, context_info
+    else:
+        courses = get_all_courses(institution_id)
+        context_info = f"institution {institution_id}"
+        return courses, context_info
+
+
+def _get_program_courses(program_id, department_filter):
+    """Get courses for a specific program with optional department filter."""
+    courses = get_courses_by_program(program_id)
+    context_info = f"program {program_id}"
+
+    if department_filter:
+        courses = [c for c in courses if c.get("department") == department_filter]
+
+    return courses, context_info
 
 
 @api.route("/courses", methods=["POST"])

@@ -3068,3 +3068,209 @@ class TestAPIRoutesHelpers:
         progress_id = create_progress_tracker()
         cleanup_progress(progress_id)
         # Should not raise an exception
+
+
+class TestAPIRoutesHelperFunctions:
+    """Test helper functions for course listing complexity reduction."""
+
+    def setup_method(self):
+        """Set up test client."""
+        from app import app
+
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
+    def test_resolve_courses_scope_success(self):
+        """Test _resolve_courses_scope with valid scope."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_courses_scope
+
+        mock_user = {"role": "site_admin"}
+        mock_institutions = ["inst1"]
+        mock_global = False
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
+
+            user, institutions, is_global = _resolve_courses_scope()
+
+            assert user == mock_user
+            assert institutions == mock_institutions
+            assert is_global == mock_global
+
+    def test_resolve_courses_scope_missing_context(self):
+        """Test _resolve_courses_scope with missing institution context."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import InstitutionContextMissingError, _resolve_courses_scope
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
+
+            with pytest.raises(ValueError, match="Institution context required"):
+                _resolve_courses_scope()
+
+    def test_user_can_access_program_site_admin(self):
+        """Test _user_can_access_program for site admin."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "site_admin"}
+        program_id = "test-program"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is True
+
+    def test_user_can_access_program_with_access(self):
+        """Test _user_can_access_program for user with program access."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "program_admin", "program_ids": ["prog1", "prog2"]}
+        program_id = "prog1"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is True
+
+    def test_user_can_access_program_without_access(self):
+        """Test _user_can_access_program for user without program access."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "program_admin", "program_ids": ["prog1", "prog2"]}
+        program_id = "prog3"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is False
+
+    def test_user_can_access_program_no_user(self):
+        """Test _user_can_access_program with no user."""
+        from api_routes import _user_can_access_program
+
+        result = _user_can_access_program(None, "test-program")
+        assert result is False
+
+    def test_resolve_program_override_no_override(self):
+        """Test _resolve_program_override with no override."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_program_override
+
+        with self.app.test_request_context("/?"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                result = _resolve_program_override({"role": "user"})
+                assert result == "current-program"
+
+    def test_resolve_program_override_with_access(self):
+        """Test _resolve_program_override with valid override."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_program_override
+
+        user = {"role": "site_admin"}
+
+        with self.app.test_request_context("/?program_id=override-program"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                result = _resolve_program_override(user)
+                assert result == "override-program"
+
+    def test_resolve_program_override_without_access(self):
+        """Test _resolve_program_override with invalid override."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _resolve_program_override
+
+        user = {"role": "program_admin", "program_ids": ["other-program"]}
+
+        with self.app.test_request_context("/?program_id=override-program"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                with pytest.raises(
+                    PermissionError, match="Access denied to specified program"
+                ):
+                    _resolve_program_override(user)
+
+    def test_get_global_courses_no_filter(self):
+        """Test _get_global_courses without department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_courses
+
+        institution_ids = ["inst1", "inst2"]
+        mock_courses_1 = [{"id": "c1", "department": "CS"}]
+        mock_courses_2 = [{"id": "c2", "department": "MATH"}]
+
+        with patch("api_routes.get_all_courses") as mock_get_courses:
+            mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
+
+            courses, context = _get_global_courses(institution_ids, None)
+
+            assert len(courses) == 2
+            assert context == "system-wide"
+
+    def test_get_global_courses_with_filter(self):
+        """Test _get_global_courses with department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_courses
+
+        institution_ids = ["inst1", "inst2"]
+        mock_courses_1 = [{"id": "c1", "department": "CS"}]
+        mock_courses_2 = [{"id": "c2", "department": "MATH"}]
+
+        with patch("api_routes.get_all_courses") as mock_get_courses:
+            mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
+
+            courses, context = _get_global_courses(institution_ids, "CS")
+
+            assert len(courses) == 1
+            assert courses[0]["id"] == "c1"
+            assert context == "system-wide, department CS"
+
+    def test_get_program_courses_no_filter(self):
+        """Test _get_program_courses without department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_program_courses
+
+        program_id = "test-program"
+        mock_courses = [
+            {"id": "c1", "department": "CS"},
+            {"id": "c2", "department": "MATH"},
+        ]
+
+        with patch("api_routes.get_courses_by_program") as mock_get_courses:
+            mock_get_courses.return_value = mock_courses
+
+            courses, context = _get_program_courses(program_id, None)
+
+            assert len(courses) == 2
+            assert context == f"program {program_id}"
+
+    def test_get_program_courses_with_filter(self):
+        """Test _get_program_courses with department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_program_courses
+
+        program_id = "test-program"
+        mock_courses = [
+            {"id": "c1", "department": "CS"},
+            {"id": "c2", "department": "MATH"},
+        ]
+
+        with patch("api_routes.get_courses_by_program") as mock_get_courses:
+            mock_get_courses.return_value = mock_courses
+
+            courses, context = _get_program_courses(program_id, "CS")
+
+            assert len(courses) == 1
+            assert courses[0]["id"] == "c1"
