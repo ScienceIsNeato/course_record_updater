@@ -719,95 +719,114 @@ class CEIExcelAdapter(FileBaseAdapter):
             Dict mapping data types to lists of records
         """
         try:
-            # Validate file first
-            is_compatible, compatibility_message = self.validate_file_compatibility(
-                file_path
-            )
-            if not is_compatible:
-                raise FileCompatibilityError(
-                    f"File incompatible: {compatibility_message}"
-                )
+            # Validate file and extract institution ID
+            institution_id = self._validate_parse_inputs(file_path, options)
 
-            # Get institution ID from options
-            institution_id = options.get("institution_id")
-            if not institution_id:
-                raise ValueError("institution_id is required in options")
+            # Read and validate Excel data
+            df = self._read_excel_file(file_path)
 
-            # Read the Excel file
-            try:
-                df = pd.read_excel(file_path)
-            except Exception as e:
-                raise FileCompatibilityError(f"Cannot read Excel file: {str(e)}") from e
+            # Process all rows and collect entities
+            result = self._process_excel_rows(df, institution_id)
 
-            if df.empty:
-                raise FileCompatibilityError("Excel file is empty")
-
-            # Initialize result structure
-            result: Dict[str, List[Dict]] = {
-                "courses": [],
-                "users": [],  # Note: using 'users' not 'faculty' to match database service
-                "terms": [],
-                "offerings": [],
-                "sections": [],
-            }
-
-            # Process each row using existing parsing logic
-            for _, row in df.iterrows():
-                try:
-                    # Use existing parse_cei_excel_row function
-                    entities = parse_cei_excel_row(row, institution_id)
-
-                    # Add timestamp to all entities
-                    timestamp = datetime.now().isoformat()
-
-                    # Collect entities by type
-                    if entities.get("course"):
-                        course = entities["course"].copy()
-                        course["created_at"] = timestamp
-                        result["courses"].append(course)
-
-                    if entities.get("user"):
-                        user = entities["user"].copy()
-                        user["created_at"] = timestamp
-                        result["users"].append(user)
-
-                    if entities.get("term"):
-                        term = entities["term"].copy()
-                        term["created_at"] = timestamp
-                        result["terms"].append(term)
-
-                    if entities.get("offering"):
-                        offering = entities["offering"].copy()
-                        offering["created_at"] = timestamp
-                        result["offerings"].append(offering)
-
-                    if entities.get("section"):
-                        section = entities["section"].copy()
-                        section["created_at"] = timestamp
-                        result["sections"].append(section)
-
-                except Exception as e:
-                    # Log error but continue processing other rows
-                    print(f"Warning: Error processing row {_}: {str(e)}")
-                    continue
-
-            # Remove duplicates from each data type
-            result = self._deduplicate_results(result)
-
-            # Validate we have some data
-            total_records = sum(len(records) for records in result.values())
-            if total_records == 0:
-                raise FileCompatibilityError("No valid records found in file")
+            # Remove duplicates and validate results
+            result = self._finalize_results(result)
 
             return result
 
-        except FileCompatibilityError:
-            raise
-        except ValueError as e:
-            # Re-raise ValueError as-is (for missing institution_id, etc.)
+        except (FileCompatibilityError, ValueError):
             raise
         except Exception as e:
             raise FileCompatibilityError(f"Error parsing file: {str(e)}") from e
+
+    def _validate_parse_inputs(self, file_path: str, options: Dict[str, Any]) -> str:
+        """Validate file compatibility and extract institution ID."""
+        # Validate file first
+        is_compatible, compatibility_message = self.validate_file_compatibility(
+            file_path
+        )
+        if not is_compatible:
+            raise FileCompatibilityError(f"File incompatible: {compatibility_message}")
+
+        # Get institution ID from options
+        institution_id = options.get("institution_id")
+        if not institution_id:
+            raise ValueError("institution_id is required in options")
+
+        return institution_id
+
+    def _read_excel_file(self, file_path: str) -> pd.DataFrame:
+        """Read and validate Excel file."""
+        try:
+            df = pd.read_excel(file_path)
+        except Exception as e:
+            raise FileCompatibilityError(f"Cannot read Excel file: {str(e)}") from e
+
+        if df.empty:
+            raise FileCompatibilityError("Excel file is empty")
+
+        return df
+
+    def _process_excel_rows(
+        self, df: pd.DataFrame, institution_id: str
+    ) -> Dict[str, List[Dict]]:
+        """Process all Excel rows and collect entities by type."""
+        # Initialize result structure
+        result: Dict[str, List[Dict]] = {
+            "courses": [],
+            "users": [],  # Note: using 'users' not 'faculty' to match database service
+            "terms": [],
+            "offerings": [],
+            "sections": [],
+        }
+
+        # Process each row using existing parsing logic
+        for _, row in df.iterrows():
+            try:
+                # Use existing parse_cei_excel_row function
+                entities = parse_cei_excel_row(row, institution_id)
+
+                # Add entities to result with timestamps
+                self._collect_row_entities(entities, result)
+
+            except Exception as e:
+                # Log error but continue processing other rows
+                print(f"Warning: Error processing row {_}: {str(e)}")
+                continue
+
+        return result
+
+    def _collect_row_entities(
+        self, entities: Dict[str, Any], result: Dict[str, List[Dict]]
+    ) -> None:
+        """Collect entities from a single row into the result structure."""
+        timestamp = datetime.now().isoformat()
+
+        # Map entity types to result keys
+        entity_mappings = [
+            ("course", "courses"),
+            ("user", "users"),
+            ("term", "terms"),
+            ("offering", "offerings"),
+            ("section", "sections"),
+        ]
+
+        for entity_key, result_key in entity_mappings:
+            if entities.get(entity_key):
+                entity = entities[entity_key].copy()
+                entity["created_at"] = timestamp
+                result[result_key].append(entity)
+
+    def _finalize_results(self, result: Dict[str, List[Dict]]) -> Dict[str, List[Dict]]:
+        """Remove duplicates and validate final results."""
+        # Remove duplicates from each data type
+        result = self._deduplicate_results(result)
+
+        # Validate we have some data
+        total_records = sum(len(records) for records in result.values())
+        if total_records == 0:
+            raise FileCompatibilityError("No valid records found in file")
+
+        return result
 
     def _deduplicate_results(
         self, result: Dict[str, List[Dict]]
