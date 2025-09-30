@@ -107,28 +107,49 @@ def _convert_datetime_fields(data: Dict[str, Any]) -> Dict[str, Any]:
 
     for field in datetime_fields:
         if field in converted_data and isinstance(converted_data[field], str):
-            try:
-                # Parse ISO format datetime strings to datetime objects
-                # Handle both with and without microseconds
-                datetime_str = converted_data[field]
-                if "." in datetime_str and datetime_str.endswith("Z"):
-                    # Handle format like "2025-09-28T17:41:27.935901Z"
-                    datetime_str = datetime_str[:-1] + UTC_OFFSET
-                elif not datetime_str.endswith(
-                    UTC_OFFSET
-                ) and not datetime_str.endswith("Z"):
-                    # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
-                    if "." in datetime_str:
-                        datetime_str = datetime_str + UTC_OFFSET
-                    else:
-                        datetime_str = datetime_str + ".000000" + UTC_OFFSET
-
-                converted_data[field] = datetime.fromisoformat(datetime_str)
-            except (ValueError, TypeError):
-                # If parsing fails, leave as is (might be None or already datetime)
-                pass
+            converted_data[field] = _parse_datetime_string(converted_data[field])
 
     return converted_data
+
+
+def _parse_datetime_string(datetime_str: str) -> Any:
+    """Parse a datetime string to a datetime object, handling various formats."""
+    try:
+        normalized_str = _normalize_datetime_string(datetime_str)
+        return datetime.fromisoformat(normalized_str)
+    except (ValueError, TypeError):
+        # If parsing fails, return original value (might be None or already datetime)
+        return datetime_str
+
+
+def _normalize_datetime_string(datetime_str: str) -> str:
+    """Normalize datetime string to ISO format with UTC offset."""
+    if _is_z_format_with_microseconds(datetime_str):
+        # Handle format like "2025-09-28T17:41:27.935901Z"
+        return datetime_str[:-1] + UTC_OFFSET
+    elif _needs_utc_offset(datetime_str):
+        # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
+        return _add_utc_offset(datetime_str)
+    else:
+        return datetime_str
+
+
+def _is_z_format_with_microseconds(datetime_str: str) -> bool:
+    """Check if datetime string is in Z format with microseconds."""
+    return "." in datetime_str and datetime_str.endswith("Z")
+
+
+def _needs_utc_offset(datetime_str: str) -> bool:
+    """Check if datetime string needs UTC offset added."""
+    return not datetime_str.endswith(UTC_OFFSET) and not datetime_str.endswith("Z")
+
+
+def _add_utc_offset(datetime_str: str) -> str:
+    """Add UTC offset to datetime string, adding microseconds if needed."""
+    if "." in datetime_str:
+        return datetime_str + UTC_OFFSET
+    else:
+        return datetime_str + ".000000" + UTC_OFFSET
 
 
 class ImportService:
