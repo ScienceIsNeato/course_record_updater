@@ -746,15 +746,40 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Run SonarCloud quality gate check (get actionable issues)
-      echo "🔧 Checking SonarCloud quality gate status..."
-      if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
-        echo "✅ SonarCloud Analysis: PASSED"
-        add_success "SonarCloud Analysis" "All quality gate conditions met"
+      # Generate fresh coverage data and run SonarCloud analysis
+      echo "🔧 Generating fresh coverage data for SonarCloud..."
+      
+      # Run tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
+      if python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+        echo "✅ Coverage data generated successfully"
+        
+        # Run SonarCloud scanner with fresh data
+        echo "🔧 Running SonarCloud analysis with fresh coverage data..."
+        if sonar-scanner \
+          -Dsonar.python.coverage.reportPaths=coverage.xml \
+          -Dsonar.python.xunit.reportPath=test-results.xml \
+          -Dsonar.qualitygate.wait=false; then
+          echo "✅ SonarCloud scanner completed successfully"
+          
+          # Now check the quality gate status
+          echo "🔧 Checking SonarCloud quality gate status..."
+          if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
+            echo "✅ SonarCloud Analysis: PASSED"
+            add_success "SonarCloud Analysis" "All quality gate conditions met"
+          else
+            echo "❌ SonarCloud Analysis: FAILED"
+            echo "📋 See detailed issues above for specific fixes needed"
+            add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
+            SONAR_PASSED=false
+          fi
+        else
+          echo "❌ SonarCloud scanner failed"
+          add_failure "SonarCloud Analysis" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
+          SONAR_PASSED=false
+        fi
       else
-        echo "❌ SonarCloud Analysis: FAILED"
-        echo "📋 See detailed issues above for specific fixes needed"
-        add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
+        echo "❌ Failed to generate coverage data"
+        add_failure "SonarCloud Analysis" "Coverage data generation failed" "Fix failing tests before running SonarCloud analysis"
         SONAR_PASSED=false
       fi
     fi

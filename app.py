@@ -25,10 +25,11 @@ app = Flask(__name__)
 # Check if we're in test mode by looking for pytest in sys.modules
 import sys
 
-# Disable CSRF protection only during testing for security compliance
-# This is safe as it only affects test environments, not production
-if "pytest" in sys.modules:
-    app.config["WTF_CSRF_ENABLED"] = False
+# SECURITY: CSRF protection configuration
+# CSRF is enabled by default for all environments
+# Only disabled when explicitly set via environment variable for testing
+csrf_enabled = os.getenv("WTF_CSRF_ENABLED", "true").lower() != "false"
+app.config["WTF_CSRF_ENABLED"] = csrf_enabled
 
 csrf = CSRFProtect(app)
 

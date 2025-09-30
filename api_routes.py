@@ -2866,25 +2866,29 @@ def excel_import_api():
                 403,
             )
 
-        # Save uploaded file temporarily
+        # Save uploaded file temporarily using secure tempfile approach
         import os
         import re
         import tempfile
 
-        temp_dir = tempfile.gettempdir()
-
-        # Sanitize filename to prevent path traversal attacks
+        # Sanitize filename for logging/display purposes only
         safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
         if not safe_filename or safe_filename.startswith("."):
             safe_filename = f"upload_{hash(file.filename) % 10000}"
 
-        temp_filename = (
-            f"import_{current_user.get('user_id')}_{import_data_type}_{safe_filename}"
-        )
-        temp_filepath = os.path.join(temp_dir, temp_filename)
+        # Use secure temporary file creation
+        temp_file_prefix = f"import_{current_user.get('user_id')}_{import_data_type}_"
 
         try:
-            file.save(temp_filepath)
+            # Create secure temporary file
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                prefix=temp_file_prefix,
+                suffix=f"_{safe_filename}",
+                delete=False,
+            ) as temp_file:
+                file.save(temp_file)
+                temp_filepath = temp_file.name
 
             # Import the Excel processing function
             from import_service import import_excel
