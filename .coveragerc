@@ -65,8 +65,8 @@ exclude_lines =
     if __name__ == .__main__.:
 
 [html]
-directory = build-output/htmlcov
+directory = htmlcov
 title = Course Record Updater Coverage Report
 
 [xml]
-output = build-output/coverage.xml
+output = coverage.xml
