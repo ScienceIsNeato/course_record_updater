@@ -608,66 +608,126 @@ class ImportService:
             existing_user = get_user_by_email(email)
 
             if existing_user:
-                # Detect conflicts by comparing fields
-                detected_conflicts = []
-                for field, new_value in user_data.items():
-                    if field == "email":
-                        continue  # Skip email as it's the key
-                    existing_value = existing_user.get(field)
-                    if existing_value != new_value:
-                        conflict = ConflictRecord(
-                            entity_type="user",
-                            entity_id=existing_user.get("user_id", email),
-                            field_name=field,
-                            existing_value=existing_value,
-                            import_value=new_value,
-                            resolution=strategy.value,
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        detected_conflicts.append(conflict)
-                        conflicts.append(conflict)
-
-                if detected_conflicts:
-                    self.stats["conflicts_detected"] += len(detected_conflicts)
-
-                # Handle conflict based on strategy
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"Skipping existing user: {email}")
-                    return True, conflicts
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    if detected_conflicts:
-                        self.stats["conflicts_resolved"] += len(detected_conflicts)
-                    if not dry_run:
-                        # Update existing user - convert datetime fields for SQLite compatibility
-                        converted_user_data = _convert_datetime_fields(user_data)
-                        update_user(
-                            existing_user.get(
-                                "user_id", existing_user.get("id", email)
-                            ),
-                            converted_user_data,
-                        )
-                        self.stats["records_updated"] += 1
-                        self._log(f"Updated user: {email}")
-                    else:
-                        self._log(f"DRY RUN: Would update user: {email}")
-                    return True, conflicts
+                return self._handle_existing_user(
+                    user_data, existing_user, strategy, dry_run, conflicts
+                )
             else:
-                # Create new user
-                if not dry_run:
-                    create_user(user_data)
-                    self.stats["records_created"] += 1
-                    self._log(f"Created user: {email}")
-                else:
-                    self._log(f"DRY RUN: Would create user: {email}")
-
-            return True, conflicts
+                return self._handle_new_user(user_data, email, dry_run, conflicts)
 
         except Exception as e:
             self.stats["errors"].append(
                 f"Error processing user {user_data.get('email')}: {str(e)}"
             )
             return False, conflicts
+
+    def _handle_existing_user(
+        self,
+        user_data: Dict[str, Any],
+        existing_user: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of an existing user with conflict resolution."""
+        email = user_data.get("email")
+
+        # Detect conflicts by comparing fields
+        detected_conflicts = self._detect_user_conflicts(
+            user_data, existing_user, email
+        )
+        conflicts.extend(detected_conflicts)
+
+        if detected_conflicts:
+            self.stats["conflicts_detected"] += len(detected_conflicts)
+
+        # Handle conflict based on strategy
+        return self._resolve_user_conflicts(
+            strategy,
+            detected_conflicts,
+            user_data,
+            existing_user,
+            email,
+            dry_run,
+            conflicts,
+        )
+
+    def _detect_user_conflicts(
+        self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
+    ) -> List[ConflictRecord]:
+        """Detect conflicts between import data and existing user."""
+        detected_conflicts = []
+
+        for field, new_value in user_data.items():
+            if field == "email":
+                continue  # Skip email as it's the key
+            existing_value = existing_user.get(field)
+            if existing_value != new_value:
+                conflict = ConflictRecord(
+                    entity_type="user",
+                    entity_id=existing_user.get("user_id", email),
+                    field_name=field,
+                    existing_value=existing_value,
+                    import_value=new_value,
+                    resolution="pending",
+                    timestamp=datetime.now(timezone.utc),
+                )
+                detected_conflicts.append(conflict)
+
+        return detected_conflicts
+
+    def _resolve_user_conflicts(
+        self,
+        strategy: ConflictStrategy,
+        detected_conflicts: List[ConflictRecord],
+        user_data: Dict[str, Any],
+        existing_user: Dict[str, Any],
+        email: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Resolve user conflicts based on strategy."""
+        if strategy == ConflictStrategy.USE_MINE:
+            self.stats["records_skipped"] += 1
+            self._log(f"Skipping existing user: {email}")
+            return True, conflicts
+        elif strategy == ConflictStrategy.USE_THEIRS:
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                # Update conflict resolution status
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+
+            if not dry_run:
+                # Update existing user - convert datetime fields for SQLite compatibility
+                converted_user_data = _convert_datetime_fields(user_data)
+                update_user(
+                    existing_user.get("user_id", existing_user.get("id", email)),
+                    converted_user_data,
+                )
+                self.stats["records_updated"] += 1
+                self._log(f"Updated user: {email}")
+            else:
+                self._log(f"DRY RUN: Would update user: {email}")
+            return True, conflicts
+
+        return True, conflicts
+
+    def _handle_new_user(
+        self,
+        user_data: Dict[str, Any],
+        email: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of a new user."""
+        if not dry_run:
+            create_user(user_data)
+            self.stats["records_created"] += 1
+            self._log(f"Created user: {email}")
+        else:
+            self._log(f"DRY RUN: Would create user: {email}")
+
+        return True, conflicts
 
     def _process_term_import(self, term_data: Dict[str, Any], dry_run: bool = False):
         """Process term import (simplified implementation)"""
