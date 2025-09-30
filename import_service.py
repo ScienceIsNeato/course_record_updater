@@ -460,66 +460,124 @@ class ImportService:
             existing_course = get_course_by_number(course_number)
 
             if existing_course:
-                # Detect conflicts by comparing fields
-                detected_conflicts = []
-                for field, new_value in course_data.items():
-                    if field == "course_number":
-                        continue  # Skip course_number as it's the key
-                    existing_value = existing_course.get(field)
-                    if existing_value != new_value:
-                        conflict = ConflictRecord(
-                            entity_type="course",
-                            entity_id=existing_course.get("course_id", course_number),
-                            field_name=field,
-                            existing_value=existing_value,
-                            import_value=new_value,
-                            resolution=strategy.value,
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        detected_conflicts.append(conflict)
-                        conflicts.append(conflict)
-
-                if detected_conflicts:
-                    self.stats["conflicts_detected"] += len(detected_conflicts)
-
-                # Handle conflict based on strategy
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"Skipping existing course: {course_number}")
-                    return True, conflicts
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    if detected_conflicts:
-                        self.stats["conflicts_resolved"] += len(detected_conflicts)
-                    if not dry_run:
-                        # Update existing course with import data
-                        # Convert datetime fields for SQLite compatibility
-                        converted_course_data = _convert_datetime_fields(course_data)
-                        # TODO: Implement proper update_course function
-                        # For now, log that update would happen
-                        self.stats["records_updated"] += 1
-                        self._log(
-                            f"Updated course: {course_number} (update logic needs implementation)"
-                        )
-                    else:
-                        self._log(f"DRY RUN: Would update course: {course_number}")
-                    return True, conflicts
+                return self._handle_existing_course(
+                    course_data, existing_course, strategy, dry_run, conflicts
+                )
             else:
-                # Create new course
-                if not dry_run:
-                    create_course(course_data)
-                    self.stats["records_created"] += 1
-                    self._log(f"Created course: {course_number}")
-                else:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"DRY RUN: Would create course: {course_number}")
-
-            return True, conflicts
+                return self._handle_new_course(
+                    course_data, course_number, dry_run, conflicts
+                )
 
         except Exception as e:
             self.stats["errors"].append(
                 f"Error processing course {course_data.get('course_number')}: {str(e)}"
             )
             return False, conflicts
+
+    def _handle_existing_course(
+        self,
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of an existing course with conflict resolution."""
+        course_number = course_data.get("course_number")
+
+        # Detect conflicts by comparing fields
+        detected_conflicts = self._detect_course_conflicts(
+            course_data, existing_course, course_number
+        )
+        conflicts.extend(detected_conflicts)
+
+        if detected_conflicts:
+            self.stats["conflicts_detected"] += len(detected_conflicts)
+
+        # Handle conflict based on strategy
+        return self._resolve_course_conflicts(
+            strategy, detected_conflicts, course_data, course_number, dry_run, conflicts
+        )
+
+    def _detect_course_conflicts(
+        self,
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        course_number: str,
+    ) -> List[ConflictRecord]:
+        """Detect conflicts between import data and existing course."""
+        detected_conflicts = []
+
+        for field, new_value in course_data.items():
+            if field == "course_number":
+                continue  # Skip course_number as it's the key
+            existing_value = existing_course.get(field)
+            if existing_value != new_value:
+                conflict = ConflictRecord(
+                    entity_type="course",
+                    entity_id=existing_course.get("course_id", course_number),
+                    field_name=field,
+                    existing_value=existing_value,
+                    import_value=new_value,
+                    resolution="pending",
+                    timestamp=datetime.now(timezone.utc),
+                )
+                detected_conflicts.append(conflict)
+
+        return detected_conflicts
+
+    def _resolve_course_conflicts(
+        self,
+        strategy: ConflictStrategy,
+        detected_conflicts: List[ConflictRecord],
+        course_data: Dict[str, Any],
+        course_number: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Resolve course conflicts based on strategy."""
+        if strategy == ConflictStrategy.USE_MINE:
+            self.stats["records_skipped"] += 1
+            self._log(f"Skipping existing course: {course_number}")
+            return True, conflicts
+        elif strategy == ConflictStrategy.USE_THEIRS:
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                # Update conflict resolution status
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+
+            if not dry_run:
+                # Update existing course with import data
+                converted_course_data = _convert_datetime_fields(course_data)
+                # TODO: Implement proper update_course function
+                self.stats["records_updated"] += 1
+                self._log(
+                    f"Updated course: {course_number} (update logic needs implementation)"
+                )
+            else:
+                self._log(f"DRY RUN: Would update course: {course_number}")
+            return True, conflicts
+
+        return True, conflicts
+
+    def _handle_new_course(
+        self,
+        course_data: Dict[str, Any],
+        course_number: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of a new course."""
+        if not dry_run:
+            create_course(course_data)
+            self.stats["records_created"] += 1
+            self._log(f"Created course: {course_number}")
+        else:
+            self.stats["records_skipped"] += 1
+            self._log(f"DRY RUN: Would create course: {course_number}")
+
+        return True, conflicts
 
     def process_user_import(
         self,
