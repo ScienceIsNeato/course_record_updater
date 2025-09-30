@@ -313,177 +313,224 @@ class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
 def to_dict(model: Any, extra_fields: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """Convert SQLAlchemy model to dictionary merging extras."""
-
     data: Dict[str, Any] = {}
+
+    # Add extras if present
     if hasattr(model, "extras") and model.extras:
         data.update(model.extras)
 
-    if isinstance(model, Institution):
-        data.update(
-            {
-                "institution_id": model.id,
-                "name": model.name,
-                "short_name": model.short_name,
-                "website_url": model.website_url,
-                "created_by": model.created_by,
-                "admin_email": model.admin_email,
-                "allow_self_registration": model.allow_self_registration,
-                "require_email_verification": model.require_email_verification,
-                "is_active": model.is_active,
-                "created_at": model.created_at,
-                "updated_at": model.updated_at,
-            }
-        )
-    elif isinstance(model, User):
-        data.update(
-            {
-                "user_id": model.id,
-                "email": model.email,
-                "password_hash": model.password_hash,
-                "first_name": model.first_name,
-                "last_name": model.last_name,
-                "display_name": model.display_name,
-                "account_status": model.account_status,
-                "email_verified": model.email_verified,
-                "email_verification_token": model.email_verification_token,
-                "email_verification_sent_at": model.email_verification_sent_at,
-                "role": model.role,
-                "institution_id": model.institution_id,
-                "login_attempts": model.login_attempts,
-                "locked_until": model.locked_until,
-                "last_login_at": model.last_login_at,
-                "invited_by": model.invited_by,
-                "invited_at": model.invited_at,
-                "registration_completed_at": model.registration_completed_at,
-                "oauth_provider": model.oauth_provider,
-                "oauth_id": model.oauth_id,
-                "password_reset_token": model.password_reset_token,
-                "password_reset_expires_at": model.password_reset_expires_at,
-                "created_at": model.created_at,
-                "updated_at": model.updated_at,
-            }
-        )
-        if "program_ids" not in data:
-            data["program_ids"] = [program.id for program in model.programs]
-    elif isinstance(model, Program):
-        data.update(
-            {
-                "program_id": model.id,
-                "name": model.name,
-                "short_name": model.short_name,
-                "description": model.description,
-                "institution_id": model.institution_id,
-                "created_by": model.created_by,
-                "is_default": model.is_default,
-                "is_active": model.is_active,
-                "created_at": model.created_at,
-                "updated_at": model.updated_at,
-            }
-        )
-        if "program_admins" not in data:
-            data["program_admins"] = (
-                model.extras.get("program_admins", []) if model.extras else []
-            )
-    elif isinstance(model, Course):
-        data.update(
-            {
-                "course_id": model.id,
-                "course_number": model.course_number,
-                "course_title": model.course_title,
-                "department": model.department,
-                "credit_hours": model.credit_hours,
-                "institution_id": model.institution_id,
-                "active": model.active,
-                "created_at": model.created_at,
-                "last_modified": model.updated_at,
-            }
-        )
-        if "program_ids" not in data:
-            data["program_ids"] = [program.id for program in model.programs]
-    elif isinstance(model, Term):
-        data.update(
-            {
-                "term_id": model.id,
-                "term_name": model.term_name,
-                "name": model.name,
-                "start_date": model.start_date,
-                "end_date": model.end_date,
-                "assessment_due_date": model.assessment_due_date,
-                "active": model.active,
-                "institution_id": model.institution_id,
-                "created_at": model.created_at,
-                "last_modified": model.updated_at,
-            }
-        )
-    elif isinstance(model, CourseOffering):
-        data.update(
-            {
-                "offering_id": model.id,
-                "course_id": model.course_id,
-                "term_id": model.term_id,
-                "institution_id": model.institution_id,
-                "status": model.status,
-                "capacity": model.capacity,
-                "total_enrollment": model.total_enrollment,
-                "section_count": model.section_count,
-                "created_at": model.created_at,
-                "last_modified": model.updated_at,
-            }
-        )
-    elif isinstance(model, CourseSection):
-        data.update(
-            {
-                "section_id": model.id,
-                "offering_id": model.offering_id,
-                "instructor_id": model.instructor_id,
-                "section_number": model.section_number,
-                "enrollment": model.enrollment,
-                "status": model.status,
-                "grade_distribution": model.grade_distribution,
-                "assigned_date": model.assigned_date,
-                "completed_date": model.completed_date,
-                "created_at": model.created_at,
-                "last_modified": model.updated_at,
-            }
-        )
-    elif isinstance(model, CourseOutcome):
-        data.update(
-            {
-                "outcome_id": model.id,
-                "course_id": model.course_id,
-                "clo_number": model.clo_number,
-                "description": model.description,
-                "assessment_method": model.assessment_method,
-                "assessment_data": model.assessment_data,
-                "narrative": model.narrative,
-                "active": model.active,
-                "created_at": model.created_at,
-                "last_modified": model.updated_at,
-            }
-        )
-    elif isinstance(model, UserInvitation):
-        data.update(
-            {
-                "invitation_id": model.id,
-                "email": model.email,
-                "role": model.role,
-                "institution_id": model.institution_id,
-                "token": model.token,
-                "invited_by": model.invited_by,
-                "invited_at": model.invited_at,
-                "expires_at": model.expires_at,
-                "status": model.status,
-                "accepted_at": model.accepted_at,
-                "personal_message": model.personal_message,
-                "created_at": model.created_at,
-                "updated_at": model.updated_at,
-            }
-        )
+    # Get model-specific data using dispatch pattern
+    model_data = _get_model_data(model)
+    data.update(model_data)
 
+    # Add extra fields if provided
     if extra_fields:
         data.update(extra_fields)
 
     return data
+
+
+def _get_model_data(model: Any) -> Dict[str, Any]:
+    """Get model-specific data using dispatch pattern."""
+    model_type = type(model)
+
+    # Dispatch to appropriate handler
+    if model_type == Institution:
+        return _institution_to_dict(model)
+    elif model_type == User:
+        return _user_to_dict(model)
+    elif model_type == Program:
+        return _program_to_dict(model)
+    elif model_type == Course:
+        return _course_to_dict(model)
+    elif model_type == Term:
+        return _term_to_dict(model)
+    elif model_type == CourseOffering:
+        return _course_offering_to_dict(model)
+    elif model_type == CourseSection:
+        return _course_section_to_dict(model)
+    elif model_type == CourseOutcome:
+        return _course_outcome_to_dict(model)
+    elif model_type == UserInvitation:
+        return _user_invitation_to_dict(model)
+    else:
+        return {}
+
+
+def _institution_to_dict(model: Institution) -> Dict[str, Any]:
+    """Convert Institution model to dictionary."""
+    return {
+        "institution_id": model.id,
+        "name": model.name,
+        "short_name": model.short_name,
+        "website_url": model.website_url,
+        "created_by": model.created_by,
+        "admin_email": model.admin_email,
+        "allow_self_registration": model.allow_self_registration,
+        "require_email_verification": model.require_email_verification,
+        "is_active": model.is_active,
+        "created_at": model.created_at,
+        "updated_at": model.updated_at,
+    }
+
+
+def _user_to_dict(model: User) -> Dict[str, Any]:
+    """Convert User model to dictionary."""
+    data = {
+        "user_id": model.id,
+        "email": model.email,
+        "password_hash": model.password_hash,
+        "first_name": model.first_name,
+        "last_name": model.last_name,
+        "display_name": model.display_name,
+        "account_status": model.account_status,
+        "email_verified": model.email_verified,
+        "email_verification_token": model.email_verification_token,
+        "email_verification_sent_at": model.email_verification_sent_at,
+        "role": model.role,
+        "institution_id": model.institution_id,
+        "login_attempts": model.login_attempts,
+        "locked_until": model.locked_until,
+        "last_login_at": model.last_login_at,
+        "invited_by": model.invited_by,
+        "invited_at": model.invited_at,
+        "registration_completed_at": model.registration_completed_at,
+        "oauth_provider": model.oauth_provider,
+        "oauth_id": model.oauth_id,
+        "password_reset_token": model.password_reset_token,
+        "password_reset_expires_at": model.password_reset_expires_at,
+        "created_at": model.created_at,
+        "updated_at": model.updated_at,
+    }
+    # Add program_ids if not already present
+    if "program_ids" not in data:
+        data["program_ids"] = [program.id for program in model.programs]
+    return data
+
+
+def _program_to_dict(model: Program) -> Dict[str, Any]:
+    """Convert Program model to dictionary."""
+    data = {
+        "program_id": model.id,
+        "name": model.name,
+        "short_name": model.short_name,
+        "description": model.description,
+        "institution_id": model.institution_id,
+        "created_by": model.created_by,
+        "is_default": model.is_default,
+        "is_active": model.is_active,
+        "created_at": model.created_at,
+        "updated_at": model.updated_at,
+    }
+    # Add program_admins if not already present
+    if "program_admins" not in data:
+        data["program_admins"] = (
+            model.extras.get("program_admins", []) if model.extras else []
+        )
+    return data
+
+
+def _course_to_dict(model: Course) -> Dict[str, Any]:
+    """Convert Course model to dictionary."""
+    data = {
+        "course_id": model.id,
+        "course_number": model.course_number,
+        "course_title": model.course_title,
+        "department": model.department,
+        "credit_hours": model.credit_hours,
+        "institution_id": model.institution_id,
+        "active": model.active,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
+    # Add program_ids if not already present
+    if "program_ids" not in data:
+        data["program_ids"] = [program.id for program in model.programs]
+    return data
+
+
+def _term_to_dict(model: Term) -> Dict[str, Any]:
+    """Convert Term model to dictionary."""
+    return {
+        "term_id": model.id,
+        "term_name": model.term_name,
+        "name": model.name,
+        "start_date": model.start_date,
+        "end_date": model.end_date,
+        "assessment_due_date": model.assessment_due_date,
+        "active": model.active,
+        "institution_id": model.institution_id,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
+
+
+def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
+    """Convert CourseOffering model to dictionary."""
+    return {
+        "offering_id": model.id,
+        "course_id": model.course_id,
+        "term_id": model.term_id,
+        "institution_id": model.institution_id,
+        "status": model.status,
+        "capacity": model.capacity,
+        "total_enrollment": model.total_enrollment,
+        "section_count": model.section_count,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
+
+
+def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
+    """Convert CourseSection model to dictionary."""
+    return {
+        "section_id": model.id,
+        "offering_id": model.offering_id,
+        "instructor_id": model.instructor_id,
+        "section_number": model.section_number,
+        "enrollment": model.enrollment,
+        "status": model.status,
+        "grade_distribution": model.grade_distribution,
+        "assigned_date": model.assigned_date,
+        "completed_date": model.completed_date,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
+
+
+def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
+    """Convert CourseOutcome model to dictionary."""
+    return {
+        "outcome_id": model.id,
+        "course_id": model.course_id,
+        "clo_number": model.clo_number,
+        "description": model.description,
+        "assessment_method": model.assessment_method,
+        "assessment_data": model.assessment_data,
+        "narrative": model.narrative,
+        "active": model.active,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
+
+
+def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
+    """Convert UserInvitation model to dictionary."""
+    return {
+        "invitation_id": model.id,
+        "email": model.email,
+        "role": model.role,
+        "institution_id": model.institution_id,
+        "token": model.token,
+        "invited_by": model.invited_by,
+        "invited_at": model.invited_at,
+        "expires_at": model.expires_at,
+        "status": model.status,
+        "accepted_at": model.accepted_at,
+        "personal_message": model.personal_message,
+        "created_at": model.created_at,
+        "updated_at": model.updated_at,
+    }
 
 
 __all__ = [
