@@ -248,35 +248,73 @@ class DashboardService:
                 "Institution context required for program admins"
             )
 
+        # Get scoped programs for the admin
+        scoped_programs = self._get_scoped_programs(institution_id, program_ids)
+
+        # Process courses across all programs
+        courses, courses_by_program = self._process_admin_program_courses(
+            scoped_programs, institution_id
+        )
+
+        # Get sections and faculty data
+        scoped_sections, scoped_faculty = self._get_sections_and_faculty(
+            institution_id, courses, program_ids
+        )
+
+        # Build metrics and summary data
+        program_metrics: List[Dict[str, Any]] = self._build_program_metrics(
+            scoped_programs,
+            courses,
+            scoped_sections,
+            scoped_faculty,
+            self._index_by_keys(courses, ["course_id", "id"]),
+        )
+
+        # Build final dashboard response
+        return self._build_program_admin_response(
+            institution_id,
+            scoped_programs,
+            courses,
+            scoped_sections,
+            scoped_faculty,
+            program_metrics,
+            courses_by_program,
+            program_ids,
+        )
+
+    def _get_scoped_programs(
+        self, institution_id: str, program_ids: List[str]
+    ) -> List[Dict[str, Any]]:
+        """Get programs scoped to the admin's access."""
         program_ids = program_ids or []
         available_programs = get_programs_by_institution(institution_id) or []
         program_lookup = {
             self._get_program_id(program): program for program in available_programs
         }
-        scoped_programs = [
+        return [
             program_lookup.get(pid) for pid in program_ids if program_lookup.get(pid)
         ]
 
+    def _process_admin_program_courses(
+        self, scoped_programs: List[Dict[str, Any]], institution_id: str
+    ) -> tuple:
+        """Process courses across all programs, handling deduplication."""
         courses_dict: Dict[str, Dict[str, Any]] = (
             {}
         )  # Use dict to deduplicate by course_id
         courses_by_program: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+
         for program in scoped_programs:
             pid = self._get_program_id(program)
             program_courses = get_courses_by_program(pid) or []
+
             for course in program_courses:
                 enriched = self._with_program([course], program, institution_id)[0]
                 course_id = self._get_course_id(enriched)
 
                 # If course already exists, merge program_ids
                 if course_id in courses_dict:
-                    existing_program_ids = set(
-                        courses_dict[course_id].get("program_ids", [])
-                    )
-                    new_program_ids = set(enriched.get("program_ids", []))
-                    courses_dict[course_id]["program_ids"] = list(
-                        existing_program_ids | new_program_ids
-                    )
+                    self._merge_course_program_ids(courses_dict[course_id], enriched)
                 else:
                     courses_dict[course_id] = enriched
 
@@ -288,13 +326,35 @@ class DashboardService:
         courses = self._enrich_courses_with_clo_data(courses, load_clos=False)
 
         # Update courses_by_program with enriched data
+        courses_by_program = self._rebuild_courses_by_program(courses, scoped_programs)
+
+        return courses, courses_by_program
+
+    def _merge_course_program_ids(
+        self, existing_course: Dict[str, Any], new_course: Dict[str, Any]
+    ) -> None:
+        """Merge program IDs from new course into existing course."""
+        existing_program_ids = set(existing_course.get("program_ids", []))
+        new_program_ids = set(new_course.get("program_ids", []))
+        existing_course["program_ids"] = list(existing_program_ids | new_program_ids)
+
+    def _rebuild_courses_by_program(
+        self, courses: List[Dict[str, Any]], scoped_programs: List[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Rebuild courses_by_program mapping with enriched course data."""
         courses_by_program = defaultdict(list)
         for course in courses:
             for program in scoped_programs:
                 pid = self._get_program_id(program)
                 if pid in course.get("program_ids", []):
                     courses_by_program[pid].append(course)
+        return courses_by_program
 
+    def _get_sections_and_faculty(
+        self, institution_id: str, courses: List[Dict[str, Any]], program_ids: List[str]
+    ) -> tuple:
+        """Get sections and faculty data scoped to the programs."""
+        # Get scoped sections
         all_sections = get_all_sections(institution_id) or []
         course_index = self._index_by_keys(courses, ["course_id", "id"])
         scoped_sections = [
@@ -303,23 +363,31 @@ class DashboardService:
             if self._matches_course(section, course_index)
         ]
 
+        # Get scoped faculty
         users = get_all_users(institution_id) or []
         instructors = get_all_instructors(institution_id) or []
         faculty = self._build_faculty_directory(users, instructors)
-
         scoped_faculty = [
             member
             for member in faculty
             if set(member.get("program_ids") or []).intersection(program_ids)
         ]
 
-        program_metrics = self._build_program_metrics(
-            scoped_programs,
-            courses,
-            scoped_sections,
-            scoped_faculty,
-            course_index,
-        )
+        return scoped_sections, scoped_faculty
+
+    def _build_program_admin_response(
+        self,
+        institution_id: str,
+        scoped_programs: List[Dict[str, Any]],
+        courses: List[Dict[str, Any]],
+        scoped_sections: List[Dict[str, Any]],
+        scoped_faculty: List[Dict[str, Any]],
+        program_metrics: List[Dict[str, Any]],
+        courses_by_program: Dict[str, List[Dict[str, Any]]],
+        program_ids: List[str],
+    ) -> Dict[str, Any]:
+        """Build the final program admin dashboard response."""
+        users = get_all_users(institution_id) or []
 
         summary = {
             "institutions": 1,
@@ -355,7 +423,10 @@ class DashboardService:
             ),
             "program_overview": program_metrics,
             "faculty_assignments": self._build_faculty_assignments(
-                scoped_faculty, program_metrics, course_index, scoped_sections
+                scoped_faculty,
+                program_metrics,
+                self._index_by_keys(courses, ["course_id", "id"]),
+                scoped_sections,
             ),
             "courses_by_program": {
                 pid: list(courses_by_program.get(pid, [])) for pid in program_ids
