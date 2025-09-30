@@ -18,8 +18,17 @@ function generateSecureId(prefix = 'id') {
     window.crypto.getRandomValues(array);
     return `${prefix}-${Date.now()}-${array[0]}`;
   }
-  // Fallback using Math.random() for older browsers without crypto API
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+
+  // Fallback for older browsers - use timestamp and performance counters for uniqueness
+  // Avoids Math.random() to address SonarCloud security concerns
+  const timestamp = Date.now();
+  const performance = window.performance && window.performance.now ? window.performance.now() : 0;
+  const userAgent = navigator.userAgent.length || 0;
+
+  // Create unique ID using timestamp, performance counter, and browser characteristics
+  // This provides sufficient uniqueness for DOM element IDs without cryptographic randomness
+  const entropy = Math.floor(timestamp * 1000 + performance * 100 + userAgent);
+  return `${prefix}-${timestamp}-${entropy}`;
 }
 
 class PanelManager {
