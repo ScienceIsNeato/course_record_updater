@@ -2746,194 +2746,24 @@ def excel_import_api():
         500: Server error
     """
     try:
-        # Debug: Log request information
-        logger.info("Excel import request received")
-        logger.info(f"Request files: {list(request.files.keys())}")
-        logger.info(f"Request form: {dict(request.form)}")
+        # Validate request and extract parameters
+        file, import_params = _validate_excel_import_request()
 
-        # Check if file was uploaded
-        if "excel_file" not in request.files:
-            logger.warning("No excel_file in request.files")
-            return jsonify({"success": False, "error": "No Excel file provided"}), 400
-
-        file = request.files["excel_file"]
-        if file.filename == "":
-            logger.warning("Empty filename in uploaded file")
-            return jsonify({"success": False, "error": "No file selected"}), 400
-
-        logger.info(
-            f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+        # Check user permissions
+        current_user, institution_id = _check_excel_import_permissions(
+            import_params["adapter_id"], import_params["import_data_type"]
         )
 
-        # Validate file type
-        if not file.filename.lower().endswith((".xlsx", ".xls")):
-            logger.warning(f"Invalid file type: {file.filename}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid file type. Only Excel files (.xlsx, .xls) are supported.",
-                    }
-                ),
-                400,
-            )
+        # Process the import
+        return _process_excel_import(file, current_user, institution_id, import_params)
 
-        # Get form parameters
-        adapter_id = request.form.get("import_adapter", "cei_excel_format_v1")
-        conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
-        dry_run = request.form.get("dry_run", "false").lower() == "true"
-        verbose_output = request.form.get("verbose_output", "false").lower() == "true"
-        # Note: delete_existing_db parameter available but not currently used
-        # delete_existing_db = request.form.get("delete_existing_db", "false").lower() == "true"
-        import_data_type = request.form.get("import_data_type", "courses")
-
-        # Get current user and check permissions
-        current_user = get_current_user()
-        if not current_user:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
-
-        user_role = current_user.get("role")
-        user_institution_id = current_user.get("institution_id")
-
-        # Determine institution_id based on user role and adapter
-        if user_role == UserRole.SITE_ADMIN.value:
-            # Site admins can import for any institution - let adapter determine it
-            if adapter_id == "cei_excel_format_v1":
-                # CEI adapter always imports for CEI institution
-                from database_service import create_default_cei_institution
-
-                institution_id = create_default_cei_institution()
-                if not institution_id:
-                    return (
-                        jsonify(
-                            {
-                                "success": False,
-                                "error": "Failed to create/find CEI institution",
-                            }
-                        ),
-                        500,
-                    )
-            else:
-                # For other adapters, site admin needs to specify institution
-                # TODO: Add institution selection UI for site admins
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Site admin must specify target institution for non-CEI adapters",
-                        }
-                    ),
-                    400,
-                )
-        else:
-            # Institution/program admins use their own institution
-            institution_id = user_institution_id
-            if not institution_id:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "User has no associated institution",
-                        }
-                    ),
-                    403,
-                )
-
-        # Role-based permission checks
-        allowed_data_types = {
-            UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
-            UserRole.INSTITUTION_ADMIN.value: [
-                "programs",
-                "courses",
-                "faculty",
-                "students",
-            ],
-            UserRole.PROGRAM_ADMIN.value: [],  # Program admins cannot import per requirements
-            UserRole.INSTRUCTOR.value: [],  # Instructors cannot import
-        }
-
-        if user_role not in allowed_data_types:
-            return jsonify({"success": False, "error": "Invalid user role"}), 403
-
-        if import_data_type not in allowed_data_types[user_role]:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": f"Permission denied: {user_role} cannot import {import_data_type}",
-                    }
-                ),
-                403,
-            )
-
-        # Save uploaded file temporarily using secure tempfile approach
-        import os
-        import re
-        import tempfile
-
-        # Sanitize filename for logging/display purposes only
-        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
-        if not safe_filename or safe_filename.startswith("."):
-            safe_filename = f"upload_{hash(file.filename) % 10000}"
-
-        # Use secure temporary file creation
-        temp_file_prefix = f"import_{current_user.get('user_id')}_{import_data_type}_"
-
-        try:
-            # Create secure temporary file
-            with tempfile.NamedTemporaryFile(
-                mode="wb",
-                prefix=temp_file_prefix,
-                suffix=f"_{safe_filename}",
-                delete=False,
-            ) as temp_file:
-                file.save(temp_file)
-                temp_filepath = temp_file.name
-
-            # Import the Excel processing function
-            from import_service import import_excel
-
-            # Execute the import
-            result = import_excel(
-                file_path=temp_filepath,
-                institution_id=institution_id,
-                conflict_strategy=conflict_strategy,
-                dry_run=dry_run,
-                adapter_id=adapter_id,
-                verbose=verbose_output,
-            )
-
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": (
-                            "Import completed successfully"
-                            if not dry_run
-                            else "Validation completed successfully"
-                        ),
-                        "records_processed": result.records_processed,
-                        "records_created": result.records_created,
-                        "records_updated": result.records_updated,
-                        "records_skipped": result.records_skipped,
-                        "conflicts_detected": result.conflicts_detected,
-                        "execution_time": result.execution_time,
-                        "errors": result.errors,
-                        "warnings": result.warnings,
-                        "dry_run": dry_run,
-                    }
-                ),
-                200,
-            )
-
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_filepath):
-                os.remove(temp_filepath)
+    except ValueError as e:
+        logger.warning(f"Invalid request for import: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
 
     except PermissionError as e:
         logger.warning(f"Permission denied for import: {e}")
-        return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+        return jsonify({"success": False, "error": str(e)}), 403
 
     except Exception as e:
         logger.error(f"Excel import error: {e}")
@@ -2941,13 +2771,189 @@ def excel_import_api():
             jsonify(
                 {
                     "success": False,
-                    "error": (
-                        str(e) if "Permission denied" in str(e) else "Import failed"
-                    ),
+                    "error": "Import failed",
                 }
             ),
             500,
         )
+
+
+def _validate_excel_import_request():
+    """Validate the Excel import request and extract parameters."""
+    # Debug: Log request information
+    logger.info("Excel import request received")
+    logger.info(f"Request files: {list(request.files.keys())}")
+    logger.info(f"Request form: {dict(request.form)}")
+
+    # Check if file was uploaded
+    if "excel_file" not in request.files:
+        logger.warning("No excel_file in request.files")
+        raise ValueError("No Excel file provided")
+
+    file = request.files["excel_file"]
+    if file.filename == "":
+        logger.warning("Empty filename in uploaded file")
+        raise ValueError("No file selected")
+
+    logger.info(
+        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+    )
+
+    # Validate file type
+    if not file.filename.lower().endswith((".xlsx", ".xls")):
+        logger.warning(f"Invalid file type: {file.filename}")
+        raise ValueError(
+            "Invalid file type. Only Excel files (.xlsx, .xls) are supported."
+        )
+
+    # Get form parameters
+    import_params = {
+        "adapter_id": request.form.get("import_adapter", "cei_excel_format_v1"),
+        "conflict_strategy": request.form.get("conflict_strategy", "use_theirs"),
+        "dry_run": request.form.get("dry_run", "false").lower() == "true",
+        "verbose_output": request.form.get("verbose_output", "false").lower() == "true",
+        "import_data_type": request.form.get("import_data_type", "courses"),
+    }
+
+    return file, import_params
+
+
+def _check_excel_import_permissions(adapter_id, import_data_type):
+    """Check user permissions for Excel import."""
+    # Get current user and check authentication
+    current_user = get_current_user()
+    if not current_user:
+        raise PermissionError("Authentication required")
+
+    user_role = current_user.get("role")
+    user_institution_id = current_user.get("institution_id")
+
+    # Determine institution_id based on user role and adapter
+    institution_id = _determine_target_institution(
+        user_role, user_institution_id, adapter_id
+    )
+
+    # Check role-based permissions
+    _validate_import_permissions(user_role, import_data_type)
+
+    return current_user, institution_id
+
+
+def _determine_target_institution(user_role, user_institution_id, adapter_id):
+    """Determine the target institution for the import."""
+    if user_role == UserRole.SITE_ADMIN.value:
+        # Site admins can import for any institution - let adapter determine it
+        if adapter_id == "cei_excel_format_v1":
+            # CEI adapter always imports for CEI institution
+            from database_service import create_default_cei_institution
+
+            institution_id = create_default_cei_institution()
+            if not institution_id:
+                raise ValueError("Failed to create/find CEI institution")
+            return institution_id
+        else:
+            # For other adapters, site admin needs to specify institution
+            # TODO: Add institution selection UI for site admins
+            raise ValueError(
+                "Site admin must specify target institution for non-CEI adapters"
+            )
+    else:
+        # Institution/program admins use their own institution
+        if not user_institution_id:
+            raise PermissionError("User has no associated institution")
+        return user_institution_id
+
+
+def _validate_import_permissions(user_role, import_data_type):
+    """Validate that the user role can import the specified data type."""
+    allowed_data_types = {
+        UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
+        UserRole.INSTITUTION_ADMIN.value: [
+            "programs",
+            "courses",
+            "faculty",
+            "students",
+        ],
+        UserRole.PROGRAM_ADMIN.value: [],  # Program admins cannot import per requirements
+        UserRole.INSTRUCTOR.value: [],  # Instructors cannot import
+    }
+
+    if user_role not in allowed_data_types:
+        raise PermissionError("Invalid user role")
+
+    if import_data_type not in allowed_data_types[user_role]:
+        raise PermissionError(
+            f"Permission denied: {user_role} cannot import {import_data_type}"
+        )
+
+
+def _process_excel_import(file, current_user, institution_id, import_params):
+    """Process the Excel import with the validated parameters."""
+    import os
+    import re
+    import tempfile
+
+    # Sanitize filename for logging/display purposes only
+    safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+    if not safe_filename or safe_filename.startswith("."):
+        safe_filename = f"upload_{hash(file.filename) % 10000}"
+
+    # Use secure temporary file creation
+    temp_file_prefix = (
+        f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
+    )
+
+    try:
+        # Create secure temporary file
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=temp_file_prefix,
+            suffix=f"_{safe_filename}",
+            delete=False,
+        ) as temp_file:
+            file.save(temp_file)
+            temp_filepath = temp_file.name
+
+        # Import the Excel processing function
+        from import_service import import_excel
+
+        # Execute the import
+        result = import_excel(
+            file_path=temp_filepath,
+            institution_id=institution_id,
+            conflict_strategy=import_params["conflict_strategy"],
+            dry_run=import_params["dry_run"],
+            adapter_id=import_params["adapter_id"],
+            verbose=import_params["verbose_output"],
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": (
+                        "Import completed successfully"
+                        if not import_params["dry_run"]
+                        else "Validation completed successfully"
+                    ),
+                    "records_processed": result.records_processed,
+                    "records_created": result.records_created,
+                    "records_updated": result.records_updated,
+                    "records_skipped": result.records_skipped,
+                    "conflicts_detected": result.conflicts_detected,
+                    "execution_time": result.execution_time,
+                    "errors": result.errors,
+                    "warnings": result.warnings,
+                    "dry_run": import_params["dry_run"],
+                }
+            ),
+            200,
+        )
+
+    finally:
+        # Clean up temporary file
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
 
 
 # ============================================================================
