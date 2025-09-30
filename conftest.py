@@ -5,12 +5,9 @@ This file provides pytest fixtures and configuration that are available
 to all test modules.
 """
 
+import os
+
 import pytest
 
-# No custom pytest options needed - using real auth by default
-
-
-# No custom pytest configuration needed - using real auth by default
-
-
-# No auth mode configuration needed - using real auth by default
+# Configure environment for testing
+os.environ["WTF_CSRF_ENABLED"] = "false"  # Disable CSRF for testing

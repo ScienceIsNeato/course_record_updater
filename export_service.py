@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -57,7 +57,7 @@ class ExportResult:
         if self.warnings is None:
             self.warnings = []
         if self.export_timestamp is None:
-            self.export_timestamp = datetime.utcnow()
+            self.export_timestamp = datetime.now(timezone.utc)
 
 
 class ExportService:
@@ -166,7 +166,7 @@ class ExportService:
                     success=True,
                     file_path=str(output_path),
                     records_exported=records_exported,
-                    export_timestamp=datetime.utcnow(),
+                    export_timestamp=datetime.now(timezone.utc),
                 )
             else:
                 result = ExportResult(

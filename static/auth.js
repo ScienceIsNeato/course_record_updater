@@ -1,5 +1,11 @@
 // Authentication JavaScript - Form validation, password strength, and API integration
 
+// Constants for input types to avoid hard-coded strings
+const INPUT_TYPES = {
+  PASSWORD: 'password',
+  TEXT: 'text'
+};
+
 // CSRF Token Helper
 function getCSRFToken() {
   // Try to get from form first
@@ -169,11 +175,11 @@ function initializePasswordToggles() {
       const icon = this.querySelector('i');
 
       if (passwordInput && icon) {
-        if (passwordInput.type === 'password') {
-          passwordInput.type = 'text';
+        if (passwordInput.type === INPUT_TYPES.PASSWORD) {
+          passwordInput.type = INPUT_TYPES.TEXT;
           icon.className = 'fas fa-eye-slash';
         } else {
-          passwordInput.type = 'password';
+          passwordInput.type = INPUT_TYPES.PASSWORD;
           icon.className = 'fas fa-eye';
         }
       }

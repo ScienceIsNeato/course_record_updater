@@ -14,6 +14,9 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
+
+# Constants for datetime formatting
+UTC_OFFSET = "+00:00"
 from database_service import (
     create_course,
     create_course_offering,
@@ -110,15 +113,15 @@ def _convert_datetime_fields(data: Dict[str, Any]) -> Dict[str, Any]:
                 datetime_str = converted_data[field]
                 if "." in datetime_str and datetime_str.endswith("Z"):
                     # Handle format like "2025-09-28T17:41:27.935901Z"
-                    datetime_str = datetime_str[:-1] + "+00:00"
-                elif not datetime_str.endswith("+00:00") and not datetime_str.endswith(
-                    "Z"
-                ):
+                    datetime_str = datetime_str[:-1] + UTC_OFFSET
+                elif not datetime_str.endswith(
+                    UTC_OFFSET
+                ) and not datetime_str.endswith("Z"):
                     # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
                     if "." in datetime_str:
-                        datetime_str = datetime_str + "+00:00"
+                        datetime_str = datetime_str + UTC_OFFSET
                     else:
-                        datetime_str = datetime_str + ".000000+00:00"
+                        datetime_str = datetime_str + ".000000" + UTC_OFFSET
 
                 converted_data[field] = datetime.fromisoformat(datetime_str)
             except (ValueError, TypeError):

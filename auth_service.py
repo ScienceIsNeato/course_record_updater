@@ -9,6 +9,9 @@ from enum import Enum
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+# Constants for error messages
+AUTH_REQUIRED_MSG = "Authentication required"
+
 from flask import jsonify, request, session
 
 # Import our models and logging
@@ -400,7 +403,7 @@ def login_required(f):
                     jsonify(
                         {
                             "success": False,
-                            "error": "Authentication required",
+                            "error": AUTH_REQUIRED_MSG,
                             "error_code": "AUTH_REQUIRED",
                         }
                     ),
@@ -427,7 +430,7 @@ def role_required(required_role: str):
                     jsonify(
                         {
                             "success": False,
-                            "error": "Authentication required",
+                            "error": AUTH_REQUIRED_MSG,
                             "error_code": "AUTH_REQUIRED",
                         }
                     ),
@@ -478,7 +481,7 @@ def permission_required(
                     jsonify(
                         {
                             "success": False,
-                            "error": "Authentication required",
+                            "error": AUTH_REQUIRED_MSG,
                             "error_code": "AUTH_REQUIRED",
                         }
                     ),

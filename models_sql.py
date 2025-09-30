@@ -22,6 +22,11 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()  # type: ignore[valid-type,misc]
 
+# Constants for foreign key references
+COURSES_ID = "courses.id"
+INSTITUTIONS_ID = "institutions.id"
+CASCADE_OPTIONS = "all, delete-orphan"
+
 
 def generate_uuid() -> str:
     """Generate a UUID string."""
@@ -44,7 +49,7 @@ class TimestampMixin:
 course_program_table = Table(
     "course_programs",
     Base.metadata,
-    Column("course_id", String, ForeignKey("courses.id"), primary_key=True),
+    Column("course_id", String, ForeignKey(COURSES_ID), primary_key=True),
     Column("program_id", String, ForeignKey("programs.id"), primary_key=True),
 )
 
@@ -68,27 +73,27 @@ class Institution(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     users = relationship(
         "User",
         back_populates="institution",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     programs = relationship(
         "Program",
         back_populates="institution",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     courses = relationship(
         "Course",
         back_populates="institution",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     terms = relationship(
         "Term",
         back_populates="institution",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     invitations = relationship(
         "UserInvitation",
         back_populates="institution",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
 
 
@@ -108,7 +113,7 @@ class User(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     email_verification_token = Column(String)
     email_verification_sent_at = Column(DateTime)
     role = Column(String, nullable=False)
-    institution_id = Column(String, ForeignKey("institutions.id"))
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID))
     login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime)
     last_login_at = Column(DateTime)
@@ -148,7 +153,7 @@ class Program(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     name = Column(String, nullable=False)
     short_name = Column(String, nullable=False)
     description = Column(Text)
-    institution_id = Column(String, ForeignKey("institutions.id"), nullable=False)
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     created_by = Column(String)
     is_default = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
@@ -177,7 +182,7 @@ class Course(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     course_title = Column(String, nullable=False)
     department = Column(String)
     credit_hours = Column(Integer, default=3)
-    institution_id = Column(String, ForeignKey("institutions.id"), nullable=False)
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     active = Column(Boolean, default=True)
     extras = Column(PickleType, default=dict)
 
@@ -190,12 +195,12 @@ class Course(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     offerings = relationship(
         "CourseOffering",
         back_populates="course",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     outcomes = relationship(
         "CourseOutcome",
         back_populates="course",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
 
 
@@ -211,14 +216,14 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     end_date = Column(String)
     assessment_due_date = Column(String)
     active = Column(Boolean, default=True)
-    institution_id = Column(String, ForeignKey("institutions.id"))
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID))
     extras = Column(PickleType, default=dict)
 
     institution = relationship("Institution", back_populates="terms")
     offerings = relationship(
         "CourseOffering",
         back_populates="term",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
 
 
@@ -228,9 +233,9 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     __tablename__ = "course_offerings"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    course_id = Column(String, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(String, ForeignKey(COURSES_ID), nullable=False)
     term_id = Column(String, ForeignKey("terms.id"), nullable=False)
-    institution_id = Column(String, ForeignKey("institutions.id"), nullable=False)
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     status = Column(String, default="active")
     capacity = Column(Integer)
     total_enrollment = Column(Integer, default=0)
@@ -242,7 +247,7 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     sections = relationship(
         "CourseSection",
         back_populates="offering",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_OPTIONS,
     )
     institution = relationship("Institution")
 
@@ -273,7 +278,7 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     __tablename__ = "course_outcomes"
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    course_id = Column(String, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(String, ForeignKey(COURSES_ID), nullable=False)
     clo_number = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     assessment_method = Column(String)
@@ -293,7 +298,7 @@ class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     id = Column(String, primary_key=True, default=generate_uuid)
     email = Column(String, nullable=False)
     role = Column(String, nullable=False)
-    institution_id = Column(String, ForeignKey("institutions.id"), nullable=False)
+    institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     token = Column(String, nullable=False, unique=True)
     invited_by = Column(String)
     invited_at = Column(DateTime, default=datetime.utcnow)

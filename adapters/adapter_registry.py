@@ -157,7 +157,7 @@ class AdapterRegistry:
                 "active": True,
             }
 
-            logger.info(f"Registered adapter: {adapter_id} ({adapter_info['name']})")
+            logger.info("Registered adapter: %s (%s)", adapter_id, adapter_info["name"])
 
         except (TypeError, ValueError, AttributeError) as e:
             logger.error(f"Failed to register adapter {adapter_class.__name__}: {e}")
@@ -311,25 +311,13 @@ class AdapterRegistry:
 
         # Check if adapter is registered
         if adapter_id not in self._adapters:
-            # Sanitize adapter_id for logging to prevent log injection
-            safe_adapter_id = (
-                adapter_id.replace("\n", "").replace("\r", "")[:50]
-                if adapter_id
-                else "None"
-            )
-            logger.warning(f"Adapter not found: {safe_adapter_id}")
+            logger.warning("Adapter not found: %s", adapter_id)
             return None
 
         registration = self._adapters[adapter_id]
 
         if not registration["active"]:
-            # Sanitize adapter_id for logging to prevent log injection
-            safe_adapter_id = (
-                adapter_id.replace("\n", "").replace("\r", "")[:50]
-                if adapter_id
-                else "None"
-            )
-            logger.warning(f"Adapter inactive: {safe_adapter_id}")
+            logger.warning("Adapter inactive: %s", adapter_id)
             return None
 
         try:
@@ -340,11 +328,11 @@ class AdapterRegistry:
             # Cache the instance
             self._adapter_instances[adapter_id] = instance
 
-            logger.debug(f"Created adapter instance: {adapter_id}")
+            logger.debug("Created adapter instance: %s", adapter_id)
             return instance
 
         except Exception as e:
-            logger.error(f"Failed to create adapter instance {adapter_id}: {e}")
+            logger.error("Failed to create adapter instance %s: %s", adapter_id, e)
             raise AdapterRegistryError(
                 f"Cannot instantiate adapter {adapter_id}: {e}"
             ) from e
@@ -415,7 +403,7 @@ class AdapterRegistry:
         if adapter_id in self._adapter_instances:
             del self._adapter_instances[adapter_id]
 
-        logger.info(f"Deactivated adapter: {adapter_id}")
+        logger.info("Deactivated adapter: %s", adapter_id)
         return True
 
     def reactivate_adapter(self, adapter_id: str) -> bool:
@@ -432,7 +420,7 @@ class AdapterRegistry:
             return False
 
         self._adapters[adapter_id]["active"] = True
-        logger.info(f"Reactivated adapter: {adapter_id}")
+        logger.info("Reactivated adapter: %s", adapter_id)
         return True
 
     def get_supported_formats(self) -> Dict[str, List[str]]:

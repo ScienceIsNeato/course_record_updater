@@ -11,6 +11,17 @@
  * - Mobile responsiveness and touch interactions
  */
 
+// Secure ID generation using crypto API when available
+function generateSecureId(prefix = 'id') {
+  if (window.crypto && window.crypto.getRandomValues) {
+    const array = new Uint32Array(1);
+    window.crypto.getRandomValues(array);
+    return `${prefix}-${Date.now()}-${array[0]}`;
+  }
+  // Fallback using Math.random() for older browsers without crypto API
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+}
+
 class PanelManager {
   constructor() {
     this.panels = new Map();
@@ -33,7 +44,7 @@ class PanelManager {
   initializePanels() {
     const panels = document.querySelectorAll('.dashboard-panel');
     panels.forEach(panel => {
-      const panelId = panel.id || `panel-${Date.now()}-${Math.random()}`;
+      const panelId = panel.id || generateSecureId('panel');
       panel.id = panelId;
 
       const header = panel.querySelector('.panel-header');
@@ -78,7 +89,7 @@ class PanelManager {
   initializeSortableTables() {
     const tables = document.querySelectorAll('.panel-table');
     tables.forEach(table => {
-      const tableId = table.id || `table-${Date.now()}-${Math.random()}`;
+      const tableId = table.id || generateSecureId('table');
       table.id = tableId;
 
       const headers = table.querySelectorAll('th.sortable');

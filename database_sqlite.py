@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, func, select
@@ -106,7 +106,7 @@ class SQLiteDatabase(DatabaseInterface):
                 "academic_year_start_month": 8,
                 "grading_scale": "traditional",
             },
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
         return self.create_institution(cei_payload)
 
@@ -272,7 +272,7 @@ class SQLiteDatabase(DatabaseInterface):
                 elif hasattr(User, key):
                     setattr(user, key, value)
                 user.extras[key] = value
-            user.updated_at = datetime.utcnow()
+            user.updated_at = datetime.now(timezone.utc)
             return True
 
     def update_user_active_status(self, user_id: str, active_user: bool) -> bool:
@@ -675,7 +675,7 @@ class SQLiteDatabase(DatabaseInterface):
                 if hasattr(Program, key):
                     setattr(program, key, value)
                 program.extras[key] = value
-            program.updated_at = datetime.utcnow()
+            program.updated_at = datetime.now(timezone.utc)
             return True
 
     def delete_program(self, program_id: str, reassign_to_program_id: str) -> bool:
@@ -802,7 +802,7 @@ class SQLiteDatabase(DatabaseInterface):
             institution_id=payload.get("institution_id"),
             token=payload.get("token", str(uuid.uuid4())),
             invited_by=payload.get("invited_by"),
-            invited_at=payload.get("invited_at", datetime.utcnow()),
+            invited_at=payload.get("invited_at", datetime.now(timezone.utc)),
             expires_at=payload.get("expires_at"),
             status=payload.get("status", "pending"),
             accepted_at=payload.get("accepted_at"),
@@ -860,7 +860,7 @@ class SQLiteDatabase(DatabaseInterface):
                 if hasattr(UserInvitation, key):
                     setattr(invitation, key, value)
                 invitation.extras[key] = value
-            invitation.updated_at = datetime.utcnow()
+            invitation.updated_at = datetime.now(timezone.utc)
             return True
 
     def list_invitations(

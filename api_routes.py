@@ -11,6 +11,10 @@ from typing import Any, Dict, List
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 
+# Constants for error messages
+PERMISSION_DENIED_MSG = "Permission denied"
+USER_NOT_FOUND_MSG = "User not found"
+
 # Import our services
 from auth_service import (
     UserRole,
@@ -568,14 +572,14 @@ def get_user_api(user_id: str):
 
         # Check permissions - users can view their own info, admins can view any
         if user_id != current_user["user_id"] and not has_permission("manage_users"):
-            return jsonify({"success": False, "error": "Permission denied"}), 403
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
         user = get_user_by_id(user_id)
 
         if user:
             return jsonify({"success": True, "user": user})
         else:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
     except Exception as e:
         return handle_api_error(e, "Get user by ID", "Failed to retrieve user")
@@ -602,7 +606,7 @@ def update_user_api(user_id: str):
         # Check if user exists
         existing_user = get_user_by_id(user_id)
         if not existing_user:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
         # Update user
         success = update_user(user_id, data)
@@ -1056,7 +1060,7 @@ def create_program_api():
         current_user = get_current_user()
 
         if not current_user:
-            return jsonify({"success": False, "error": "User not found"}), 400
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 400
 
         if not institution_id:
             if current_user.get("role") == UserRole.SITE_ADMIN.value:
@@ -1666,7 +1670,7 @@ def validate_import_file():
                 institution_id=institution_id,
                 conflict_strategy="use_theirs",
                 dry_run=True,  # Always dry run for validation
-                adapter_name=adapter_name,
+                adapter_id=adapter_name,
             )
 
             # Create validation response
@@ -2862,18 +2866,29 @@ def excel_import_api():
                 403,
             )
 
-        # Save uploaded file temporarily
+        # Save uploaded file temporarily using secure tempfile approach
         import os
+        import re
         import tempfile
 
-        temp_dir = tempfile.gettempdir()
-        temp_filename = (
-            f"import_{current_user.get('user_id')}_{import_data_type}_{file.filename}"
-        )
-        temp_filepath = os.path.join(temp_dir, temp_filename)
+        # Sanitize filename for logging/display purposes only
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"upload_{hash(file.filename) % 10000}"
+
+        # Use secure temporary file creation
+        temp_file_prefix = f"import_{current_user.get('user_id')}_{import_data_type}_"
 
         try:
-            file.save(temp_filepath)
+            # Create secure temporary file
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                prefix=temp_file_prefix,
+                suffix=f"_{safe_filename}",
+                delete=False,
+            ) as temp_file:
+                file.save(temp_file)
+                temp_filepath = temp_file.name
 
             # Import the Excel processing function
             from import_service import import_excel
@@ -2918,7 +2933,7 @@ def excel_import_api():
 
     except PermissionError as e:
         logger.warning(f"Permission denied for import: {e}")
-        return jsonify({"success": False, "error": "Permission denied"}), 403
+        return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
     except Exception as e:
         logger.error(f"Excel import error: {e}")
