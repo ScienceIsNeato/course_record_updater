@@ -1338,45 +1338,81 @@ def add_course_to_program_api(program_id: str):
 def remove_course_from_program_api(program_id: str, course_id: str):
     """Remove a course from a program"""
     try:
-        # Validate program exists
-        program = get_program_by_id(program_id)
-        if not program:
-            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
+        # Validate program exists and get institution context
+        program, institution_id = _validate_program_for_removal(program_id)
 
-        # Get default program for orphan handling
-        institution_id = program.get("institution_id")
-        programs = get_programs_by_institution(institution_id) if institution_id else []
-        default_program = next(
-            (p for p in programs if p.get("is_default", False)), None
+        # Get default program for orphan prevention
+        default_program_id = _get_default_program_id(institution_id)
+
+        # Perform course removal with orphan handling
+        success = _remove_course_with_orphan_handling(
+            course_id, program_id, institution_id, default_program_id
         )
 
-        default_program_id = default_program["id"] if default_program else None
+        # Return appropriate response
+        return _build_removal_response(success, course_id, program)
 
-        # Remove course from program
-        success = remove_course_from_program(course_id, program_id)
-
-        # If removal successful and default program exists, assign to default to prevent orphaning
-        if success and default_program_id:
-            assign_course_to_default_program(course_id, institution_id)
-
-        if success:
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Course {course_id} removed from program {program.get('name', program_id)}",
-                }
-            )
-        else:
-            return (
-                jsonify(
-                    {"success": False, "error": "Failed to remove course from program"}
-                ),
-                500,
-            )
-
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
     except Exception as e:
         return handle_api_error(
             e, "Remove course from program", "Failed to remove course from program"
+        )
+
+
+def _validate_program_for_removal(program_id: str):
+    """Validate program exists and return program with institution ID."""
+    program = get_program_by_id(program_id)
+    if not program:
+        raise ValueError(PROGRAM_NOT_FOUND_MSG)
+
+    institution_id = program.get("institution_id")
+    return program, institution_id
+
+
+def _get_default_program_id(institution_id: str):
+    """Get the default program ID for the institution."""
+    if not institution_id:
+        return None
+
+    programs = get_programs_by_institution(institution_id)
+    if not programs:
+        return None
+
+    default_program = next((p for p in programs if p.get("is_default", False)), None)
+
+    return default_program["id"] if default_program else None
+
+
+def _remove_course_with_orphan_handling(
+    course_id: str, program_id: str, institution_id: str, default_program_id: str
+) -> bool:
+    """Remove course from program and handle orphan prevention."""
+    # Remove course from program
+    success = remove_course_from_program(course_id, program_id)
+
+    # If removal successful and default program exists, assign to default to prevent orphaning
+    if success and default_program_id:
+        assign_course_to_default_program(course_id, institution_id)
+
+    return success
+
+
+def _build_removal_response(success: bool, course_id: str, program: dict):
+    """Build the appropriate response for course removal."""
+    if success:
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Course {course_id} removed from program {program.get('name', program.get('id'))}",
+            }
+        )
+    else:
+        return (
+            jsonify(
+                {"success": False, "error": "Failed to remove course from program"}
+            ),
+            500,
         )
 
 
