@@ -92,12 +92,8 @@ class InvitationService:
             # Generate secure invitation token
             invitation_token = secrets.token_urlsafe(32)
 
-            # Calculate expiry date
-            expires_at = datetime.now(timezone.utc) + timedelta(
-                days=InvitationService.INVITATION_EXPIRY_DAYS
-            )
-
             # Create invitation data using the correct UserInvitation schema
+            # Note: expiry is handled internally by UserInvitation.create_schema via expires_days
             invitation_data = UserInvitation.create_schema(
                 email=invitee_email,
                 role=invitee_role,

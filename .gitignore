@@ -18,6 +18,7 @@ lcov.info
 
 # Test artifacts
 .pytest_cache/
+test-results.xml
 
 # Log files and directories
 logs/

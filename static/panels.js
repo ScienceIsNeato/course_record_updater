@@ -18,8 +18,8 @@ function generateSecureId(prefix = 'id') {
     window.crypto.getRandomValues(array);
     return `${prefix}-${Date.now()}-${array[0]}`;
   }
-  // Fallback to timestamp-based ID for older browsers (no random component for security)
-  return `${prefix}-${Date.now()}-${Math.floor(Date.now() / 1000)}`;
+  // Fallback using Math.random() for older browsers without crypto API
+  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 }
 
 class PanelManager {
