@@ -205,146 +205,23 @@ class ImportService:
         start_time = datetime.now(timezone.utc)
         self.reset_stats()
 
-        self.logger.info(f"[Import] Starting import from: {file_path}")
-        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
-        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+        self._log_import_start(file_path, conflict_strategy, dry_run)
 
         try:
-            # Validate file exists
-            if not os.path.exists(file_path):
-                error_msg = f"File not found: {file_path}"
-                self.stats["errors"].append(error_msg)
+            # Validate and prepare for import
+            adapter = self._prepare_import(file_path, adapter_id, start_time, dry_run)
+            if not adapter:
                 return self._create_import_result(start_time, dry_run)
 
-            # Get adapter from registry
-            try:
-                registry = get_adapter_registry()
-                adapter = registry.get_adapter_by_id(adapter_id)
-                if not adapter:
-                    error_msg = f"Adapter not found: {adapter_id}"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-            except AdapterRegistryError as e:
-                error_msg = f"Failed to get adapter {adapter_id}: {str(e)}"
-                self.stats["errors"].append(error_msg)
+            # Parse file data
+            parsed_data = self._parse_file_data(
+                adapter, file_path, adapter_id, start_time, dry_run
+            )
+            if not parsed_data:
                 return self._create_import_result(start_time, dry_run)
 
-            # Validate file compatibility with adapter
-            try:
-                is_compatible, validation_message = adapter.validate_file_compatibility(
-                    file_path
-                )
-                if not is_compatible:
-                    error_msg = f"File incompatible with adapter {adapter_id}: {validation_message}"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-
-                self.logger.info(
-                    f"[Import] File validation passed: {validation_message}"
-                )
-            except Exception as e:
-                error_msg = f"File validation failed: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                return self._create_import_result(start_time, dry_run)
-
-            # Parse file using adapter
-            try:
-                parse_options = {"institution_id": self.institution_id}
-                parsed_data = adapter.parse_file(file_path, parse_options)
-                self.logger.info(
-                    f"[Import] Successfully parsed file with adapter {adapter_id}"
-                )
-
-                # Log what data types were found
-                data_types = []
-                for data_type, records in parsed_data.items():
-                    if records:
-                        data_types.append(f"{data_type}: {len(records)}")
-                        self.logger.info(
-                            f"[Import] Found {len(records)} {data_type} records"
-                        )
-
-                if not data_types:
-                    error_msg = "No valid data found in file"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-
-            except Exception as e:
-                error_msg = f"Failed to parse file with adapter {adapter_id}: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                return self._create_import_result(start_time, dry_run)
-
-            # Process parsed data
-            all_conflicts = []
-            total_records = sum(len(records) for records in parsed_data.values())
-            processed_records = 0
-
-            self.logger.info(f"[Import] Processing {total_records} total records")
-
-            # Process each data type in dependency order: users -> courses -> terms -> offerings -> sections
-            processing_order = ["users", "courses", "terms", "offerings", "sections"]
-
-            for data_type in processing_order:
-                records = parsed_data.get(data_type, [])
-                if not records:
-                    continue
-
-                self.logger.info(
-                    f"[Import] Processing {len(records)} {data_type} records"
-                )
-
-                for record in records:
-                    processed_records += 1
-                    self.stats["records_processed"] += 1
-
-                    # Show progress periodically
-                    progress = int(processed_records / total_records * 100)
-                    if (
-                        processed_records % max(1, total_records // 20) == 0
-                        or processed_records == total_records
-                    ):
-                        self._log(
-                            f"Processing record {processed_records}/{total_records} ({progress}%)",
-                            "summary",
-                        )
-
-                        if self.progress_callback:
-                            self.progress_callback(
-                                percentage=progress,
-                                records_processed=processed_records,
-                                total_records=total_records,
-                                message=f"Processing {data_type} record {processed_records}/{total_records} ({progress}%)",
-                            )
-
-                    try:
-                        # Process based on data type
-                        if data_type == "courses":
-                            _, conflicts = self.process_course_import(
-                                record, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-                        elif data_type == "users":
-                            _, conflicts = self.process_user_import(
-                                record, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-                        elif data_type == "terms":
-                            self._process_term_import(record, dry_run)
-                        elif data_type == "offerings":
-                            self._process_offering_import(
-                                record, conflict_strategy, dry_run
-                            )
-                        elif data_type == "sections":
-                            self._process_section_import(
-                                record, conflict_strategy, dry_run
-                            )
-
-                    except Exception as e:
-                        error_msg = f"Error processing {data_type} record: {str(e)}"
-                        self.stats["errors"].append(error_msg)
-                        self.logger.error(f"[Import] {error_msg}")
-
-            self.stats["conflicts"].extend(all_conflicts)
+            # Process all parsed data
+            self._process_parsed_data(parsed_data, conflict_strategy, dry_run)
 
         except Exception as e:
             error_msg = f"Unexpected error during import: {str(e)}"
@@ -352,6 +229,207 @@ class ImportService:
             self.logger.error(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
+
+    def _log_import_start(
+        self, file_path: str, conflict_strategy: ConflictStrategy, dry_run: bool
+    ):
+        """Log import start information."""
+        self.logger.info(f"[Import] Starting import from: {file_path}")
+        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
+        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+
+    def _prepare_import(
+        self, file_path: str, adapter_id: str, start_time, dry_run: bool
+    ):
+        """Prepare import by validating file and getting adapter."""
+        # Validate file exists
+        if not os.path.exists(file_path):
+            error_msg = f"File not found: {file_path}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        # Get adapter from registry
+        try:
+            registry = get_adapter_registry()
+            adapter = registry.get_adapter_by_id(adapter_id)
+            if not adapter:
+                error_msg = f"Adapter not found: {adapter_id}"
+                self.stats["errors"].append(error_msg)
+                return None
+        except AdapterRegistryError as e:
+            error_msg = f"Failed to get adapter {adapter_id}: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        # Validate file compatibility with adapter
+        try:
+            is_compatible, validation_message = adapter.validate_file_compatibility(
+                file_path
+            )
+            if not is_compatible:
+                error_msg = (
+                    f"File incompatible with adapter {adapter_id}: {validation_message}"
+                )
+                self.stats["errors"].append(error_msg)
+                return None
+
+            self.logger.info(f"[Import] File validation passed: {validation_message}")
+        except Exception as e:
+            error_msg = f"File validation failed: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        return adapter
+
+    def _parse_file_data(
+        self, adapter, file_path: str, adapter_id: str, start_time, dry_run: bool
+    ):
+        """Parse file data using the adapter."""
+        try:
+            parse_options = {"institution_id": self.institution_id}
+            parsed_data = adapter.parse_file(file_path, parse_options)
+            self.logger.info(
+                f"[Import] Successfully parsed file with adapter {adapter_id}"
+            )
+
+            # Log what data types were found
+            data_types = []
+            for data_type, records in parsed_data.items():
+                if records:
+                    data_types.append(f"{data_type}: {len(records)}")
+                    self.logger.info(
+                        f"[Import] Found {len(records)} {data_type} records"
+                    )
+
+            if not data_types:
+                error_msg = "No valid data found in file"
+                self.stats["errors"].append(error_msg)
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            error_msg = f"Failed to parse file with adapter {adapter_id}: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+    def _process_parsed_data(
+        self,
+        parsed_data: Dict[str, List],
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ):
+        """Process all parsed data in dependency order."""
+        all_conflicts = []
+        total_records = sum(len(records) for records in parsed_data.values())
+        processed_records = 0
+
+        self.logger.info(f"[Import] Processing {total_records} total records")
+
+        # Process each data type in dependency order
+        processing_order = ["users", "courses", "terms", "offerings", "sections"]
+
+        for data_type in processing_order:
+            records = parsed_data.get(data_type, [])
+            if not records:
+                continue
+
+            self.logger.info(f"[Import] Processing {len(records)} {data_type} records")
+
+            conflicts = self._process_data_type_records(
+                data_type,
+                records,
+                conflict_strategy,
+                dry_run,
+                processed_records,
+                total_records,
+            )
+            all_conflicts.extend(conflicts)
+            processed_records += len(records)
+
+        self.stats["conflicts"].extend(all_conflicts)
+
+    def _process_data_type_records(
+        self,
+        data_type: str,
+        records: List,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+        processed_records: int,
+        total_records: int,
+    ) -> List:
+        """Process records for a specific data type."""
+        all_conflicts = []
+
+        for record in records:
+            processed_records += 1
+            self.stats["records_processed"] += 1
+
+            # Show progress periodically
+            self._update_progress(processed_records, total_records, data_type)
+
+            try:
+                conflicts = self._process_single_record(
+                    data_type, record, conflict_strategy, dry_run
+                )
+                all_conflicts.extend(conflicts)
+
+            except Exception as e:
+                error_msg = f"Error processing {data_type} record: {str(e)}"
+                self.stats["errors"].append(error_msg)
+                self.logger.error(f"[Import] {error_msg}")
+
+        return all_conflicts
+
+    def _update_progress(
+        self, processed_records: int, total_records: int, data_type: str
+    ):
+        """Update progress reporting."""
+        progress = int(processed_records / total_records * 100)
+        if (
+            processed_records % max(1, total_records // 20) == 0
+            or processed_records == total_records
+        ):
+            self._log(
+                f"Processing record {processed_records}/{total_records} ({progress}%)",
+                "summary",
+            )
+
+            if self.progress_callback:
+                self.progress_callback(
+                    percentage=progress,
+                    records_processed=processed_records,
+                    total_records=total_records,
+                    message=f"Processing {data_type} record {processed_records}/{total_records} ({progress}%)",
+                )
+
+    def _process_single_record(
+        self,
+        data_type: str,
+        record: Dict,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> List:
+        """Process a single record based on its data type."""
+        if data_type == "courses":
+            _, conflicts = self.process_course_import(
+                record, conflict_strategy, dry_run
+            )
+            return conflicts
+        elif data_type == "users":
+            _, conflicts = self.process_user_import(record, conflict_strategy, dry_run)
+            return conflicts
+        elif data_type == "terms":
+            self._process_term_import(record, dry_run)
+            return []
+        elif data_type == "offerings":
+            self._process_offering_import(record, conflict_strategy, dry_run)
+            return []
+        elif data_type == "sections":
+            self._process_section_import(record, conflict_strategy, dry_run)
+            return []
+        else:
+            return []
 
     def process_course_import(
         self,
