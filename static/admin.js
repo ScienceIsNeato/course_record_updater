@@ -208,41 +208,61 @@ function clearFilters() {
 
 function getFilteredData() {
   const data = currentTab === 'users' ? currentUsers : currentInvitations;
+  return data.filter(item => applyAllFilters(item));
+}
 
-  return data.filter(item => {
-    // Search filter
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      const searchableText =
-        currentTab === 'users'
-          ? `${item.first_name} ${item.last_name} ${item.email}`.toLowerCase()
-          : `${item.email} ${item.invited_by || ''}`.toLowerCase();
+function applyAllFilters(item) {
+  return applySearchFilter(item) && applyRoleFilter(item) && applyStatusFilter(item);
+}
 
-      if (!searchableText.includes(searchTerm)) {
-        return false;
-      }
-    }
-
-    // Role filter
-    if (filters.role && item.role !== filters.role) {
-      return false;
-    }
-
-    // Status filter
-    if (filters.status) {
-      if (currentTab === 'users') {
-        if (filters.status === 'active' && item.account_status !== 'active') return false;
-        if (filters.status === 'pending' && item.account_status !== 'pending_verification') {
-          return false;
-        }
-        if (filters.status === 'inactive' && item.account_status !== 'inactive') return false;
-      } else {
-        if (item.status !== filters.status) return false;
-      }
-    }
-
+function applySearchFilter(item) {
+  if (!filters.search) {
     return true;
-  });
+  }
+
+  const searchTerm = filters.search.toLowerCase();
+  const searchableText = buildSearchableText(item);
+  return searchableText.includes(searchTerm);
+}
+
+function buildSearchableText(item) {
+  if (currentTab === 'users') {
+    return `${item.first_name} ${item.last_name} ${item.email}`.toLowerCase();
+  } else {
+    return `${item.email} ${item.invited_by || ''}`.toLowerCase();
+  }
+}
+
+function applyRoleFilter(item) {
+  if (!filters.role) {
+    return true;
+  }
+  return item.role === filters.role;
+}
+
+function applyStatusFilter(item) {
+  if (!filters.status) {
+    return true;
+  }
+
+  if (currentTab === 'users') {
+    return applyUserStatusFilter(item);
+  } else {
+    return item.status === filters.status;
+  }
+}
+
+function applyUserStatusFilter(item) {
+  switch (filters.status) {
+    case 'active':
+      return item.account_status === 'active';
+    case 'pending':
+      return item.account_status === 'pending_verification';
+    case 'inactive':
+      return item.account_status === 'inactive';
+    default:
+      return true;
+  }
 }
 
 // Display Functions
