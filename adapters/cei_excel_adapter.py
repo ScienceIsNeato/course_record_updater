@@ -427,157 +427,208 @@ class CEIExcelAdapter(FileBaseAdapter):
             Tuple[bool, str]: (is_compatible, message)
         """
         try:
-            # Check file extension first
-            if not file_path.lower().endswith((XLSX_EXTENSION, XLS_EXTENSION)):
-                return False, "Unsupported file extension. Expected .xlsx or .xls"
+            # Basic file validation
+            basic_check = self._validate_basic_file_properties(file_path)
+            if not basic_check[0]:
+                return basic_check
 
-            # Check if file exists
-            import os
+            # Read and validate Excel structure
+            df = self._read_excel_sample(file_path)
+            if isinstance(df, tuple):  # Error case
+                return df
 
-            if not os.path.exists(file_path):
-                return False, f"File not found: {file_path}"
+            # Check format compatibility
+            format_check = self._check_format_compatibility(df)
+            if not format_check[0]:
+                return format_check
 
-            # Check file size (basic check)
-            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            if file_size_mb > self.MAX_FILE_SIZE_MB:
-                return (
-                    False,
-                    f"File too large ({file_size_mb:.1f}MB). Maximum allowed: {self.MAX_FILE_SIZE_MB}MB",
-                )
-
-            # Read Excel file to check structure
-            try:
-                df = pd.read_excel(file_path, nrows=10)  # Sample first 10 rows
-            except Exception as e:
-                return False, f"Cannot read Excel file: {str(e)}"
-
-            if df.empty:
-                return False, "Excel file is empty"
-
-            # Check for either format structure
-            has_original_required = all(
-                col in df.columns for col in self.original_format_required
-            )
-            has_original_student_col = any(
-                col in df.columns for col in self.original_format_student_columns
-            )
-            has_original_format = has_original_required and has_original_student_col
-
-            has_test_format = all(col in df.columns for col in self.test_format_columns)
-
-            # Check for hybrid format (real CEI data with email and Term)
-            has_hybrid_required = all(
-                col in df.columns for col in self.hybrid_format_required
-            )
-            has_hybrid_student_col = any(
-                col in df.columns for col in self.hybrid_format_student_columns
-            )
-            has_hybrid_format = has_hybrid_required and has_hybrid_student_col
-
-            if not (has_original_format or has_test_format or has_hybrid_format):
-                missing_original_required = [
-                    col
-                    for col in self.original_format_required
-                    if col not in df.columns
-                ]
-                missing_original_student = (
-                    "students column" if not has_original_student_col else None
-                )
-                missing_test = [
-                    col for col in self.test_format_columns if col not in df.columns
-                ]
-
-                missing_hybrid_required = [
-                    col for col in self.hybrid_format_required if col not in df.columns
-                ]
-                missing_hybrid_student = (
-                    "students column" if not has_hybrid_student_col else None
-                )
-
-                missing_original = missing_original_required + (
-                    [missing_original_student] if missing_original_student else []
-                )
-
-                missing_hybrid = missing_hybrid_required + (
-                    [missing_hybrid_student] if missing_hybrid_student else []
-                )
-
-                return False, (
-                    f"File doesn't match CEI format. "
-                    f"Missing for original format: {missing_original}. "
-                    f"Missing for test format: {missing_test}. "
-                    f"Missing for hybrid format: {missing_hybrid}."
-                )
-
-            # Validate data patterns in key columns
-            validation_errors = []
-
-            # Check course column
-            if "course" in df.columns:
-                sample_courses = df["course"].dropna().head(3)
-                invalid_courses = [
-                    course
-                    for course in sample_courses
-                    if not validate_course_number(str(course))
-                ]
-                if (
-                    len(invalid_courses) == len(sample_courses)
-                    and len(sample_courses) > 0
-                ):
-                    validation_errors.append("No valid course numbers found")
-
-            # Check term format if using original format
-            if has_original_format and "effterm_c" in df.columns:
-                sample_terms = df["effterm_c"].dropna().head(3)
-                invalid_terms = [
-                    term
-                    for term in sample_terms
-                    if not validate_cei_term_name(str(term))
-                ]
-                if len(invalid_terms) == len(sample_terms) and len(sample_terms) > 0:
-                    validation_errors.append(
-                        "No valid term codes found (expected format: FA2024, SP2025)"
-                    )
-
-            # Check student count column (either "Enrolled Students" or "students")
-            student_col = None
-            if ENROLLED_STUDENTS_COLUMN in df.columns:
-                student_col = ENROLLED_STUDENTS_COLUMN
-            elif "students" in df.columns:
-                student_col = "students"
-
-            if student_col:
-                sample_students = df[student_col].dropna().head(3)
-                try:
-                    numeric_counts = [int(x) for x in sample_students if pd.notna(x)]
-                    if not numeric_counts and len(sample_students) > 0:
-                        validation_errors.append(
-                            f"Student count column ({student_col}) contains no valid numbers"
-                        )
-                except (ValueError, TypeError):
-                    validation_errors.append(
-                        f"Student count column ({student_col}) contains invalid data"
-                    )
-
+            # Validate data patterns
+            validation_errors = self._validate_data_patterns(df, format_check[1])
             if validation_errors:
                 return False, f"Data validation failed: {'; '.join(validation_errors)}"
 
-            # Determine format and provide success message
-            if has_original_format:
-                format_type = "original"
-            elif has_test_format:
-                format_type = "test"
-            else:
-                format_type = "hybrid"
+            # Success message
             record_count = len(df)
-
             return True, (
-                f"File compatible with CEI Excel format ({format_type}). "
+                f"File compatible with CEI Excel format ({format_check[1]}). "
                 f"Found {record_count} sample records."
             )
 
         except Exception as e:
             return False, f"Error validating file: {str(e)}"
+
+    def _validate_basic_file_properties(self, file_path: str) -> Tuple[bool, str]:
+        """Validate basic file properties: extension, existence, size."""
+        import os
+
+        # Check file extension
+        if not file_path.lower().endswith((XLSX_EXTENSION, XLS_EXTENSION)):
+            return False, "Unsupported file extension. Expected .xlsx or .xls"
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return False, f"File not found: {file_path}"
+
+        # Check file size
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        if file_size_mb > self.MAX_FILE_SIZE_MB:
+            return (
+                False,
+                f"File too large ({file_size_mb:.1f}MB). Maximum allowed: {self.MAX_FILE_SIZE_MB}MB",
+            )
+
+        return True, "Basic file validation passed"
+
+    def _read_excel_sample(self, file_path: str):
+        """Read Excel file sample for validation."""
+        try:
+            df = pd.read_excel(file_path, nrows=10)  # Sample first 10 rows
+            if df.empty:
+                return False, "Excel file is empty"
+            return df
+        except Exception as e:
+            return False, f"Cannot read Excel file: {str(e)}"
+
+    def _check_format_compatibility(self, df) -> Tuple[bool, str]:
+        """Check if DataFrame matches any supported CEI format."""
+        # Check original format
+        has_original_required = all(
+            col in df.columns for col in self.original_format_required
+        )
+        has_original_student_col = any(
+            col in df.columns for col in self.original_format_student_columns
+        )
+        has_original_format = has_original_required and has_original_student_col
+
+        # Check test format
+        has_test_format = all(col in df.columns for col in self.test_format_columns)
+
+        # Check hybrid format
+        has_hybrid_required = all(
+            col in df.columns for col in self.hybrid_format_required
+        )
+        has_hybrid_student_col = any(
+            col in df.columns for col in self.hybrid_format_student_columns
+        )
+        has_hybrid_format = has_hybrid_required and has_hybrid_student_col
+
+        if has_original_format:
+            return True, "original"
+        elif has_test_format:
+            return True, "test"
+        elif has_hybrid_format:
+            return True, "hybrid"
+        else:
+            return False, self._build_format_error_message(df)
+
+    def _build_format_error_message(self, df) -> str:
+        """Build detailed error message for format mismatch."""
+        missing_original_required = [
+            col for col in self.original_format_required if col not in df.columns
+        ]
+        has_original_student_col = any(
+            col in df.columns for col in self.original_format_student_columns
+        )
+        missing_original_student = (
+            "students column" if not has_original_student_col else None
+        )
+        missing_test = [
+            col for col in self.test_format_columns if col not in df.columns
+        ]
+
+        missing_hybrid_required = [
+            col for col in self.hybrid_format_required if col not in df.columns
+        ]
+        has_hybrid_student_col = any(
+            col in df.columns for col in self.hybrid_format_student_columns
+        )
+        missing_hybrid_student = (
+            "students column" if not has_hybrid_student_col else None
+        )
+
+        missing_original = missing_original_required + (
+            [missing_original_student] if missing_original_student else []
+        )
+        missing_hybrid = missing_hybrid_required + (
+            [missing_hybrid_student] if missing_hybrid_student else []
+        )
+
+        return (
+            f"File doesn't match CEI format. "
+            f"Missing for original format: {missing_original}. "
+            f"Missing for test format: {missing_test}. "
+            f"Missing for hybrid format: {missing_hybrid}."
+        )
+
+    def _validate_data_patterns(self, df, format_type: str) -> List[str]:
+        """Validate data patterns in key columns."""
+        validation_errors = []
+
+        # Validate course column
+        course_error = self._validate_course_column(df)
+        if course_error:
+            validation_errors.append(course_error)
+
+        # Validate term column for original format
+        if format_type == "original":
+            term_error = self._validate_term_column(df)
+            if term_error:
+                validation_errors.append(term_error)
+
+        # Validate student count column
+        student_error = self._validate_student_count_column(df)
+        if student_error:
+            validation_errors.append(student_error)
+
+        return validation_errors
+
+    def _validate_course_column(self, df) -> Optional[str]:
+        """Validate course column data patterns."""
+        if "course" not in df.columns:
+            return None
+
+        sample_courses = df["course"].dropna().head(3)
+        invalid_courses = [
+            course
+            for course in sample_courses
+            if not validate_course_number(str(course))
+        ]
+        if len(invalid_courses) == len(sample_courses) and len(sample_courses) > 0:
+            return "No valid course numbers found"
+        return None
+
+    def _validate_term_column(self, df) -> Optional[str]:
+        """Validate term column data patterns for original format."""
+        if "effterm_c" not in df.columns:
+            return None
+
+        sample_terms = df["effterm_c"].dropna().head(3)
+        invalid_terms = [
+            term for term in sample_terms if not validate_cei_term_name(str(term))
+        ]
+        if len(invalid_terms) == len(sample_terms) and len(sample_terms) > 0:
+            return "No valid term codes found (expected format: FA2024, SP2025)"
+        return None
+
+    def _validate_student_count_column(self, df) -> Optional[str]:
+        """Validate student count column data patterns."""
+        student_col = None
+        if ENROLLED_STUDENTS_COLUMN in df.columns:
+            student_col = ENROLLED_STUDENTS_COLUMN
+        elif "students" in df.columns:
+            student_col = "students"
+
+        if not student_col:
+            return None
+
+        sample_students = df[student_col].dropna().head(3)
+        try:
+            numeric_counts = [int(x) for x in sample_students if pd.notna(x)]
+            if not numeric_counts and len(sample_students) > 0:
+                return f"Student count column ({student_col}) contains no valid numbers"
+        except (ValueError, TypeError):
+            return f"Student count column ({student_col}) contains invalid data"
+        return None
 
     def detect_data_types(self, file_path: str) -> List[str]:
         """
