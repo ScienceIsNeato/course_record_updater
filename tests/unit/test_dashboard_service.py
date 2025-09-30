@@ -332,3 +332,90 @@ class TestDashboardServiceHelpers:
         course = {"name": "Test Course"}
         result = service._get_course_id(course)
         assert result is None
+
+
+class TestDashboardServiceHelperMethods:
+    """Test helper methods for data organization and processing."""
+
+    def test_group_courses_by_program(self, service):
+        """Test _group_courses_by_program helper method."""
+        courses = [
+            {"course_id": "MATH101", "program_ids": ["MATH", "STEM"]},
+            {"course_id": "ENG101", "program_ids": ["ENG"]},
+            {"course_id": "MATH201", "program_ids": ["MATH"]},
+        ]
+
+        with patch.object(service, "_course_program_ids") as mock_program_ids:
+            mock_program_ids.side_effect = [
+                ["MATH", "STEM"],  # MATH101
+                ["ENG"],  # ENG101
+                ["MATH"],  # MATH201
+            ]
+
+            result = service._group_courses_by_program(courses)
+
+            assert len(result) == 3
+            assert len(result["MATH"]) == 2
+            assert len(result["STEM"]) == 1
+            assert len(result["ENG"]) == 1
+            assert result["MATH"][0]["course_id"] == "MATH101"
+            assert result["MATH"][1]["course_id"] == "MATH201"
+
+    def test_group_sections_by_course(self, service):
+        """Test _group_sections_by_course helper method."""
+        sections = [
+            {"section_id": "001", "course_id": "MATH101"},
+            {"section_id": "002", "course_id": "MATH101"},
+            {"section_id": "001", "courseId": "ENG101"},  # Different key
+            {"section_id": "003"},  # No course_id
+        ]
+
+        result = service._group_sections_by_course(sections)
+
+        assert len(result) == 2
+        assert len(result["MATH101"]) == 2
+        assert len(result["ENG101"]) == 1
+        assert result["MATH101"][0]["section_id"] == "001"
+        assert result["MATH101"][1]["section_id"] == "002"
+        assert result["ENG101"][0]["section_id"] == "001"
+
+    def test_process_program_courses(self, service):
+        """Test _process_program_courses helper method."""
+        program_courses = [
+            {
+                "course_id": "MATH101",
+                "course_number": "MATH 101",
+                "course_title": "Algebra",
+            },
+            {"id": "MATH102", "number": "MATH 102", "title": "Calculus"},
+            {"course_id": "MATH101"},  # Duplicate - should be skipped
+        ]
+
+        sections_by_course = {
+            "MATH101": [{"enrollment": 25}, {"enrollment": 30}],
+            "MATH102": [{"enrollment": 20}],
+        }
+
+        with patch.object(service, "_total_enrollment") as mock_enrollment:
+            mock_enrollment.side_effect = [55, 20]  # Total for each course
+
+            course_summaries, program_sections = service._process_program_courses(
+                program_courses, sections_by_course
+            )
+
+            assert len(course_summaries) == 2
+            assert len(program_sections) == 3  # 2 + 1 sections
+
+            # Check first course summary
+            assert course_summaries[0]["course_id"] == "MATH101"
+            assert course_summaries[0]["course_number"] == "MATH 101"
+            assert course_summaries[0]["course_title"] == "Algebra"
+            assert course_summaries[0]["section_count"] == 2
+            assert course_summaries[0]["enrollment"] == 55
+
+            # Check second course summary
+            assert course_summaries[1]["course_id"] == "MATH102"
+            assert course_summaries[1]["course_number"] == "MATH 102"
+            assert course_summaries[1]["course_title"] == "Calculus"
+            assert course_summaries[1]["section_count"] == 1
+            assert course_summaries[1]["enrollment"] == 20
