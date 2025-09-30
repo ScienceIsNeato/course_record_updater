@@ -653,50 +653,74 @@ class DashboardService:
         sections: Sequence[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         program_lookup = {metric["program_id"]: metric for metric in program_metrics}
+        sections_by_instructor = self._group_sections_by_instructor(sections)
+
+        assignments: List[Dict[str, Any]] = []
+        for member in faculty:
+            assignment = self._build_single_faculty_assignment(
+                member, sections_by_instructor, course_index, program_lookup
+            )
+            if assignment:
+                assignments.append(assignment)
+
+        return assignments
+
+    def _group_sections_by_instructor(
+        self, sections: Sequence[Dict[str, Any]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Group sections by instructor ID for efficient lookup."""
         sections_by_instructor: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for section in sections:
             instructor_id = section.get("instructor_id")
             if instructor_id:
                 sections_by_instructor[instructor_id].append(section)
+        return sections_by_instructor
 
-        assignments: List[Dict[str, Any]] = []
-        for member in faculty:
-            user_id = member.get("user_id")
-            if not user_id:
-                continue
-            member_sections = sections_by_instructor.get(user_id, [])
-            course_ids = {
-                section.get("course_id") or section.get("courseId")
-                for section in member_sections
-                if section.get("course_id") or section.get("courseId")
-            }
-            if not course_ids:
-                continue
+    def _build_single_faculty_assignment(
+        self,
+        member: Dict[str, Any],
+        sections_by_instructor: Dict[str, List[Dict[str, Any]]],
+        course_index: Dict[Any, Dict[str, Any]],
+        program_lookup: Dict[str, Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        """Build assignment data for a single faculty member."""
+        user_id = member.get("user_id")
+        if not user_id:
+            return None
 
-            programs: set[str] = set()
-            for course_id in course_ids:
-                course = course_index.get(course_id)
-                if not course:
-                    continue
+        member_sections = sections_by_instructor.get(user_id, [])
+        course_ids = {
+            section.get("course_id") or section.get("courseId")
+            for section in member_sections
+            if section.get("course_id") or section.get("courseId")
+        }
+        if not course_ids:
+            return None
+
+        programs = self._extract_programs_from_courses(course_ids, course_index)
+
+        return {
+            "user_id": user_id,
+            "full_name": member.get("full_name") or self._full_name(member),
+            "program_ids": list(programs),
+            "course_count": len(course_ids),
+            "section_count": len(member_sections),
+            "enrollment": self._total_enrollment(member_sections),
+            "program_summaries": [
+                program_lookup.get(pid) for pid in programs if program_lookup.get(pid)
+            ],
+        }
+
+    def _extract_programs_from_courses(
+        self, course_ids: set[str], course_index: Dict[Any, Dict[str, Any]]
+    ) -> set[str]:
+        """Extract program IDs from a set of course IDs."""
+        programs: set[str] = set()
+        for course_id in course_ids:
+            course = course_index.get(course_id)
+            if course:
                 programs.update(self._course_program_ids(course))
-
-            assignments.append(
-                {
-                    "user_id": user_id,
-                    "full_name": member.get("full_name") or self._full_name(member),
-                    "program_ids": list(programs),
-                    "course_count": len(course_ids),
-                    "section_count": len(member_sections),
-                    "enrollment": self._total_enrollment(member_sections),
-                    "program_summaries": [
-                        program_lookup.get(pid)
-                        for pid in programs
-                        if program_lookup.get(pid)
-                    ],
-                }
-            )
-
-        return assignments
+        return programs
 
     def _matches_course(
         self, section: Dict[str, Any], course_index: Dict[Any, Dict[str, Any]]
