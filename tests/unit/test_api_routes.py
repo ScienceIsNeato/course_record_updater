@@ -3274,3 +3274,153 @@ class TestAPIRoutesHelperFunctions:
 
             assert len(courses) == 1
             assert courses[0]["id"] == "c1"
+
+    def test_resolve_users_scope_success(self):
+        """Test _resolve_users_scope with valid scope."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_users_scope
+
+        mock_user = {"role": "site_admin"}
+        mock_institutions = ["inst1"]
+        mock_global = False
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
+
+            user, institutions, is_global = _resolve_users_scope()
+
+            assert user == mock_user
+            assert institutions == mock_institutions
+            assert is_global == mock_global
+
+    def test_resolve_users_scope_missing_context(self):
+        """Test _resolve_users_scope with missing institution context."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import InstitutionContextMissingError, _resolve_users_scope
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
+
+            with pytest.raises(ValueError, match="Institution context required"):
+                _resolve_users_scope()
+
+    def test_get_users_by_scope_global(self):
+        """Test _get_users_by_scope for global scope."""
+        from unittest.mock import patch
+
+        from api_routes import _get_users_by_scope
+
+        institution_ids = ["inst1", "inst2"]
+        role_filter = "admin"
+
+        with patch("api_routes._get_global_users") as mock_global:
+            mock_global.return_value = [{"id": "user1"}]
+
+            result = _get_users_by_scope(True, institution_ids, role_filter)
+
+            mock_global.assert_called_once_with(institution_ids, role_filter)
+            assert result == [{"id": "user1"}]
+
+    def test_get_users_by_scope_institution(self):
+        """Test _get_users_by_scope for institution scope."""
+        from unittest.mock import patch
+
+        from api_routes import _get_users_by_scope
+
+        institution_ids = ["inst1"]
+        role_filter = "admin"
+
+        with patch("api_routes._get_institution_users") as mock_institution:
+            mock_institution.return_value = [{"id": "user1"}]
+
+            result = _get_users_by_scope(False, institution_ids, role_filter)
+
+            mock_institution.assert_called_once_with("inst1", role_filter)
+            assert result == [{"id": "user1"}]
+
+    def test_get_global_users_with_role_filter(self):
+        """Test _get_global_users with role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_users
+
+        institution_ids = ["inst1", "inst2"]
+        role_filter = "admin"
+        mock_users = [
+            {"id": "user1", "institution_id": "inst1"},
+            {"id": "user2", "institution_id": "inst3"},  # Should be filtered out
+            {"id": "user3", "institution_id": "inst2"},
+        ]
+
+        with patch("api_routes.get_users_by_role") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_global_users(institution_ids, role_filter)
+
+            mock_get_users.assert_called_once_with(role_filter)
+            assert len(result) == 2
+            assert result[0]["id"] == "user1"
+            assert result[1]["id"] == "user3"
+
+    def test_get_global_users_without_role_filter(self):
+        """Test _get_global_users without role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_users
+
+        institution_ids = ["inst1", "inst2"]
+        mock_users_1 = [{"id": "user1"}]
+        mock_users_2 = [{"id": "user2"}]
+
+        with patch("api_routes.get_all_users") as mock_get_users:
+            mock_get_users.side_effect = [mock_users_1, mock_users_2]
+
+            result = _get_global_users(institution_ids, None)
+
+            assert mock_get_users.call_count == 2
+            assert len(result) == 2
+            assert result[0]["id"] == "user1"
+            assert result[1]["id"] == "user2"
+
+    def test_get_institution_users_with_role_filter(self):
+        """Test _get_institution_users with role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_institution_users
+
+        institution_id = "inst1"
+        role_filter = "admin"
+        mock_users = [
+            {"id": "user1", "institution_id": "inst1"},
+            {"id": "user2", "institution_id": "inst2"},  # Should be filtered out
+        ]
+
+        with patch("api_routes.get_users_by_role") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_institution_users(institution_id, role_filter)
+
+            mock_get_users.assert_called_once_with(role_filter)
+            assert len(result) == 1
+            assert result[0]["id"] == "user1"
+
+    def test_get_institution_users_without_role_filter(self):
+        """Test _get_institution_users without role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_institution_users
+
+        institution_id = "inst1"
+        mock_users = [{"id": "user1"}, {"id": "user2"}]
+
+        with patch("api_routes.get_all_users") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_institution_users(institution_id, None)
+
+            mock_get_users.assert_called_once_with(institution_id)
+            assert result == mock_users

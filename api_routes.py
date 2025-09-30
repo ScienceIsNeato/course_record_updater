@@ -458,49 +458,77 @@ def list_users():
     - department: Filter by department (optional)
     """
     try:
-        try:
-            _, institution_ids, is_global = _resolve_institution_scope()
-        except InstitutionContextMissingError:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
+        # Resolve institution scope and validate access
+        _, institution_ids, is_global = _resolve_users_scope()
 
+        # Get filter parameters
         role_filter = request.args.get("role")
         department_filter = request.args.get("department")
 
-        if is_global:
-            if role_filter:
-                users = get_users_by_role(role_filter)
-                if institution_ids:
-                    users = [
-                        u
-                        for u in users
-                        if not u.get("institution_id")
-                        or u.get("institution_id") in institution_ids
-                    ]
-            else:
-                users = []
-                for inst_id in institution_ids:
-                    users.extend(get_all_users(inst_id))
-        else:
-            institution_id = institution_ids[0]
-            if role_filter:
-                users = [
-                    u
-                    for u in get_users_by_role(role_filter)
-                    if u.get("institution_id") == institution_id
-                ]
-            else:
-                users = get_all_users(institution_id)
+        # Get users based on scope and filters
+        users = _get_users_by_scope(is_global, institution_ids, role_filter)
 
+        # Apply department filter if specified
         if department_filter and users:
             users = [u for u in users if u.get("department") == department_filter]
 
         return jsonify({"success": True, "users": users, "count": len(users)})
 
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         return handle_api_error(e, "Get users", "Failed to retrieve users")
+
+
+def _resolve_users_scope():
+    """Resolve institution scope for user listing."""
+    try:
+        return _resolve_institution_scope()
+    except InstitutionContextMissingError:
+        raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
+
+
+def _get_users_by_scope(is_global: bool, institution_ids: list, role_filter: str):
+    """Get users based on scope (global vs institution) and role filter."""
+    if is_global:
+        return _get_global_users(institution_ids, role_filter)
+    else:
+        return _get_institution_users(institution_ids[0], role_filter)
+
+
+def _get_global_users(institution_ids: list, role_filter: str):
+    """Get users for global scope with optional role filtering."""
+    if role_filter:
+        users = get_users_by_role(role_filter)
+        if institution_ids:
+            # Filter to users in accessible institutions
+            users = [
+                u
+                for u in users
+                if not u.get("institution_id")
+                or u.get("institution_id") in institution_ids
+            ]
+        return users
+    else:
+        # Get all users from all accessible institutions
+        users = []
+        for inst_id in institution_ids:
+            users.extend(get_all_users(inst_id))
+        return users
+
+
+def _get_institution_users(institution_id: str, role_filter: str):
+    """Get users for single institution scope with optional role filtering."""
+    if role_filter:
+        # Filter users by role and institution
+        return [
+            u
+            for u in get_users_by_role(role_filter)
+            if u.get("institution_id") == institution_id
+        ]
+    else:
+        # Get all users for the institution
+        return get_all_users(institution_id)
 
 
 @api.route("/users", methods=["POST"])
