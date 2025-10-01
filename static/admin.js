@@ -85,7 +85,7 @@ function initializeTabs() {
   const tabElements = document.querySelectorAll('#userTabs button[data-bs-toggle="tab"]');
   tabElements.forEach(tab => {
     tab.addEventListener('shown.bs.tab', event => {
-      const target = event.target.getAttribute('data-bs-target');
+      const target = event.target.dataset.bsTarget;
       currentTab = target.includes('users') ? 'users' : 'invitations';
       currentPage = 1;
       updateDisplay();
@@ -950,7 +950,7 @@ function showMessage(message, type) {
   // Insert at top of container
   const container = document.querySelector('.container-fluid');
   const firstChild = container.children[1]; // After header
-  container.insertBefore(messageDiv, firstChild);
+  firstChild.before(messageDiv);
 
   messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }

@@ -40,9 +40,6 @@ class DashboardService:
         if role == "site_admin":
             payload = self._get_site_admin_data()
             scope = "system_wide"
-        elif role == "institution_admin":
-            payload = self._get_institution_admin_data(user.get("institution_id"))
-            scope = "institution"
         elif role == "program_admin":
             payload = self._get_program_admin_data(
                 user.get("institution_id"), user.get("program_ids", [])
@@ -56,7 +53,7 @@ class DashboardService:
             )
             scope = "instructor"
         else:
-            # Default to institution admin view for unknown roles
+            # Default to institution admin view for institution_admin and unknown roles
             payload = self._get_institution_admin_data(user.get("institution_id"))
             scope = "institution"
 

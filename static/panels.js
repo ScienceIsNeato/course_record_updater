@@ -308,8 +308,8 @@ class PanelManager {
 
     stat.preview.classList.remove('show');
     setTimeout(() => {
-      if (stat.preview && stat.preview.parentNode) {
-        stat.preview.parentNode.removeChild(stat.preview);
+      if (stat.preview) {
+        stat.preview.remove();
       }
       stat.preview = null;
     }, 300);
