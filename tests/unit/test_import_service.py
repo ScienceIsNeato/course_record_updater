@@ -78,6 +78,22 @@ class TestDatetimeConversion:
         assert result["created_at"] is None
         assert isinstance(result["updated_at"], datetime)
 
+    def test_convert_datetime_fields_with_z_format(self):
+        """Test datetime with Z suffix (UTC indicator)."""
+        from import_service import _normalize_datetime_string
+
+        # Z format with microseconds should be converted to +00:00
+        result = _normalize_datetime_string("2025-09-28T17:41:27.935901Z")
+        assert result == "2025-09-28T17:41:27.935901+00:00"
+
+    def test_convert_datetime_fields_already_normalized(self):
+        """Test datetime that already has UTC offset."""
+        from import_service import _normalize_datetime_string
+
+        # Already has +00:00, should be returned as-is
+        result = _normalize_datetime_string("2025-09-28T17:41:27.935901+00:00")
+        assert result == "2025-09-28T17:41:27.935901+00:00"
+
 
 class TestImportService:
     """Test the ImportService class with adapter registry integration."""
