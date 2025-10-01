@@ -339,6 +339,141 @@ function getFieldNameByIndex(index) {
   return fieldMap[index] || null;
 }
 
+// --- Table Row Editing Functions (Module Scope) ---
+
+function makeRowEditable(row) {
+  // Store original values & switch action buttons
+  const originalValues = {};
+  const actionCellIndex = 10; // Updated index for 'Actions' cell
+
+  row.querySelectorAll('td').forEach((cell, index) => {
+    if (index === actionCellIndex) return; // Skip actions cell
+
+    const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
+    if (!fieldName) return;
+
+    const originalValue = cell.textContent.trim();
+    originalValues[fieldName] = originalValue;
+
+    // Replace cell content with appropriate input field
+    let input;
+    if (fieldName === 'term') {
+      input = document.createElement('select');
+      input.classList.add('form-select', 'form-select-sm', 'inline-edit-input'); // Bootstrap classes
+      // Add options (ideally passed from server or hardcoded if static)
+      const allowedTerms = ['FA2024', 'SP2024', 'SU2024', 'FA2025', 'SP2025', 'SU2025']; // Match adapter/template
+      allowedTerms.forEach(term => {
+        const option = document.createElement('option');
+        option.value = term;
+        option.text = term;
+        if (term === originalValue) {
+          option.selected = true;
+        }
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type =
+        fieldName === 'num_students' || fieldName.startsWith('grade_') ? 'number' : 'text';
+      if (input.type === 'number') {
+        input.min = '0'; // Set min for number inputs
+      }
+      input.value = originalValue === 'N/A' || originalValue === '-' ? '' : originalValue; // Handle placeholder display values
+      input.classList.add('form-control', 'form-control-sm', 'inline-edit-input'); // Bootstrap classes
+    }
+    input.name = fieldName;
+    cell.innerHTML = ''; // Clear cell
+    cell.appendChild(input);
+  });
+
+  // Store original values on the row for cancel functionality
+  row.dataset.originalValues = JSON.stringify(originalValues);
+
+  // Change buttons in the action cell
+  const actionCell = row.cells[actionCellIndex];
+  actionCell.innerHTML = `
+            <button class="btn btn-sm btn-success save-btn">Save</button>
+            <button class="btn btn-sm btn-secondary cancel-btn">Cancel</button>
+        `;
+}
+
+async function handleSave(row, courseId) {
+  const inputs = row.querySelectorAll('.inline-edit-input');
+  const updatedData = {};
+  let hasError = false;
+  let validationErrorMsg = '';
+
+  // Collect input references
+  const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
+
+  // Validate all input fields
+  inputs.forEach(input => {
+    const validation = validateFieldInput(input, updatedData);
+    if (validation.hasError) {
+      hasError = true;
+      if (!validationErrorMsg) validationErrorMsg = validation.message;
+    }
+  });
+
+  // Validate grade sum logic
+  if (!hasError) {
+    const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
+    if (gradeValidation.hasError) {
+      hasError = true;
+      validationErrorMsg = gradeValidation.message;
+    }
+  }
+
+  // Stop if validation errors found
+  if (hasError) {
+    alert(validationErrorMsg);
+    return;
+  }
+
+  // --- Proceed with saving ---
+
+  try {
+    // Use POST and rely on backend route allowing POST for updates
+    const response = await fetch(`/edit_course/${courseId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(updatedData)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      updateCellDisplayValues(inputs);
+      revertRowToActionButtons(row);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('Update failed:', result.error || `HTTP ${response.status}`);
+      handleBackendError(result, response, numStudentsInput, gradeInputs);
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Network or fetch error during save:', error);
+    alert('Failed to send update request.');
+  }
+}
+
+function cancelEdit(row) {
+  const originalValues = JSON.parse(row.dataset.originalValues || '{}');
+
+  row.querySelectorAll('td').forEach((cell, _index) => {
+    const input = cell.querySelector('.inline-edit-input');
+    if (input) {
+      const fieldName = input.name;
+      cell.textContent = originalValues[fieldName] !== undefined ? originalValues[fieldName] : '';
+    }
+  });
+
+  revertRowToActionButtons(row);
+}
+
 // --- DOM Event Listeners ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -374,141 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     // eslint-disable-next-line no-console
     console.log('No course table found - skipping table event listeners (expected in cleaned UI)');
-  }
-
-  // --- Helper Functions ---
-
-  function makeRowEditable(row) {
-    // Store original values & switch action buttons
-    const originalValues = {};
-    const actionCellIndex = 10; // Updated index for 'Actions' cell
-
-    row.querySelectorAll('td').forEach((cell, index) => {
-      if (index === actionCellIndex) return; // Skip actions cell
-
-      const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
-      if (!fieldName) return;
-
-      const originalValue = cell.textContent.trim();
-      originalValues[fieldName] = originalValue;
-
-      // Replace cell content with appropriate input field
-      let input;
-      if (fieldName === 'term') {
-        input = document.createElement('select');
-        input.classList.add('form-select', 'form-select-sm', 'inline-edit-input'); // Bootstrap classes
-        // Add options (ideally passed from server or hardcoded if static)
-        const allowedTerms = ['FA2024', 'SP2024', 'SU2024', 'FA2025', 'SP2025', 'SU2025']; // Match adapter/template
-        allowedTerms.forEach(term => {
-          const option = document.createElement('option');
-          option.value = term;
-          option.text = term;
-          if (term === originalValue) {
-            option.selected = true;
-          }
-          input.appendChild(option);
-        });
-      } else {
-        input = document.createElement('input');
-        input.type =
-          fieldName === 'num_students' || fieldName.startsWith('grade_') ? 'number' : 'text';
-        if (input.type === 'number') {
-          input.min = '0'; // Set min for number inputs
-        }
-        input.value = originalValue === 'N/A' || originalValue === '-' ? '' : originalValue; // Handle placeholder display values
-        input.classList.add('form-control', 'form-control-sm', 'inline-edit-input'); // Bootstrap classes
-      }
-      input.name = fieldName;
-      cell.innerHTML = ''; // Clear cell
-      cell.appendChild(input);
-    });
-
-    // Store original values on the row for cancel functionality
-    row.dataset.originalValues = JSON.stringify(originalValues);
-
-    // Change buttons in the action cell
-    const actionCell = row.cells[actionCellIndex];
-    actionCell.innerHTML = `
-            <button class="btn btn-sm btn-success save-btn">Save</button>
-            <button class="btn btn-sm btn-secondary cancel-btn">Cancel</button>
-        `;
-  }
-
-  async function handleSave(row, courseId) {
-    const inputs = row.querySelectorAll('.inline-edit-input');
-    const updatedData = {};
-    let hasError = false;
-    let validationErrorMsg = '';
-
-    // Collect input references
-    const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
-
-    // Validate all input fields
-    inputs.forEach(input => {
-      const validation = validateFieldInput(input, updatedData);
-      if (validation.hasError) {
-        hasError = true;
-        if (!validationErrorMsg) validationErrorMsg = validation.message;
-      }
-    });
-
-    // Validate grade sum logic
-    if (!hasError) {
-      const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
-      if (gradeValidation.hasError) {
-        hasError = true;
-        validationErrorMsg = gradeValidation.message;
-      }
-    }
-
-    // Stop if validation errors found
-    if (hasError) {
-      alert(validationErrorMsg);
-      return;
-    }
-
-    // --- Proceed with saving ---
-
-    try {
-      // Use POST and rely on backend route allowing POST for updates
-      const response = await fetch(`/edit_course/${courseId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        updateCellDisplayValues(inputs);
-        revertRowToActionButtons(row);
-      } else {
-        // eslint-disable-next-line no-console
-        console.error('Update failed:', result.error || `HTTP ${response.status}`);
-        handleBackendError(result, response, numStudentsInput, gradeInputs);
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Network or fetch error during save:', error);
-      alert('Failed to send update request.');
-    }
-  }
-
-  function cancelEdit(row) {
-    const originalValues = JSON.parse(row.dataset.originalValues || '{}');
-
-    row.querySelectorAll('td').forEach((cell, _index) => {
-      const input = cell.querySelector('.inline-edit-input');
-      if (input) {
-        const fieldName = input.name;
-        cell.textContent = originalValues[fieldName] !== undefined ? originalValues[fieldName] : '';
-      }
-    });
-
-    revertRowToActionButtons(row);
   }
 
   // Remove the duplicate direct event listener attachment block
