@@ -263,6 +263,82 @@ function buildConflictsSection(conflicts) {
     `;
 }
 
+// --- Helper Functions ---
+
+function handleDelete(row, courseId, courseNumber) {
+  // Use simple confirm for now, prompt was complex
+  const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
+
+  if (!window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  // Proceed with deletion
+  // Use POST and rely on backend route allowing POST for delete
+  fetch(`/delete_course/${courseId}`, {
+    method: 'POST'
+  })
+    .then(response => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then(err => {
+            throw new Error(err.error || `Server responded with status ${response.status}`);
+          })
+          .catch(() => {
+            throw new Error(`Server responded with status ${response.status}`);
+          });
+      }
+      return response.json(); // Expect success JSON
+    })
+    .then(result => {
+      if (result.success) {
+        row.remove(); // Remove row from table
+        alert(`Course ${courseNumber} deleted successfully.`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('Delete failed on server:', result.error);
+        alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
+      }
+    })
+    .catch(error => {
+      // eslint-disable-next-line no-console
+      console.error('Network or other error during delete:', error);
+      alert(`Failed to delete course: ${error.message}`);
+    });
+}
+
+function revertRowToActionButtons(row) {
+  const actionCellIndex = 10; // Updated index for 'Actions' cell
+  const actionCell = row.cells[actionCellIndex];
+  if (actionCell) {
+    actionCell.innerHTML = `
+            <button class="btn btn-sm btn-warning edit-btn">Edit</button>
+            <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+        `;
+  }
+  // Clean up dataset
+  delete row.dataset.originalValues;
+}
+
+function getFieldNameByIndex(index) {
+  // Map table column index to field name (must match table structure in index.html)
+  const fieldMap = [
+    'course_number', // 0
+    'course_title', // 1
+    'instructor_name', // 2
+    'term', // 3
+    'num_students', // 4
+    'grade_a', // 5
+    'grade_b', // 6
+    'grade_c', // 7
+    'grade_d', // 8
+    'grade_f', // 9
+    null // 10 Actions
+  ];
+  return fieldMap[index] || null;
+}
+
 // --- DOM Event Listeners ---
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -274,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTableBody.addEventListener('click', async event => {
       const target = event.target;
       const row = target.closest('tr');
-      if (!row || !row.dataset.courseId) {
+      if (!row?.dataset?.courseId) {
         // Ignore clicks that aren't on a button within a valid course row
         return;
       }
@@ -433,80 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     revertRowToActionButtons(row);
-  }
-
-  function handleDelete(row, courseId, courseNumber) {
-    // Use simple confirm for now, prompt was complex
-    const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
-
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
-
-    // Proceed with deletion
-    // Use POST and rely on backend route allowing POST for delete
-    fetch(`/delete_course/${courseId}`, {
-      method: 'POST'
-    })
-      .then(response => {
-        if (!response.ok) {
-          return response
-            .json()
-            .then(err => {
-              throw new Error(err.error || `Server responded with status ${response.status}`);
-            })
-            .catch(() => {
-              throw new Error(`Server responded with status ${response.status}`);
-            });
-        }
-        return response.json(); // Expect success JSON
-      })
-      .then(result => {
-        if (result.success) {
-          row.remove(); // Remove row from table
-          alert(`Course ${courseNumber} deleted successfully.`);
-        } else {
-          // eslint-disable-next-line no-console
-          console.error('Delete failed on server:', result.error);
-          alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
-        }
-      })
-      .catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('Network or other error during delete:', error);
-        alert(`Failed to delete course: ${error.message}`);
-      });
-  }
-
-  function revertRowToActionButtons(row) {
-    const actionCellIndex = 10; // Updated index for 'Actions' cell
-    const actionCell = row.cells[actionCellIndex];
-    if (actionCell) {
-      actionCell.innerHTML = `
-                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
-                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
-            `;
-    }
-    // Clean up dataset
-    delete row.dataset.originalValues;
-  }
-
-  function getFieldNameByIndex(index) {
-    // Map table column index to field name (must match table structure in index.html)
-    const fieldMap = [
-      'course_number', // 0
-      'course_title', // 1
-      'instructor_name', // 2
-      'term', // 3
-      'num_students', // 4
-      'grade_a', // 5
-      'grade_b', // 6
-      'grade_c', // 7
-      'grade_d', // 8
-      'grade_f', // 9
-      null // 10 Actions
-    ];
-    return fieldMap[index] || null;
   }
 
   // Remove the duplicate direct event listener attachment block

@@ -55,7 +55,7 @@ def run_coverage_analysis():
     
     try:
         # Run pytest with coverage
-        result = subprocess.run([
+        _ = subprocess.run([
             "python", "-m", "pytest", 
             "tests/unit/", 
             "--cov=.", 
@@ -84,7 +84,7 @@ def run_sonar_analysis():
     ]
     
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        _ = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print("✅ SonarCloud analysis completed successfully")
         print("🔗 View results: https://sonarcloud.io/project/overview?id=ScienceIsNeato_course_record_updater")
         return True
