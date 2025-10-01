@@ -750,7 +750,8 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       echo "🔧 Generating fresh coverage data for SonarCloud..."
       
       # Run tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
-      if python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+      # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
+      if python -m pytest tests/unit/ --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
         echo "✅ Coverage data generated successfully"
         
         # Run SonarCloud scanner with fresh data
