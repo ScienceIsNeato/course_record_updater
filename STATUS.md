@@ -1,81 +1,76 @@
 # Project Status
 
-## Current State: ✅ PR #11 STRATEGIC REVIEW COMPLETE
+## Current State: ✅ SURGICAL COVERAGE TOOL DEPLOYED
 
-### Last Updated: 2025-10-01 11:00 AM
+### Last Updated: 2025-10-01 16:00 PM
 
-## Recent Completion: PR #11 All Bot Comments Addressed 🎉
+## Recent Achievement: Surgical PR Coverage Analysis Tool 🎯
 
-Successfully addressed **ALL 15 bot review comments** from PR #11 following Strategic PR Review Protocol:
+**Problem Solved:** SonarCloud's "Coverage on New Code" metric is impossible to fix without knowing WHICH lines were touched in the PR. We were guessing which tests to add.
 
-### ✅ Phase 1: Critical Bugs (4 issues) - Committed in 786a4c9
+**Solution Deployed:** `scripts/analyze_pr_coverage.py`
+- Cross-references `git diff origin/main` with `coverage.xml`
+- Shows **EXACT uncovered line numbers** in modified files
+- Ranks files by impact (most gaps first)
+- Auto-runs when `ship_it.py --checks sonar` fails
 
-1. **Security Vulnerability** (dashboard_service.py) - HIGH SEVERITY
-   - Fixed unknown roles defaulting to `institution_admin` access
-   - Added explicit `institution_admin` handling
-   - Changed unknown role fallback to raise `ValueError` (fail-secure)
+### 🎯 Latest Commits (Ready to Push):
 
-2. **Duplicate Test Class** (test_api_routes.py) - HIGH SEVERITY
-   - Removed 632-line duplicate causing **350+ silent test skips**
-   - Massive coverage gap eliminated
+**Commit 1: c262388 - Fix SonarCloud Accessibility Issues**
+- Resolved all 8 remaining major issues
+- Changed from `aria-label` to `.visually-hidden` text in headings
+- SonarCloud now shows **0 Major Issues** (down from 8!)
+- Only failure: Coverage on New Code (64.7% vs 80% required)
 
-3. **Progress Bar Functionality** (static/script.js)
-   - Fixed to update `value` attribute instead of `style.width`
-   - Fixed selector from `.progress-bar` to `#importProgressBar`
-   - Now compatible with HTML5 `<progress>` element
+**Commit 2: 41d7d27 - Add Surgical Coverage Analysis Tool**
+- New tool: `scripts/analyze_pr_coverage.py`
+- Integrated into `maintainability-gate.sh`
+- Auto-generates `logs/pr_coverage_gaps.txt` on sonar failure
+- Documented in `SONARCLOUD_SETUP_GUIDE.md`
 
-4. **Conflict Resolution Tracking** (import_service.py)
-   - Fixed USE_MINE strategy not updating resolution status
-   - Applied to both course and user conflict methods
-   - Ensures accurate audit trails
+**Current Analysis Results:**
+```
+🔴 148 uncovered lines across 10 files need tests
 
-### ✅ Phase 2: Medium Priority (2 issues) - Committed in ce3d890
+Top 3 Files:
+1. api_routes.py - 65 uncovered lines
+2. import_service.py - 34 uncovered lines  
+3. adapters/cei_excel_adapter.py - 22 uncovered lines
+```
 
-5. **ID Generation Uniqueness** (static/panels.js)
-   - Added monotonic counter to guarantee uniqueness
-   - Prevents duplicates for rapid successive calls
-   - Counter ensures uniqueness even when timestamp/performance.now() don't change
+### 📋 Surgical Workflow (Now Documented in Project Rules):
 
-6. **Parameter Compatibility** (base_adapter.py, database_service.py)
-   - Removed unused parameters entirely (greenfield approach)
-   - `_validate_parsed_data`: removed `raw_input_data`
-   - `db_operation_timeout`: removed `seconds`
-   - Updated test to match new signature
-
-### ✅ Phase 3: HTML/Accessibility (7 issues) - Committed in 2520d0f
-
-7. **Optional Chaining Consistency** (script.js)
-   - Changed `dryRun.checked` to `dryRun?.checked`
-
-8. **Progress Element Accessibility** (excel_import_modal.html)
-   - Added `aria-label="Import progress"`
-
-9-12. **Semantic HTML** (profile.html - 4 locations)
-   - Replaced `<span class="form-label">` with `<h6>`
-   - Proper semantic structure for display headers
+1. Run: `python scripts/ship_it.py --checks sonar`
+2. Read: `logs/pr_coverage_gaps.txt` (auto-generated)
+3. Add tests for top 1-2 files (batch approach)
+4. Commit test additions
+5. Re-run (regenerates report)
+6. Repeat until: ✅ All modified lines covered
 
 ### 📊 Current Quality Status:
-- ✅ **All 15 Bot Comments**: Addressed
-- ✅ **Global Coverage**: 81.63% (above 80% threshold)
-- ✅ **All Tests**: 821 passing
-- ✅ **SonarCloud Quality Gate**: PASSING
-- ✅ **Coverage on New Code**: 82.4% (exceeds 80%)
-- ✅ **Security Hotspots**: 0
-- ✅ **Critical Issues**: 0
+- ✅ **0 Major Issues** (SonarCloud quality checks)
+- ✅ **0 Security Hotspots**
+- ✅ **Global Coverage**: 81.08% (above 80%)
+- ✅ **All Tests**: 815 Python + 177 JS passing
+- ❌ **Coverage on New Code**: 64.7% (target: 80%)
+  - **Precise gap identified**: 148 specific lines need tests
+  - **Top priority**: api_routes.py (65 lines)
 
 ### 🎯 Next Steps:
-1. User will sync commits to remote (avoiding CI action spam)
-2. Verify SonarCloud coverage fix works in CI (--cov-config flag)
-3. Monitor PR #11 for any additional review feedback
-4. Ready to merge once CI validates all fixes
+1. User will push 2 new commits to remote
+2. Follow surgical workflow to add coverage for modified lines
+3. Focus on api_routes.py first (biggest impact - 65 lines)
+4. Verify SonarCloud analysis reflects fixes in CI
 
-### 📁 Key Documents:
-- `SONARCLOUD_SETUP_GUIDE.md` - Coverage distinction documentation
-- `SONARCLOUD_WORKFLOW.md` - Complete workflow guide
-- `logs/sonarcloud_issues.txt` - Auto-updated issue tracking
+### 📁 Key Files:
+- `scripts/analyze_pr_coverage.py` - Surgical coverage tool ✨ NEW
+- `logs/pr_coverage_gaps.txt` - Auto-generated gap report ✨ NEW
+- `SONARCLOUD_SETUP_GUIDE.md` - Updated with new workflow
+- `.cursor/rules/projects/course_record_updater.mdc` - Workflow protocol
 
 ## Branch Status: feature/sonarcloud_quality_improvements
-- ✅ **SonarCloud Integration**: Complete (40+ commits)
-- ✅ **Strategic PR Review**: Complete (3 commits)
+- ✅ **SonarCloud Integration**: Complete
 - ✅ **All Bot Comments**: Addressed
-- 🎯 **Status**: Ready for user to sync to remote and verify CI
+- ✅ **Major Issues**: 0 (from 8)
+- ✅ **Coverage Tool**: Deployed
+- 🎯 **Status**: Ready to push and begin surgical coverage improvements
