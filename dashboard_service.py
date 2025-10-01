@@ -52,10 +52,15 @@ class DashboardService:
                 user.get("program_ids", []),
             )
             scope = "instructor"
-        else:
-            # Default to institution admin view for institution_admin and unknown roles
+        elif role == "institution_admin":
+            # Explicit handling for institution admins
             payload = self._get_institution_admin_data(user.get("institution_id"))
             scope = "institution"
+        else:
+            # Unknown roles are not allowed - fail securely
+            raise ValueError(
+                f"Unknown user role: {role}. Valid roles: site_admin, institution_admin, program_admin, instructor"
+            )
 
         metadata = {
             "user_role": role,

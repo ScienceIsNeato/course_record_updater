@@ -313,9 +313,9 @@ function revertRowToActionButtons(row) {
   const actionCell = row.cells[actionCellIndex];
   if (actionCell) {
     actionCell.innerHTML = `
-            <button class="btn btn-sm btn-warning edit-btn">Edit</button>
-            <button class="btn btn-sm btn-danger delete-btn">Delete</button>
-        `;
+                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
+                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+            `;
   }
   // Clean up dataset
   delete row.dataset.originalValues;
@@ -807,13 +807,14 @@ function initializeImportForm() {
   }
 
   function updateProgressBar(progress) {
-    const progressBar = document.querySelector('.progress-bar');
+    const progressBar = document.getElementById('importProgressBar');
     const statusDiv = document.getElementById('importStatus');
 
     if (progressBar) {
       const percentage = progress.percentage || 0;
-      progressBar.style.width = `${percentage}%`;
-      progressBar.setAttribute('aria-valuenow', percentage);
+      // Update HTML5 progress element value attribute (not style.width)
+      progressBar.value = percentage;
+      progressBar.textContent = `${percentage}%`; // Update visible percentage text
     }
 
     if (statusDiv) {

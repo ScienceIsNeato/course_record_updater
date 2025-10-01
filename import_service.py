@@ -555,6 +555,11 @@ class ImportService:
         if strategy == ConflictStrategy.USE_MINE:
             self.stats["records_skipped"] += 1
             self._log(f"Skipping existing course: {course_number}")
+            # Update conflict resolution status for USE_MINE
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
         elif strategy == ConflictStrategy.USE_THEIRS:
             if detected_conflicts:
                 self.stats["conflicts_resolved"] += len(detected_conflicts)
@@ -706,6 +711,11 @@ class ImportService:
         if strategy == ConflictStrategy.USE_MINE:
             self.stats["records_skipped"] += 1
             self._log(f"Skipping existing user: {email}")
+            # Update conflict resolution status for USE_MINE
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
         elif strategy == ConflictStrategy.USE_THEIRS:
             if detected_conflicts:
                 self.stats["conflicts_resolved"] += len(detected_conflicts)
