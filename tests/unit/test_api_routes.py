@@ -2536,6 +2536,40 @@ class TestCourseManagementOperations:
         data = response.get_json()
         assert data["error"] == "No Excel file provided"
 
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.remove_course_from_program")
+    @patch("api_routes.has_permission")
+    def test_remove_course_from_program_success(
+        self, mock_has_permission, mock_remove, mock_get_program
+    ):
+        """Test successful course removal from program."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {
+            "program_id": "prog1",
+            "name": "Computer Science",
+            "institution_id": "test-institution",
+        }
+        mock_remove.return_value = True
+
+        response = self.client.delete("/api/programs/prog1/courses/course1")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "course1" in data["message"]
+        mock_remove.assert_called_once()
+
 
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
