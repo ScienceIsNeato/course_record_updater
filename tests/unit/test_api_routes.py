@@ -2677,6 +2677,28 @@ class TestAPIRoutesErrorHandling:
             data = response.get_json()
             assert "Invalid file type" in data["error"]
 
+    @patch("api_routes._resolve_users_scope")
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.has_permission")
+    def test_list_users_value_error(
+        self,
+        mock_has_permission,
+        mock_get_current_user,
+        mock_resolve_scope,
+    ):
+        """Test list_users with ValueError from scope resolution."""
+        self._login_site_admin()
+        mock_has_permission.return_value = True
+        mock_get_current_user.return_value = self.site_admin_user
+        mock_resolve_scope.side_effect = ValueError("Invalid scope")
+
+        response = self.client.get("/api/users")
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Invalid scope" in data["error"]
+
 
 class TestAPIRoutesProgressTracking:
     """Test API progress tracking functionality."""
