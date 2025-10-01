@@ -626,53 +626,69 @@ function initializeImportForm() {
         }
 
         const progress = await response.json();
-
-        // Update progress bar
         updateProgressBar(progress);
 
+        // Handle different progress statuses
         if (progress.status === 'completed') {
-          hideProgress();
-
-          // Show final results
-          if (progress.result) {
-            showImportResults(progress.result, true);
-
-            // Auto-refresh if it was a real import (not dry run)
-            if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
-              const successMessage = document.createElement('div');
-              successMessage.className = 'alert alert-success text-center mt-3';
-              successMessage.innerHTML =
-                '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
-
-              const resultsDiv = document.getElementById('importResults');
-              if (resultsDiv) {
-                resultsDiv.appendChild(successMessage);
-              }
-
-              setTimeout(() => {
-                window.location.reload();
-              }, 3000);
-            }
-          }
-          // Stop polling
+          handleCompletedStatus(progress, shouldAutoRefresh);
         } else if (progress.status === 'error') {
-          hideProgress();
-          showError('Import failed: ' + (progress.message || 'Unknown error'));
-          // Stop polling
+          handleErrorStatus(progress);
         } else if (progress.status === 'running' || progress.status === 'starting') {
-          // Continue polling
-          if (Date.now() - startTime < maxPollTime) {
-            setTimeout(poll, pollInterval);
-          } else {
-            hideProgress();
-            showError('Import is taking longer than expected. Please check the server logs.');
-          }
+          handleRunningStatus(startTime, maxPollTime, pollInterval, poll);
         }
       } catch (error) {
         hideProgress();
         showError('Lost connection to import progress. Import may still be running.');
       }
     };
+
+    // Helper function to handle completed status
+    function handleCompletedStatus(progress, shouldAutoRefresh) {
+      hideProgress();
+
+      // Show final results
+      if (progress.result) {
+        showImportResults(progress.result, true);
+
+        // Auto-refresh if it was a real import (not dry run)
+        if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
+          showSuccessAndRefresh();
+        }
+      }
+    }
+
+    // Helper function to handle error status
+    function handleErrorStatus(progress) {
+      hideProgress();
+      showError('Import failed: ' + (progress.message || 'Unknown error'));
+    }
+
+    // Helper function to handle running status
+    function handleRunningStatus(startTime, maxPollTime, pollInterval, poll) {
+      if (Date.now() - startTime < maxPollTime) {
+        setTimeout(poll, pollInterval);
+      } else {
+        hideProgress();
+        showError('Import is taking longer than expected. Please check the server logs.');
+      }
+    }
+
+    // Helper function to show success message and refresh
+    function showSuccessAndRefresh() {
+      const successMessage = document.createElement('div');
+      successMessage.className = 'alert alert-success text-center mt-3';
+      successMessage.innerHTML =
+        '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
+
+      const resultsDiv = document.getElementById('importResults');
+      if (resultsDiv) {
+        resultsDiv.appendChild(successMessage);
+      }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+    }
 
     // Start polling
     setTimeout(poll, 500); // Start after 500ms
