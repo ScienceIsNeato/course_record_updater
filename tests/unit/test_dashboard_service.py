@@ -419,3 +419,20 @@ class TestDashboardServiceHelperMethods:
             assert course_summaries[1]["course_title"] == "Calculus"
             assert course_summaries[1]["section_count"] == 1
             assert course_summaries[1]["enrollment"] == 20
+
+
+class TestDashboardServiceErrorHandling:
+    """Test error handling and edge cases in DashboardService."""
+
+    def test_get_dashboard_data_unknown_role(self):
+        """Test get_dashboard_data with unknown user role."""
+        import pytest
+
+        service = DashboardService()
+        user = {"user_id": "user1", "role": "unknown_role", "institution_id": "inst1"}
+
+        with pytest.raises(
+            ValueError,
+            match="Unknown user role: unknown_role",
+        ):
+            service.get_dashboard_data(user)
