@@ -22,6 +22,8 @@ test-results.xml
 
 # Log files and directories
 logs/
+# SonarCloud issues tracking file
+logs/sonarcloud_issues.txt
 course_records.db
 *.db
 
