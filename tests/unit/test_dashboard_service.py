@@ -138,7 +138,11 @@ class TestDashboardServiceScoped:
             {"id": "prog-1", "name": "Program 1"},
             {"id": "prog-2", "name": "Program 2"},
         ]
-        mock_courses.side_effect = [[{"course_id": "c1", "course_number": "CS-101"}]]
+        # Same course appears in both programs - tests deduplication logic
+        mock_courses.side_effect = [
+            [{"course_id": "c1", "course_number": "CS-101", "program_ids": ["prog-1"]}],
+            [{"course_id": "c1", "course_number": "CS-101", "program_ids": ["prog-2"]}],
+        ]
         mock_sections.return_value = [
             {
                 "section_id": "s1",
@@ -167,14 +171,17 @@ class TestDashboardServiceScoped:
             {
                 "role": "program_admin",
                 "institution_id": "inst-1",
-                "program_ids": ["prog-1"],
+                "program_ids": ["prog-1", "prog-2"],  # Admin has access to both
             }
         )
 
         assert data["metadata"]["data_scope"] == "program"
-        assert len(data["programs"]) == 1
-        assert data["courses"][0]["program_id"] == "prog-1"
-        assert data["program_overview"][0]["program_id"] == "prog-1"
+        assert len(data["programs"]) == 2  # Both programs
+        # Course appears in both programs but should be deduplicated in courses list
+        assert len(data["courses"]) == 1  # Only one course despite being in 2 programs
+        assert data["courses"][0]["course_id"] == "c1"
+        # The course should have both program IDs merged
+        assert set(data["courses"][0]["program_ids"]) == {"prog-1", "prog-2"}
         assert data["sections"][0]["course_id"] == "c1"
         assert data["instructors"][0]["user_id"] == "u1"
 
