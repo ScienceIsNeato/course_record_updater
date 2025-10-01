@@ -139,7 +139,7 @@ function buildImportFormData(fileInput, conflictStrategy, dryRun, adapterSelect,
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
   formData.append('conflict_strategy', conflictStrategy.value);
-  formData.append('dry_run', dryRun.checked ? 'true' : 'false');
+  formData.append('dry_run', dryRun?.checked ? 'true' : 'false');
   formData.append('adapter_name', adapterSelect.value);
   formData.append('delete_existing_db', deleteExistingDb?.checked ? 'true' : 'false');
   return formData;

@@ -191,7 +191,7 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <span class="form-label d-block">Account Status</span>
+                                <h6 class="fw-bold small text-muted mb-1">Account Status</h6>
                                 <div>
                                     <span class="badge bg-success">
                                         <i class="fas fa-check-circle"></i> Active
@@ -199,7 +199,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <span class="form-label d-block">Email Verified</span>
+                                <h6 class="fw-bold small text-muted mb-1">Email Verified</h6>
                                 <div>
                                     <span class="badge bg-success">
                                         <i class="fas fa-check-circle"></i> Verified
@@ -207,11 +207,11 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <span class="form-label d-block">Institution</span>
+                                <h6 class="fw-bold small text-muted mb-1">Institution</h6>
                                 <div class="form-control-plaintext">{{ current_user.institution_name or 'Not specified' }}</div>
                             </div>
                             <div class="col-md-6">
-                                <span class="form-label d-block">Member Since</span>
+                                <h6 class="fw-bold small text-muted mb-1">Member Since</h6>
                                 <div class="form-control-plaintext">{{ current_user.created_at or 'Not available' }}</div>
                             </div>
                         </div>
