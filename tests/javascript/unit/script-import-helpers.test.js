@@ -186,6 +186,191 @@ describe('script.js Import Helper Functions', () => {
     });
   });
 
+  describe('buildImportFormData()', () => {
+    it('builds FormData with all required fields', async () => {
+      jest.useFakeTimers();
+      setBody(`
+        <form id="excelImportForm">
+          <input type="file" id="excel_file" />
+          <select id="import_adapter">
+            <option value="cei_excel_adapter" selected>CEI Excel Adapter</option>
+          </select>
+          <input type="checkbox" id="dry_run" />
+          <div id="importBtnText"></div>
+          <div id="importProgress"></div>
+          <div id="importStatus"></div>
+          <div id="importResults"></div>
+          <div>
+            <input type="radio" name="conflict_strategy" value="use_theirs" checked />
+          </div>
+          <button id="validateImportBtn" type="button"></button>
+          <button id="executeImportBtn" type="submit"></button>
+        </form>
+        <table class="table"><tbody></tbody></table>
+      `);
+      
+      const file = new File(['data'], 'courses.xlsx');
+      Object.defineProperty(document.getElementById('excel_file'), 'files', {
+        value: [file],
+        configurable: true
+      });
+      
+      global.fetch.mockImplementation(url => {
+        if (url === '/api/import/excel') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, progress_id: 'test' })
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, count: 0 }) });
+      });
+      
+      loadScript();
+      
+      const form = document.getElementById('excelImportForm');
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flushPromises();
+      
+      expect(global.fetch).toHaveBeenCalledWith('/api/import/excel', expect.objectContaining({
+        method: 'POST',
+        body: expect.any(FormData)
+      }));
+      
+      const fetchCall = global.fetch.mock.calls.find(call => call[0] === '/api/import/excel');
+      const formData = fetchCall[1].body;
+      
+      // Verify FormData contents (note: FormData.get() is available in jsdom)
+      expect(formData.get('adapter_name')).toBe('cei_excel_adapter');
+      expect(formData.get('conflict_strategy')).toBe('use_theirs');
+      expect(formData.get('dry_run')).toBe('false');
+      
+      jest.useRealTimers();
+    });
+
+    it('includes dry_run flag when checked', async () => {
+      jest.useFakeTimers();
+      setupImportDom();
+      
+      const file = new File(['data'], 'courses.xlsx');
+      Object.defineProperty(document.getElementById('excel_file'), 'files', {
+        value: [file],
+        configurable: true
+      });
+      
+      document.getElementById('dry_run').checked = true;
+      
+      global.fetch.mockImplementation(url => {
+        if (url === '/api/import/excel') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, progress_id: 'test' })
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, count: 0 }) });
+      });
+      
+      loadScript();
+      
+      const form = document.getElementById('excelImportForm');
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flushPromises();
+      
+      const fetchCall = global.fetch.mock.calls.find(call => call[0] === '/api/import/excel');
+      const formData = fetchCall[1].body;
+      
+      expect(formData.get('dry_run')).toBe('true');
+      
+      jest.useRealTimers();
+    });
+
+    it('includes delete_existing_db flag when checked', async () => {
+      jest.useFakeTimers();
+      setBody(`
+        <form id="excelImportForm">
+          <input type="file" id="excel_file" />
+          <select id="import_adapter">
+            <option value="adapter_a">Adapter A</option>
+          </select>
+          <input type="checkbox" id="dry_run" />
+          <input type="checkbox" id="delete_existing_db" checked />
+          <div id="importBtnText"></div>
+          <div id="importProgress"></div>
+          <div id="importStatus"></div>
+          <div id="importResults"></div>
+          <div>
+            <input type="radio" name="conflict_strategy" value="use_theirs" checked />
+          </div>
+          <button id="validateImportBtn" type="button"></button>
+          <button id="executeImportBtn" type="submit"></button>
+        </form>
+        <table class="table"><tbody></tbody></table>
+      `);
+      
+      const file = new File(['data'], 'courses.xlsx');
+      Object.defineProperty(document.getElementById('excel_file'), 'files', {
+        value: [file],
+        configurable: true
+      });
+      
+      global.fetch.mockImplementation(url => {
+        if (url === '/api/import/excel') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, progress_id: 'test' })
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, count: 0 }) });
+      });
+      
+      loadScript();
+      
+      const form = document.getElementById('excelImportForm');
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flushPromises();
+      
+      const fetchCall = global.fetch.mock.calls.find(call => call[0] === '/api/import/excel');
+      const formData = fetchCall[1].body;
+      
+      expect(formData.get('delete_existing_db')).toBe('true');
+      
+      jest.useRealTimers();
+    });
+
+    it('handles missing delete_existing_db checkbox gracefully', async () => {
+      jest.useFakeTimers();
+      setupImportDom(); // Default DOM doesn't have delete_existing_db
+      
+      const file = new File(['data'], 'courses.xlsx');
+      Object.defineProperty(document.getElementById('excel_file'), 'files', {
+        value: [file],
+        configurable: true
+      });
+      
+      global.fetch.mockImplementation(url => {
+        if (url === '/api/import/excel') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, progress_id: 'test' })
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ success: true, count: 0 }) });
+      });
+      
+      loadScript();
+      
+      const form = document.getElementById('excelImportForm');
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await flushPromises();
+      
+      const fetchCall = global.fetch.mock.calls.find(call => call[0] === '/api/import/excel');
+      const formData = fetchCall[1].body;
+      
+      expect(formData.get('delete_existing_db')).toBe('false');
+      
+      jest.useRealTimers();
+    });
+  });
+
   describe('buildImportHeader()', () => {
     it('builds success header with green styling', async () => {
       jest.useFakeTimers();
