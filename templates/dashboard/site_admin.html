@@ -4,9 +4,9 @@
 
 {% block nav_items %}
 <a class="nav-link" href="/api/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<a class="nav-link" href="#" onclick="showInstitutions()"><i class="fas fa-university me-1"></i>Institutions</a>
-<a class="nav-link" href="#" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</a>
-<a class="nav-link" href="#" onclick="showSystemSettings()"><i class="fas fa-cogs me-1"></i>System</a>
+<button class="nav-link btn btn-link" type="button" onclick="showInstitutions()"><i class="fas fa-university me-1"></i>Institutions</button>
+<button class="nav-link btn btn-link" type="button" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</button>
+<button class="nav-link btn btn-link" type="button" onclick="showSystemSettings()"><i class="fas fa-cogs me-1"></i>System</button>
 {% endblock %}
 
 {% block page_title %}Site Administrator Dashboard{% endblock %}
