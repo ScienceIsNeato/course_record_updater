@@ -127,7 +127,7 @@ function validateImportForm(fileInput, conflictStrategy) {
 function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
   let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
 
-  if (deleteExistingDb && deleteExistingDb.checked) {
+  if (deleteExistingDb?.checked) {
     confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
   }
 
@@ -141,10 +141,7 @@ function buildImportFormData(fileInput, conflictStrategy, dryRun, adapterSelect,
   formData.append('conflict_strategy', conflictStrategy.value);
   formData.append('dry_run', dryRun.checked ? 'true' : 'false');
   formData.append('adapter_name', adapterSelect.value);
-  formData.append(
-    'delete_existing_db',
-    deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
-  );
+  formData.append('delete_existing_db', deleteExistingDb?.checked ? 'true' : 'false');
   return formData;
 }
 
@@ -595,7 +592,7 @@ function initializeImportForm() {
 
   // Update button text based on dry run checkbox
   function updateButtonText() {
-    if (dryRunCheckbox && dryRunCheckbox.checked) {
+    if (dryRunCheckbox?.checked) {
       importBtnText.textContent = 'Test Import (Dry Run)';
     } else {
       importBtnText.textContent = 'Execute Import';

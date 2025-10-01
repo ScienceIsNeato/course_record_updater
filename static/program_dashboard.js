@@ -82,7 +82,7 @@
       this.renderFaculty(data.faculty_assignments || []);
       this.renderClos(data.courses || [], data.program_overview || []);
       this.renderAssessment(data.program_overview || []);
-      this.updateLastUpdated(data.metadata && data.metadata.last_updated);
+      this.updateLastUpdated(data.metadata?.last_updated);
     },
 
     updateHeader(data) {
@@ -147,7 +147,7 @@
         ],
         data: Array.from(courseMap.values()).map(course => {
           const courseId = course.course_id || course.id;
-          const programId = course.program_id || (course.program_ids && course.program_ids[0]);
+          const programId = course.program_id || course.program_ids?.[0];
           const programProgress = progressByProgram.get(programId) || {};
           const courseSections = sectionsByCourse.get(courseId) || [];
           const sectionCount = courseSections.length;
@@ -216,7 +216,7 @@
             students_sort: studentCount.toString(),
             programs:
               (record.program_summaries || [])
-                .map(program => program && program.program_name)
+                .map(program => program?.program_name)
                 .filter(Boolean)
                 .join(', ') ||
               (record.program_ids || []).join(', ') ||
@@ -255,12 +255,19 @@
           { key: 'actions', label: 'Actions', sortable: false }
         ],
         data: courses.map(course => {
-          const programId = course.program_id || (course.program_ids && course.program_ids[0]);
+          const programId = course.program_id || course.program_ids?.[0];
           const progress = progressByProgram.get(programId) || {};
           const percent = progress.percent_complete ?? 0;
           const cloCount = (course.clo_count ?? (course.clos ? course.clos.length : 0)) || 0;
-          const status =
-            percent >= 75 ? 'On Track' : percent >= 30 ? 'In Progress' : 'Needs Attention';
+          // Determine status based on completion percentage
+          let status;
+          if (percent >= 75) {
+            status = 'On Track';
+          } else if (percent >= 30) {
+            status = 'In Progress';
+          } else {
+            status = 'Needs Attention';
+          }
           return {
             course:
               `${course.course_number || course.number || course.course_id || 'Course'} — ${course.course_title || course.title || course.name || ''}`.trim(),

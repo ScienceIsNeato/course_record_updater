@@ -220,7 +220,7 @@
             name: record.full_name || record.name || 'Instructor',
             programs:
               (record.program_summaries || [])
-                .map(program => program && program.program_name)
+                .map(program => program?.program_name)
                 .filter(Boolean)
                 .join(', ') ||
               (record.program_ids || []).join(', ') ||
