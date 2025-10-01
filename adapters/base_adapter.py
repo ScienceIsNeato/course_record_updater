@@ -149,13 +149,12 @@ class BaseAdapter:
 
         return parsed_data, conversion_errors
 
-    def _validate_parsed_data(self, parsed_data: dict, _raw_input_data: dict) -> list:
+    def _validate_parsed_data(self, parsed_data: dict) -> list:
         """
         Validate parsed data against field rules.
 
         Args:
             parsed_data: The parsed and transformed data to validate
-            _raw_input_data: Unused parameter retained for potential future use
         """
         errors = []
 
@@ -202,7 +201,7 @@ class BaseAdapter:
             raise ValidationError("; ".join(conversion_errors))
 
         # Validate the parsed data
-        validation_errors = self._validate_parsed_data(parsed_data, raw_input_data)
+        validation_errors = self._validate_parsed_data(parsed_data)
         if validation_errors:
             raise ValidationError("; ".join(validation_errors))
 

@@ -12,6 +12,9 @@
  */
 
 // Secure ID generation using crypto API when available
+// Counter for fallback uniqueness guarantee
+let idCounter = 0;
+
 function generateSecureId(prefix = 'id') {
   if (window.crypto?.getRandomValues) {
     const array = new Uint32Array(1);
@@ -19,15 +22,15 @@ function generateSecureId(prefix = 'id') {
     return `${prefix}-${Date.now()}-${array[0]}`;
   }
 
-  // Fallback for older browsers - use timestamp and performance counters for uniqueness
+  // Fallback for older browsers - use timestamp, performance counter, and monotonic counter
   // Avoids Math.random() to address SonarCloud security concerns
   const timestamp = Date.now();
   const performance = globalThis.performance?.now?.() ?? 0;
-  const userAgent = navigator.userAgent.length || 0;
+  const counter = ++idCounter; // Monotonic counter guarantees uniqueness
 
-  // Create unique ID using timestamp, performance counter, and browser characteristics
-  // This provides sufficient uniqueness for DOM element IDs without cryptographic randomness
-  const entropy = Math.floor(timestamp * 1000 + performance * 100 + userAgent);
+  // Create unique ID using timestamp, performance counter, and monotonic counter
+  // The counter ensures uniqueness even for rapid successive calls
+  const entropy = Math.floor(performance * 1000) + counter;
   return `${prefix}-${timestamp}-${entropy}`;
 }
 
