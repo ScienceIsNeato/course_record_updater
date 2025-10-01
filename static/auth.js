@@ -416,12 +416,10 @@ async function handleLogin(e) {
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 1000);
+    } else if (response.status === 423) {
+      showAccountLockout();
     } else {
-      if (response.status === 423) {
-        showAccountLockout();
-      } else {
-        showError(result.error || 'Login failed. Please try again.');
-      }
+      showError(result.error || 'Login failed. Please try again.');
     }
   } catch (error) {
     console.error('Login error:', error); // eslint-disable-line no-console
