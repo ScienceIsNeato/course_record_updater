@@ -56,6 +56,7 @@ class DashboardService:
             )
             scope = "instructor"
         else:
+            # Default to institution admin view for unknown roles
             payload = self._get_institution_admin_data(user.get("institution_id"))
             scope = "institution"
 
@@ -184,7 +185,6 @@ class DashboardService:
             courses,
             sections,
             faculty,
-            course_index,
         )
 
         faculty_assignments = self._build_faculty_assignments(
@@ -267,7 +267,6 @@ class DashboardService:
             courses,
             scoped_sections,
             scoped_faculty,
-            self._index_by_keys(courses, ["course_id", "id"]),
         )
 
         # Build final dashboard response
@@ -621,7 +620,6 @@ class DashboardService:
         courses: Sequence[Dict[str, Any]],
         sections: Sequence[Dict[str, Any]],
         faculty: Sequence[Dict[str, Any]],
-        course_index: Dict[Any, Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         faculty_lookup = {member.get("user_id"): member for member in faculty}
         courses_by_program = self._group_courses_by_program(courses)

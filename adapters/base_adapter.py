@@ -1,6 +1,6 @@
 # adapters/base_adapter.py
 
-from typing import Any
+from typing import Any, Optional
 
 from term_utils import is_valid_term
 
@@ -67,7 +67,9 @@ class BaseAdapter:
                 f"Invalid value for {field}: Cannot convert '{value_str}' to {expected_type.__name__}",
             )
 
-    def _validate_field_value(self, field: str, processed_value: Any, validator) -> str:
+    def _validate_field_value(
+        self, field: str, processed_value: Any, validator
+    ) -> Optional[str]:
         """Validate field value using validator function. Returns error message or None."""
         if not validator or processed_value is None:
             return None
@@ -147,8 +149,14 @@ class BaseAdapter:
 
         return parsed_data, conversion_errors
 
-    def _validate_parsed_data(self, parsed_data: dict, raw_input_data: dict) -> list:
-        """Validate parsed data against field rules."""
+    def _validate_parsed_data(self, parsed_data: dict, _raw_input_data: dict) -> list:
+        """
+        Validate parsed data against field rules.
+
+        Args:
+            parsed_data: The parsed and transformed data to validate
+            _raw_input_data: Unused parameter retained for potential future use
+        """
         errors = []
 
         for field, processed_value in parsed_data.items():

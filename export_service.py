@@ -47,8 +47,8 @@ class ExportResult:
     success: bool
     file_path: Optional[str] = None
     records_exported: int = 0
-    errors: List[str] = None
-    warnings: List[str] = None
+    errors: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
     export_timestamp: Optional[datetime] = None
 
     def __post_init__(self):
@@ -102,7 +102,7 @@ class ExportService:
     def export_data(
         self,
         config: ExportConfig,
-        output_path: Union[str, Path],
+        output_path: str | Path,
         filters: Optional[Dict[str, Any]] = None,
     ) -> ExportResult:
         """

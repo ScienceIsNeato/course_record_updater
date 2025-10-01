@@ -42,6 +42,7 @@ class SecureLogger(logging.Logger):
         sanitized = str(value)[:max_length]
 
         # Remove newlines, carriage returns, and other control characters
+        # Note: \r\n\t pattern simplified to individual character classes
         sanitized = re.sub(r"[\r\n\t\x00-\x1f\x7f-\x9f]", "_", sanitized)
 
         # If truncated, add indicator

@@ -48,8 +48,13 @@ def reset_database() -> bool:
     return False
 
 
-def db_operation_timeout(seconds: Optional[int] = None):
-    """Legacy helper retained for API compatibility."""
+def db_operation_timeout(_seconds: Optional[int] = None):
+    """
+    Legacy helper retained for API compatibility.
+
+    Args:
+        _seconds: Unused parameter retained for backward compatibility
+    """
     return nullcontext()
 
 

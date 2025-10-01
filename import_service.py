@@ -230,14 +230,12 @@ class ImportService:
 
         try:
             # Validate and prepare for import
-            adapter = self._prepare_import(file_path, adapter_id, start_time, dry_run)
+            adapter = self._prepare_import(file_path, adapter_id)
             if not adapter:
                 return self._create_import_result(start_time, dry_run)
 
             # Parse file data
-            parsed_data = self._parse_file_data(
-                adapter, file_path, adapter_id, start_time, dry_run
-            )
+            parsed_data = self._parse_file_data(adapter, file_path, adapter_id)
             if not parsed_data:
                 return self._create_import_result(start_time, dry_run)
 
@@ -259,9 +257,7 @@ class ImportService:
         self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
         self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
 
-    def _prepare_import(
-        self, file_path: str, adapter_id: str, start_time, dry_run: bool
-    ):
+    def _prepare_import(self, file_path: str, adapter_id: str):
         """Prepare import by validating file and getting adapter."""
         # Validate file exists
         if not os.path.exists(file_path):
@@ -302,9 +298,7 @@ class ImportService:
 
         return adapter
 
-    def _parse_file_data(
-        self, adapter, file_path: str, adapter_id: str, start_time, dry_run: bool
-    ):
+    def _parse_file_data(self, adapter, file_path: str, adapter_id: str):
         """Parse file data using the adapter."""
         try:
             parse_options = {"institution_id": self.institution_id}
