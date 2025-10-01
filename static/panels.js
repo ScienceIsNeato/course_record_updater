@@ -22,8 +22,7 @@ function generateSecureId(prefix = 'id') {
   // Fallback for older browsers - use timestamp and performance counters for uniqueness
   // Avoids Math.random() to address SonarCloud security concerns
   const timestamp = Date.now();
-  const performance =
-    globalThis.performance && globalThis.performance.now ? globalThis.performance.now() : 0;
+  const performance = globalThis.performance?.now?.() ?? 0;
   const userAgent = navigator.userAgent.length || 0;
 
   // Create unique ID using timestamp, performance counter, and browser characteristics
