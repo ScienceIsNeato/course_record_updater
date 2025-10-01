@@ -524,3 +524,131 @@ class TestReportGeneration:
             assert service.stats["conflicts_resolved"] > 0
             mock_update_user.assert_called_once_with("user_123", user_data)
             mock_create_user.assert_not_called()  # Should not create new user
+
+
+class TestImportServiceHelpers:
+    """Test ImportService helper methods."""
+
+    def test_prepare_import_file_not_found(self):
+        """Test _prepare_import with non-existent file."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        result = service._prepare_import("/nonexistent/file.xlsx", "test_adapter")
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "File not found" in service.stats["errors"][0]
+
+    def test_prepare_import_adapter_not_found(self):
+        """Test _prepare_import with invalid adapter."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = None
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "invalid_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "Adapter not found" in service.stats["errors"][0]
+
+    def test_prepare_import_file_incompatible(self):
+        """Test _prepare_import with incompatible file."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_adapter = Mock()
+                mock_adapter.validate_file_compatibility.return_value = (
+                    False,
+                    "Incompatible",
+                )
+
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = mock_adapter
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "File incompatible" in service.stats["errors"][0]
+
+    def test_prepare_import_success(self):
+        """Test _prepare_import with valid inputs."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_adapter = Mock()
+                mock_adapter.validate_file_compatibility.return_value = (
+                    True,
+                    "Compatible",
+                )
+
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = mock_adapter
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "test_adapter")
+
+                assert result is mock_adapter
+                assert len(service.stats["errors"]) == 0
+
+    def test_parse_file_data_success(self):
+        """Test _parse_file_data with successful parsing."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.return_value = {
+            "courses": [{"course_id": "CS101"}],
+            "students": [],
+        }
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is not None
+        assert "courses" in result
+        mock_adapter.parse_file.assert_called_once()
+
+    def test_parse_file_data_parse_error(self):
+        """Test _parse_file_data with parsing error."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.side_effect = Exception("Parse failed")
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "Failed to parse file" in service.stats["errors"][0]
+
+    def test_parse_file_data_empty_result(self):
+        """Test _parse_file_data with empty parsing result."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.return_value = {}
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "No valid data found" in service.stats["errors"][0]
