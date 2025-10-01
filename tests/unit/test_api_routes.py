@@ -3026,6 +3026,33 @@ class TestAPIRoutesExtended:
         assert data["success"] is True
         assert len(data["courses"]) == 1
 
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.has_permission")
+    @patch("api_routes.get_courses_by_program")
+    def test_list_courses_with_program_override(
+        self, mock_get_by_program, mock_has_permission, mock_get_user
+    ):
+        """Test list_courses with program_id override parameter."""
+        self._login_site_admin()
+        mock_get_user.return_value = {
+            "user_id": "admin1",
+            "role": "site_admin",
+            "institution_id": "inst1",
+        }
+        mock_has_permission.return_value = True
+        mock_get_by_program.return_value = [
+            {"course_id": "c1", "program_ids": ["prog1"]}
+        ]
+
+        response = self.client.get("/api/courses?program_id=prog1")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert len(data["courses"]) == 1
+        assert data["current_program_id"] == "prog1"
+        mock_get_by_program.assert_called_once_with("prog1")
+
 
 class TestAPIRoutesHelpers:
     """Test helper functions in API routes."""
