@@ -627,4 +627,365 @@ const setupTableDom = () => {
       expect(document.querySelector('input[name="grade_a"]')).toBeTruthy();
     });
   });
+
+  describe('Helper Function Unit Tests', () => {
+    // We need to expose the helper functions for unit testing
+    // Since they're in module scope, we'll need to load the script and test via DOM interactions
+    // OR we can test them indirectly through their effects
+    
+    describe('isFieldRequired()', () => {
+      it('returns true for required fields', () => {
+        setupTableDom();
+        loadScript();
+        
+        // Test via edit functionality which uses isFieldRequired
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="course_number"]').value = '';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('required fields'));
+      });
+
+      it('returns false for optional fields', () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        // Test that optional numeric fields can be empty
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '';
+        document.querySelector('input[name="grade_b"]').value = '';
+        document.querySelector('input[name="grade_c"]').value = '';
+        document.querySelector('input[name="grade_d"]').value = '';
+        document.querySelector('input[name="grade_f"]').value = '';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        // Should not show required field error for optional numeric fields
+        expect(window.alert).not.toHaveBeenCalledWith(expect.stringContaining('required fields'));
+      });
+    });
+
+    describe('validateFieldInput()', () => {
+      it('validates required fields are not empty', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        const requiredInput = document.querySelector('input[name="course_title"]');
+        requiredInput.value = '';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('required fields'));
+        expect(requiredInput.classList.contains('is-invalid')).toBe(true);
+      });
+
+      it('validates numeric fields contain valid numbers', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        const numInput = document.querySelector('input[name="num_students"]');
+        numInput.value = '-5'; // Negative number
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('valid non-negative numbers'));
+        expect(numInput.classList.contains('is-invalid')).toBe(true);
+      });
+
+      it('removes invalid class from fields when valid', () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        const input = document.querySelector('input[name="course_title"]');
+        input.classList.add('is-invalid');
+        input.value = 'Valid Title';
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        document.querySelector('input[name="grade_b"]').value = '3';
+        document.querySelector('input[name="grade_c"]').value = '2';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        document.querySelector('.save-btn').click();
+        
+        expect(input.classList.contains('is-invalid')).toBe(false);
+      });
+    });
+
+    describe('validateGradeSum()', () => {
+      it('validates grade sum equals number of students', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '3';
+        document.querySelector('input[name="grade_b"]').value = '2';
+        document.querySelector('input[name="grade_c"]').value = '0';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Sum of grades (5) must equal Number of Students (10)'));
+      });
+
+      it('passes validation when grades sum correctly', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        document.querySelector('input[name="grade_b"]').value = '3';
+        document.querySelector('input[name="grade_c"]').value = '2';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(window.alert).not.toHaveBeenCalled();
+        expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/edit_course/'), expect.anything());
+      });
+
+      it('requires valid num_students when grades are entered', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Number of Students is required'));
+      });
+
+      it('treats empty grade fields as zeros', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '5';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        document.querySelector('input[name="grade_b"]').value = '';
+        document.querySelector('input[name="grade_c"]').value = '';
+        document.querySelector('input[name="grade_d"]').value = '';
+        document.querySelector('input[name="grade_f"]').value = '';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        const saveCall = global.fetch.mock.calls.find(call => call[0].includes('/edit_course/'));
+        const payload = JSON.parse(saveCall[1].body);
+        expect(payload.grade_b).toBe(0);
+        expect(payload.grade_f).toBe(0);
+      });
+    });
+
+    describe('updateCellDisplayValues()', () => {
+      it('updates cell text content with input values', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="course_title"]').value = 'Updated Title';
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        document.querySelector('input[name="grade_b"]').value = '3';
+        document.querySelector('input[name="grade_c"]').value = '2';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(document.querySelector('tr').cells[1].textContent).toBe('Updated Title');
+      });
+
+      it('displays N/A for empty num_students field', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '';
+        document.querySelector('input[name="grade_a"]').value = '';
+        document.querySelector('input[name="grade_b"]').value = '';
+        document.querySelector('input[name="grade_c"]').value = '';
+        document.querySelector('input[name="grade_d"]').value = '';
+        document.querySelector('input[name="grade_f"]').value = '';
+        
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(document.querySelector('tr').cells[4].textContent).toBe('N/A');
+      });
+
+      it('displays - for empty grade fields', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({ success: true })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '';
+        document.querySelector('input[name="grade_a"]').value = '';
+        document.querySelector('input[name="grade_b"]').value = '';
+        document.querySelector('input[name="grade_c"]').value = '';
+        document.querySelector('input[name="grade_d"]').value = '';
+        document.querySelector('input[name="grade_f"]').value = '';
+        
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(document.querySelector('tr').cells[5].textContent).toBe('-');
+      });
+    });
+
+    describe('handleBackendError()', () => {
+      it('marks grade inputs as invalid for grade sum errors', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            success: false,
+            error: 'Sum of grades (5) must equal Number of Students (10)'
+          })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '3';
+        document.querySelector('input[name="grade_b"]').value = '2';
+        document.querySelector('input[name="grade_c"]').value = '0';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Sum of grades'));
+        expect(document.querySelector('input[name="num_students"]').classList.contains('is-invalid')).toBe(true);
+      });
+
+      it('shows alert with backend error message', async () => {
+        setupTableDom();
+        loadScript();
+        global.fetch.mockResolvedValue({
+          ok: false,
+          json: async () => ({ error: 'Custom server error' })
+        });
+        
+        document.querySelector('.edit-btn').click();
+        document.querySelector('input[name="num_students"]').value = '10';
+        document.querySelector('input[name="grade_a"]').value = '5';
+        document.querySelector('input[name="grade_b"]').value = '3';
+        document.querySelector('input[name="grade_c"]').value = '2';
+        document.querySelector('input[name="grade_d"]').value = '0';
+        document.querySelector('input[name="grade_f"]').value = '0';
+        
+        window.alert.mockClear();
+        document.querySelector('.save-btn').click();
+        await flushPromises();
+        
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Custom server error'));
+      });
+    });
+
+    describe('getFieldNameByIndex()', () => {
+      it('returns correct field name for each column index', () => {
+        setupTableDom();
+        loadScript();
+        
+        // Test by making row editable and checking input names
+        document.querySelector('.edit-btn').click();
+        
+        expect(document.querySelector('td:nth-child(1) input')?.name).toBe('course_number');
+        expect(document.querySelector('td:nth-child(2) input')?.name).toBe('course_title');
+        expect(document.querySelector('td:nth-child(3) input')?.name).toBe('instructor_name');
+        expect(document.querySelector('td:nth-child(4) select')?.name).toBe('term');
+        expect(document.querySelector('td:nth-child(5) input')?.name).toBe('num_students');
+        expect(document.querySelector('td:nth-child(6) input')?.name).toBe('grade_a');
+      });
+
+      it('returns null for action column index', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        
+        // Action column (index 10) should have no input
+        expect(document.querySelector('td:nth-child(11) input')).toBeNull();
+      });
+    });
+
+    describe('revertRowToActionButtons()', () => {
+      it('restores edit and delete buttons', () => {
+        setupTableDom();
+        loadScript();
+        
+        document.querySelector('.edit-btn').click();
+        expect(document.querySelector('.save-btn')).toBeTruthy();
+        
+        document.querySelector('.cancel-btn').click();
+        expect(document.querySelector('.edit-btn')).toBeTruthy();
+        expect(document.querySelector('.delete-btn')).toBeTruthy();
+        expect(document.querySelector('.save-btn')).toBeNull();
+      });
+
+      it('clears originalValues dataset', () => {
+        setupTableDom();
+        loadScript();
+        
+        const row = document.querySelector('tr');
+        document.querySelector('.edit-btn').click();
+        expect(row.dataset.originalValues).toBeDefined();
+        
+        document.querySelector('.cancel-btn').click();
+        expect(row.dataset.originalValues).toBeUndefined();
+      });
+    });
+  });
 });
