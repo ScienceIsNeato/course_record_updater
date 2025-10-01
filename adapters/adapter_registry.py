@@ -311,13 +311,21 @@ class AdapterRegistry:
 
         # Check if adapter is registered
         if adapter_id not in self._adapters:
-            logger.warning("Adapter not found: %s", adapter_id)
+            # Sanitize adapter_id for safe logging (only alphanumeric and underscore)
+            safe_id = "".join(c for c in str(adapter_id) if c.isalnum() or c == "_")[
+                :100
+            ]
+            logger.warning("Adapter not found: %s", safe_id)
             return None
 
         registration = self._adapters[adapter_id]
 
         if not registration["active"]:
-            logger.warning("Adapter inactive: %s", adapter_id)
+            # Sanitize adapter_id for safe logging (only alphanumeric and underscore)
+            safe_id = "".join(c for c in str(adapter_id) if c.isalnum() or c == "_")[
+                :100
+            ]
+            logger.warning("Adapter inactive: %s", safe_id)
             return None
 
         try:
