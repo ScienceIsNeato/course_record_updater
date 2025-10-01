@@ -374,66 +374,104 @@ class RegistrationService:
             user = db.get_user_by_email(email)
 
             if not user:
-                return {
-                    "exists": False,
-                    "status": "not_registered",
-                    "message": "No account found with this email address",
-                }
+                return RegistrationService._build_not_registered_status()
 
-            account_status = user.get("account_status", "unknown")
-            email_verified = user.get("email_verified", False)
-
-            if account_status == "active" and email_verified:
-                return {
-                    "exists": True,
-                    "status": "active",
-                    "user_id": user["id"],
-                    "role": user.get("role"),
-                    "institution_id": user.get("institution_id"),
-                    "message": "Account is active and verified",
-                }
-            elif account_status == "pending":
-                verification_expires_at = user.get("email_verification_expires_at")
-                is_expired = False
-
-                if verification_expires_at:
-                    if isinstance(verification_expires_at, str):
-                        try:
-                            verification_expires_at = datetime.fromisoformat(
-                                verification_expires_at.replace("Z", "+00:00")
-                            )
-                        except ValueError:
-                            verification_expires_at = None
-
-                    if (
-                        verification_expires_at
-                        and verification_expires_at < datetime.now(timezone.utc)
-                    ):
-                        is_expired = True
-
-                return {
-                    "exists": True,
-                    "status": "pending_verification",
-                    "user_id": user["id"],
-                    "email_verified": email_verified,
-                    "verification_expired": is_expired,
-                    "message": "Account exists but email verification is pending",
-                }
-            else:
-                return {
-                    "exists": True,
-                    "status": account_status,
-                    "user_id": user["id"],
-                    "message": f"Account status: {account_status}",
-                }
+            # Determine status based on account state
+            return RegistrationService._build_user_status(user)
 
         except Exception as e:
             logger.error(f"[Registration] Failed to get registration status: {e}")
-            return {
-                "exists": False,
-                "status": "error",
-                "message": f"Failed to check registration status: {str(e)}",
-            }
+            return RegistrationService._build_error_status(str(e))
+
+    @staticmethod
+    def _build_not_registered_status() -> Dict[str, Any]:
+        """Build status response for non-existent user."""
+        return {
+            "exists": False,
+            "status": "not_registered",
+            "message": "No account found with this email address",
+        }
+
+    @staticmethod
+    def _build_user_status(user: Dict[str, Any]) -> Dict[str, Any]:
+        """Build status response for existing user based on account state."""
+        account_status = user.get("account_status", "unknown")
+        email_verified = user.get("email_verified", False)
+
+        if account_status == "active" and email_verified:
+            return RegistrationService._build_active_status(user)
+        elif account_status == "pending":
+            return RegistrationService._build_pending_status(user, email_verified)
+        else:
+            return RegistrationService._build_other_status(user, account_status)
+
+    @staticmethod
+    def _build_active_status(user: Dict[str, Any]) -> Dict[str, Any]:
+        """Build status response for active, verified user."""
+        return {
+            "exists": True,
+            "status": "active",
+            "user_id": user["id"],
+            "role": user.get("role"),
+            "institution_id": user.get("institution_id"),
+            "message": "Account is active and verified",
+        }
+
+    @staticmethod
+    def _build_pending_status(
+        user: Dict[str, Any], email_verified: bool
+    ) -> Dict[str, Any]:
+        """Build status response for pending verification user."""
+        is_expired = RegistrationService._check_verification_expired(user)
+
+        return {
+            "exists": True,
+            "status": "pending_verification",
+            "user_id": user["id"],
+            "email_verified": email_verified,
+            "verification_expired": is_expired,
+            "message": "Account exists but email verification is pending",
+        }
+
+    @staticmethod
+    def _check_verification_expired(user: Dict[str, Any]) -> bool:
+        """Check if email verification has expired."""
+        verification_expires_at = user.get("email_verification_expires_at")
+
+        if not verification_expires_at:
+            return False
+
+        # Parse string datetime if needed
+        if isinstance(verification_expires_at, str):
+            try:
+                verification_expires_at = datetime.fromisoformat(
+                    verification_expires_at.replace("Z", "+00:00")
+                )
+            except ValueError:
+                return False
+
+        return verification_expires_at < datetime.now(timezone.utc)
+
+    @staticmethod
+    def _build_other_status(
+        user: Dict[str, Any], account_status: str
+    ) -> Dict[str, Any]:
+        """Build status response for other account states."""
+        return {
+            "exists": True,
+            "status": account_status,
+            "user_id": user["id"],
+            "message": f"Account status: {account_status}",
+        }
+
+    @staticmethod
+    def _build_error_status(error_message: str) -> Dict[str, Any]:
+        """Build status response for error cases."""
+        return {
+            "exists": False,
+            "status": "error",
+            "message": f"Failed to check registration status: {error_message}",
+        }
 
 
 # Convenience functions for easy import
