@@ -3730,3 +3730,142 @@ class TestBulkManageHelpers:
             mock_assign.assert_not_called()
             assert result == mock_result
             assert "2 removed" in message
+
+
+class TestExcelImportHelpers:
+    """Test helper functions for excel_import_api."""
+
+    def test_check_excel_import_permissions_site_admin(self):
+        """Test _check_excel_import_permissions for site admin."""
+        from unittest.mock import patch
+
+        from api_routes import _check_excel_import_permissions
+
+        mock_user = {
+            "user_id": "admin1",
+            "role": "site_admin",
+            "institution_id": None,
+        }
+
+        with patch("api_routes.get_current_user") as mock_get_user:
+            mock_get_user.return_value = mock_user
+
+            # Site admin with CEI adapter - should succeed
+            user, inst_id = _check_excel_import_permissions(
+                "cei_excel_format_v1", "courses"
+            )
+
+            assert user == mock_user
+            # Institution ID will be determined by adapter
+
+    def test_check_excel_import_permissions_no_user(self):
+        """Test _check_excel_import_permissions raises when no user."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _check_excel_import_permissions
+
+        with patch("api_routes.get_current_user") as mock_get_user:
+            mock_get_user.return_value = None
+
+            with pytest.raises(PermissionError, match="Authentication required"):
+                _check_excel_import_permissions("cei_excel_format_v1", "courses")
+
+    def test_determine_target_institution_site_admin_cei(self):
+        """Test _determine_target_institution for site admin with CEI adapter."""
+        from unittest.mock import patch
+
+        from api_routes import _determine_target_institution
+
+        # Function is imported inside _determine_target_institution
+        with patch(
+            "database_service.create_default_cei_institution"
+        ) as mock_create_cei:
+            mock_create_cei.return_value = "cei_inst_id"
+
+            result = _determine_target_institution(
+                "site_admin", None, "cei_excel_format_v1"
+            )
+
+            assert result == "cei_inst_id"
+            mock_create_cei.assert_called_once()
+
+    def test_determine_target_institution_site_admin_cei_fails(self):
+        """Test _determine_target_institution when CEI creation fails."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        # Function is imported inside _determine_target_institution
+        with patch(
+            "database_service.create_default_cei_institution"
+        ) as mock_create_cei:
+            mock_create_cei.return_value = None
+
+            with pytest.raises(
+                ValueError, match="Failed to create/find CEI institution"
+            ):
+                _determine_target_institution("site_admin", None, "cei_excel_format_v1")
+
+    def test_determine_target_institution_site_admin_non_cei(self):
+        """Test _determine_target_institution for site admin with non-CEI adapter."""
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        with pytest.raises(
+            ValueError, match="Site admin must specify target institution"
+        ):
+            _determine_target_institution("site_admin", None, "other_adapter")
+
+    def test_determine_target_institution_institution_admin(self):
+        """Test _determine_target_institution for institution admin."""
+        from api_routes import _determine_target_institution
+
+        result = _determine_target_institution(
+            "institution_admin", "inst123", "cei_excel_format_v1"
+        )
+
+        assert result == "inst123"
+
+    def test_determine_target_institution_no_institution(self):
+        """Test _determine_target_institution when user has no institution."""
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        with pytest.raises(PermissionError, match="User has no associated institution"):
+            _determine_target_institution(
+                "institution_admin", None, "cei_excel_format_v1"
+            )
+
+    def test_validate_import_permissions_site_admin_courses(self):
+        """Test _validate_import_permissions for site admin importing courses."""
+        from api_routes import _validate_import_permissions
+
+        # Should not raise
+        _validate_import_permissions("site_admin", "courses")
+
+    def test_validate_import_permissions_invalid_role(self):
+        """Test _validate_import_permissions with invalid role."""
+        import pytest
+
+        from api_routes import _validate_import_permissions
+
+        with pytest.raises(PermissionError, match="Invalid user role"):
+            _validate_import_permissions("invalid_role", "courses")
+
+    def test_validate_import_permissions_forbidden_data_type(self):
+        """Test _validate_import_permissions when user cannot import data type."""
+        import pytest
+
+        from api_routes import _validate_import_permissions
+
+        # Institution admin cannot import institutions
+        with pytest.raises(
+            PermissionError, match="institution_admin cannot import institutions"
+        ):
+            _validate_import_permissions("institution_admin", "institutions")
