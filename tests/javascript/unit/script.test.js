@@ -224,6 +224,35 @@ const setupTableDom = () => {
     expect(window.alert.mock.calls[0][0]).toContain('500');
   });
 
+  it('shows specific error message when delete returns success:false', async () => {
+    setupTableDom();
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: false, error: 'Course not found' })
+    });
+    loadScript();
+
+    window.alert.mockClear();
+    document.querySelector('.delete-btn').click();
+    await flushPromises();
+    await flushPromises();
+
+    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Course not found'));
+  });
+
+  it('does not delete when user cancels confirmation', async () => {
+    setupTableDom();
+    global.confirm.mockReturnValueOnce(false);
+    loadScript();
+
+    const initialRowCount = document.querySelectorAll('tr').length;
+    document.querySelector('.delete-btn').click();
+    await flushPromises();
+
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/delete_course/'), expect.anything());
+    expect(document.querySelectorAll('tr')).toHaveLength(initialRowCount);
+  });
+
   it('initializes the import form and validates inputs', async () => {
     setupImportDom();
     global.fetch.mockResolvedValue({
@@ -417,6 +446,80 @@ const setupTableDom = () => {
 
     expect(document.getElementById('importResults').innerHTML).toContain('Import failed');
     jest.useRealTimers();
+  });
+
+  describe('edit row validation edge cases', () => {
+    it('shows error when saving with empty required field', async () => {
+      setupTableDom();
+      loadScript();
+      
+      // Edit and clear a required field
+      document.querySelector('.edit-btn').click();
+      document.querySelector('input[name="course_number"]').value = '';
+      
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+      
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('required fields'));
+      expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/edit_course/'), expect.anything());
+    });
+
+    it('handles backend validation error for grade sum mismatch', async () => {
+      setupTableDom();
+      loadScript();
+      
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: false,
+          error: 'Sum of grades (8) must equal Number of Students (25).'
+        })
+      });
+      
+      document.querySelector('.edit-btn').click();
+      document.querySelector('input[name="num_students"]').value = '25';
+      document.querySelector('input[name="grade_a"]').value = '5';
+      document.querySelector('input[name="grade_b"]').value = '3';
+      document.querySelector('input[name="grade_c"]').value = '0';
+      document.querySelector('input[name="grade_d"]').value = '0';
+      document.querySelector('input[name="grade_f"]').value = '0';
+      
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+      
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Sum of grades'));
+    });
+
+    it('saves successfully when empty grade fields are treated as zeros', async () => {
+      setupTableDom();
+      loadScript();
+      
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true })
+      });
+      
+      document.querySelector('.edit-btn').click();
+      document.querySelector('input[name="num_students"]').value = '5';
+      document.querySelector('input[name="grade_a"]').value = '5';
+      document.querySelector('input[name="grade_b"]').value = '';
+      document.querySelector('input[name="grade_c"]').value = '';
+      document.querySelector('input[name="grade_d"]').value = '';
+      document.querySelector('input[name="grade_f"]').value = '';
+      
+      window.alert.mockClear();
+      document.querySelector('.save-btn').click();
+      await flushPromises();
+      
+      expect(window.alert).not.toHaveBeenCalled();
+      const saveCall = global.fetch.mock.calls.find(call => call[0].includes('/edit_course/'));
+      expect(saveCall).toBeDefined();
+      const payload = JSON.parse(saveCall[1].body);
+      expect(payload.grade_a).toBe('5');
+      expect(payload.grade_b).toBe(0);
+    });
   });
 
   describe('comprehensive branch coverage and edge cases', () => {
