@@ -770,6 +770,16 @@ if [[ "$RUN_SONAR" == "true" ]]; then
           else
             echo "❌ SonarCloud Analysis: FAILED"
             echo "📋 See detailed issues above for specific fixes needed"
+            
+            # Run PR coverage analysis to identify specific uncovered lines in modified code
+            echo ""
+            echo "🔬 Analyzing coverage gaps in modified code..."
+            if python scripts/analyze_pr_coverage.py; then
+              echo "✅ All modified lines are covered"
+            else
+              echo "📄 See logs/pr_coverage_gaps.txt for surgical coverage targets"
+            fi
+            
             add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
             SONAR_PASSED=false
           fi

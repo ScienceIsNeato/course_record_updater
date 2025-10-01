@@ -24,6 +24,8 @@ test-results.xml
 logs/
 # SonarCloud issues tracking file
 logs/sonarcloud_issues.txt
+# PR coverage analysis reports
+logs/pr_coverage_gaps.txt
 course_records.db
 *.db
 

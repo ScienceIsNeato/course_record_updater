@@ -59,6 +59,32 @@ SonarCloud enforces **TWO DIFFERENT** coverage metrics that can cause confusion:
 ```
 
 ### **🔍 How to Identify Which Files Need Coverage**
+
+**🚀 AUTOMATED SOLUTION (Recommended):**
+```bash
+# When sonar check fails, it automatically runs this script
+python scripts/analyze_pr_coverage.py
+
+# Output: logs/pr_coverage_gaps.txt
+# Shows EXACT line numbers that need coverage in modified files
+```
+
+**What the script does:**
+1. ✅ Gets all lines modified in your PR (vs main)
+2. ✅ Cross-references with uncovered lines from coverage.xml
+3. ✅ Shows ONLY the uncovered lines that you actually touched
+4. ✅ Ranks files by number of gaps (fix biggest impact first!)
+
+**Example Output:**
+```
+📁 api_routes.py
+   🔴 65 uncovered lines: 478, 770, 1370-1376, 1381...
+   
+📁 import_service.py
+   🔴 34 uncovered lines: 129, 134, 245-248...
+```
+
+**Manual approach (if needed):**
 1. Check SonarCloud UI "Measures" → "Coverage" → "Coverage on New Code"
 2. Look for files with low coverage percentages in your branch
 3. Focus testing efforts on those specific files
