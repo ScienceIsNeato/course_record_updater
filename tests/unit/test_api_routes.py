@@ -3594,3 +3594,139 @@ class TestRemoveCourseHelpers:
             assert data["success"] is False
             assert "Failed to remove" in data["error"]
             assert status == 500
+
+
+class TestBulkManageHelpers:
+    """Test helper functions for bulk_manage_program_courses."""
+
+    def test_validate_bulk_manage_request_success(self):
+        """Test _validate_bulk_manage_request with valid data."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(
+                json={"action": "add", "course_ids": ["course1", "course2"]}
+            ):
+                result = _validate_bulk_manage_request()
+                assert result is None  # No validation error
+
+    def test_validate_bulk_manage_request_no_data(self):
+        """Test _validate_bulk_manage_request with no data."""
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            # Empty dict is treated as "no data"
+            with client.application.test_request_context(json={}):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "No data provided" in data["error"]
+                assert status == 400
+
+    def test_validate_bulk_manage_request_invalid_action(self):
+        """Test _validate_bulk_manage_request with invalid action."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(
+                json={"action": "invalid", "course_ids": ["course1"]}
+            ):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "Invalid or missing action" in data["error"]
+                assert status == 400
+
+    def test_validate_bulk_manage_request_missing_course_ids(self):
+        """Test _validate_bulk_manage_request with missing course_ids."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(json={"action": "add"}):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "Missing or invalid course_ids" in data["error"]
+                assert status == 400
+
+    def test_execute_bulk_add(self):
+        """Test _execute_bulk_add helper."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_add
+
+        mock_result = {"success_count": 5, "failed_count": 0}
+
+        with patch("api_routes.bulk_add_courses_to_program") as mock_bulk_add:
+            mock_bulk_add.return_value = mock_result
+
+            result, message = _execute_bulk_add(["course1", "course2"], "prog1")
+
+            mock_bulk_add.assert_called_once_with(["course1", "course2"], "prog1")
+            assert result == mock_result
+            assert "5 added" in message
+
+    def test_execute_bulk_remove_with_default_program(self):
+        """Test _execute_bulk_remove with default program available."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_remove
+
+        mock_result = {"removed": 3, "failed": 0}
+
+        with (
+            patch("api_routes.get_current_institution_id") as mock_get_inst,
+            patch("api_routes._get_default_program_id") as mock_get_default,
+            patch("api_routes.bulk_remove_courses_from_program") as mock_bulk_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_get_inst.return_value = "inst1"
+            mock_get_default.return_value = "default_prog"
+            mock_bulk_remove.return_value = mock_result
+
+            result, message = _execute_bulk_remove(
+                ["course1", "course2", "course3"], "prog1"
+            )
+
+            mock_bulk_remove.assert_called_once_with(
+                ["course1", "course2", "course3"], "prog1"
+            )
+            # Should assign all courses to default program
+            assert mock_assign.call_count == 3
+            assert result == mock_result
+            assert "3 removed" in message
+
+    def test_execute_bulk_remove_no_default_program(self):
+        """Test _execute_bulk_remove when no default program exists."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_remove
+
+        mock_result = {"removed": 2, "failed": 0}
+
+        with (
+            patch("api_routes.get_current_institution_id") as mock_get_inst,
+            patch("api_routes._get_default_program_id") as mock_get_default,
+            patch("api_routes.bulk_remove_courses_from_program") as mock_bulk_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_get_inst.return_value = "inst1"
+            mock_get_default.return_value = None  # No default program
+            mock_bulk_remove.return_value = mock_result
+
+            result, message = _execute_bulk_remove(["course1", "course2"], "prog1")
+
+            # Should not try to assign when no default program
+            mock_assign.assert_not_called()
+            assert result == mock_result
+            assert "2 removed" in message
