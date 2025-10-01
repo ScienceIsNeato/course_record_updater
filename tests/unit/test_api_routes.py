@@ -3424,3 +3424,173 @@ class TestAPIRoutesHelperFunctions:
 
             mock_get_users.assert_called_once_with(institution_id)
             assert result == mock_users
+
+
+class TestRemoveCourseHelpers:
+    """Test helper functions for remove_course_from_program_api."""
+
+    def test_validate_program_for_removal_success(self):
+        """Test _validate_program_for_removal with valid program."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_program_for_removal
+
+        mock_program = {
+            "id": "prog1",
+            "institution_id": "inst1",
+            "name": "Test Program",
+        }
+
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.return_value = mock_program
+
+            program, institution_id = _validate_program_for_removal("prog1")
+
+            mock_get_program.assert_called_once_with("prog1")
+            assert program == mock_program
+            assert institution_id == "inst1"
+
+    def test_validate_program_for_removal_not_found(self):
+        """Test _validate_program_for_removal raises ValueError when program not found."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _validate_program_for_removal
+
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.return_value = None
+
+            with pytest.raises(ValueError, match="Program not found"):
+                _validate_program_for_removal("prog1")
+
+    def test_get_default_program_id_with_default(self):
+        """Test _get_default_program_id returns default program."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        mock_programs = [
+            {"id": "prog1", "is_default": False},
+            {"id": "prog2", "is_default": True},
+            {"id": "prog3", "is_default": False},
+        ]
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = mock_programs
+
+            result = _get_default_program_id("inst1")
+
+            mock_get_programs.assert_called_once_with("inst1")
+            assert result == "prog2"
+
+    def test_get_default_program_id_no_default(self):
+        """Test _get_default_program_id returns None when no default exists."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        mock_programs = [
+            {"id": "prog1", "is_default": False},
+            {"id": "prog2", "is_default": False},
+        ]
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = mock_programs
+
+            result = _get_default_program_id("inst1")
+
+            assert result is None
+
+    def test_get_default_program_id_no_institution(self):
+        """Test _get_default_program_id returns None when no institution_id."""
+        from api_routes import _get_default_program_id
+
+        result = _get_default_program_id(None)
+        assert result is None
+
+        result = _get_default_program_id("")
+        assert result is None
+
+    def test_get_default_program_id_no_programs(self):
+        """Test _get_default_program_id returns None when institution has no programs."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = None
+
+            result = _get_default_program_id("inst1")
+
+            assert result is None
+
+    def test_remove_course_with_orphan_handling_success(self):
+        """Test _remove_course_with_orphan_handling successfully removes course."""
+        from unittest.mock import patch
+
+        from api_routes import _remove_course_with_orphan_handling
+
+        with (
+            patch("api_routes.remove_course_from_program") as mock_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_remove.return_value = True
+
+            result = _remove_course_with_orphan_handling(
+                "course1", "prog1", "inst1", "default_prog"
+            )
+
+            mock_remove.assert_called_once_with("course1", "prog1")
+            mock_assign.assert_called_once_with("course1", "inst1")
+            assert result is True
+
+    def test_remove_course_with_orphan_handling_no_default_program(self):
+        """Test _remove_course_with_orphan_handling when no default program exists."""
+        from unittest.mock import patch
+
+        from api_routes import _remove_course_with_orphan_handling
+
+        with (
+            patch("api_routes.remove_course_from_program") as mock_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_remove.return_value = True
+
+            result = _remove_course_with_orphan_handling(
+                "course1", "prog1", "inst1", None
+            )
+
+            mock_remove.assert_called_once_with("course1", "prog1")
+            # Should not try to assign when no default program
+            mock_assign.assert_not_called()
+            assert result is True
+
+    def test_build_removal_response_success(self):
+        """Test _build_removal_response builds success response."""
+        from api_routes import _build_removal_response
+        from app import app
+
+        with app.app_context():
+            mock_program = {"name": "Test Program"}
+            response = _build_removal_response(True, "course1", mock_program)
+
+            data = response.get_json()
+            assert data["success"] is True
+            assert "removed from program Test Program" in data["message"]
+            # Success case returns just response (defaults to 200)
+            assert response.status_code == 200
+
+    def test_build_removal_response_failure(self):
+        """Test _build_removal_response builds failure response."""
+        from api_routes import _build_removal_response
+        from app import app
+
+        with app.app_context():
+            mock_program = {"name": "Test Program"}
+            response, status = _build_removal_response(False, "course1", mock_program)
+
+            data = response.get_json()
+            assert data["success"] is False
+            assert "Failed to remove" in data["error"]
+            assert status == 500
