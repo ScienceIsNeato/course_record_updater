@@ -1449,59 +1449,25 @@ def _build_removal_response(success: bool, course_id: str, program: dict):
 def bulk_manage_program_courses(program_id: str):
     """Bulk add or remove courses from a program"""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+        # Validate request data
+        validation_response = _validate_bulk_manage_request()
+        if validation_response:
+            return validation_response
 
+        data = request.get_json()
         action = data.get("action")
         course_ids = data.get("course_ids", [])
-
-        if not action or action not in ["add", "remove"]:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid or missing action. Use 'add' or 'remove'",
-                    }
-                ),
-                400,
-            )
-
-        if not course_ids or not isinstance(course_ids, list):
-            return (
-                jsonify(
-                    {"success": False, "error": "Missing or invalid course_ids array"}
-                ),
-                400,
-            )
 
         # Validate program exists
         program = get_program_by_id(program_id)
         if not program:
             return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
+        # Execute bulk operation based on action
         if action == "add":
-            result = bulk_add_courses_to_program(course_ids, program_id)
-            message = f"Bulk add operation completed: {result['success_count']} added"
+            result, message = _execute_bulk_add(course_ids, program_id)
         else:  # remove
-            # Get default program for orphan handling
-            institution_id = get_current_institution_id()
-            programs = get_programs_by_institution(institution_id)
-            default_program = next(
-                (p for p in programs if p.get("is_default", False)), None
-            )
-            default_program_id = default_program["id"] if default_program else None
-
-            result = bulk_remove_courses_from_program(course_ids, program_id)
-
-            # Assign successfully removed courses to default program to prevent orphaning
-            if result.get("removed", 0) > 0 and default_program_id:
-                for course_id in course_ids:
-                    assign_course_to_default_program(course_id, institution_id)
-
-            message = (
-                f"Bulk remove operation completed: {result.get('removed', 0)} removed"
-            )
+            result, message = _execute_bulk_remove(course_ids, program_id)
 
         return jsonify({"success": True, "message": message, "details": result})
 
@@ -1509,6 +1475,59 @@ def bulk_manage_program_courses(program_id: str):
         return handle_api_error(
             e, "Bulk manage program courses", "Failed to bulk manage program courses"
         )
+
+
+def _validate_bulk_manage_request():
+    """Validate bulk manage request data."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+    action = data.get("action")
+    course_ids = data.get("course_ids", [])
+
+    if not action or action not in ["add", "remove"]:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Invalid or missing action. Use 'add' or 'remove'",
+                }
+            ),
+            400,
+        )
+
+    if not course_ids or not isinstance(course_ids, list):
+        return (
+            jsonify({"success": False, "error": "Missing or invalid course_ids array"}),
+            400,
+        )
+
+    return None
+
+
+def _execute_bulk_add(course_ids: list, program_id: str):
+    """Execute bulk add operation."""
+    result = bulk_add_courses_to_program(course_ids, program_id)
+    message = f"Bulk add operation completed: {result['success_count']} added"
+    return result, message
+
+
+def _execute_bulk_remove(course_ids: list, program_id: str):
+    """Execute bulk remove operation with orphan handling."""
+    # Get default program for orphan handling
+    institution_id = get_current_institution_id()
+    default_program_id = _get_default_program_id(institution_id)
+
+    result = bulk_remove_courses_from_program(course_ids, program_id)
+
+    # Assign successfully removed courses to default program to prevent orphaning
+    if result.get("removed", 0) > 0 and default_program_id:
+        for course_id in course_ids:
+            assign_course_to_default_program(course_id, institution_id)
+
+    message = f"Bulk remove operation completed: {result.get('removed', 0)} removed"
+    return result, message
 
 
 @api.route("/courses/<course_id>/programs", methods=["GET"])
