@@ -485,9 +485,10 @@ class ImportService:
                     course_data, existing_course, strategy, dry_run, conflicts
                 )
             else:
-                return self._handle_new_course(
+                conflicts = self._handle_new_course(
                     course_data, course_number, dry_run, conflicts
                 )
+                return True, conflicts
 
         except Exception as e:
             self.stats["errors"].append(
@@ -516,9 +517,10 @@ class ImportService:
             self.stats["conflicts_detected"] += len(detected_conflicts)
 
         # Handle conflict based on strategy
-        return self._resolve_course_conflicts(
-            strategy, detected_conflicts, course_data, course_number, dry_run, conflicts
+        conflicts = self._resolve_course_conflicts(
+            strategy, detected_conflicts, course_number, dry_run, conflicts
         )
+        return True, conflicts
 
     def _detect_course_conflicts(
         self,
@@ -551,16 +553,14 @@ class ImportService:
         self,
         strategy: ConflictStrategy,
         detected_conflicts: List[ConflictRecord],
-        course_data: Dict[str, Any],
         course_number: str,
         dry_run: bool,
         conflicts: List[ConflictRecord],
-    ) -> Tuple[bool, List[ConflictRecord]]:
+    ) -> List[ConflictRecord]:
         """Resolve course conflicts based on strategy."""
         if strategy == ConflictStrategy.USE_MINE:
             self.stats["records_skipped"] += 1
             self._log(f"Skipping existing course: {course_number}")
-            return True, conflicts
         elif strategy == ConflictStrategy.USE_THEIRS:
             if detected_conflicts:
                 self.stats["conflicts_resolved"] += len(detected_conflicts)
@@ -570,17 +570,17 @@ class ImportService:
 
             if not dry_run:
                 # Update existing course with import data
-                converted_course_data = _convert_datetime_fields(course_data)
                 # TODO: Implement proper update_course function
+                # converted_course_data = _convert_datetime_fields(course_data)
+                # update_course(existing_course_id, converted_course_data)
                 self.stats["records_updated"] += 1
                 self._log(
                     f"Updated course: {course_number} (update logic needs implementation)"
                 )
             else:
                 self._log(f"DRY RUN: Would update course: {course_number}")
-            return True, conflicts
 
-        return True, conflicts
+        return conflicts
 
     def _handle_new_course(
         self,
@@ -588,7 +588,7 @@ class ImportService:
         course_number: str,
         dry_run: bool,
         conflicts: List[ConflictRecord],
-    ) -> Tuple[bool, List[ConflictRecord]]:
+    ) -> List[ConflictRecord]:
         """Handle import of a new course."""
         if not dry_run:
             create_course(course_data)
@@ -598,7 +598,7 @@ class ImportService:
             self.stats["records_skipped"] += 1
             self._log(f"DRY RUN: Would create course: {course_number}")
 
-        return True, conflicts
+        return conflicts
 
     def process_user_import(
         self,
@@ -633,7 +633,8 @@ class ImportService:
                     user_data, existing_user, strategy, dry_run, conflicts
                 )
             else:
-                return self._handle_new_user(user_data, email, dry_run, conflicts)
+                conflicts = self._handle_new_user(user_data, email, dry_run, conflicts)
+                return True, conflicts
 
         except Exception as e:
             self.stats["errors"].append(
@@ -662,7 +663,7 @@ class ImportService:
             self.stats["conflicts_detected"] += len(detected_conflicts)
 
         # Handle conflict based on strategy
-        return self._resolve_user_conflicts(
+        conflicts = self._resolve_user_conflicts(
             strategy,
             detected_conflicts,
             user_data,
@@ -671,6 +672,7 @@ class ImportService:
             dry_run,
             conflicts,
         )
+        return True, conflicts
 
     def _detect_user_conflicts(
         self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
@@ -705,12 +707,11 @@ class ImportService:
         email: str,
         dry_run: bool,
         conflicts: List[ConflictRecord],
-    ) -> Tuple[bool, List[ConflictRecord]]:
+    ) -> List[ConflictRecord]:
         """Resolve user conflicts based on strategy."""
         if strategy == ConflictStrategy.USE_MINE:
             self.stats["records_skipped"] += 1
             self._log(f"Skipping existing user: {email}")
-            return True, conflicts
         elif strategy == ConflictStrategy.USE_THEIRS:
             if detected_conflicts:
                 self.stats["conflicts_resolved"] += len(detected_conflicts)
@@ -729,9 +730,8 @@ class ImportService:
                 self._log(f"Updated user: {email}")
             else:
                 self._log(f"DRY RUN: Would update user: {email}")
-            return True, conflicts
 
-        return True, conflicts
+        return conflicts
 
     def _handle_new_user(
         self,
@@ -739,7 +739,7 @@ class ImportService:
         email: str,
         dry_run: bool,
         conflicts: List[ConflictRecord],
-    ) -> Tuple[bool, List[ConflictRecord]]:
+    ) -> List[ConflictRecord]:
         """Handle import of a new user."""
         if not dry_run:
             create_user(user_data)
@@ -748,7 +748,7 @@ class ImportService:
         else:
             self._log(f"DRY RUN: Would create user: {email}")
 
-        return True, conflicts
+        return conflicts
 
     def _process_term_import(self, term_data: Dict[str, Any], dry_run: bool = False):
         """Process term import (simplified implementation)"""
