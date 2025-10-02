@@ -502,3 +502,30 @@ class TestCEIExcelAdapterErrorHandling:
         assert len(errors) > 0
         student_errors = [e for e in errors if "student" in e.lower()]
         assert len(student_errors) > 0
+
+    def test_validate_file_too_large(self):
+        """Test validate_file_compatibility returns error for oversized file."""
+        import os
+        import tempfile
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        try:
+            # Mock os.path.getsize to return a size larger than MAX_FILE_SIZE_MB
+            from unittest.mock import patch
+
+            with patch("os.path.getsize", return_value=600 * 1024 * 1024):  # 600 MB
+                is_valid, message = adapter.validate_file_compatibility(tmp_path)
+
+                # Should fail with file too large message (line 475-478)
+                assert is_valid is False
+                assert "File too large" in message
+                assert "600" in message  # Should show actual size
+        finally:
+            os.unlink(tmp_path)
