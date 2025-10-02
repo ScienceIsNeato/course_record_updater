@@ -2661,6 +2661,54 @@ class TestCourseManagementOperations:
         assert "2 removed" in data["message"]
         mock_bulk_remove.assert_called_once_with(["c1", "c2"], "prog1")
 
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_invalid_action(self, mock_has_permission):
+        """Test bulk manage with invalid action."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+        mock_has_permission.return_value = True
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "invalid", "course_ids": ["c1"]},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Invalid or missing action" in data["error"]
+
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_missing_course_ids(self, mock_has_permission):
+        """Test bulk manage with missing course_ids."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+        mock_has_permission.return_value = True
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "add"},  # Missing course_ids
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Missing or invalid course_ids" in data["error"]
+
 
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
