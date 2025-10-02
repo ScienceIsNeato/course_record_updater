@@ -211,49 +211,61 @@ class SonarCloudScraper:
 
         return False
 
-    def print_issues_summary(self, max_display: int = 50):
-        """Print detailed issues breakdown"""
-        print("\n🐛 Issues Breakdown:")
-        print("-" * 40)
+    def print_issues_summary(self, max_display: int = 50, output_file: Optional[str] = None):
+        """Print detailed issues breakdown and optionally write to file"""
+        def output(text: str):
+            """Helper to write to both stdout and file if specified"""
+            print(text)
+            if output_file:
+                with open(output_file, 'a', encoding='utf-8') as f:
+                    f.write(text + '\n')
+        
+        # Clear file at start if specified
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write("")  # Clear file
+        
+        output("\n🐛 Issues Breakdown:")
+        output("-" * 40)
 
         # Get critical and major issues (fetch more from API)
         critical_issues = self.get_issues(severities=["BLOCKER", "CRITICAL"], limit=100)
         major_issues = self.get_issues(severities=["MAJOR"], limit=100)
 
         if critical_issues:
-            print(f"\n🔴 Critical Issues ({len(critical_issues)}):")
+            output(f"\n🔴 Critical Issues ({len(critical_issues)}):")
             display_count = min(len(critical_issues), max_display)
             for issue in critical_issues[:display_count]:
-                print(self.format_issue(issue))
+                output(self.format_issue(issue))
             if len(critical_issues) > display_count:
-                print(
+                output(
                     f"  ... and {len(critical_issues) - display_count} more critical issues"
                 )
-                print(f"  💡 Use --max-display {len(critical_issues)} to see all")
+                output(f"  💡 Use --max-display {len(critical_issues)} to see all")
 
         if major_issues:
-            print(f"\n🟡 Major Issues ({len(major_issues)}):")
+            output(f"\n🟡 Major Issues ({len(major_issues)}):")
             display_count = min(len(major_issues), max_display)
             for issue in major_issues[:display_count]:
-                print(self.format_issue(issue))
+                output(self.format_issue(issue))
             if len(major_issues) > display_count:
-                print(
+                output(
                     f"  ... and {len(major_issues) - display_count} more major issues"
                 )
-                print(f"  💡 Use --max-display {len(major_issues)} to see all")
+                output(f"  💡 Use --max-display {len(major_issues)} to see all")
 
         # Get security hotspots (fetch more from API)
         hotspots = self.get_security_hotspots(limit=100)
         if hotspots:
-            print(f"\n🔥 Security Hotspots ({len(hotspots)}):")
+            output(f"\n🔥 Security Hotspots ({len(hotspots)}):")
             display_count = min(len(hotspots), max_display)
             for hotspot in hotspots[:display_count]:
-                print(self.format_hotspot(hotspot))
+                output(self.format_hotspot(hotspot))
             if len(hotspots) > display_count:
-                print(
+                output(
                     f"  ... and {len(hotspots) - display_count} more security hotspots"
                 )
-                print(f"  💡 Use --max-display {len(hotspots)} to see all")
+                output(f"  💡 Use --max-display {len(hotspots)} to see all")
 
     def print_actionable_summary(self):
         """Print actionable next steps"""
@@ -286,6 +298,11 @@ def main():
         default=50,
         help="Maximum number of issues to display per category",
     )
+    parser.add_argument(
+        "--output-file",
+        default="logs/sonarcloud_issues.txt",
+        help="File to write issues to (default: logs/sonarcloud_issues.txt)",
+    )
 
     args = parser.parse_args()
 
@@ -295,8 +312,12 @@ def main():
     quality_gate_passed = scraper.print_quality_gate_summary()
 
     # Always show security issues for review, even if quality gate passes
-    scraper.print_issues_summary(args.max_display)
+    # Write to file for easy reference
+    scraper.print_issues_summary(args.max_display, args.output_file)
     scraper.print_actionable_summary()
+    
+    if args.output_file:
+        print(f"\n📄 Full issues list written to: {args.output_file}")
     
     if not quality_gate_passed:
         sys.exit(1)

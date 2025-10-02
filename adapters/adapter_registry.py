@@ -157,7 +157,7 @@ class AdapterRegistry:
                 "active": True,
             }
 
-            logger.info("Registered adapter: %s (%s)", adapter_id, adapter_info["name"])
+            logger.info("Registered adapter successfully")
 
         except (TypeError, ValueError, AttributeError) as e:
             logger.error(f"Failed to register adapter {adapter_class.__name__}: {e}")
@@ -311,13 +311,15 @@ class AdapterRegistry:
 
         # Check if adapter is registered
         if adapter_id not in self._adapters:
-            logger.warning("Adapter not found: %s", adapter_id)
+            # Don't log user-controlled adapter_id to prevent log injection
+            logger.warning("Adapter not found in registry")
             return None
 
         registration = self._adapters[adapter_id]
 
         if not registration["active"]:
-            logger.warning("Adapter inactive: %s", adapter_id)
+            # Don't log user-controlled adapter_id to prevent log injection
+            logger.warning("Requested adapter is not active")
             return None
 
         try:
@@ -328,11 +330,11 @@ class AdapterRegistry:
             # Cache the instance
             self._adapter_instances[adapter_id] = instance
 
-            logger.debug("Created adapter instance: %s", adapter_id)
+            logger.debug("Created adapter instance successfully")
             return instance
 
         except Exception as e:
-            logger.error("Failed to create adapter instance %s: %s", adapter_id, e)
+            logger.error("Failed to create adapter instance: %s", e)
             raise AdapterRegistryError(
                 f"Cannot instantiate adapter {adapter_id}: {e}"
             ) from e
@@ -403,7 +405,7 @@ class AdapterRegistry:
         if adapter_id in self._adapter_instances:
             del self._adapter_instances[adapter_id]
 
-        logger.info("Deactivated adapter: %s", adapter_id)
+        logger.info("Deactivated adapter successfully")
         return True
 
     def reactivate_adapter(self, adapter_id: str) -> bool:
@@ -420,7 +422,7 @@ class AdapterRegistry:
             return False
 
         self._adapters[adapter_id]["active"] = True
-        logger.info("Reactivated adapter: %s", adapter_id)
+        logger.info("Reactivated adapter successfully")
         return True
 
     def get_supported_formats(self) -> Dict[str, List[str]]:

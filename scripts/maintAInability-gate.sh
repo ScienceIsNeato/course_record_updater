@@ -340,7 +340,8 @@ if [[ "$RUN_TESTS" == "true" ]]; then
 
   # Run UNIT tests only (fast tests, separate directory, no coverage)
   echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
-  TEST_OUTPUT=$(python -m pytest tests/unit/ -v 2>&1) || TEST_FAILED=true
+  # Use pytest-xdist for parallel execution (35% faster)
+  TEST_OUTPUT=$(python -m pytest tests/unit/ -n auto -v 2>&1) || TEST_FAILED=true
 
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -432,7 +433,8 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   COVERAGE_REPORT_FILE="logs/coverage_report.txt"
   
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  # Use pytest-xdist for parallel execution (35% faster)
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ -n auto --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
@@ -749,9 +751,19 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       # Generate fresh coverage data and run SonarCloud analysis
       echo "🔧 Generating fresh coverage data for SonarCloud..."
       
-      # Run tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
-      if python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
-        echo "✅ Coverage data generated successfully"
+      # Run Python tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
+      # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
+      # Use pytest-xdist for parallel execution (35% faster)
+      if python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+        echo "✅ Python coverage data generated successfully"
+        
+        # Run JavaScript tests with coverage to generate lcov.info
+        echo "🔧 Generating JavaScript coverage data..."
+        if npm test -- --coverage --coverageReporters=lcov --silent; then
+          echo "✅ JavaScript coverage data generated successfully"
+        else
+          echo "⚠️  JavaScript coverage generation had issues, continuing with Python coverage only"
+        fi
         
         # Run SonarCloud scanner with fresh data
         echo "🔧 Running SonarCloud analysis with fresh coverage data..."
@@ -769,6 +781,18 @@ if [[ "$RUN_SONAR" == "true" ]]; then
           else
             echo "❌ SonarCloud Analysis: FAILED"
             echo "📋 See detailed issues above for specific fixes needed"
+            
+            # Run PR coverage analysis to identify specific uncovered lines in modified code
+            echo ""
+            echo "🔬 Analyzing coverage gaps in modified code..."
+            if python scripts/analyze_pr_coverage.py; then
+              echo "✅ All modified lines are covered"
+            else
+              echo "📄 Full PR coverage analysis: logs/pr_coverage_gaps.txt"
+              echo "📄 Python coverage details: logs/coverage_report.txt"
+              echo "📄 JavaScript coverage report: coverage/lcov-report/index.html"
+            fi
+            
             add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
             SONAR_PASSED=false
           fi
@@ -792,6 +816,22 @@ if [[ "$RUN_SONAR" == "true" ]]; then
     echo "   • Code coverage analysis"
     echo "   • Technical debt assessment"
     echo "   • Duplication detection"
+    echo ""
+    echo "⚠️  CRITICAL: SonarCloud 'Coverage on New Code' vs Global Coverage"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Global Coverage (ship_it.py --checks coverage):"
+    echo "   • Scope: Entire codebase"
+    echo "   • Fix: Add tests for ANY uncovered code"
+    echo ""
+    echo "📊 Coverage on New Code (SonarCloud Quality Gate):"
+    echo "   • Scope: ONLY files modified in this branch/PR"
+    echo "   • Fix: Add tests for SPECIFIC files in your changes"
+    echo "   • ❌ Adding unrelated tests WON'T fix this failure"
+    echo "   • ✅ Focus on files listed in SonarCloud coverage report"
+    echo ""
+    echo "🔍 To identify which files need coverage:"
+    echo "   1. Check SonarCloud UI → Measures → Coverage → Coverage on New Code"
+    echo "   2. Focus testing on files with low coverage in your branch"
   fi
   echo ""
 fi

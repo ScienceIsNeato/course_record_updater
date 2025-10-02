@@ -475,63 +475,104 @@ def permission_required(
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not auth_service.is_authenticated():
-                logger.warning(f"Unauthorized access attempt to {f.__name__}")
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": AUTH_REQUIRED_MSG,
-                            "error_code": "AUTH_REQUIRED",
-                        }
-                    ),
-                    401,
-                )
+            # Check authentication first
+            auth_response = _check_authentication(f.__name__)
+            if auth_response:
+                return auth_response
 
-            # Build context from request parameters if specified
-            context = {}
-            if context_keys:
-                # Check URL parameters, JSON body, and form data
-                for key in context_keys:
-                    value = None
-                    # Try URL parameters first
-                    if hasattr(request, "view_args") and request.view_args:
-                        value = request.view_args.get(key)
-                    # Try JSON body
-                    if not value and request.is_json:
-                        value = request.json.get(key)
-                    # Try form data
-                    if not value and request.form:
-                        value = request.form.get(key)
-                    # Try query parameters
-                    if not value:
-                        value = request.args.get(key)
+            # Build context from request parameters
+            context = _build_request_context(context_keys)
 
-                    if value:
-                        context[key] = value
-
-            if not auth_service.has_permission(required_permission, context):
-                user = auth_service.get_current_user()
-                logger.warning(
-                    f"Permission denied: User {user.get('user_id')} attempted to access {f.__name__} requiring {required_permission}"
-                )
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Permission denied",
-                            "error_code": "PERMISSION_DENIED",
-                            "required_permission": required_permission,
-                        }
-                    ),
-                    403,
-                )
+            # Check permissions
+            permission_response = _check_permission(
+                required_permission, context, f.__name__
+            )
+            if permission_response:
+                return permission_response
 
             return f(*args, **kwargs)
 
         return decorated_function
 
     return decorator
+
+
+def _check_authentication(function_name: str):
+    """Check if user is authenticated, return error response if not."""
+    if not auth_service.is_authenticated():
+        logger.warning(f"Unauthorized access attempt to {function_name}")
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": AUTH_REQUIRED_MSG,
+                    "error_code": "AUTH_REQUIRED",
+                }
+            ),
+            401,
+        )
+    return None
+
+
+def _build_request_context(context_keys: Optional[List[str]]) -> Dict[str, Any]:
+    """Build context dictionary from request parameters."""
+    context: Dict[str, Any] = {}
+    if not context_keys:
+        return context
+
+    for key in context_keys:
+        value = _extract_request_value(key)
+        if value:
+            context[key] = value
+
+    return context
+
+
+def _extract_request_value(key: str) -> Optional[str]:
+    """Extract value from request using multiple sources in priority order."""
+    # Try URL parameters first
+    if hasattr(request, "view_args") and request.view_args:
+        value = request.view_args.get(key)
+        if value:
+            return value
+
+    # Try JSON body
+    if request.is_json:
+        value = request.json.get(key)
+        if value:
+            return value
+
+    # Try form data
+    if request.form:
+        value = request.form.get(key)
+        if value:
+            return value
+
+    # Try query parameters
+    return request.args.get(key)
+
+
+def _check_permission(
+    required_permission: str, context: Dict[str, Any], function_name: str
+):
+    """Check if user has required permission, return error response if not."""
+    if not auth_service.has_permission(required_permission, context):
+        user = auth_service.get_current_user()
+        logger.warning(
+            f"Permission denied: User {user.get('user_id')} attempted to access {function_name} requiring {required_permission}"
+        )
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Permission denied",
+                    "error_code": "PERMISSION_DENIED",
+                    "required_permission": required_permission,
+                }
+            ),
+            403,
+        )
+    return None
 
 
 def admin_required(f):

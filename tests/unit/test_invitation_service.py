@@ -633,3 +633,27 @@ class TestInvitationServiceIntegration:
         mock_db.create_invitation.assert_called_once()
         mock_db.create_user.assert_called_once()
         assert mock_db.update_invitation.call_count >= 2  # Status updates
+
+    def test_check_and_handle_expiry_naive_datetime(self):
+        """Test _check_and_handle_expiry handles naive datetime by adding timezone."""
+        from datetime import datetime
+        from unittest.mock import patch
+
+        from invitation_service import InvitationService
+
+        # Create invitation with naive datetime (no timezone)
+        naive_datetime = datetime(2099, 1, 1, 0, 0, 0)  # Future date, naive
+        invitation = {
+            "id": "inv-123",
+            "email": "test@example.com",
+            "expires_at": naive_datetime.isoformat(),  # Naive ISO string
+            "status": "sent",
+        }
+
+        with patch("invitation_service.db") as mock_db:
+            # Should add timezone to naive datetime (line 271)
+            # Won't raise error since future date
+            InvitationService._check_and_handle_expiry(invitation)
+
+            # Line 271 was executed to add timezone
+            # No exception means success

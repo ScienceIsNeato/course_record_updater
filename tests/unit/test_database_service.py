@@ -400,7 +400,8 @@ def test_reset_database():
 def test_db_operation_timeout():
     """Test database operation timeout context manager."""
     # Should return a context manager that doesn't raise exceptions
-    with database_service.db_operation_timeout(30):
+    # Note: timeout parameter removed as it's now handled internally
+    with database_service.db_operation_timeout():
         # Should be able to perform database operations
         institutions = database_service.get_all_institutions()
         assert isinstance(institutions, list)

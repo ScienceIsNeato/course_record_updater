@@ -93,64 +93,82 @@ class FileAdapterDispatcher:
                              or if parsing/validation fails.
         """
         try:
-            # Dynamically import the adapter module
-            module_path = f"adapters.{adapter_name}"
-            module = importlib.import_module(module_path)
+            # Load and instantiate the adapter
+            adapter_instance = self._load_adapter(adapter_name)
 
-            # Convert adapter_name (snake_case) to ClassName (CamelCase)
-            class_name = "".join(word.capitalize() for word in adapter_name.split("_"))
+            # Parse the document
+            parsed_data_list = self._parse_document(adapter_instance, document)
 
-            # Get the class from the imported module
-            if hasattr(module, class_name):
-                adapter_class = getattr(module, class_name)
-                # Instantiate the adapter class
-                adapter_instance = adapter_class()
-
-                # Check if the instance has a callable 'parse' method
-                if hasattr(adapter_instance, "parse") and callable(
-                    adapter_instance.parse
-                ):
-                    logger.info(f"Parsing document with {class_name}...")
-                    # Call parse on the instance
-                    parsed_data_list = adapter_instance.parse(document)
-                    logger.info(f"Raw parsed data count: {len(parsed_data_list)}")
-
-                    # Apply base validation if requested
-                    validated_data_list = []
-                    validation_errors = []
-                    if self._use_base_validation and self._base_validator:
-                        logger.info("Applying base validation...")
-                        for i, course_data in enumerate(parsed_data_list):
-                            try:
-                                validated = self._base_validator.parse_and_validate(
-                                    course_data
-                                )
-                                validated_data_list.append(validated)
-                            except ValidationError as e:
-                                validation_errors.append(f"Record {i+1}: {e}")
-
-                        if validation_errors:
-                            # Raise a single error summarizing all validation issues for the file
-                            raise ValidationError("; ".join(validation_errors))
-                        logger.info(
-                            f"Base validation passed for {len(validated_data_list)} records."
-                        )
-                        return validated_data_list  # Return validated data
-                    else:
-                        return parsed_data_list  # Return raw parsed data
-                else:
-                    raise DispatcherError(
-                        f"Adapter '{adapter_name}' (class {class_name}) does not have a callable 'parse' method."
-                    )
-            else:
-                raise DispatcherError(
-                    f"Adapter class '{class_name}' not found in module '{module_path}'."
-                )
+            # Apply validation if requested
+            return self._apply_validation(parsed_data_list)
 
         except ImportError:
-            raise DispatcherError(f"Adapter module '{module_path}' not found.")
+            raise DispatcherError(
+                f"Adapter module 'adapters.{adapter_name}' not found."
+            )
         except Exception as e:
             # Catch other potential errors during instantiation or parsing
             raise DispatcherError(
                 f"Error processing with adapter '{adapter_name}': {e}"
             )
+
+    def _load_adapter(self, adapter_name: str):
+        """Load and instantiate the specified adapter."""
+        # Dynamically import the adapter module
+        module_path = f"adapters.{adapter_name}"
+        module = importlib.import_module(module_path)
+
+        # Convert adapter_name (snake_case) to ClassName (CamelCase)
+        class_name = "".join(word.capitalize() for word in adapter_name.split("_"))
+
+        # Get the class from the imported module
+        if not hasattr(module, class_name):
+            raise DispatcherError(
+                f"Adapter class '{class_name}' not found in module '{module_path}'."
+            )
+
+        adapter_class = getattr(module, class_name)
+        adapter_instance = adapter_class()
+
+        # Check if the instance has a callable 'parse' method
+        if not (
+            hasattr(adapter_instance, "parse") and callable(adapter_instance.parse)
+        ):
+            raise DispatcherError(
+                f"Adapter '{adapter_name}' (class {class_name}) does not have a callable 'parse' method."
+            )
+
+        return adapter_instance
+
+    def _parse_document(self, adapter_instance, document: docx.document.Document):
+        """Parse the document using the adapter instance."""
+        class_name = adapter_instance.__class__.__name__
+        logger.info(f"Parsing document with {class_name}...")
+
+        parsed_data_list = adapter_instance.parse(document)
+        logger.info(f"Raw parsed data count: {len(parsed_data_list)}")
+
+        return parsed_data_list
+
+    def _apply_validation(self, parsed_data_list):
+        """Apply base validation if requested."""
+        if not (self._use_base_validation and self._base_validator):
+            return parsed_data_list  # Return raw parsed data
+
+        logger.info("Applying base validation...")
+        validated_data_list = []
+        validation_errors = []
+
+        for i, course_data in enumerate(parsed_data_list):
+            try:
+                validated = self._base_validator.parse_and_validate(course_data)
+                validated_data_list.append(validated)
+            except ValidationError as e:
+                validation_errors.append(f"Record {i+1}: {e}")
+
+        if validation_errors:
+            # Raise a single error summarizing all validation issues for the file
+            raise ValidationError("; ".join(validation_errors))
+
+        logger.info(f"Base validation passed for {len(validated_data_list)} records.")
+        return validated_data_list  # Return validated data

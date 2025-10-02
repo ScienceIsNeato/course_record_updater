@@ -170,7 +170,6 @@ def test_process_file_adapter_not_found(mocker, mock_docx_document):
 def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document):
     """Test when the adapter module exists but lacks a callable parse function."""
     adapter_name = "missing_parse"
-    module_to_import = f"adapters.{adapter_name}"
     class_name = "MissingParse"  # Calculate class name
 
     # Mock the module, class, and instance structure
@@ -178,7 +177,7 @@ def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document)
     mock_class = MagicMock()
     mock_instance = MagicMock()
     # Configure mocks
-    mock_import = mocker.patch(
+    mocker.patch(
         "adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
@@ -237,14 +236,13 @@ def test_process_file_adapter_parse_error(mocker, mock_docx_document):
 def test_process_file_base_validation_error(mocker, mock_docx_document):
     """Test when base validation fails after successful parsing."""
     adapter_name = "valid_parse_adapter"
-    module_to_import = f"adapters.{adapter_name}"
     class_name = "ValidParseAdapter"
 
     mock_module = MagicMock()
     mock_class = MagicMock()
     mock_instance = MagicMock()  # Define mock_instance here
 
-    mock_import = mocker.patch(
+    mocker.patch(
         "adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
@@ -353,3 +351,40 @@ class TestFileAdapterDispatcherInitialization:
             # Should only include .py files that aren't excluded
             expected_adapters = ["valid_adapter", "test_file"]
             assert set(adapters) == set(expected_adapters)
+
+
+class TestFileAdapterDispatcherValidation:
+    """Test validation-related functionality."""
+
+    def test_apply_validation_disabled(self):
+        """Test _apply_validation returns raw data when validation disabled."""
+        from adapters.file_adapter_dispatcher import FileAdapterDispatcher
+
+        dispatcher = FileAdapterDispatcher(use_base_validation=False)
+
+        # When validation is disabled, should return data unchanged (line 156)
+        test_data = [{"key": "value"}]
+        result = dispatcher._apply_validation(test_data)
+
+        assert result == test_data  # Should return raw data
+
+    def test_load_adapter_class_not_found(self):
+        """Test _load_adapter raises DispatcherError when class not found in module."""
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from adapters.file_adapter_dispatcher import (
+            DispatcherError,
+            FileAdapterDispatcher,
+        )
+
+        dispatcher = FileAdapterDispatcher()
+
+        # Mock importlib to return a module without the expected class
+        mock_module = MagicMock(spec=[])  # Empty spec = no attributes
+
+        with patch("importlib.import_module", return_value=mock_module):
+            with pytest.raises(DispatcherError, match="Adapter class .* not found"):
+                # This will hit line 126 when hasattr returns False
+                dispatcher._load_adapter("fake_adapter")

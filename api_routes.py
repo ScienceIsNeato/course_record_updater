@@ -458,49 +458,77 @@ def list_users():
     - department: Filter by department (optional)
     """
     try:
-        try:
-            _, institution_ids, is_global = _resolve_institution_scope()
-        except InstitutionContextMissingError:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
+        # Resolve institution scope and validate access
+        _, institution_ids, is_global = _resolve_users_scope()
 
+        # Get filter parameters
         role_filter = request.args.get("role")
         department_filter = request.args.get("department")
 
-        if is_global:
-            if role_filter:
-                users = get_users_by_role(role_filter)
-                if institution_ids:
-                    users = [
-                        u
-                        for u in users
-                        if not u.get("institution_id")
-                        or u.get("institution_id") in institution_ids
-                    ]
-            else:
-                users = []
-                for inst_id in institution_ids:
-                    users.extend(get_all_users(inst_id))
-        else:
-            institution_id = institution_ids[0]
-            if role_filter:
-                users = [
-                    u
-                    for u in get_users_by_role(role_filter)
-                    if u.get("institution_id") == institution_id
-                ]
-            else:
-                users = get_all_users(institution_id)
+        # Get users based on scope and filters
+        users = _get_users_by_scope(is_global, institution_ids, role_filter)
 
+        # Apply department filter if specified
         if department_filter and users:
             users = [u for u in users if u.get("department") == department_filter]
 
         return jsonify({"success": True, "users": users, "count": len(users)})
 
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         return handle_api_error(e, "Get users", "Failed to retrieve users")
+
+
+def _resolve_users_scope():
+    """Resolve institution scope for user listing."""
+    try:
+        return _resolve_institution_scope()
+    except InstitutionContextMissingError:
+        raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
+
+
+def _get_users_by_scope(is_global: bool, institution_ids: list, role_filter: str):
+    """Get users based on scope (global vs institution) and role filter."""
+    if is_global:
+        return _get_global_users(institution_ids, role_filter)
+    else:
+        return _get_institution_users(institution_ids[0], role_filter)
+
+
+def _get_global_users(institution_ids: list, role_filter: str):
+    """Get users for global scope with optional role filtering."""
+    if role_filter:
+        users = get_users_by_role(role_filter)
+        if institution_ids:
+            # Filter to users in accessible institutions
+            users = [
+                u
+                for u in users
+                if not u.get("institution_id")
+                or u.get("institution_id") in institution_ids
+            ]
+        return users
+    else:
+        # Get all users from all accessible institutions
+        users = []
+        for inst_id in institution_ids:
+            users.extend(get_all_users(inst_id))
+        return users
+
+
+def _get_institution_users(institution_id: str, role_filter: str):
+    """Get users for single institution scope with optional role filtering."""
+    if role_filter:
+        # Filter users by role and institution
+        return [
+            u
+            for u in get_users_by_role(role_filter)
+            if u.get("institution_id") == institution_id
+        ]
+    else:
+        # Get all users for the institution
+        return get_all_users(institution_id)
 
 
 @api.route("/users", methods=["POST"])
@@ -644,64 +672,19 @@ def list_courses():
     - program_id: Override program context (optional, requires appropriate permissions)
     """
     try:
-        try:
-            current_user, institution_ids, is_global = _resolve_institution_scope()
-        except InstitutionContextMissingError:
-            return (
-                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
-                400,
-            )
+        # Resolve institution scope and validate access
+        current_user, institution_ids, is_global = _resolve_courses_scope()
 
-        program_id_override = request.args.get("program_id")
-        current_program_id = get_current_program_id()
+        # Handle program ID override with permission check
+        current_program_id = _resolve_program_override(current_user)
 
-        if program_id_override:
-            accessible_programs = (
-                current_user.get("program_ids", []) if current_user else []
-            )
-            if program_id_override in accessible_programs or (
-                current_user and current_user.get("role") == UserRole.SITE_ADMIN.value
-            ):
-                current_program_id = program_id_override
-            else:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Access denied to specified program",
-                        }
-                    ),
-                    403,
-                )
-
+        # Get department filter
         department_filter = request.args.get("department")
 
-        if is_global:
-            courses: List[Dict[str, Any]] = []
-            for inst_id in institution_ids:
-                courses.extend(get_all_courses(inst_id))
-            context_info = "system-wide"
-
-            if department_filter:
-                courses = [
-                    c for c in courses if c.get("department") == department_filter
-                ]
-                context_info = f"system-wide, department {department_filter}"
-        else:
-            institution_id = institution_ids[0]
-            if current_program_id:
-                courses = get_courses_by_program(current_program_id)
-                if department_filter:
-                    courses = [
-                        c for c in courses if c.get("department") == department_filter
-                    ]
-                context_info = f"program {current_program_id}"
-            elif department_filter:
-                courses = get_courses_by_department(institution_id, department_filter)
-                context_info = f"department {department_filter}"
-            else:
-                courses = get_all_courses(institution_id)
-                context_info = f"institution {institution_id}"
+        # Get courses and context based on scope
+        courses, context_info = _get_courses_by_scope(
+            is_global, institution_ids, current_program_id, department_filter
+        )
 
         return jsonify(
             {
@@ -715,6 +698,95 @@ def list_courses():
 
     except Exception as e:
         return handle_api_error(e, "Get courses", "Failed to retrieve courses")
+
+
+def _resolve_courses_scope():
+    """Resolve institution scope for courses listing."""
+    try:
+        return _resolve_institution_scope()
+    except InstitutionContextMissingError:
+        raise ValueError(INSTITUTION_CONTEXT_REQUIRED_MSG)
+
+
+def _resolve_program_override(current_user):
+    """Resolve program ID override with permission validation."""
+    program_id_override = request.args.get("program_id")
+    current_program_id = get_current_program_id()
+
+    if not program_id_override:
+        return current_program_id
+
+    # Check if user has access to the specified program
+    if _user_can_access_program(current_user, program_id_override):
+        return program_id_override
+    else:
+        raise PermissionError("Access denied to specified program")
+
+
+def _user_can_access_program(current_user, program_id):
+    """Check if user can access the specified program."""
+    if not current_user:
+        return False
+
+    # Site admins can access any program
+    if current_user.get("role") == UserRole.SITE_ADMIN.value:
+        return True
+
+    # Check if program is in user's accessible programs
+    accessible_programs = current_user.get("program_ids", [])
+    return program_id in accessible_programs
+
+
+def _get_courses_by_scope(
+    is_global, institution_ids, current_program_id, department_filter
+):
+    """Get courses and context info based on scope and filters."""
+    if is_global:
+        return _get_global_courses(institution_ids, department_filter)
+    else:
+        return _get_institution_courses(
+            institution_ids[0], current_program_id, department_filter
+        )
+
+
+def _get_global_courses(institution_ids, department_filter):
+    """Get courses across all institutions with optional department filter."""
+    courses: List[Dict[str, Any]] = []
+    for inst_id in institution_ids:
+        courses.extend(get_all_courses(inst_id))
+
+    context_info = "system-wide"
+
+    if department_filter:
+        courses = [c for c in courses if c.get("department") == department_filter]
+        context_info = f"system-wide, department {department_filter}"
+
+    return courses, context_info
+
+
+def _get_institution_courses(institution_id, current_program_id, department_filter):
+    """Get courses for a specific institution with optional program/department filters."""
+    if current_program_id:
+        return _get_program_courses(current_program_id, department_filter)
+    elif department_filter:
+        courses = get_courses_by_department(institution_id, department_filter)
+        context_info = f"department {department_filter}"
+        return courses, context_info
+    else:
+        courses = get_all_courses(institution_id)
+        context_info = f"institution {institution_id}"
+        return courses, context_info
+
+
+def _get_program_courses(program_id, department_filter):
+    """Get courses for a specific program with optional department filter."""
+    courses = get_courses_by_program(program_id)
+    context_info = f"program {program_id}"
+
+    if department_filter:
+        courses = [c for c in courses if c.get("department") == department_filter]
+
+    return courses, context_info
 
 
 @api.route("/courses", methods=["POST"])
@@ -1294,45 +1366,81 @@ def add_course_to_program_api(program_id: str):
 def remove_course_from_program_api(program_id: str, course_id: str):
     """Remove a course from a program"""
     try:
-        # Validate program exists
-        program = get_program_by_id(program_id)
-        if not program:
-            return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
+        # Validate program exists and get institution context
+        program, institution_id = _validate_program_for_removal(program_id)
 
-        # Get default program for orphan handling
-        institution_id = program.get("institution_id")
-        programs = get_programs_by_institution(institution_id) if institution_id else []
-        default_program = next(
-            (p for p in programs if p.get("is_default", False)), None
+        # Get default program for orphan prevention
+        default_program_id = _get_default_program_id(institution_id)
+
+        # Perform course removal with orphan handling
+        success = _remove_course_with_orphan_handling(
+            course_id, program_id, institution_id, default_program_id
         )
 
-        default_program_id = default_program["id"] if default_program else None
+        # Return appropriate response
+        return _build_removal_response(success, course_id, program)
 
-        # Remove course from program
-        success = remove_course_from_program(course_id, program_id)
-
-        # If removal successful and default program exists, assign to default to prevent orphaning
-        if success and default_program_id:
-            assign_course_to_default_program(course_id, institution_id)
-
-        if success:
-            return jsonify(
-                {
-                    "success": True,
-                    "message": f"Course {course_id} removed from program {program.get('name', program_id)}",
-                }
-            )
-        else:
-            return (
-                jsonify(
-                    {"success": False, "error": "Failed to remove course from program"}
-                ),
-                500,
-            )
-
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
     except Exception as e:
         return handle_api_error(
             e, "Remove course from program", "Failed to remove course from program"
+        )
+
+
+def _validate_program_for_removal(program_id: str):
+    """Validate program exists and return program with institution ID."""
+    program = get_program_by_id(program_id)
+    if not program:
+        raise ValueError(PROGRAM_NOT_FOUND_MSG)
+
+    institution_id = program.get("institution_id")
+    return program, institution_id
+
+
+def _get_default_program_id(institution_id: str):
+    """Get the default program ID for the institution."""
+    if not institution_id:
+        return None
+
+    programs = get_programs_by_institution(institution_id)
+    if not programs:
+        return None
+
+    default_program = next((p for p in programs if p.get("is_default", False)), None)
+
+    return default_program["id"] if default_program else None
+
+
+def _remove_course_with_orphan_handling(
+    course_id: str, program_id: str, institution_id: str, default_program_id: str
+) -> bool:
+    """Remove course from program and handle orphan prevention."""
+    # Remove course from program
+    success = remove_course_from_program(course_id, program_id)
+
+    # If removal successful and default program exists, assign to default to prevent orphaning
+    if success and default_program_id:
+        assign_course_to_default_program(course_id, institution_id)
+
+    return success
+
+
+def _build_removal_response(success: bool, course_id: str, program: dict):
+    """Build the appropriate response for course removal."""
+    if success:
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Course {course_id} removed from program {program.get('name', program.get('id'))}",
+            }
+        )
+    else:
+        return (
+            jsonify(
+                {"success": False, "error": "Failed to remove course from program"}
+            ),
+            500,
         )
 
 
@@ -1341,59 +1449,25 @@ def remove_course_from_program_api(program_id: str, course_id: str):
 def bulk_manage_program_courses(program_id: str):
     """Bulk add or remove courses from a program"""
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+        # Validate request data
+        validation_response = _validate_bulk_manage_request()
+        if validation_response:
+            return validation_response
 
+        data = request.get_json()
         action = data.get("action")
         course_ids = data.get("course_ids", [])
-
-        if not action or action not in ["add", "remove"]:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid or missing action. Use 'add' or 'remove'",
-                    }
-                ),
-                400,
-            )
-
-        if not course_ids or not isinstance(course_ids, list):
-            return (
-                jsonify(
-                    {"success": False, "error": "Missing or invalid course_ids array"}
-                ),
-                400,
-            )
 
         # Validate program exists
         program = get_program_by_id(program_id)
         if not program:
             return jsonify({"success": False, "error": PROGRAM_NOT_FOUND_MSG}), 404
 
+        # Execute bulk operation based on action
         if action == "add":
-            result = bulk_add_courses_to_program(course_ids, program_id)
-            message = f"Bulk add operation completed: {result['success_count']} added"
+            result, message = _execute_bulk_add(course_ids, program_id)
         else:  # remove
-            # Get default program for orphan handling
-            institution_id = get_current_institution_id()
-            programs = get_programs_by_institution(institution_id)
-            default_program = next(
-                (p for p in programs if p.get("is_default", False)), None
-            )
-            default_program_id = default_program["id"] if default_program else None
-
-            result = bulk_remove_courses_from_program(course_ids, program_id)
-
-            # Assign successfully removed courses to default program to prevent orphaning
-            if result.get("removed", 0) > 0 and default_program_id:
-                for course_id in course_ids:
-                    assign_course_to_default_program(course_id, institution_id)
-
-            message = (
-                f"Bulk remove operation completed: {result.get('removed', 0)} removed"
-            )
+            result, message = _execute_bulk_remove(course_ids, program_id)
 
         return jsonify({"success": True, "message": message, "details": result})
 
@@ -1401,6 +1475,59 @@ def bulk_manage_program_courses(program_id: str):
         return handle_api_error(
             e, "Bulk manage program courses", "Failed to bulk manage program courses"
         )
+
+
+def _validate_bulk_manage_request():
+    """Validate bulk manage request data."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+    action = data.get("action")
+    course_ids = data.get("course_ids", [])
+
+    if not action or action not in ["add", "remove"]:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Invalid or missing action. Use 'add' or 'remove'",
+                }
+            ),
+            400,
+        )
+
+    if not course_ids or not isinstance(course_ids, list):
+        return (
+            jsonify({"success": False, "error": "Missing or invalid course_ids array"}),
+            400,
+        )
+
+    return None
+
+
+def _execute_bulk_add(course_ids: list, program_id: str):
+    """Execute bulk add operation."""
+    result = bulk_add_courses_to_program(course_ids, program_id)
+    message = f"Bulk add operation completed: {result['success_count']} added"
+    return result, message
+
+
+def _execute_bulk_remove(course_ids: list, program_id: str):
+    """Execute bulk remove operation with orphan handling."""
+    # Get default program for orphan handling
+    institution_id = get_current_institution_id()
+    default_program_id = _get_default_program_id(institution_id)
+
+    result = bulk_remove_courses_from_program(course_ids, program_id)
+
+    # Assign successfully removed courses to default program to prevent orphaning
+    if result.get("removed", 0) > 0 and default_program_id:
+        for course_id in course_ids:
+            assign_course_to_default_program(course_id, institution_id)
+
+    message = f"Bulk remove operation completed: {result.get('removed', 0)} removed"
+    return result, message
 
 
 @api.route("/courses/<course_id>/programs", methods=["GET"])
@@ -2746,194 +2873,24 @@ def excel_import_api():
         500: Server error
     """
     try:
-        # Debug: Log request information
-        logger.info("Excel import request received")
-        logger.info(f"Request files: {list(request.files.keys())}")
-        logger.info(f"Request form: {dict(request.form)}")
+        # Validate request and extract parameters
+        file, import_params = _validate_excel_import_request()
 
-        # Check if file was uploaded
-        if "excel_file" not in request.files:
-            logger.warning("No excel_file in request.files")
-            return jsonify({"success": False, "error": "No Excel file provided"}), 400
-
-        file = request.files["excel_file"]
-        if file.filename == "":
-            logger.warning("Empty filename in uploaded file")
-            return jsonify({"success": False, "error": "No file selected"}), 400
-
-        logger.info(
-            f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+        # Check user permissions
+        current_user, institution_id = _check_excel_import_permissions(
+            import_params["adapter_id"], import_params["import_data_type"]
         )
 
-        # Validate file type
-        if not file.filename.lower().endswith((".xlsx", ".xls")):
-            logger.warning(f"Invalid file type: {file.filename}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid file type. Only Excel files (.xlsx, .xls) are supported.",
-                    }
-                ),
-                400,
-            )
+        # Process the import
+        return _process_excel_import(file, current_user, institution_id, import_params)
 
-        # Get form parameters
-        adapter_id = request.form.get("import_adapter", "cei_excel_format_v1")
-        conflict_strategy = request.form.get("conflict_strategy", "use_theirs")
-        dry_run = request.form.get("dry_run", "false").lower() == "true"
-        verbose_output = request.form.get("verbose_output", "false").lower() == "true"
-        # Note: delete_existing_db parameter available but not currently used
-        # delete_existing_db = request.form.get("delete_existing_db", "false").lower() == "true"
-        import_data_type = request.form.get("import_data_type", "courses")
-
-        # Get current user and check permissions
-        current_user = get_current_user()
-        if not current_user:
-            return jsonify({"success": False, "error": "Authentication required"}), 401
-
-        user_role = current_user.get("role")
-        user_institution_id = current_user.get("institution_id")
-
-        # Determine institution_id based on user role and adapter
-        if user_role == UserRole.SITE_ADMIN.value:
-            # Site admins can import for any institution - let adapter determine it
-            if adapter_id == "cei_excel_format_v1":
-                # CEI adapter always imports for CEI institution
-                from database_service import create_default_cei_institution
-
-                institution_id = create_default_cei_institution()
-                if not institution_id:
-                    return (
-                        jsonify(
-                            {
-                                "success": False,
-                                "error": "Failed to create/find CEI institution",
-                            }
-                        ),
-                        500,
-                    )
-            else:
-                # For other adapters, site admin needs to specify institution
-                # TODO: Add institution selection UI for site admins
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Site admin must specify target institution for non-CEI adapters",
-                        }
-                    ),
-                    400,
-                )
-        else:
-            # Institution/program admins use their own institution
-            institution_id = user_institution_id
-            if not institution_id:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "User has no associated institution",
-                        }
-                    ),
-                    403,
-                )
-
-        # Role-based permission checks
-        allowed_data_types = {
-            UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
-            UserRole.INSTITUTION_ADMIN.value: [
-                "programs",
-                "courses",
-                "faculty",
-                "students",
-            ],
-            UserRole.PROGRAM_ADMIN.value: [],  # Program admins cannot import per requirements
-            UserRole.INSTRUCTOR.value: [],  # Instructors cannot import
-        }
-
-        if user_role not in allowed_data_types:
-            return jsonify({"success": False, "error": "Invalid user role"}), 403
-
-        if import_data_type not in allowed_data_types[user_role]:
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": f"Permission denied: {user_role} cannot import {import_data_type}",
-                    }
-                ),
-                403,
-            )
-
-        # Save uploaded file temporarily using secure tempfile approach
-        import os
-        import re
-        import tempfile
-
-        # Sanitize filename for logging/display purposes only
-        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
-        if not safe_filename or safe_filename.startswith("."):
-            safe_filename = f"upload_{hash(file.filename) % 10000}"
-
-        # Use secure temporary file creation
-        temp_file_prefix = f"import_{current_user.get('user_id')}_{import_data_type}_"
-
-        try:
-            # Create secure temporary file
-            with tempfile.NamedTemporaryFile(
-                mode="wb",
-                prefix=temp_file_prefix,
-                suffix=f"_{safe_filename}",
-                delete=False,
-            ) as temp_file:
-                file.save(temp_file)
-                temp_filepath = temp_file.name
-
-            # Import the Excel processing function
-            from import_service import import_excel
-
-            # Execute the import
-            result = import_excel(
-                file_path=temp_filepath,
-                institution_id=institution_id,
-                conflict_strategy=conflict_strategy,
-                dry_run=dry_run,
-                adapter_id=adapter_id,
-                verbose=verbose_output,
-            )
-
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": (
-                            "Import completed successfully"
-                            if not dry_run
-                            else "Validation completed successfully"
-                        ),
-                        "records_processed": result.records_processed,
-                        "records_created": result.records_created,
-                        "records_updated": result.records_updated,
-                        "records_skipped": result.records_skipped,
-                        "conflicts_detected": result.conflicts_detected,
-                        "execution_time": result.execution_time,
-                        "errors": result.errors,
-                        "warnings": result.warnings,
-                        "dry_run": dry_run,
-                    }
-                ),
-                200,
-            )
-
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_filepath):
-                os.remove(temp_filepath)
+    except ValueError as e:
+        logger.warning(f"Invalid request for import: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
 
     except PermissionError as e:
         logger.warning(f"Permission denied for import: {e}")
-        return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+        return jsonify({"success": False, "error": str(e)}), 403
 
     except Exception as e:
         logger.error(f"Excel import error: {e}")
@@ -2941,13 +2898,189 @@ def excel_import_api():
             jsonify(
                 {
                     "success": False,
-                    "error": (
-                        str(e) if "Permission denied" in str(e) else "Import failed"
-                    ),
+                    "error": "Import failed",
                 }
             ),
             500,
         )
+
+
+def _validate_excel_import_request():
+    """Validate the Excel import request and extract parameters."""
+    # Debug: Log request information
+    logger.info("Excel import request received")
+    logger.info(f"Request files: {list(request.files.keys())}")
+    logger.info(f"Request form: {dict(request.form)}")
+
+    # Check if file was uploaded
+    if "excel_file" not in request.files:
+        logger.warning("No excel_file in request.files")
+        raise ValueError("No Excel file provided")
+
+    file = request.files["excel_file"]
+    if file.filename == "":
+        logger.warning("Empty filename in uploaded file")
+        raise ValueError("No file selected")
+
+    logger.info(
+        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+    )
+
+    # Validate file type
+    if not file.filename.lower().endswith((".xlsx", ".xls")):
+        logger.warning(f"Invalid file type: {file.filename}")
+        raise ValueError(
+            "Invalid file type. Only Excel files (.xlsx, .xls) are supported."
+        )
+
+    # Get form parameters
+    import_params = {
+        "adapter_id": request.form.get("import_adapter", "cei_excel_format_v1"),
+        "conflict_strategy": request.form.get("conflict_strategy", "use_theirs"),
+        "dry_run": request.form.get("dry_run", "false").lower() == "true",
+        "verbose_output": request.form.get("verbose_output", "false").lower() == "true",
+        "import_data_type": request.form.get("import_data_type", "courses"),
+    }
+
+    return file, import_params
+
+
+def _check_excel_import_permissions(adapter_id, import_data_type):
+    """Check user permissions for Excel import."""
+    # Get current user and check authentication
+    current_user = get_current_user()
+    if not current_user:
+        raise PermissionError("Authentication required")
+
+    user_role = current_user.get("role")
+    user_institution_id = current_user.get("institution_id")
+
+    # Determine institution_id based on user role and adapter
+    institution_id = _determine_target_institution(
+        user_role, user_institution_id, adapter_id
+    )
+
+    # Check role-based permissions
+    _validate_import_permissions(user_role, import_data_type)
+
+    return current_user, institution_id
+
+
+def _determine_target_institution(user_role, user_institution_id, adapter_id):
+    """Determine the target institution for the import."""
+    if user_role == UserRole.SITE_ADMIN.value:
+        # Site admins can import for any institution - let adapter determine it
+        if adapter_id == "cei_excel_format_v1":
+            # CEI adapter always imports for CEI institution
+            from database_service import create_default_cei_institution
+
+            institution_id = create_default_cei_institution()
+            if not institution_id:
+                raise ValueError("Failed to create/find CEI institution")
+            return institution_id
+        else:
+            # For other adapters, site admin needs to specify institution
+            # TODO: Add institution selection UI for site admins
+            raise ValueError(
+                "Site admin must specify target institution for non-CEI adapters"
+            )
+    else:
+        # Institution/program admins use their own institution
+        if not user_institution_id:
+            raise PermissionError("User has no associated institution")
+        return user_institution_id
+
+
+def _validate_import_permissions(user_role, import_data_type):
+    """Validate that the user role can import the specified data type."""
+    allowed_data_types = {
+        UserRole.SITE_ADMIN.value: ["institutions", "programs", "courses", "users"],
+        UserRole.INSTITUTION_ADMIN.value: [
+            "programs",
+            "courses",
+            "faculty",
+            "students",
+        ],
+        UserRole.PROGRAM_ADMIN.value: [],  # Program admins cannot import per requirements
+        UserRole.INSTRUCTOR.value: [],  # Instructors cannot import
+    }
+
+    if user_role not in allowed_data_types:
+        raise PermissionError("Invalid user role")
+
+    if import_data_type not in allowed_data_types[user_role]:
+        raise PermissionError(
+            f"Permission denied: {user_role} cannot import {import_data_type}"
+        )
+
+
+def _process_excel_import(file, current_user, institution_id, import_params):
+    """Process the Excel import with the validated parameters."""
+    import os
+    import re
+    import tempfile
+
+    # Sanitize filename for logging/display purposes only
+    safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+    if not safe_filename or safe_filename.startswith("."):
+        safe_filename = f"upload_{hash(file.filename) % 10000}"
+
+    # Use secure temporary file creation
+    temp_file_prefix = (
+        f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
+    )
+
+    try:
+        # Create secure temporary file
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=temp_file_prefix,
+            suffix=f"_{safe_filename}",
+            delete=False,
+        ) as temp_file:
+            file.save(temp_file)
+            temp_filepath = temp_file.name
+
+        # Import the Excel processing function
+        from import_service import import_excel
+
+        # Execute the import
+        result = import_excel(
+            file_path=temp_filepath,
+            institution_id=institution_id,
+            conflict_strategy=import_params["conflict_strategy"],
+            dry_run=import_params["dry_run"],
+            adapter_id=import_params["adapter_id"],
+            verbose=import_params["verbose_output"],
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": (
+                        "Import completed successfully"
+                        if not import_params["dry_run"]
+                        else "Validation completed successfully"
+                    ),
+                    "records_processed": result.records_processed,
+                    "records_created": result.records_created,
+                    "records_updated": result.records_updated,
+                    "records_skipped": result.records_skipped,
+                    "conflicts_detected": result.conflicts_detected,
+                    "execution_time": result.execution_time,
+                    "errors": result.errors,
+                    "warnings": result.warnings,
+                    "dry_run": import_params["dry_run"],
+                }
+            ),
+            200,
+        )
+
+    finally:
+        # Clean up temporary file
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
 
 
 # ============================================================================

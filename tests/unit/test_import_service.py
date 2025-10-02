@@ -78,6 +78,22 @@ class TestDatetimeConversion:
         assert result["created_at"] is None
         assert isinstance(result["updated_at"], datetime)
 
+    def test_convert_datetime_fields_with_z_format(self):
+        """Test datetime with Z suffix (UTC indicator)."""
+        from import_service import _normalize_datetime_string
+
+        # Z format with microseconds should be converted to +00:00
+        result = _normalize_datetime_string("2025-09-28T17:41:27.935901Z")
+        assert result == "2025-09-28T17:41:27.935901+00:00"
+
+    def test_convert_datetime_fields_already_normalized(self):
+        """Test datetime that already has UTC offset."""
+        from import_service import _normalize_datetime_string
+
+        # Already has +00:00, should be returned as-is
+        result = _normalize_datetime_string("2025-09-28T17:41:27.935901+00:00")
+        assert result == "2025-09-28T17:41:27.935901+00:00"
+
 
 class TestImportService:
     """Test the ImportService class with adapter registry integration."""
@@ -524,3 +540,436 @@ class TestReportGeneration:
             assert service.stats["conflicts_resolved"] > 0
             mock_update_user.assert_called_once_with("user_123", user_data)
             mock_create_user.assert_not_called()  # Should not create new user
+
+
+class TestImportServiceHelpers:
+    """Test ImportService helper methods."""
+
+    def test_prepare_import_file_not_found(self):
+        """Test _prepare_import with non-existent file."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        result = service._prepare_import("/nonexistent/file.xlsx", "test_adapter")
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "File not found" in service.stats["errors"][0]
+
+    def test_prepare_import_adapter_not_found(self):
+        """Test _prepare_import with invalid adapter."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = None
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "invalid_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "Adapter not found" in service.stats["errors"][0]
+
+    def test_prepare_import_file_incompatible(self):
+        """Test _prepare_import with incompatible file."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_adapter = Mock()
+                mock_adapter.validate_file_compatibility.return_value = (
+                    False,
+                    "Incompatible",
+                )
+
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = mock_adapter
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "File incompatible" in service.stats["errors"][0]
+
+    def test_prepare_import_success(self):
+        """Test _prepare_import with valid inputs."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx") as temp_file:
+            service = ImportService("test_inst")
+            service.reset_stats()
+
+            with patch("import_service.get_adapter_registry") as mock_registry:
+                mock_adapter = Mock()
+                mock_adapter.validate_file_compatibility.return_value = (
+                    True,
+                    "Compatible",
+                )
+
+                mock_reg = Mock()
+                mock_reg.get_adapter_by_id.return_value = mock_adapter
+                mock_registry.return_value = mock_reg
+
+                result = service._prepare_import(temp_file.name, "test_adapter")
+
+                assert result is mock_adapter
+                assert len(service.stats["errors"]) == 0
+
+    def test_parse_file_data_success(self):
+        """Test _parse_file_data with successful parsing."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.return_value = {
+            "courses": [{"course_id": "CS101"}],
+            "students": [],
+        }
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is not None
+        assert "courses" in result
+        mock_adapter.parse_file.assert_called_once()
+
+    def test_parse_file_data_parse_error(self):
+        """Test _parse_file_data with parsing error."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.side_effect = Exception("Parse failed")
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "Failed to parse file" in service.stats["errors"][0]
+
+    def test_parse_file_data_empty_result(self):
+        """Test _parse_file_data with empty parsing result."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        mock_adapter = Mock()
+        mock_adapter.parse_file.return_value = {}
+
+        result = service._parse_file_data(
+            mock_adapter, "/fake/path.xlsx", "test_adapter"
+        )
+
+        assert result is None
+        assert len(service.stats["errors"]) > 0
+        assert "No valid data found" in service.stats["errors"][0]
+
+
+class TestImportServiceErrorHandling:
+    """Test error handling in ImportService."""
+
+    def test_prepare_import_adapter_registry_error(self):
+        """Test _prepare_import handles AdapterRegistryError."""
+        from unittest.mock import patch
+
+        from adapters.adapter_registry import AdapterRegistryError
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock get_adapter_registry to raise AdapterRegistryError
+        with patch("import_service.get_adapter_registry") as mock_registry:
+            mock_reg = mock_registry.return_value
+            mock_reg.get_adapter_by_id.side_effect = AdapterRegistryError(
+                "Registry failed"
+            )
+
+            # Use a valid temp file
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service._prepare_import(tmp_path, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "Failed to get adapter" in service.stats["errors"][0]
+                assert "Registry failed" in service.stats["errors"][0]
+            finally:
+                os.unlink(tmp_path)
+
+    def test_prepare_import_file_validation_exception(self):
+        """Test _prepare_import handles file validation exception."""
+        from unittest.mock import Mock, patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock adapter that raises exception during validation
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.side_effect = RuntimeError(
+            "Validation failed"
+        )
+
+        with patch("import_service.get_adapter_registry") as mock_registry:
+            mock_reg = mock_registry.return_value
+            mock_reg.get_adapter_by_id.return_value = mock_adapter
+
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service._prepare_import(tmp_path, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "File validation failed" in service.stats["errors"][0]
+                assert "Validation failed" in service.stats["errors"][0]
+            finally:
+                os.unlink(tmp_path)
+
+    def test_update_progress_with_callback(self):
+        """Test _update_progress calls progress_callback when set."""
+        from unittest.mock import Mock
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Set up progress callback
+        mock_callback = Mock()
+        service.progress_callback = mock_callback
+
+        # Call _update_progress
+        service._update_progress(50, 100, "courses")
+
+        # Verify callback was called
+        assert mock_callback.called
+        call_args = mock_callback.call_args[1]
+        assert call_args["percentage"] == 50
+        assert call_args["records_processed"] == 50
+        assert call_args["total_records"] == 100
+        assert "courses" in call_args["message"]
+
+    def test_process_single_record_offerings(self):
+        """Test _process_single_record handles offerings."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_offering_import") as mock_process:
+            conflicts = service._process_single_record(
+                "offerings",
+                {"offering_id": "test"},
+                ConflictStrategy.USE_THEIRS,
+                dry_run=False,
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_process_single_record_sections(self):
+        """Test _process_single_record handles sections."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_section_import") as mock_process:
+            conflicts = service._process_single_record(
+                "sections",
+                {"section_id": "test"},
+                ConflictStrategy.USE_THEIRS,
+                dry_run=False,
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_process_single_record_terms(self):
+        """Test _process_single_record handles terms."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_term_import") as mock_process:
+            conflicts = service._process_single_record(
+                "terms", {"term_id": "test"}, ConflictStrategy.USE_THEIRS, dry_run=False
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_resolve_user_conflicts_use_theirs_dry_run(self):
+        """Test _resolve_user_conflicts with USE_THEIRS strategy in dry run."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        user_data = {"email": "test@example.com", "first_name": "Test"}
+        existing_user = {"email": "test@example.com", "first_name": "Old"}
+        detected_conflicts = []
+
+        with patch("import_service.update_user") as mock_update:
+            service._resolve_user_conflicts(
+                ConflictStrategy.USE_THEIRS,
+                detected_conflicts,
+                user_data,
+                existing_user,
+                "test@example.com",
+                dry_run=True,  # DRY RUN
+                conflicts=[],
+            )
+
+            # Should not call update_user in dry run
+            assert not mock_update.called
+            # Should have logged dry run message (check stats)
+            assert service.stats["records_updated"] == 0
+
+    def test_import_excel_file_top_level_exception(self):
+        """Test import_excel_file handles unexpected top-level exception."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock _prepare_import to raise unexpected exception
+        with patch.object(service, "_prepare_import", side_effect=RuntimeError("Boom")):
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service.import_excel_file(tmp_path)
+
+                assert result.success is False
+                assert len(result.errors) > 0
+                assert "Unexpected error during import" in result.errors[0]
+                assert "Boom" in result.errors[0]
+            finally:
+                os.unlink(tmp_path)
+
+    def test_process_data_records_exception_handling(self):
+        """Test exception handling when processing individual records in a batch."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock _process_single_record to raise exception
+        with patch.object(
+            service,
+            "_process_single_record",
+            side_effect=RuntimeError("Record processing failed"),
+        ):
+            # Call _process_data_records which should catch the exception
+            conflicts = service._process_data_type_records(
+                "courses",
+                [{"course_number": "TEST-101"}],
+                ConflictStrategy.USE_THEIRS,
+                False,  # dry_run
+                0,  # processed_records
+                1,  # total_records
+            )
+
+            # Should catch exception and log error
+            assert len(service.stats["errors"]) > 0
+            assert "Error processing courses record" in service.stats["errors"][0]
+            assert "Record processing failed" in service.stats["errors"][0]
+
+    def test_process_single_record_unknown_type(self):
+        """Test _process_single_record with unknown data type returns empty list."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        conflicts = service._process_single_record(
+            "unknown_type", {"data": "test"}, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert conflicts == []
+
+    def test_resolve_user_conflicts_use_mine_with_conflicts(self):
+        """Test _resolve_user_conflicts with USE_MINE and detected conflicts."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Create conflict records
+        from datetime import datetime, timezone
+
+        from import_service import ConflictRecord
+
+        detected_conflicts = [
+            ConflictRecord(
+                entity_type="user",
+                entity_id="test@example.com",
+                field_name="first_name",
+                existing_value="Old",
+                import_value="New",
+                resolution="pending",
+                timestamp=datetime.now(timezone.utc),
+            )
+        ]
+
+        service._resolve_user_conflicts(
+            ConflictStrategy.USE_MINE,
+            detected_conflicts,
+            {"email": "test@example.com"},
+            {"email": "test@example.com"},
+            "test@example.com",
+            dry_run=False,
+            conflicts=[],
+        )
+
+        # Should mark conflict as resolved
+        assert service.stats["conflicts_resolved"] == 1
+        assert detected_conflicts[0].resolution == "use_mine"
+
+    def test_resolve_course_conflicts_use_theirs_dry_run(self):
+        """Test _resolve_course_conflicts with USE_THEIRS in dry run mode."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        from datetime import datetime, timezone
+
+        from import_service import ConflictRecord
+
+        detected_conflicts = [
+            ConflictRecord(
+                entity_type="course",
+                entity_id="MATH-101",
+                field_name="title",
+                existing_value="Algebra",
+                import_value="New Algebra",
+                resolution="pending",
+                timestamp=datetime.now(timezone.utc),
+            )
+        ]
+
+        service._resolve_course_conflicts(
+            ConflictStrategy.USE_THEIRS,
+            detected_conflicts,
+            "MATH-101",
+            dry_run=True,  # DRY RUN mode
+            conflicts=[],
+        )
+
+        # Should log dry run message (line 580)
+        assert service.stats["conflicts_resolved"] == 1

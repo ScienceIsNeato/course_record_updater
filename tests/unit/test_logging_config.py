@@ -126,8 +126,7 @@ class TestLoggingFormatters:
         test_message = "Test import message"
         logger.info(test_message)
 
-        # If we get here without exception, the test passes
-        assert True
+        # Test passes if no exception was raised
 
     def test_multiple_logger_functions(self):
         """Test that multiple logger functions are available."""
@@ -168,16 +167,10 @@ class TestLoggingFormatters:
         """Test that loggers handle messages properly."""
         import_logger = get_import_logger()
 
-        # Test logging without errors
-        try:
-            import_logger.info("Test info message")
-            import_logger.warning("Test warning message")
-            import_logger.error("Test error message")
-            # If no exception, logging is working
-            assert True
-        except Exception as e:
-            # If logging fails, that's an issue
-            assert False, f"Logging failed: {e}"
+        # Test logging without errors - test passes if no exception is raised
+        import_logger.info("Test info message")
+        import_logger.warning("Test warning message")
+        import_logger.error("Test error message")
 
     def test_get_quality_gate_logger(self):
         """Test quality gate logger creation and configuration"""

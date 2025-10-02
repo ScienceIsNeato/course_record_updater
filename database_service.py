@@ -48,8 +48,14 @@ def reset_database() -> bool:
     return False
 
 
-def db_operation_timeout(seconds: Optional[int] = None):
-    """Legacy helper retained for API compatibility."""
+def db_operation_timeout():
+    """
+    Legacy no-op helper retained for API compatibility.
+
+    Returns a null context manager (does nothing).
+    This exists to avoid breaking existing code that calls this function,
+    but the timeout functionality is handled internally by database implementations.
+    """
     return nullcontext()
 
 

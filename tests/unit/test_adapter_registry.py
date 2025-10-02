@@ -510,3 +510,25 @@ class TestAdapterRegistryError:
             raise AdapterRegistryError("Test registry error")
 
         assert "Test registry error" in str(exc_info.value)
+
+    def test_get_adapter_instance_creation_failure(self):
+        """Test get_adapter raises AdapterRegistryError when adapter instantiation fails."""
+        from unittest.mock import MagicMock
+
+        from adapters.adapter_registry import AdapterRegistry, AdapterRegistryError
+
+        registry = AdapterRegistry()
+
+        # Create a mock adapter class that raises exception on instantiation
+        mock_adapter_class = MagicMock(side_effect=RuntimeError("Instantiation failed"))
+
+        # Register the failing adapter
+        registry._adapters["failing_adapter"] = {
+            "class": mock_adapter_class,
+            "name": "Failing Adapter",
+            "active": True,
+        }
+
+        # Attempt to get instance should raise AdapterRegistryError (line 337-339)
+        with pytest.raises(AdapterRegistryError, match="Cannot instantiate adapter"):
+            registry.get_adapter_by_id("failing_adapter")

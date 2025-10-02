@@ -1,5 +1,481 @@
 // static/script.js
 
+// --- Helper Functions (Module Scope) ---
+
+function isFieldRequired(fieldName) {
+  // Example: For this app, course_number, term, course_title are always required
+  return ['course_number', 'term', 'course_title'].includes(fieldName);
+}
+
+function validateFieldInput(input, updatedData) {
+  const fieldName = input.name;
+  const value = input.value.trim();
+  updatedData[fieldName] = value;
+
+  // Reset validation state
+  input.classList.remove('is-invalid');
+
+  // Check required fields
+  if (!value && isFieldRequired(fieldName)) {
+    input.classList.add('is-invalid');
+    return { hasError: true, message: 'Please fill in all required fields correctly.' };
+  }
+
+  // Check numeric fields
+  if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
+    input.classList.add('is-invalid');
+    return { hasError: true, message: 'Numeric fields must contain valid non-negative numbers.' };
+  }
+
+  return { hasError: false, message: '' };
+}
+
+function collectInputReferences(inputs) {
+  let numStudentsInput = null;
+  const gradeInputs = [];
+
+  inputs.forEach(input => {
+    if (input.name === 'num_students') numStudentsInput = input;
+    if (input.name.startsWith('grade_')) gradeInputs.push(input);
+  });
+
+  return { numStudentsInput, gradeInputs };
+}
+
+function validateGradeSum(updatedData, numStudentsInput, gradeInputs) {
+  const numStudentsValue = updatedData.num_students ? Number(updatedData.num_students) : NaN;
+  let gradeSum = 0;
+  let anyGradeEntered = false;
+
+  // Calculate grade sum and check if any grades were entered
+  gradeInputs.forEach(input => {
+    const gradeValue = updatedData[input.name] ? Number(updatedData[input.name]) : 0;
+    if (!isNaN(gradeValue) && gradeValue > 0) {
+      anyGradeEntered = true;
+      gradeSum += gradeValue;
+    }
+    if (!updatedData[input.name]) updatedData[input.name] = 0;
+  });
+
+  // Validate sum if conditions are met
+  if (!isNaN(numStudentsValue) && numStudentsValue >= 0 && anyGradeEntered) {
+    if (gradeSum !== numStudentsValue) {
+      // Mark fields as invalid
+      if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+      gradeInputs.forEach(input => input.classList.add('is-invalid'));
+      return {
+        hasError: true,
+        message: `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`
+      };
+    }
+  } else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
+    if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+    return {
+      hasError: true,
+      message:
+        'Number of Students is required and must be a valid non-negative number when entering grades.'
+    };
+  }
+
+  return { hasError: false, message: '' };
+}
+
+function updateCellDisplayValues(inputs) {
+  inputs.forEach(input => {
+    const cell = input.closest('td');
+    let displayValue = input.value.trim();
+
+    // Handle display for empty optional numbers
+    if (input.type === 'number' && !displayValue) {
+      if (input.name === 'num_students') displayValue = 'N/A';
+      else if (input.name.startsWith('grade_')) displayValue = '-';
+    }
+    cell.textContent = displayValue;
+  });
+}
+
+function handleBackendError(result, response, numStudentsInput, gradeInputs) {
+  const backendError = result.error || 'Server error';
+
+  if (
+    backendError.includes('Sum of grades') ||
+    backendError.includes('Number of students is required')
+  ) {
+    if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
+    gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
+  }
+
+  alert(`Error updating course: ${backendError}`);
+}
+
+// --- Import Form Helper Functions ---
+
+function validateImportForm(fileInput, conflictStrategy) {
+  if (!fileInput.files[0]) {
+    alert('Please select an Excel file first.');
+    return false;
+  }
+
+  if (!conflictStrategy) {
+    alert('Please select a conflict resolution strategy.');
+    return false;
+  }
+
+  return true;
+}
+
+function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
+  let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
+
+  if (deleteExistingDb?.checked) {
+    confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
+  }
+
+  confirmMsg += ' Are you sure?';
+  return confirmMsg;
+}
+
+function buildImportFormData(fileInput, conflictStrategy, dryRun, adapterSelect, deleteExistingDb) {
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('conflict_strategy', conflictStrategy.value);
+  formData.append('dry_run', dryRun?.checked ? 'true' : 'false');
+  formData.append('adapter_name', adapterSelect.value);
+  formData.append('delete_existing_db', deleteExistingDb?.checked ? 'true' : 'false');
+  return formData;
+}
+
+// Note: handleErrorStatus will be replaced with inline logic in initializeImportForm
+// to avoid referencing locally-scoped functions
+
+function buildImportHeader(result, success) {
+  const alertClass = success ? 'alert-success' : 'alert-danger';
+  const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+  const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
+
+  return `
+      <div class="alert ${alertClass}">
+        <h5><i class="${icon}"></i> Import Results (${mode})</h5>
+        <div class="row">
+          <div class="col-md-6">
+            <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
+            <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
+            <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
+            <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
+            <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
+          </div>
+        </div>
+      </div>
+    `;
+}
+
+function buildErrorsSection(errors) {
+  if (!errors || errors.length === 0) return '';
+
+  const displayErrors = errors.slice(0, 10);
+  const moreErrorsText =
+    errors.length > 10 ? `<li><em>... and ${errors.length - 10} more errors</em></li>` : '';
+
+  return `
+      <div class="alert alert-danger">
+        <h6>Errors (${errors.length}):</h6>
+        <ul>
+          ${displayErrors.map(error => `<li>${error}</li>`).join('')}
+          ${moreErrorsText}
+        </ul>
+      </div>
+    `;
+}
+
+function buildWarningsSection(warnings) {
+  if (!warnings || warnings.length === 0) return '';
+
+  const displayWarnings = warnings.slice(0, 5);
+  const moreWarningsText =
+    warnings.length > 5 ? `<li><em>... and ${warnings.length - 5} more warnings</em></li>` : '';
+
+  return `
+      <div class="alert alert-warning">
+        <h6>Warnings (${warnings.length}):</h6>
+        <ul>
+          ${displayWarnings.map(warning => `<li>${warning}</li>`).join('')}
+          ${moreWarningsText}
+        </ul>
+      </div>
+    `;
+}
+
+function buildConflictsSection(conflicts) {
+  if (!conflicts || conflicts.length === 0) return '';
+
+  const displayConflicts = conflicts.slice(0, 20);
+  const moreConflictsRow =
+    conflicts.length > 20
+      ? `
+      <tr>
+        <td colspan="6" class="text-center">
+          <em>... and ${conflicts.length - 20} more conflicts</em>
+        </td>
+      </tr>
+    `
+      : '';
+
+  const conflictRows = displayConflicts
+    .map(
+      conflict => `
+      <tr>
+        <td>${conflict.entity_type}</td>
+        <td>${conflict.entity_key}</td>
+        <td>${conflict.field_name}</td>
+        <td>${conflict.existing_value}</td>
+        <td>${conflict.import_value}</td>
+        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
+      </tr>
+    `
+    )
+    .join('');
+
+  return `
+      <div class="alert alert-info">
+        <h6>Conflicts Resolved (${conflicts.length}):</h6>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Key</th>
+                <th>Field</th>
+                <th>Existing Value</th>
+                <th>Import Value</th>
+                <th>Resolution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${conflictRows}
+              ${moreConflictsRow}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+}
+
+// --- Helper Functions ---
+
+function handleDelete(row, courseId, courseNumber) {
+  // Use simple confirm for now, prompt was complex
+  const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
+
+  if (!window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  // Proceed with deletion
+  // Use POST and rely on backend route allowing POST for delete
+  fetch(`/delete_course/${courseId}`, {
+    method: 'POST'
+  })
+    .then(response => {
+      if (!response.ok) {
+        return response
+          .json()
+          .then(err => {
+            throw new Error(err.error || `Server responded with status ${response.status}`);
+          })
+          .catch(() => {
+            throw new Error(`Server responded with status ${response.status}`);
+          });
+      }
+      return response.json(); // Expect success JSON
+    })
+    .then(result => {
+      if (result.success) {
+        row.remove(); // Remove row from table
+        alert(`Course ${courseNumber} deleted successfully.`);
+      } else {
+        // eslint-disable-next-line no-console
+        console.error('Delete failed on server:', result.error);
+        alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
+      }
+    })
+    .catch(error => {
+      // eslint-disable-next-line no-console
+      console.error('Network or other error during delete:', error);
+      alert(`Failed to delete course: ${error.message}`);
+    });
+}
+
+function revertRowToActionButtons(row) {
+  const actionCellIndex = 10; // Updated index for 'Actions' cell
+  const actionCell = row.cells[actionCellIndex];
+  if (actionCell) {
+    actionCell.innerHTML = `
+                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
+                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
+            `;
+  }
+  // Clean up dataset
+  delete row.dataset.originalValues;
+}
+
+function getFieldNameByIndex(index) {
+  // Map table column index to field name (must match table structure in index.html)
+  const fieldMap = [
+    'course_number', // 0
+    'course_title', // 1
+    'instructor_name', // 2
+    'term', // 3
+    'num_students', // 4
+    'grade_a', // 5
+    'grade_b', // 6
+    'grade_c', // 7
+    'grade_d', // 8
+    'grade_f', // 9
+    null // 10 Actions
+  ];
+  return fieldMap[index] || null;
+}
+
+// --- Table Row Editing Functions (Module Scope) ---
+
+function makeRowEditable(row) {
+  // Store original values & switch action buttons
+  const originalValues = {};
+  const actionCellIndex = 10; // Updated index for 'Actions' cell
+
+  row.querySelectorAll('td').forEach((cell, index) => {
+    if (index === actionCellIndex) return; // Skip actions cell
+
+    const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
+    if (!fieldName) return;
+
+    const originalValue = cell.textContent.trim();
+    originalValues[fieldName] = originalValue;
+
+    // Replace cell content with appropriate input field
+    let input;
+    if (fieldName === 'term') {
+      input = document.createElement('select');
+      input.classList.add('form-select', 'form-select-sm', 'inline-edit-input'); // Bootstrap classes
+      // Add options (ideally passed from server or hardcoded if static)
+      const allowedTerms = ['FA2024', 'SP2024', 'SU2024', 'FA2025', 'SP2025', 'SU2025']; // Match adapter/template
+      allowedTerms.forEach(term => {
+        const option = document.createElement('option');
+        option.value = term;
+        option.text = term;
+        if (term === originalValue) {
+          option.selected = true;
+        }
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type =
+        fieldName === 'num_students' || fieldName.startsWith('grade_') ? 'number' : 'text';
+      if (input.type === 'number') {
+        input.min = '0'; // Set min for number inputs
+      }
+      input.value = originalValue === 'N/A' || originalValue === '-' ? '' : originalValue; // Handle placeholder display values
+      input.classList.add('form-control', 'form-control-sm', 'inline-edit-input'); // Bootstrap classes
+    }
+    input.name = fieldName;
+    cell.innerHTML = ''; // Clear cell
+    cell.appendChild(input);
+  });
+
+  // Store original values on the row for cancel functionality
+  row.dataset.originalValues = JSON.stringify(originalValues);
+
+  // Change buttons in the action cell
+  const actionCell = row.cells[actionCellIndex];
+  actionCell.innerHTML = `
+            <button class="btn btn-sm btn-success save-btn">Save</button>
+            <button class="btn btn-sm btn-secondary cancel-btn">Cancel</button>
+        `;
+}
+
+async function handleSave(row, courseId) {
+  const inputs = row.querySelectorAll('.inline-edit-input');
+  const updatedData = {};
+  let hasError = false;
+  let validationErrorMsg = '';
+
+  // Collect input references
+  const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
+
+  // Validate all input fields
+  inputs.forEach(input => {
+    const validation = validateFieldInput(input, updatedData);
+    if (validation.hasError) {
+      hasError = true;
+      if (!validationErrorMsg) validationErrorMsg = validation.message;
+    }
+  });
+
+  // Validate grade sum logic
+  if (!hasError) {
+    const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
+    if (gradeValidation.hasError) {
+      hasError = true;
+      validationErrorMsg = gradeValidation.message;
+    }
+  }
+
+  // Stop if validation errors found
+  if (hasError) {
+    alert(validationErrorMsg);
+    return;
+  }
+
+  // --- Proceed with saving ---
+
+  try {
+    // Use POST and rely on backend route allowing POST for updates
+    const response = await fetch(`/edit_course/${courseId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(updatedData)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      updateCellDisplayValues(inputs);
+      revertRowToActionButtons(row);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('Update failed:', result.error || `HTTP ${response.status}`);
+      handleBackendError(result, response, numStudentsInput, gradeInputs);
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Network or fetch error during save:', error);
+    alert('Failed to send update request.');
+  }
+}
+
+function cancelEdit(row) {
+  const originalValues = JSON.parse(row.dataset.originalValues || '{}');
+
+  row.querySelectorAll('td').forEach((cell, _index) => {
+    const input = cell.querySelector('.inline-edit-input');
+    if (input) {
+      const fieldName = input.name;
+      cell.textContent = originalValues[fieldName] !== undefined ? originalValues[fieldName] : '';
+    }
+  });
+
+  revertRowToActionButtons(row);
+}
+
+// --- DOM Event Listeners ---
+
 document.addEventListener('DOMContentLoaded', () => {
   const courseTableBody = document.querySelector('.table tbody'); // Target tbody directly
 
@@ -9,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTableBody.addEventListener('click', async event => {
       const target = event.target;
       const row = target.closest('tr');
-      if (!row || !row.dataset.courseId) {
+      if (!row?.dataset?.courseId) {
         // Ignore clicks that aren't on a button within a valid course row
         return;
       }
@@ -33,322 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     // eslint-disable-next-line no-console
     console.log('No course table found - skipping table event listeners (expected in cleaned UI)');
-  }
-
-  // --- Helper Functions ---
-
-  function makeRowEditable(row) {
-    // Store original values & switch action buttons
-    const originalValues = {};
-    const actionCellIndex = 10; // Updated index for 'Actions' cell
-
-    row.querySelectorAll('td').forEach((cell, index) => {
-      if (index === actionCellIndex) return; // Skip actions cell
-
-      const fieldName = getFieldNameByIndex(index); // Helper to map index to field name
-      if (!fieldName) return;
-
-      const originalValue = cell.textContent.trim();
-      originalValues[fieldName] = originalValue;
-
-      // Replace cell content with appropriate input field
-      let input;
-      if (fieldName === 'term') {
-        input = document.createElement('select');
-        input.classList.add('form-select', 'form-select-sm', 'inline-edit-input'); // Bootstrap classes
-        // Add options (ideally passed from server or hardcoded if static)
-        const allowedTerms = ['FA2024', 'SP2024', 'SU2024', 'FA2025', 'SP2025', 'SU2025']; // Match adapter/template
-        allowedTerms.forEach(term => {
-          const option = document.createElement('option');
-          option.value = term;
-          option.text = term;
-          if (term === originalValue) {
-            option.selected = true;
-          }
-          input.appendChild(option);
-        });
-      } else {
-        input = document.createElement('input');
-        input.type =
-          fieldName === 'num_students' || fieldName.startsWith('grade_') ? 'number' : 'text';
-        if (input.type === 'number') {
-          input.min = '0'; // Set min for number inputs
-        }
-        input.value = originalValue === 'N/A' || originalValue === '-' ? '' : originalValue; // Handle placeholder display values
-        input.classList.add('form-control', 'form-control-sm', 'inline-edit-input'); // Bootstrap classes
-      }
-      input.name = fieldName;
-      cell.innerHTML = ''; // Clear cell
-      cell.appendChild(input);
-    });
-
-    // Store original values on the row for cancel functionality
-    row.dataset.originalValues = JSON.stringify(originalValues);
-
-    // Change buttons in the action cell
-    const actionCell = row.cells[actionCellIndex];
-    actionCell.innerHTML = `
-            <button class="btn btn-sm btn-success save-btn">Save</button>
-            <button class="btn btn-sm btn-secondary cancel-btn">Cancel</button>
-        `;
-  }
-
-  function validateFieldInput(input, updatedData) {
-    const fieldName = input.name;
-    const value = input.value.trim();
-    updatedData[fieldName] = value;
-
-    // Reset validation state
-    input.classList.remove('is-invalid');
-
-    // Check required fields
-    if (!value && isFieldRequired(fieldName)) {
-      input.classList.add('is-invalid');
-      return { hasError: true, message: 'Please fill in all required fields correctly.' };
-    }
-
-    // Check numeric fields
-    if (input.type === 'number' && value && (isNaN(Number(value)) || Number(value) < 0)) {
-      input.classList.add('is-invalid');
-      return { hasError: true, message: 'Numeric fields must contain valid non-negative numbers.' };
-    }
-
-    return { hasError: false, message: '' };
-  }
-
-  function collectInputReferences(inputs) {
-    let numStudentsInput = null;
-    const gradeInputs = [];
-
-    inputs.forEach(input => {
-      if (input.name === 'num_students') numStudentsInput = input;
-      if (input.name.startsWith('grade_')) gradeInputs.push(input);
-    });
-
-    return { numStudentsInput, gradeInputs };
-  }
-
-  function validateGradeSum(updatedData, numStudentsInput, gradeInputs) {
-    const numStudentsValue = updatedData.num_students ? Number(updatedData.num_students) : NaN;
-    let gradeSum = 0;
-    let anyGradeEntered = false;
-
-    // Calculate grade sum and check if any grades were entered
-    gradeInputs.forEach(input => {
-      const gradeValue = updatedData[input.name] ? Number(updatedData[input.name]) : 0;
-      if (!isNaN(gradeValue) && gradeValue > 0) {
-        anyGradeEntered = true;
-        gradeSum += gradeValue;
-      }
-      if (!updatedData[input.name]) updatedData[input.name] = 0;
-    });
-
-    // Validate sum if conditions are met
-    if (!isNaN(numStudentsValue) && numStudentsValue >= 0 && anyGradeEntered) {
-      if (gradeSum !== numStudentsValue) {
-        // Mark fields as invalid
-        if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-        gradeInputs.forEach(input => input.classList.add('is-invalid'));
-        return {
-          hasError: true,
-          message: `Sum of grades (${gradeSum}) must equal Number of Students (${numStudentsValue}).`
-        };
-      }
-    } else if (anyGradeEntered && (isNaN(numStudentsValue) || numStudentsValue < 0)) {
-      if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-      return {
-        hasError: true,
-        message:
-          'Number of Students is required and must be a valid non-negative number when entering grades.'
-      };
-    }
-
-    return { hasError: false, message: '' };
-  }
-
-  function updateCellDisplayValues(inputs) {
-    inputs.forEach(input => {
-      const cell = input.closest('td');
-      let displayValue = input.value.trim();
-
-      // Handle display for empty optional numbers
-      if (input.type === 'number' && !displayValue) {
-        if (input.name === 'num_students') displayValue = 'N/A';
-        else if (input.name.startsWith('grade_')) displayValue = '-';
-      }
-      cell.textContent = displayValue;
-    });
-  }
-
-  function handleBackendError(result, response, numStudentsInput, gradeInputs) {
-    const backendError = result.error || 'Server error';
-
-    if (
-      backendError.includes('Sum of grades') ||
-      backendError.includes('Number of students is required')
-    ) {
-      if (numStudentsInput) numStudentsInput.classList.add('is-invalid');
-      gradeInputs.forEach(gInput => gInput.classList.add('is-invalid'));
-    }
-
-    alert(`Error updating course: ${backendError}`);
-  }
-
-  async function handleSave(row, courseId) {
-    const inputs = row.querySelectorAll('.inline-edit-input');
-    const updatedData = {};
-    let hasError = false;
-    let validationErrorMsg = '';
-
-    // Collect input references
-    const { numStudentsInput, gradeInputs } = collectInputReferences(inputs);
-
-    // Validate all input fields
-    inputs.forEach(input => {
-      const validation = validateFieldInput(input, updatedData);
-      if (validation.hasError) {
-        hasError = true;
-        if (!validationErrorMsg) validationErrorMsg = validation.message;
-      }
-    });
-
-    // Validate grade sum logic
-    if (!hasError) {
-      const gradeValidation = validateGradeSum(updatedData, numStudentsInput, gradeInputs);
-      if (gradeValidation.hasError) {
-        hasError = true;
-        validationErrorMsg = gradeValidation.message;
-      }
-    }
-
-    // Stop if validation errors found
-    if (hasError) {
-      alert(validationErrorMsg);
-      return;
-    }
-
-    // --- Proceed with saving ---
-
-    try {
-      // Use POST and rely on backend route allowing POST for updates
-      const response = await fetch(`/edit_course/${courseId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        updateCellDisplayValues(inputs);
-        revertRowToActionButtons(row);
-      } else {
-        // eslint-disable-next-line no-console
-        console.error('Update failed:', result.error || `HTTP ${response.status}`);
-        handleBackendError(result, response, numStudentsInput, gradeInputs);
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Network or fetch error during save:', error);
-      alert('Failed to send update request.');
-    }
-  }
-
-  function cancelEdit(row) {
-    const originalValues = JSON.parse(row.dataset.originalValues || '{}');
-
-    row.querySelectorAll('td').forEach((cell, _index) => {
-      const input = cell.querySelector('.inline-edit-input');
-      if (input) {
-        const fieldName = input.name;
-        cell.textContent = originalValues[fieldName] !== undefined ? originalValues[fieldName] : '';
-      }
-    });
-
-    revertRowToActionButtons(row);
-  }
-
-  function handleDelete(row, courseId, courseNumber) {
-    // Use simple confirm for now, prompt was complex
-    const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
-
-    if (!window.confirm(confirmationMessage)) {
-      return;
-    }
-
-    // Proceed with deletion
-    // Use POST and rely on backend route allowing POST for delete
-    fetch(`/delete_course/${courseId}`, {
-      method: 'POST'
-    })
-      .then(response => {
-        if (!response.ok) {
-          return response
-            .json()
-            .then(err => {
-              throw new Error(err.error || `Server responded with status ${response.status}`);
-            })
-            .catch(() => {
-              throw new Error(`Server responded with status ${response.status}`);
-            });
-        }
-        return response.json(); // Expect success JSON
-      })
-      .then(result => {
-        if (result.success) {
-          row.remove(); // Remove row from table
-          alert(`Course ${courseNumber} deleted successfully.`);
-        } else {
-          // eslint-disable-next-line no-console
-          console.error('Delete failed on server:', result.error);
-          alert(`Error deleting course: ${result.error || 'Unknown server error'}`);
-        }
-      })
-      .catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('Network or other error during delete:', error);
-        alert(`Failed to delete course: ${error.message}`);
-      });
-  }
-
-  function revertRowToActionButtons(row) {
-    const actionCellIndex = 10; // Updated index for 'Actions' cell
-    const actionCell = row.cells[actionCellIndex];
-    if (actionCell) {
-      actionCell.innerHTML = `
-                <button class="btn btn-sm btn-warning edit-btn">Edit</button>
-                <button class="btn btn-sm btn-danger delete-btn">Delete</button>
-            `;
-    }
-    // Clean up dataset
-    delete row.dataset.originalValues;
-  }
-
-  function getFieldNameByIndex(index) {
-    // Map table column index to field name (must match table structure in index.html)
-    const fieldMap = [
-      'course_number', // 0
-      'course_title', // 1
-      'instructor_name', // 2
-      'term', // 3
-      'num_students', // 4
-      'grade_a', // 5
-      'grade_b', // 6
-      'grade_c', // 7
-      'grade_d', // 8
-      'grade_f', // 9
-      null // 10 Actions
-    ];
-    return fieldMap[index] || null;
-  }
-
-  function isFieldRequired(fieldName) {
-    // Mirror required fields from BaseAdapter (adjust if needed)
-    const requiredFields = ['course_title', 'course_number', 'instructor_name', 'term'];
-    return requiredFields.includes(fieldName);
   }
 
   // Remove the duplicate direct event listener attachment block
@@ -434,7 +594,7 @@ function initializeImportForm() {
 
   // Update button text based on dry run checkbox
   function updateButtonText() {
-    if (dryRunCheckbox && dryRunCheckbox.checked) {
+    if (dryRunCheckbox?.checked) {
       importBtnText.textContent = 'Test Import (Dry Run)';
     } else {
       importBtnText.textContent = 'Execute Import';
@@ -485,50 +645,6 @@ function initializeImportForm() {
         showError('Network error during validation: ' + error.message);
       }
     });
-  }
-
-  function validateImportForm(fileInput, conflictStrategy) {
-    if (!fileInput.files[0]) {
-      alert('Please select an Excel file first.');
-      return false;
-    }
-
-    if (!conflictStrategy) {
-      alert('Please select a conflict resolution strategy.');
-      return false;
-    }
-
-    return true;
-  }
-
-  function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
-    let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
-
-    if (deleteExistingDb && deleteExistingDb.checked) {
-      confirmMsg += ' ⚠️ WARNING: This will DELETE ALL EXISTING DATA first!';
-    }
-
-    confirmMsg += ' Are you sure?';
-    return confirmMsg;
-  }
-
-  function buildImportFormData(
-    fileInput,
-    conflictStrategy,
-    dryRun,
-    adapterSelect,
-    deleteExistingDb
-  ) {
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    formData.append('conflict_strategy', conflictStrategy.value);
-    formData.append('dry_run', dryRun.checked ? 'true' : 'false');
-    formData.append('adapter_name', adapterSelect.value);
-    formData.append(
-      'delete_existing_db',
-      deleteExistingDb && deleteExistingDb.checked ? 'true' : 'false'
-    );
-    return formData;
   }
 
   async function executeImport(formData, dryRun) {
@@ -626,47 +742,17 @@ function initializeImportForm() {
         }
 
         const progress = await response.json();
-
-        // Update progress bar
         updateProgressBar(progress);
 
+        // Handle different progress statuses
         if (progress.status === 'completed') {
-          hideProgress();
-
-          // Show final results
-          if (progress.result) {
-            showImportResults(progress.result, true);
-
-            // Auto-refresh if it was a real import (not dry run)
-            if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
-              const successMessage = document.createElement('div');
-              successMessage.className = 'alert alert-success text-center mt-3';
-              successMessage.innerHTML =
-                '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
-
-              const resultsDiv = document.getElementById('importResults');
-              if (resultsDiv) {
-                resultsDiv.appendChild(successMessage);
-              }
-
-              setTimeout(() => {
-                window.location.reload();
-              }, 3000);
-            }
-          }
-          // Stop polling
+          handleCompletedStatus(progress, shouldAutoRefresh);
         } else if (progress.status === 'error') {
+          // Handle error status inline
           hideProgress();
           showError('Import failed: ' + (progress.message || 'Unknown error'));
-          // Stop polling
         } else if (progress.status === 'running' || progress.status === 'starting') {
-          // Continue polling
-          if (Date.now() - startTime < maxPollTime) {
-            setTimeout(poll, pollInterval);
-          } else {
-            hideProgress();
-            showError('Import is taking longer than expected. Please check the server logs.');
-          }
+          handleRunningStatus(startTime, maxPollTime, pollInterval, poll);
         }
       } catch (error) {
         hideProgress();
@@ -674,18 +760,61 @@ function initializeImportForm() {
       }
     };
 
+    // Helper function to handle completed status
+    function handleCompletedStatus(progress, shouldAutoRefresh) {
+      hideProgress();
+
+      // Show final results
+      if (progress.result) {
+        showImportResults(progress.result, true);
+
+        // Auto-refresh if it was a real import (not dry run)
+        if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
+          showSuccessAndRefresh();
+        }
+      }
+    }
+
+    // Helper function to handle running status
+    function handleRunningStatus(startTime, maxPollTime, pollInterval, poll) {
+      if (Date.now() - startTime < maxPollTime) {
+        setTimeout(poll, pollInterval);
+      } else {
+        hideProgress();
+        showError('Import is taking longer than expected. Please check the server logs.');
+      }
+    }
+
+    // Helper function to show success message and refresh
+    function showSuccessAndRefresh() {
+      const successMessage = document.createElement('div');
+      successMessage.className = 'alert alert-success text-center mt-3';
+      successMessage.innerHTML =
+        '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
+
+      const resultsDiv = document.getElementById('importResults');
+      if (resultsDiv) {
+        resultsDiv.appendChild(successMessage);
+      }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+    }
+
     // Start polling
     setTimeout(poll, 500); // Start after 500ms
   }
 
   function updateProgressBar(progress) {
-    const progressBar = document.querySelector('.progress-bar');
+    const progressBar = document.getElementById('importProgressBar');
     const statusDiv = document.getElementById('importStatus');
 
     if (progressBar) {
       const percentage = progress.percentage || 0;
-      progressBar.style.width = `${percentage}%`;
-      progressBar.setAttribute('aria-valuenow', percentage);
+      // Update HTML5 progress element value attribute (not style.width)
+      progressBar.value = percentage;
+      progressBar.textContent = `${percentage}%`; // Update visible percentage text
     }
 
     if (statusDiv) {
@@ -745,121 +874,6 @@ function initializeImportForm() {
 
     resultsDiv.innerHTML = html;
     resultsDiv.style.display = 'block';
-  }
-
-  function buildImportHeader(result, success) {
-    const alertClass = success ? 'alert-success' : 'alert-danger';
-    const icon = success ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
-    const mode = result.dry_run ? 'DRY RUN' : 'EXECUTED';
-
-    return `
-      <div class="alert ${alertClass}">
-        <h5><i class="${icon}"></i> Import Results (${mode})</h5>
-        <div class="row">
-          <div class="col-md-6">
-            <p><strong>Records Processed:</strong> ${result.records_processed || 0}</p>
-            <p><strong>Records Created:</strong> ${result.records_created || 0}</p>
-            <p><strong>Records Updated:</strong> ${result.records_updated || 0}</p>
-          </div>
-          <div class="col-md-6">
-            <p><strong>Records Skipped:</strong> ${result.records_skipped || 0}</p>
-            <p><strong>Conflicts Detected:</strong> ${result.conflicts_detected || 0}</p>
-            <p><strong>Execution Time:</strong> ${(result.execution_time || 0).toFixed(2)}s</p>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function buildErrorsSection(errors) {
-    if (!errors || errors.length === 0) return '';
-
-    const displayErrors = errors.slice(0, 10);
-    const moreErrorsText =
-      errors.length > 10 ? `<li><em>... and ${errors.length - 10} more errors</em></li>` : '';
-
-    return `
-      <div class="alert alert-danger">
-        <h6>Errors (${errors.length}):</h6>
-        <ul>
-          ${displayErrors.map(error => `<li>${error}</li>`).join('')}
-          ${moreErrorsText}
-        </ul>
-      </div>
-    `;
-  }
-
-  function buildWarningsSection(warnings) {
-    if (!warnings || warnings.length === 0) return '';
-
-    const displayWarnings = warnings.slice(0, 5);
-    const moreWarningsText =
-      warnings.length > 5 ? `<li><em>... and ${warnings.length - 5} more warnings</em></li>` : '';
-
-    return `
-      <div class="alert alert-warning">
-        <h6>Warnings (${warnings.length}):</h6>
-        <ul>
-          ${displayWarnings.map(warning => `<li>${warning}</li>`).join('')}
-          ${moreWarningsText}
-        </ul>
-      </div>
-    `;
-  }
-
-  function buildConflictsSection(conflicts) {
-    if (!conflicts || conflicts.length === 0) return '';
-
-    const displayConflicts = conflicts.slice(0, 20);
-    const moreConflictsRow =
-      conflicts.length > 20
-        ? `
-      <tr>
-        <td colspan="6" class="text-center">
-          <em>... and ${conflicts.length - 20} more conflicts</em>
-        </td>
-      </tr>
-    `
-        : '';
-
-    const conflictRows = displayConflicts
-      .map(
-        conflict => `
-      <tr>
-        <td>${conflict.entity_type}</td>
-        <td>${conflict.entity_key}</td>
-        <td>${conflict.field_name}</td>
-        <td>${conflict.existing_value}</td>
-        <td>${conflict.import_value}</td>
-        <td><span class="badge bg-secondary">${conflict.resolution}</span></td>
-      </tr>
-    `
-      )
-      .join('');
-
-    return `
-      <div class="alert alert-info">
-        <h6>Conflicts Resolved (${conflicts.length}):</h6>
-        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Entity</th>
-                <th>Key</th>
-                <th>Field</th>
-                <th>Existing</th>
-                <th>Import</th>
-                <th>Resolution</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${conflictRows}
-              ${moreConflictsRow}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
   }
 
   function showImportResults(result, success) {

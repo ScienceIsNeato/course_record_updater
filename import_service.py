@@ -107,28 +107,49 @@ def _convert_datetime_fields(data: Dict[str, Any]) -> Dict[str, Any]:
 
     for field in datetime_fields:
         if field in converted_data and isinstance(converted_data[field], str):
-            try:
-                # Parse ISO format datetime strings to datetime objects
-                # Handle both with and without microseconds
-                datetime_str = converted_data[field]
-                if "." in datetime_str and datetime_str.endswith("Z"):
-                    # Handle format like "2025-09-28T17:41:27.935901Z"
-                    datetime_str = datetime_str[:-1] + UTC_OFFSET
-                elif not datetime_str.endswith(
-                    UTC_OFFSET
-                ) and not datetime_str.endswith("Z"):
-                    # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
-                    if "." in datetime_str:
-                        datetime_str = datetime_str + UTC_OFFSET
-                    else:
-                        datetime_str = datetime_str + ".000000" + UTC_OFFSET
-
-                converted_data[field] = datetime.fromisoformat(datetime_str)
-            except (ValueError, TypeError):
-                # If parsing fails, leave as is (might be None or already datetime)
-                pass
+            converted_data[field] = _parse_datetime_string(converted_data[field])
 
     return converted_data
+
+
+def _parse_datetime_string(datetime_str: str) -> Any:
+    """Parse a datetime string to a datetime object, handling various formats."""
+    try:
+        normalized_str = _normalize_datetime_string(datetime_str)
+        return datetime.fromisoformat(normalized_str)
+    except (ValueError, TypeError):
+        # If parsing fails, return original value (might be None or already datetime)
+        return datetime_str
+
+
+def _normalize_datetime_string(datetime_str: str) -> str:
+    """Normalize datetime string to ISO format with UTC offset."""
+    if _is_z_format_with_microseconds(datetime_str):
+        # Handle format like "2025-09-28T17:41:27.935901Z"
+        return datetime_str[:-1] + UTC_OFFSET
+    elif _needs_utc_offset(datetime_str):
+        # Handle format like "2025-09-28T17:41:27.935901" (assume UTC)
+        return _add_utc_offset(datetime_str)
+    else:
+        return datetime_str
+
+
+def _is_z_format_with_microseconds(datetime_str: str) -> bool:
+    """Check if datetime string is in Z format with microseconds."""
+    return "." in datetime_str and datetime_str.endswith("Z")
+
+
+def _needs_utc_offset(datetime_str: str) -> bool:
+    """Check if datetime string needs UTC offset added."""
+    return not datetime_str.endswith(UTC_OFFSET) and not datetime_str.endswith("Z")
+
+
+def _add_utc_offset(datetime_str: str) -> str:
+    """Add UTC offset to datetime string, adding microseconds if needed."""
+    if "." in datetime_str:
+        return datetime_str + UTC_OFFSET
+    else:
+        return datetime_str + ".000000" + UTC_OFFSET
 
 
 class ImportService:
@@ -205,146 +226,21 @@ class ImportService:
         start_time = datetime.now(timezone.utc)
         self.reset_stats()
 
-        self.logger.info(f"[Import] Starting import from: {file_path}")
-        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
-        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+        self._log_import_start(file_path, conflict_strategy, dry_run)
 
         try:
-            # Validate file exists
-            if not os.path.exists(file_path):
-                error_msg = f"File not found: {file_path}"
-                self.stats["errors"].append(error_msg)
+            # Validate and prepare for import
+            adapter = self._prepare_import(file_path, adapter_id)
+            if not adapter:
                 return self._create_import_result(start_time, dry_run)
 
-            # Get adapter from registry
-            try:
-                registry = get_adapter_registry()
-                adapter = registry.get_adapter_by_id(adapter_id)
-                if not adapter:
-                    error_msg = f"Adapter not found: {adapter_id}"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-            except AdapterRegistryError as e:
-                error_msg = f"Failed to get adapter {adapter_id}: {str(e)}"
-                self.stats["errors"].append(error_msg)
+            # Parse file data
+            parsed_data = self._parse_file_data(adapter, file_path, adapter_id)
+            if not parsed_data:
                 return self._create_import_result(start_time, dry_run)
 
-            # Validate file compatibility with adapter
-            try:
-                is_compatible, validation_message = adapter.validate_file_compatibility(
-                    file_path
-                )
-                if not is_compatible:
-                    error_msg = f"File incompatible with adapter {adapter_id}: {validation_message}"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-
-                self.logger.info(
-                    f"[Import] File validation passed: {validation_message}"
-                )
-            except Exception as e:
-                error_msg = f"File validation failed: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                return self._create_import_result(start_time, dry_run)
-
-            # Parse file using adapter
-            try:
-                parse_options = {"institution_id": self.institution_id}
-                parsed_data = adapter.parse_file(file_path, parse_options)
-                self.logger.info(
-                    f"[Import] Successfully parsed file with adapter {adapter_id}"
-                )
-
-                # Log what data types were found
-                data_types = []
-                for data_type, records in parsed_data.items():
-                    if records:
-                        data_types.append(f"{data_type}: {len(records)}")
-                        self.logger.info(
-                            f"[Import] Found {len(records)} {data_type} records"
-                        )
-
-                if not data_types:
-                    error_msg = "No valid data found in file"
-                    self.stats["errors"].append(error_msg)
-                    return self._create_import_result(start_time, dry_run)
-
-            except Exception as e:
-                error_msg = f"Failed to parse file with adapter {adapter_id}: {str(e)}"
-                self.stats["errors"].append(error_msg)
-                return self._create_import_result(start_time, dry_run)
-
-            # Process parsed data
-            all_conflicts = []
-            total_records = sum(len(records) for records in parsed_data.values())
-            processed_records = 0
-
-            self.logger.info(f"[Import] Processing {total_records} total records")
-
-            # Process each data type in dependency order: users -> courses -> terms -> offerings -> sections
-            processing_order = ["users", "courses", "terms", "offerings", "sections"]
-
-            for data_type in processing_order:
-                records = parsed_data.get(data_type, [])
-                if not records:
-                    continue
-
-                self.logger.info(
-                    f"[Import] Processing {len(records)} {data_type} records"
-                )
-
-                for record in records:
-                    processed_records += 1
-                    self.stats["records_processed"] += 1
-
-                    # Show progress periodically
-                    progress = int(processed_records / total_records * 100)
-                    if (
-                        processed_records % max(1, total_records // 20) == 0
-                        or processed_records == total_records
-                    ):
-                        self._log(
-                            f"Processing record {processed_records}/{total_records} ({progress}%)",
-                            "summary",
-                        )
-
-                        if self.progress_callback:
-                            self.progress_callback(
-                                percentage=progress,
-                                records_processed=processed_records,
-                                total_records=total_records,
-                                message=f"Processing {data_type} record {processed_records}/{total_records} ({progress}%)",
-                            )
-
-                    try:
-                        # Process based on data type
-                        if data_type == "courses":
-                            _, conflicts = self.process_course_import(
-                                record, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-                        elif data_type == "users":
-                            _, conflicts = self.process_user_import(
-                                record, conflict_strategy, dry_run
-                            )
-                            all_conflicts.extend(conflicts)
-                        elif data_type == "terms":
-                            self._process_term_import(record, dry_run)
-                        elif data_type == "offerings":
-                            self._process_offering_import(
-                                record, conflict_strategy, dry_run
-                            )
-                        elif data_type == "sections":
-                            self._process_section_import(
-                                record, conflict_strategy, dry_run
-                            )
-
-                    except Exception as e:
-                        error_msg = f"Error processing {data_type} record: {str(e)}"
-                        self.stats["errors"].append(error_msg)
-                        self.logger.error(f"[Import] {error_msg}")
-
-            self.stats["conflicts"].extend(all_conflicts)
+            # Process all parsed data
+            self._process_parsed_data(parsed_data, conflict_strategy, dry_run)
 
         except Exception as e:
             error_msg = f"Unexpected error during import: {str(e)}"
@@ -352,6 +248,203 @@ class ImportService:
             self.logger.error(f"[Import] {error_msg}")
 
         return self._create_import_result(start_time, dry_run)
+
+    def _log_import_start(
+        self, file_path: str, conflict_strategy: ConflictStrategy, dry_run: bool
+    ):
+        """Log import start information."""
+        self.logger.info(f"[Import] Starting import from: {file_path}")
+        self.logger.info(f"[Import] Conflict strategy: {conflict_strategy.value}")
+        self.logger.info(f"[Import] Mode: {'DRY RUN' if dry_run else 'EXECUTE'}")
+
+    def _prepare_import(self, file_path: str, adapter_id: str):
+        """Prepare import by validating file and getting adapter."""
+        # Validate file exists
+        if not os.path.exists(file_path):
+            error_msg = f"File not found: {file_path}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        # Get adapter from registry
+        try:
+            registry = get_adapter_registry()
+            adapter = registry.get_adapter_by_id(adapter_id)
+            if not adapter:
+                error_msg = f"Adapter not found: {adapter_id}"
+                self.stats["errors"].append(error_msg)
+                return None
+        except AdapterRegistryError as e:
+            error_msg = f"Failed to get adapter {adapter_id}: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        # Validate file compatibility with adapter
+        try:
+            is_compatible, validation_message = adapter.validate_file_compatibility(
+                file_path
+            )
+            if not is_compatible:
+                error_msg = (
+                    f"File incompatible with adapter {adapter_id}: {validation_message}"
+                )
+                self.stats["errors"].append(error_msg)
+                return None
+
+            self.logger.info(f"[Import] File validation passed: {validation_message}")
+        except Exception as e:
+            error_msg = f"File validation failed: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+        return adapter
+
+    def _parse_file_data(self, adapter, file_path: str, adapter_id: str):
+        """Parse file data using the adapter."""
+        try:
+            parse_options = {"institution_id": self.institution_id}
+            parsed_data = adapter.parse_file(file_path, parse_options)
+            self.logger.info(
+                f"[Import] Successfully parsed file with adapter {adapter_id}"
+            )
+
+            # Log what data types were found
+            data_types = []
+            for data_type, records in parsed_data.items():
+                if records:
+                    data_types.append(f"{data_type}: {len(records)}")
+                    self.logger.info(
+                        f"[Import] Found {len(records)} {data_type} records"
+                    )
+
+            if not data_types:
+                error_msg = "No valid data found in file"
+                self.stats["errors"].append(error_msg)
+                return None
+
+            return parsed_data
+
+        except Exception as e:
+            error_msg = f"Failed to parse file with adapter {adapter_id}: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            return None
+
+    def _process_parsed_data(
+        self,
+        parsed_data: Dict[str, List],
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ):
+        """Process all parsed data in dependency order."""
+        all_conflicts = []
+        total_records = sum(len(records) for records in parsed_data.values())
+        processed_records = 0
+
+        self.logger.info(f"[Import] Processing {total_records} total records")
+
+        # Process each data type in dependency order
+        processing_order = ["users", "courses", "terms", "offerings", "sections"]
+
+        for data_type in processing_order:
+            records = parsed_data.get(data_type, [])
+            if not records:
+                continue
+
+            self.logger.info(f"[Import] Processing {len(records)} {data_type} records")
+
+            conflicts = self._process_data_type_records(
+                data_type,
+                records,
+                conflict_strategy,
+                dry_run,
+                processed_records,
+                total_records,
+            )
+            all_conflicts.extend(conflicts)
+            processed_records += len(records)
+
+        self.stats["conflicts"].extend(all_conflicts)
+
+    def _process_data_type_records(
+        self,
+        data_type: str,
+        records: List,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+        processed_records: int,
+        total_records: int,
+    ) -> List:
+        """Process records for a specific data type."""
+        all_conflicts = []
+
+        for record in records:
+            processed_records += 1
+            self.stats["records_processed"] += 1
+
+            # Show progress periodically
+            self._update_progress(processed_records, total_records, data_type)
+
+            try:
+                conflicts = self._process_single_record(
+                    data_type, record, conflict_strategy, dry_run
+                )
+                all_conflicts.extend(conflicts)
+
+            except Exception as e:
+                error_msg = f"Error processing {data_type} record: {str(e)}"
+                self.stats["errors"].append(error_msg)
+                self.logger.error(f"[Import] {error_msg}")
+
+        return all_conflicts
+
+    def _update_progress(
+        self, processed_records: int, total_records: int, data_type: str
+    ):
+        """Update progress reporting."""
+        progress = int(processed_records / total_records * 100)
+        if (
+            processed_records % max(1, total_records // 20) == 0
+            or processed_records == total_records
+        ):
+            self._log(
+                f"Processing record {processed_records}/{total_records} ({progress}%)",
+                "summary",
+            )
+
+            if self.progress_callback:
+                self.progress_callback(
+                    percentage=progress,
+                    records_processed=processed_records,
+                    total_records=total_records,
+                    message=f"Processing {data_type} record {processed_records}/{total_records} ({progress}%)",
+                )
+
+    def _process_single_record(
+        self,
+        data_type: str,
+        record: Dict,
+        conflict_strategy: ConflictStrategy,
+        dry_run: bool,
+    ) -> List:
+        """Process a single record based on its data type."""
+        if data_type == "courses":
+            _, conflicts = self.process_course_import(
+                record, conflict_strategy, dry_run
+            )
+            return conflicts
+        elif data_type == "users":
+            _, conflicts = self.process_user_import(record, conflict_strategy, dry_run)
+            return conflicts
+        elif data_type == "terms":
+            self._process_term_import(record, dry_run)
+            return []
+        elif data_type == "offerings":
+            self._process_offering_import(record, conflict_strategy, dry_run)
+            return []
+        elif data_type == "sections":
+            self._process_section_import(record, conflict_strategy, dry_run)
+            return []
+        else:
+            return []
 
     def process_course_import(
         self,
@@ -382,66 +475,129 @@ class ImportService:
             existing_course = get_course_by_number(course_number)
 
             if existing_course:
-                # Detect conflicts by comparing fields
-                detected_conflicts = []
-                for field, new_value in course_data.items():
-                    if field == "course_number":
-                        continue  # Skip course_number as it's the key
-                    existing_value = existing_course.get(field)
-                    if existing_value != new_value:
-                        conflict = ConflictRecord(
-                            entity_type="course",
-                            entity_id=existing_course.get("course_id", course_number),
-                            field_name=field,
-                            existing_value=existing_value,
-                            import_value=new_value,
-                            resolution=strategy.value,
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        detected_conflicts.append(conflict)
-                        conflicts.append(conflict)
-
-                if detected_conflicts:
-                    self.stats["conflicts_detected"] += len(detected_conflicts)
-
-                # Handle conflict based on strategy
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"Skipping existing course: {course_number}")
-                    return True, conflicts
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    if detected_conflicts:
-                        self.stats["conflicts_resolved"] += len(detected_conflicts)
-                    if not dry_run:
-                        # Update existing course with import data
-                        # Convert datetime fields for SQLite compatibility
-                        converted_course_data = _convert_datetime_fields(course_data)
-                        # TODO: Implement proper update_course function
-                        # For now, log that update would happen
-                        self.stats["records_updated"] += 1
-                        self._log(
-                            f"Updated course: {course_number} (update logic needs implementation)"
-                        )
-                    else:
-                        self._log(f"DRY RUN: Would update course: {course_number}")
-                    return True, conflicts
+                return self._handle_existing_course(
+                    course_data, existing_course, strategy, dry_run, conflicts
+                )
             else:
-                # Create new course
-                if not dry_run:
-                    create_course(course_data)
-                    self.stats["records_created"] += 1
-                    self._log(f"Created course: {course_number}")
-                else:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"DRY RUN: Would create course: {course_number}")
-
-            return True, conflicts
+                conflicts = self._handle_new_course(
+                    course_data, course_number, dry_run, conflicts
+                )
+                return True, conflicts
 
         except Exception as e:
             self.stats["errors"].append(
                 f"Error processing course {course_data.get('course_number')}: {str(e)}"
             )
             return False, conflicts
+
+    def _handle_existing_course(
+        self,
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of an existing course with conflict resolution."""
+        course_number = course_data.get("course_number")
+
+        # Detect conflicts by comparing fields
+        detected_conflicts = self._detect_course_conflicts(
+            course_data, existing_course, course_number
+        )
+        conflicts.extend(detected_conflicts)
+
+        if detected_conflicts:
+            self.stats["conflicts_detected"] += len(detected_conflicts)
+
+        # Handle conflict based on strategy
+        conflicts = self._resolve_course_conflicts(
+            strategy, detected_conflicts, course_number, dry_run, conflicts
+        )
+        return True, conflicts
+
+    def _detect_course_conflicts(
+        self,
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        course_number: str,
+    ) -> List[ConflictRecord]:
+        """Detect conflicts between import data and existing course."""
+        detected_conflicts = []
+
+        for field, new_value in course_data.items():
+            if field == "course_number":
+                continue  # Skip course_number as it's the key
+            existing_value = existing_course.get(field)
+            if existing_value != new_value:
+                conflict = ConflictRecord(
+                    entity_type="course",
+                    entity_id=existing_course.get("course_id", course_number),
+                    field_name=field,
+                    existing_value=existing_value,
+                    import_value=new_value,
+                    resolution="pending",
+                    timestamp=datetime.now(timezone.utc),
+                )
+                detected_conflicts.append(conflict)
+
+        return detected_conflicts
+
+    def _resolve_course_conflicts(
+        self,
+        strategy: ConflictStrategy,
+        detected_conflicts: List[ConflictRecord],
+        course_number: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> List[ConflictRecord]:
+        """Resolve course conflicts based on strategy."""
+        if strategy == ConflictStrategy.USE_MINE:
+            self.stats["records_skipped"] += 1
+            self._log(f"Skipping existing course: {course_number}")
+            # Update conflict resolution status for USE_MINE
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+        elif strategy == ConflictStrategy.USE_THEIRS:
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                # Update conflict resolution status
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+
+            if not dry_run:
+                # Update existing course with import data
+                # TODO: Implement proper update_course function
+                # converted_course_data = _convert_datetime_fields(course_data)
+                # update_course(existing_course_id, converted_course_data)
+                self.stats["records_updated"] += 1
+                self._log(
+                    f"Updated course: {course_number} (update logic needs implementation)"
+                )
+            else:
+                self._log(f"DRY RUN: Would update course: {course_number}")
+
+        return conflicts
+
+    def _handle_new_course(
+        self,
+        course_data: Dict[str, Any],
+        course_number: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> List[ConflictRecord]:
+        """Handle import of a new course."""
+        if not dry_run:
+            create_course(course_data)
+            self.stats["records_created"] += 1
+            self._log(f"Created course: {course_number}")
+        else:
+            self.stats["records_skipped"] += 1
+            self._log(f"DRY RUN: Would create course: {course_number}")
+
+        return conflicts
 
     def process_user_import(
         self,
@@ -472,66 +628,131 @@ class ImportService:
             existing_user = get_user_by_email(email)
 
             if existing_user:
-                # Detect conflicts by comparing fields
-                detected_conflicts = []
-                for field, new_value in user_data.items():
-                    if field == "email":
-                        continue  # Skip email as it's the key
-                    existing_value = existing_user.get(field)
-                    if existing_value != new_value:
-                        conflict = ConflictRecord(
-                            entity_type="user",
-                            entity_id=existing_user.get("user_id", email),
-                            field_name=field,
-                            existing_value=existing_value,
-                            import_value=new_value,
-                            resolution=strategy.value,
-                            timestamp=datetime.now(timezone.utc),
-                        )
-                        detected_conflicts.append(conflict)
-                        conflicts.append(conflict)
-
-                if detected_conflicts:
-                    self.stats["conflicts_detected"] += len(detected_conflicts)
-
-                # Handle conflict based on strategy
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(f"Skipping existing user: {email}")
-                    return True, conflicts
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    if detected_conflicts:
-                        self.stats["conflicts_resolved"] += len(detected_conflicts)
-                    if not dry_run:
-                        # Update existing user - convert datetime fields for SQLite compatibility
-                        converted_user_data = _convert_datetime_fields(user_data)
-                        update_user(
-                            existing_user.get(
-                                "user_id", existing_user.get("id", email)
-                            ),
-                            converted_user_data,
-                        )
-                        self.stats["records_updated"] += 1
-                        self._log(f"Updated user: {email}")
-                    else:
-                        self._log(f"DRY RUN: Would update user: {email}")
-                    return True, conflicts
+                return self._handle_existing_user(
+                    user_data, existing_user, strategy, dry_run, conflicts
+                )
             else:
-                # Create new user
-                if not dry_run:
-                    create_user(user_data)
-                    self.stats["records_created"] += 1
-                    self._log(f"Created user: {email}")
-                else:
-                    self._log(f"DRY RUN: Would create user: {email}")
-
-            return True, conflicts
+                conflicts = self._handle_new_user(user_data, email, dry_run, conflicts)
+                return True, conflicts
 
         except Exception as e:
             self.stats["errors"].append(
                 f"Error processing user {user_data.get('email')}: {str(e)}"
             )
             return False, conflicts
+
+    def _handle_existing_user(
+        self,
+        user_data: Dict[str, Any],
+        existing_user: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> Tuple[bool, List[ConflictRecord]]:
+        """Handle import of an existing user with conflict resolution."""
+        email = user_data.get("email")
+
+        # Detect conflicts by comparing fields
+        detected_conflicts = self._detect_user_conflicts(
+            user_data, existing_user, email
+        )
+        conflicts.extend(detected_conflicts)
+
+        if detected_conflicts:
+            self.stats["conflicts_detected"] += len(detected_conflicts)
+
+        # Handle conflict based on strategy
+        conflicts = self._resolve_user_conflicts(
+            strategy,
+            detected_conflicts,
+            user_data,
+            existing_user,
+            email,
+            dry_run,
+            conflicts,
+        )
+        return True, conflicts
+
+    def _detect_user_conflicts(
+        self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
+    ) -> List[ConflictRecord]:
+        """Detect conflicts between import data and existing user."""
+        detected_conflicts = []
+
+        for field, new_value in user_data.items():
+            if field == "email":
+                continue  # Skip email as it's the key
+            existing_value = existing_user.get(field)
+            if existing_value != new_value:
+                conflict = ConflictRecord(
+                    entity_type="user",
+                    entity_id=existing_user.get("user_id", email),
+                    field_name=field,
+                    existing_value=existing_value,
+                    import_value=new_value,
+                    resolution="pending",
+                    timestamp=datetime.now(timezone.utc),
+                )
+                detected_conflicts.append(conflict)
+
+        return detected_conflicts
+
+    def _resolve_user_conflicts(
+        self,
+        strategy: ConflictStrategy,
+        detected_conflicts: List[ConflictRecord],
+        user_data: Dict[str, Any],
+        existing_user: Dict[str, Any],
+        email: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> List[ConflictRecord]:
+        """Resolve user conflicts based on strategy."""
+        if strategy == ConflictStrategy.USE_MINE:
+            self.stats["records_skipped"] += 1
+            self._log(f"Skipping existing user: {email}")
+            # Update conflict resolution status for USE_MINE
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+        elif strategy == ConflictStrategy.USE_THEIRS:
+            if detected_conflicts:
+                self.stats["conflicts_resolved"] += len(detected_conflicts)
+                # Update conflict resolution status
+                for conflict in detected_conflicts:
+                    conflict.resolution = strategy.value
+
+            if not dry_run:
+                # Update existing user - convert datetime fields for SQLite compatibility
+                converted_user_data = _convert_datetime_fields(user_data)
+                update_user(
+                    existing_user.get("user_id", existing_user.get("id", email)),
+                    converted_user_data,
+                )
+                self.stats["records_updated"] += 1
+                self._log(f"Updated user: {email}")
+            else:
+                self._log(f"DRY RUN: Would update user: {email}")
+
+        return conflicts
+
+    def _handle_new_user(
+        self,
+        user_data: Dict[str, Any],
+        email: str,
+        dry_run: bool,
+        conflicts: List[ConflictRecord],
+    ) -> List[ConflictRecord]:
+        """Handle import of a new user."""
+        if not dry_run:
+            create_user(user_data)
+            self.stats["records_created"] += 1
+            self._log(f"Created user: {email}")
+        else:
+            self._log(f"DRY RUN: Would create user: {email}")
+
+        return conflicts
 
     def _process_term_import(self, term_data: Dict[str, Any], dry_run: bool = False):
         """Process term import (simplified implementation)"""

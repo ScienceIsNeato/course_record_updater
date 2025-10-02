@@ -83,7 +83,7 @@
       this.renderFaculty(data.faculty_assignments || [], data.faculty || []);
       this.renderSections(data.sections || [], data.courses || [], data.terms || []);
       this.renderAssessment(data.program_overview || []);
-      this.updateLastUpdated(data.metadata && data.metadata.last_updated);
+      this.updateLastUpdated(data.metadata?.last_updated);
     },
 
     updateHeader(data) {
@@ -94,13 +94,13 @@
       document.getElementById(SELECTORS.sectionCount).textContent = summary.sections ?? 0;
 
       const institutionName =
-        (data.institutions && data.institutions[0] && data.institutions[0].name) ||
+        data.institutions?.[0]?.name ||
         document.getElementById(SELECTORS.institutionName).textContent;
       document.getElementById(SELECTORS.institutionName).textContent =
         institutionName || 'Institution Overview';
 
-      const term = (data.terms || []).find(item => item && item.active) || (data.terms || [])[0];
-      document.getElementById(SELECTORS.currentTerm).textContent = (term && term.name) || '--';
+      const term = (data.terms || []).find(item => item?.active) || (data.terms || [])[0];
+      document.getElementById(SELECTORS.currentTerm).textContent = term?.name || '--';
     },
 
     renderPrograms(programOverview, rawPrograms) {
@@ -220,7 +220,7 @@
             name: record.full_name || record.name || 'Instructor',
             programs:
               (record.program_summaries || [])
-                .map(program => program && program.program_name)
+                .map(program => program?.program_name)
                 .filter(Boolean)
                 .join(', ') ||
               (record.program_ids || []).join(', ') ||

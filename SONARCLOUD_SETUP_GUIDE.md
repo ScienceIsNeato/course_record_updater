@@ -20,6 +20,77 @@ Based on the error logs, we have several configuration issues:
 - ✅ Commented out conflicting `sonar.branch.name=main`
 - ✅ Let workflow args override branch configuration
 
+## 🎯 **CRITICAL: Coverage on New Code vs Global Coverage**
+
+### **⚠️ Important Distinction**
+
+SonarCloud enforces **TWO DIFFERENT** coverage metrics that can cause confusion:
+
+#### **1. Global Coverage Threshold (Our `--coverage` check)**
+- **What**: Overall project coverage across all files
+- **Threshold**: 80% (enforced by `ship_it.py --checks coverage`)
+- **Scope**: Entire codebase
+- **Command**: `pytest --cov=. --cov-fail-under=80`
+
+#### **2. Coverage on New Code (SonarCloud Quality Gate)**
+- **What**: Coverage specifically on lines changed in the current PR/branch
+- **Threshold**: 80% (enforced by SonarCloud quality gate)
+- **Scope**: **Only files modified in this branch/PR**
+- **Failure Message**: `Coverage on New Code: 76.9 (required: 80)`
+
+### **🔧 How to Fix Coverage Failures**
+
+#### **Global Coverage Failure** (`ship_it.py --checks coverage`)
+- ✅ Add tests for **any** uncovered code in the project
+- ✅ Improve coverage in **any** file to reach 80% overall
+
+#### **SonarCloud "Coverage on New Code" Failure**
+- ❌ Adding tests for unrelated files **WON'T FIX** this
+- ✅ **ONLY** add tests for files **modified in your branch/PR**
+- ✅ Focus on the specific files listed in SonarCloud coverage report
+
+### **💡 Example Scenario**
+```bash
+# Your branch modifies: api_routes.py, models.py
+# SonarCloud fails: "Coverage on New Code: 76.9 (required: 80)"
+
+# ❌ WRONG: Add tests for dashboard_service.py (unrelated)
+# ✅ CORRECT: Add tests for api_routes.py and models.py (modified files)
+```
+
+### **🔍 How to Identify Which Files Need Coverage**
+
+**🚀 AUTOMATED SOLUTION (Recommended):**
+```bash
+# When sonar check fails, it automatically runs this script
+python scripts/analyze_pr_coverage.py
+
+# Output: logs/pr_coverage_gaps.txt
+# Shows EXACT line numbers that need coverage in modified files
+```
+
+**What the script does:**
+1. ✅ Gets all lines modified in your PR (vs main)
+2. ✅ Cross-references with uncovered lines from coverage.xml
+3. ✅ Shows ONLY the uncovered lines that you actually touched
+4. ✅ Ranks files by number of gaps (fix biggest impact first!)
+
+**Example Output:**
+```
+📁 api_routes.py
+   🔴 65 uncovered lines: 478, 770, 1370-1376, 1381...
+   
+📁 import_service.py
+   🔴 34 uncovered lines: 129, 134, 245-248...
+```
+
+**Manual approach (if needed):**
+1. Check SonarCloud UI "Measures" → "Coverage" → "Coverage on New Code"
+2. Look for files with low coverage percentages in your branch
+3. Focus testing efforts on those specific files
+
+---
+
 ## 🔧 SonarCloud Project Setup Verification
 
 ### Step 1: Verify Project Exists

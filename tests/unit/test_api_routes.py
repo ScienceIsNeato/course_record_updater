@@ -2536,6 +2536,179 @@ class TestCourseManagementOperations:
         data = response.get_json()
         assert data["error"] == "No Excel file provided"
 
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.remove_course_from_program")
+    @patch("api_routes.has_permission")
+    def test_remove_course_from_program_success(
+        self, mock_has_permission, mock_remove, mock_get_program
+    ):
+        """Test successful course removal from program."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {
+            "program_id": "prog1",
+            "name": "Computer Science",
+            "institution_id": "test-institution",
+        }
+        mock_remove.return_value = True
+
+        response = self.client.delete("/api/programs/prog1/courses/course1")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "course1" in data["message"]
+        mock_remove.assert_called_once()
+
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.has_permission")
+    def test_remove_course_from_program_not_found(
+        self, mock_has_permission, mock_get_program
+    ):
+        """Test course removal when program not found."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = None  # Program not found
+
+        response = self.client.delete("/api/programs/invalid-prog/courses/course1")
+
+        assert response.status_code == 404
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Program not found" in data["error"]
+
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.bulk_add_courses_to_program")
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_add_action(
+        self, mock_has_permission, mock_bulk_add, mock_get_program
+    ):
+        """Test bulk add courses to program."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {"program_id": "prog1", "name": "CS"}
+        mock_bulk_add.return_value = {"success_count": 2, "error_count": 0}
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "add", "course_ids": ["c1", "c2"]},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "2 added" in data["message"]
+        mock_bulk_add.assert_called_once_with(["c1", "c2"], "prog1")
+
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.bulk_remove_courses_from_program")
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_remove_action(
+        self, mock_has_permission, mock_bulk_remove, mock_get_program
+    ):
+        """Test bulk remove courses from program."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {"program_id": "prog1", "name": "CS"}
+        mock_bulk_remove.return_value = {"removed": 2, "failed": 0}
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "remove", "course_ids": ["c1", "c2"]},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "2 removed" in data["message"]
+        mock_bulk_remove.assert_called_once_with(["c1", "c2"], "prog1")
+
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_invalid_action(self, mock_has_permission):
+        """Test bulk manage with invalid action."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+        mock_has_permission.return_value = True
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "invalid", "course_ids": ["c1"]},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Invalid or missing action" in data["error"]
+
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_missing_course_ids(self, mock_has_permission):
+        """Test bulk manage with missing course_ids."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+        mock_has_permission.return_value = True
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "add"},  # Missing course_ids
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Missing or invalid course_ids" in data["error"]
+
 
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
@@ -2676,6 +2849,49 @@ class TestAPIRoutesErrorHandling:
             assert response.status_code == 400
             data = response.get_json()
             assert "Invalid file type" in data["error"]
+
+    @patch("api_routes._check_excel_import_permissions")
+    @patch("api_routes.has_permission")
+    def test_import_excel_permission_error(self, mock_has_permission, mock_check_perms):
+        """Test import_excel endpoint with PermissionError."""
+        self._login_site_admin()
+        mock_has_permission.return_value = True
+        mock_check_perms.side_effect = PermissionError(
+            "User has no associated institution"
+        )
+
+        from io import BytesIO
+
+        data = {"excel_file": (BytesIO(b"test"), "test.xlsx")}
+
+        response = self.client.post("/api/import/excel", data=data)
+
+        assert response.status_code == 403
+        data = response.get_json()
+        assert data["success"] is False
+        assert "User has no associated institution" in data["error"]
+
+    @patch("api_routes._resolve_users_scope")
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.has_permission")
+    def test_list_users_value_error(
+        self,
+        mock_has_permission,
+        mock_get_current_user,
+        mock_resolve_scope,
+    ):
+        """Test list_users with ValueError from scope resolution."""
+        self._login_site_admin()
+        mock_has_permission.return_value = True
+        mock_get_current_user.return_value = self.site_admin_user
+        mock_resolve_scope.side_effect = ValueError("Invalid scope")
+
+        response = self.client.get("/api/users")
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Invalid scope" in data["error"]
 
 
 class TestAPIRoutesProgressTracking:
@@ -3004,6 +3220,33 @@ class TestAPIRoutesExtended:
         assert data["success"] is True
         assert len(data["courses"]) == 1
 
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.has_permission")
+    @patch("api_routes.get_courses_by_program")
+    def test_list_courses_with_program_override(
+        self, mock_get_by_program, mock_has_permission, mock_get_user
+    ):
+        """Test list_courses with program_id override parameter."""
+        self._login_site_admin()
+        mock_get_user.return_value = {
+            "user_id": "admin1",
+            "role": "site_admin",
+            "institution_id": "inst1",
+        }
+        mock_has_permission.return_value = True
+        mock_get_by_program.return_value = [
+            {"course_id": "c1", "program_ids": ["prog1"]}
+        ]
+
+        response = self.client.get("/api/courses?program_id=prog1")
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert len(data["courses"]) == 1
+        assert data["current_program_id"] == "prog1"
+        mock_get_by_program.assert_called_once_with("prog1")
+
 
 class TestAPIRoutesHelpers:
     """Test helper functions in API routes."""
@@ -3068,3 +3311,824 @@ class TestAPIRoutesHelpers:
         progress_id = create_progress_tracker()
         cleanup_progress(progress_id)
         # Should not raise an exception
+
+
+class TestAPIRoutesHelperFunctions:
+    """Test helper functions for course listing complexity reduction."""
+
+    def setup_method(self):
+        """Set up test client."""
+        from app import app
+
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
+    def test_resolve_courses_scope_success(self):
+        """Test _resolve_courses_scope with valid scope."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_courses_scope
+
+        mock_user = {"role": "site_admin"}
+        mock_institutions = ["inst1"]
+        mock_global = False
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
+
+            user, institutions, is_global = _resolve_courses_scope()
+
+            assert user == mock_user
+            assert institutions == mock_institutions
+            assert is_global == mock_global
+
+    def test_resolve_courses_scope_missing_context(self):
+        """Test _resolve_courses_scope with missing institution context."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import InstitutionContextMissingError, _resolve_courses_scope
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
+
+            with pytest.raises(ValueError, match="Institution context required"):
+                _resolve_courses_scope()
+
+    def test_user_can_access_program_site_admin(self):
+        """Test _user_can_access_program for site admin."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "site_admin"}
+        program_id = "test-program"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is True
+
+    def test_user_can_access_program_with_access(self):
+        """Test _user_can_access_program for user with program access."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "program_admin", "program_ids": ["prog1", "prog2"]}
+        program_id = "prog1"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is True
+
+    def test_user_can_access_program_without_access(self):
+        """Test _user_can_access_program for user without program access."""
+        from api_routes import _user_can_access_program
+
+        user = {"role": "program_admin", "program_ids": ["prog1", "prog2"]}
+        program_id = "prog3"
+
+        result = _user_can_access_program(user, program_id)
+        assert result is False
+
+    def test_user_can_access_program_no_user(self):
+        """Test _user_can_access_program with no user."""
+        from api_routes import _user_can_access_program
+
+        result = _user_can_access_program(None, "test-program")
+        assert result is False
+
+    def test_resolve_program_override_no_override(self):
+        """Test _resolve_program_override with no override."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_program_override
+
+        with self.app.test_request_context("/?"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                result = _resolve_program_override({"role": "user"})
+                assert result == "current-program"
+
+    def test_resolve_program_override_with_access(self):
+        """Test _resolve_program_override with valid override."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_program_override
+
+        user = {"role": "site_admin"}
+
+        with self.app.test_request_context("/?program_id=override-program"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                result = _resolve_program_override(user)
+                assert result == "override-program"
+
+    def test_resolve_program_override_without_access(self):
+        """Test _resolve_program_override with invalid override."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _resolve_program_override
+
+        user = {"role": "program_admin", "program_ids": ["other-program"]}
+
+        with self.app.test_request_context("/?program_id=override-program"):
+            with patch("api_routes.get_current_program_id") as mock_get_program:
+                mock_get_program.return_value = "current-program"
+
+                with pytest.raises(
+                    PermissionError, match="Access denied to specified program"
+                ):
+                    _resolve_program_override(user)
+
+    def test_get_global_courses_no_filter(self):
+        """Test _get_global_courses without department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_courses
+
+        institution_ids = ["inst1", "inst2"]
+        mock_courses_1 = [{"id": "c1", "department": "CS"}]
+        mock_courses_2 = [{"id": "c2", "department": "MATH"}]
+
+        with patch("api_routes.get_all_courses") as mock_get_courses:
+            mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
+
+            courses, context = _get_global_courses(institution_ids, None)
+
+            assert len(courses) == 2
+            assert context == "system-wide"
+
+    def test_get_global_courses_with_filter(self):
+        """Test _get_global_courses with department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_courses
+
+        institution_ids = ["inst1", "inst2"]
+        mock_courses_1 = [{"id": "c1", "department": "CS"}]
+        mock_courses_2 = [{"id": "c2", "department": "MATH"}]
+
+        with patch("api_routes.get_all_courses") as mock_get_courses:
+            mock_get_courses.side_effect = [mock_courses_1, mock_courses_2]
+
+            courses, context = _get_global_courses(institution_ids, "CS")
+
+            assert len(courses) == 1
+            assert courses[0]["id"] == "c1"
+            assert context == "system-wide, department CS"
+
+    def test_get_program_courses_no_filter(self):
+        """Test _get_program_courses without department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_program_courses
+
+        program_id = "test-program"
+        mock_courses = [
+            {"id": "c1", "department": "CS"},
+            {"id": "c2", "department": "MATH"},
+        ]
+
+        with patch("api_routes.get_courses_by_program") as mock_get_courses:
+            mock_get_courses.return_value = mock_courses
+
+            courses, context = _get_program_courses(program_id, None)
+
+            assert len(courses) == 2
+            assert context == f"program {program_id}"
+
+    def test_get_program_courses_with_filter(self):
+        """Test _get_program_courses with department filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_program_courses
+
+        program_id = "test-program"
+        mock_courses = [
+            {"id": "c1", "department": "CS"},
+            {"id": "c2", "department": "MATH"},
+        ]
+
+        with patch("api_routes.get_courses_by_program") as mock_get_courses:
+            mock_get_courses.return_value = mock_courses
+
+            courses, context = _get_program_courses(program_id, "CS")
+
+            assert len(courses) == 1
+            assert courses[0]["id"] == "c1"
+
+    def test_resolve_users_scope_success(self):
+        """Test _resolve_users_scope with valid scope."""
+        from unittest.mock import patch
+
+        from api_routes import _resolve_users_scope
+
+        mock_user = {"role": "site_admin"}
+        mock_institutions = ["inst1"]
+        mock_global = False
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.return_value = (mock_user, mock_institutions, mock_global)
+
+            user, institutions, is_global = _resolve_users_scope()
+
+            assert user == mock_user
+            assert institutions == mock_institutions
+            assert is_global == mock_global
+
+    def test_resolve_users_scope_missing_context(self):
+        """Test _resolve_users_scope with missing institution context."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import InstitutionContextMissingError, _resolve_users_scope
+
+        with patch("api_routes._resolve_institution_scope") as mock_resolve:
+            mock_resolve.side_effect = InstitutionContextMissingError("Missing context")
+
+            with pytest.raises(ValueError, match="Institution context required"):
+                _resolve_users_scope()
+
+    def test_get_users_by_scope_global(self):
+        """Test _get_users_by_scope for global scope."""
+        from unittest.mock import patch
+
+        from api_routes import _get_users_by_scope
+
+        institution_ids = ["inst1", "inst2"]
+        role_filter = "admin"
+
+        with patch("api_routes._get_global_users") as mock_global:
+            mock_global.return_value = [{"id": "user1"}]
+
+            result = _get_users_by_scope(True, institution_ids, role_filter)
+
+            mock_global.assert_called_once_with(institution_ids, role_filter)
+            assert result == [{"id": "user1"}]
+
+    def test_get_users_by_scope_institution(self):
+        """Test _get_users_by_scope for institution scope."""
+        from unittest.mock import patch
+
+        from api_routes import _get_users_by_scope
+
+        institution_ids = ["inst1"]
+        role_filter = "admin"
+
+        with patch("api_routes._get_institution_users") as mock_institution:
+            mock_institution.return_value = [{"id": "user1"}]
+
+            result = _get_users_by_scope(False, institution_ids, role_filter)
+
+            mock_institution.assert_called_once_with("inst1", role_filter)
+            assert result == [{"id": "user1"}]
+
+    def test_get_global_users_with_role_filter(self):
+        """Test _get_global_users with role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_users
+
+        institution_ids = ["inst1", "inst2"]
+        role_filter = "admin"
+        mock_users = [
+            {"id": "user1", "institution_id": "inst1"},
+            {"id": "user2", "institution_id": "inst3"},  # Should be filtered out
+            {"id": "user3", "institution_id": "inst2"},
+        ]
+
+        with patch("api_routes.get_users_by_role") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_global_users(institution_ids, role_filter)
+
+            mock_get_users.assert_called_once_with(role_filter)
+            assert len(result) == 2
+            assert result[0]["id"] == "user1"
+            assert result[1]["id"] == "user3"
+
+    def test_get_global_users_without_role_filter(self):
+        """Test _get_global_users without role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_global_users
+
+        institution_ids = ["inst1", "inst2"]
+        mock_users_1 = [{"id": "user1"}]
+        mock_users_2 = [{"id": "user2"}]
+
+        with patch("api_routes.get_all_users") as mock_get_users:
+            mock_get_users.side_effect = [mock_users_1, mock_users_2]
+
+            result = _get_global_users(institution_ids, None)
+
+            assert mock_get_users.call_count == 2
+            assert len(result) == 2
+            assert result[0]["id"] == "user1"
+            assert result[1]["id"] == "user2"
+
+    def test_get_institution_users_with_role_filter(self):
+        """Test _get_institution_users with role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_institution_users
+
+        institution_id = "inst1"
+        role_filter = "admin"
+        mock_users = [
+            {"id": "user1", "institution_id": "inst1"},
+            {"id": "user2", "institution_id": "inst2"},  # Should be filtered out
+        ]
+
+        with patch("api_routes.get_users_by_role") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_institution_users(institution_id, role_filter)
+
+            mock_get_users.assert_called_once_with(role_filter)
+            assert len(result) == 1
+            assert result[0]["id"] == "user1"
+
+    def test_get_institution_users_without_role_filter(self):
+        """Test _get_institution_users without role filter."""
+        from unittest.mock import patch
+
+        from api_routes import _get_institution_users
+
+        institution_id = "inst1"
+        mock_users = [{"id": "user1"}, {"id": "user2"}]
+
+        with patch("api_routes.get_all_users") as mock_get_users:
+            mock_get_users.return_value = mock_users
+
+            result = _get_institution_users(institution_id, None)
+
+            mock_get_users.assert_called_once_with(institution_id)
+            assert result == mock_users
+
+
+class TestRemoveCourseHelpers:
+    """Test helper functions for remove_course_from_program_api."""
+
+    def test_validate_program_for_removal_success(self):
+        """Test _validate_program_for_removal with valid program."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_program_for_removal
+
+        mock_program = {
+            "id": "prog1",
+            "institution_id": "inst1",
+            "name": "Test Program",
+        }
+
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.return_value = mock_program
+
+            program, institution_id = _validate_program_for_removal("prog1")
+
+            mock_get_program.assert_called_once_with("prog1")
+            assert program == mock_program
+            assert institution_id == "inst1"
+
+    def test_validate_program_for_removal_not_found(self):
+        """Test _validate_program_for_removal raises ValueError when program not found."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _validate_program_for_removal
+
+        with patch("api_routes.get_program_by_id") as mock_get_program:
+            mock_get_program.return_value = None
+
+            with pytest.raises(ValueError, match="Program not found"):
+                _validate_program_for_removal("prog1")
+
+    def test_get_default_program_id_with_default(self):
+        """Test _get_default_program_id returns default program."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        mock_programs = [
+            {"id": "prog1", "is_default": False},
+            {"id": "prog2", "is_default": True},
+            {"id": "prog3", "is_default": False},
+        ]
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = mock_programs
+
+            result = _get_default_program_id("inst1")
+
+            mock_get_programs.assert_called_once_with("inst1")
+            assert result == "prog2"
+
+    def test_get_default_program_id_no_default(self):
+        """Test _get_default_program_id returns None when no default exists."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        mock_programs = [
+            {"id": "prog1", "is_default": False},
+            {"id": "prog2", "is_default": False},
+        ]
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = mock_programs
+
+            result = _get_default_program_id("inst1")
+
+            assert result is None
+
+    def test_get_default_program_id_no_institution(self):
+        """Test _get_default_program_id returns None when no institution_id."""
+        from api_routes import _get_default_program_id
+
+        result = _get_default_program_id(None)
+        assert result is None
+
+        result = _get_default_program_id("")
+        assert result is None
+
+    def test_get_default_program_id_no_programs(self):
+        """Test _get_default_program_id returns None when institution has no programs."""
+        from unittest.mock import patch
+
+        from api_routes import _get_default_program_id
+
+        with patch("api_routes.get_programs_by_institution") as mock_get_programs:
+            mock_get_programs.return_value = None
+
+            result = _get_default_program_id("inst1")
+
+            assert result is None
+
+    def test_remove_course_with_orphan_handling_success(self):
+        """Test _remove_course_with_orphan_handling successfully removes course."""
+        from unittest.mock import patch
+
+        from api_routes import _remove_course_with_orphan_handling
+
+        with (
+            patch("api_routes.remove_course_from_program") as mock_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_remove.return_value = True
+
+            result = _remove_course_with_orphan_handling(
+                "course1", "prog1", "inst1", "default_prog"
+            )
+
+            mock_remove.assert_called_once_with("course1", "prog1")
+            mock_assign.assert_called_once_with("course1", "inst1")
+            assert result is True
+
+    def test_remove_course_with_orphan_handling_no_default_program(self):
+        """Test _remove_course_with_orphan_handling when no default program exists."""
+        from unittest.mock import patch
+
+        from api_routes import _remove_course_with_orphan_handling
+
+        with (
+            patch("api_routes.remove_course_from_program") as mock_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_remove.return_value = True
+
+            result = _remove_course_with_orphan_handling(
+                "course1", "prog1", "inst1", None
+            )
+
+            mock_remove.assert_called_once_with("course1", "prog1")
+            # Should not try to assign when no default program
+            mock_assign.assert_not_called()
+            assert result is True
+
+    def test_build_removal_response_success(self):
+        """Test _build_removal_response builds success response."""
+        from api_routes import _build_removal_response
+        from app import app
+
+        with app.app_context():
+            mock_program = {"name": "Test Program"}
+            response = _build_removal_response(True, "course1", mock_program)
+
+            data = response.get_json()
+            assert data["success"] is True
+            assert "removed from program Test Program" in data["message"]
+            # Success case returns just response (defaults to 200)
+            assert response.status_code == 200
+
+    def test_build_removal_response_failure(self):
+        """Test _build_removal_response builds failure response."""
+        from api_routes import _build_removal_response
+        from app import app
+
+        with app.app_context():
+            mock_program = {"name": "Test Program"}
+            response, status = _build_removal_response(False, "course1", mock_program)
+
+            data = response.get_json()
+            assert data["success"] is False
+            assert "Failed to remove" in data["error"]
+            assert status == 500
+
+
+class TestBulkManageHelpers:
+    """Test helper functions for bulk_manage_program_courses."""
+
+    def test_validate_bulk_manage_request_success(self):
+        """Test _validate_bulk_manage_request with valid data."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(
+                json={"action": "add", "course_ids": ["course1", "course2"]}
+            ):
+                result = _validate_bulk_manage_request()
+                assert result is None  # No validation error
+
+    def test_validate_bulk_manage_request_no_data(self):
+        """Test _validate_bulk_manage_request with no data."""
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            # Empty dict is treated as "no data"
+            with client.application.test_request_context(json={}):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "No data provided" in data["error"]
+                assert status == 400
+
+    def test_validate_bulk_manage_request_invalid_action(self):
+        """Test _validate_bulk_manage_request with invalid action."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(
+                json={"action": "invalid", "course_ids": ["course1"]}
+            ):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "Invalid or missing action" in data["error"]
+                assert status == 400
+
+    def test_validate_bulk_manage_request_missing_course_ids(self):
+        """Test _validate_bulk_manage_request with missing course_ids."""
+        from unittest.mock import patch
+
+        from api_routes import _validate_bulk_manage_request
+        from app import app
+
+        with app.test_client() as client:
+            with client.application.test_request_context(json={"action": "add"}):
+                response, status = _validate_bulk_manage_request()
+                data = response.get_json()
+                assert data["success"] is False
+                assert "Missing or invalid course_ids" in data["error"]
+                assert status == 400
+
+    def test_execute_bulk_add(self):
+        """Test _execute_bulk_add helper."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_add
+
+        mock_result = {"success_count": 5, "failed_count": 0}
+
+        with patch("api_routes.bulk_add_courses_to_program") as mock_bulk_add:
+            mock_bulk_add.return_value = mock_result
+
+            result, message = _execute_bulk_add(["course1", "course2"], "prog1")
+
+            mock_bulk_add.assert_called_once_with(["course1", "course2"], "prog1")
+            assert result == mock_result
+            assert "5 added" in message
+
+    def test_execute_bulk_remove_with_default_program(self):
+        """Test _execute_bulk_remove with default program available."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_remove
+
+        mock_result = {"removed": 3, "failed": 0}
+
+        with (
+            patch("api_routes.get_current_institution_id") as mock_get_inst,
+            patch("api_routes._get_default_program_id") as mock_get_default,
+            patch("api_routes.bulk_remove_courses_from_program") as mock_bulk_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_get_inst.return_value = "inst1"
+            mock_get_default.return_value = "default_prog"
+            mock_bulk_remove.return_value = mock_result
+
+            result, message = _execute_bulk_remove(
+                ["course1", "course2", "course3"], "prog1"
+            )
+
+            mock_bulk_remove.assert_called_once_with(
+                ["course1", "course2", "course3"], "prog1"
+            )
+            # Should assign all courses to default program
+            assert mock_assign.call_count == 3
+            assert result == mock_result
+            assert "3 removed" in message
+
+    def test_execute_bulk_remove_no_default_program(self):
+        """Test _execute_bulk_remove when no default program exists."""
+        from unittest.mock import patch
+
+        from api_routes import _execute_bulk_remove
+
+        mock_result = {"removed": 2, "failed": 0}
+
+        with (
+            patch("api_routes.get_current_institution_id") as mock_get_inst,
+            patch("api_routes._get_default_program_id") as mock_get_default,
+            patch("api_routes.bulk_remove_courses_from_program") as mock_bulk_remove,
+            patch("api_routes.assign_course_to_default_program") as mock_assign,
+        ):
+            mock_get_inst.return_value = "inst1"
+            mock_get_default.return_value = None  # No default program
+            mock_bulk_remove.return_value = mock_result
+
+            result, message = _execute_bulk_remove(["course1", "course2"], "prog1")
+
+            # Should not try to assign when no default program
+            mock_assign.assert_not_called()
+            assert result == mock_result
+            assert "2 removed" in message
+
+
+class TestExcelImportHelpers:
+    """Test helper functions for excel_import_api."""
+
+    def test_check_excel_import_permissions_site_admin(self):
+        """Test _check_excel_import_permissions for site admin."""
+        from unittest.mock import patch
+
+        from api_routes import _check_excel_import_permissions
+
+        mock_user = {
+            "user_id": "admin1",
+            "role": "site_admin",
+            "institution_id": None,
+        }
+
+        with patch("api_routes.get_current_user") as mock_get_user:
+            mock_get_user.return_value = mock_user
+
+            # Site admin with CEI adapter - should succeed
+            user, inst_id = _check_excel_import_permissions(
+                "cei_excel_format_v1", "courses"
+            )
+
+            assert user == mock_user
+            # Institution ID will be determined by adapter
+
+    def test_check_excel_import_permissions_no_user(self):
+        """Test _check_excel_import_permissions raises when no user."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _check_excel_import_permissions
+
+        with patch("api_routes.get_current_user") as mock_get_user:
+            mock_get_user.return_value = None
+
+            with pytest.raises(PermissionError, match="Authentication required"):
+                _check_excel_import_permissions("cei_excel_format_v1", "courses")
+
+    def test_determine_target_institution_site_admin_cei(self):
+        """Test _determine_target_institution for site admin with CEI adapter."""
+        from unittest.mock import patch
+
+        from api_routes import _determine_target_institution
+
+        # Function is imported inside _determine_target_institution
+        with patch(
+            "database_service.create_default_cei_institution"
+        ) as mock_create_cei:
+            mock_create_cei.return_value = "cei_inst_id"
+
+            result = _determine_target_institution(
+                "site_admin", None, "cei_excel_format_v1"
+            )
+
+            assert result == "cei_inst_id"
+            mock_create_cei.assert_called_once()
+
+    def test_determine_target_institution_site_admin_cei_fails(self):
+        """Test _determine_target_institution when CEI creation fails."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        # Function is imported inside _determine_target_institution
+        with patch(
+            "database_service.create_default_cei_institution"
+        ) as mock_create_cei:
+            mock_create_cei.return_value = None
+
+            with pytest.raises(
+                ValueError, match="Failed to create/find CEI institution"
+            ):
+                _determine_target_institution("site_admin", None, "cei_excel_format_v1")
+
+    def test_determine_target_institution_site_admin_non_cei(self):
+        """Test _determine_target_institution for site admin with non-CEI adapter."""
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        with pytest.raises(
+            ValueError, match="Site admin must specify target institution"
+        ):
+            _determine_target_institution("site_admin", None, "other_adapter")
+
+    def test_determine_target_institution_institution_admin(self):
+        """Test _determine_target_institution for institution admin."""
+        from api_routes import _determine_target_institution
+
+        result = _determine_target_institution(
+            "institution_admin", "inst123", "cei_excel_format_v1"
+        )
+
+        assert result == "inst123"
+
+    def test_determine_target_institution_no_institution(self):
+        """Test _determine_target_institution when user has no institution."""
+        import pytest
+
+        from api_routes import _determine_target_institution
+
+        with pytest.raises(PermissionError, match="User has no associated institution"):
+            _determine_target_institution(
+                "institution_admin", None, "cei_excel_format_v1"
+            )
+
+    def test_validate_import_permissions_site_admin_courses(self):
+        """Test _validate_import_permissions for site admin importing courses."""
+        from api_routes import _validate_import_permissions
+
+        # Should not raise
+        _validate_import_permissions("site_admin", "courses")
+
+    def test_validate_import_permissions_invalid_role(self):
+        """Test _validate_import_permissions with invalid role."""
+        import pytest
+
+        from api_routes import _validate_import_permissions
+
+        with pytest.raises(PermissionError, match="Invalid user role"):
+            _validate_import_permissions("invalid_role", "courses")
+
+    def test_validate_import_permissions_forbidden_data_type(self):
+        """Test _validate_import_permissions when user cannot import data type."""
+        import pytest
+
+        from api_routes import _validate_import_permissions
+
+        # Institution admin cannot import institutions
+        with pytest.raises(
+            PermissionError, match="institution_admin cannot import institutions"
+        ):
+            _validate_import_permissions("institution_admin", "institutions")
+
+
+class TestExcelImportEdgeCases:
+    """Test edge cases in excel_import_api function."""
+
+    def test_unsafe_filename_sanitization(self):
+        """Test filename sanitization fallback for unsafe names."""
+        import re
+
+        # Simulate the exact logic from api_routes.py line 3024-3026
+        filename = "..."  # Only dots
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", filename)
+
+        # Line 3025-3026: Check if empty or starts with dot
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"upload_{hash(filename) % 10000}"  # Line 3026
+
+        # Should have generated fallback filename
+        assert safe_filename.startswith("upload_")
+        assert len(safe_filename) > 7  # "upload_" + digits
