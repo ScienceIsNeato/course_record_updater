@@ -432,3 +432,73 @@ class TestCEIExcelAdapterErrorHandling:
 
         # Should return None (line 603)
         assert error is None
+
+    def test_parse_file_excel_read_error(self):
+        """Test parse_file raises FileCompatibilityError on Excel read failure."""
+        import os
+        import tempfile
+
+        import pytest
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+
+        adapter = CEIExcelAdapter()
+
+        # Create a non-Excel file to trigger read error
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            tmp.write(b"NOT AN EXCEL FILE")
+            tmp_path = tmp.name
+
+        try:
+            with pytest.raises(FileCompatibilityError, match="Cannot read Excel file"):
+                adapter.parse_file(tmp_path, {})  # Should hit line 761-762
+        finally:
+            os.unlink(tmp_path)
+
+    def test_parse_file_empty_excel(self):
+        """Test parse_file raises FileCompatibilityError for empty Excel file."""
+        import tempfile
+
+        import pandas as pd
+        import pytest
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+
+        adapter = CEIExcelAdapter()
+
+        # Create empty Excel file
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            empty_df = pd.DataFrame()
+            empty_df.to_excel(tmp.name, index=False)
+            tmp_path = tmp.name
+
+        try:
+            with pytest.raises(FileCompatibilityError, match="Excel file is empty"):
+                adapter.parse_file(tmp_path, {})  # Should hit line 765
+        finally:
+            import os
+
+            os.unlink(tmp_path)
+
+    def test_validate_data_patterns_with_student_error(self):
+        """Test _validate_data_patterns includes student column error."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Create DataFrame with invalid student data
+        df = pd.DataFrame(
+            {
+                "course": ["MATH-101", "MATH-102", "MATH-103"],
+                "Enrolled Students": ["", "  ", "invalid"],  # All invalid
+            }
+        )
+
+        errors = adapter._validate_data_patterns(df, "original")
+
+        # Should include student column error (lines 580-581)
+        assert len(errors) > 0
+        student_errors = [e for e in errors if "student" in e.lower()]
+        assert len(student_errors) > 0
