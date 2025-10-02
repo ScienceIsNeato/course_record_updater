@@ -529,3 +529,27 @@ class TestCEIExcelAdapterErrorHandling:
                 assert "600" in message  # Should show actual size
         finally:
             os.unlink(tmp_path)
+
+    def test_read_file_excel_read_failure(self):
+        """Test _read_file raises FileCompatibilityError when Excel read fails."""
+        import tempfile
+
+        import pytest
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+
+        adapter = CEIExcelAdapter()
+
+        # Create a non-Excel file (text file)
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", mode="w", delete=False) as tmp:
+            tmp.write("This is not a valid Excel file!")
+            tmp_path = tmp.name
+
+        try:
+            # Should raise FileCompatibilityError when pandas cannot read it (line 761-762)
+            with pytest.raises(FileCompatibilityError, match="Cannot read Excel file"):
+                adapter._read_excel_file(tmp_path)
+        finally:
+            import os
+
+            os.unlink(tmp_path)
