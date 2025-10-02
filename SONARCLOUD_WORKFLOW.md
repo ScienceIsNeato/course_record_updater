@@ -5,11 +5,31 @@
 ### Running SonarCloud Analysis
 
 ```bash
-# Run full SonarCloud analysis
+# Run full SonarCloud analysis (ALWAYS run exactly as shown - no pipes, no redirects)
 python scripts/ship_it.py --checks sonar
 
 # Issues are automatically written to: logs/sonarcloud_issues.txt
 ```
+
+### ⚠️ IMPORTANT: Command Execution Rules
+
+**ALWAYS run the command exactly as shown above.**
+
+❌ **DO NOT pipe, redirect, or modify the command:**
+```bash
+# ❌ WRONG - breaks output and user experience
+python scripts/ship_it.py --checks sonar | grep "Coverage"
+python scripts/ship_it.py --checks sonar 2>&1 | tail -100
+python scripts/ship_it.py --checks sonar > output.txt
+rm -rf .scannerwork && python scripts/ship_it.py --checks sonar
+```
+
+✅ **Correct approach:**
+- Run the command as-is
+- Read results from `logs/sonarcloud_issues.txt`
+- Check other log files for details (see "File Location" section below)
+
+**Why:** The script is designed to provide complete output and save results to files automatically. Piping or filtering breaks the user experience.
 
 ### Reviewing Issues
 
