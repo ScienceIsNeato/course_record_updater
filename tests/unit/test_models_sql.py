@@ -184,3 +184,45 @@ class TestToDictEdgeCases:
 
         # Should return empty dict (or dict with only extras if present)
         assert isinstance(result, dict)
+
+    def test_to_dict_course_offering(self):
+        """Test to_dict with CourseOffering model."""
+        from models_sql import CourseOffering, to_dict
+
+        offering = CourseOffering(
+            id="off-123",
+            course_id="course-123",
+            term_id="term-123",
+            institution_id="inst-123",
+        )
+
+        result = to_dict(offering)
+
+        assert result["offering_id"] == "off-123"
+        assert result["course_id"] == "course-123"
+
+    def test_to_dict_course_section(self):
+        """Test to_dict with CourseSection model."""
+        from models_sql import CourseSection, to_dict
+
+        section = CourseSection(
+            id="sec-123", offering_id="off-123", section_number="001"
+        )
+
+        result = to_dict(section)
+
+        assert result["section_id"] == "sec-123"
+        assert result["offering_id"] == "off-123"
+
+    def test_to_dict_course_outcome(self):
+        """Test to_dict with CourseOutcome model."""
+        from models_sql import CourseOutcome, to_dict
+
+        outcome = CourseOutcome(
+            id="out-123", course_id="course-123", description="Learn Python"
+        )
+
+        result = to_dict(outcome)
+
+        assert result["outcome_id"] == "out-123"
+        assert result["course_id"] == "course-123"
