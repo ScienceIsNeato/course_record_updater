@@ -443,3 +443,36 @@ class TestDashboardServiceErrorHandling:
             match="Unknown user role: unknown_role",
         ):
             service.get_dashboard_data(user)
+
+    def test_build_single_faculty_assignment_no_user_id(self):
+        """Test _build_single_faculty_assignment returns None when member has no user_id."""
+        service = DashboardService()
+
+        member = {"name": "John Doe"}  # No user_id
+        result = service._build_single_faculty_assignment(member, {}, {}, {})
+
+        assert result is None
+
+    def test_build_single_faculty_assignment_no_course_ids(self):
+        """Test _build_single_faculty_assignment returns None when no courses found."""
+        service = DashboardService()
+
+        member = {"user_id": "user1", "name": "John Doe"}
+        sections_by_instructor = {"user1": []}  # No sections
+
+        result = service._build_single_faculty_assignment(
+            member, sections_by_instructor, {}, {}
+        )
+
+        assert result is None
+
+    def test_build_program_metrics_no_program_id(self):
+        """Test _build_program_metrics skips programs with no ID."""
+        service = DashboardService()
+
+        programs = [{"name": "Program 1"}]  # No ID field
+
+        with patch.object(service, "_get_program_id", return_value=None):
+            metrics = service._build_program_metrics(programs, [], [], [])
+
+            assert metrics == []
