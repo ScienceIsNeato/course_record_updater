@@ -324,3 +324,62 @@ class TestCEIExcelAdapterErrorHandling:
 
         # This should hit line 628 (no valid numbers) or 630 (invalid data)
         assert error is not None
+
+    def test_check_format_compatibility_hybrid(self):
+        """Test _check_format_compatibility returns hybrid format."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Hybrid format needs course, email, Term + student col, but NOT all test format requirements
+        # Test format = course, email, Term, students (all 4 exact)
+        # Hybrid = course, email, Term + any student col variant
+        # Use "Enrolled Students" to trigger hybrid instead of test
+        df = pd.DataFrame(columns=["course", "email", "Term", "Enrolled Students"])
+
+        is_compatible, format_type = adapter._check_format_compatibility(df)
+
+        assert is_compatible is True
+        assert format_type == "hybrid"
+
+    def test_validate_data_patterns_term_error(self):
+        """Test _validate_data_patterns returns term validation error."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Create DataFrame with invalid terms
+        df = pd.DataFrame(
+            {
+                "course": ["MATH-101"],
+                "effterm_c": ["BADTERM"],
+                "Enrolled Students": [25],
+            }
+        )
+
+        errors = adapter._validate_data_patterns(df, "original")
+
+        # Should have term validation error (line 581, 588, 603)
+        assert len(errors) > 0
+        term_errors = [e for e in errors if "term" in e.lower()]
+        assert len(term_errors) > 0
+
+    def test_validate_student_count_column_no_column(self):
+        """Test _validate_student_count_column when column doesn't exist."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame without student count column
+        df = pd.DataFrame({"course": ["MATH-101"]})
+
+        error = adapter._validate_student_count_column(df)
+
+        # Should return None when no student column exists (line 622)
+        assert error is None
