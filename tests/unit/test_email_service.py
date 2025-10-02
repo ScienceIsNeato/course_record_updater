@@ -418,10 +418,16 @@ class TestEmailSuppression:
             # Check that info logs were called
             mock_logger.info.assert_called()
 
-            # Verify log messages contain expected content
-            log_calls = [call.args[0] for call in mock_logger.info.call_args_list]
-            assert any("Email suppressed (dev mode)" in call for call in log_calls)
-            assert any("Test Text Content" in call for call in log_calls)
+            # Verify log messages contain expected content (using parameterized logging)
+            # Check all call arguments (both format string and parameters)
+            all_log_args = [call.args for call in mock_logger.info.call_args_list]
+            assert any(
+                "Email suppressed (dev mode)" in args[0] for args in all_log_args
+            )
+            assert any(
+                len(args) > 1 and "Test Text Content" in str(args)
+                for args in all_log_args
+            )
 
 
 class TestSMTPSending:

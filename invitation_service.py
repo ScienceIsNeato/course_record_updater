@@ -235,7 +235,7 @@ class InvitationService:
             return user_data
 
         except Exception as e:
-            logger.error(f"[Invitation Service] Failed to accept invitation: {str(e)}")
+            logger.error("[Invitation Service] Failed to accept invitation: %s", str(e))
             raise InvitationError(f"Failed to accept invitation: {str(e)}")
 
     @staticmethod

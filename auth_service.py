@@ -377,7 +377,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not auth_service.is_authenticated():
-            logger.warning(f"Unauthorized access attempt to {f.__name__}")
+            logger.warning("Unauthorized access attempt to %s", f.__name__)
 
             # Detect if this is an API request or web page request
             from flask import redirect, request, url_for
@@ -425,7 +425,7 @@ def role_required(required_role: str):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not auth_service.is_authenticated():
-                logger.warning(f"Unauthorized access attempt to {f.__name__}")
+                logger.warning("Unauthorized access attempt to %s", f.__name__)
                 return (
                     jsonify(
                         {
@@ -500,7 +500,7 @@ def permission_required(
 def _check_authentication(function_name: str):
     """Check if user is authenticated, return error response if not."""
     if not auth_service.is_authenticated():
-        logger.warning(f"Unauthorized access attempt to {function_name}")
+        logger.warning("Unauthorized access attempt to %s", function_name)
         return (
             jsonify(
                 {

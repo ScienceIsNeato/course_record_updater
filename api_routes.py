@@ -2909,8 +2909,8 @@ def _validate_excel_import_request():
     """Validate the Excel import request and extract parameters."""
     # Debug: Log request information
     logger.info("Excel import request received")
-    logger.info(f"Request files: {list(request.files.keys())}")
-    logger.info(f"Request form: {dict(request.form)}")
+    logger.info("Request files: %s", list(request.files.keys()))
+    logger.info("Request form: %s", dict(request.form))
 
     # Check if file was uploaded
     if "excel_file" not in request.files:
