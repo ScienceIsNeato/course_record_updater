@@ -941,3 +941,35 @@ class TestImportServiceErrorHandling:
         # Should mark conflict as resolved
         assert service.stats["conflicts_resolved"] == 1
         assert detected_conflicts[0].resolution == "use_mine"
+
+    def test_resolve_course_conflicts_use_theirs_dry_run(self):
+        """Test _resolve_course_conflicts with USE_THEIRS in dry run mode."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        from datetime import datetime, timezone
+
+        from import_service import ConflictRecord
+
+        detected_conflicts = [
+            ConflictRecord(
+                entity_type="course",
+                entity_id="MATH-101",
+                field_name="title",
+                existing_value="Algebra",
+                import_value="New Algebra",
+                resolution="pending",
+                timestamp=datetime.now(timezone.utc),
+            )
+        ]
+
+        service._resolve_course_conflicts(
+            ConflictStrategy.USE_THEIRS,
+            detected_conflicts,
+            "MATH-101",
+            dry_run=True,  # DRY RUN mode
+            conflicts=[],
+        )
+
+        # Should log dry run message (line 580)
+        assert service.stats["conflicts_resolved"] == 1
