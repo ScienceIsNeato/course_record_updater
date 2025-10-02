@@ -383,3 +383,52 @@ class TestCEIExcelAdapterErrorHandling:
 
         # Should return None when no student column exists (line 622)
         assert error is None
+
+    def test_validate_student_count_column_has_error(self):
+        """Test _validate_student_count_column returns error for invalid data."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame with student column but all invalid values
+        df = pd.DataFrame({"Enrolled Students": ["", "  ", "invalid"]})
+
+        error = adapter._validate_student_count_column(df)
+
+        # Should return error (line 628, 581)
+        assert error is not None
+        assert "student" in error.lower()
+
+    def test_validate_course_column_no_column(self):
+        """Test _validate_course_column returns None when column doesn't exist."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame without course column
+        df = pd.DataFrame({"other": ["DATA"]})
+
+        error = adapter._validate_course_column(df)
+
+        # Should return None (line 588)
+        assert error is None
+
+    def test_validate_term_column_no_column(self):
+        """Test _validate_term_column returns None when column doesn't exist."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame without effterm_c column
+        df = pd.DataFrame({"other": ["DATA"]})
+
+        error = adapter._validate_term_column(df)
+
+        # Should return None (line 603)
+        assert error is None
