@@ -2570,6 +2570,33 @@ class TestCourseManagementOperations:
         assert "course1" in data["message"]
         mock_remove.assert_called_once()
 
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.has_permission")
+    def test_remove_course_from_program_not_found(
+        self, mock_has_permission, mock_get_program
+    ):
+        """Test course removal when program not found."""
+        from tests.test_utils import create_test_session
+
+        # Create authenticated session
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = None  # Program not found
+
+        response = self.client.delete("/api/programs/invalid-prog/courses/course1")
+
+        assert response.status_code == 404
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Program not found" in data["error"]
+
 
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
