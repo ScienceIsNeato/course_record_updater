@@ -2738,6 +2738,27 @@ class TestAPIRoutesErrorHandling:
             data = response.get_json()
             assert "Invalid file type" in data["error"]
 
+    @patch("api_routes._check_excel_import_permissions")
+    @patch("api_routes.has_permission")
+    def test_import_excel_permission_error(self, mock_has_permission, mock_check_perms):
+        """Test import_excel endpoint with PermissionError."""
+        self._login_site_admin()
+        mock_has_permission.return_value = True
+        mock_check_perms.side_effect = PermissionError(
+            "User has no associated institution"
+        )
+
+        from io import BytesIO
+
+        data = {"excel_file": (BytesIO(b"test"), "test.xlsx")}
+
+        response = self.client.post("/api/import/excel", data=data)
+
+        assert response.status_code == 403
+        data = response.get_json()
+        assert data["success"] is False
+        assert "User has no associated institution" in data["error"]
+
     @patch("api_routes._resolve_users_scope")
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
