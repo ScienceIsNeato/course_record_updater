@@ -740,3 +740,157 @@ class TestImportServiceErrorHandling:
                 assert "Validation failed" in service.stats["errors"][0]
             finally:
                 os.unlink(tmp_path)
+
+    def test_update_progress_with_callback(self):
+        """Test _update_progress calls progress_callback when set."""
+        from unittest.mock import Mock
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Set up progress callback
+        mock_callback = Mock()
+        service.progress_callback = mock_callback
+
+        # Call _update_progress
+        service._update_progress(50, 100, "courses")
+
+        # Verify callback was called
+        assert mock_callback.called
+        call_args = mock_callback.call_args[1]
+        assert call_args["percentage"] == 50
+        assert call_args["records_processed"] == 50
+        assert call_args["total_records"] == 100
+        assert "courses" in call_args["message"]
+
+    def test_process_single_record_offerings(self):
+        """Test _process_single_record handles offerings."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_offering_import") as mock_process:
+            conflicts = service._process_single_record(
+                "offerings",
+                {"offering_id": "test"},
+                ConflictStrategy.USE_THEIRS,
+                dry_run=False,
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_process_single_record_sections(self):
+        """Test _process_single_record handles sections."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_section_import") as mock_process:
+            conflicts = service._process_single_record(
+                "sections",
+                {"section_id": "test"},
+                ConflictStrategy.USE_THEIRS,
+                dry_run=False,
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_process_single_record_terms(self):
+        """Test _process_single_record handles terms."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        with patch.object(service, "_process_term_import") as mock_process:
+            conflicts = service._process_single_record(
+                "terms", {"term_id": "test"}, ConflictStrategy.USE_THEIRS, dry_run=False
+            )
+
+            assert conflicts == []
+            assert mock_process.called
+
+    def test_resolve_user_conflicts_use_theirs_dry_run(self):
+        """Test _resolve_user_conflicts with USE_THEIRS strategy in dry run."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        user_data = {"email": "test@example.com", "first_name": "Test"}
+        existing_user = {"email": "test@example.com", "first_name": "Old"}
+        detected_conflicts = []
+
+        with patch("import_service.update_user") as mock_update:
+            service._resolve_user_conflicts(
+                ConflictStrategy.USE_THEIRS,
+                detected_conflicts,
+                user_data,
+                existing_user,
+                "test@example.com",
+                dry_run=True,  # DRY RUN
+                conflicts=[],
+            )
+
+            # Should not call update_user in dry run
+            assert not mock_update.called
+            # Should have logged dry run message (check stats)
+            assert service.stats["records_updated"] == 0
+
+    def test_import_excel_file_top_level_exception(self):
+        """Test import_excel_file handles unexpected top-level exception."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock _prepare_import to raise unexpected exception
+        with patch.object(service, "_prepare_import", side_effect=RuntimeError("Boom")):
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service.import_excel_file(tmp_path)
+
+                assert result.success is False
+                assert len(result.errors) > 0
+                assert "Unexpected error during import" in result.errors[0]
+                assert "Boom" in result.errors[0]
+            finally:
+                os.unlink(tmp_path)
+
+    def test_process_data_records_exception_handling(self):
+        """Test exception handling when processing individual records in a batch."""
+        from unittest.mock import patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock _process_single_record to raise exception
+        with patch.object(
+            service,
+            "_process_single_record",
+            side_effect=RuntimeError("Record processing failed"),
+        ):
+            # Call _process_data_records which should catch the exception
+            conflicts = service._process_data_type_records(
+                "courses",
+                [{"course_number": "TEST-101"}],
+                ConflictStrategy.USE_THEIRS,
+                False,  # dry_run
+                0,  # processed_records
+                1,  # total_records
+            )
+
+            # Should catch exception and log error
+            assert len(service.stats["errors"]) > 0
+            assert "Error processing courses record" in service.stats["errors"][0]
+            assert "Record processing failed" in service.stats["errors"][0]
