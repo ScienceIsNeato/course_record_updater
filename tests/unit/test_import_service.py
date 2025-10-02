@@ -894,3 +894,50 @@ class TestImportServiceErrorHandling:
             assert len(service.stats["errors"]) > 0
             assert "Error processing courses record" in service.stats["errors"][0]
             assert "Record processing failed" in service.stats["errors"][0]
+
+    def test_process_single_record_unknown_type(self):
+        """Test _process_single_record with unknown data type returns empty list."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        conflicts = service._process_single_record(
+            "unknown_type", {"data": "test"}, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert conflicts == []
+
+    def test_resolve_user_conflicts_use_mine_with_conflicts(self):
+        """Test _resolve_user_conflicts with USE_MINE and detected conflicts."""
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Create conflict records
+        from datetime import datetime, timezone
+
+        from import_service import ConflictRecord
+
+        detected_conflicts = [
+            ConflictRecord(
+                entity_type="user",
+                entity_id="test@example.com",
+                field_name="first_name",
+                existing_value="Old",
+                import_value="New",
+                resolution="pending",
+                timestamp=datetime.now(timezone.utc),
+            )
+        ]
+
+        service._resolve_user_conflicts(
+            ConflictStrategy.USE_MINE,
+            detected_conflicts,
+            {"email": "test@example.com"},
+            {"email": "test@example.com"},
+            "test@example.com",
+            dry_run=False,
+            conflicts=[],
+        )
+
+        # Should mark conflict as resolved
+        assert service.stats["conflicts_resolved"] == 1
+        assert detected_conflicts[0].resolution == "use_mine"
