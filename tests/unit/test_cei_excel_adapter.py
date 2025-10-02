@@ -201,3 +201,126 @@ class TestParseCeiExcelRow:
         assert result["term"] is None
         assert result["offering"] is None
         assert result["section"] is None
+
+
+class TestCEIExcelAdapterErrorHandling:
+    """Test error handling in CEI Excel Adapter."""
+
+    def test_validate_file_general_exception(self):
+        """Test validate_file_compatibility handles general exceptions."""
+        from unittest.mock import patch
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Mock _validate_basic_file_properties to raise exception
+        with patch.object(
+            adapter,
+            "_validate_basic_file_properties",
+            side_effect=RuntimeError("Unexpected error"),
+        ):
+            is_valid, error_msg = adapter.validate_file_compatibility("/fake/file.xlsx")
+
+            assert is_valid is False
+            assert "Error validating file" in error_msg
+            assert "Unexpected error" in error_msg
+
+    def test_validate_basic_file_properties_file_not_found(self):
+        """Test file validation when file doesn't exist."""
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+        is_valid, error_msg = adapter._validate_basic_file_properties(
+            "/nonexistent/file.xlsx"
+        )
+
+        assert is_valid is False
+        assert "File not found" in error_msg
+
+    def test_read_excel_sample_exception(self):
+        """Test _read_excel_sample handles pandas exceptions."""
+        import os
+        import tempfile
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # Create invalid Excel file (just text)
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            tmp.write(b"not an excel file")
+            tmp_path = tmp.name
+
+        try:
+            result = adapter._read_excel_sample(tmp_path)
+
+            assert isinstance(result, tuple)
+            assert result[0] is False
+            assert "Cannot read Excel file" in result[1]
+        finally:
+            os.unlink(tmp_path)
+
+    def test_validate_course_column_no_valid_courses(self):
+        """Test _validate_course_column when no valid course numbers found."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame with invalid course numbers
+        df = pd.DataFrame({"course": ["INVALID", "BADFORMAT", "WRONG"]})
+
+        error = adapter._validate_course_column(df)
+
+        assert error is not None
+        assert "No valid course numbers found" in error
+
+    def test_validate_term_column_no_valid_terms(self):
+        """Test _validate_term_column when no valid term codes found."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame with invalid term codes
+        df = pd.DataFrame({"effterm_c": ["INVALID", "BADTERM", "WRONG"]})
+
+        error = adapter._validate_term_column(df)
+
+        assert error is not None
+        assert "No valid term codes found" in error
+
+    def test_validate_student_count_column_invalid_data(self):
+        """Test _validate_student_count_column with invalid data."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame with non-numeric student counts
+        df = pd.DataFrame({"Enrolled Students": ["text", "invalid", "bad"]})
+
+        error = adapter._validate_student_count_column(df)
+
+        assert error is not None
+        assert "invalid data" in error
+
+    def test_validate_student_count_column_no_valid_numbers_string(self):
+        """Test _validate_student_count_column with strings that look numeric but aren't."""
+        import pandas as pd
+
+        from adapters.cei_excel_adapter import CEIExcelAdapter
+
+        adapter = CEIExcelAdapter()
+
+        # DataFrame with values that are present but can't be converted to int
+        df = pd.DataFrame({"Enrolled Students": ["", "  ", "-"]})
+
+        error = adapter._validate_student_count_column(df)
+
+        # This should hit line 628 (no valid numbers) or 630 (invalid data)
+        assert error is not None

@@ -818,3 +818,39 @@ class TestAuthServiceCoverage:
         with patch.object(service, "get_current_user", return_value=user_no_programs):
             programs = service.get_accessible_programs()
             assert programs == []  # Should return empty list as fallback
+
+
+def test_extract_request_value_from_json():
+    """Test _extract_request_value retrieves from JSON body."""
+    from flask import Flask
+
+    from auth_service import _extract_request_value
+
+    app = Flask(__name__)
+    with app.test_request_context(json={"test_key": "json_value"}):
+        value = _extract_request_value("test_key")
+        assert value == "json_value"
+
+
+def test_extract_request_value_from_form():
+    """Test _extract_request_value retrieves from form data."""
+    from flask import Flask
+
+    from auth_service import _extract_request_value
+
+    app = Flask(__name__)
+    with app.test_request_context(data={"test_key": "form_value"}, method="POST"):
+        value = _extract_request_value("test_key")
+        assert value == "form_value"
+
+
+def test_extract_request_value_from_args():
+    """Test _extract_request_value retrieves from query parameters."""
+    from flask import Flask
+
+    from auth_service import _extract_request_value
+
+    app = Flask(__name__)
+    with app.test_request_context(query_string="test_key=query_value"):
+        value = _extract_request_value("test_key")
+        assert value == "query_value"

@@ -551,3 +551,29 @@ class TestConvenienceFunctions:
         mock_method.assert_called_once_with(
             "admin@example.com", "pass", "John", "Doe", "University", None
         )
+
+
+class TestEmailVerificationExpiry:
+    """Test email verification expiry handling."""
+
+    def test_email_verification_expired_no_timestamp(self):
+        """Test _check_verification_expired when no timestamp present."""
+        from registration_service import RegistrationService
+
+        service = RegistrationService()
+        user = {}  # No verification_expires_at field
+
+        result = service._check_verification_expired(user)
+
+        assert result is False  # No timestamp means not expired
+
+    def test_email_verification_expired_invalid_format(self):
+        """Test _check_verification_expired with invalid datetime string."""
+        from registration_service import RegistrationService
+
+        service = RegistrationService()
+        user = {"email_verification_expires_at": "invalid-datetime"}
+
+        result = service._check_verification_expired(user)
+
+        assert result is False  # Invalid format returns False (line 451)

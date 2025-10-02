@@ -668,3 +668,75 @@ class TestImportServiceHelpers:
         assert result is None
         assert len(service.stats["errors"]) > 0
         assert "No valid data found" in service.stats["errors"][0]
+
+
+class TestImportServiceErrorHandling:
+    """Test error handling in ImportService."""
+
+    def test_prepare_import_adapter_registry_error(self):
+        """Test _prepare_import handles AdapterRegistryError."""
+        from unittest.mock import patch
+
+        from adapters.adapter_registry import AdapterRegistryError
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock get_adapter_registry to raise AdapterRegistryError
+        with patch("import_service.get_adapter_registry") as mock_registry:
+            mock_reg = mock_registry.return_value
+            mock_reg.get_adapter_by_id.side_effect = AdapterRegistryError(
+                "Registry failed"
+            )
+
+            # Use a valid temp file
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service._prepare_import(tmp_path, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "Failed to get adapter" in service.stats["errors"][0]
+                assert "Registry failed" in service.stats["errors"][0]
+            finally:
+                os.unlink(tmp_path)
+
+    def test_prepare_import_file_validation_exception(self):
+        """Test _prepare_import handles file validation exception."""
+        from unittest.mock import Mock, patch
+
+        service = ImportService("test_inst")
+        service.reset_stats()
+
+        # Mock adapter that raises exception during validation
+        mock_adapter = Mock()
+        mock_adapter.validate_file_compatibility.side_effect = RuntimeError(
+            "Validation failed"
+        )
+
+        with patch("import_service.get_adapter_registry") as mock_registry:
+            mock_reg = mock_registry.return_value
+            mock_reg.get_adapter_by_id.return_value = mock_adapter
+
+            import os
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+                tmp.write(b"test")
+                tmp_path = tmp.name
+
+            try:
+                result = service._prepare_import(tmp_path, "test_adapter")
+
+                assert result is None
+                assert len(service.stats["errors"]) > 0
+                assert "File validation failed" in service.stats["errors"][0]
+                assert "Validation failed" in service.stats["errors"][0]
+            finally:
+                os.unlink(tmp_path)
