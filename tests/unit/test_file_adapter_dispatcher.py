@@ -353,3 +353,19 @@ class TestFileAdapterDispatcherInitialization:
             # Should only include .py files that aren't excluded
             expected_adapters = ["valid_adapter", "test_file"]
             assert set(adapters) == set(expected_adapters)
+
+
+class TestFileAdapterDispatcherValidation:
+    """Test validation-related functionality."""
+
+    def test_apply_validation_disabled(self):
+        """Test _apply_validation returns raw data when validation disabled."""
+        from adapters.file_adapter_dispatcher import FileAdapterDispatcher
+
+        dispatcher = FileAdapterDispatcher(use_base_validation=False)
+
+        # When validation is disabled, should return data unchanged (line 156)
+        test_data = [{"key": "value"}]
+        result = dispatcher._apply_validation(test_data)
+
+        assert result == test_data  # Should return raw data
