@@ -2597,6 +2597,70 @@ class TestCourseManagementOperations:
         assert data["success"] is False
         assert "Program not found" in data["error"]
 
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.bulk_add_courses_to_program")
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_add_action(
+        self, mock_has_permission, mock_bulk_add, mock_get_program
+    ):
+        """Test bulk add courses to program."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {"program_id": "prog1", "name": "CS"}
+        mock_bulk_add.return_value = {"success_count": 2, "error_count": 0}
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "add", "course_ids": ["c1", "c2"]},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "2 added" in data["message"]
+        mock_bulk_add.assert_called_once_with(["c1", "c2"], "prog1")
+
+    @patch("api_routes.get_program_by_id")
+    @patch("api_routes.bulk_remove_courses_from_program")
+    @patch("api_routes.has_permission")
+    def test_bulk_manage_courses_remove_action(
+        self, mock_has_permission, mock_bulk_remove, mock_get_program
+    ):
+        """Test bulk remove courses from program."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-456",
+            "email": "admin@test.com",
+            "role": "site_admin",
+            "institution_id": "test-institution",
+        }
+        create_test_session(self.client, user_data)
+
+        mock_has_permission.return_value = True
+        mock_get_program.return_value = {"program_id": "prog1", "name": "CS"}
+        mock_bulk_remove.return_value = {"removed": 2, "failed": 0}
+
+        response = self.client.post(
+            "/api/programs/prog1/courses/bulk",
+            json={"action": "remove", "course_ids": ["c1", "c2"]},
+        )
+
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+        assert "2 removed" in data["message"]
+        mock_bulk_remove.assert_called_once_with(["c1", "c2"], "prog1")
+
 
 class TestAPIRoutesErrorHandling:
     """Test API routes error handling and edge cases."""
