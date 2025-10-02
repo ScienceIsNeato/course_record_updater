@@ -367,3 +367,24 @@ class TestFileAdapterDispatcherValidation:
         result = dispatcher._apply_validation(test_data)
 
         assert result == test_data  # Should return raw data
+
+    def test_load_adapter_class_not_found(self):
+        """Test _load_adapter raises DispatcherError when class not found in module."""
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from adapters.file_adapter_dispatcher import (
+            DispatcherError,
+            FileAdapterDispatcher,
+        )
+
+        dispatcher = FileAdapterDispatcher()
+
+        # Mock importlib to return a module without the expected class
+        mock_module = MagicMock(spec=[])  # Empty spec = no attributes
+
+        with patch("importlib.import_module", return_value=mock_module):
+            with pytest.raises(DispatcherError, match="Adapter class .* not found"):
+                # This will hit line 126 when hasattr returns False
+                dispatcher._load_adapter("fake_adapter")
