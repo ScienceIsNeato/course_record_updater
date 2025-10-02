@@ -479,7 +479,6 @@ class QualityGateExecutor:
             f"🔍 Running Course Record Updater quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
         )
         self.logger.info("🐍 Python/Flask enterprise validation suite")
-        self.logger.info("⚡ Fail-fast mode: ALWAYS ENABLED")
         self.logger.info("")
 
         # Determine which checks to run
@@ -527,7 +526,8 @@ class QualityGateExecutor:
         start_time = time.time()
 
         # Run all checks in parallel with fail-fast always enabled
-        self.logger.info("🚀 Running quality checks in parallel...")
+        check_names = [flag for flag, _ in checks_to_run]
+        self.logger.info(f"🚀 Running checks in parallel [{', '.join(check_names)}]")
         all_results = self.run_checks_parallel(checks_to_run)
 
         total_duration = time.time() - start_time
