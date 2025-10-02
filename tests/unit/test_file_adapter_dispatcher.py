@@ -170,7 +170,6 @@ def test_process_file_adapter_not_found(mocker, mock_docx_document):
 def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document):
     """Test when the adapter module exists but lacks a callable parse function."""
     adapter_name = "missing_parse"
-    module_to_import = f"adapters.{adapter_name}"
     class_name = "MissingParse"  # Calculate class name
 
     # Mock the module, class, and instance structure
@@ -178,7 +177,7 @@ def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document)
     mock_class = MagicMock()
     mock_instance = MagicMock()
     # Configure mocks
-    mock_import = mocker.patch(
+    mocker.patch(
         "adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
@@ -237,14 +236,13 @@ def test_process_file_adapter_parse_error(mocker, mock_docx_document):
 def test_process_file_base_validation_error(mocker, mock_docx_document):
     """Test when base validation fails after successful parsing."""
     adapter_name = "valid_parse_adapter"
-    module_to_import = f"adapters.{adapter_name}"
     class_name = "ValidParseAdapter"
 
     mock_module = MagicMock()
     mock_class = MagicMock()
     mock_instance = MagicMock()  # Define mock_instance here
 
-    mock_import = mocker.patch(
+    mocker.patch(
         "adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )

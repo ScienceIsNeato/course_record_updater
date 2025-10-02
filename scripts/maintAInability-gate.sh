@@ -340,7 +340,8 @@ if [[ "$RUN_TESTS" == "true" ]]; then
 
   # Run UNIT tests only (fast tests, separate directory, no coverage)
   echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
-  TEST_OUTPUT=$(python -m pytest tests/unit/ -v 2>&1) || TEST_FAILED=true
+  # Use pytest-xdist for parallel execution (35% faster)
+  TEST_OUTPUT=$(python -m pytest tests/unit/ -n auto -v 2>&1) || TEST_FAILED=true
 
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -432,7 +433,8 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   COVERAGE_REPORT_FILE="logs/coverage_report.txt"
   
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  # Use pytest-xdist for parallel execution (35% faster)
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ -n auto --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
@@ -751,7 +753,8 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       
       # Run tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
       # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
-      if python -m pytest tests/unit/ --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+      # Use pytest-xdist for parallel execution (35% faster)
+      if python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
         echo "✅ Coverage data generated successfully"
         
         # Run SonarCloud scanner with fresh data
