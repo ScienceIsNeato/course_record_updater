@@ -1,0 +1,284 @@
+"""
+Pytest fixtures for E2E tests
+
+Provides shared setup/teardown logic for browser automation tests including:
+- Playwright browser configuration
+- Authentication helpers
+- Database backup/restore
+- Test data management
+"""
+
+import os
+import shutil
+import subprocess
+import time
+from pathlib import Path
+from typing import Generator
+
+import pytest
+from playwright.sync_api import Browser, BrowserContext, Page, Playwright
+
+# Import database services for verification
+from database_service import (
+    get_active_terms,
+    get_all_courses,
+    get_all_sections,
+    get_all_users,
+)
+
+# Test configuration
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3001")
+TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
+TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
+
+# Test user credentials
+INSTITUTION_ADMIN_EMAIL = "sarah.admin@cei.edu"
+INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    """Configure browser context with sensible defaults for E2E testing."""
+    return {
+        **browser_context_args,
+        "viewport": {"width": 1920, "height": 1080},
+        "ignore_https_errors": True,
+        "record_video_dir": "test-results/videos",
+    }
+
+
+@pytest.fixture(scope="function")
+def context(
+    browser: Browser, browser_context_args
+) -> Generator[BrowserContext, None, None]:
+    """Create a new browser context for each test (isolated cookies/storage)."""
+    context = browser.new_context(**browser_context_args)
+    yield context
+    context.close()
+
+
+@pytest.fixture(scope="function")
+def page(context: BrowserContext) -> Generator[Page, None, None]:
+    """Create a new page for each test."""
+    page = context.new_page()
+    yield page
+    page.close()
+
+
+@pytest.fixture(scope="function")
+def csrf_token(page: Page) -> str:
+    """
+    Fixture that retrieves a CSRF token from the login page.
+
+    Returns:
+        CSRF token string for authenticated requests
+    """
+    # Navigate to login page to get CSRF token
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Extract CSRF token from hidden input
+    csrf_token = page.input_value('input[name="csrf_token"]')
+
+    if not csrf_token:
+        raise Exception("Failed to extract CSRF token from login page")
+
+    return csrf_token
+
+
+@pytest.fixture(scope="function")
+def authenticated_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as institution admin.
+
+    Properly handles CSRF token for secure authentication by submitting the actual
+    login form (which automatically handles CSRF and session management).
+
+    Usage:
+        def test_something(authenticated_page):
+            authenticated_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as sarah.admin@cei.edu
+    """
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
+
+    # Submit form and wait for navigation
+    page.click('button[type="submit"]')
+
+    # Wait for navigation or error message
+    page.wait_for_load_state("networkidle", timeout=10000)
+
+    # Check if login failed (still on login page with error)
+    current_url = page.url
+    if "/login" in current_url:
+        # Look for error message
+        error_elements = page.query_selector_all(
+            '.alert-danger, .error-message, [role="alert"]'
+        )
+        error_text = " | ".join(
+            [el.text_content() for el in error_elements if el.text_content()]
+        )
+        raise Exception(
+            f"Login failed - still on login page. Errors: {error_text or 'No error message found'}. URL: {current_url}"
+        )
+
+    # If we're on dashboard, great!
+    if "/dashboard" in current_url:
+        return page
+
+    # Otherwise, navigate to dashboard explicitly
+    page.goto(f"{BASE_URL}/dashboard")
+    page.wait_for_load_state("networkidle")
+
+    return page
+
+
+@pytest.fixture(scope="function")
+def database_backup():
+    """
+    Backup database before test and provide restore capability.
+
+    Usage:
+        def test_destructive_operation(database_backup):
+            # Test runs with backup available
+            # Database automatically restored after test (on teardown)
+    """
+    db_path = Path("course_records.db")
+    backup_path = Path("course_records_e2e_backup.db")
+
+    # Backup current database
+    if db_path.exists():
+        shutil.copy2(db_path, backup_path)
+
+    yield
+
+    # Restore database after test
+    if backup_path.exists():
+        shutil.copy2(backup_path, db_path)
+        backup_path.unlink()
+
+
+@pytest.fixture(scope="function")
+def database_baseline():
+    """
+    Capture database record counts before test for validation.
+
+    Usage:
+        def test_import(authenticated_page, database_baseline):
+            # Perform import
+            # Assert counts increased from baseline
+            new_courses = len(get_all_courses() or [])
+            assert new_courses > database_baseline['courses']
+    """
+    baseline = {
+        "courses": len(get_all_courses() or []),
+        "users": len(get_all_users() or []),
+        "sections": len(get_all_sections() or []),
+        "terms": len(get_active_terms() or []),
+    }
+    return baseline
+
+
+@pytest.fixture(scope="session")
+def server_running():
+    """
+    Verify application server is running and seed database before tests.
+
+    This fixture runs once per test session to ensure the server is up
+    and the database has test data (including the institution admin user).
+    """
+    import requests
+
+    # Check server health
+    try:
+        response = requests.get(f"{BASE_URL}/api/health", timeout=5)
+        if response.status_code != 200:
+            pytest.fail(
+                f"Server health check failed with status {response.status_code}. "
+                f"Is the server running on {BASE_URL}?"
+            )
+    except requests.exceptions.ConnectionError:
+        pytest.fail(
+            f"Cannot connect to server at {BASE_URL}. "
+            f"Please start the server with './restart_server.sh' before running E2E tests."
+        )
+    except requests.exceptions.Timeout:
+        pytest.fail(
+            f"Server health check timed out at {BASE_URL}. "
+            f"Server may be slow to respond."
+        )
+
+    # Database is seeded by run_uat.sh before server starts
+    # No need to seed again here - just verify server is responding
+    return True
+
+
+@pytest.fixture(scope="function")
+def test_data_file():
+    """
+    Verify test data file exists and return its path.
+
+    Usage:
+        def test_import(authenticated_page, test_data_file):
+            page.set_input_files('input[type="file"]', str(test_data_file))
+    """
+    if not TEST_FILE.exists():
+        pytest.skip(
+            f"Test data file not found: {TEST_FILE}. "
+            f"Please ensure research/CEI/2024FA_test_data.xlsx exists."
+        )
+
+    return TEST_FILE
+
+
+# Helper functions for common E2E operations
+
+
+def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 10000):
+    """Wait for a modal to appear on the page."""
+    page.wait_for_selector(modal_selector, state="visible", timeout=timeout)
+
+
+def close_modal(page: Page, close_button_selector: str = ".modal button.close"):
+    """Close a modal by clicking the close button."""
+    page.click(close_button_selector)
+    page.wait_for_selector(".modal", state="hidden", timeout=5000)
+
+
+def wait_for_api_response(page: Page, url_pattern: str, timeout: int = 10000):
+    """Wait for a specific API request to complete."""
+    with page.expect_response(
+        lambda response: url_pattern in response.url and response.status == 200,
+        timeout=timeout,
+    ) as response_info:
+        return response_info.value
+
+
+def take_screenshot(page: Page, name: str):
+    """Save a screenshot for debugging (saved to test-results/)."""
+    screenshot_dir = Path("test-results/screenshots")
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=screenshot_dir / f"{name}.png")
+
+
+def verify_no_console_errors(page: Page):
+    """
+    Check page console for JavaScript errors.
+
+    Note: This requires setting up console message listeners before navigation.
+    Best used with page.on("console", handler) in test setup.
+    """
+    errors = []
+
+    def handle_console(msg):
+        if msg.type == "error":
+            errors.append(msg.text)
+
+    page.on("console", handle_console)
+
+    return errors

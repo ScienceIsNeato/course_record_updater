@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 # Constants for error messages
 AUTH_REQUIRED_MSG = "Authentication required"
+UNAUTHORIZED_ACCESS_MSG = "Unauthorized access attempt to %s"
 
 from flask import jsonify, request, session
 
