@@ -3135,3 +3135,94 @@ def get_available_adapters():
             ),
             500,
         )
+
+
+# ==============================================
+# Export Endpoints
+# ==============================================
+
+
+@api.route("/export/data", methods=["GET"])
+@login_required
+def export_data():
+    """
+    Export data to Excel file.
+
+    Query parameters:
+        - export_data_type: Type of data to export (courses, users, sections, etc.)
+        - export_format: File format (excel, csv, json) - defaults to excel
+        - export_adapter: Adapter to use (cei_excel_adapter, generic, etc.) - defaults to cei_excel_adapter
+        - include_metadata: Include metadata (true/false) - defaults to true
+        - anonymize_data: Anonymize personal info (true/false) - defaults to false
+    """
+    import tempfile
+    from datetime import datetime
+    from pathlib import Path
+
+    from flask import send_file
+
+    from export_service import ExportConfig, create_export_service
+
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        institution_id = current_user.get("institution_id")
+        if not institution_id:
+            return jsonify({"success": False, "error": "No institution context"}), 400
+
+        # Get parameters
+        data_type = request.args.get("export_data_type", "courses")
+        export_format = request.args.get("export_format", "excel")
+        adapter_id = request.args.get("export_adapter", "cei_excel_adapter")
+        include_metadata = (
+            request.args.get("include_metadata", "true").lower() == "true"
+        )
+        anonymize = request.args.get("anonymize_data", "false").lower() == "true"
+
+        # Create export config
+        config = ExportConfig(
+            institution_id=institution_id,
+            adapter_id=adapter_id,
+            export_view="standard",
+            include_metadata=include_metadata,
+            output_format="xlsx" if export_format == "excel" else export_format,
+        )
+
+        # Create export service and perform export
+        export_service = create_export_service()
+
+        # Create temp file for export
+        temp_dir = Path(tempfile.gettempdir())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{data_type}_export_{timestamp}.xlsx"
+        output_path = temp_dir / filename
+
+        # Perform export
+        result = export_service.export_to_file(config, str(output_path))
+
+        if not result.success:
+            logger.error(f"Export failed: {result.errors}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Export failed",
+                        "details": result.errors,
+                    }
+                ),
+                500,
+            )
+
+        # Send file as download
+        return send_file(
+            str(output_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    except Exception as e:
+        logger.error(f"Error during export: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500
