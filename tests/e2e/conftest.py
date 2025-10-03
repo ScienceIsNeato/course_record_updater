@@ -112,35 +112,36 @@ def authenticated_page(page: Page) -> Page:
     page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
     page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
 
-    # Submit form and wait for navigation
+    # Submit form and wait for JavaScript to handle login and redirect
     page.click('button[type="submit"]')
 
-    # Wait for navigation or error message
-    page.wait_for_load_state("networkidle", timeout=10000)
-
-    # Check if login failed (still on login page with error)
-    current_url = page.url
-    if "/login" in current_url:
-        # Look for error message
-        error_elements = page.query_selector_all(
-            '.alert-danger, .error-message, [role="alert"]'
-        )
-        error_text = " | ".join(
-            [el.text_content() for el in error_elements if el.text_content()]
-        )
-        raise Exception(
-            f"Login failed - still on login page. Errors: {error_text or 'No error message found'}. URL: {current_url}"
-        )
-
-    # If we're on dashboard, great!
-    if "/dashboard" in current_url:
+    # Wait for either:
+    # 1. Navigation to dashboard (success)
+    # 2. Error message appears (failure)
+    # 3. Timeout (something went wrong)
+    try:
+        # Wait for URL to change to dashboard (JavaScript redirect)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
         return page
+    except Exception:
+        # Check if still on login page with error message
+        current_url = page.url
+        if "/login" in current_url:
+            # Look for error message
+            error_elements = page.query_selector_all(
+                '.alert-danger, .error-message, [role="alert"]'
+            )
+            error_text = " | ".join(
+                [el.text_content() for el in error_elements if el.text_content()]
+            )
 
-    # Otherwise, navigate to dashboard explicitly
-    page.goto(f"{BASE_URL}/dashboard")
-    page.wait_for_load_state("networkidle")
+            # If no error message, check console for JS errors
+            if not error_text:
+                error_text = "No error message found. Check if JavaScript is executing."
 
-    return page
+            raise Exception(
+                f"Login failed - still on login page after 10s. Errors: {error_text} URL: {current_url}"
+            )
 
 
 @pytest.fixture(scope="function")
@@ -171,22 +172,14 @@ def database_backup():
 @pytest.fixture(scope="function")
 def database_baseline():
     """
-    Capture database record counts before test for validation.
+    Placeholder fixture for database baseline (deprecated for E2E tests).
 
-    Usage:
-        def test_import(authenticated_page, database_baseline):
-            # Perform import
-            # Assert counts increased from baseline
-            new_courses = len(get_all_courses() or [])
-            assert new_courses > database_baseline['courses']
+    E2E tests should verify via UI, not direct database queries.
+    Use API calls or UI element counts instead.
+
+    Returns empty dict for backward compatibility with existing tests.
     """
-    baseline = {
-        "courses": len(get_all_courses() or []),
-        "users": len(get_all_users() or []),
-        "sections": len(get_all_sections() or []),
-        "terms": len(get_active_terms() or []),
-    }
-    return baseline
+    return {}
 
 
 @pytest.fixture(scope="session")
