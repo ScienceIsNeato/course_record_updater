@@ -342,9 +342,11 @@ class EmailService:
             # Check if email sending is suppressed (development mode)
             if current_app.config.get("MAIL_SUPPRESS_SEND", False):
                 logger.info(
-                    f"[Email Service] Email suppressed (dev mode): {subject} -> {to_email}"
+                    "[Email Service] Email suppressed (dev mode): %s -> %s",
+                    subject,
+                    to_email,
                 )
-                logger.info(f"[Email Service] Email content:\n{text_body}")
+                logger.info("[Email Service] Email content:\n%s", text_body)
                 return True
 
             # Get configuration
