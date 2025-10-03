@@ -19,6 +19,7 @@ lcov.info
 # Test artifacts
 .pytest_cache/
 test-results.xml
+test-results/
 
 # Log files and directories
 logs/
@@ -26,8 +27,14 @@ logs/
 logs/sonarcloud_issues.txt
 # PR coverage analysis reports
 logs/pr_coverage_gaps.txt
+
+# Environment-specific database files
 course_records.db
+course_records_dev.db
+course_records_e2e.db
+course_records_ci.db
 *.db
+*.db-*
 
 # SonarCloud analysis artifacts
 .scannerwork/

@@ -39,12 +39,17 @@ INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args):
     """Configure browser context with sensible defaults for E2E testing."""
-    return {
+    config = {
         **browser_context_args,
         "viewport": {"width": 1920, "height": 1080},
         "ignore_https_errors": True,
-        "record_video_dir": "test-results/videos",
     }
+
+    # Only record videos if SAVE_VIDEOS env var is set
+    if os.getenv("SAVE_VIDEOS") == "1":
+        config["record_video_dir"] = "test-results/videos"
+
+    return config
 
 
 @pytest.fixture(scope="function")

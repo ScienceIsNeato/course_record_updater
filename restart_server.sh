@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# restart_server.sh - Non-blocking server restart using SQLite backend
+# restart_server.sh - Environment-aware server restart using SQLite backend
+# Usage: ./restart_server.sh <env>
+#   <env> = dev | e2e | ci
 # Returns 0 on success, 1 on failure
 
 set -euo pipefail
@@ -11,20 +13,50 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# Require environment argument
+if [ -z "${1:-}" ]; then
+    echo -e "${RED}❌ Error: Environment argument required${NC}" >&2
+    echo -e "${YELLOW}Usage: $0 <env>${NC}" >&2
+    echo -e "${YELLOW}  <env> = dev | e2e | ci${NC}" >&2
+    echo "" >&2
+    echo -e "${BLUE}Examples:${NC}" >&2
+    echo -e "  ${GREEN}$0 dev${NC}  # Start dev server on port 3001" >&2
+    echo -e "  ${GREEN}$0 e2e${NC}  # Start E2E server on port 3002" >&2
+    echo -e "  ${GREEN}$0 ci${NC}   # Start CI server on port 3003" >&2
+    exit 1
+fi
+
+ENV_ARG="$1"
+
+# Validate environment
+if [[ ! "$ENV_ARG" =~ ^(dev|e2e|ci)$ ]]; then
+    echo -e "${RED}❌ Error: Invalid environment '$ENV_ARG'${NC}" >&2
+    echo -e "${YELLOW}Valid environments: dev, e2e, ci${NC}" >&2
+    exit 1
+fi
+
+# Set environment BEFORE sourcing .envrc
+export APP_ENV="$ENV_ARG"
+
 mkdir -p logs
 
-echo -e "${BLUE}🎯 Course Record Updater - Non-blocking Restart${NC}"
-echo -e "${BLUE}===============================================${NC}"
+echo -e "${BLUE}🎯 Course Record Updater - Environment-aware Restart${NC}"
+echo -e "${BLUE}=====================================================${NC}"
 
+# Load environment configuration
 if [ -f ".envrc" ]; then
+    # Local development: source .envrc (which sources .envrc.template)
     # shellcheck disable=SC1091
     source .envrc
-    echo -e "${BLUE}🔧 Loaded environment variables from .envrc${NC}"
+    echo -e "${GREEN}✅ Loaded $APP_ENV environment from .envrc${NC}"
+elif [ -f ".envrc.template" ]; then
+    # CI environment: source template directly (secrets from GitHub Secrets)
+    # shellcheck disable=SC1091
+    source .envrc.template
+    echo -e "${GREEN}✅ Loaded $APP_ENV environment from .envrc.template${NC}"
 else
-    export DATABASE_TYPE="sqlite"
-    export DATABASE_URL="sqlite:///course_records.db"
-    export COURSE_RECORD_UPDATER_PORT="3001"
-    echo -e "${YELLOW}⚠️  No .envrc found, using SQLite defaults${NC}"
+    echo -e "${RED}❌ Error: Neither .envrc nor .envrc.template found${NC}" >&2
+    exit 1
 fi
 
 DB_PATH="${DATABASE_URL#sqlite:///}"

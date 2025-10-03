@@ -28,7 +28,7 @@ cd "$SCRIPT_DIR"
 MODE="headless"
 TEST_FILTER=""
 SLOWMO=""
-VIDEO="off"
+SAVE_VIDEOS="0"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -46,8 +46,8 @@ while [[ $# -gt 0 ]]; do
             TEST_FILTER="$2"
             shift 2
             ;;
-        --video|-v)
-            VIDEO="on"
+        --save-videos)
+            SAVE_VIDEOS="1"
             shift
             ;;
         --help)
@@ -59,13 +59,14 @@ while [[ $# -gt 0 ]]; do
             echo "  --watch, -w          Run with visible browser (watch mode)"
             echo "  --headed, -h         Run with visible browser"
             echo "  --test, -t <name>    Run specific test (e.g., TC-IE-001)"
-            echo "  --video, -v          Record video of test execution"
+            echo "  --save-videos        Record video of test execution for debugging"
             echo "  --help               Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                   # Run all tests (headless)"
-            echo "  $0 --watch           # Watch tests run in browser"
-            echo "  $0 --test TC-IE-001  # Run specific test case"
+            echo "  $0                       # Run all tests (headless)"
+            echo "  $0 --watch               # Watch tests run in browser"
+            echo "  $0 --test TC-IE-001      # Run specific test case"
+            echo "  $0 --save-videos         # Record videos for debugging"
             exit 0
             ;;
         *)
@@ -90,24 +91,38 @@ if [ -z "$VIRTUAL_ENV" ]; then
 fi
 
 # Restart server to ensure fresh database with test credentials
-echo -e "${BLUE}🔄 Restarting server for fresh test environment...${NC}"
+echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
 
-# Clear existing database to ensure fresh state
-rm -f course_records.db course_records.db-* 2>/dev/null || true
+# Clear E2E database to ensure fresh state
+rm -f course_records_e2e.db course_records_e2e.db-* 2>/dev/null || true
 
-# Seed database BEFORE starting server (so server loads pre-populated DB)
-echo -e "${YELLOW}🌱 Seeding database with test data...${NC}"
+# Set E2E environment for database seeding
+export APP_ENV="e2e"
+if [ -f ".envrc" ]; then
+    source .envrc
+elif [ -f ".envrc.template" ]; then
+    source .envrc.template
+fi
+
+# Seed E2E database with test data
+echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
 python scripts/seed_db.py
 echo ""
 
-# Use restart_server.sh to handle server restart (blocks until server is ready)
-echo -e "${YELLOW}🚀 Starting server...${NC}"
-if ! ./restart_server.sh; then
-    echo -e "${RED}❌ Server failed to start${NC}"
+# Start server in E2E mode (explicit environment argument)
+echo -e "${YELLOW}🚀 Starting E2E server on port $COURSE_RECORD_UPDATER_PORT...${NC}"
+if ! ./restart_server.sh e2e; then
+    echo -e "${RED}❌ E2E server failed to start${NC}"
     echo -e "${YELLOW}Check logs/server.log for details${NC}"
     exit 1
 fi
 echo ""
+
+# Set E2E base URL from environment (port 3002)
+export E2E_BASE_URL="http://localhost:${COURSE_RECORD_UPDATER_PORT}"
+
+# Set video recording flag
+export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"
@@ -141,7 +156,11 @@ if [ -n "$TEST_FILTER" ]; then
 else
     echo -e "  Filter: ${GREEN}All E2E tests${NC}"
 fi
-echo -e "  Video: ${GREEN}$VIDEO${NC}"
+if [ "$SAVE_VIDEOS" = "1" ]; then
+    echo -e "  Video Recording: ${GREEN}enabled${NC}"
+else
+    echo -e "  Video Recording: ${GREEN}disabled${NC}"
+fi
 echo ""
 
 # Run tests
@@ -151,11 +170,18 @@ echo ""
 # Function to cleanup on exit
 cleanup() {
     echo ""
-    echo -e "${YELLOW}🧹 Cleaning up test server...${NC}"
-    # Stop any running Flask servers
-    pkill -f "python app.py" 2>/dev/null || true
-    pkill -f "flask run" 2>/dev/null || true
-    sleep 1
+    echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
+    
+    # Kill server on E2E port (3002) specifically
+    local PIDS=$(lsof -ti:3002 2>/dev/null || true)
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${BLUE}  Stopping E2E server (PID: $PID)${NC}"
+            kill $PID 2>/dev/null || kill -9 $PID 2>/dev/null || true
+        done
+        sleep 1
+    fi
+    
     echo -e "${GREEN}✅ Cleanup complete${NC}"
 }
 
@@ -171,8 +197,9 @@ if $PYTEST_CMD; then
     
     # Show results location
     echo -e "${BLUE}📊 Test Results:${NC}"
-    echo -e "  Screenshots: ${GREEN}test-results/screenshots/${NC}"
-    echo -e "  Videos: ${GREEN}test-results/videos/${NC}"
+    if [ "$SAVE_VIDEOS" = "1" ]; then
+        echo -e "  Videos: ${GREEN}test-results/videos/${NC}"
+    fi
     echo ""
     
     exit 0
@@ -186,11 +213,15 @@ else
     
     # Show failure diagnostics
     echo -e "${YELLOW}📸 Check screenshots in test-results/screenshots/${NC}"
-    echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
+    if [ "$SAVE_VIDEOS" = "1" ]; then
+        echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
+    fi
     echo -e "${YELLOW}📋 Server logs: ${GREEN}logs/test_server.log${NC}"
     echo ""
     echo -e "${YELLOW}Tip: Run with --watch to see failures in real-time:${NC}"
     echo -e "  $0 --watch"
+    echo -e "${YELLOW}     Or with --save-videos to record execution for debugging:${NC}"
+    echo -e "  $0 --save-videos"
     echo ""
     
     exit $EXIT_CODE

@@ -6,6 +6,10 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'  # Source of truth for Python version - must match Dockerfile
+  APP_ENV: 'ci'  # Environment separation: CI uses port 3003 and course_records_ci.db
+  DATABASE_TYPE: 'sqlite'
+  DATABASE_URL: 'sqlite:///course_records_ci.db'
+  COURSE_RECORD_UPDATER_PORT: '3003'
 
 jobs:
   setup:

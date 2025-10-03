@@ -1,6 +1,28 @@
 # Course Record Updater – Post-Adapter Implementation Backlog
 
-## Priority 0 – Export System Enhancement (Epic) **UPDATED**
+## Priority 0 – Environment Separation (DEV/E2E/CI) **NEW** 🚀
+**Status**: In progress - design complete, implementation starting  
+**Docs**: `ENVIRONMENT_SEPARATION_PLAN.md`, `.envrc*`, `run_uat.sh`, `restart_server.sh`  
+**Goal**: Separate development, E2E testing, and CI environments to prevent conflicts and enable parallel work.
+**Problem**: E2E tests restart server on same port/database as dev work, causing interruptions and data pollution.
+**Progress**: ✅ Design complete with three-environment model (DEV, E2E, CI).
+**Tasks**:
+- [ ] **Step 1**: Update single `.envrc` file with `APP_ENV` variable and case statement - 5 min
+- [ ] **Step 2**: Update `restart_server.sh` to require explicit environment argument (BREAKING) - 10 min
+- [ ] **Step 3**: Update `run_uat.sh` to pass `e2e` argument to restart_server.sh - 5 min
+- [ ] **Step 4**: Test local isolation (dev on 3001, E2E on 3002 simultaneously) - 10 min
+- [ ] **Step 5**: Update CI pipeline to use `APP_ENV=ci` - 15 min
+- [ ] **Step 6**: Documentation and backlog updates - 10 min
+**Environment Details**:
+- **DEV**: Port 3001, `course_records_dev.db`, manual control, persistent data
+- **E2E**: Port 3002, `course_records_e2e.db`, auto-managed by run_uat.sh, fresh DB each run
+- **CI**: Port 3003, `course_records_ci.db`, GitHub Actions managed, ephemeral
+**Benefits**: E2E tests don't interrupt dev work, multiple agents can work simultaneously, clear path to staging/prod.
+**Definition of Done**: Dev and E2E run simultaneously without conflicts, CI uses isolated environment, all tests pass.  
+**Estimated Time**: ~1 hour for MVP  
+**Hand-off**: Can be implemented incrementally, good candidate for agent work once design is approved.
+
+## Priority 1 – Export System Enhancement (Epic) **UPDATED**
 **Status**: Import system completed, export needs refinement  
 **Docs**: `adapters/`, `import_service.py`, `export_service.py`, `scripts/ship_it.py`  
 **Goal**: Complete the bidirectional adapter-based system with enhanced export capabilities and roundtrip validation.

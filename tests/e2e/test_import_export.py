@@ -285,10 +285,15 @@ def test_login_script_loading(page: Page, server_running: bool):
 @pytest.mark.e2e
 def test_login_success_after_fix(page: Page, server_running: bool):
     """
-    Hypothesis 4: After fixing auth.js, login should work and redirect to dashboard
+    Hypothesis 5: After fixing auth.js, verify login flow works end-to-end
 
-    Expected: Form submits via AJAX, API returns success, redirects to /dashboard
+    Expected: run_uat.sh seeds database, login succeeds, redirects to dashboard
+
+    Note: We trust run_uat.sh seeded the server's database with sarah.admin@cei.edu
+          The test doesn't check the DB directly (E2E tests run in separate process)
     """
+    print("📝 Trusting run_uat.sh seeded sarah.admin@cei.edu / InstitutionAdmin123!")
+
     # Navigate to login
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
@@ -310,7 +315,7 @@ def test_login_success_after_fix(page: Page, server_running: bool):
 
         # Verify we're on dashboard
         assert "/dashboard" in final_url, f"Expected /dashboard, got {final_url}"
-        print(f"✅ HYPOTHESIS 4 CONFIRMED: Login successful, redirected to dashboard!")
+        print(f"✅ HYPOTHESIS 5 CONFIRMED: Login successful, redirected to dashboard!")
 
     except Exception as e:
         final_url = page.url
@@ -322,6 +327,9 @@ def test_login_success_after_fix(page: Page, server_running: bool):
         if error_elements.count() > 0:
             error_text = error_elements.first.text_content()
             print(f"   Error on page: {error_text}")
+
+        # Additional diagnostics - check server logs
+        print(f"\n💡 Check logs/server.log for authentication details")
 
         raise
 
