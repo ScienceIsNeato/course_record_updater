@@ -181,6 +181,39 @@ def dashboard():
         return redirect(url_for("index"))
 
 
+@app.route("/courses")
+@login_required
+def courses_list():
+    """Display all courses for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("courses_list.html", user=user)
+
+
+@app.route("/users")
+@login_required
+def users_list():
+    """Display all users for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("users_list.html", user=user)
+
+
+@app.route("/sections")
+@login_required
+def sections_list():
+    """Display all course sections for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("sections_list.html", user=user)
+
+
 if __name__ == "__main__":
     # Use PORT environment variable if available (common in deployment),
     # otherwise use COURSE_RECORD_UPDATER_PORT from .envrc, or default to 3001

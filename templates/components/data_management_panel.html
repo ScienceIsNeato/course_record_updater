@@ -56,9 +56,9 @@
                     </div>
 
                     <!-- Import Actions - Centered and Full Width -->
-                    <div class="d-grid">
-                        <button type="button" class="btn btn-import-primary btn-lg" onclick="executeDataImport()">
-                            <i class="fas fa-upload me-2"></i>Import Data
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success btn-lg" onclick="executeDataImport()">
+                            <i class="fas fa-file-excel me-2"></i>Excel Import
                         </button>
                     </div>
                 </form>
@@ -152,9 +152,12 @@
                     </div>
 
                     <!-- Export Actions -->
-                    <div class="d-grid">
-                        <button type="button" class="btn btn-primary" onclick="executeDataExport()">
-                            <i class="fas fa-download me-1"></i>Export Data
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary" onclick="executeCoursesExport()">
+                            <i class="fas fa-file-download me-1"></i>Export Courses
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="executeDataExport()">
+                            <i class="fas fa-download me-1"></i>Export Other Data
                         </button>
                     </div>
                 </form>
@@ -297,6 +300,12 @@ function executeImportRequest(formData) {
 }
 
 // Data Export Functions
+function executeCoursesExport() {
+    // Force courses data type and trigger export
+    document.getElementById('export_data_type').value = 'courses';
+    executeDataExport();
+}
+
 function executeDataExport() {
     const form = document.getElementById('dataExportForm');
     const formData = new FormData(form);
