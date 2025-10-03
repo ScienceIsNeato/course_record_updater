@@ -71,13 +71,31 @@ async function loadUsers() {
             throw new Error(data.error || 'Failed to load dashboard data');
         }
         
-        const users = data.data.users || [];
+        let users = data.data.users || [];
+        
+        // Filter users: show equal scope or lower
+        // Role hierarchy: site_admin > institution_admin > program_admin > instructor
+        const roleHierarchy = {
+            'site_admin': 4,
+            'institution_admin': 3,
+            'program_admin': 2,
+            'instructor': 1
+        };
+        
+        const currentUserRole = window.currentUser ? window.currentUser.role : 'instructor';
+        const currentUserLevel = roleHierarchy[currentUserRole] || 1;
+        
+        // Filter to users at equal or lower scope
+        users = users.filter(user => {
+            const userLevel = roleHierarchy[user.role] || 0;
+            return userLevel <= currentUserLevel;
+        });
         
         if (users.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    No users found. Import user data to get started.
+                    No users found at your access level. Import user data to get started.
                 </div>
             `;
             return;

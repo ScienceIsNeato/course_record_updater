@@ -182,6 +182,9 @@ class DashboardService:
         program_index = {self._get_program_id(program): program for program in programs}
         faculty = self._build_faculty_directory(users, instructors)
 
+        # Enrich sections with course data
+        sections = self._enrich_sections_with_course_data(sections, course_index)
+
         program_metrics = self._build_program_metrics(
             programs,
             courses,
@@ -1098,6 +1101,42 @@ class DashboardService:
             enriched_courses.append(course_copy)
 
         return enriched_courses
+
+    def _enrich_sections_with_course_data(
+        self, sections: List[Dict[str, Any]], course_index: Dict[str, Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich sections with course number and title from course index.
+
+        Args:
+            sections: List of section dictionaries
+            course_index: Dictionary mapping course_id to course data
+
+        Returns:
+            List of sections enriched with course_number and course_title
+        """
+        enriched_sections = []
+
+        for section in sections:
+            section_copy = section.copy()
+            course_id = section.get("course_id")
+
+            if course_id and course_id in course_index:
+                course = course_index[course_id]
+                section_copy["course_number"] = course.get("course_number", "")
+                section_copy["course_title"] = course.get("course_title", "")
+            else:
+                # Fallback if course not found
+                section_copy["course_number"] = section_copy.get(
+                    "course_number", "Unknown"
+                )
+                section_copy["course_title"] = section_copy.get(
+                    "course_title", "Unknown Course"
+                )
+
+            enriched_sections.append(section_copy)
+
+        return enriched_sections
 
 
 def build_dashboard_service() -> DashboardService:

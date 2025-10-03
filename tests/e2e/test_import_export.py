@@ -357,21 +357,19 @@ def test_tc_ie_001_dry_run_import_validation(
     page.goto(f"{BASE_URL}/dashboard")
     page.wait_for_load_state("networkidle")
 
-    # Locate Data Management panel and expand if needed
-    # Look for either "Excel Import" button or "Import" button in Data Management
-    try:
-        # Try to find the Excel Import button directly
-        excel_import_button = page.locator('button:has-text("Excel Import")')
-        excel_import_button.wait_for(timeout=5000)
-    except Exception:
-        # If not found, try expanding Data Management panel first
-        data_mgmt_panel = page.locator('text="Data Management"')
-        if data_mgmt_panel.count() > 0:
-            data_mgmt_panel.click()
-            time.sleep(0.5)  # Brief pause for panel expansion
+    # Ensure Data Management panel is expanded
+    data_mgmt_panel = page.locator("#data-management-panel")
+    panel_content = data_mgmt_panel.locator(".panel-content")
+
+    # Check if panel is collapsed and expand if needed
+    if not panel_content.is_visible():
+        panel_toggle = data_mgmt_panel.locator(".panel-toggle")
+        panel_toggle.click()
+        panel_content.wait_for(state="visible", timeout=2000)
 
     # Verify Excel Import button is visible (inline form, not modal)
     excel_import_button = page.locator('button:has-text("Excel Import")')
+    excel_import_button.wait_for(state="visible", timeout=5000)
     assert excel_import_button.is_visible(), "Excel Import button should be visible"
 
     # Upload test file directly (inline form, no modal)
@@ -398,14 +396,12 @@ def test_tc_ie_001_dry_run_import_validation(
     )
     validate_button.first.click()
 
-    # Wait for validation results (should appear within 15 seconds)
+    # Wait for import results to appear (inline div with ID, not class)
     try:
-        validation_results = page.locator(
-            ".validation-results, .import-results, .modal-body"
-        )
-        validation_results.wait_for(state="visible", timeout=15000)
+        import_results = page.locator("#importResults")
+        import_results.wait_for(state="visible", timeout=15000)
     except Exception as e:
-        # If validation results don't appear, take screenshot and fail
+        # If import results don't appear, take screenshot and fail
         take_screenshot(page, "tc_ie_001_validation_timeout")
         pytest.fail(f"Validation results did not appear within 15 seconds: {e}")
 
@@ -523,10 +519,10 @@ def test_tc_ie_002_successful_import_with_conflict_resolution(
     import_button = page.locator('button:has-text("Import")')
     import_button.first.click()
 
-    # Wait for import completion (may take longer than validation)
+    # Wait for import results to appear (inline div with ID, not class)
     try:
-        results = page.locator(".import-results, .validation-results, .modal-body")
-        results.wait_for(state="visible", timeout=30000)
+        import_results = page.locator("#importResults")
+        import_results.wait_for(state="visible", timeout=30000)
     except Exception as e:
         take_screenshot(page, "tc_ie_002_import_timeout")
         pytest.fail(f"Import did not complete within 30 seconds: {e}")
@@ -897,8 +893,8 @@ def test_tc_ie_007_conflict_resolution_duplicate_import(
 
     # Wait for import completion
     try:
-        results = page.locator(".import-results, .validation-results, .modal-body")
-        results.wait_for(state="visible", timeout=30000)
+        import_results = page.locator("#importResults")
+        import_results.wait_for(state="visible", timeout=30000)
     except Exception as e:
         take_screenshot(page, "tc_ie_007_reimport_timeout")
         pytest.fail(f"Re-import did not complete within 30 seconds: {e}")
