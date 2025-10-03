@@ -55,23 +55,23 @@ async function loadCourses() {
     `;
     
     try {
-        const response = await fetch('/api/courses/list', {
+        const response = await fetch('/api/dashboard/data', {
             headers: {
                 'Accept': 'application/json'
             }
         });
         
         if (!response.ok) {
-            throw new Error('Failed to load courses');
+            throw new Error('Failed to load dashboard data');
         }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to load courses');
+            throw new Error(data.error || 'Failed to load dashboard data');
         }
         
-        const courses = data.courses || [];
+        const courses = data.data.courses || [];
         
         if (courses.length === 0) {
             container.innerHTML = `

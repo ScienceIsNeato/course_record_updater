@@ -370,14 +370,12 @@ def test_tc_ie_001_dry_run_import_validation(
             data_mgmt_panel.click()
             time.sleep(0.5)  # Brief pause for panel expansion
 
-    # Click Excel Import button to open modal
-    page.click('button:has-text("Excel Import")')
+    # Verify Excel Import button is visible (inline form, not modal)
+    excel_import_button = page.locator('button:has-text("Excel Import")')
+    assert excel_import_button.is_visible(), "Excel Import button should be visible"
 
-    # Wait for import modal to appear
-    wait_for_modal(page, ".modal")
-
-    # Upload test file
-    file_input = page.locator('input[type="file"]')
+    # Upload test file directly (inline form, no modal)
+    file_input = page.locator('input[type="file"][name="excel_file"]')
     file_input.set_input_files(str(test_data_file))
 
     # Select adapter (if dropdown exists)
@@ -486,21 +484,21 @@ def test_tc_ie_002_successful_import_with_conflict_resolution(
     page.goto(f"{BASE_URL}/dashboard")
     page.wait_for_load_state("networkidle")
 
-    # Open import modal (same as TC-IE-001)
+    # Verify inline import form is visible (no modal)
     try:
-        page.click('button:has-text("Excel Import")', timeout=5000)
+        excel_import_button = page.locator('button:has-text("Excel Import")')
+        excel_import_button.wait_for(timeout=5000)
     except Exception:
         # Try expanding Data Management panel first
         data_mgmt_panel = page.locator('text="Data Management"')
         if data_mgmt_panel.count() > 0:
             data_mgmt_panel.click()
             time.sleep(0.5)
-        page.click('button:has-text("Excel Import")')
 
-    wait_for_modal(page, ".modal")
-
-    # Upload test file
-    page.locator('input[type="file"]').set_input_files(str(test_data_file))
+    # Upload test file directly (inline form, no modal)
+    page.locator('input[type="file"][name="excel_file"]').set_input_files(
+        str(test_data_file)
+    )
 
     # Select adapter
     adapter_select = page.locator(
@@ -860,20 +858,20 @@ def test_tc_ie_007_conflict_resolution_duplicate_import(
     page.goto(f"{BASE_URL}/dashboard")
     page.wait_for_load_state("networkidle")
 
-    # Open import modal
+    # Verify inline import form is visible (no modal)
     try:
-        page.click('button:has-text("Excel Import")', timeout=5000)
+        excel_import_button = page.locator('button:has-text("Excel Import")')
+        excel_import_button.wait_for(timeout=5000)
     except Exception:
         data_mgmt_panel = page.locator('text="Data Management"')
         if data_mgmt_panel.count() > 0:
             data_mgmt_panel.click()
             time.sleep(0.5)
-        page.click('button:has-text("Excel Import")')
 
-    wait_for_modal(page, ".modal")
-
-    # Upload THE SAME file again
-    page.locator('input[type="file"]').set_input_files(str(test_data_file))
+    # Upload THE SAME file again (inline form, no modal)
+    page.locator('input[type="file"][name="excel_file"]').set_input_files(
+        str(test_data_file)
+    )
 
     # Select adapter
     adapter_select = page.locator(
