@@ -1,134 +1,70 @@
-# Project Status
+# Status: E2E Test Suite - Authentication Fixed, UI Tests Need Updates
 
-## Current State: 🎭 E2E TESTING DEPLOYED - UAT AUTOMATED! 
+## Completed Work
 
-### Last Updated: 2025-10-03 02:45 PM
+### ✅ Environment Separation (100% Complete)
+-  Implemented single `.envrc.template` for version control + gitignored `.envrc` for secrets
+- ✅ Updated `restart_server.sh` to require explicit environment argument (dev/e2e/ci)
+- ✅ Updated `run_uat.sh` to use E2E environment (port 3002, separate database)
+- ✅ Fixed port configuration and server cleanup in E2E script
+- ✅ Updated CI pipeline to use `APP_ENV=ci`
+- ✅ Video recording now controlled by `--save-videos` flag (disabled by default)
+- ✅ All documentation updated (ENV_SETUP.md, ENV_SEPARATION_SUMMARY.md)
 
-## 🎭 NEW: Automated E2E Testing with Playwright 🎭
+### ✅ E2E Authentication Fixtures (100% Complete)
+- ✅ Fixed `authenticated_page` fixture to properly wait for JavaScript redirect to dashboard
+  - Changed from checking URL after network idle to waiting for actual URL change
+  - Now handles async JavaScript authentication flow correctly
+- ✅ Deprecated `database_baseline` fixture (returns empty dict for backward compat)
+  - E2E tests should verify via UI, not direct database queries
+  - Removed calls to multi-tenant-incompatible database methods
+- ✅ All 5 authentication tests now passing (login flow works end-to-end)
 
-**BREAKTHROUGH**: UAT validation now automated - runs in **2-3 minutes** instead of 2-3 hours!
+### ⚠️ E2E Import/Export Tests - Need UI Updates (7/12 Failing)
 
-### What Was Built:
-- ✅ **Playwright E2E Framework**: Browser automation for real user workflows
-- ✅ **7 Automated UAT Tests**: Import/export validation end-to-end
-- ✅ **Watch Mode**: See tests run in real browser (`./run_uat.sh --watch`)
-- ✅ **Headless Mode**: Fast CI-ready validation (`./run_uat.sh`)
-- ✅ **Complete Documentation**: 3 guides (full, quick ref, setup summary)
+**Test Results: 5 Passing / 7 Failing**
 
-### Test Coverage:
-- **TC-IE-001**: Dry run import validation (8s)
-- **TC-IE-002**: Successful import with conflict resolution (12s)
-- **TC-IE-003**: Course visibility in UI (5s)
-- **TC-IE-004**: Instructor visibility in UI (5s)
-- **TC-IE-005**: Section visibility with UUID check (6s)
-- **TC-IE-007**: Conflict resolution on re-import (10s)
-- **TC-IE-101**: Export to Excel validation (7s)
+**✅ Passing Authentication Tests:**
+1. `test_health_endpoint` - Health check endpoint works
+2. `test_login_page_structure` - Login form loads correctly
+3. `test_login_form_submission_debug` - Form submission handled
+4. `test_login_script_loading` - auth.js loads and executes
+5. `test_login_success_after_fix` - Full login flow works, redirects to dashboard
 
-**Total**: 7 tests in ~54 seconds
+**❌ Failing UI/Integration Tests:**
+1. `test_tc_ie_001_dry_run_import_validation` - Can't find "Excel Import" button
+2. `test_tc_ie_002_successful_import_with_conflict_resolution` - Can't find "Excel Import" button  
+3. `test_tc_ie_003_imported_course_visibility` - No courses found in UI (needs data + UI structure)
+4. `test_tc_ie_004_imported_instructor_visibility` - No users found in UI (needs data + UI structure)
+5. `test_tc_ie_005_imported_section_visibility` - No sections found in UI (needs data + UI structure)
+6. `test_tc_ie_007_conflict_resolution_duplicate_import` - Direct database calls (`get_all_courses()`)
+7. `test_tc_ie_101_export_courses_to_excel` - Direct database calls + missing "Export Courses" button
 
-### Time Savings:
-- **Manual UAT**: 2-3 hours per run
-- **Automated E2E**: 2-3 minutes per run
-- **ROI**: **60-90x faster** + more reliable + repeatable
+**Root Causes:**
+1. **UI Structure Mismatch**: Tests expect specific button text/locations that don't match actual dashboard
+2. **Database Call Pattern**: Some tests still use direct database service calls (incompatible with multi-tenant)
+3. **Test Data Dependency**: Tests assume import has already populated the database
 
-### How to Use:
-```bash
-# Start server
-./restart_server.sh
+## Current State
 
-# Watch tests run in browser
-./run_uat.sh --watch
+The E2E infrastructure is now solid:
+- ✅ Environment separation working (DEV port 3001, E2E port 3002, CI port 3003)
+- ✅ Authentication flow fully functional in E2E tests
+- ✅ Database seeding works (users, courses, sections created on test startup)
+- ✅ Server management (start/stop/cleanup) working reliably
 
-# Run headless (fast validation)
-./run_uat.sh
-```
+The remaining work is updating test assertions to match the actual UI structure, which requires either:
+1. **Option A**: Update E2E tests to match current dashboard UI (find actual selectors for import/export buttons, course lists, etc.)
+2. **Option B**: Defer E2E testing of import/export until UI is more stable
+3. **Option C**: Implement the actual import/export UI that the tests expect
 
-### Documentation:
-- `E2E_TESTING_GUIDE.md` - Complete guide (15+ pages)
-- `E2E_QUICK_REFERENCE.md` - Quick cheat sheet
-- `E2E_SETUP_SUMMARY.md` - This achievement summary
-- `UAT_IMPORT_EXPORT.md` - Updated manual UAT with specific assertions
+## Next Steps
 
----
+**User Decision Point**: With authentication working end-to-end and environment separation complete, the groundwork for E2E testing is in place. The failing tests are due to UI structure mismatches, not infrastructure issues. 
 
-## 🏆 PREVIOUS ACHIEVEMENT: Coverage on New Code ~80%+ 🏆
+Options:
+1. Continue iterating on E2E tests by updating them to match actual UI
+2. Move to manual UAT validation of import/export (original goal)
+3. Focus on other priorities and defer E2E test completion
 
-Successfully increased "Coverage on New Code" from **64.7%** to **~80%+** through **26 commits** of strategic, surgical testing!
-
-### 📊 Final Victory Metrics:
-
-**Coverage Achievement:**
-- ✅ **Global Coverage**: **84.06%** (well above 80% threshold!)
-- ✅ **Coverage on New Code**: **~80%+** (148 → 14 uncovered lines, **90.5% reduction!**)
-- ✅ **Tests**: 854 → **893 tests** (+39 strategic tests)
-
-**Quality Metrics:**
-- ✅ **Code Smells**: **0 major issues** (all resolved!)
-- ✅ **Security Issues**: **0 vulnerabilities** (all fixed!)
-- ✅ **Duplication**: **0.0%** on new code
-- ✅ **All Tests**: **893 passing**
-
-### 🎯 Files Achieving 100% Coverage:
-
-1. ✅ `api_routes.py` - **65 → 0** uncovered lines (COMPLETE!)
-2. ✅ `dashboard_service.py` - **FULLY COVERED**
-3. ✅ `models_sql.py` - **FULLY COVERED**
-4. ✅ `import_service.py` - **8 → 0** uncovered lines (COMPLETE!)
-5. ✅ `invitation_service.py` - **Virtually complete**
-
-### 📈 The Journey (26 Commits):
-
-**Phase 1: Big Wins (65 lines covered)**
-- `api_routes.py` helper functions: validation, bulk operations, error handlers
-- Strategic focus on highest-impact areas first
-
-**Phase 2: Model & Service Coverage (30 lines covered)**
-- `models_sql.py`: Added 3 tests for CourseOffering, CourseSection, CourseOutcome
-- `dashboard_service.py`: Refactored helpers + edge cases
-- `import_service.py`: Edge cases and conflict resolution
-
-**Phase 3: Adapter Coverage (35 lines covered)**
-- `cei_excel_adapter.py`: Validation, format detection, error paths
-- CEI adapter: 22 → 9 uncovered lines (59% reduction)
-
-**Phase 4: Final Polish (4 lines covered)**
-- Import service dry run paths
-- Final edge cases
-
-**Remaining 14 Lines:**
-- Mostly **unreachable error paths** in adapter exception handlers
-- **Defensive code** that validation catches before execution
-- **Not blocking quality gate** - estimated at ~80%+ coverage
-
-### 🔧 Tools & Process Deployed:
-
-**`scripts/analyze_pr_coverage.py`** - Surgical Coverage Tool ✨
-- Cross-references `git diff origin/main` with `coverage.xml`
-- Shows **EXACT uncovered line numbers** in modified files
-- Ranks files by impact (most gaps first)
-- Auto-runs when `ship_it.py --checks sonar` fails
-- Output: `logs/pr_coverage_gaps.txt`
-
-**Documented Workflow:**
-- `SONARCLOUD_SETUP_GUIDE.md` - Coverage distinction documentation
-- `.cursor/rules/projects/course_record_updater.mdc` - Surgical workflow protocol
-
-### 🎯 Next Steps:
-1. **User pushing 26 commits to remote** 🚀
-2. Verify SonarCloud Quality Gate **PASSES** in CI
-3. Monitor CI run for confirmation
-4. Celebrate! 🎉
-
-### 📁 Key Achievements:
-- ✅ **Surgical Coverage Tool**: Deployed and working
-- ✅ **Quality Gate Passing**: Locally confirmed
-- ✅ **All Bot Comments**: Addressed
-- ✅ **Systematic Testing**: 39 new strategic tests
-- ✅ **Documentation**: Complete workflow guide
-
-## Branch Status: feature/sonarcloud_quality_improvements
-- ✅ **SonarCloud Integration**: Complete (40+ commits)
-- ✅ **Strategic PR Review**: Complete (3 commits)
-- ✅ **Coverage Achievement**: **~80%+ on New Code** (26 commits)
-- ✅ **All Bot Comments**: Addressed
-- 🎯 **Status**: **READY TO MERGE** pending CI verification!
+**Recommended**: Run manual UAT validation of import/export flow to validate the "coming full circle" goal, then decide if E2E test updates are worth the time investment.
