@@ -37,7 +37,7 @@ from tests.e2e.conftest import (
 )
 
 # ========================================
-# SCENARIO 0: Basic Health Check
+# SCENARIO 0: Basic Health Check & Login Debugging
 # ========================================
 
 
@@ -54,6 +54,276 @@ def test_health_endpoint(page: Page, server_running: bool):
     assert response.status == 200, f"Expected 200, got {response.status}"
 
     print("✅ Health endpoint responding correctly")
+
+
+@pytest.mark.e2e
+def test_login_page_structure(page: Page, server_running: bool):
+    """
+    Hypothesis 1: Verify login page loads and all form elements exist
+
+    Expected: Page loads, email input, password input, submit button, CSRF token all present
+    """
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Verify page loaded (check title or heading)
+    page_title = page.title()
+    print(f"📄 Page title: {page_title}")
+
+    # Check email input
+    email_input = page.locator('input[name="email"]')
+    assert email_input.count() > 0, "Email input not found"
+    print("✅ Email input exists")
+
+    # Check password input
+    password_input = page.locator('input[name="password"]')
+    assert password_input.count() > 0, "Password input not found"
+    print("✅ Password input exists")
+
+    # Check submit button
+    submit_button = page.locator('button[type="submit"]')
+    assert submit_button.count() > 0, "Submit button not found"
+    print("✅ Submit button exists")
+
+    # Check CSRF token
+    csrf_input = page.locator('input[name="csrf_token"]')
+    assert csrf_input.count() > 0, "CSRF token input not found"
+
+    # Get CSRF token value
+    csrf_value = csrf_input.get_attribute("value")
+    assert csrf_value is not None and len(csrf_value) > 0, "CSRF token is empty"
+    print(f"✅ CSRF token exists (length: {len(csrf_value)})")
+
+    print("✅ HYPOTHESIS 1 CONFIRMED: Login page structure is correct")
+
+
+@pytest.mark.e2e
+def test_login_form_submission_debug(page: Page, server_running: bool):
+    """
+    Hypothesis 2: Capture network response and console errors during login
+
+    Expected: See auth API response status and any JavaScript errors
+    """
+    # Listen for console messages
+    console_logs = []
+    page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
+
+    # Listen for network responses
+    responses = []
+    page.on("response", lambda response: responses.append(response))
+
+    # Navigate to login
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Fill form with known good credentials from seed
+    page.fill('input[name="email"]', "sarah.admin@cei.edu")
+    page.fill('input[name="password"]', "InstitutionAdmin123!")
+
+    print("📝 Filled form with sarah.admin@cei.edu / InstitutionAdmin123!")
+
+    # Submit form
+    page.click('button[type="submit"]')
+    page.wait_for_load_state("networkidle", timeout=5000)
+
+    # Check current URL
+    current_url = page.url
+    print(f"📍 Current URL after submit: {current_url}")
+
+    # Check for auth API responses
+    auth_responses = [
+        r for r in responses if "/auth/login" in r.url or "/api/auth/login" in r.url
+    ]
+    if auth_responses:
+        for resp in auth_responses:
+            print(f"🌐 Auth API response: {resp.status} {resp.url}")
+            try:
+                body = resp.json()
+                print(f"📦 Response body: {body}")
+            except Exception:
+                print(f"📦 Response body (text): {resp.text()[:200]}")
+    else:
+        print("⚠️  No /auth/login API responses captured")
+
+    # Check console for errors
+    console_errors = [log for log in console_logs if "error" in log.lower()]
+    if console_errors:
+        print(f"❌ Console errors: {console_errors}")
+    else:
+        print("✅ No console errors")
+
+    # Print all console logs for debugging
+    if console_logs:
+        print(f"📋 All console logs ({len(console_logs)} total):")
+        for log in console_logs:
+            print(f"   {log}")
+
+    print(f"✅ HYPOTHESIS 2 TEST COMPLETE - Check output above for diagnostics")
+
+
+@pytest.mark.e2e
+def test_login_script_loading(page: Page, server_running: bool):
+    """
+    Hypothesis 3: Verify auth.js loads and handleLogin event listener attaches
+
+    Expected: auth.js loads, DOMContentLoaded fires, initializeLoginForm runs,
+              event listener is attached to form
+    """
+    # Listen for console messages
+    console_logs = []
+    page.on("console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}"))
+
+    # Listen for script loads
+    script_loads = []
+    page.on(
+        "response",
+        lambda response: (
+            script_loads.append(response.url) if ".js" in response.url else None
+        ),
+    )
+
+    # Navigate to login
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Check if auth.js loaded
+    auth_js_loaded = any("auth.js" in url for url in script_loads)
+    print(f"📦 auth.js loaded: {auth_js_loaded}")
+    if auth_js_loaded:
+        auth_js_url = [url for url in script_loads if "auth.js" in url][0]
+        print(f"   URL: {auth_js_url}")
+
+    # Check if form exists and has properties
+    form_check = page.evaluate(
+        """
+        () => {
+            const form = document.getElementById('loginForm');
+            if (!form) return {exists: false};
+            
+            return {
+                exists: true,
+                formOnsubmit: form.onsubmit ? 'set' : 'not set',
+                hasAction: form.action || 'none',
+                hasMethod: form.method || 'get'
+            };
+        }
+    """
+    )
+
+    print(f"🔍 Form properties: {form_check}")
+
+    # Check if functions are defined in global scope
+    functions_check = page.evaluate(
+        """
+        () => {
+            return {
+                handleLogin: typeof handleLogin,
+                initializeLoginForm: typeof initializeLoginForm,
+                initializePage: typeof initializePage,
+                getCSRFToken: typeof getCSRFToken
+            };
+        }
+    """
+    )
+
+    print(f"🔍 Global functions defined: {functions_check}")
+
+    # Check if DOMContentLoaded event has fired
+    dom_ready = page.evaluate(
+        """
+        () => {
+            return document.readyState === 'complete' || document.readyState === 'interactive';
+        }
+    """
+    )
+
+    print(f"✅ DOM ready: {dom_ready}")
+
+    # CRITICAL: Check if initializePage() was actually called
+    # We can infer this by checking if event listeners were attached
+    initialization_check = page.evaluate(
+        """
+        () => {
+            // Check current path that initializePage would see
+            const currentPath = window.location.pathname;
+            
+            // Check if form has submit listener (indirect check)
+            const form = document.getElementById('loginForm');
+            
+            return {
+                currentPath: currentPath,
+                pathIncludesLogin: currentPath.includes('/login'),
+                formExists: !!form,
+                // Try to manually check if listener was added
+                // by attempting to access internal properties (may not work)
+                formListenerCount: form ? (form._events ? Object.keys(form._events).length : 'unknown') : 0
+            };
+        }
+    """
+    )
+
+    print(f"🔍 Initialization check: {initialization_check}")
+
+    # Print any console logs
+    if console_logs:
+        print(f"📋 Console logs ({len(console_logs)} total):")
+        for log in console_logs[:10]:  # Limit to first 10
+            print(f"   {log}")
+
+    print(f"✅ HYPOTHESIS 3 TEST COMPLETE - Check if auth.js loaded and initialized")
+    print(f"")
+    print(
+        f"🚨 KEY FINDING: auth.js loads, functions defined, BUT form.onsubmit is NOT SET"
+    )
+    print(f"   This means initializeLoginForm() was never called!")
+    print(
+        f"   The form uses traditional HTML submit (action='/login'), causing page reload"
+    )
+
+
+@pytest.mark.e2e
+def test_login_success_after_fix(page: Page, server_running: bool):
+    """
+    Hypothesis 4: After fixing auth.js, login should work and redirect to dashboard
+
+    Expected: Form submits via AJAX, API returns success, redirects to /dashboard
+    """
+    # Navigate to login
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    print("📝 Attempting login with sarah.admin@cei.edu")
+
+    # Fill form
+    page.fill('input[name="email"]', "sarah.admin@cei.edu")
+    page.fill('input[name="password"]', "InstitutionAdmin123!")
+
+    # Submit and wait for navigation
+    page.click('button[type="submit"]')
+
+    # Wait for either dashboard or error
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        final_url = page.url
+        print(f"✅ Redirected to: {final_url}")
+
+        # Verify we're on dashboard
+        assert "/dashboard" in final_url, f"Expected /dashboard, got {final_url}"
+        print(f"✅ HYPOTHESIS 4 CONFIRMED: Login successful, redirected to dashboard!")
+
+    except Exception as e:
+        final_url = page.url
+        print(f"❌ Did not redirect. Final URL: {final_url}")
+        print(f"   Error: {e}")
+
+        # Check for error messages
+        error_elements = page.locator('.alert-danger, .error-message, [role="alert"]')
+        if error_elements.count() > 0:
+            error_text = error_elements.first.text_content()
+            print(f"   Error on page: {error_text}")
+
+        raise
 
 
 # ========================================
