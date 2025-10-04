@@ -335,11 +335,15 @@ jobs:
         python -m playwright install --with-deps chromium
     - name: Run E2E Tests (using ship_it.py)
       run: |
+        # Source environment template for E2E configuration
+        source .envrc.template
+        
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
         python scripts/ship_it.py --checks e2e
       env:
         CI: true
         GITHUB_ACTIONS: true
+        APP_ENV: e2e
     - name: Upload E2E Test Artifacts
       if: failure()
       uses: actions/upload-artifact@v4
