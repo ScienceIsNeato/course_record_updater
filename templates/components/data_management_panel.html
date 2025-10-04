@@ -319,9 +319,16 @@ function executeDataExport() {
         params.append(key, value);
     }
     
-    // Trigger download
+    // Create hidden link and trigger download
+    // This approach works better for E2E testing than window.open()
     const exportUrl = `/api/export/data?${params.toString()}`;
-    window.open(exportUrl, '_blank');
+    const link = document.createElement('a');
+    link.href = exportUrl;
+    link.download = '';  // Force download instead of navigation
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     // Hide status after a delay
     setTimeout(() => {

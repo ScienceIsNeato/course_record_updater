@@ -3175,7 +3175,7 @@ def export_data():
         # Get parameters
         data_type = request.args.get("export_data_type", "courses")
         export_format = request.args.get("export_format", "excel")
-        adapter_id = request.args.get("export_adapter", "cei_excel_adapter")
+        adapter_id = request.args.get("export_adapter", "cei_excel_format_v1")
         include_metadata = (
             request.args.get("include_metadata", "true").lower() == "true"
         )
@@ -3200,7 +3200,7 @@ def export_data():
         output_path = temp_dir / filename
 
         # Perform export
-        result = export_service.export_to_file(config, str(output_path))
+        result = export_service.export_data(config, str(output_path))
 
         if not result.success:
             logger.error(f"Export failed: {result.errors}")
