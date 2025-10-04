@@ -965,12 +965,56 @@ class CEIExcelAdapter(FileBaseAdapter):
         users = data.get("users", [])
         terms = data.get("terms", [])
         offerings = data.get("offerings", [])
+        sections = data.get("sections", [])
 
         # Build a lookup for instructors
         instructors = [user for user in users if user.get("role") == "instructor"]
 
-        # If we have actual course offerings, use them
-        if offerings:
+        # Use sections if available (sections have the actual enrollment/instructor data)
+        if sections and offerings:
+            # Build lookups (use the correct ID field names from to_dict methods)
+            instructors_lookup = {user["user_id"]: user for user in users}
+            terms_lookup = {term["term_id"]: term for term in terms}
+            offerings_lookup = {
+                offering.get("offering_id") or offering.get("id"): offering
+                for offering in offerings
+            }
+            courses_lookup = {
+                course.get("course_id") or course.get("id"): course
+                for course in courses
+            }
+
+            # Process each section
+            for section in sections:
+                offering_id = section.get("offering_id")
+                offering = offerings_lookup.get(offering_id, {})
+
+                if not offering:
+                    continue
+
+                course_id = offering.get("course_id")
+                term_id = offering.get("term_id")
+                instructor_id = section.get("instructor_id")
+
+                # Find related data
+                course = courses_lookup.get(course_id, {})
+                instructor = instructors_lookup.get(instructor_id, {})
+                term = terms_lookup.get(term_id, {})
+
+                # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
+                term_formatted = self._format_term_for_cei_export(term)
+
+                record = {
+                    "course": course.get("course_number", ""),
+                    "section": section.get("section_number", "01"),
+                    "effterm_c": term_formatted,
+                    "students": section.get("enrollment", 0),
+                    FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                    "email": instructor.get("email", ""),
+                }
+
+                records.append(record)
+        elif offerings:
             # Build lookups for existing offerings logic
             instructors_lookup = {user["user_id"]: user for user in instructors}
             terms_lookup = {term["term_id"]: term for term in terms}
