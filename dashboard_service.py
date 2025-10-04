@@ -193,6 +193,22 @@ class DashboardService:
             if offering_id and course_id:
                 offering_to_course[offering_id] = course_id
 
+        # DEBUG: Log mapping details
+        self.logger.info(
+            f"[SECTION ENRICHMENT DEBUG] Created {len(offering_to_course)} offering->course mappings"
+        )
+        if offerings:
+            self.logger.info(
+                f"[SECTION ENRICHMENT DEBUG] Sample offering keys: {list(offerings[0].keys())}"
+            )
+        if sections:
+            self.logger.info(
+                f"[SECTION ENRICHMENT DEBUG] Sample section keys: {list(sections[0].keys())}"
+            )
+            self.logger.info(
+                f"[SECTION ENRICHMENT DEBUG] Sample section offering_id: {sections[0].get('offering_id')}"
+            )
+
         # Enrich sections with course data
         sections = self._enrich_sections_with_course_data(
             sections, course_index, offering_to_course
@@ -1135,8 +1151,10 @@ class DashboardService:
             List of sections enriched with course_number and course_title
         """
         enriched_sections = []
+        enriched_count = 0
+        failed_count = 0
 
-        for section in sections:
+        for i, section in enumerate(sections):
             section_copy = section.copy()
 
             # Sections have offering_id as foreign key (not to be confused with section_id/id which is the primary key)
@@ -1148,7 +1166,18 @@ class DashboardService:
                 section_copy["course_number"] = course.get("course_number", "")
                 section_copy["course_title"] = course.get("course_title", "")
                 section_copy["course_id"] = course_id  # Add for reference
+                enriched_count += 1
             else:
+                # Log failures for debugging
+                if i < 3:  # Only log first 3 to avoid spam
+                    self.logger.warning(
+                        f"[SECTION ENRICHMENT] Failed to enrich section {i}: "
+                        f"offering_id={offering_id}, "
+                        f"course_id={course_id}, "
+                        f"in_offering_map={offering_id in offering_to_course if offering_id else False}, "
+                        f"in_course_index={course_id in course_index if course_id else False}"
+                    )
+                failed_count += 1
                 # Fallback if course not found - keep empty so template shows "-"
                 if "course_number" not in section_copy:
                     section_copy["course_number"] = ""
@@ -1156,6 +1185,21 @@ class DashboardService:
                     section_copy["course_title"] = ""
 
             enriched_sections.append(section_copy)
+
+        self.logger.info(
+            f"[SECTION ENRICHMENT] Enriched {enriched_count}/{len(sections)} sections, "
+            f"failed {failed_count}"
+        )
+
+        # DEBUG: Log sample enriched section to verify fields
+        if enriched_sections:
+            sample = enriched_sections[0]
+            self.logger.info(
+                f"[SECTION ENRICHMENT] Sample enriched section fields: "
+                f"course_number={sample.get('course_number')}, "
+                f"course_title={sample.get('course_title')}, "
+                f"section_number={sample.get('section_number')}"
+            )
 
         return enriched_sections
 
