@@ -274,16 +274,17 @@ jobs:
       run: |
         # Set CI environment variables for SQLite
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
+        export DATABASE_URL=sqlite:///course_records_ci.db
         export PYTHONPATH=.
-        export DEFAULT_PORT=3001
+        export DEFAULT_PORT=${{ env.COURSE_RECORD_UPDATER_PORT }}
+        export PORT=${{ env.COURSE_RECORD_UPDATER_PORT }}
         
         # Start Flask server in background for Selenium tests
         nohup python app.py > server.log 2>&1 &
         sleep 5  # Give server time to start
         
         # Verify server is running
-        curl -f http://localhost:3001/ || {
+        curl -f http://localhost:${{ env.COURSE_RECORD_UPDATER_PORT }}/ || {
           echo "❌ Flask server failed to start"
           cat server.log
           exit 1
@@ -294,11 +295,11 @@ jobs:
       run: |
         # Set CI environment variables for SQLite
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
+        export DATABASE_URL=sqlite:///course_records_ci.db
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
-        export DEFAULT_PORT=3001
+        export DEFAULT_PORT=${{ env.COURSE_RECORD_UPDATER_PORT }}
         
         # Run integration tests using ship_it.py with SQLite backend (server already running)
         python scripts/ship_it.py --checks integration
