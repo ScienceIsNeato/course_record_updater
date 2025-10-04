@@ -424,6 +424,8 @@ def test_tc_ie_001_dry_run_import_validation(
         pytest.fail("No validation success message found in results")
 
     # Verify records found count > 0
+    import_results_text = import_results.text_content()
+
     records_text_selectors = [
         ".records-found",
         "text=/records? (found|processed)/i",
@@ -442,6 +444,19 @@ def test_tc_ie_001_dry_run_import_validation(
             if match:
                 records_count = int(match.group(1))
                 break
+
+    # If not found via selectors, try the whole import results div
+    # Look for "Records Processed: 6" or "Records Created: 6" format
+    if records_count == 0:
+        import re
+
+        match = re.search(
+            r"records?\s*(?:processed|created|found|updated):\s*(\d+)",
+            import_results_text,
+            re.IGNORECASE,
+        )
+        if match:
+            records_count = int(match.group(1))
 
     assert records_count > 0, f"Expected records found > 0, got {records_count}"
 
