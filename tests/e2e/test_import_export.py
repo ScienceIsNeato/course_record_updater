@@ -797,8 +797,8 @@ def test_tc_ie_005_imported_section_visibility(
             uuid_match is None
         ), f"Section row {i} contains UUID instead of human-readable section number: {row_text}"
 
-        # Verify section has course reference (course number like MATH-101)
-        course_pattern = r"[A-Z]{3,4}-\d{3}"
+        # Verify section has course reference (course number like CS-101, MATH-101)
+        course_pattern = r"[A-Z]{2,4}-\d{3}"  # 2-4 uppercase letters, dash, 3 digits
         course_match = re.search(course_pattern, row_text)
         assert course_match is not None, f"Section row {i} missing course reference"
 

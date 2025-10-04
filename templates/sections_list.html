@@ -73,13 +73,6 @@ async function loadSections() {
         
         const sections = data.data.sections || [];
         
-        // DEBUG: Log first section to see what fields are available
-        if (sections.length > 0) {
-            console.log('[SECTIONS DEBUG] First section data:', sections[0]);
-            console.log('[SECTIONS DEBUG] course_number:', sections[0].course_number);
-            console.log('[SECTIONS DEBUG] course_title:', sections[0].course_title);
-        }
-        
         if (sections.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-info">

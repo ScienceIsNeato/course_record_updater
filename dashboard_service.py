@@ -193,22 +193,6 @@ class DashboardService:
             if offering_id and course_id:
                 offering_to_course[offering_id] = course_id
 
-        # DEBUG: Log mapping details
-        self.logger.info(
-            f"[SECTION ENRICHMENT DEBUG] Created {len(offering_to_course)} offering->course mappings"
-        )
-        if offerings:
-            self.logger.info(
-                f"[SECTION ENRICHMENT DEBUG] Sample offering keys: {list(offerings[0].keys())}"
-            )
-        if sections:
-            self.logger.info(
-                f"[SECTION ENRICHMENT DEBUG] Sample section keys: {list(sections[0].keys())}"
-            )
-            self.logger.info(
-                f"[SECTION ENRICHMENT DEBUG] Sample section offering_id: {sections[0].get('offering_id')}"
-            )
-
         # Enrich sections with course data
         sections = self._enrich_sections_with_course_data(
             sections, course_index, offering_to_course
@@ -1185,21 +1169,6 @@ class DashboardService:
                     section_copy["course_title"] = ""
 
             enriched_sections.append(section_copy)
-
-        self.logger.info(
-            f"[SECTION ENRICHMENT] Enriched {enriched_count}/{len(sections)} sections, "
-            f"failed {failed_count}"
-        )
-
-        # DEBUG: Log sample enriched section to verify fields
-        if enriched_sections:
-            sample = enriched_sections[0]
-            self.logger.info(
-                f"[SECTION ENRICHMENT] Sample enriched section fields: "
-                f"course_number={sample.get('course_number')}, "
-                f"course_title={sample.get('course_title')}, "
-                f"section_number={sample.get('section_number')}"
-            )
 
         return enriched_sections
 
