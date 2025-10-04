@@ -84,10 +84,18 @@ echo -e "${BLUE}  Course Record Updater - UAT Runner${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
-# Check if virtual environment is activated
-if [ -z "$VIRTUAL_ENV" ]; then
+# Check if virtual environment is activated (skip in CI where it's already set up)
+if [ -z "$VIRTUAL_ENV" ] && [ "${CI:-false}" != "true" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-    source venv/bin/activate
+    if [ -f "venv/bin/activate" ]; then
+        source venv/bin/activate
+    else
+        echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
+        echo -e "${YELLOW}💡 Run: python -m venv venv && source venv/bin/activate && pip install -r requirements-dev.txt${NC}"
+        exit 1
+    fi
+elif [ "${CI:-false}" = "true" ]; then
+    echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
 fi
 
 # Restart server to ensure fresh database with test credentials
