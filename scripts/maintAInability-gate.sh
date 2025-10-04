@@ -78,6 +78,7 @@ RUN_LINT=false
 RUN_TYPES=false
 RUN_TESTS=false
 RUN_INTEGRATION_TESTS=false
+RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
 RUN_SONAR=false
@@ -102,6 +103,7 @@ else
       --types) RUN_TYPES=true ;;
       --tests) RUN_TESTS=true ;;
       --integration-tests) RUN_INTEGRATION_TESTS=true ;;
+      --e2e) RUN_E2E_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
       --sonar) RUN_SONAR=true ;;
@@ -413,6 +415,35 @@ if [[ "$RUN_INTEGRATION_TESTS" == "true" ]]; then
   else
     echo "✅ Integration Tests: PASSED"
     add_success "Integration Tests" "All integration tests passed successfully"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# E2E TEST SUITE (ATOMIC) - Playwright browser automation
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_E2E_TESTS" == "true" ]]; then
+  echo "🎭 End-to-End Test Suite (Playwright browser automation)"
+  
+  echo "  🔍 Running E2E test suite (headless browser tests)..."
+  # Run via run_uat.sh which handles environment setup
+  E2E_TEST_OUTPUT=$(./run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  
+  if [[ "$E2E_TEST_FAILED" == "true" ]]; then
+    echo "❌ E2E Tests: FAILED"
+    echo ""
+    echo "📋 E2E Test Failure Details:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$E2E_TEST_OUTPUT" | sed 's/^/  /'
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    # Extract summary stats for the failure record
+    FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './run_uat.sh --watch' to debug"
+  else
+    echo "✅ E2E Tests: PASSED"
+    add_success "E2E Tests" "All E2E tests passed successfully"
   fi
   echo ""
 fi

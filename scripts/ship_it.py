@@ -90,6 +90,7 @@ class QualityGateExecutor:
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
             ("sonar", "🔍 SonarCloud Quality Analysis"),
+            ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
