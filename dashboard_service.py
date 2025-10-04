@@ -185,10 +185,13 @@ class DashboardService:
         faculty = self._build_faculty_directory(users, instructors)
 
         # Create offering_id -> course_id mapping
-        offering_to_course = {
-            offering.get("offering_id") or offering.get("id"): offering.get("course_id")
-            for offering in offerings
-        }
+        # Try both offering_id and id as keys since to_dict might return either
+        offering_to_course = {}
+        for offering in offerings:
+            offering_id = offering.get("offering_id") or offering.get("id")
+            course_id = offering.get("course_id")
+            if offering_id and course_id:
+                offering_to_course[offering_id] = course_id
 
         # Enrich sections with course data
         sections = self._enrich_sections_with_course_data(
@@ -1136,7 +1139,7 @@ class DashboardService:
         for section in sections:
             section_copy = section.copy()
 
-            # Sections have offering_id, not course_id
+            # Sections have offering_id as foreign key (not to be confused with section_id/id which is the primary key)
             offering_id = section.get("offering_id")
             course_id = offering_to_course.get(offering_id) if offering_id else None
 
@@ -1146,13 +1149,11 @@ class DashboardService:
                 section_copy["course_title"] = course.get("course_title", "")
                 section_copy["course_id"] = course_id  # Add for reference
             else:
-                # Fallback if course not found
-                section_copy["course_number"] = section_copy.get(
-                    "course_number", "Unknown"
-                )
-                section_copy["course_title"] = section_copy.get(
-                    "course_title", "Unknown Course"
-                )
+                # Fallback if course not found - keep empty so template shows "-"
+                if "course_number" not in section_copy:
+                    section_copy["course_number"] = ""
+                if "course_title" not in section_copy:
+                    section_copy["course_title"] = ""
 
             enriched_sections.append(section_copy)
 
