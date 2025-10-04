@@ -1059,9 +1059,11 @@ def test_tc_ie_101_export_courses_to_excel(
             df = pd.read_excel(download_path)
 
             # E2E tests verify via UI only - file download success is sufficient
-            # Just verify required columns exist
-            # Verify required columns exist
-            required_columns = ["course_number", "course_title"]
+            # Just verify required columns exist (CEI format)
+            required_columns = [
+                "course",
+                "section",
+            ]  # CEI format uses "course" not "course_number"
             for col in required_columns:
                 assert col in df.columns, f"Missing required column in export: {col}"
 

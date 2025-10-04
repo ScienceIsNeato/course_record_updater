@@ -3166,16 +3166,24 @@ def export_data():
     try:
         current_user = get_current_user()
         if not current_user:
+            logger.error("[EXPORT] User not authenticated")
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
         institution_id = current_user.get("institution_id")
         if not institution_id:
+            logger.error(
+                f"[EXPORT] No institution_id for user: {current_user.get('email')}"
+            )
             return jsonify({"success": False, "error": "No institution context"}), 400
 
         # Get parameters
         data_type = request.args.get("export_data_type", "courses")
         export_format = request.args.get("export_format", "excel")
         adapter_id = request.args.get("export_adapter", "cei_excel_format_v1")
+
+        logger.info(
+            f"[EXPORT] Request: institution_id={institution_id}, data_type={data_type}, format={export_format}, adapter={adapter_id}"
+        )
         include_metadata = (
             request.args.get("include_metadata", "true").lower() == "true"
         )
@@ -3203,7 +3211,7 @@ def export_data():
         result = export_service.export_data(config, str(output_path))
 
         if not result.success:
-            logger.error(f"Export failed: {result.errors}")
+            logger.error(f"[EXPORT] Export failed: {result.errors}")
             return (
                 jsonify(
                     {
@@ -3214,6 +3222,10 @@ def export_data():
                 ),
                 500,
             )
+
+        logger.info(
+            f"[EXPORT] Export successful: {result.records_exported} records, file: {result.file_path}"
+        )
 
         # Send file as download
         return send_file(
