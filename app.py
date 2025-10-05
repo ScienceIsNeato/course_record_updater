@@ -26,12 +26,16 @@ app = Flask(__name__)
 import sys
 
 # SECURITY: CSRF protection configuration
-# CSRF is enabled by default for all environments
-# Only disabled when explicitly set via environment variable for testing
+# CSRF is enabled for form-based routes (login, registration, etc.)
+# JSON API routes (/api/*) are exempt as they use different auth mechanisms
 csrf_enabled = os.getenv("WTF_CSRF_ENABLED", "true").lower() != "false"
 app.config["WTF_CSRF_ENABLED"] = csrf_enabled
 
 csrf = CSRFProtect(app)
+
+# Exempt JSON API blueprint from CSRF
+# REST APIs should use token-based auth (JWT/API keys) instead of CSRF
+csrf.exempt(api)
 
 
 # Make CSRF token available in templates

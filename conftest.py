@@ -3,16 +3,35 @@ Global pytest configuration for course record updater.
 
 This file provides pytest fixtures and configuration that are available
 to all test modules.
-"""
 
-import os
+All tests use CSRF-enabled clients to properly exercise security code paths.
+"""
 
 import pytest
 
-# Configure environment for testing
-# For new tests, use the csrf-enabled fixtures (client, authenticated_client)
-# For legacy tests, they create their own clients with CSRF disabled
-os.environ["WTF_CSRF_ENABLED"] = "false"  # Default for backward compatibility
+
+@pytest.fixture(scope="function", autouse=True)
+def _configure_csrf_for_testing():
+    """
+    Auto-applied fixture that ensures CSRF is enabled for all tests.
+
+    This runs before every test to ensure production-like security validation.
+    Tests that create their own clients will inherit this configuration.
+    """
+    from app import app
+
+    # Store original config
+    original_csrf = app.config.get("WTF_CSRF_ENABLED")
+
+    # Enable CSRF for all tests
+    app.config["TESTING"] = True
+    app.config["WTF_CSRF_ENABLED"] = True
+
+    yield
+
+    # Restore original (cleanup)
+    if original_csrf is not None:
+        app.config["WTF_CSRF_ENABLED"] = original_csrf
 
 
 @pytest.fixture
@@ -20,14 +39,9 @@ def client():
     """
     Create a Flask test client with CSRF ENABLED.
 
-    Use this fixture for new tests that properly handle CSRF tokens.
-    Legacy tests create their own clients in setup_method().
+    Use this fixture explicitly when you need the client object.
     """
     from app import app
-
-    app.config["TESTING"] = True
-    # Enable CSRF to properly exercise security code paths
-    app.config["WTF_CSRF_ENABLED"] = True
 
     with app.test_client() as client:
         yield client

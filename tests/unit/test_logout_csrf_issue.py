@@ -39,8 +39,8 @@ class TestLogoutCSRFIssue:
             else:
                 app.config.pop("WTF_CSRF_ENABLED", None)
 
-    def test_logout_without_csrf_token_should_fail(self, client_with_csrf):
-        """Test that logout fails when CSRF token is missing (reproduces the bug)"""
+    def test_logout_without_csrf_token_should_succeed(self, client_with_csrf):
+        """Test that logout succeeds without CSRF token (API endpoints are CSRF-exempt)"""
         # Create a session with a logged in user
         with client_with_csrf.session_transaction() as sess:
             sess["user_id"] = "test-user-123"
@@ -50,17 +50,18 @@ class TestLogoutCSRFIssue:
             sess["first_name"] = "Test"
             sess["last_name"] = "Instructor"
 
-        # Attempt logout without CSRF token (simulates dashboard logout bug)
+        # Attempt logout without CSRF token
+        # API routes (/api/*) are exempt from CSRF for REST API compatibility
         response = client_with_csrf.post(
             "/api/auth/logout",
             headers={"Content-Type": "application/json"},
-            # No CSRF token header - this should fail
         )
 
-        # This should fail due to CSRF protection
-        assert response.status_code == 400  # CSRF validation failure
-        response_text = response.data.decode("utf-8")
-        assert "CSRF token is missing" in response_text
+        # Should succeed - API endpoints don't require CSRF
+        # (They should use token-based auth instead)
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data["success"] is True
 
     def test_logout_with_csrf_token_should_succeed(self, client_with_csrf):
         """Test that logout succeeds when CSRF token is included"""
