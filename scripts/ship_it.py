@@ -708,15 +708,17 @@ def write_pr_comments_scratch(comments):
             f.write("## Comments to Address\n\n")
 
             for i, comment in enumerate(comments, 1):
-                comment_id = comment.get('id', i)
-                f.write(f"### Comment #{comment_id} - {comment['author']}\n")
+                comment_id = comment.get('id', f'comment-{i}')
+                author = comment.get('author', 'unknown')
+                f.write(f"### Comment #{comment_id} - {author}\n")
                 if comment.get("path") and comment.get("line"):
                     f.write(f"**Location**: `{comment['path']}:{comment['line']}`\n")
                 elif comment.get("path"):
                     f.write(f"**Location**: `{comment['path']}`\n")
                 f.write(f"**Type**: {comment.get('type', 'comment')}\n")
                 f.write(f"**Created**: {comment.get('created_at', 'N/A')}\n\n")
-                f.write(f"**Content**:\n{comment.get('body', '')}\n\n")
+                body = comment.get('body', '(no content)')
+                f.write(f"**Content**:\n{body}\n\n")
                 f.write("**Conceptual Theme**: _[AI to classify]_\n")
                 f.write("**Risk Priority**: _[AI to assess]_\n")
                 f.write("**Related Comments**: _[AI to identify]_\n\n")

@@ -28,9 +28,6 @@ esac
 export DATABASE_TYPE="sqlite"
 export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"  # Always DEBUG for troubleshooting
 
-# Legacy variable for backward compatibility (can be removed later)
-export DEFAULT_PORT="${COURSE_RECORD_UPDATER_PORT}"
-
 # Environment info (helpful for debugging)
 echo "🌍 Environment: $APP_ENV | Port: $COURSE_RECORD_UPDATER_PORT | DB: $DATABASE_URL"
 

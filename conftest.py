@@ -61,21 +61,26 @@ def _make_csrf_wrapper(client, original_method):
             return original_method(*args, **kwargs)
 
         # Inject token in headers (for JSON requests)
+        # Make copy if headers exist to avoid mutating immutable objects
         if "headers" not in kwargs:
             kwargs["headers"] = {}
-        if (
-            isinstance(kwargs["headers"], dict)
-            and "X-CSRFToken" not in kwargs["headers"]
-        ):
+        elif not isinstance(kwargs["headers"], dict):
+            # If headers is not a dict (e.g., tuple of tuples), convert to dict
+            kwargs["headers"] = dict(kwargs["headers"])
+        else:
+            # Make a copy to avoid mutating caller's dict
+            kwargs["headers"] = dict(kwargs["headers"])
+
+        if "X-CSRFToken" not in kwargs["headers"]:
             kwargs["headers"]["X-CSRFToken"] = token
 
         # Also inject in form data (for multipart/form-data requests)
-        if (
-            "data" in kwargs
-            and isinstance(kwargs["data"], dict)
-            and "csrf_token" not in kwargs["data"]
-        ):
-            kwargs["data"]["csrf_token"] = token
+        # Make copy if data exists to avoid mutating immutable objects
+        if "data" in kwargs and isinstance(kwargs["data"], dict):
+            if "csrf_token" not in kwargs["data"]:
+                # Make a copy to avoid mutating caller's dict
+                kwargs["data"] = dict(kwargs["data"])
+                kwargs["data"]["csrf_token"] = token
 
         return original_method(*args, **kwargs)
 

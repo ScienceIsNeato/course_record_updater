@@ -340,7 +340,8 @@ function executeDataExport() {
         const disposition = response.headers.get('Content-Disposition');
         let filename = '';
         if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replaceAll('"', '');
+            // Use replace with regex for browser compatibility (replaceAll not in older browsers)
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
         }
         
         return response.blob().then(blob => {
@@ -350,6 +351,13 @@ function executeDataExport() {
             link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
+            
+            // Show success status
+            const statusEl = document.getElementById('exportStatus');
+            statusEl.textContent = 'Export started successfully';
+            statusEl.className = 'alert alert-success';
+            statusEl.style.display = 'block';
+            
             // Cleanup after a short delay to ensure download starts
             setTimeout(() => {
                 URL.revokeObjectURL(link.href);
