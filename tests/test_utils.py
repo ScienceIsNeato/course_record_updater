@@ -50,6 +50,7 @@ def create_test_session(client, user_data):
     """
     Helper function to create a test session with user data.
     Works with both mock and real auth modes.
+    Also generates and stores CSRF token for the session.
     """
     with client.session_transaction() as sess:
         sess["user_id"] = user_data.get("user_id")
@@ -64,6 +65,18 @@ def create_test_session(client, user_data):
         sess["created_at"] = user_data.get("created_at")
         sess["last_activity"] = user_data.get("last_activity")
         sess["remember_me"] = user_data.get("remember_me", False)
+
+        # Generate and store CSRF token for this session
+        # Flask-WTF stores a raw token in the session and generates a signed token from it
+        # We need to generate the raw token here
+        try:
+            import secrets
+
+            # Generate a raw CSRF token (Flask-WTF will sign it when needed)
+            sess["csrf_token"] = secrets.token_hex(16)
+        except Exception:
+            # If token generation fails, skip it
+            pass
 
 
 def setup_admin_auth(client):

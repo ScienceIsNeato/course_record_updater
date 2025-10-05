@@ -39,8 +39,8 @@ class TestLogoutCSRFIssue:
             else:
                 app.config.pop("WTF_CSRF_ENABLED", None)
 
-    def test_logout_without_csrf_token_should_succeed(self, client_with_csrf):
-        """Test that logout succeeds without CSRF token (API endpoints are CSRF-exempt)"""
+    def test_logout_without_csrf_token_should_fail(self, client_with_csrf):
+        """Test that logout fails without CSRF token (CSRF is now required)"""
         # Create a session with a logged in user
         with client_with_csrf.session_transaction() as sess:
             sess["user_id"] = "test-user-123"
@@ -50,18 +50,17 @@ class TestLogoutCSRFIssue:
             sess["first_name"] = "Test"
             sess["last_name"] = "Instructor"
 
-        # Attempt logout without CSRF token
-        # API routes (/api/*) are exempt from CSRF for REST API compatibility
+        # Bypass the automatic CSRF injection by explicitly setting an empty header
+        # This simulates what would happen if the JavaScript didn't include the token
         response = client_with_csrf.post(
             "/api/auth/logout",
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "X-CSRFToken": ""},
         )
 
-        # Should succeed - API endpoints don't require CSRF
-        # (They should use token-based auth instead)
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data["success"] is True
+        # Should fail - CSRF is now required for all POST requests
+        assert response.status_code == 400
+        # Flask-WTF returns HTML error pages for CSRF failures
+        assert b"CSRF" in response.data or b"Bad Request" in response.data
 
     def test_logout_with_csrf_token_should_succeed(self, client_with_csrf):
         """Test that logout succeeds when CSRF token is included"""
