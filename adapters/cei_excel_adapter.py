@@ -951,6 +951,8 @@ class CEIExcelAdapter(FileBaseAdapter):
         """
         Build CEI-format records from standardized database data.
 
+        Delegates to specialized methods based on available data structure.
+
         Args:
             data: Database data organized by type
             options: Export options
@@ -958,118 +960,130 @@ class CEIExcelAdapter(FileBaseAdapter):
         Returns:
             List of CEI-formatted records
         """
-        records = []
+        sections = data.get("sections", [])
+        offerings = data.get("offerings", [])
 
-        # Get data collections
+        # Route to appropriate builder based on available data
+        if sections and offerings:
+            return self._build_records_from_sections(data)
+        elif offerings:
+            return self._build_records_from_offerings(data)
+        else:
+            return self._build_synthesized_records(data)
+
+    def _build_records_from_sections(
+        self, data: Dict[str, List[Dict]]
+    ) -> List[Dict[str, Any]]:
+        """Build records from sections (preferred - most complete data)."""
+        records = []
         courses = data.get("courses", [])
         users = data.get("users", [])
         terms = data.get("terms", [])
         offerings = data.get("offerings", [])
         sections = data.get("sections", [])
 
-        # Build a lookup for instructors
+        # Build lookups
+        instructors_lookup = {user["user_id"]: user for user in users}
+        terms_lookup = {term["term_id"]: term for term in terms}
+        offerings_lookup = {
+            offering.get("offering_id") or offering.get("id"): offering
+            for offering in offerings
+        }
+        courses_lookup = {
+            course.get("course_id") or course.get("id"): course for course in courses
+        }
+
+        # Process each section
+        for section in sections:
+            offering_id = section.get("offering_id")
+            offering = offerings_lookup.get(offering_id, {})
+            if not offering:
+                continue
+
+            course_id = offering.get("course_id")
+            term_id = offering.get("term_id")
+            instructor_id = section.get("instructor_id")
+
+            course = courses_lookup.get(course_id, {})
+            instructor = instructors_lookup.get(instructor_id, {})
+            term = terms_lookup.get(term_id, {})
+            term_formatted = self._format_term_for_cei_export(term)
+
+            record = {
+                "course": course.get("course_number", ""),
+                "section": section.get("section_number", "01"),
+                "effterm_c": term_formatted,
+                "students": section.get("enrollment", 0),
+                FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                "email": instructor.get("email", ""),
+            }
+            records.append(record)
+
+        return records
+
+    def _build_records_from_offerings(
+        self, data: Dict[str, List[Dict]]
+    ) -> List[Dict[str, Any]]:
+        """Build records from offerings (fallback when sections unavailable)."""
+        records = []
+        courses = data.get("courses", [])
+        users = data.get("users", [])
+        terms = data.get("terms", [])
+        offerings = data.get("offerings", [])
+
+        instructors = [user for user in users if user.get("role") == "instructor"]
+        instructors_lookup = {user["user_id"]: user for user in instructors}
+        terms_lookup = {term["term_id"]: term for term in terms}
+
+        for offering in offerings:
+            course_number = offering.get("course_number", "")
+            term_id = offering.get("term_id")
+            instructor_id = offering.get("instructor_id")
+
+            course = next(
+                (c for c in courses if c.get("course_number") == course_number), {}
+            )
+            instructor = instructors_lookup.get(instructor_id, {})
+            term = terms_lookup.get(term_id, {})
+            term_formatted = self._format_term_for_cei_export(term)
+
+            record = {
+                "course": course_number,
+                "section": offering.get("section_number", "01"),
+                "effterm_c": term_formatted,
+                "students": offering.get("enrollment_count", 0),
+                FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
+                "email": instructor.get("email", ""),
+            }
+            records.append(record)
+
+        return records
+
+    def _build_synthesized_records(
+        self, data: Dict[str, List[Dict]]
+    ) -> List[Dict[str, Any]]:
+        """Synthesize records from courses and instructors (last resort)."""
+        records = []
+        courses = data.get("courses", [])
+        users = data.get("users", [])
+        terms = data.get("terms", [])
+
         instructors = [user for user in users if user.get("role") == "instructor"]
 
-        # Use sections if available (sections have the actual enrollment/instructor data)
-        if sections and offerings:
-            # Build lookups (use the correct ID field names from to_dict methods)
-            instructors_lookup = {user["user_id"]: user for user in users}
-            terms_lookup = {term["term_id"]: term for term in terms}
-            offerings_lookup = {
-                offering.get("offering_id") or offering.get("id"): offering
-                for offering in offerings
-            }
-            courses_lookup = {
-                course.get("course_id") or course.get("id"): course
-                for course in courses
-            }
-
-            # Process each section
-            for section in sections:
-                offering_id = section.get("offering_id")
-                offering = offerings_lookup.get(offering_id, {})
-
-                if not offering:
-                    continue
-
-                course_id = offering.get("course_id")
-                term_id = offering.get("term_id")
-                instructor_id = section.get("instructor_id")
-
-                # Find related data
-                course = courses_lookup.get(course_id, {})
-                instructor = instructors_lookup.get(instructor_id, {})
-                term = terms_lookup.get(term_id, {})
-
-                # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
+        for course in courses:
+            for instructor in instructors:
+                term = terms[0] if terms else {}
                 term_formatted = self._format_term_for_cei_export(term)
 
                 record = {
                     "course": course.get("course_number", ""),
-                    "section": section.get("section_number", "01"),
+                    "section": "01",  # Default section
                     "effterm_c": term_formatted,
-                    "students": section.get("enrollment", 0),
+                    "students": 25,  # Default student count
                     FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
                     "email": instructor.get("email", ""),
                 }
-
                 records.append(record)
-        elif offerings:
-            # Build lookups for existing offerings logic
-            instructors_lookup = {user["user_id"]: user for user in instructors}
-            terms_lookup = {term["term_id"]: term for term in terms}
-
-            # Process each course offering
-            for offering in offerings:
-                course_number = offering.get("course_number", "")
-                term_id = offering.get("term_id")
-                instructor_id = offering.get("instructor_id")
-
-                # Find the course details
-                course = next(
-                    (c for c in courses if c.get("course_number") == course_number), {}
-                )
-
-                # Find the instructor
-                instructor = instructors_lookup.get(instructor_id, {})
-
-                # Find the term
-                term = terms_lookup.get(term_id, {})
-
-                # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
-                term_formatted = self._format_term_for_cei_export(term)
-
-                record = {
-                    "course": course_number,
-                    "section": offering.get("section_number", "01"),
-                    "effterm_c": term_formatted,
-                    "students": offering.get("enrollment_count", 0),
-                    FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
-                    "email": instructor.get("email", ""),
-                }
-
-                records.append(record)
-        else:
-            # Synthesize course offerings from available data
-            # Create one record per course-instructor-term combination
-            for course in courses:
-                for instructor in instructors:
-                    # Use the first available term or create a default
-                    term = terms[0] if terms else {}
-
-                    # Format term for CEI (e.g., "2024 Fall" -> "2024FA")
-                    term_formatted = self._format_term_for_cei_export(term)
-
-                    record = {
-                        "course": course.get("course_number", ""),
-                        "section": "01",  # Default section
-                        "effterm_c": term_formatted,
-                        "students": 25,  # Default student count
-                        FACULTY_NAME_COLUMN: f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip(),
-                        "email": instructor.get("email", ""),
-                    }
-
-                    records.append(record)
 
         return records
 

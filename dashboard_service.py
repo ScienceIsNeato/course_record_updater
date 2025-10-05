@@ -1134,43 +1134,59 @@ class DashboardService:
         Returns:
             List of sections enriched with course_number and course_title
         """
-        enriched_sections = []
-        enriched_count = 0
-        failed_count = 0
+        return [
+            self._enrich_single_section(i, section, course_index, offering_to_course)
+            for i, section in enumerate(sections)
+        ]
 
-        for i, section in enumerate(sections):
-            section_copy = section.copy()
+    def _enrich_single_section(
+        self,
+        index: int,
+        section: Dict[str, Any],
+        course_index: Dict[str, Dict[str, Any]],
+        offering_to_course: Dict[str, str],
+    ) -> Dict[str, Any]:
+        """Enrich a single section with course data."""
+        section_copy = section.copy()
+        offering_id = section.get("offering_id")
+        course_id = offering_to_course.get(offering_id) if offering_id else None
 
-            # Sections have offering_id as foreign key (not to be confused with section_id/id which is the primary key)
-            offering_id = section.get("offering_id")
-            course_id = offering_to_course.get(offering_id) if offering_id else None
+        if course_id and course_id in course_index:
+            # Success: add course data
+            course = course_index[course_id]
+            section_copy["course_number"] = course.get("course_number", "")
+            section_copy["course_title"] = course.get("course_title", "")
+            section_copy["course_id"] = course_id
+        else:
+            # Failure: log and add empty defaults
+            self._log_enrichment_failure(
+                index, offering_id, course_id, offering_to_course, course_index
+            )
+            section_copy.setdefault("course_number", "")
+            section_copy.setdefault("course_title", "")
 
-            if course_id and course_id in course_index:
-                course = course_index[course_id]
-                section_copy["course_number"] = course.get("course_number", "")
-                section_copy["course_title"] = course.get("course_title", "")
-                section_copy["course_id"] = course_id  # Add for reference
-                enriched_count += 1
-            else:
-                # Log failures for debugging
-                if i < 3:  # Only log first 3 to avoid spam
-                    self.logger.warning(
-                        f"[SECTION ENRICHMENT] Failed to enrich section {i}: "
-                        f"offering_id={offering_id}, "
-                        f"course_id={course_id}, "
-                        f"in_offering_map={offering_id in offering_to_course if offering_id else False}, "
-                        f"in_course_index={course_id in course_index if course_id else False}"
-                    )
-                failed_count += 1
-                # Fallback if course not found - keep empty so template shows "-"
-                if "course_number" not in section_copy:
-                    section_copy["course_number"] = ""
-                if "course_title" not in section_copy:
-                    section_copy["course_title"] = ""
+        return section_copy
 
-            enriched_sections.append(section_copy)
+    def _log_enrichment_failure(
+        self,
+        index: int,
+        offering_id: Optional[str],
+        course_id: Optional[str],
+        offering_to_course: Dict[str, str],
+        course_index: Dict[str, Dict[str, Any]],
+    ) -> None:
+        """Log section enrichment failures (first 3 only to avoid spam)."""
+        if index >= 3:
+            return
 
-        return enriched_sections
+        in_offering_map = offering_id in offering_to_course if offering_id else False
+        in_course_index = course_id in course_index if course_id else False
+
+        self.logger.warning(
+            f"[SECTION ENRICHMENT] Failed to enrich section {index}: "
+            f"offering_id={offering_id}, course_id={course_id}, "
+            f"in_offering_map={in_offering_map}, in_course_index={in_course_index}"
+        )
 
 
 def build_dashboard_service() -> DashboardService:

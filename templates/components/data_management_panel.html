@@ -328,7 +328,7 @@ function executeDataExport() {
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();  // Modern API - preferred over parentNode.removeChild()
     
     // Hide status after a delay
     setTimeout(() => {
