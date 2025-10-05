@@ -340,7 +340,7 @@ function executeDataExport() {
         const disposition = response.headers.get('Content-Disposition');
         let filename = '';
         if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replace(/"/g, '');
+            filename = disposition.split('filename=')[1].replaceAll('"', '');
         }
         
         return response.blob().then(blob => {

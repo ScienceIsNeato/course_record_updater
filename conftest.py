@@ -151,7 +151,7 @@ def csrf_token(client):
 
     match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
     if not match:
-        raise Exception("Failed to extract CSRF token from login page")
+        raise ValueError("Failed to extract CSRF token from login page")
 
     return match.group(1)
 
