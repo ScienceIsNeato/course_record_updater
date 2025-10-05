@@ -14,6 +14,7 @@ Test Naming Convention:
 - test_tc_ie_XXX: Matches UAT test case ID (e.g., TC-IE-001)
 """
 
+import re
 import time
 from pathlib import Path
 
@@ -438,8 +439,6 @@ def test_tc_ie_001_dry_run_import_validation(
         if locator.count() > 0:
             text = locator.first.text_content()
             # Extract number from text like "150 records processed"
-            import re
-
             match = re.search(r"(\d+)\s*records?", text, re.IGNORECASE)
             if match:
                 records_count = int(match.group(1))
@@ -448,8 +447,6 @@ def test_tc_ie_001_dry_run_import_validation(
     # If not found via selectors, try the whole import results div
     # Look for "Records Processed: 6" or "Records Created: 6" format
     if records_count == 0:
-        import re
-
         match = re.search(
             r"records?\s*(?:processed|created|found|updated):\s*(\d+)",
             import_results_text,
@@ -740,8 +737,6 @@ def test_tc_ie_004_imported_instructor_visibility(
         ), f"Instructor row {i} missing role badge"
 
         # Check for duplicate emails (extract email and compare)
-        import re
-
         email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", row_text)
         if email_match:
             email = email_match.group(0)
@@ -803,8 +798,6 @@ def test_tc_ie_005_imported_section_visibility(
         # CRITICAL: Verify section numbers are human-readable (NOT UUIDs)
         # UUIDs look like: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         # Human-readable section numbers: "001", "002", "003"
-        import re
-
         uuid_pattern = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
         uuid_match = re.search(uuid_pattern, row_text, re.IGNORECASE)
 
