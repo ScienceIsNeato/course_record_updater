@@ -27,11 +27,11 @@
         </div>
         
         <div id="coursesTableContainer">
-            <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
-                <div class="spinner-border" role="status">
+            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+                <div class="spinner-border" aria-hidden="true">
                     <span class="visually-hidden">Loading courses...</span>
                 </div>
-            </div>
+            </output>
         </div>
     </div>
 </div>
@@ -47,11 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadCourses() {
     const container = document.getElementById('coursesTableContainer');
     container.innerHTML = `
-        <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
-            <div class="spinner-border" role="status">
+        <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+            <div class="spinner-border" aria-hidden="true">
                 <span class="visually-hidden">Loading courses...</span>
             </div>
-        </div>
+        </output>
     `;
     
     try {
