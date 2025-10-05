@@ -56,9 +56,9 @@ def test_health_endpoint(page: Page, server_running: bool):
 @pytest.mark.e2e
 def test_login_page_structure(page: Page, server_running: bool):
     """
-    Hypothesis 1: Verify login page loads and all form elements exist
+    Validate that login page structure contains all required form elements.
 
-    Expected: Page loads, email input, password input, submit button, CSRF token all present
+    Verifies: Page loads, email input, password input, submit button, CSRF token all present
     """
     # Navigate to login page
     page.goto(f"{BASE_URL}/login")
@@ -92,15 +92,15 @@ def test_login_page_structure(page: Page, server_running: bool):
     assert csrf_value is not None and len(csrf_value) > 0, "CSRF token is empty"
     print(f"✅ CSRF token exists (length: {len(csrf_value)})")
 
-    print("✅ HYPOTHESIS 1 CONFIRMED: Login page structure is correct")
+    print("✅ Login page structure validation passed")
 
 
 @pytest.mark.e2e
-def test_login_form_submission_debug(page: Page, server_running: bool):
+def test_login_form_submission_network_capture(page: Page, server_running: bool):
     """
-    Hypothesis 2: Capture network response and console errors during login
+    Capture network response and console errors during login attempt.
 
-    Expected: See auth API response status and any JavaScript errors
+    Verifies: Auth API response status and JavaScript console output for debugging
     """
     # Listen for console messages
     console_logs = []
@@ -156,15 +156,15 @@ def test_login_form_submission_debug(page: Page, server_running: bool):
         for log in console_logs:
             print(f"   {log}")
 
-    print(f"✅ HYPOTHESIS 2 TEST COMPLETE - Check output above for diagnostics")
+    print(f"✅ Network capture test complete - Check output above for diagnostics")
 
 
 @pytest.mark.e2e
 def test_login_script_loading(page: Page, server_running: bool):
     """
-    Hypothesis 3: Verify auth.js loads and handleLogin event listener attaches
+    Validate that auth.js loads and event handlers are properly initialized.
 
-    Expected: auth.js loads, DOMContentLoaded fires, initializeLoginForm runs,
+    Verifies: auth.js loads, DOMContentLoaded fires, initializeLoginForm runs,
               event listener is attached to form
     """
     # Listen for console messages
@@ -282,12 +282,12 @@ def test_login_script_loading(page: Page, server_running: bool):
 @pytest.mark.e2e
 def test_login_success_after_fix(page: Page, server_running: bool):
     """
-    Hypothesis 5: After fixing auth.js, verify login flow works end-to-end
+    Validate complete login workflow from form submission to dashboard redirect.
 
-    Expected: run_uat.sh seeds database, login succeeds, redirects to dashboard
+    Verifies: Database seeded, login succeeds, redirects to dashboard
 
-    Note: We trust run_uat.sh seeded the server's database with sarah.admin@cei.edu
-          The test doesn't check the DB directly (E2E tests run in separate process)
+    Note: Assumes run_uat.sh seeded the server's database with sarah.admin@cei.edu.
+          E2E tests run in separate process and don't access DB directly.
     """
     print("📝 Trusting run_uat.sh seeded sarah.admin@cei.edu / InstitutionAdmin123!")
 
@@ -312,7 +312,7 @@ def test_login_success_after_fix(page: Page, server_running: bool):
 
         # Verify we're on dashboard
         assert "/dashboard" in final_url, f"Expected /dashboard, got {final_url}"
-        print(f"✅ HYPOTHESIS 5 CONFIRMED: Login successful, redirected to dashboard!")
+        print(f"✅ Login workflow validation passed: redirected to dashboard")
 
     except Exception as e:
         final_url = page.url
