@@ -99,7 +99,7 @@ class LoginService:
             db.update_user(
                 user["user_id"],
                 {
-                    "last_login_at": datetime.now(timezone.utc).isoformat(),
+                    "last_login_at": datetime.now(timezone.utc),
                     "login_count": user.get("login_count", 0) + 1,
                 },
             )
