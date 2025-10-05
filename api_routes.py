@@ -3217,7 +3217,10 @@ def export_data():
         output_path = temp_dir / filename
 
         # Verify output path is within temp directory (defense in depth)
-        if not str(output_path.resolve()).startswith(str(temp_dir.resolve())):
+        # Resolve parent directory first since output file doesn't exist yet
+        resolved_output_parent = output_path.parent.resolve()
+        resolved_temp_dir = temp_dir.resolve()
+        if not str(resolved_output_parent).startswith(str(resolved_temp_dir)):
             logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
             return jsonify({"success": False, "error": "Invalid export path"}), 400
 

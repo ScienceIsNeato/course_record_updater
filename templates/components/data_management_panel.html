@@ -319,21 +319,60 @@ function executeDataExport() {
         params.append(key, value);
     }
     
-    // Create hidden link and trigger download
-    // This approach works better for E2E testing than window.open()
     const exportUrl = `/api/export/data?${params.toString()}`;
-    const link = document.createElement('a');
-    link.href = exportUrl;
-    link.download = '';  // Force download instead of navigation
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();  // Modern API - preferred over parentNode.removeChild()
     
-    // Hide status after a delay
-    setTimeout(() => {
-        document.getElementById('exportStatus').style.display = 'none';
-    }, 3000);
+    // Use fetch to check response before downloading
+    fetch(exportUrl, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.error || 'Export failed');
+            });
+        }
+        
+        // Success - trigger download
+        // Extract filename from Content-Disposition header if available
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = '';
+        if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
+        }
+        
+        return response.blob().then(blob => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename || 'export.xlsx';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            // Cleanup after a short delay to ensure download starts
+            setTimeout(() => {
+                URL.revokeObjectURL(link.href);
+                link.remove();
+            }, 100);
+        });
+    })
+    .catch(error => {
+        // Show error to user
+        const statusEl = document.getElementById('exportStatus');
+        statusEl.textContent = `Export failed: ${error.message}`;
+        statusEl.className = 'alert alert-danger';
+        statusEl.style.display = 'block';
+    })
+    .finally(() => {
+        // Hide status after a delay (success case only)
+        setTimeout(() => {
+            const statusEl = document.getElementById('exportStatus');
+            if (statusEl.className.includes('success')) {
+                statusEl.style.display = 'none';
+            }
+        }, 3000);
+    });
 }
 
 function formatImportResults(data) {

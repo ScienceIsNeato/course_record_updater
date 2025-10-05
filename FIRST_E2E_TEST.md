@@ -8,7 +8,8 @@
 ## Step 1: Start the Server (Terminal 1)
 
 ```bash
-cd /Users/pacey/Documents/SourceCode/course_record_updater
+# Navigate to the project root directory
+cd /path/to/course_record_updater
 ./restart_server.sh
 ```
 
@@ -27,7 +28,8 @@ Server available at http://localhost:3001
 Open a **new terminal** and run:
 
 ```bash
-cd /Users/pacey/Documents/SourceCode/course_record_updater
+# Navigate to the project root directory
+cd /path/to/course_record_updater
 source venv/bin/activate
 ./run_uat.sh --watch
 ```
