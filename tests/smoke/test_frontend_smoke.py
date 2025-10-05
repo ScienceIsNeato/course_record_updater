@@ -43,7 +43,7 @@ class TestFrontendSmoke:
                 False,
             )  # False means we're authenticated/can access main page
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="session")
     def driver(self):
         """Setup Chrome driver with headless option"""
         import os
@@ -75,7 +75,7 @@ class TestFrontendSmoke:
         yield driver
         driver.quit()
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for the application"""
         import os

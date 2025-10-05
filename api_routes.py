@@ -3177,9 +3177,17 @@ def export_data():
             return jsonify({"success": False, "error": "No institution context"}), 400
 
         # Get parameters
-        data_type = request.args.get("export_data_type", "courses")
+        data_type_raw = request.args.get("export_data_type", "courses")
         export_format = request.args.get("export_format", "excel")
         adapter_id = request.args.get("export_adapter", "cei_excel_format_v1")
+
+        # Sanitize data_type to prevent path traversal (security fix for S2083)
+        # Only allow alphanumeric characters and underscores
+        import re
+
+        data_type = re.sub(r"[^a-zA-Z0-9_]", "", data_type_raw)
+        if not data_type:
+            data_type = "courses"  # Fallback to safe default
 
         logger.info(
             f"[EXPORT] Request: institution_id={institution_id}, data_type={data_type}, format={export_format}, adapter={adapter_id}"
@@ -3201,11 +3209,17 @@ def export_data():
         # Create export service and perform export
         export_service = create_export_service()
 
-        # Create temp file for export
+        # Create temp file for export in secure temp directory
         temp_dir = Path(tempfile.gettempdir())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # filename now uses sanitized data_type - safe from path traversal
         filename = f"{data_type}_export_{timestamp}.xlsx"
         output_path = temp_dir / filename
+
+        # Verify output path is within temp directory (defense in depth)
+        if not str(output_path.resolve()).startswith(str(temp_dir.resolve())):
+            logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
+            return jsonify({"success": False, "error": "Invalid export path"}), 400
 
         # Perform export
         result = export_service.export_data(config, str(output_path))
