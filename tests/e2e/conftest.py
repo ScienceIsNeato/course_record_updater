@@ -121,7 +121,7 @@ def authenticated_page(page: Page) -> Page:
     # 3. Timeout (something went wrong)
     try:
         # Wait for URL to change to dashboard (JavaScript redirect)
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
         return page
     except Exception:
         # Check if still on login page with error message
@@ -237,7 +237,7 @@ def test_data_file():
 # Helper functions for common E2E operations
 
 
-def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 10000):
+def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 2000):
     """Wait for a modal to appear on the page."""
     page.wait_for_selector(modal_selector, state="visible", timeout=timeout)
 
@@ -245,10 +245,10 @@ def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 10
 def close_modal(page: Page, close_button_selector: str = ".modal button.close"):
     """Close a modal by clicking the close button."""
     page.click(close_button_selector)
-    page.wait_for_selector(".modal", state="hidden", timeout=5000)
+    page.wait_for_selector(".modal", state="hidden", timeout=2000)
 
 
-def wait_for_api_response(page: Page, url_pattern: str, timeout: int = 10000):
+def wait_for_api_response(page: Page, url_pattern: str, timeout: int = 2000):
     """Wait for a specific API request to complete."""
     with page.expect_response(
         lambda response: url_pattern in response.url and response.status == 200,
