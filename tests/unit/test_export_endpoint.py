@@ -25,7 +25,7 @@ class TestExportEndpoint:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("export_service.create_export_service")
+    @patch("api_routes.create_export_service")
     def test_export_with_authentication(
         self, mock_create_service, authenticated_client
     ):
@@ -43,16 +43,27 @@ class TestExportEndpoint:
                 errors=[],
             )
 
+        # Mock adapter to return supported formats
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "cei_excel_format_v1",
+            "supported_formats": [".xlsx"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
         mock_service = Mock()
-        mock_create_service.return_value = mock_service
+        mock_service.registry = mock_registry
         mock_service.export_data.side_effect = mock_export
+        mock_create_service.return_value = mock_service
 
         response = authenticated_client.get("/api/export/data")
 
         # Should succeed
         assert response.status_code == 200
 
-    @patch("export_service.create_export_service")
+    @patch("api_routes.create_export_service")
     def test_export_sanitizes_path_traversal(
         self, mock_create_service, authenticated_client
     ):
@@ -63,15 +74,26 @@ class TestExportEndpoint:
             f.write(b"fake excel data")
 
         try:
+            # Mock adapter to return supported formats
+            mock_adapter = Mock()
+            mock_adapter.get_adapter_info.return_value = {
+                "id": "cei_excel_format_v1",
+                "supported_formats": [".xlsx"],
+            }
+
+            mock_registry = Mock()
+            mock_registry.get_adapter_by_id.return_value = mock_adapter
+
             # Mock the export service
             mock_service = Mock()
-            mock_create_service.return_value = mock_service
+            mock_service.registry = mock_registry
             mock_service.export_data.return_value = ExportResult(
                 success=True,
                 file_path=temp_path,
                 records_exported=10,
                 errors=[],
             )
+            mock_create_service.return_value = mock_service
 
             # Try path traversal attack
             response = authenticated_client.get(
@@ -88,18 +110,29 @@ class TestExportEndpoint:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
 
-    @patch("export_service.create_export_service")
+    @patch("api_routes.create_export_service")
     def test_export_handles_failure(self, mock_create_service, authenticated_client):
         """Export should handle service failures gracefully"""
+        # Mock adapter to return supported formats
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "cei_excel_format_v1",
+            "supported_formats": [".xlsx"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
         # Mock service failure
         mock_service = Mock()
-        mock_create_service.return_value = mock_service
+        mock_service.registry = mock_registry
         mock_service.export_data.return_value = ExportResult(
             success=False,
             file_path=None,
             records_exported=0,
             errors=["Export failed"],
         )
+        mock_create_service.return_value = mock_service
 
         response = authenticated_client.get("/api/export/data")
 
@@ -108,7 +141,7 @@ class TestExportEndpoint:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("export_service.create_export_service")
+    @patch("api_routes.create_export_service")
     def test_export_with_parameters(self, mock_create_service, authenticated_client):
         """Export should accept and use optional parameters"""
 
@@ -124,9 +157,20 @@ class TestExportEndpoint:
                 errors=[],
             )
 
+        # Mock adapter to return supported formats
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "cei_excel_format_v1",
+            "supported_formats": [".xlsx"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
         mock_service = Mock()
-        mock_create_service.return_value = mock_service
+        mock_service.registry = mock_registry
         mock_service.export_data.side_effect = mock_export
+        mock_create_service.return_value = mock_service
 
         # Call with parameters
         response = authenticated_client.get(
@@ -144,13 +188,24 @@ class TestExportEndpoint:
         # Verify export was called
         assert mock_service.export_data.called
 
-    @patch("export_service.create_export_service")
+    @patch("api_routes.create_export_service")
     def test_export_handles_exception(self, mock_create_service, authenticated_client):
         """Export should handle unexpected exceptions"""
+        # Mock adapter to return supported formats
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "cei_excel_format_v1",
+            "supported_formats": [".xlsx"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
         # Mock service to raise exception
         mock_service = Mock()
-        mock_create_service.return_value = mock_service
+        mock_service.registry = mock_registry
         mock_service.export_data.side_effect = Exception("Unexpected error")
+        mock_create_service.return_value = mock_service
 
         response = authenticated_client.get("/api/export/data")
 
