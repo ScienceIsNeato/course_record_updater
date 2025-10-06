@@ -27,7 +27,8 @@ from database_service import (
 )
 
 # Test configuration
-BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3001")
+# E2E environment runs on port 3002 (see run_uat.sh and .envrc)
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3002")
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 
