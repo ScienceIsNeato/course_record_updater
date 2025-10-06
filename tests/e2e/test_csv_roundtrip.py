@@ -209,22 +209,23 @@ def test_tc_ie_104_csv_roundtrip_validation(
         import_button.click()
         print("   🖱️  Submitted import via inline form (no modal)")
 
-        # Wait for import to complete (look for success message or modal close)
+        # Wait for import to complete - check for results div becoming visible
         try:
-            # Wait for success message or progress completion
-            page.wait_for_selector(
-                'text="Import completed successfully", text="records imported"',
-                timeout=15000,
-            )
+            # Wait for import results to appear (inline form, not modal)
+            results_div = page.locator("#importResults")
+            results_div.wait_for(state="visible", timeout=15000)
+
+            # Check if there's an error
+            error_alert = page.locator("#importResults .alert-danger")
+            if error_alert.count() > 0:
+                error_text = error_alert.text_content()
+                pytest.fail(f"Import failed with error: {error_text}")
+
             print("   ✅ Import completed successfully")
         except Exception as e:
-            # Check for error messages
-            error_msg = page.locator(".alert-danger, .error-message").text_content()
-            if error_msg:
-                pytest.fail(f"Import failed with error: {error_msg}")
-            else:
-                # Import might have succeeded but message selector didn't match
-                print(f"   ⚠️  Import status unclear: {str(e)}")
+            pytest.fail(
+                f"Import did not complete - results div never appeared: {str(e)}"
+            )
 
         # Wait a bit for modal to close
         time.sleep(2)
