@@ -1,4 +1,40 @@
-# Status: Generic CSV Adapter - COMPLETE! 🎉
+# Status: UAT Test Suite Design - Role-Based Data Access & Integrity
+
+## Current Task: Designing Comprehensive UAT Test Suite
+
+### Design Phase Complete! 🎯
+
+**What We Built:**
+- Refactored UAT_MULTI_TENANT_CONTEXT_PR6.md → UAT_DATA_INTEGRITY_AND_ACCESS_CONTROL.md
+- Comprehensive test suite covering all user roles (Site Admin, Institution Admin, Program Admin, Instructor)
+- Backend-focused validation (API + database, frontend deferred)
+- Combined multi-tenancy isolation tests with data access/export validation
+- Test cases for dashboard API (`/api/dashboard/data`) and Generic CSV exports
+- Negative testing to confirm unauthorized access is properly denied
+
+**Test Coverage:**
+- **SCENARIO 1**: Site Admin - Full system access (TC-DAC-001 to TC-DAC-002)
+- **SCENARIO 2**: Institution Admin - Single institution scope (TC-DAC-101 to TC-DAC-103)
+- **SCENARIO 3**: Program Admin - Program-scoped access (TC-DAC-201 to TC-DAC-202)
+- **SCENARIO 4**: Instructor - Section-level access (TC-DAC-301 to TC-DAC-302)
+- **SCENARIO 5**: Negative access testing (TC-DAC-401)
+
+**Key Design Decisions:**
+1. ✅ Uses existing `seed_db.py` test data (no additional users needed)
+2. ✅ Backend validation first (API responses, database queries, export files)
+3. ✅ Frontend validation deferred with clear TODOs
+4. ✅ YAGNI on other export formats (Generic CSV adapter only)
+5. ✅ Natural test structure matching existing UAT guides
+
+**Next Steps (Implementation):**
+- Delete old UAT test file from tests/uat/
+- Update tests/uat/ to use this new UAT guide
+- Run test suite to validate all assertions
+- Add frontend validation in future sprint
+
+---
+
+# Previous: Generic CSV Adapter - COMPLETE! 🎉
 
 ## Progress: 12/12 Tasks Complete (100%)
 

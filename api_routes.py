@@ -1801,17 +1801,8 @@ def validate_import_file():
         # Get parameters
         adapter_name = request.form.get("adapter_name", "cei_excel_adapter")
 
-        # Validate file type
-        if not file.filename.lower().endswith((_DEFAULT_EXPORT_EXTENSION, ".xls")):
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Invalid file type. Only Excel files (.xlsx, .xls) are supported.",
-                    }
-                ),
-                400,
-            )
+        # File type validation is handled by the adapter (adapter-driven architecture)
+        # Adapters declare their supported formats via get_adapter_info()["supported_formats"]
 
         # Save uploaded file temporarily
         import os
@@ -2963,12 +2954,8 @@ def _validate_excel_import_request():
         f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
     )
 
-    # Validate file type
-    if not file.filename.lower().endswith((".xlsx", ".xls")):
-        logger.warning(f"Invalid file type: {file.filename}")
-        raise ValueError(
-            "Invalid file type. Only Excel files (.xlsx, .xls) are supported."
-        )
+    # File type validation is handled by the adapter (adapter-driven architecture)
+    # Adapters declare their supported formats via get_adapter_info()["supported_formats"]
 
     # Get form parameters
     import_params = {
