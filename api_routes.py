@@ -6,10 +6,23 @@ These routes provide a proper REST API structure while maintaining backward comp
 with the existing single-page application.
 """
 
+import re
+import tempfile
 import traceback
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 
 # Constants for error messages
 PERMISSION_DENIED_MSG = "Permission denied"
@@ -71,6 +84,7 @@ from database_service import (
     update_program,
     update_user,
 )
+from export_service import ExportConfig, create_export_service
 from import_service import import_excel
 from logging_config import get_logger
 from models import Program
@@ -87,6 +101,30 @@ api = Blueprint("api", __name__, url_prefix="/api")
 
 # Get logger for this module
 logger = get_logger(__name__)
+
+# Constants for export file types
+_DEFAULT_EXPORT_EXTENSION = ".xlsx"
+
+# Mimetype mapping for common export formats
+_EXPORT_MIMETYPES = {
+    _DEFAULT_EXPORT_EXTENSION: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
+    ".csv": "text/csv",
+    ".json": "application/json",
+}
+
+
+def _get_mimetype_for_extension(file_extension: str) -> str:
+    """
+    Get appropriate mimetype for a file extension.
+
+    Args:
+        file_extension: File extension (e.g., '.xlsx', '.csv')
+
+    Returns:
+        str: Appropriate mimetype, defaults to 'application/octet-stream' if unknown
+    """
+    return _EXPORT_MIMETYPES.get(file_extension.lower(), "application/octet-stream")
 
 
 class InstitutionContextMissingError(Exception):
@@ -192,7 +230,6 @@ def get_dashboard_data_route():
 
 
 # Constants are now imported from constants.py
-XLSX_EXTENSION = ".xlsx"  # File extension constant specific to this module
 
 
 def handle_api_error(
@@ -1765,7 +1802,7 @@ def validate_import_file():
         adapter_name = request.form.get("adapter_name", "cei_excel_adapter")
 
         # Validate file type
-        if not file.filename.lower().endswith((XLSX_EXTENSION, ".xls")):
+        if not file.filename.lower().endswith((_DEFAULT_EXPORT_EXTENSION, ".xls")):
             return (
                 jsonify(
                     {
@@ -1781,7 +1818,7 @@ def validate_import_file():
         import tempfile
 
         with tempfile.NamedTemporaryFile(
-            delete=False, suffix=XLSX_EXTENSION
+            delete=False, suffix=_DEFAULT_EXPORT_EXTENSION
         ) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name
@@ -3135,3 +3172,151 @@ def get_available_adapters():
             ),
             500,
         )
+
+
+# ==============================================
+# Export Endpoints
+# ==============================================
+
+
+@api.route("/export/data", methods=["GET"])
+@login_required
+def export_data():
+    """
+    Export data using institution-specific adapter.
+
+    Query parameters:
+        - export_data_type: Type of data to export (courses, users, sections, etc.)
+        - export_adapter: Adapter to use - adapter determines file format
+        - include_metadata: Include metadata (true/false) - defaults to true
+        - anonymize_data: Anonymize personal info (true/false) - defaults to false
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            logger.error("[EXPORT] User not authenticated")
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        institution_id = current_user.get("institution_id")
+        if not institution_id:
+            logger.error(
+                f"[EXPORT] No institution_id for user: {current_user.get('email')}"
+            )
+            return jsonify({"success": False, "error": "No institution context"}), 400
+
+        # Get parameters
+        data_type_raw = request.args.get("export_data_type", "courses")
+        adapter_id_raw = request.args.get("export_adapter", "cei_excel_format_v1")
+
+        # Sanitize data_type to prevent path traversal (security fix for S2083)
+        # Only allow alphanumeric characters and underscores
+        data_type = re.sub(r"\W", "", data_type_raw)
+        if not data_type:
+            data_type = "courses"  # Fallback to safe default
+
+        # Sanitize adapter_id to prevent log injection (security fix for S5145)
+        # Only allow alphanumeric characters, underscores, and hyphens
+        adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw)
+        if not adapter_id:
+            adapter_id = "cei_excel_format_v1"  # Fallback to safe default
+
+        logger.info(
+            f"[EXPORT] Request: institution_id={institution_id}, data_type={data_type}, adapter={adapter_id}"
+        )
+        include_metadata = (
+            request.args.get("include_metadata", "true").lower() == "true"
+        )
+
+        # Create export service and get adapter info
+        export_service = create_export_service()
+
+        # Query adapter for its supported format
+        try:
+            adapter = export_service.registry.get_adapter_by_id(adapter_id)
+            if not adapter:
+                logger.error(f"[EXPORT] Adapter not found: {adapter_id}")
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Adapter not found: {adapter_id}"}
+                    ),
+                    400,
+                )
+
+            adapter_info = adapter.get_adapter_info()
+            supported_formats = adapter_info.get(
+                "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
+            )
+            # Use first supported format from adapter
+            file_extension = (
+                supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
+            )
+        except Exception as adapter_error:
+            logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
+            # Fallback to xlsx if adapter query fails
+            file_extension = _DEFAULT_EXPORT_EXTENSION
+
+        # Determine output format from file extension (remove leading dot)
+        output_format = (
+            file_extension.lstrip(".")
+            if file_extension.startswith(".")
+            else file_extension
+        )
+
+        # Create export config
+        config = ExportConfig(
+            institution_id=institution_id,
+            adapter_id=adapter_id,
+            export_view="standard",
+            include_metadata=include_metadata,
+            output_format=output_format,
+        )
+
+        # Create temp file for export in secure temp directory
+        temp_dir = Path(tempfile.gettempdir())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # filename now uses sanitized data_type and adapter-determined extension
+        filename = f"{data_type}_export_{timestamp}{file_extension}"
+        output_path = temp_dir / filename
+
+        # Verify output path is within temp directory (defense in depth)
+        # Resolve parent directory first since output file doesn't exist yet
+        resolved_output_parent = output_path.parent.resolve()
+        resolved_temp_dir = temp_dir.resolve()
+        if not str(resolved_output_parent).startswith(str(resolved_temp_dir)):
+            logger.error(f"[EXPORT] Path traversal attempt detected: {output_path}")
+            return jsonify({"success": False, "error": "Invalid export path"}), 400
+
+        # Perform export
+        result = export_service.export_data(config, str(output_path))
+
+        if not result.success:
+            logger.error(f"[EXPORT] Export failed: {result.errors}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Export failed",
+                        "details": result.errors,
+                    }
+                ),
+                500,
+            )
+
+        logger.info(
+            f"[EXPORT] Export successful: {result.records_exported} records, file: {result.file_path}"
+        )
+
+        # Get appropriate mimetype from adapter's file extension
+        mimetype = _get_mimetype_for_extension(file_extension)
+
+        # Send file as download
+        return send_file(
+            str(output_path),
+            as_attachment=True,
+            download_name=filename,
+            mimetype=mimetype,
+        )
+
+    except Exception as e:
+        logger.error(f"Error during export: {str(e)}", exc_info=True)
+        return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500

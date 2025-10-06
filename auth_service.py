@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 # Constants for error messages
 AUTH_REQUIRED_MSG = "Authentication required"
+UNAUTHORIZED_ACCESS_MSG = "Unauthorized access attempt to %s"
 
 from flask import jsonify, request, session
 
@@ -377,7 +378,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not auth_service.is_authenticated():
-            logger.warning("Unauthorized access attempt to %s", f.__name__)
+            logger.warning(UNAUTHORIZED_ACCESS_MSG, f.__name__)
 
             # Detect if this is an API request or web page request
             from flask import redirect, request, url_for
@@ -425,7 +426,7 @@ def role_required(required_role: str):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not auth_service.is_authenticated():
-                logger.warning("Unauthorized access attempt to %s", f.__name__)
+                logger.warning(UNAUTHORIZED_ACCESS_MSG, f.__name__)
                 return (
                     jsonify(
                         {
@@ -500,7 +501,7 @@ def permission_required(
 def _check_authentication(function_name: str):
     """Check if user is authenticated, return error response if not."""
     if not auth_service.is_authenticated():
-        logger.warning("Unauthorized access attempt to %s", function_name)
+        logger.warning(UNAUTHORIZED_ACCESS_MSG, function_name)
         return (
             jsonify(
                 {

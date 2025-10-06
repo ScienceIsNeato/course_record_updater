@@ -1,0 +1,33 @@
+# .envrc.template - Environment configuration logic (version controlled)
+# Copy to .envrc and add your secrets
+
+# Path Management
+export AGENT_HOME="${AGENT_HOME:-$(pwd)}"
+
+# Environment Configuration (dev, e2e, or ci)
+export APP_ENV="${APP_ENV:-dev}"  # Defaults to dev
+
+# Environment-specific configuration
+# Note: Set explicitly based on APP_ENV (override any existing values)
+case "$APP_ENV" in
+  dev)
+    export DATABASE_URL="sqlite:///course_records_dev.db"
+    export COURSE_RECORD_UPDATER_PORT="3001"
+    ;;
+  e2e)
+    export DATABASE_URL="sqlite:///course_records_e2e.db"
+    export COURSE_RECORD_UPDATER_PORT="3002"
+    ;;
+  ci)
+    export DATABASE_URL="sqlite:///course_records_ci.db"
+    export COURSE_RECORD_UPDATER_PORT="3003"
+    ;;
+esac
+
+# Shared configuration (all environments)
+export DATABASE_TYPE="sqlite"
+export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"  # Always DEBUG for troubleshooting
+
+# Environment info (helpful for debugging)
+echo "🌍 Environment: $APP_ENV | Port: $COURSE_RECORD_UPDATER_PORT | DB: $DATABASE_URL"
+

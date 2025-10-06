@@ -22,7 +22,9 @@ from database_service import (
     get_active_terms,  # Use active_terms instead of get_all_terms
 )
 from database_service import (
+    get_all_course_offerings,
     get_all_courses,
+    get_all_sections,
     get_all_users,
 )
 
@@ -201,19 +203,25 @@ class ExportService:
             courses = get_all_courses(institution_id)
             users = get_all_users(institution_id)
             terms = get_active_terms(institution_id)
+            sections = get_all_sections(institution_id)
+            offerings = get_all_course_offerings(institution_id)
 
             # Convert to list of dicts if needed
             courses_list = [dict(course) for course in courses] if courses else []
             users_list = [dict(user) for user in users] if users else []
             terms_list = [dict(term) for term in terms] if terms else []
+            sections_list = [dict(section) for section in sections] if sections else []
+            offerings_list = (
+                [dict(offering) for offering in offerings] if offerings else []
+            )
 
             # Organize data for export
             export_data = {
                 "courses": courses_list,
                 "users": users_list,
                 "terms": terms_list,
-                "offerings": [],  # Would come from course offerings table
-                "sections": [],  # Would come from sections table
+                "offerings": offerings_list,
+                "sections": sections_list,
             }
 
             LOGGER.info(

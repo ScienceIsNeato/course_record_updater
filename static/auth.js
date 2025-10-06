@@ -24,10 +24,16 @@ function getCSRFToken() {
 }
 
 // DOM Content Loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Initialize based on current page
+// Check if DOM is already loaded (script at end of body)
+if (document.readyState === 'loading') {
+  // DOM hasn't loaded yet, wait for it
+  document.addEventListener('DOMContentLoaded', () => {
+    initializePage();
+  });
+} else {
+  // DOM is already loaded (common when script is at end of body)
   initializePage();
-});
+}
 
 // Page Initialization
 function initializePage() {

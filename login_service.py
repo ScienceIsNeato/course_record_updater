@@ -9,7 +9,7 @@ Handles user authentication functionality including:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import database_service as db
@@ -99,7 +99,7 @@ class LoginService:
             db.update_user(
                 user["user_id"],
                 {
-                    "last_login_at": datetime.now().isoformat(),
+                    "last_login_at": datetime.now(timezone.utc),
                     "login_count": user.get("login_count", 0) + 1,
                 },
             )

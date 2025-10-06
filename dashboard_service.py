@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from database_service import (
     get_active_terms,
+    get_all_course_offerings,
     get_all_courses,
     get_all_institutions,
     get_all_instructors,
@@ -176,11 +177,26 @@ class DashboardService:
         users = get_all_users(institution_id) or []
         instructors = get_all_instructors(institution_id) or []
         sections = get_all_sections(institution_id) or []
+        offerings = get_all_course_offerings(institution_id) or []
         terms = get_active_terms(institution_id) or []
 
         course_index = self._index_by_keys(courses, ["course_id", "id"])
         program_index = {self._get_program_id(program): program for program in programs}
         faculty = self._build_faculty_directory(users, instructors)
+
+        # Create offering_id -> course_id mapping
+        # Try both offering_id and id as keys since to_dict might return either
+        offering_to_course = {}
+        for offering in offerings:
+            offering_id = offering.get("offering_id") or offering.get("id")
+            course_id = offering.get("course_id")
+            if offering_id and course_id:
+                offering_to_course[offering_id] = course_id
+
+        # Enrich sections with course data
+        sections = self._enrich_sections_with_course_data(
+            sections, course_index, offering_to_course
+        )
 
         program_metrics = self._build_program_metrics(
             programs,
@@ -1098,6 +1114,79 @@ class DashboardService:
             enriched_courses.append(course_copy)
 
         return enriched_courses
+
+    def _enrich_sections_with_course_data(
+        self,
+        sections: List[Dict[str, Any]],
+        course_index: Dict[str, Dict[str, Any]],
+        offering_to_course: Dict[str, str],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich sections with course number and title from course index.
+
+        Sections have offering_id, which maps to course_id via offerings.
+
+        Args:
+            sections: List of section dictionaries
+            course_index: Dictionary mapping course_id to course data
+            offering_to_course: Dictionary mapping offering_id to course_id
+
+        Returns:
+            List of sections enriched with course_number and course_title
+        """
+        return [
+            self._enrich_single_section(i, section, course_index, offering_to_course)
+            for i, section in enumerate(sections)
+        ]
+
+    def _enrich_single_section(
+        self,
+        index: int,
+        section: Dict[str, Any],
+        course_index: Dict[str, Dict[str, Any]],
+        offering_to_course: Dict[str, str],
+    ) -> Dict[str, Any]:
+        """Enrich a single section with course data."""
+        section_copy = section.copy()
+        offering_id = section.get("offering_id")
+        course_id = offering_to_course.get(offering_id) if offering_id else None
+
+        if course_id and course_id in course_index:
+            # Success: add course data
+            course = course_index[course_id]
+            section_copy["course_number"] = course.get("course_number", "")
+            section_copy["course_title"] = course.get("course_title", "")
+            section_copy["course_id"] = course_id
+        else:
+            # Failure: log and add empty defaults
+            self._log_enrichment_failure(
+                index, offering_id, course_id, offering_to_course, course_index
+            )
+            section_copy.setdefault("course_number", "")
+            section_copy.setdefault("course_title", "")
+
+        return section_copy
+
+    def _log_enrichment_failure(
+        self,
+        index: int,
+        offering_id: Optional[str],
+        course_id: Optional[str],
+        offering_to_course: Dict[str, str],
+        course_index: Dict[str, Dict[str, Any]],
+    ) -> None:
+        """Log section enrichment failures (first 3 only to avoid spam)."""
+        if index >= 3:
+            return
+
+        in_offering_map = offering_id in offering_to_course if offering_id else False
+        in_course_index = course_id in course_index if course_id else False
+
+        self.logger.warning(
+            f"[SECTION ENRICHMENT] Failed to enrich section {index}: "
+            f"offering_id={offering_id}, course_id={course_id}, "
+            f"in_offering_map={in_offering_map}, in_course_index={in_course_index}"
+        )
 
 
 def build_dashboard_service() -> DashboardService:

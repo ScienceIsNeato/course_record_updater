@@ -1,6 +1,24 @@
 # Course Record Updater – Post-Adapter Implementation Backlog
 
-## Priority 0 – Export System Enhancement (Epic) **UPDATED**
+## Priority 0 – Environment Separation (DEV/E2E/CI) **COMPLETED** ✅
+**Status**: Completed  
+**Docs**: `.envrc.template`, `run_uat.sh`, `restart_server.sh`  
+**Goal**: Separate development, E2E testing, and CI environments to prevent conflicts and enable parallel work.
+**Progress**: ✅ Complete three-environment model implemented.
+**Completed Tasks**:
+- [x] **Step 1**: Updated `.envrc` with `APP_ENV` variable and case statement for environment detection
+- [x] **Step 2**: Updated `restart_server.sh` to support explicit environment argument
+- [x] **Step 3**: Updated `run_uat.sh` to use `e2e` environment
+- [x] **Step 4**: Tested local isolation (dev on 3001, E2E on 3002)
+- [x] **Step 5**: CI pipeline uses `APP_ENV=e2e`
+- [x] **Step 6**: Documentation updated
+**Environment Configuration**:
+- **DEV**: Port 3001, `course_records_dev.db`, manual control, persistent data
+- **E2E**: Port 3002, `course_records_e2e.db`, auto-managed by run_uat.sh, fresh DB each run
+- **CI**: Port 3003, `course_records_ci.db`, GitHub Actions managed, ephemeral
+**Benefits Delivered**: E2E tests don't interrupt dev work, multiple agents can work simultaneously, clear environment separation.
+
+## Priority 1 – Export System Enhancement (Epic) **UPDATED**
 **Status**: Import system completed, export needs refinement  
 **Docs**: `adapters/`, `import_service.py`, `export_service.py`, `scripts/ship_it.py`  
 **Goal**: Complete the bidirectional adapter-based system with enhanced export capabilities and roundtrip validation.

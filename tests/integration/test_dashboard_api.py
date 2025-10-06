@@ -16,7 +16,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 class TestDashboardAPI:
     """Test dashboard API functionality"""
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for the application"""
         import os
@@ -51,7 +51,7 @@ class TestDashboardAPI:
 class TestDashboardFrontend:
     """Test dashboard frontend functionality"""
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for the application"""
         import os

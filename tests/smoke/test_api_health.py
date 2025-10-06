@@ -11,7 +11,7 @@ import requests
 class TestAPIHealth:
     """Test basic API functionality"""
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="session")
     def base_url(self):
         """Base URL for the test server"""
         import os

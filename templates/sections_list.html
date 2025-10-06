@@ -1,0 +1,151 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}Sections - Course Record Updater{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
+{% endblock %}
+
+{% block nav_items %}
+<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+<a class="nav-link" href="/courses"><i class="fas fa-book me-1"></i>Courses</a>
+<a class="nav-link" href="/users"><i class="fas fa-users me-1"></i>Users</a>
+<a class="nav-link active" href="/sections"><i class="fas fa-clipboard-list me-1"></i>Sections</a>
+{% endblock %}
+
+{% block page_title %}Course Sections{% endblock %}
+{% block page_subtitle %}Browse all course sections at your institution{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0">All Sections</h5>
+            <button class="btn btn-sm btn-outline-primary" onclick="loadSections()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        
+        <div id="sectionsTableContainer">
+            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+                <div class="spinner-border" aria-hidden="true">
+                    <span class="visually-hidden">Loading sections...</span>
+                </div>
+            </output>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load sections on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSections();
+});
+
+async function loadSections() {
+    const container = document.getElementById('sectionsTableContainer');
+    container.innerHTML = `
+        <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+            <div class="spinner-border" aria-hidden="true">
+                <span class="visually-hidden">Loading sections...</span>
+            </div>
+        </output>
+    `;
+    
+    try {
+        const response = await fetch('/api/dashboard/data', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load dashboard data');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load dashboard data');
+        }
+        
+        const sections = data.data.sections || [];
+        
+        if (sections.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No sections found. Import section data to get started.
+                </div>
+            `;
+            return;
+        }
+        
+        // Build table
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Section Number</th>
+                            <th>Course</th>
+                            <th>Instructor</th>
+                            <th>Term</th>
+                            <th>Enrollment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        sections.forEach(section => {
+            html += `
+                <tr>
+                    <td><strong>${escapeHtml(section.section_number || '-')}</strong></td>
+                    <td>${escapeHtml(section.course_number || '-')} - ${escapeHtml(section.course_title || '-')}</td>
+                    <td>${escapeHtml(section.instructor_name || '-')}</td>
+                    <td>${escapeHtml(section.term_name || '-')}</td>
+                    <td>${section.enrollment_count || 0} / ${section.enrollment_capacity || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewSection('${section.section_id}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading sections:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error loading sections: ${escapeHtml(error.message)}
+            </div>
+        `;
+    }
+}
+
+function viewSection(sectionId) {
+    alert('Section details view coming soon for section: ' + sectionId);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}
+

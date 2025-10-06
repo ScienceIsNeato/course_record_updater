@@ -56,9 +56,9 @@
                     </div>
 
                     <!-- Import Actions - Centered and Full Width -->
-                    <div class="d-grid">
-                        <button type="button" class="btn btn-import-primary btn-lg" onclick="executeDataImport()">
-                            <i class="fas fa-upload me-2"></i>Import Data
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success btn-lg" onclick="executeDataImport()">
+                            <i class="fas fa-file-excel me-2"></i>Excel Import
                         </button>
                     </div>
                 </form>
@@ -129,7 +129,7 @@
                     <div class="mb-3">
                         <label for="export_adapter" class="form-label">Output Format:</label>
                         <select class="form-select" id="export_adapter" name="export_adapter" required>
-                            <option value="cei_excel_adapter" selected>CEI Excel Format</option>
+                            <option value="cei_excel_format_v1" selected>CEI Excel Format</option>
                             <option value="generic_excel_adapter">Generic Excel Format</option>
                             <option value="standard_format">Standard Format</option>
                         </select>
@@ -152,9 +152,12 @@
                     </div>
 
                     <!-- Export Actions -->
-                    <div class="d-grid">
-                        <button type="button" class="btn btn-primary" onclick="executeDataExport()">
-                            <i class="fas fa-download me-1"></i>Export Data
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-primary" onclick="executeExportWithDataType('courses')">
+                            <i class="fas fa-file-download me-1"></i>Export Courses
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="executeDataExport()">
+                            <i class="fas fa-download me-1"></i>Export Other Data
                         </button>
                     </div>
                 </form>
@@ -297,6 +300,12 @@ function executeImportRequest(formData) {
 }
 
 // Data Export Functions
+function executeExportWithDataType(dataType) {
+    // Generic export function for any data type (courses, users, sections, etc.)
+    document.getElementById('export_data_type').value = dataType;
+    executeDataExport();
+}
+
 function executeDataExport() {
     const form = document.getElementById('dataExportForm');
     const formData = new FormData(form);
@@ -310,14 +319,68 @@ function executeDataExport() {
         params.append(key, value);
     }
     
-    // Trigger download
     const exportUrl = `/api/export/data?${params.toString()}`;
-    window.open(exportUrl, '_blank');
     
-    // Hide status after a delay
-    setTimeout(() => {
-        document.getElementById('exportStatus').style.display = 'none';
-    }, 3000);
+    // Use fetch to check response before downloading
+    fetch(exportUrl, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.error || 'Export failed');
+            });
+        }
+        
+        // Success - trigger download
+        // Extract filename from Content-Disposition header if available
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = '';
+        if (disposition && disposition.includes('filename=')) {
+            // Use replace with regex for browser compatibility (replaceAll not in older browsers)
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
+        }
+        
+        return response.blob().then(blob => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename || 'export.xlsx';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            
+            // Show success status
+            const statusEl = document.getElementById('exportStatus');
+            statusEl.textContent = 'Export started successfully';
+            statusEl.className = 'alert alert-success';
+            statusEl.style.display = 'block';
+            
+            // Cleanup after a short delay to ensure download starts
+            setTimeout(() => {
+                URL.revokeObjectURL(link.href);
+                link.remove();
+            }, 100);
+        });
+    })
+    .catch(error => {
+        // Show error to user
+        const statusEl = document.getElementById('exportStatus');
+        statusEl.textContent = `Export failed: ${error.message}`;
+        statusEl.className = 'alert alert-danger';
+        statusEl.style.display = 'block';
+    })
+    .finally(() => {
+        // Hide status after a delay (success case only)
+        setTimeout(() => {
+            const statusEl = document.getElementById('exportStatus');
+            if (statusEl.className.includes('success')) {
+                statusEl.style.display = 'none';
+            }
+        }, 3000);
+    });
 }
 
 function formatImportResults(data) {

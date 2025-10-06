@@ -26,8 +26,7 @@ app = Flask(__name__)
 import sys
 
 # SECURITY: CSRF protection configuration
-# CSRF is enabled by default for all environments
-# Only disabled when explicitly set via environment variable for testing
+# CSRF is ENABLED for all routes to prevent cross-site request forgery attacks
 csrf_enabled = os.getenv("WTF_CSRF_ENABLED", "true").lower() != "false"
 app.config["WTF_CSRF_ENABLED"] = csrf_enabled
 
@@ -179,6 +178,39 @@ def dashboard():
     else:
         flash("Unknown user role. Please contact administrator.", "danger")
         return redirect(url_for("index"))
+
+
+@app.route("/courses")
+@login_required
+def courses_list():
+    """Display all courses for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("courses_list.html", user=user)
+
+
+@app.route("/users")
+@login_required
+def users_list():
+    """Display all users for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("users_list.html", user=user)
+
+
+@app.route("/sections")
+@login_required
+def sections_list():
+    """Display all course sections for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("sections_list.html", user=user)
 
 
 if __name__ == "__main__":
