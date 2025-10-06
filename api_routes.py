@@ -230,7 +230,6 @@ def get_dashboard_data_route():
 
 
 # Constants are now imported from constants.py
-XLSX_EXTENSION = ".xlsx"  # File extension constant specific to this module
 
 
 def handle_api_error(
@@ -1803,7 +1802,7 @@ def validate_import_file():
         adapter_name = request.form.get("adapter_name", "cei_excel_adapter")
 
         # Validate file type
-        if not file.filename.lower().endswith((XLSX_EXTENSION, ".xls")):
+        if not file.filename.lower().endswith((_DEFAULT_EXPORT_EXTENSION, ".xls")):
             return (
                 jsonify(
                     {
@@ -1819,7 +1818,7 @@ def validate_import_file():
         import tempfile
 
         with tempfile.NamedTemporaryFile(
-            delete=False, suffix=XLSX_EXTENSION
+            delete=False, suffix=_DEFAULT_EXPORT_EXTENSION
         ) as temp_file:
             file.save(temp_file.name)
             temp_file_path = temp_file.name

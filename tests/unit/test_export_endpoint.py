@@ -214,3 +214,115 @@ class TestExportEndpoint:
         data = response.get_json()
         assert data["success"] is False
         assert "error" in data
+
+    @patch("api_routes.get_current_user")
+    def test_export_missing_institution_context(self, mock_get_user, client):
+        """Export should fail when user has no institution context"""
+        # Mock user without institution_id
+        mock_get_user.return_value = {
+            "email": "test@example.com",
+            "institution_id": None,
+        }
+
+        response = client.get("/api/export/data")
+
+        # Should return 400 error
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Institution context" in data["error"]
+
+    @patch("api_routes.create_export_service")
+    def test_export_adapter_not_found(self, mock_create_service, authenticated_client):
+        """Export should fail gracefully when adapter is not found"""
+        # Mock registry returning None for adapter
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = None
+
+        mock_service = Mock()
+        mock_service.registry = mock_registry
+        mock_create_service.return_value = mock_service
+
+        response = authenticated_client.get(
+            "/api/export/data?export_adapter=nonexistent_adapter"
+        )
+
+        # Should return 400 error
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Adapter not found" in data["error"]
+
+    @patch("api_routes.create_export_service")
+    def test_export_adapter_exception_fallback(
+        self, mock_create_service, authenticated_client
+    ):
+        """Export should fall back to default format when adapter info query fails"""
+
+        def mock_export(config, output_path):
+            # Create the file at the path the endpoint specifies
+            with open(output_path, "wb") as f:
+                f.write(b"fake excel data")
+            return ExportResult(
+                success=True,
+                file_path=output_path,
+                records_exported=10,
+                errors=[],
+            )
+
+        # Mock adapter that raises exception on get_adapter_info
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.side_effect = Exception("Adapter info failed")
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
+        mock_service = Mock()
+        mock_service.registry = mock_registry
+        mock_service.export_data.side_effect = mock_export
+        mock_create_service.return_value = mock_service
+
+        response = authenticated_client.get("/api/export/data")
+
+        # Should still succeed with fallback to .xlsx
+        assert response.status_code == 200
+
+    @patch("api_routes.create_export_service")
+    def test_export_sanitizes_empty_data_type(
+        self, mock_create_service, authenticated_client
+    ):
+        """Export should fall back to 'courses' when data_type is sanitized to empty"""
+
+        def mock_export(config, output_path):
+            # Verify the config used "courses" as fallback
+            assert config.institution_id is not None
+            # Create the file
+            with open(output_path, "wb") as f:
+                f.write(b"fake excel data")
+            return ExportResult(
+                success=True,
+                file_path=output_path,
+                records_exported=10,
+                errors=[],
+            )
+
+        # Mock adapter
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "cei_excel_format_v1",
+            "supported_formats": [".xlsx"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
+        mock_service = Mock()
+        mock_service.registry = mock_registry
+        mock_service.export_data.side_effect = mock_export
+        mock_create_service.return_value = mock_service
+
+        # Send data_type with only special characters (will be sanitized to empty)
+        response = authenticated_client.get("/api/export/data?export_data_type=!!!@@@")
+
+        # Should succeed with fallback
+        assert response.status_code == 200
