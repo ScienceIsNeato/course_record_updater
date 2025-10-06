@@ -333,5 +333,142 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             Tuple[bool, str, int]: (success, message, record_count)
         """
-        # TODO: Implement in Step 3 (Export Implementation)
-        raise NotImplementedError("Export functionality will be implemented in Step 3")
+        try:
+            # Create temporary directory for CSV files
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                total_records = 0
+                entity_counts = {}
+
+                # Export each entity type to separate CSV
+                for entity_type in EXPORT_ORDER:
+                    records = data.get(entity_type, [])
+                    csv_file = temp_path / f"{entity_type}.csv"
+
+                    # Write CSV (even if empty)
+                    record_count = self._write_entity_csv(
+                        entity_type, records, str(csv_file)
+                    )
+
+                    entity_counts[entity_type] = record_count
+                    total_records += record_count
+
+                # Create manifest
+                manifest = self._create_manifest(entity_counts)
+                manifest_file = temp_path / "manifest.json"
+                manifest_file.write_text(json.dumps(manifest, indent=2))
+
+                # Create ZIP archive
+                self._create_zip_archive(temp_path, output_path)
+
+                logger.info(
+                    f"Export successful: {total_records} records across {len(entity_counts)} entity types"
+                )
+
+                return (
+                    True,
+                    f"Successfully exported {total_records} records",
+                    total_records,
+                )
+
+        except Exception as e:
+            logger.error(f"Export failed: {e}", exc_info=True)
+            return False, f"Export failed: {str(e)}", 0
+
+    def _write_entity_csv(
+        self, entity_type: str, records: List[Dict[str, Any]], output_file: str
+    ) -> int:
+        """
+        Write records for a single entity type to CSV file.
+
+        Args:
+            entity_type: Type of entity (institutions, users, etc.)
+            records: List of record dictionaries
+            output_file: Path to output CSV file
+
+        Returns:
+            Number of records written
+        """
+        columns = CSV_COLUMNS.get(entity_type, [])
+        if not columns:
+            logger.warning(f"No column definition for entity type: {entity_type}")
+            return 0
+
+        with open(output_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+
+            for record in records:
+                # Filter and serialize record
+                filtered_record = self._filter_and_serialize_record(
+                    record, columns, entity_type
+                )
+                writer.writerow(filtered_record)
+
+        return len(records)
+
+    def _filter_and_serialize_record(
+        self, record: Dict[str, Any], columns: List[str], entity_type: str
+    ) -> Dict[str, Any]:
+        """
+        Filter record to only include specified columns and serialize complex types.
+
+        Args:
+            record: Original record dictionary
+            columns: List of allowed column names
+            entity_type: Type of entity (for entity-specific rules)
+
+        Returns:
+            Filtered and serialized record
+        """
+        filtered = {}
+
+        for col in columns:
+            value = record.get(col)
+
+            # Serialize value based on type
+            if value is None:
+                filtered[col] = ""  # NULL as empty string
+            elif isinstance(value, datetime):
+                filtered[col] = value.isoformat()  # ISO 8601 format
+            elif isinstance(value, bool):
+                filtered[col] = "true" if value else "false"  # Lowercase boolean
+            elif isinstance(value, dict):
+                filtered[col] = json.dumps(value)  # JSON fields
+            elif isinstance(value, (list, tuple)):
+                filtered[col] = json.dumps(value)  # JSON arrays
+            else:
+                filtered[col] = str(value)
+
+        return filtered
+
+    def _create_manifest(self, entity_counts: Dict[str, int]) -> Dict[str, Any]:
+        """
+        Create manifest.json metadata.
+
+        Args:
+            entity_counts: Dictionary of entity types to record counts
+
+        Returns:
+            Manifest dictionary
+        """
+        return {
+            "format_version": FORMAT_VERSION,
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "entity_counts": entity_counts,
+            "import_order": EXPORT_ORDER,
+            "security_note": "Passwords and active tokens excluded. Imported users must complete registration.",
+        }
+
+    def _create_zip_archive(self, source_dir: Path, output_path: str) -> None:
+        """
+        Create ZIP archive from directory contents.
+
+        Args:
+            source_dir: Directory containing files to ZIP
+            output_path: Path to output ZIP file
+        """
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            # Add all files from source directory
+            for file in sorted(source_dir.iterdir()):
+                zf.write(file, arcname=file.name)
