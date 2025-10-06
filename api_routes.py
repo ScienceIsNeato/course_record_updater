@@ -3206,13 +3206,19 @@ def export_data():
 
         # Get parameters
         data_type_raw = request.args.get("export_data_type", "courses")
-        adapter_id = request.args.get("export_adapter", "cei_excel_format_v1")
+        adapter_id_raw = request.args.get("export_adapter", "cei_excel_format_v1")
 
         # Sanitize data_type to prevent path traversal (security fix for S2083)
         # Only allow alphanumeric characters and underscores
         data_type = re.sub(r"\W", "", data_type_raw)
         if not data_type:
             data_type = "courses"  # Fallback to safe default
+
+        # Sanitize adapter_id to prevent log injection (security fix for S5145)
+        # Only allow alphanumeric characters, underscores, and hyphens
+        adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw)
+        if not adapter_id:
+            adapter_id = "cei_excel_format_v1"  # Fallback to safe default
 
         logger.info(
             f"[EXPORT] Request: institution_id={institution_id}, data_type={data_type}, adapter={adapter_id}"

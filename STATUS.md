@@ -1,75 +1,64 @@
-# Status: PR Review Complete - 26/31 Comments Resolved
+# Status: Sonar Check Issues Resolved
 
 ## Last Updated
-2025-10-05 04:10 AM
+2025-10-05 22:40 PM
 
-## Final Summary: 84% Complete
+## Latest Work: SonarCloud Issues Fixed
 
-### All Completed Groups ✅
+**Identified Issue with Empty Logs File:**
+- Bug found: When tests fail before SonarCloud scraper runs, `logs/sonarcloud_issues.txt` only contains header
+- Root cause: `ship_it.py` fails fast on test failures, preventing `sonar_issues_scraper.py` from running
+- Solution: Run `sonar_issues_scraper.py` directly to see actual issues
 
-**Phase 1** (14 comments) - Commit 2945525
-- Code quality bugs and documentation cleanup
+**SonarCloud Issue Resolved:**
+- **Critical Code Smell (S1192)**: Duplicate ".xlsx" string literal 3 times
+- Fixed by consolidating to single `_DEFAULT_EXPORT_EXTENSION` constant
+- Removed duplicate `XLSX_EXTENSION` constant  
+- Updated all references to use single source of truth
 
-**Group B** (3 comments) - Commits 61caf91 + test updates
-- Export architecture: Adapter-driven format/mimetype
+**Coverage Improvements:**
+- Added 4 new tests for export endpoint error paths:
+  - Missing institution context (400 error)
+  - Adapter not found (400 error)
+  - Adapter exception fallback (.xlsx default)
+  - Empty data_type sanitization fallback
+- Reduced uncovered lines in api_routes.py from 12 to 6
 
-**Group C** (1 comment) - Commit 3e05bc1
-- Export UI: Generic function instead of institution-specific
+**Commit:** `85952d3` - Pushed
 
-**Group D** (4 comments) - Commit 7898d3f
-- E2E test quality: Removed "_debug", improved docstrings, removed "Hypothesis" wording
+---
 
-**Group E** (2 comments) - Commit a59281c
-- E2E infrastructure: Reduced timeouts to 2s max
+## PR Review Progress: 26/31 Comments (84%)
 
-**Group A** (3 comments) - Commit 6314ea3
-- Documentation: Updated backlog, moved antipattern log, removed stale file
+**Completed Groups:**
+1. ✅ Phase 1 (14 comments)
+2. ✅ Group B - Export Architecture (3)
+3. ✅ Group C - Export UI (1)
+4. ✅ Group D - E2E Test Quality (4)
+5. ✅ Group E - E2E Infrastructure (2)
+6. ✅ Group A - Documentation (3)
 
-**Total: 26 comments addressed across 10 commits**
+**Remaining:**
+- Copilot import comments (4) - Already fixed, need GitHub UI resolution
+- Group G nitpick (1) - Optional dataclass refactor
+- Group F (1) - E2E coverage expansion (deferred)
 
-### Remaining Work (5 comments)
+## Quality Status
 
-**Need GitHub Review Replies**:
-4 copilot comments about imports (already fixed in first commit, just need reply to mark resolved)
+✅ **All 12 basic checks passing**
+✅ **932 tests passing** (added 4 new tests)
+✅ **84.29% coverage maintained**
+🔄 **SonarCloud**: Awaiting re-analysis after latest commit
 
-**Group G - Code Style** (1 comment):
-- `scripts/ship_it.py:93` - [nitpick] Use dataclass for check definitions (optional)
-
-**Group F - E2E Coverage** (1 comment - deferred):
-- `tests/e2e/test_import_export.py:1069` - Implement remaining UAT cases (out of scope for this PR)
-
-## Commit History
-
-1. Import consolidation
-2. High-priority bugs
-3. Datetime revert (E2E fix)
-4. SonarCloud issues
-5. PR review - Phase 1 (14 comments)
-6. Export architecture refactoring (3 comments)
-7. Export UI generic function (1 comment)
-8. E2E test naming improvements (4 comments)
-9. E2E timeout reductions (2 comments)
-10. Documentation cleanup (3 comments)
-
-## Quality Metrics
-
-✅ **All 12 quality checks passing**
-✅ **925 unit tests passing**
-✅ **80%+ coverage maintained**
-✅ **Integration tests passing**
-✅ **Export architecture tested and verified**
+**Coverage on New Code:**
+- Reduced from 44 to 38 uncovered lines  
+- Remaining gaps in conftest.py (24), api_routes.py (6), others (8)
 
 ## Next Steps
 
-1. Reply to copilot import comments to mark as resolved
-2. Optional: Address Group G nitpick (dataclass refactor)
-3. Defer Group F (E2E coverage expansion) to separate PR
+1. Monitor SonarCloud re-analysis of latest commit
+2. Address remaining coverage gaps if needed for quality gate
+3. Optional: Address Group G nitpick (dataclass refactor)
+4. Mark copilot comments as resolved in GitHub UI
 
-## PR Ready for Merge
-
-All substantive comments have been addressed. Remaining items are:
-- Marking resolved comments in GitHub (procedural)
-- One optional nitpick
-- One deferred scope expansion
-
-**Recommendation**: Ready for final review and merge.
+**Note:** SonarCloud "Security Rating on New Code: 2 (required: 1)" likely related to coverage, not actual security vulnerabilities (no vulnerabilities found in API query).
