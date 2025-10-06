@@ -313,8 +313,141 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             Dictionary mapping entity types to lists of records
         """
-        # TODO: Implement in Step 6 (Import Implementation)
-        raise NotImplementedError("Import functionality will be implemented in Step 6")
+        try:
+            # Validate ZIP format
+            try:
+                with zipfile.ZipFile(file_path, "r") as zf:
+                    file_list = zf.namelist()
+
+                    # Check for manifest
+                    if "manifest.json" not in file_list:
+                        raise ValueError("Missing manifest.json in ZIP archive")
+
+                    # Read and validate manifest
+                    manifest_data = zf.read("manifest.json")
+                    manifest = json.loads(manifest_data)
+
+                    # Validate format version
+                    if manifest.get("format_version") != FORMAT_VERSION:
+                        raise ValueError(
+                            f"Incompatible format version: {manifest.get('format_version')}. Expected {FORMAT_VERSION}"
+                        )
+
+                    # Get import order from manifest
+                    import_order = manifest.get("import_order", EXPORT_ORDER)
+
+                    # Extract and parse each entity type
+                    result: Dict[str, List[Dict[str, Any]]] = {}
+
+                    for entity_type in import_order:
+                        csv_filename = f"{entity_type}.csv"
+
+                        if csv_filename not in file_list:
+                            # Entity type not in export - skip
+                            result[entity_type] = []
+                            continue
+
+                        # Read CSV
+                        csv_content = zf.read(csv_filename).decode("utf-8")
+
+                        # Parse CSV
+                        records = self._parse_entity_csv(csv_content, entity_type)
+
+                        result[entity_type] = records
+
+                    logger.info(
+                        f"Import parsed: {sum(len(r) for r in result.values())} total records across {len(result)} entity types"
+                    )
+
+                    return result
+
+            except zipfile.BadZipFile as e:
+                raise ValueError(f"File is not a valid ZIP archive: {e}")
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid manifest.json format: {e}")
+
+        except Exception as e:
+            logger.error(f"Import failed: {e}", exc_info=True)
+            raise
+
+    def _parse_entity_csv(
+        self, csv_content: str, entity_type: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Parse CSV content for a single entity type.
+
+        Args:
+            csv_content: Raw CSV string
+            entity_type: Type of entity (institutions, users, etc.)
+
+        Returns:
+            List of parsed record dictionaries
+        """
+        records = []
+
+        try:
+            # Parse CSV
+            csv_reader = csv.DictReader(csv_content.splitlines())
+
+            for row in csv_reader:
+                # Deserialize and clean record
+                record = self._deserialize_record(row, entity_type)
+                records.append(record)
+
+        except Exception as e:
+            logger.error(f"Error parsing {entity_type} CSV: {e}")
+            raise
+
+        return records
+
+    def _deserialize_record(
+        self, row: Dict[str, str], entity_type: str
+    ) -> Dict[str, Any]:
+        """
+        Deserialize CSV row values to appropriate Python types.
+
+        Args:
+            row: CSV row as dictionary (all values are strings)
+            entity_type: Type of entity for type hints
+
+        Returns:
+            Record with properly typed values
+        """
+        record: Dict[str, Any] = {}
+
+        # Known JSON fields that need deserialization
+        json_fields = {"grade_distribution", "assessment_data", "extras"}
+
+        for key, value in row.items():
+            # Handle empty strings as None
+            if value == "" or value is None:
+                record[key] = None
+                continue
+
+            # Ensure value is string (CSV should always be strings, but be safe)
+            if not isinstance(value, str):
+                record[key] = value
+                continue
+
+            # Deserialize JSON fields
+            if key in json_fields:
+                try:
+                    record[key] = json.loads(value)
+                except (json.JSONDecodeError, ValueError):
+                    # If not valid JSON, keep as string
+                    record[key] = value
+                continue
+
+            # Deserialize boolean fields
+            if value.lower() in ("true", "false"):
+                record[key] = value.lower() == "true"
+                continue
+
+            # Keep datetime strings as-is (database will handle parsing)
+            # Other values stay as strings
+            record[key] = value
+
+        return record
 
     def export_data(
         self,

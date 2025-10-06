@@ -392,3 +392,631 @@ class TestGenericCSVAdapterExport:
             # Should be ISO format
             assert "2024-10-05" in inst["created_at"]
             assert "T" in inst["created_at"]  # ISO separator
+
+
+@pytest.mark.unit
+class TestGenericCSVAdapterImport:
+    """Test import functionality (TDD - tests written first)."""
+
+    def test_parse_file_validates_zip_format(self, tmp_path):
+        """Import should reject non-ZIP files."""
+        adapter = GenericCSVAdapter()
+
+        # Create a text file
+        invalid_file = tmp_path / "test.txt"
+        invalid_file.write_text("not a zip")
+
+        with pytest.raises(Exception) as exc_info:
+            adapter.parse_file(str(invalid_file), options={})
+
+        assert "not a valid zip" in str(exc_info.value).lower()
+
+    def test_parse_file_validates_manifest_exists(self, tmp_path):
+        """Import should reject ZIP without manifest."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP without manifest
+        zip_file = tmp_path / "test.zip"
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("users.csv", "id,email\nuser-1,test@test.edu\n")
+
+        with pytest.raises(Exception) as exc_info:
+            adapter.parse_file(str(zip_file), options={})
+
+        assert "manifest" in str(exc_info.value).lower()
+
+    def test_parse_file_validates_format_version(self, tmp_path):
+        """Import should reject incompatible format versions."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with wrong version
+        zip_file = tmp_path / "test.zip"
+        manifest = {"format_version": "2.0", "entity_counts": {}}
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr("users.csv", "id,email\n")
+
+        with pytest.raises(Exception) as exc_info:
+            adapter.parse_file(str(zip_file), options={})
+
+        assert (
+            "incompatible" in str(exc_info.value).lower()
+            or "version" in str(exc_info.value).lower()
+        )
+
+    def test_parse_file_parses_valid_export(self, tmp_path):
+        """Import should successfully parse valid CSV export."""
+        adapter = GenericCSVAdapter()
+
+        # Create valid ZIP
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"institutions": 1, "users": 2},
+            "import_order": ["institutions", "users"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr(
+                "institutions.csv",
+                "id,name,short_name\ninst-1,Test University,TU\n",
+            )
+            zf.writestr(
+                "users.csv",
+                "id,email,first_name,last_name,role,institution_id\n"
+                "user-1,test1@test.edu,John,Doe,instructor,inst-1\n"
+                "user-2,test2@test.edu,Jane,Smith,instructor,inst-1\n",
+            )
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        # Should return dict with entity types
+        assert "institutions" in result
+        assert "users" in result
+
+        # Should parse records correctly
+        assert len(result["institutions"]) == 1
+        assert len(result["users"]) == 2
+
+        # Check data structure
+        inst = result["institutions"][0]
+        assert inst["id"] == "inst-1"
+        assert inst["name"] == "Test University"
+
+        user = result["users"][0]
+        assert user["email"] == "test1@test.edu"
+        assert user["first_name"] == "John"
+
+    def test_parse_file_respects_import_order(self, tmp_path):
+        """Import should parse entities in dependency order."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with specified import order
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"institutions": 1, "programs": 1, "users": 1},
+            "import_order": ["institutions", "programs", "users"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr("institutions.csv", "id,name\ninst-1,Test\n")
+            zf.writestr("programs.csv", "id,name,institution_id\nprog-1,CS,inst-1\n")
+            zf.writestr("users.csv", "id,email,institution_id\nuser-1,t@t.edu,inst-1\n")
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        # All entities should be present
+        assert "institutions" in result
+        assert "programs" in result
+        assert "users" in result
+
+    def test_parse_file_deserializes_json_fields(self, tmp_path):
+        """Import should deserialize JSON field strings back to dicts."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with JSON fields
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"course_sections": 1},
+            "import_order": ["course_sections"],
+        }
+
+        grade_dist = {"A": 10, "B": 8, "C": 5}
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            # Use csv.writer to properly quote JSON fields
+            import io
+
+            csv_buffer = io.StringIO()
+            writer = csv.writer(csv_buffer)
+            writer.writerow(["id", "section_number", "grade_distribution"])
+            writer.writerow(["section-1", "001", json.dumps(grade_dist)])
+            zf.writestr("course_sections.csv", csv_buffer.getvalue())
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        section = result["course_sections"][0]
+
+        # JSON field should be deserialized
+        assert isinstance(section["grade_distribution"], dict)
+        assert section["grade_distribution"]["A"] == 10
+
+    def test_parse_file_deserializes_datetime_fields(self, tmp_path):
+        """Import should deserialize ISO datetime strings."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with datetime fields
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"institutions": 1},
+            "import_order": ["institutions"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr(
+                "institutions.csv",
+                "id,name,created_at\n" "inst-1,Test,2024-10-05T15:30:45.123456Z\n",
+            )
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        inst = result["institutions"][0]
+
+        # Datetime should be parsed (as string is fine for database)
+        assert "created_at" in inst
+        assert "2024-10-05" in inst["created_at"]
+
+    def test_parse_file_deserializes_boolean_fields(self, tmp_path):
+        """Import should deserialize boolean strings to actual booleans."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with boolean fields
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"institutions": 2},
+            "import_order": ["institutions"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr(
+                "institutions.csv",
+                "id,name,is_active\n" "inst-1,Test1,true\n" "inst-2,Test2,false\n",
+            )
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        # Booleans should be parsed correctly
+        assert result["institutions"][0]["is_active"] is True
+        assert result["institutions"][1]["is_active"] is False
+
+    def test_parse_file_handles_empty_strings_as_null(self, tmp_path):
+        """Import should treat empty strings as NULL values."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with empty fields
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"users": 1},
+            "import_order": ["users"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr(
+                "users.csv",
+                "id,email,display_name,oauth_provider\n"
+                "user-1,test@test.edu,,\n",  # Empty display_name and oauth_provider
+            )
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        user = result["users"][0]
+
+        # Empty strings should be None
+        assert user["display_name"] is None or user["display_name"] == ""
+        assert user["oauth_provider"] is None or user["oauth_provider"] == ""
+
+    def test_parse_file_handles_malformed_csv(self, tmp_path):
+        """Import should handle malformed CSV gracefully."""
+        adapter = GenericCSVAdapter()
+
+        # Create ZIP with malformed CSV
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {"users": 1},
+            "import_order": ["users"],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr(
+                "users.csv",
+                "id,email,first_name\n" "user-1,incomplete\n",  # Missing field
+            )
+
+        # Should either raise exception or handle gracefully
+        try:
+            result = adapter.parse_file(str(zip_file), options={})
+            # If it doesn't raise, check that error handling occurred
+            assert "users" in result
+        except Exception as e:
+            # Acceptable to raise exception for malformed data
+            assert "malformed" in str(e).lower() or "invalid" in str(e).lower()
+
+    def test_parse_file_returns_all_entity_types(self, tmp_path):
+        """Import should return data for all expected entity types."""
+        adapter = GenericCSVAdapter()
+
+        # Create comprehensive export
+        zip_file = tmp_path / "test.zip"
+        manifest = {
+            "format_version": "1.0",
+            "entity_counts": {
+                "institutions": 1,
+                "programs": 1,
+                "users": 1,
+                "courses": 1,
+                "terms": 1,
+            },
+            "import_order": [
+                "institutions",
+                "programs",
+                "users",
+                "courses",
+                "terms",
+            ],
+        }
+
+        with zipfile.ZipFile(zip_file, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            zf.writestr("institutions.csv", "id,name\ninst-1,Test\n")
+            zf.writestr("programs.csv", "id,name\nprog-1,CS\n")
+            zf.writestr("users.csv", "id,email\nuser-1,t@t.edu\n")
+            zf.writestr("courses.csv", "id,course_number\ncourse-1,CS101\n")
+            zf.writestr("terms.csv", "id,term_name\nterm-1,FA2024\n")
+
+        result = adapter.parse_file(str(zip_file), options={})
+
+        # All entity types should be present
+        expected_entities = ["institutions", "programs", "users", "courses", "terms"]
+        for entity in expected_entities:
+            assert entity in result
+            assert len(result[entity]) > 0
+
+    def test_comprehensive_realistic_export_import_roundtrip(self, tmp_path):
+        """
+        Comprehensive test with realistic data exercising all entity types,
+        relationships, JSON fields, booleans, NULLs, and edge cases.
+        """
+        adapter = GenericCSVAdapter()
+        output_file = tmp_path / "comprehensive_export.zip"
+
+        # Create realistic mini-university dataset
+        data = {
+            "institutions": [
+                {
+                    "id": "hogwarts-001",
+                    "name": "Hogwarts School of Witchcraft",
+                    "short_name": "HOGW",
+                    "admin_email": "dumbledore@hogwarts.edu",
+                    "is_active": True,
+                    "allow_self_registration": False,
+                    "created_at": datetime(2024, 9, 1, 8, 0, 0),
+                },
+                {
+                    "id": "starfleet-002",
+                    "name": "Starfleet Academy",
+                    "short_name": "SFA",
+                    "admin_email": "picard@starfleet.edu",
+                    "is_active": True,
+                    "allow_self_registration": True,
+                    "created_at": datetime(2024, 9, 1, 9, 0, 0),
+                },
+            ],
+            "programs": [
+                {
+                    "id": "prog-gryff",
+                    "name": "Gryffindor House Program",
+                    "short_name": "GRYF",
+                    "institution_id": "hogwarts-001",
+                    "is_active": True,
+                    "is_default": True,
+                },
+                {
+                    "id": "prog-slytherin",
+                    "name": "Slytherin House Program",
+                    "short_name": "SLYT",
+                    "institution_id": "hogwarts-001",
+                    "is_active": True,
+                    "is_default": False,
+                },
+                {
+                    "id": "prog-command",
+                    "name": "Command Track",
+                    "short_name": "CMD",
+                    "institution_id": "starfleet-002",
+                    "is_active": True,
+                    "is_default": True,
+                },
+            ],
+            "users": [
+                {
+                    "id": "user-harry",
+                    "email": "harry@hogwarts.edu",
+                    "first_name": "Harry",
+                    "last_name": "Potter",
+                    "display_name": None,  # NULL test
+                    "role": "instructor",
+                    "institution_id": "hogwarts-001",
+                },
+                {
+                    "id": "user-hermione",
+                    "email": "hermione@hogwarts.edu",
+                    "first_name": "Hermione",
+                    "last_name": "Granger",
+                    "display_name": "Prof. Granger",
+                    "role": "program_admin",
+                    "institution_id": "hogwarts-001",
+                    "oauth_provider": "google",  # OAuth test
+                },
+                {
+                    "id": "user-kirk",
+                    "email": "kirk@starfleet.edu",
+                    "first_name": "James",
+                    "last_name": "Kirk",
+                    "display_name": "Captain Kirk",
+                    "role": "instructor",
+                    "institution_id": "starfleet-002",
+                },
+            ],
+            "user_programs": [  # Many-to-many relationships
+                {"user_id": "user-harry", "program_id": "prog-gryff"},
+                {
+                    "user_id": "user-harry",
+                    "program_id": "prog-slytherin",
+                },  # Multi-program
+                {"user_id": "user-hermione", "program_id": "prog-gryff"},
+                {"user_id": "user-kirk", "program_id": "prog-command"},
+            ],
+            "courses": [
+                {
+                    "id": "course-potions",
+                    "course_number": "POTION-101",
+                    "course_title": "Introduction to Potions",
+                    "department": "Potions",
+                    "credit_hours": 3,
+                    "institution_id": "hogwarts-001",
+                    "active": True,
+                },
+                {
+                    "id": "course-defense",
+                    "course_number": "DADA-201",
+                    "course_title": "Defense Against Dark Arts",
+                    "department": "Defense",
+                    "credit_hours": 4,
+                    "institution_id": "hogwarts-001",
+                    "active": True,
+                },
+                {
+                    "id": "course-warp",
+                    "course_number": "WARP-301",
+                    "course_title": "Warp Core Theory",
+                    "department": "Engineering",
+                    "credit_hours": 3,
+                    "institution_id": "starfleet-002",
+                    "active": True,
+                },
+                {
+                    "id": "course-old",
+                    "course_number": "OLD-999",
+                    "course_title": "Deprecated Course",
+                    "department": "Old",
+                    "credit_hours": 0,
+                    "institution_id": "hogwarts-001",
+                    "active": False,  # Inactive course test
+                },
+            ],
+            "course_programs": [  # Many-to-many
+                {"course_id": "course-potions", "program_id": "prog-gryff"},
+                {"course_id": "course-defense", "program_id": "prog-gryff"},
+                {
+                    "course_id": "course-defense",
+                    "program_id": "prog-slytherin",
+                },  # Multi-program
+                {"course_id": "course-warp", "program_id": "prog-command"},
+            ],
+            "terms": [
+                {
+                    "id": "term-fall24",
+                    "term_name": "FA2024",
+                    "name": "Fall 2024",
+                    "start_date": datetime(2024, 9, 1),
+                    "end_date": datetime(2024, 12, 15),
+                    "active": True,
+                    "institution_id": "hogwarts-001",
+                },
+                {
+                    "id": "term-spring25",
+                    "term_name": "SP2025",
+                    "name": "Spring 2025",
+                    "start_date": datetime(2025, 1, 15),
+                    "end_date": datetime(2025, 5, 15),
+                    "active": True,
+                    "institution_id": "starfleet-002",
+                },
+            ],
+            "course_offerings": [
+                {
+                    "id": "offer-potions-f24",
+                    "course_id": "course-potions",
+                    "term_id": "term-fall24",
+                    "institution_id": "hogwarts-001",
+                    "status": "in_progress",
+                    "capacity": 30,
+                    "total_enrollment": 28,
+                    "section_count": 2,
+                },
+                {
+                    "id": "offer-defense-f24",
+                    "course_id": "course-defense",
+                    "term_id": "term-fall24",
+                    "institution_id": "hogwarts-001",
+                    "status": "completed",
+                    "capacity": 25,
+                    "total_enrollment": 25,
+                    "section_count": 1,
+                },
+            ],
+            "course_sections": [
+                {
+                    "id": "section-pot-001",
+                    "offering_id": "offer-potions-f24",
+                    "instructor_id": "user-harry",
+                    "section_number": "001",
+                    "enrollment": 15,
+                    "status": "in_progress",
+                    "grade_distribution": {"O": 5, "E": 6, "A": 3, "P": 1},  # JSON
+                },
+                {
+                    "id": "section-pot-002",
+                    "offering_id": "offer-potions-f24",
+                    "instructor_id": "user-hermione",
+                    "section_number": "002",
+                    "enrollment": 13,
+                    "status": "in_progress",
+                    "grade_distribution": {"O": 7, "E": 4, "A": 2},
+                },
+                {
+                    "id": "section-def-001",
+                    "offering_id": "offer-defense-f24",
+                    "instructor_id": "user-harry",
+                    "section_number": "001",
+                    "enrollment": 25,
+                    "status": "completed",
+                    "grade_distribution": {"O": 10, "E": 10, "A": 4, "P": 1},
+                },
+            ],
+            "course_outcomes": [
+                {
+                    "id": "outcome-pot-clo1",
+                    "course_id": "course-potions",
+                    "clo_number": "CLO1",
+                    "description": "Students will brew basic potions correctly",
+                    "assessment_method": "Practical Exam",
+                    "active": True,
+                    "assessment_data": {"pass_rate": 0.95, "avg_score": 88.5},  # JSON
+                },
+                {
+                    "id": "outcome-def-clo1",
+                    "course_id": "course-defense",
+                    "clo_number": "CLO1",
+                    "description": "Students will defend against dark creatures",
+                    "assessment_method": "Practical Defense",
+                    "active": True,
+                    "assessment_data": {"pass_rate": 0.92, "avg_score": 85.0},
+                },
+                {
+                    "id": "outcome-def-clo2",
+                    "course_id": "course-defense",
+                    "clo_number": "CLO2",
+                    "description": "Students will recognize dark magic",
+                    "assessment_method": "Written Exam",
+                    "active": False,  # Inactive outcome
+                    "assessment_data": None,  # NULL JSON field
+                },
+            ],
+            "user_invitations": [
+                {
+                    "id": "invite-snape",
+                    "email": "snape@hogwarts.edu",
+                    "role": "instructor",
+                    "institution_id": "hogwarts-001",
+                    "invited_by": "user-hermione",
+                    "invited_at": datetime(2024, 10, 1),
+                    "status": "pending",
+                    "personal_message": "We need your expertise in potions!",
+                },
+                {
+                    "id": "invite-spock",
+                    "email": "spock@starfleet.edu",
+                    "role": "instructor",
+                    "institution_id": "starfleet-002",
+                    "invited_by": "user-kirk",
+                    "invited_at": datetime(2024, 10, 5),
+                    "status": "pending",
+                    "personal_message": None,  # NULL message
+                },
+            ],
+        }
+
+        # Export
+        success, msg, count = adapter.export_data(data, str(output_file), {})
+
+        assert success is True
+        # Total: 2 inst + 3 prog + 3 users + 4 user_prog + 4 courses + 4 course_prog + 2 terms + 2 offerings + 3 sections + 3 outcomes + 2 invites = 32
+        assert count == 32
+
+        # Import back
+        result = adapter.parse_file(str(output_file), {})
+
+        # Verify all entities imported
+        assert len(result["institutions"]) == 2
+        assert len(result["programs"]) == 3
+        assert len(result["users"]) == 3
+        assert len(result["user_programs"]) == 4
+        assert len(result["courses"]) == 4
+        assert len(result["course_programs"]) == 4
+        assert len(result["terms"]) == 2
+        assert len(result["course_offerings"]) == 2
+        assert len(result["course_sections"]) == 3
+        assert len(result["course_outcomes"]) == 3
+        assert len(result["user_invitations"]) == 2
+
+        # Verify data integrity - spot checks
+        hogwarts = result["institutions"][0]
+        assert hogwarts["name"] == "Hogwarts School of Witchcraft"
+        assert hogwarts["is_active"] is True  # Boolean
+
+        hermione = [u for u in result["users"] if u["id"] == "user-hermione"][0]
+        assert hermione["display_name"] == "Prof. Granger"
+        assert hermione["oauth_provider"] == "google"
+
+        harry = [u for u in result["users"] if u["id"] == "user-harry"][0]
+        assert harry["display_name"] is None  # NULL preserved
+
+        # Verify many-to-many relationships
+        harry_programs = [
+            up for up in result["user_programs"] if up["user_id"] == "user-harry"
+        ]
+        assert len(harry_programs) == 2  # Harry in 2 programs
+
+        # Verify JSON deserialization
+        section = result["course_sections"][0]
+        assert isinstance(section["grade_distribution"], dict)
+        assert "O" in section["grade_distribution"]
+
+        outcome = result["course_outcomes"][0]
+        assert isinstance(outcome["assessment_data"], dict)
+        assert outcome["assessment_data"]["pass_rate"] == 0.95
+
+        # Verify NULL JSON
+        inactive_outcome = [
+            o for o in result["course_outcomes"] if o["id"] == "outcome-def-clo2"
+        ][0]
+        assert inactive_outcome["assessment_data"] is None
+
+        # Verify inactive/active flags
+        old_course = [c for c in result["courses"] if c["id"] == "course-old"][0]
+        assert old_course["active"] is False
