@@ -54,49 +54,39 @@ def test_tc_ie_104_csv_roundtrip_validation(
     print("=" * 70)
 
     # ========================================
-    # STEP 1: Export courses using Generic CSV adapter
+    # STEP 1: Export using Generic CSV adapter (Adapter-Driven!)
     # ========================================
-    print("\n📦 STEP 1: Export courses to Generic CSV...")
+    print("\n📦 STEP 1: Export data using Generic CSV adapter...")
 
-    # Find and click Export Courses button
-    export_button = page.locator('button:has-text("Export Courses")')
+    # Find Export Adapter dropdown (THE ONLY CONTROL)
+    adapter_select = page.locator("select#export_adapter")
+    adapter_select.wait_for(timeout=5000)
+
+    # Wait for adapters to load (dropdown gets populated dynamically)
+    page.wait_for_timeout(1000)  # Give time for adapter registry to populate
+
+    # Select Generic CSV adapter by VALUE
+    try:
+        adapter_select.select_option(value="generic_csv_v1")
+        print("   ✅ Selected Generic CSV adapter (generic_csv_v1)")
+    except Exception as e:
+        # Debug: show available adapters
+        options = adapter_select.locator("option").all()
+        available = [
+            f"{opt.text_content()} (value: {opt.get_attribute('value')})"
+            for opt in options
+        ]
+        print(f"   ⚠️  Available adapters: {available}")
+        pytest.skip(f"Generic CSV adapter not available. Available: {available}")
+
+    # Find single "Export Data" button
+    export_button = page.locator('button:has-text("Export Data")')
     export_button.wait_for(timeout=5000)
-
-    # Select Generic CSV adapter
-    adapter_select = page.locator(
-        'select[name="export_adapter"], select[id*="adapter"]'
-    )
-    if adapter_select.count() > 0:
-        # Look for Generic CSV option
-        adapter_options = adapter_select.locator("option")
-        generic_csv_found = False
-
-        for i in range(adapter_options.count()):
-            option_text = adapter_options.nth(i).text_content() or ""
-            option_value = adapter_options.nth(i).get_attribute("value") or ""
-
-            print(f"   Option {i}: '{option_text}' (value: {option_value})")
-
-            if "generic" in option_text.lower() and "csv" in option_text.lower():
-                adapter_select.select_option(index=i)
-                generic_csv_found = True
-                print(f"   ✅ Selected Generic CSV adapter")
-                break
-            elif "generic_csv" in option_value.lower():
-                adapter_select.select_option(index=i)
-                generic_csv_found = True
-                print(f"   ✅ Selected Generic CSV adapter by value")
-                break
-
-        if not generic_csv_found:
-            pytest.skip("Generic CSV adapter not available in UI")
-    else:
-        pytest.skip("Export adapter selector not found")
 
     # Set up download expectation BEFORE clicking export
     with page.expect_download(timeout=20000) as download_info:
         export_button.click()
-        print("   🖱️  Clicked Export Courses button")
+        print("   🖱️  Clicked Export Data button")
 
     # Get download object
     download = download_info.value
