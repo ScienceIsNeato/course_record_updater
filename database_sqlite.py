@@ -877,3 +877,51 @@ class SQLiteDatabase(DatabaseInterface):
                 session.execute(query.offset(offset).limit(limit)).scalars().all()
             )
             return [to_dict(invitation) for invitation in invitations]
+
+    # ------------------------------------------------------------------
+    # Delete operations (for testing/cleanup)
+    # ------------------------------------------------------------------
+    def delete_user(self, user_id: str) -> bool:
+        """Delete a user (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            user = session.get(User, user_id)
+            if not user:
+                return False
+            session.delete(user)
+            return True
+
+    def delete_course(self, course_id: str) -> bool:
+        """Delete a course (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            if not course:
+                return False
+            session.delete(course)
+            return True
+
+    def delete_term(self, term_id: str) -> bool:
+        """Delete a term (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            term = session.get(Term, term_id)
+            if not term:
+                return False
+            session.delete(term)
+            return True
+
+    def delete_program_simple(self, program_id: str) -> bool:
+        """Delete a program without reassignment (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            if not program:
+                return False
+            session.delete(program)
+            return True
+
+    def delete_institution(self, institution_id: str) -> bool:
+        """Delete an institution (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            institution = session.get(Institution, institution_id)
+            if not institution:
+                return False
+            session.delete(institution)
+            return True
