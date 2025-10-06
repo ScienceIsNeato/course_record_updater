@@ -146,45 +146,54 @@ async function loadAvailableAdapters() {
         const data = await response.json();
         
         if (data.success && data.adapters) {
-            const adapterSelect = document.getElementById('import_adapter');
-            
-            // Clear loading option
-            adapterSelect.innerHTML = '';
-            
-            if (data.adapters.length === 0) {
-                adapterSelect.innerHTML = '<option value="">No adapters available</option>';
-                adapterSelect.disabled = true;
-                return;
-            }
-            
-            // Add adapters to dropdown
-            data.adapters.forEach((adapter, index) => {
-                const option = document.createElement('option');
-                option.value = adapter.id;
-                option.textContent = adapter.name;
-                option.title = adapter.description; // Tooltip with description
-                
-                // Select the first adapter by default
-                if (index === 0) {
-                    option.selected = true;
-                }
-                
-                adapterSelect.appendChild(option);
-            });
-            
-            adapterSelect.disabled = false;
+            // Populate BOTH import and export adapter dropdowns
+            populateAdapterDropdown('import_adapter', data.adapters);
+            populateAdapterDropdown('export_adapter', data.adapters);
         } else {
             console.error('Failed to load adapters:', data.error);
-            const adapterSelect = document.getElementById('import_adapter');
-            adapterSelect.innerHTML = '<option value="">Failed to load adapters</option>';
-            adapterSelect.disabled = true;
+            populateAdapterDropdown('import_adapter', []);
+            populateAdapterDropdown('export_adapter', []);
         }
     } catch (error) {
         console.error('Error loading adapters:', error);
-        const adapterSelect = document.getElementById('import_adapter');
-        adapterSelect.innerHTML = '<option value="">Error loading adapters</option>';
-        adapterSelect.disabled = true;
+        populateAdapterDropdown('import_adapter', []);
+        populateAdapterDropdown('export_adapter', []);
     }
+}
+
+function populateAdapterDropdown(dropdownId, adapters) {
+    const adapterSelect = document.getElementById(dropdownId);
+    
+    if (!adapterSelect) {
+        // Dropdown doesn't exist (e.g., instructor role without export UI)
+        return;
+    }
+    
+    // Clear loading option
+    adapterSelect.innerHTML = '';
+    
+    if (adapters.length === 0) {
+        adapterSelect.innerHTML = '<option value="">No adapters available</option>';
+        adapterSelect.disabled = true;
+        return;
+    }
+    
+    // Add adapters to dropdown
+    adapters.forEach((adapter, index) => {
+        const option = document.createElement('option');
+        option.value = adapter.id;
+        option.textContent = adapter.name;
+        option.title = adapter.description; // Tooltip with description
+        
+        // Select the first adapter by default
+        if (index === 0) {
+            option.selected = true;
+        }
+        
+        adapterSelect.appendChild(option);
+    });
+    
+    adapterSelect.disabled = false;
 }
 
 // Data Import Functions
