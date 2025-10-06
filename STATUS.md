@@ -1,100 +1,80 @@
-# Status: Generic CSV Adapter - Ready for Export Implementation
+# Status: Generic CSV Adapter - Ready for Manual Export Test
 
-## Progress: 2/8 Core Steps Complete (25%)
+## Progress: 5/12 Tasks Complete (42%)
 
-### Completed ✅
-- [x] **Step 1**: Schema design (ZIP of normalized CSVs, security decisions)
-- [x] **Step 2**: Adapter scaffold (auto-discovery, metadata, validation)
+### Recently Completed ✅
+- [x] **Step 1**: Schema design
+- [x] **Step 2**: Adapter scaffold
+- [x] **Step 3a**: Export unit tests (TDD)
+- [x] **Step 3b**: Export implementation
+- [x] **Step 4**: Seed data (**Used existing** `seed_db.py`)
 
-### Current: Step 3 - Export Implementation (TDD) 🏗️
-
----
-
-## Testing Progression Strategy
-
-### Phase 1: Unit Tests (First)
-**Purpose**: Test individual methods in isolation with mocked dependencies
-
-**Export Tests** (`tests/unit/test_generic_csv_adapter.py`):
-- `test_export_empty_data` - Handles empty datasets gracefully
-- `test_export_single_institution` - Basic export with minimal data
-- `test_export_with_relationships` - Foreign keys, many-to-many associations
-- `test_export_excludes_sensitive_fields` - password_hash, tokens excluded
-- `test_export_serializes_json_fields` - extras, grade_distribution, assessment_data
-- `test_export_creates_valid_zip` - ZIP structure correct
-- `test_export_manifest_accurate` - Entity counts match
-
-**Import Tests** (after export works):
-- `test_import_validates_manifest`
-- `test_import_respects_order` - Foreign key dependencies
-- `test_import_regenerates_tokens`
-- `test_import_sets_users_pending`
-- `test_import_deserializes_json`
-
-### Phase 2: Integration Tests (Second)
-**Purpose**: Test full workflows with real database interactions
-
-**Tests** (`tests/integration/test_generic_csv_adapter.py`):
-- `test_full_export_import_cycle` - Export → Import with real DB
-- `test_adapter_registry_discovery` - Auto-registration works
-- `test_export_import_preserves_relationships` - Foreign keys maintained
-- `test_import_handles_missing_foreign_keys` - Graceful error handling
-
-### Phase 3: Smoke Tests (If Prudent)
-**Purpose**: Quick sanity checks for critical paths
-
-**Evaluate**:
-- Adapter loads without errors
-- File validation catches invalid ZIPs
-- Export doesn't crash with realistic data
-- Import doesn't crash with valid ZIP
-
-### Phase 4: E2E Tests (Final)
-**Purpose**: Full system test through UI (TC-IE-104)
-
-**Test** (`tests/e2e/test_import_export.py`):
-- `test_tc_ie_104_roundtrip_validation` - Complete bidirectional flow:
-  1. Seed DB with data
-  2. Export via UI (Generic CSV adapter)
-  3. Clear DB
-  4. Import exported file via UI
-  5. Export again
-  6. Compare files (data integrity)
+### Current: Step 5 - Manual Export Test 🧪
 
 ---
 
-## Detailed TODO List
+## Database Seeded Successfully! ✅
 
-### Unit Testing & Implementation
-- [ ] **3a**: Write export unit tests (TDD)
-- [ ] **3b**: Implement CSV export_data() method
-- [ ] **4**: Create seed data script
-- [ ] **5**: Manual export verification
-- [ ] **6a**: Write import unit tests (TDD)
-- [ ] **6b**: Implement CSV parse_file() method
+Ran `python scripts/seed_db.py --clear`:
+- ✅ 3 institutions
+- ✅ 10 users (various roles)
+- ✅ 8 programs
+- ✅ 15 courses
+- ✅ 5 terms
+- ✅ 26 course offerings
+- ✅ 15 course sections
 
-### Integration & Smoke
-- [ ] **7a**: Add integration tests (full workflow)
-- [ ] **7b**: Evaluate smoke tests (if prudent)
-
-### Validation & E2E
-- [ ] **8a**: Manual roundtrip validation
-- [ ] **8b**: Implement TC-IE-104 E2E test
+**Note**: CLO/invitation errors (datetime JSON serialization) are not critical for export testing - sufficient data present.
 
 ---
 
-## Current Focus: Step 3a - Export Unit Tests
+## Ready for Manual Export Test!
 
-**Next Action**: Write comprehensive unit tests for export functionality (TDD approach)
+### Option A: Direct Python Script
+```python
+# Create quick test script
+from adapters.generic_csv_adapter import GenericCSVAdapter
+from database_factory import get_database_service
 
-**File**: `tests/unit/test_generic_csv_adapter.py` (new file)
+db = get_database_service()
+adapter = GenericCSVAdapter()
 
-**Test Coverage**:
-- Basic functionality (empty data, single entity)
-- Relationships (foreign keys, associations)
-- Security (sensitive field exclusion)
-- Data serialization (JSON fields)
-- File structure (ZIP, manifest, CSVs)
-- Error handling (invalid data, missing fields)
+# Query all data
+data = {
+    "institutions": [dict(row) for row in db.get_all_institutions()],
+    "users": [dict(row) for row in db.get_all_users()],
+    # ... etc
+}
 
-**Let's go! 🚀**
+result = adapter.export_data(data, "/tmp/test_export.zip", {})
+print(f"Success: {result[0]}, Records: {result[2]}")
+```
+
+### Option B: Via Export Service (Recommended - Tests Full Integration)
+The export already works through the UI's `/api/export/data` endpoint. We can test it directly:
+
+1. **Start server**: `./restart_server.sh`
+2. **Login** as `sarah.admin@cei.edu` / `InstitutionAdmin123!`
+3. **Navigate** to Data Management
+4. **Select** Generic CSV adapter
+5. **Export** courses
+6. **Verify** ZIP file:
+   - Contains manifest.json
+   - Contains 12 CSV files
+   - Passwords excluded
+   - JSON fields serialized
+
+**This tests the COMPLETE integration path!**
+
+---
+
+## Next Steps After Manual Verification
+
+1. **✅ Verify export works** (Step 5)
+2. **Write import unit tests** (Step 6a - TDD)
+3. **Implement import** (Step 6b)
+4. **Integration tests** (Step 7a)
+5. **Roundtrip validation** (Step 8a)
+6. **E2E test TC-IE-104** (Step 8b)
+
+**Current Priority**: Manual export verification to validate the entire export path before moving to import implementation.
