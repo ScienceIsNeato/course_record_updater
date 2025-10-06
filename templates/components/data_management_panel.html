@@ -87,81 +87,28 @@
             <div class="col-lg-6 ps-lg-3">
                 <h6><i class="fas fa-download text-primary"></i> Export Data</h6>
                 
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Adapter-Driven Export:</strong> Select an adapter - it controls everything (data selection, format, file type).
+                </div>
+                
                 <form id="dataExportForm">
-                    <!-- Export Data Type -->
+                    <!-- Export Adapter - THE ONLY CONTROL (Adapter is King!) -->
                     <div class="mb-3">
-                        <label for="export_data_type" class="form-label">Data Type:</label>
-                        <select class="form-select" id="export_data_type" name="export_data_type" required>
-                            {% if user.role == 'site_admin' %}
-                            <option value="institutions">Institutions</option>
-                            <option value="programs">Programs</option>
-                            <option value="courses">Courses</option>
-                            <option value="users">Users</option>
-                            <option value="all_data">All Data</option>
-                            {% elif user.role == 'institution_admin' %}
-                            <option value="programs">Programs</option>
-                            <option value="courses">Courses</option>
-                            <option value="faculty">Faculty</option>
-                            <option value="students">Students</option>
-                            {% elif user.role == 'program_admin' %}
-                            <option value="courses" selected>Courses</option>
-                            <option value="sections">Sections</option>
-                            <option value="students">Students</option>
-                            <option value="assessments">Assessments</option>
-                            {% else %}
-                            <option value="my_courses">My Courses</option>
-                            <option value="my_assessments">My Assessments</option>
-                            {% endif %}
-                        </select>
-                    </div>
-
-                    <!-- Export Format -->
-                    <div class="mb-3">
-                        <label for="export_format" class="form-label">File Format:</label>
-                        <select class="form-select" id="export_format" name="export_format" required>
-                            <option value="excel" selected>Excel (.xlsx)</option>
-                            <option value="csv">CSV (.csv)</option>
-                            <option value="json">JSON (.json)</option>
-                        </select>
-                    </div>
-
-                    <!-- Export Adapter -->
-                    <div class="mb-3">
-                        <label for="export_adapter" class="form-label">Output Format:</label>
+                        <label for="export_adapter" class="form-label">Export Adapter:</label>
                         <select class="form-select" id="export_adapter" name="export_adapter" required>
-                            <option value="cei_excel_format_v1" selected>CEI Excel Format</option>
-                            <option value="generic_excel_adapter">Generic Excel Format</option>
-                            <option value="standard_format">Standard Format</option>
+                            <option value="">Loading available adapters...</option>
                         </select>
+                        <small class="form-text text-muted">The adapter decides what data is exported and in what format.</small>
                     </div>
 
-                    <!-- Export Options -->
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="include_metadata" name="include_metadata" checked>
-                            <label class="form-check-label" for="include_metadata">
-                                Include metadata and timestamps
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="anonymize_data" name="anonymize_data">
-                            <label class="form-check-label" for="anonymize_data">
-                                Anonymize personal information
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Export Actions -->
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-primary" onclick="executeExportWithDataType('courses')">
-                            <i class="fas fa-file-download me-1"></i>Export Courses
-                        </button>
-                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="executeDataExport()">
-                            <i class="fas fa-download me-1"></i>Export Other Data
+                    <!-- Single Export Button -->
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="executeDataExport()">
+                            <i class="fas fa-file-download me-2"></i>Export Data
                         </button>
                     </div>
                 </form>
-
                 <!-- Export Status -->
                 <div id="exportStatus" class="mt-3" style="display: none;">
                     <div class="alert alert-info">
@@ -299,25 +246,23 @@ function executeImportRequest(formData) {
     });
 }
 
-// Data Export Functions
-function executeExportWithDataType(dataType) {
-    // Generic export function for any data type (courses, users, sections, etc.)
-    document.getElementById('export_data_type').value = dataType;
-    executeDataExport();
-}
-
+// Data Export Function (Adapter-Driven)
 function executeDataExport() {
-    const form = document.getElementById('dataExportForm');
-    const formData = new FormData(form);
+    const exportAdapter = document.getElementById('export_adapter').value;
+    
+    if (!exportAdapter) {
+        alert('Please select an export adapter');
+        return;
+    }
     
     // Show export status
     document.getElementById('exportStatus').style.display = 'block';
     
-    // Build export URL
+    // Build export URL - ONLY adapter matters!
     const params = new URLSearchParams();
-    for (let [key, value] of formData.entries()) {
-        params.append(key, value);
-    }
+    params.append('export_adapter', exportAdapter);
+    params.append('export_data_type', 'courses');  // Default for now
+    params.append('include_metadata', 'true');
     
     const exportUrl = `/api/export/data?${params.toString()}`;
     
