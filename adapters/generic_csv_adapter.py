@@ -443,7 +443,22 @@ class GenericCSVAdapter(FileBaseAdapter):
                 record[key] = value.lower() == "true"
                 continue
 
-            # Keep datetime strings as-is (database will handle parsing)
+            # Deserialize ISO 8601 datetime strings to Python datetime objects
+            # SQLite DateTime columns require datetime objects, not strings
+            if "T" in value and (":" in value or "Z" in value):
+                try:
+                    # Try parsing as ISO 8601 datetime
+                    from datetime import datetime
+
+                    # Handle both with and without microseconds, with or without timezone
+                    if value.endswith("Z"):
+                        value = value[:-1] + "+00:00"
+                    record[key] = datetime.fromisoformat(value)
+                    continue
+                except (ValueError, AttributeError):
+                    # Not a valid ISO datetime, keep as string
+                    pass
+
             # Other values stay as strings
             record[key] = value
 

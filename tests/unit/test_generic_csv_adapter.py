@@ -548,7 +548,7 @@ class TestGenericCSVAdapterImport:
         assert section["grade_distribution"]["A"] == 10
 
     def test_parse_file_deserializes_datetime_fields(self, tmp_path):
-        """Import should deserialize ISO datetime strings."""
+        """Import should deserialize ISO datetime strings to Python datetime objects."""
         adapter = GenericCSVAdapter()
 
         # Create ZIP with datetime fields
@@ -570,9 +570,14 @@ class TestGenericCSVAdapterImport:
 
         inst = result["institutions"][0]
 
-        # Datetime should be parsed (as string is fine for database)
+        # Datetime should be parsed to Python datetime object (required by SQLite)
         assert "created_at" in inst
-        assert "2024-10-05" in inst["created_at"]
+        from datetime import datetime
+
+        assert isinstance(inst["created_at"], datetime)
+        assert inst["created_at"].year == 2024
+        assert inst["created_at"].month == 10
+        assert inst["created_at"].day == 5
 
     def test_parse_file_deserializes_boolean_fields(self, tmp_path):
         """Import should deserialize boolean strings to actual booleans."""

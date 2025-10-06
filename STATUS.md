@@ -1,114 +1,62 @@
-# Status: Generic CSV Adapter - Export Complete! 🎉
+# Status: Generic CSV Adapter - Manual Roundtrip Validation 🔄
 
-## Progress: 5/12 Tasks Complete (42%)
+## Progress: 9/12 Tasks Complete (75%)
 
 ### Completed ✅
-- [x] **Step 1**: Schema design
-- [x] **Step 2**: Adapter scaffold
+- [x] **Step 1**: Schema design (ZIP of CSVs)
+- [x] **Step 2**: Adapter scaffold + registration
 - [x] **Step 3a**: Export unit tests (13/13 passing)
-- [x] **Step 3b**: Export implementation (150+ lines)
-- [x] **Step 4**: Database seeding
+- [x] **Step 3b**: Export implementation (500+ lines)
+- [x] **Step 4**: Database seeding (seed_db.py)
 - [x] **Step 5**: Manual export verification
+- [x] **Step 6a**: Import unit tests (12/12 passing, incl. comprehensive roundtrip)
+- [x] **Step 6b**: Import implementation (parse_file + helpers)
+- [x] **Step 7**: Integration test (export + parse with real DB)
 
-### Next: Step 6 - Import Implementation (TDD)
+### In Progress 🔄
+- [ ] **Step 8a**: Manual roundtrip validation (CURRENT)
 
----
-
-## 🎉 Export Implementation Complete & Verified!
-
-### Manual Test Results:
-```bash
-✅ Export successful: 12 records
-✅ ZIP created with 12 CSV files
-✅ Manifest accurate
-✅ Data format correct
-
-Details:
-- 4 users exported
-- 6 courses exported
-- 2 terms exported
-- All CSVs have proper headers
-- ISO 8601 datetime format
-- Lowercase booleans
-- Empty strings for NULL
-```
-
-### ZIP Structure Verified:
-```
-Archive:  generic_csv_test_export.zip
-  - course_offerings.csv
-  - course_outcomes.csv
-  - course_programs.csv
-  - course_sections.csv
-  - courses.csv              ✅ 6 records
-  - institutions.csv
-  - manifest.json            ✅ Accurate counts
-  - programs.csv
-  - terms.csv                ✅ 2 records
-  - user_invitations.csv
-  - user_programs.csv
-  - users.csv                ✅ 4 records
-```
+### Remaining ⏳
+- [ ] **Step 8b**: E2E test TC-IE-104
 
 ---
 
-## Summary: Export Implementation Success
+## Current Task: Manual Roundtrip Validation
 
-**What We Built:**
-1. **Complete CSV format spec** (420 lines, security-first)
-2. **Functional adapter** (500+ lines with helpers)
-3. **Comprehensive unit tests** (13/13 passing, 100% coverage)
-4. **Manual verification** (real data export successful)
+**Goal**: Verify complete bidirectionality with real database operations.
 
-**Key Features Working:**
-- ✅ ZIP of normalized CSVs
-- ✅ JSON field serialization
-- ✅ DateTime ISO 8601 format
-- ✅ Sensitive field exclusion
-- ✅ Manifest generation
-- ✅ Entity dependency ordering
+**Workflow**:
+1. Seed database with known data (seed_db.py)
+2. Export to CSV (export1.zip)
+3. Clean database
+4. Import from export1.zip
+5. Export again (export2.zip)
+6. Compare export1.zip vs export2.zip
 
-**Quality Metrics:**
-- Unit tests: 13/13 passing
-- Quality gates: 12/12 passing
-- Manual test: PASSED
-- Real data: 12 records exported
+**Success Criteria**: Files should be identical (or semantically equivalent with expected differences like timestamps).
 
 ---
 
-## Next: Step 6 - Import Implementation
+## Test Coverage Summary
 
-**Approach**: Test-Driven Development (same as export)
+### Unit Tests: 25/25 Passing ✅
+- **Export**: 13 tests (validation, serialization, manifest, ordering)
+- **Import**: 12 tests (validation, deserialization, type coercion, edge cases)
 
-### Step 6a: Import Unit Tests (Next Task)
-Write comprehensive tests first:
-- `test_import_valid_zip`
-- `test_import_validates_manifest`
-- `test_import_respects_order` (dependencies)
-- `test_import_regenerates_tokens`
-- `test_import_sets_users_pending`
-- `test_import_deserializes_json`
-- `test_import_handles_missing_fks`
-- `test_import_handles_malformed_csv`
+### Integration Tests: 1/1 Passing ✅
+- **Export + Parse**: Real DB → ZIP → Parse → Verify integrity
 
-### Step 6b: Implement parse_file()
-Then implement the method to make tests pass:
-- Extract ZIP
-- Read manifest
-- Parse CSVs in import_order
-- Deserialize data types
-- Create database records
-- Handle errors gracefully
+### Manual Validation: In Progress 🔄
+- Roundtrip with database cleanup and re-import
 
 ---
 
-## Remaining Tasks
+## Architecture Complete
 
-- [ ] **6a**: Import unit tests (TDD)
-- [ ] **6b**: Import implementation
-- [ ] **7a**: Integration tests (full roundtrip)
-- [ ] **7b**: Smoke tests (if prudent)
-- [ ] **8a**: Manual roundtrip validation
-- [ ] **8b**: E2E test TC-IE-104
+**Components Built**:
+1. ✅ CSV_FORMAT_SPEC.md (comprehensive documentation)
+2. ✅ generic_csv_adapter.py (export + import)
+3. ✅ Database delete methods (5 methods for testing)
+4. ✅ Integration test (export/parse workflow)
 
-**Pace**: Excellent! Export fully complete and verified. Ready for import.
+**Next**: Complete manual roundtrip → E2E test → DONE!
