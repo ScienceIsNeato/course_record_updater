@@ -190,6 +190,7 @@ class GenericCSVAdapter(FileBaseAdapter):
             "description": "Institution-agnostic normalized CSV format. ZIP file containing separate CSV files for each entity type. Security-first: excludes passwords and tokens.",
             "supported_formats": [".zip"],
             "institution_id": None,  # Generic - works for all institutions
+            "public": True,  # Available to ALL users regardless of institution
             "data_types": [
                 "institutions",
                 "programs",

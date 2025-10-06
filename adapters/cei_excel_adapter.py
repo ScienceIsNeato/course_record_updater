@@ -684,6 +684,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             "description": "Imports course, faculty, and section data from CEI's Excel exports. Supports original format (Faculty Name, effterm_c), test format (email, Term, students), and hybrid format (email, Term, Enrolled Students).",
             "supported_formats": [XLSX_EXTENSION, XLS_EXTENSION],
             "institution_short_name": "CEI",  # Identify by stable short name instead of GUID
+            "public": False,  # Institution-specific adapter - only for CEI
             "data_types": ["courses", "faculty", "terms", "sections"],
             "version": "1.2.0",
             "created_by": "System Developer",
