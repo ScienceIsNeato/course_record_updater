@@ -32,6 +32,9 @@ logger = logging.getLogger(__name__)
 # Format version for compatibility checking
 FORMAT_VERSION = "1.0"
 
+# Manifest filename constant
+MANIFEST_FILENAME = "manifest.json"
+
 # Entity export order (respects foreign key dependencies)
 EXPORT_ORDER = [
     "institutions",
@@ -235,12 +238,12 @@ class GenericCSVAdapter(FileBaseAdapter):
                 with zipfile.ZipFile(file_path, "r") as zf:
                     file_list = zf.namelist()
 
-                    # Check for manifest.json
-                    if "manifest.json" not in file_list:
-                        return False, "Missing manifest.json in ZIP archive"
+                    # Check for manifest
+                    if MANIFEST_FILENAME not in file_list:
+                        return False, f"Missing {MANIFEST_FILENAME} in ZIP archive"
 
                     # Read and validate manifest
-                    manifest_data = zf.read("manifest.json")
+                    manifest_data = zf.read(MANIFEST_FILENAME)
                     manifest = json.loads(manifest_data)
 
                     # Check format version
@@ -285,7 +288,7 @@ class GenericCSVAdapter(FileBaseAdapter):
         try:
             with zipfile.ZipFile(file_path, "r") as zf:
                 # Read manifest to get entity counts
-                manifest_data = zf.read("manifest.json")
+                manifest_data = zf.read(MANIFEST_FILENAME)
                 manifest = json.loads(manifest_data)
 
                 entity_counts = manifest.get("entity_counts", {})
@@ -321,11 +324,11 @@ class GenericCSVAdapter(FileBaseAdapter):
                     file_list = zf.namelist()
 
                     # Check for manifest
-                    if "manifest.json" not in file_list:
-                        raise ValueError("Missing manifest.json in ZIP archive")
+                    if MANIFEST_FILENAME not in file_list:
+                        raise ValueError(f"Missing {MANIFEST_FILENAME} in ZIP archive")
 
                     # Read and validate manifest
-                    manifest_data = zf.read("manifest.json")
+                    manifest_data = zf.read(MANIFEST_FILENAME)
                     manifest = json.loads(manifest_data)
 
                     # Validate format version
@@ -392,7 +395,7 @@ class GenericCSVAdapter(FileBaseAdapter):
 
             for row in csv_reader:
                 # Deserialize and clean record
-                record = self._deserialize_record(row, entity_type)
+                record = self._deserialize_record(row)
                 records.append(record)
 
         except Exception as e:
@@ -401,15 +404,12 @@ class GenericCSVAdapter(FileBaseAdapter):
 
         return records
 
-    def _deserialize_record(
-        self, row: Dict[str, str], entity_type: str
-    ) -> Dict[str, Any]:
+    def _deserialize_record(self, row: Dict[str, str]) -> Dict[str, Any]:
         """
         Deserialize CSV row values to appropriate Python types.
 
         Args:
             row: CSV row as dictionary (all values are strings)
-            entity_type: Type of entity for type hints
 
         Returns:
             Record with properly typed values
@@ -504,7 +504,7 @@ class GenericCSVAdapter(FileBaseAdapter):
 
                 # Create manifest
                 manifest = self._create_manifest(entity_counts)
-                manifest_file = temp_path / "manifest.json"
+                manifest_file = temp_path / MANIFEST_FILENAME
                 manifest_file.write_text(json.dumps(manifest, indent=2))
 
                 # Create ZIP archive
@@ -549,15 +549,13 @@ class GenericCSVAdapter(FileBaseAdapter):
 
             for record in records:
                 # Filter and serialize record
-                filtered_record = self._filter_and_serialize_record(
-                    record, columns, entity_type
-                )
+                filtered_record = self._filter_and_serialize_record(record, columns)
                 writer.writerow(filtered_record)
 
         return len(records)
 
     def _filter_and_serialize_record(
-        self, record: Dict[str, Any], columns: List[str], entity_type: str
+        self, record: Dict[str, Any], columns: List[str]
     ) -> Dict[str, Any]:
         """
         Filter record to only include specified columns and serialize complex types.
@@ -565,7 +563,6 @@ class GenericCSVAdapter(FileBaseAdapter):
         Args:
             record: Original record dictionary
             columns: List of allowed column names
-            entity_type: Type of entity (for entity-specific rules)
 
         Returns:
             Filtered and serialized record

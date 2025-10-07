@@ -122,12 +122,8 @@ def authenticated_page(page: Page) -> Page:
     # 3. Timeout (something went wrong)
     try:
         # Wait for URL to change to dashboard (JavaScript redirect)
-        # Increased timeout to 10s for headless mode and slower environments
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
-
-        # Additional wait for network to settle after redirect
-        page.wait_for_load_state("networkidle", timeout=5000)
-
+        # 2s timeout is appropriate now that bcrypt is fast in test environments
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
         return page
     except Exception:
         # Check if still on login page with error message

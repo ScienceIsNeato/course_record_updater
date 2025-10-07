@@ -12,6 +12,7 @@ Features:
 - Rate limiting for password operations
 """
 
+import os
 import re
 import secrets
 import time
@@ -27,7 +28,12 @@ from logging_config import get_logger
 logger = get_logger(__name__)
 
 # Password configuration
-BCRYPT_COST_FACTOR = 12
+# Environment-aware bcrypt cost factor:
+# - Production/Development: 12 (2^12 = 4096 iterations, secure but slower ~2-3s per hash)
+# - Test/E2E: 4 (2^4 = 16 iterations, faster for test execution ~10-50ms per hash)
+# This prevents slow E2E tests while maintaining production security
+_ENV = os.getenv("FLASK_ENV", "development")
+BCRYPT_COST_FACTOR = 4 if _ENV in ["test", "e2e"] else 12
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
 RESET_TOKEN_EXPIRY_HOURS = 24
