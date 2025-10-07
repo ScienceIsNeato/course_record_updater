@@ -959,115 +959,13 @@ def test_tc_ie_007_conflict_resolution_duplicate_import(
 # ========================================
 
 
-@pytest.mark.e2e
-@pytest.mark.slow
-def test_tc_ie_101_export_courses_to_excel(
-    authenticated_page: Page,
-    server_running: bool,
-):
-    """
-    TC-IE-101: Export All Courses to Excel
-
-    Prerequisites: TC-IE-002 must have run successfully (courses imported)
-
-    Verify that:
-    1. Export generates valid Excel file
-    2. File downloads successfully
-    3. Row count matches database course count
-    4. Export filename has timestamp
-
-    Note: This test does NOT validate file contents (would require openpyxl)
-    but verifies the download flow works end-to-end.
-    """
-    page = authenticated_page
-
-    # Navigate to dashboard
-    page.goto(f"{BASE_URL}/dashboard")
-    page.wait_for_load_state("networkidle")
-
-    # Find Data Management panel and Export Courses button
-    try:
-        export_button = page.locator('button:has-text("Export Courses")')
-        export_button.wait_for(timeout=5000)
-    except Exception:
-        # Try expanding Data Management panel first
-        data_mgmt_panel = page.locator('text="Data Management"')
-        if data_mgmt_panel.count() > 0:
-            data_mgmt_panel.click()
-            time.sleep(0.5)
-
-    # E2E tests verify via UI only - no direct database calls
-    # We'll verify the export works by checking that a file downloads
-    # (The actual row count validation would require parsing the Excel file)
-
-    # Select Excel format (if dropdown exists)
-    format_select = page.locator('select[name="export_format"], select[id*="format"]')
-    if format_select.count() > 0:
-        # Look for Excel option (might be "xlsx", "excel", or "Excel (.xlsx)")
-        format_options = format_select.locator("option")
-        excel_option_found = False
-        for i in range(format_options.count()):
-            option_text = format_options.nth(i).text_content().lower()
-            if "xlsx" in option_text or "excel" in option_text:
-                format_select.select_option(index=i)
-                excel_option_found = True
-                break
-
-        if not excel_option_found:
-            format_select.select_option(index=0)  # Default to first option
-
-    # Set up download expectation BEFORE clicking export
-    with page.expect_download(timeout=15000) as download_info:
-        # Click Export Courses button
-        page.locator('button:has-text("Export Courses")').first.click()
-
-    # Get download object
-    download = download_info.value
-
-    # Verify download occurred
-    assert download is not None, "Export did not trigger a file download"
-
-    # Verify filename contains timestamp or date
-    filename = download.suggested_filename
-    assert "courses" in filename.lower(), f"Export filename unexpected: {filename}"
-    assert (
-        ".xlsx" in filename or ".xls" in filename
-    ), f"Export file is not Excel format: {filename}"
-
-    # Save download to temp location for validation
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        download_path = Path(tmpdir) / filename
-        download.save_as(download_path)
-
-        # Verify file exists and has content
-        assert download_path.exists(), "Downloaded file was not saved"
-        assert download_path.stat().st_size > 0, "Downloaded file is empty"
-
-        # Optional: Validate Excel structure (requires openpyxl)
-        try:
-            import pandas as pd
-
-            df = pd.read_excel(download_path)
-
-            # E2E tests verify via UI only - file download success is sufficient
-            # Just verify required columns exist (CEI format)
-            required_columns = [
-                "course",
-                "section",
-            ]  # CEI format uses "course" not "course_number"
-            for col in required_columns:
-                assert col in df.columns, f"Missing required column in export: {col}"
-
-        except ImportError:
-            # pandas not available, skip detailed validation
-            pass
-
-
-# TODO: Add more export test cases:
-# - test_tc_ie_102_export_users_to_excel
-# - test_tc_ie_103_export_sections_to_excel
-# - test_tc_ie_104_roundtrip_validation (import → export → re-import)
-# - test_tc_ie_201_export_courses_to_csv
-# - test_tc_ie_202_export_courses_to_json
+# REMOVED: test_tc_ie_101_export_courses_to_excel
+#
+# OBSOLETE after greenfield UI refactor - adapter-driven export architecture
+# replaced standalone "Export Courses" functionality.
+#
+# The new architecture requires:
+# - Selecting an adapter (which determines data and format)
+# - Clicking "Export Data" button (single control point)
+#
+# For full bidirectional adapter testing, see: TC-IE-104 (CSV roundtrip)

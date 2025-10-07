@@ -47,8 +47,27 @@ curl http://localhost:3001/api/health
 ```
 
 ### Test Data Files
-- **Primary**: `research/CEI/2024FA_test_data.xlsx` (realistic CEI data)
-- **Backup**: Create minimal test file with known values for surgical testing
+
+**IMPORTANT**: Create controlled test data using Generic CSV adapter for test isolation.
+
+**Available Adapters**:
+1. **Generic CSV Adapter** (`generic_csv_v1`):
+   - Bidirectional (import + export)
+   - ZIP file containing normalized CSVs
+   - Institution-agnostic
+   - **Use this for UAT testing**
+
+2. **CEI Excel Adapter** (`cei_excel_format_v1`):
+   - Import-only (no export)
+   - Customer-specific format
+   - `.xlsx` files only
+   - Not covered in this UAT (customer-specific)
+
+**Test Data Strategy**:
+- Create minimal ZIP of CSVs with known, predictable values
+- Import via Generic CSV adapter
+- Test against this controlled dataset
+- No dependency on external customer files
 
 ### Test Accounts
 Login as **Institution Admin** for these tests:
@@ -58,25 +77,25 @@ Login as **Institution Admin** for these tests:
 
 ---
 
-## 🧪 SCENARIO 1: Excel Import - End-to-End Data Flow
+## 🧪 SCENARIO 1: Generic CSV Import - End-to-End Data Flow
 
 ### Test Objective
-Validate that imported Excel data correctly populates ALL entity types and is visible in appropriate UI views.
+Validate that imported Generic CSV data (ZIP format) correctly populates ALL entity types and is visible in appropriate UI views.
 
 ---
 
 ### **TC-IE-001: Dry Run Import Validation**
 **Purpose**: Confirm validation catches issues WITHOUT modifying database
 
-**Test File**: `research/CEI/2024FA_test_data.xlsx`
+**Test File**: Create controlled `test_import.zip` with known CSV data
 
 **Steps**:
 1. Login as `sarah.admin@cei.edu`
 2. Navigate to dashboard
 3. Locate "Data Management" panel (should be Panel 4 or 5)
-4. Click **"Excel Import"** button (NOT quick import - use the dedicated modal)
-5. Upload `2024FA_test_data.xlsx`
-6. Select **"CEI Excel Format"** adapter
+4. Click **"Import"** button (opens file picker)
+5. Upload `test_import.zip` (ZIP containing normalized CSVs)
+6. System auto-detects **"Generic CSV Format (ZIP)"** adapter
 7. Enable **"Dry Run"** checkbox
 8. Click **"Validate"**
 9. Wait for validation results modal
@@ -124,8 +143,8 @@ print(f'Sections: {len(get_all_sections() or [])}')
 
 **Steps**:
 1. Same setup as TC-IE-001
-2. Upload same file: `2024FA_test_data.xlsx`
-3. Adapter: **"CEI Excel Format"**
+2. Upload same file: `test_import.zip`
+3. Adapter: Auto-detected **"Generic CSV Format (ZIP)"**
 4. **DISABLE "Dry Run"** checkbox
 5. Conflict Strategy: **"Use theirs (overwrite)"**
 6. Click **"Import"**
@@ -447,39 +466,42 @@ print(f'Sections: {len(get_all_sections() or [])} (should be unchanged)')
 
 ---
 
-## 📤 SCENARIO 2: Excel Export - Data Integrity Validation
+## 📤 SCENARIO 2: Generic CSV Export - Data Integrity Validation
 
 ### Test Objective
-Validate that exported Excel files contain complete, accurate data that matches the database.
+Validate that exported Generic CSV files (ZIP format) contain complete, accurate data that matches the database.
 
 ---
 
-### **TC-IE-101: Export All Courses to Excel**
-**Purpose**: Verify course export generates valid Excel file with all course data
+### **TC-IE-101: Export All Data via Generic CSV**
+**Purpose**: Verify Generic CSV export generates valid ZIP with complete normalized data
 
-**Prerequisites**: TC-IE-002 passed (courses imported)
+**Prerequisites**: TC-IE-002 passed (data imported)
 
 **Steps**:
 1. From dashboard, navigate to "Data Management" panel
-2. Locate **"Export Courses"** button
-3. Select format: **"Excel (.xlsx)"**
-4. Click **"Export"**
-5. Wait for file download
-6. Open downloaded file in Excel/LibreOffice
+2. Locate **"Export"** button
+3. Click **"Export"** (no format selection - Generic CSV always exports as ZIP)
+4. Wait for file download
+5. Open downloaded ZIP file
 
 **Expected Results - Export File**:
-- ✅ **File Downloads**: `.xlsx` file downloads within 10 seconds
-- ✅ **Filename Format**: `courses_export_YYYYMMDD_HHMMSS.xlsx` (timestamped)
-- ✅ **File Opens Successfully**: No corruption errors
-- ✅ **Headers Present**: First row contains column names:
-  - `course_number`
-  - `course_title`
-  - `department`
-  - `credits`
-  - `institution_id`
-  - (other relevant fields)
-- ✅ **Row Count Matches**: Number of rows matches courses in database
-- ✅ **Data Integrity**: Spot-check 5 random courses against database
+- ✅ **File Downloads**: `.zip` file downloads within 10 seconds
+- ✅ **Filename Format**: `export_YYYYMMDD_HHMMSS.zip` (timestamped)
+- ✅ **ZIP Opens Successfully**: Valid ZIP structure, no corruption
+- ✅ **CSV Files Present**: ZIP contains:
+  - `manifest.json` (metadata)
+  - `institutions.csv`
+  - `programs.csv`
+  - `courses.csv`
+  - `users.csv`
+  - `terms.csv`
+  - `course_offerings.csv`
+  - `course_sections.csv`
+  - `course_outcomes.csv`
+- ✅ **Headers Present**: Each CSV has proper column headers
+- ✅ **Row Counts Match**: CSV row counts match database entity counts
+- ✅ **Data Integrity**: Spot-check 5 random records against database
 
 **Specific Validations**:
 ```bash
@@ -512,25 +534,23 @@ print(f'Sample: {courses[0].get(\"course_number\")} - {courses[0].get(\"course_t
 
 ---
 
-### **TC-IE-102: Export All Users to Excel**
-**Purpose**: Verify user export includes instructors with correct metadata
+### **TC-IE-102: Export Data Security Validation**
+**Purpose**: Verify Generic CSV export excludes sensitive data
 
-**Prerequisites**: TC-IE-002 passed (instructors imported)
+**Prerequisites**: TC-IE-002 passed (data imported)
 
 **Steps**:
-1. Navigate to "Data Management" panel
-2. Click **"Export Users"** button
-3. Format: **"Excel (.xlsx)"**
-4. Click **"Export"**
-5. Download and open file
+1. Export via Generic CSV (from TC-IE-101)
+2. Extract ZIP and open `users.csv`
+3. Inspect CSV headers and data
 
-**Expected Results - Export File**:
-- ✅ **File Downloads**: `.xlsx` file with timestamp
-- ✅ **Headers**: `email`, `first_name`, `last_name`, `role`, `department`, `institution_id`, `account_status`
-- ✅ **Row Count**: Matches user count in database (~15-20 instructors)
-- ✅ **Role Filter** (if applicable): Export includes only users from current institution
+**Expected Results - Security**:
+- ✅ **No Password Hashes**: `password_hash` column NOT present in users.csv
+- ✅ **No Active Tokens**: `password_reset_token`, `email_verification_token` NOT present
+- ✅ **User Data Present**: `email`, `first_name`, `last_name`, `role` columns present
+- ✅ **Account Status**: `account_status` indicates "imported" or "pending"
 - ✅ **Email Validity**: All emails are valid format
-- ✅ **No Password Hashes**: Password fields excluded from export (security)
+- ✅ **Security Note**: manifest.json explains security exclusions
 
 **Specific Validations**:
 - [ ] Instructor emails match import data
@@ -547,28 +567,24 @@ print(f'Sample: {courses[0].get(\"course_number\")} - {courses[0].get(\"course_t
 
 ---
 
-### **TC-IE-103: Export Sections to Excel**
-**Purpose**: Verify section export maintains course/instructor/term relationships
+### **TC-IE-103: Export Referential Integrity Validation**
+**Purpose**: Verify Generic CSV export maintains proper foreign key relationships
 
-**Prerequisites**: TC-IE-002 passed (sections imported)
+**Prerequisites**: TC-IE-002 passed (data imported)
 
 **Steps**:
-1. Navigate to "Data Management" panel
-2. Click **"Export Sections"** button
-3. Format: **"Excel (.xlsx)"**
-4. Click **"Export"**
-5. Download and open file
+1. Export via Generic CSV (from TC-IE-101)
+2. Extract ZIP and parse multiple CSVs
+3. Validate foreign key relationships across CSVs
 
-**Expected Results - Export File**:
-- ✅ **File Downloads**: `.xlsx` file
-- ✅ **Headers**: `course_number`, `section_number`, `term_name`, `instructor_email`, `enrollment`, `status`, `institution_id`
-- ✅ **Row Count**: Matches section count (~60-80 sections)
-- ✅ **Foreign Key Integrity**:
-  - Every `course_number` exists in courses export
-  - Every `instructor_email` exists in users export
-  - Every `term_name` exists in terms list
-- ✅ **Section Numbers**: Human-readable (001, 002, NOT UUIDs)
-- ✅ **Enrollment**: Integer values (0-100)
+**Expected Results - Referential Integrity**:
+- ✅ **Programs → Institutions**: All `institution_id` in programs.csv exist in institutions.csv
+- ✅ **Courses → Institutions**: All `institution_id` in courses.csv exist in institutions.csv
+- ✅ **Sections → Courses**: All `course_id` in course_sections.csv exist in courses.csv
+- ✅ **Sections → Instructors**: All `instructor_id` in course_sections.csv exist in users.csv
+- ✅ **Sections → Terms**: All `term_id` in course_sections.csv exist in terms.csv
+- ✅ **Outcomes → Courses**: All `course_id` in course_outcomes.csv exist in courses.csv
+- ✅ **No Orphans**: No records reference non-existent foreign keys
 
 **Specific Validations**:
 ```bash
@@ -589,27 +605,29 @@ print(f'Sample: {courses[0].get(\"course_number\")} - {courses[0].get(\"course_t
 
 ---
 
-### **TC-IE-104: Roundtrip Validation (Import → Export → Import)**
-**Purpose**: Validate exported data can be re-imported without loss
+### **TC-IE-104: Roundtrip Validation (Export → Import → Compare)**
+**Purpose**: Validate Generic CSV exported data can be re-imported without loss (bidirectional adapter test)
 
-**Prerequisites**: TC-IE-101 passed (courses exported)
+**Prerequisites**: TC-IE-101 passed (data exported)
 
 **Steps**:
-1. Take exported courses file from TC-IE-101
+1. Take exported ZIP from TC-IE-101
 2. **Backup database**: `cp course_records.db course_records_roundtrip.db`
-3. Navigate to "Data Management" panel
-4. Upload the **exported courses file**
-5. Adapter: Auto-detect or manual select
-6. Conflict Strategy: "Use theirs"
-7. Click **"Import"**
-8. Compare database state before/after
+3. Clear database: `python scripts/seed_db.py --clear`
+4. Navigate to "Data Management" panel
+5. Upload the **exported ZIP file**
+6. Adapter: Auto-detected "Generic CSV Format (ZIP)"
+7. Conflict Strategy: "Use theirs" (no conflicts expected on empty DB)
+8. Click **"Import"**
+9. Compare database state to original
 
 **Expected Results - Roundtrip Success**:
-- ✅ **Import Succeeds**: No errors parsing exported file
-- ✅ **Data Integrity**: All courses present after re-import
-- ✅ **No Data Loss**: Course details unchanged (titles, credits, etc.)
-- ✅ **No Duplicates**: Conflict resolution prevented doubles
-- ✅ **Timestamp Preserved**: Created dates unchanged (if exported)
+- ✅ **Import Succeeds**: No errors parsing exported ZIP
+- ✅ **Data Integrity**: All entities present after re-import
+- ✅ **No Data Loss**: All details unchanged (names, IDs, relationships)
+- ✅ **Foreign Keys Valid**: All relationships maintained
+- ✅ **Count Match**: Entity counts match pre-export counts
+- ✅ **Bidirectional Proof**: Successful roundtrip proves bidirectional adapter works
 
 **Database Comparison**:
 ```bash
@@ -629,94 +647,11 @@ print(f'Post-roundtrip courses: {len(courses)}')
 
 ---
 
-## 🔁 SCENARIO 3: Multi-Format Export Validation
+## 🔁 SCENARIO 3: (DEFERRED) Multi-Format Export
 
-### Test Objective
-Validate CSV and JSON export formats work correctly alongside Excel.
+**Note**: Currently YAGNI (You Ain't Gonna Need It) - Generic CSV (ZIP) is sufficient as the universal bidirectional format.
 
----
-
-### **TC-IE-201: Export Courses to CSV**
-**Purpose**: Verify CSV export generates valid comma-separated file
-
-**Steps**:
-1. Navigate to "Data Management" panel
-2. Click **"Export Courses"** button
-3. Format: **"CSV (.csv)"**
-4. Click **"Export"**
-5. Download and open file in text editor
-
-**Expected Results**:
-- ✅ **File Downloads**: `.csv` file
-- ✅ **CSV Format**: Comma-separated values with headers
-- ✅ **No Encoding Issues**: UTF-8 encoded (special characters work)
-- ✅ **Quoted Fields**: Text fields with commas are quoted
-- ✅ **Row Count**: Matches course count
-
-**Specific Validations**:
-```csv
-# Expected CSV format:
-course_number,course_title,department,credits,institution_id
-MATH-101,"College Algebra",Mathematics,3,cei_institution_id
-ENG-102,"Composition II",English,3,cei_institution_id
-```
-
-**Critical Assertions**:
-- [ ] CSV opens in Excel/Google Sheets correctly
-- [ ] Commas in course titles don't break columns
-- [ ] All rows have same number of columns
-- [ ] No extra quotes or escaping issues
-
----
-
-### **TC-IE-202: Export Courses to JSON**
-**Purpose**: Verify JSON export generates valid structured data
-
-**Steps**:
-1. Navigate to "Data Management" panel
-2. Click **"Export Courses"** button
-3. Format: **"JSON (.json)"**
-4. Click **"Export"**
-5. Download and validate JSON structure
-
-**Expected Results**:
-- ✅ **File Downloads**: `.json` file
-- ✅ **Valid JSON**: Can parse with `jq` or JSON validator
-- ✅ **Structure**: Array of objects OR object with `courses` array
-- ✅ **Complete Data**: All course fields present per record
-
-**Specific Validations**:
-```bash
-# Validate JSON structure:
-cat ~/Downloads/courses_export_*.json | jq '.[0]'
-# Should show first course object with all fields
-
-# Count courses in JSON:
-cat ~/Downloads/courses_export_*.json | jq 'length'
-# Should match database count
-```
-
-**Expected JSON Structure**:
-```json
-[
-  {
-    "course_number": "MATH-101",
-    "course_title": "College Algebra",
-    "department": "Mathematics",
-    "credits": 3,
-    "institution_id": "cei_institution_id",
-    "created_at": "2025-10-03T10:30:00Z"
-  },
-  ...
-]
-```
-
-**Critical Assertions**:
-- [ ] JSON is valid (no syntax errors)
-- [ ] Array length matches course count
-- [ ] All objects have required fields
-- [ ] Dates are ISO 8601 format
-- [ ] No HTML/XML tags in JSON (pure data)
+Future export formats (Excel, JSON, individual CSVs) deferred until customer demand justifies implementation.
 
 ---
 
@@ -745,8 +680,11 @@ cat ~/Downloads/courses_export_*.json | jq 'length'
 ## 🚨 Known Limitations & Edge Cases
 
 ### Current Limitations
+- **Adapters**: Two adapters available
+  - **Generic CSV** (`generic_csv_v1`): Bidirectional ZIP format, institution-agnostic, **primary adapter for UAT**
+  - **CEI Excel** (`cei_excel_format_v1`): Customer-specific, import-only, not covered in UAT
 - **Single Institution Import**: Multi-institution imports not yet supported
-- **No Partial Updates**: Cannot update individual fields without full record
+- **No Partial Updates**: Cannot update individual fields without full record  
 - **Section Numbers**: Auto-generated as sequential (001, 002) - not preserved from import
 - **Instructor Assignment**: Requires valid email in import file
 

@@ -9,10 +9,11 @@ quality checks in parallel to reduce total execution time.
 Adapted from FogOfDog frontend quality gate for Python/Flask projects.
 
 Usage:
-    python scripts/ship_it.py                    # Fast commit validation (excludes slow checks)
-    python scripts/ship_it.py --validation-type PR  # Full PR validation (all checks)
-    python scripts/ship_it.py --checks format lint tests  # Run specific checks
-    python scripts/ship_it.py --help             # Show help
+    python scripts/ship_it.py                               # Fast commit validation (excludes slow checks)
+    python scripts/ship_it.py --validation-type PR          # Full PR validation (all checks + comment resolution)
+    python scripts/ship_it.py --validation-type PR --skip-pr-comments  # Full PR gate without comment check
+    python scripts/ship_it.py --checks format lint tests    # Run specific checks
+    python scripts/ship_it.py --help                        # Show help
 
 This wrapper dispatches individual check commands to the existing bash script
 in parallel threads, then collects and formats the results. Fail-fast behavior
@@ -764,10 +765,16 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, types, imports, duplication, integration, smoke, frontend-check",
     )
 
+    parser.add_argument(
+        "--skip-pr-comments",
+        action="store_true",
+        help="Skip PR comment resolution check (run full PR gate without checking for unaddressed comments)",
+    )
+
     args = parser.parse_args()
 
-    # Handle PR validation with comment checking
-    if args.validation_type == "PR":
+    # Handle PR validation with comment checking (unless skipped)
+    if args.validation_type == "PR" and not args.skip_pr_comments:
         # Check for unaddressed PR comments before running quality gates
         unaddressed_comments = check_pr_comments()
         if unaddressed_comments:

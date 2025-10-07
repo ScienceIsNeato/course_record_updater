@@ -259,11 +259,82 @@ class AdapterRegistry:
         )
         return institution_adapters
 
+    def _get_public_adapters(self) -> List[Dict[str, Any]]:
+        """
+        Get all public adapters (available to everyone).
+
+        Returns:
+            List of adapters marked as public=True
+        """
+        self.discover_adapters()
+
+        public_adapters = []
+        for registration in self._adapters.values():
+            if not registration["active"]:
+                continue
+
+            adapter_info = registration["info"].copy()
+
+            # Include adapters marked as public
+            if adapter_info.get("public", False):
+                adapter_info["active"] = registration["active"]
+                public_adapters.append(adapter_info)
+
+        logger.debug(f"Found {len(public_adapters)} public adapters")
+        return public_adapters
+
+    def _get_public_and_institution_adapters(
+        self, institution_id: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Get public adapters + institution-specific adapters.
+
+        Institution-specific adapters take precedence over public adapters
+        when adapter IDs collide (custom configurations override defaults).
+
+        Args:
+            institution_id: Institution ID to filter by
+
+        Returns:
+            List of public adapters + institution-specific adapters
+        """
+        # Get public adapters (available to everyone)
+        public_adapters = self._get_public_adapters()
+
+        # Get institution-specific adapters
+        institution_adapters = self.get_adapters_for_institution(institution_id)
+
+        # Build a map keyed by adapter ID
+        # Start with public adapters
+        adapter_map = {a["id"]: a for a in public_adapters}
+
+        # Override/add institution-specific adapters (they take precedence)
+        for adapter in institution_adapters:
+            adapter_id = adapter["id"]
+            if adapter_id in adapter_map:
+                # Log when an institution-specific adapter overrides a public one
+                logger.warning(
+                    f"Institution-specific adapter '{adapter_id}' for institution {institution_id} "
+                    f"overrides public adapter with same ID"
+                )
+            adapter_map[adapter_id] = adapter
+
+        adapters = list(adapter_map.values())
+
+        logger.debug(
+            f"Found {len(adapters)} total adapters for institution {institution_id} "
+            f"(public + institution-specific)"
+        )
+        return adapters
+
     def get_adapters_for_user(
         self, user_role: str, institution_id: str
     ) -> List[Dict[str, Any]]:
         """
         Get adapters available to a specific user based on role and institution.
+
+        PUBLIC adapters (public=True) are available to ALL users regardless of role/institution.
+        Institution-specific adapters are filtered by institution_id.
 
         Args:
             user_role: User's role (site_admin, institution_admin, program_admin, instructor)
@@ -279,11 +350,15 @@ class AdapterRegistry:
             return self.get_all_adapters()
 
         elif user_role in ["institution_admin", "program_admin"]:
-            # Institution and program admins see adapters for their institution
-            return self.get_adapters_for_institution(institution_id)
+            # Institution/program admins see:
+            # 1. Public adapters (available to everyone)
+            # 2. Their institution's adapters
+            return self._get_public_and_institution_adapters(institution_id)
 
         elif user_role == "instructor":
-            # Instructors have no import access, return empty list
+            # Instructors have no import/export permissions - return empty list
+            # Note: "public" adapters are available to all users WHO HAVE IMPORT/EXPORT PERMISSIONS,
+            # not to users without those permissions
             return []
 
         else:

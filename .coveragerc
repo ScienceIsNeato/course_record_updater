@@ -4,6 +4,8 @@
 [run]
 branch = True
 source = .
+parallel = True
+concurrency = multiprocessing
 omit =
     # Virtual environments and dependencies
     venv/*

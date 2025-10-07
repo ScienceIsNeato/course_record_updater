@@ -5,6 +5,7 @@ Tests complete end-to-end workflows for different user roles using the
 adapter registry system for bidirectional data flow.
 """
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -13,6 +14,7 @@ import pytest
 from openpyxl import Workbook
 
 from adapters.adapter_registry import get_adapter_registry
+from database_factory import get_database_service
 from database_service import (
     create_default_cei_institution,
     get_active_terms,
@@ -316,3 +318,137 @@ class TestAdapterWorkflows:
 
         # Instructors should see no adapters (no import/export permissions)
         assert len(instructor_adapters) == 0
+
+    def test_generic_csv_adapter_export_and_parse_with_database(self):
+        """
+        Integration test: Generic CSV adapter export and parse with real database.
+
+        Tests workflow:
+        1. Create realistic data in database
+        2. Export to ZIP using generic CSV adapter
+        3. Verify ZIP structure and contents
+        4. Parse ZIP back to verify round-trip data integrity
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db = get_database_service()
+            output_file = Path(tmp_dir) / "generic_csv_export.zip"
+
+            # Step 1: Create test data
+            institution_id = db.create_institution(
+                {
+                    "name": "CSV Test University",
+                    "short_name": "CSVTU",
+                    "admin_email": "admin@csvtu.edu",
+                }
+            )
+
+            program_id = db.create_program(
+                {
+                    "name": "Computer Science",
+                    "short_name": "CS",
+                    "institution_id": institution_id,
+                    "is_active": True,
+                }
+            )
+
+            user1_id = db.create_user(
+                {
+                    "email": "prof1@csvtu.edu",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "role": "instructor",
+                    "institution_id": institution_id,
+                }
+            )
+
+            user2_id = db.create_user(
+                {
+                    "email": "prof2@csvtu.edu",
+                    "first_name": "Jane",
+                    "last_name": "Smith",
+                    "role": "instructor",
+                    "institution_id": institution_id,
+                }
+            )
+
+            course_id = db.create_course(
+                {
+                    "course_number": "CS101",
+                    "course_title": "Intro to CS",
+                    "department": "CS",
+                    "credit_hours": 3,
+                    "institution_id": institution_id,
+                }
+            )
+
+            db.add_course_to_program(course_id, program_id)
+
+            term_id = db.create_term(
+                {
+                    "term_name": "FA2024",
+                    "name": "Fall 2024",
+                    "active": True,
+                    "institution_id": institution_id,
+                }
+            )
+
+            # Step 2: Export using generic CSV adapter
+            adapter = self.registry.get_adapter_by_id("generic_csv_v1")
+            assert adapter is not None
+
+            config = ExportConfig(
+                institution_id=institution_id,
+                adapter_id="generic_csv_v1",
+                export_view="standard",
+                include_metadata=True,
+                output_format="zip",
+            )
+
+            export_result = self.export_service.export_data(config, str(output_file))
+            assert export_result.success is True
+            assert export_result.records_exported > 0
+            assert output_file.exists()
+
+            # Step 3: Verify ZIP structure
+            import zipfile
+
+            with zipfile.ZipFile(output_file, "r") as zf:
+                filenames = zf.namelist()
+                assert "manifest.json" in filenames
+                assert "institutions.csv" in filenames
+                assert "users.csv" in filenames
+                assert "courses.csv" in filenames
+                assert "terms.csv" in filenames
+
+                # Verify manifest
+                manifest = json.loads(zf.read("manifest.json"))
+                assert manifest["format_version"] == "1.0"
+                assert "entity_counts" in manifest
+                assert manifest["entity_counts"]["users"] == 2
+                assert manifest["entity_counts"]["courses"] == 1
+
+            # Step 4: Parse ZIP to verify round-trip integrity
+            parsed_data = adapter.parse_file(str(output_file), {})
+
+            # Verify parsed data structure
+            assert "institutions" in parsed_data
+            assert "users" in parsed_data
+            assert "courses" in parsed_data
+            assert "terms" in parsed_data
+
+            # Verify counts match
+            assert len(parsed_data["users"]) == 2
+            assert len(parsed_data["courses"]) == 1
+            assert len(parsed_data["terms"]) == 1
+
+            # Verify data integrity
+            prof1 = next(
+                (u for u in parsed_data["users"] if u["email"] == "prof1@csvtu.edu"),
+                None,
+            )
+            assert prof1 is not None
+            assert prof1["first_name"] == "John"
+
+            cs101 = parsed_data["courses"][0]
+            assert cs101["course_number"] == "CS101"
+            assert cs101["credit_hours"] == "3"  # String from CSV

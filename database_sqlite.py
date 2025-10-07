@@ -379,6 +379,25 @@ class SQLiteDatabase(DatabaseInterface):
     def create_course_outcome(self, outcome_data: Dict[str, Any]) -> str:
         payload = dict(outcome_data)
         outcome_id = _ensure_uuid(payload.pop("outcome_id", None))
+
+        # Build extras dict, excluding non-JSON-serializable fields (datetime, etc.)
+        # and fields already stored in dedicated columns
+        exclude_fields = {
+            "outcome_id",
+            "course_id",
+            "clo_number",
+            "description",
+            "assessment_method",
+            "active",
+            "assessment_data",
+            "narrative",
+            "created_at",
+            "last_modified",
+            "updated_at",
+        }
+        extras_dict = {k: v for k, v in payload.items() if k not in exclude_fields}
+        extras_dict["outcome_id"] = outcome_id
+
         outcome = CourseOutcome(
             id=outcome_id,
             course_id=payload.get("course_id"),
@@ -394,7 +413,7 @@ class SQLiteDatabase(DatabaseInterface):
                 "assessment_status": "not_started",
             },
             narrative=payload.get("narrative"),
-            extras={**payload, "outcome_id": outcome_id},
+            extras=extras_dict,
         )
 
         with self.sqlite.session_scope() as session:
@@ -795,6 +814,27 @@ class SQLiteDatabase(DatabaseInterface):
     def create_invitation(self, invitation_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(invitation_data)
         invitation_id = _ensure_uuid(payload.pop("invitation_id", None))
+
+        # Build extras dict, excluding non-JSON-serializable fields (datetime, etc.)
+        # and fields already stored in dedicated columns
+        exclude_fields = {
+            "invitation_id",
+            "email",
+            "role",
+            "institution_id",
+            "token",
+            "invited_by",
+            "invited_at",
+            "expires_at",
+            "status",
+            "accepted_at",
+            "personal_message",
+            "created_at",
+            "updated_at",
+        }
+        extras_dict = {k: v for k, v in payload.items() if k not in exclude_fields}
+        extras_dict["invitation_id"] = invitation_id
+
         invitation = UserInvitation(
             id=invitation_id,
             email=payload.get("email", "").lower(),
@@ -807,7 +847,7 @@ class SQLiteDatabase(DatabaseInterface):
             status=payload.get("status", "pending"),
             accepted_at=payload.get("accepted_at"),
             personal_message=payload.get("personal_message"),
-            extras={**payload, "invitation_id": invitation_id},
+            extras=extras_dict,
         )
         with self.sqlite.session_scope() as session:
             session.add(invitation)
@@ -877,3 +917,51 @@ class SQLiteDatabase(DatabaseInterface):
                 session.execute(query.offset(offset).limit(limit)).scalars().all()
             )
             return [to_dict(invitation) for invitation in invitations]
+
+    # ------------------------------------------------------------------
+    # Delete operations (for testing/cleanup)
+    # ------------------------------------------------------------------
+    def delete_user(self, user_id: str) -> bool:
+        """Delete a user (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            user = session.get(User, user_id)
+            if not user:
+                return False
+            session.delete(user)
+            return True
+
+    def delete_course(self, course_id: str) -> bool:
+        """Delete a course (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            if not course:
+                return False
+            session.delete(course)
+            return True
+
+    def delete_term(self, term_id: str) -> bool:
+        """Delete a term (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            term = session.get(Term, term_id)
+            if not term:
+                return False
+            session.delete(term)
+            return True
+
+    def delete_program_simple(self, program_id: str) -> bool:
+        """Delete a program without reassignment (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            program = session.get(Program, program_id)
+            if not program:
+                return False
+            session.delete(program)
+            return True
+
+    def delete_institution(self, institution_id: str) -> bool:
+        """Delete an institution (for testing purposes)."""
+        with self.sqlite.session_scope() as session:
+            institution = session.get(Institution, institution_id)
+            if not institution:
+                return False
+            session.delete(institution)
+            return True

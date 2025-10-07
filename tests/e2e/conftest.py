@@ -27,7 +27,8 @@ from database_service import (
 )
 
 # Test configuration
-BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3001")
+# E2E environment runs on port 3002 (see run_uat.sh and .envrc)
+BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3002")
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 
@@ -104,6 +105,9 @@ def authenticated_page(page: Page) -> Page:
             authenticated_page.goto(f"{BASE_URL}/dashboard")
             # Already logged in as sarah.admin@cei.edu
     """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
     # Navigate to login page
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
@@ -121,6 +125,7 @@ def authenticated_page(page: Page) -> Page:
     # 3. Timeout (something went wrong)
     try:
         # Wait for URL to change to dashboard (JavaScript redirect)
+        # 2s timeout is appropriate now that bcrypt is fast in test environments
         page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
         return page
     except Exception:

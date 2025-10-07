@@ -95,11 +95,12 @@ class FileBaseAdapter(ABC):
             - name: Human-readable name for UI
             - description: What this adapter handles
             - supported_formats: List of file extensions
-            - institution_id: Which institution this adapter serves
+            - institution_id: Which institution this adapter serves (None for public adapters)
             - data_types: What types of data this adapter can process
             - version: Adapter version for tracking updates
+            - public: Boolean - if True, adapter is available to ALL users regardless of institution
 
-        Example:
+        Example (Institution-Specific):
             {
                 "id": "cei_excel_format_v1",
                 "name": "CEI Excel Format v1.2",
@@ -108,10 +109,21 @@ class FileBaseAdapter(ABC):
                 "institution_id": "cei_institution_id",
                 "data_types": ["courses", "faculty", "assessments"],
                 "version": "1.2.0",
+                "public": False,
                 "created_by": "System Developer",
-                "last_updated": "2024-09-25",
-                "file_size_limit": "50MB",
-                "max_records": 5000
+                "last_updated": "2024-09-25"
+            }
+
+        Example (Public/Generic):
+            {
+                "id": "generic_csv_v1",
+                "name": "Generic CSV Format",
+                "description": "Institution-agnostic CSV format for all users",
+                "supported_formats": [".zip"],
+                "institution_id": None,
+                "data_types": ["all"],
+                "version": "1.0.0",
+                "public": True
             }
         """
         pass

@@ -188,6 +188,106 @@ class TestExportEndpoint:
         # Verify export was called
         assert mock_service.export_data.called
 
+    @patch("api_routes.get_all_institutions")
+    @patch("api_routes.create_export_service")
+    def test_site_admin_export_all_institutions(
+        self, mock_create_service, mock_get_institutions, client
+    ):
+        """Test Site Admin system-wide export (zip of folders)"""
+        # Create site admin session
+        with client.session_transaction() as sess:
+            sess["user_id"] = "test-site-admin"
+            sess["email"] = "admin@system.local"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = None
+            sess["program_ids"] = []
+            sess["display_name"] = "Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
+
+        # Mock institutions
+        mock_get_institutions.return_value = [
+            {"institution_id": "inst1", "name": "Institution 1", "short_name": "I1"},
+            {"institution_id": "inst2", "name": "Institution 2", "short_name": "I2"},
+        ]
+
+        # Mock export service
+        def mock_export(config, output_path):
+            # Create fake export file
+            with open(output_path, "wb") as f:
+                f.write(b"fake export data")
+            return ExportResult(
+                success=True,
+                file_path=str(output_path),
+                records_exported=5,
+                errors=[],
+            )
+
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "generic_csv_v1",
+            "supported_formats": [".zip"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
+        mock_service = Mock()
+        mock_service.registry = mock_registry
+        mock_service.export_data.side_effect = mock_export
+        mock_create_service.return_value = mock_service
+
+        # Call export as site admin
+        response = client.get(
+            "/api/export/data?export_adapter=generic_csv_v1&export_data_type=courses"
+        )
+
+        # Should succeed and return ZIP
+        assert response.status_code == 200
+        assert response.content_type == "application/zip"
+
+    @patch("api_routes.get_all_institutions")
+    @patch("api_routes.create_export_service")
+    def test_site_admin_export_no_institutions(
+        self, mock_create_service, mock_get_institutions, client
+    ):
+        """Test Site Admin export when no institutions exist"""
+        # Create site admin session
+        with client.session_transaction() as sess:
+            sess["user_id"] = "test-site-admin"
+            sess["email"] = "admin@system.local"
+            sess["role"] = "site_admin"
+            sess["institution_id"] = None
+            sess["program_ids"] = []
+            sess["display_name"] = "Site Admin"
+            sess["created_at"] = "2024-01-01T00:00:00Z"
+
+        # Mock no institutions
+        mock_get_institutions.return_value = []
+
+        mock_adapter = Mock()
+        mock_adapter.get_adapter_info.return_value = {
+            "id": "generic_csv_v1",
+            "supported_formats": [".zip"],
+        }
+
+        mock_registry = Mock()
+        mock_registry.get_adapter_by_id.return_value = mock_adapter
+
+        mock_service = Mock()
+        mock_service.registry = mock_registry
+        mock_create_service.return_value = mock_service
+
+        # Call export as site admin
+        response = client.get(
+            "/api/export/data?export_adapter=generic_csv_v1&export_data_type=courses"
+        )
+
+        # Should return 404
+        assert response.status_code == 404
+        data = response.get_json()
+        assert data["success"] is False
+        assert "no institutions" in data["error"].lower()
+
     @patch("api_routes.create_export_service")
     def test_export_handles_exception(self, mock_create_service, authenticated_client):
         """Export should handle unexpected exceptions"""

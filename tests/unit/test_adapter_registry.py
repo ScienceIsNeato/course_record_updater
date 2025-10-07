@@ -77,6 +77,70 @@ class MockAdapterB(FileBaseAdapter):
         return True, "Mock export successful", 1
 
 
+class MockPublicAdapter(FileBaseAdapter):
+    """Mock public adapter for testing - available to everyone"""
+
+    def validate_file_compatibility(self, file_path: str) -> Tuple[bool, str]:
+        return True, "Mock public compatible"
+
+    def detect_data_types(self, file_path: str) -> List[str]:
+        return ["courses"]
+
+    def get_adapter_info(self) -> Dict[str, Any]:
+        return {
+            "id": "shared_adapter",
+            "name": "Mock Public Adapter",
+            "description": "Test public adapter",
+            "supported_formats": [".csv"],
+            "institution_id": "public_institution",
+            "data_types": ["courses"],
+            "version": "1.0.0",
+            "public": True,
+        }
+
+    def parse_file(
+        self, file_path: str, options: Dict[str, Any]
+    ) -> Dict[str, List[Dict]]:
+        return {"courses": [{"id": "1", "name": "Public Course"}]}
+
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        return True, "Mock export successful", 1
+
+
+class MockInstitutionSpecificAdapter(FileBaseAdapter):
+    """Mock institution-specific adapter with same ID as public adapter"""
+
+    def validate_file_compatibility(self, file_path: str) -> Tuple[bool, str]:
+        return True, "Mock institution-specific compatible"
+
+    def detect_data_types(self, file_path: str) -> List[str]:
+        return ["courses", "custom"]
+
+    def get_adapter_info(self) -> Dict[str, Any]:
+        return {
+            "id": "shared_adapter",  # Same ID as public adapter
+            "name": "Mock Institution-Specific Adapter",
+            "description": "Test institution-specific adapter (overrides public)",
+            "supported_formats": [".csv", ".xlsx"],
+            "institution_id": "institution_a",
+            "data_types": ["courses", "custom"],
+            "version": "2.0.0",
+            "public": False,
+        }
+
+    def parse_file(
+        self, file_path: str, options: Dict[str, Any]
+    ) -> Dict[str, List[Dict]]:
+        return {"courses": [{"id": "1", "name": "Custom Course"}]}
+
+    def export_data(
+        self, data: Dict[str, List[Dict]], output_path: str, options: Dict[str, Any]
+    ) -> Tuple[bool, str, int]:
+        return True, "Mock export successful", 1
+
+
 class MockInvalidAdapter(FileBaseAdapter):
     """Mock adapter with invalid metadata for testing"""
 
@@ -292,6 +356,50 @@ class TestAdapterRegistry:
         # Instructors should have no import access
         adapters = self.registry.get_adapters_for_user("instructor", "institution_a")
         assert len(adapters) == 0
+
+    def test_institution_specific_adapter_overrides_public(self):
+        """
+        Test that institution-specific adapters take precedence over public adapters
+        when adapter IDs collide (fixes bug where institution-specific adapters
+        were silently dropped).
+        """
+        # Register both public and institution-specific adapters with the same ID
+        self.registry._adapters = {
+            "shared_adapter_public": {
+                "class": MockPublicAdapter,
+                "info": MockPublicAdapter().get_adapter_info(),
+                "active": True,
+            },
+            "shared_adapter_institution": {
+                "class": MockInstitutionSpecificAdapter,
+                "info": MockInstitutionSpecificAdapter().get_adapter_info(),
+                "active": True,
+            },
+        }
+        self.registry._discovery_complete = True
+
+        # Institution admin should see the institution-specific adapter (not public)
+        with patch("adapters.adapter_registry.logger") as mock_logger:
+            adapters = self.registry.get_adapters_for_user(
+                "institution_admin", "institution_a"
+            )
+
+            # Should have exactly 1 adapter (the institution-specific one)
+            assert len(adapters) == 1
+
+            # Should be the institution-specific adapter (version 2.0.0, not 1.0.0)
+            adapter = adapters[0]
+            assert adapter["id"] == "shared_adapter"
+            assert adapter["version"] == "2.0.0"
+            assert adapter["name"] == "Mock Institution-Specific Adapter"
+            assert adapter.get("public", False) is False
+
+            # Should have logged a warning about the ID collision
+            mock_logger.warning.assert_called_once()
+            warning_call = mock_logger.warning.call_args[0][0]
+            assert "shared_adapter" in warning_call
+            assert "institution_a" in warning_call
+            assert "overrides public adapter" in warning_call
 
     def test_get_adapter_by_id_success(self):
         """Test getting adapter instance by ID"""

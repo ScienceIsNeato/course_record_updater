@@ -73,9 +73,12 @@ class TestAdapterAPIWorkflows:
         assert data["success"] is True
         assert "adapters" in data
 
-        # Should only see adapters for their institution
+        # Should only see adapters for their institution OR public adapters (institution_id=None)
         for adapter in data["adapters"]:
-            assert adapter["institution_id"] == self.institution_id
+            assert adapter["institution_id"] in [
+                self.institution_id,
+                None,
+            ], f"Inst admin should only see their institution's adapters or public adapters, got: {adapter['institution_id']}"
 
     def test_instructor_adapter_discovery_workflow(self, client):
         """Test instructor sees no adapters (no import permissions)."""

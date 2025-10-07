@@ -2831,20 +2831,9 @@ class TestAPIRoutesErrorHandling:
             data = response.get_json()
             assert data["error"] == "No file selected"
 
-    def test_import_excel_invalid_file_type_coverage(self):
-        """Test import_excel endpoint with invalid file type."""
-        self._login_site_admin()
-
-        with patch("api_routes.has_permission", return_value=True):
-            from io import BytesIO
-
-            data = {"excel_file": (BytesIO(b"test"), "test.txt")}
-
-            response = self.client.post("/api/import/excel", data=data)
-
-            assert response.status_code == 400
-            data = response.get_json()
-            assert "Invalid file type" in data["error"]
+    # REMOVED: test_import_excel_invalid_file_type_coverage
+    # Legacy test for hardcoded file type validation that was removed in greenfield refactor.
+    # File type validation is now handled by adapters via supported_formats declaration.
 
     @patch("api_routes._check_excel_import_permissions")
     @patch("api_routes.has_permission")
@@ -3031,20 +3020,9 @@ class TestAPIRoutesValidation:
             data = response.get_json()
             assert data["error"] == "No file selected"
 
-    def test_validate_import_invalid_file_type(self):
-        """Test validation endpoint with invalid file type."""
-        self._login_site_admin()
-
-        with patch("api_routes.has_permission", return_value=True):
-            from io import BytesIO
-
-            data = {"excel_file": (BytesIO(b"test"), "test.txt")}
-
-            response = self.client.post("/api/import/validate", data=data)
-
-            assert response.status_code == 400
-            data = response.get_json()
-            assert "Invalid file type" in data["error"]
+    # REMOVED: test_validate_import_invalid_file_type
+    # Legacy test for hardcoded file type validation that was removed in greenfield refactor.
+    # File type validation is now handled by adapters via supported_formats declaration.
 
     @patch("api_routes.has_permission")
     @patch("api_routes.import_excel")
