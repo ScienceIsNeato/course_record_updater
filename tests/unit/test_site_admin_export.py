@@ -14,17 +14,13 @@ import pytest
 
 from export_service import ExportResult
 
-pytestmark = [
-    pytest.mark.unit,
-    pytest.mark.xdist_group(name="site_admin_export_serial"),
-]
 
-
+@pytest.mark.unit
 class TestSiteAdminExport:
     """Test Site Admin system-wide export function
 
-    Note: Tests run serially to avoid race conditions with temporary file
-    creation/cleanup during parallel execution.
+    Tests now run safely in parallel thanks to UUID-based temporary directory
+    naming that prevents collisions (fixed in api_routes.py).
     """
 
     @patch("api_routes.get_all_institutions")

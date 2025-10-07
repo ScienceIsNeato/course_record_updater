@@ -3414,14 +3414,17 @@ def _export_all_institutions(current_user: Dict[str, Any]):
         if not institutions:
             return jsonify({"success": False, "error": "No institutions found"}), 404
 
-        # Create temp directory for building system export (remove if exists to avoid stale files)
+        # Create temp directory for building system export
+        # Use UUID for uniqueness to prevent race conditions in parallel test execution
         temp_base = Path(tempfile.gettempdir())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        system_export_dir = temp_base / f"system_export_{timestamp}"
+        import uuid
 
-        if system_export_dir.exists():
-            shutil.rmtree(system_export_dir)
-        system_export_dir.mkdir(parents=True)
+        unique_id = uuid.uuid4().hex[:8]  # Short UUID for readability
+        system_export_dir = temp_base / f"system_export_{timestamp}_{unique_id}"
+
+        # Create directory - should not exist due to UUID, but use exist_ok as safety net
+        system_export_dir.mkdir(parents=True, exist_ok=True)
 
         export_service = create_export_service()
 
@@ -3518,8 +3521,8 @@ def _export_all_institutions(current_user: Dict[str, Any]):
         with open(manifest_path, "w") as f:
             json.dump(system_manifest, f, indent=2)
 
-        # Create final ZIP file
-        system_zip_path = temp_base / f"system_export_{timestamp}.zip"
+        # Create final ZIP file with unique ID to prevent collisions
+        system_zip_path = temp_base / f"system_export_{timestamp}_{unique_id}.zip"
 
         # Exclude system files and directories
         excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}

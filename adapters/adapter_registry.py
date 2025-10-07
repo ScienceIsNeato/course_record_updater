@@ -289,6 +289,9 @@ class AdapterRegistry:
         """
         Get public adapters + institution-specific adapters.
 
+        Institution-specific adapters take precedence over public adapters
+        when adapter IDs collide (custom configurations override defaults).
+
         Args:
             institution_id: Institution ID to filter by
 
@@ -296,16 +299,27 @@ class AdapterRegistry:
             List of public adapters + institution-specific adapters
         """
         # Get public adapters (available to everyone)
-        adapters = self._get_public_adapters()
+        public_adapters = self._get_public_adapters()
 
-        # Add institution-specific adapters
+        # Get institution-specific adapters
         institution_adapters = self.get_adapters_for_institution(institution_id)
 
-        # Merge, avoiding duplicates (public adapters shouldn't have institution_id)
-        adapter_ids = {a["id"] for a in adapters}
+        # Build a map keyed by adapter ID
+        # Start with public adapters
+        adapter_map = {a["id"]: a for a in public_adapters}
+
+        # Override/add institution-specific adapters (they take precedence)
         for adapter in institution_adapters:
-            if adapter["id"] not in adapter_ids:
-                adapters.append(adapter)
+            adapter_id = adapter["id"]
+            if adapter_id in adapter_map:
+                # Log when an institution-specific adapter overrides a public one
+                logger.warning(
+                    f"Institution-specific adapter '{adapter_id}' for institution {institution_id} "
+                    f"overrides public adapter with same ID"
+                )
+            adapter_map[adapter_id] = adapter
+
+        adapters = list(adapter_map.values())
 
         logger.debug(
             f"Found {len(adapters)} total adapters for institution {institution_id} "

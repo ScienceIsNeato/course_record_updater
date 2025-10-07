@@ -611,16 +611,19 @@ class GenericCSVAdapter(FileBaseAdapter):
 
     def _create_zip_archive(self, source_dir: Path, output_path: str) -> None:
         """
-        Create ZIP archive from directory contents, including subdirectories.
+        Create ZIP archive from directory contents.
 
         Args:
             source_dir: Directory containing files to ZIP
             output_path: Path to output ZIP file
         """
         with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            # Add all files recursively, maintaining directory structure
-            for file_path in sorted(source_dir.rglob("*")):
-                if file_path.is_file():
-                    # Calculate relative path from source_dir to maintain structure
-                    arcname = file_path.relative_to(source_dir)
-                    zf.write(file_path, arcname)
+            # Add only CSV and JSON files (excludes system files like .DS_Store)
+            # Use glob (not rglob) since all export files are at root level
+            for file_path in sorted(source_dir.glob("*")):
+                if file_path.is_file() and file_path.suffix.lower() in {
+                    ".csv",
+                    ".json",
+                }:
+                    # Use filename as archive name (all files at root level)
+                    zf.write(file_path, file_path.name)
