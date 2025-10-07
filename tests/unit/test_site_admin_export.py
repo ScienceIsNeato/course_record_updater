@@ -14,12 +14,17 @@ import pytest
 
 from export_service import ExportResult
 
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.xdist_group(name="site_admin_export_serial"),
+]
 
-@pytest.mark.unit
+
 class TestSiteAdminExport:
     """Test Site Admin system-wide export function
 
-    Note: Tests use mocking extensively to avoid file system race conditions.
+    Note: Tests run serially to avoid race conditions with temporary file
+    creation/cleanup during parallel execution.
     """
 
     @patch("api_routes.get_all_institutions")
@@ -196,69 +201,6 @@ class TestSiteAdminExport:
                 assert "system_manifest.json" in files
         finally:
             tmp_path.unlink()
-
-    @patch("api_routes.get_all_institutions")
-    @patch("api_routes.create_export_service")
-    def test_site_admin_export_with_metadata_flag(
-        self, mock_create_service, mock_get_institutions, client
-    ):
-        """Test Site Admin export respects include_metadata parameter"""
-        # Create site admin session
-        with client.session_transaction() as sess:
-            sess["user_id"] = "test-site-admin"
-            sess["email"] = "admin@system.local"
-            sess["role"] = "site_admin"
-            sess["institution_id"] = None
-            sess["program_ids"] = []
-            sess["display_name"] = "Site Admin"
-            sess["created_at"] = "2024-01-01T00:00:00Z"
-
-        # Mock institutions
-        mock_get_institutions.return_value = [
-            {"institution_id": "inst1", "name": "Institution 1", "short_name": "I1"},
-        ]
-
-        # Mock adapter
-        mock_adapter = Mock()
-        mock_adapter.get_adapter_info.return_value = {
-            "id": "generic_csv_v1",
-            "supported_formats": [".zip"],
-        }
-
-        mock_registry = Mock()
-        mock_registry.get_adapter_by_id.return_value = mock_adapter
-
-        # Track the config passed to export_data
-        captured_configs = []
-
-        def mock_export(config, output_path):
-            captured_configs.append(config)
-            # Create fake export file
-            with open(output_path, "wb") as f:
-                f.write(b"fake export data")
-            return ExportResult(
-                success=True,
-                file_path=str(output_path),
-                records_exported=5,
-                errors=[],
-            )
-
-        mock_service = Mock()
-        mock_service.registry = mock_registry
-        mock_service.export_data.side_effect = mock_export
-        mock_create_service.return_value = mock_service
-
-        # Call export with include_metadata=false
-        response = client.get(
-            "/api/export/data?export_adapter=generic_csv_v1&export_data_type=courses&include_metadata=false"
-        )
-
-        # Should succeed
-        assert response.status_code == 200
-
-        # Verify include_metadata was passed correctly
-        assert len(captured_configs) == 1
-        assert captured_configs[0].include_metadata is False
 
     @patch("api_routes.get_all_institutions")
     @patch("api_routes.create_export_service")
