@@ -919,6 +919,142 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(invitation) for invitation in invitations]
 
     # ------------------------------------------------------------------
+    # Audit log operations
+    # ------------------------------------------------------------------
+    def create_audit_log(self, audit_data: Dict[str, Any]) -> bool:
+        """Create audit log entry."""
+        from models_sql import AuditLog
+
+        try:
+            with self.sqlite.session_scope() as session:
+                audit_log = AuditLog(**audit_data)
+                session.add(audit_log)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to create audit log: {e}")
+            return False
+
+    def get_audit_logs_by_entity(
+        self, entity_type: str, entity_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get audit history for specific entity."""
+        from models_sql import AuditLog
+
+        try:
+            with self.sqlite.session_scope() as session:
+                query = select(AuditLog).where(
+                    AuditLog.entity_type == entity_type,
+                    AuditLog.entity_id == entity_id,
+                )
+                query = query.order_by(AuditLog.timestamp.desc()).limit(limit)
+                logs = session.execute(query).scalars().all()
+                return [self._audit_log_to_dict(log) for log in logs]
+        except Exception as e:
+            logger.error(f"Failed to get entity audit logs: {e}")
+            return []
+
+    def get_audit_logs_by_user(
+        self,
+        user_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Get all activity by specific user."""
+        from models_sql import AuditLog
+
+        try:
+            with self.sqlite.session_scope() as session:
+                query = select(AuditLog).where(AuditLog.user_id == user_id)
+
+                if start_date:
+                    query = query.where(AuditLog.timestamp >= start_date)
+                if end_date:
+                    query = query.where(AuditLog.timestamp <= end_date)
+
+                query = query.order_by(AuditLog.timestamp.desc()).limit(limit)
+                logs = session.execute(query).scalars().all()
+                return [self._audit_log_to_dict(log) for log in logs]
+        except Exception as e:
+            logger.error(f"Failed to get user audit logs: {e}")
+            return []
+
+    def get_recent_audit_logs(
+        self, institution_id: Optional[str] = None, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get recent system activity."""
+        from models_sql import AuditLog
+
+        try:
+            with self.sqlite.session_scope() as session:
+                query = select(AuditLog)
+
+                if institution_id:
+                    query = query.where(AuditLog.institution_id == institution_id)
+
+                query = query.order_by(AuditLog.timestamp.desc()).limit(limit)
+                logs = session.execute(query).scalars().all()
+                return [self._audit_log_to_dict(log) for log in logs]
+        except Exception as e:
+            logger.error(f"Failed to get recent audit logs: {e}")
+            return []
+
+    def get_audit_logs_filtered(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        entity_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get filtered audit logs for export."""
+        from models_sql import AuditLog
+
+        try:
+            with self.sqlite.session_scope() as session:
+                query = select(AuditLog).where(
+                    AuditLog.timestamp >= start_date,
+                    AuditLog.timestamp <= end_date,
+                )
+
+                if entity_type:
+                    query = query.where(AuditLog.entity_type == entity_type)
+                if user_id:
+                    query = query.where(AuditLog.user_id == user_id)
+                if institution_id:
+                    query = query.where(AuditLog.institution_id == institution_id)
+
+                query = query.order_by(AuditLog.timestamp.desc())
+                logs = session.execute(query).scalars().all()
+                return [self._audit_log_to_dict(log) for log in logs]
+        except Exception as e:
+            logger.error(f"Failed to get filtered audit logs: {e}")
+            return []
+
+    def _audit_log_to_dict(self, log: Any) -> Dict[str, Any]:
+        """Convert AuditLog model to dictionary."""
+        return {
+            "audit_id": log.audit_id,
+            "timestamp": log.timestamp,
+            "user_id": log.user_id,
+            "user_email": log.user_email,
+            "user_role": log.user_role,
+            "operation_type": log.operation_type,
+            "entity_type": log.entity_type,
+            "entity_id": log.entity_id,
+            "old_values": log.old_values,
+            "new_values": log.new_values,
+            "changed_fields": log.changed_fields,
+            "source_type": log.source_type,
+            "source_details": log.source_details,
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "request_id": log.request_id,
+            "session_id": log.session_id,
+            "institution_id": log.institution_id,
+        }
+
+    # ------------------------------------------------------------------
     # Delete operations (for testing/cleanup)
     # ------------------------------------------------------------------
     def delete_user(self, user_id: str) -> bool:

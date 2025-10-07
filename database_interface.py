@@ -263,3 +263,46 @@ class DatabaseInterface(ABC):
         self, institution_id: str, status: Optional[str], limit: int, offset: int
     ) -> List[Dict[str, Any]]:
         raise NotImplementedError
+
+    # Audit log operations
+    @abstractmethod
+    def create_audit_log(self, audit_data: Dict[str, Any]) -> bool:
+        """Create audit log entry"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_by_entity(
+        self, entity_type: str, entity_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get audit history for specific entity"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_by_user(
+        self,
+        user_id: str,
+        start_date: Optional[Any] = None,
+        end_date: Optional[Any] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Get all activity by specific user"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_recent_audit_logs(
+        self, institution_id: Optional[str] = None, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get recent system activity"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_filtered(
+        self,
+        start_date: Any,
+        end_date: Any,
+        entity_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get filtered audit logs for export"""
+        raise NotImplementedError

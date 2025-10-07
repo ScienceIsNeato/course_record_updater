@@ -172,6 +172,48 @@ def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# Audit log operations
+# ---------------------------------------------------------------------------
+
+
+def create_audit_log(audit_data: Dict[str, Any]) -> bool:
+    return _db_service.create_audit_log(audit_data)
+
+
+def get_audit_logs_by_entity(
+    entity_type: str, entity_id: str, limit: int = 50
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_by_entity(entity_type, entity_id, limit)
+
+
+def get_audit_logs_by_user(
+    user_id: str,
+    start_date: Optional[Any] = None,
+    end_date: Optional[Any] = None,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_by_user(user_id, start_date, end_date, limit)
+
+
+def get_recent_audit_logs(
+    institution_id: Optional[str] = None, limit: int = 50
+) -> List[Dict[str, Any]]:
+    return _db_service.get_recent_audit_logs(institution_id, limit)
+
+
+def get_audit_logs_filtered(
+    start_date: Any,
+    end_date: Any,
+    entity_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    institution_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_filtered(
+        start_date, end_date, entity_type, user_id, institution_id
+    )
+
+
+# ---------------------------------------------------------------------------
 # Course operations
 # ---------------------------------------------------------------------------
 
