@@ -404,6 +404,54 @@ class GenericCSVAdapter(FileBaseAdapter):
 
         return records
 
+    def _try_parse_json(self, value: str) -> Any:
+        """Try to parse value as JSON, return original on failure."""
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return value
+
+    def _try_parse_datetime(self, value: str) -> Any:
+        """Try to parse value as ISO 8601 datetime, return original on failure."""
+        try:
+            from datetime import datetime
+
+            # Handle 'Z' timezone indicator
+            val_to_parse = value[:-1] + "+00:00" if value.endswith("Z") else value
+            return datetime.fromisoformat(val_to_parse)
+        except (ValueError, AttributeError, TypeError):
+            return value
+
+    def _deserialize_value(self, key: str, value: Any) -> Any:
+        """
+        Deserialize a single CSV value to appropriate Python type.
+
+        Args:
+            key: Field name
+            value: String value from CSV
+
+        Returns:
+            Properly typed value
+        """
+        # Handle empty/None
+        if value == "" or value is None:
+            return None
+
+        # Non-string values pass through
+        if not isinstance(value, str):
+            return value
+
+        # JSON fields
+        if key in {"grade_distribution", "assessment_data", "extras"}:
+            return self._try_parse_json(value)
+
+        # Boolean fields
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
+
+        # DateTime fields (ISO 8601)
+        return self._try_parse_datetime(value)
+
     def _deserialize_record(self, row: Dict[str, str]) -> Dict[str, Any]:
         """
         Deserialize CSV row values to appropriate Python types.
@@ -414,59 +462,7 @@ class GenericCSVAdapter(FileBaseAdapter):
         Returns:
             Record with properly typed values
         """
-        record: Dict[str, Any] = {}
-
-        # Known JSON fields that need deserialization
-        json_fields = {"grade_distribution", "assessment_data", "extras"}
-
-        for key, value in row.items():
-            # Handle empty strings as None
-            if value == "" or value is None:
-                record[key] = None
-                continue
-
-            # Ensure value is string (CSV should always be strings, but be safe)
-            if not isinstance(value, str):
-                record[key] = value
-                continue
-
-            # Deserialize JSON fields
-            if key in json_fields:
-                try:
-                    record[key] = json.loads(value)
-                except (json.JSONDecodeError, ValueError):
-                    # If not valid JSON, keep as string
-                    record[key] = value
-                continue
-
-            # Deserialize boolean fields
-            if value.lower() in ("true", "false"):
-                record[key] = value.lower() == "true"
-                continue
-
-            # Deserialize ISO 8601 datetime strings to Python datetime objects
-            # SQLite DateTime columns require datetime objects, not strings
-            # Use try/except approach instead of pattern matching for robustness
-            try:
-                from datetime import datetime
-
-                # Prepare value for parsing (handle 'Z' timezone indicator)
-                val_to_parse = value
-                if val_to_parse.endswith("Z"):
-                    val_to_parse = val_to_parse[:-1] + "+00:00"
-
-                # Attempt to parse as ISO 8601 datetime
-                parsed_dt = datetime.fromisoformat(val_to_parse)
-                record[key] = parsed_dt
-                continue
-            except (ValueError, AttributeError, TypeError):
-                # Not a valid ISO datetime, keep as string
-                pass
-
-            # Other values stay as strings
-            record[key] = value
-
-        return record
+        return {key: self._deserialize_value(key, value) for key, value in row.items()}
 
     def export_data(
         self,

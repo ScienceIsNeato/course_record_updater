@@ -105,6 +105,9 @@ def authenticated_page(page: Page) -> Page:
             authenticated_page.goto(f"{BASE_URL}/dashboard")
             # Already logged in as sarah.admin@cei.edu
     """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
     # Navigate to login page
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")

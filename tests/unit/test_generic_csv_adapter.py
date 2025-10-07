@@ -1025,3 +1025,135 @@ class TestGenericCSVAdapterImport:
         # Verify inactive/active flags
         old_course = [c for c in result["courses"] if c["id"] == "course-old"][0]
         assert old_course["active"] is False
+
+
+@pytest.mark.unit
+class TestGenericCSVAdapterHelperFunctions:
+    """Test the refactored helper functions for deserialization."""
+
+    def test_try_parse_json_valid_json(self):
+        """Should parse valid JSON strings."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_json('{"key": "value", "num": 42}')
+        assert result == {"key": "value", "num": 42}
+
+    def test_try_parse_json_invalid_json(self):
+        """Should return original string if JSON parsing fails."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_json("not valid json")
+        assert result == "not valid json"
+
+    def test_try_parse_json_empty_string(self):
+        """Should handle empty strings."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_json("")
+        assert result == ""
+
+    def test_try_parse_datetime_iso8601(self):
+        """Should parse ISO 8601 datetime strings."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_datetime("2024-01-15T10:30:00")
+        assert isinstance(result, datetime)
+        assert result.year == 2024
+        assert result.month == 1
+        assert result.day == 15
+
+    def test_try_parse_datetime_with_z_timezone(self):
+        """Should handle 'Z' timezone indicator."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_datetime("2024-01-15T10:30:00Z")
+        assert isinstance(result, datetime)
+
+    def test_try_parse_datetime_invalid(self):
+        """Should return original string if datetime parsing fails."""
+        adapter = GenericCSVAdapter()
+        result = adapter._try_parse_datetime("not a datetime")
+        assert result == "not a datetime"
+
+    def test_deserialize_value_empty_string(self):
+        """Should convert empty strings to None."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("any_key", "")
+        assert result is None
+
+    def test_deserialize_value_none(self):
+        """Should pass through None values."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("any_key", None)
+        assert result is None
+
+    def test_deserialize_value_non_string(self):
+        """Should pass through non-string values unchanged."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("any_key", 42)
+        assert result == 42
+
+    def test_deserialize_value_json_field(self):
+        """Should deserialize JSON fields."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("grade_distribution", '{"A": 10, "B": 5}')
+        assert result == {"A": 10, "B": 5}
+
+    def test_deserialize_value_assessment_data_field(self):
+        """Should deserialize assessment_data as JSON field."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("assessment_data", '{"test": "data"}')
+        assert result == {"test": "data"}
+
+    def test_deserialize_value_extras_field(self):
+        """Should deserialize extras as JSON field."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("extras", '{"extra": "info"}')
+        assert result == {"extra": "info"}
+
+    def test_deserialize_value_boolean_true(self):
+        """Should deserialize 'true' string to boolean True."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("any_key", "true")
+        assert result is True
+
+    def test_deserialize_value_boolean_false(self):
+        """Should deserialize 'false' string to boolean False."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("any_key", "false")
+        assert result is False
+
+    def test_deserialize_value_boolean_case_insensitive(self):
+        """Should handle boolean values case-insensitively."""
+        adapter = GenericCSVAdapter()
+        assert adapter._deserialize_value("key", "True") is True
+        assert adapter._deserialize_value("key", "FALSE") is False
+        assert adapter._deserialize_value("key", "TrUe") is True
+
+    def test_deserialize_value_datetime_string(self):
+        """Should deserialize datetime strings."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("created_at", "2024-01-15T10:30:00")
+        assert isinstance(result, datetime)
+
+    def test_deserialize_value_regular_string(self):
+        """Should pass through regular strings unchanged."""
+        adapter = GenericCSVAdapter()
+        result = adapter._deserialize_value("name", "John Doe")
+        assert result == "John Doe"
+
+    def test_deserialize_record_full_integration(self):
+        """Should deserialize a complete row with mixed types."""
+        adapter = GenericCSVAdapter()
+        row = {
+            "course_id": "CS101",
+            "title": "Introduction to Computer Science",
+            "credits": "3",
+            "is_active": "true",
+            "created_at": "2024-01-15T10:30:00",
+            "grade_distribution": '{"A": 10, "B": 5}',
+            "empty_field": "",
+        }
+        result = adapter._deserialize_record(row)
+
+        assert result["course_id"] == "CS101"
+        assert result["title"] == "Introduction to Computer Science"
+        assert result["is_active"] is True
+        assert isinstance(result["created_at"], datetime)
+        assert result["grade_distribution"] == {"A": 10, "B": 5}
+        assert result["empty_field"] is None

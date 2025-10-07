@@ -3362,6 +3362,85 @@ def export_data():
         return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500
 
 
+def _sanitize_export_params():
+    """Extract and sanitize export parameters from request."""
+    data_type_raw = request.args.get("export_data_type", "courses")
+    adapter_id_raw = request.args.get("export_adapter", "generic_csv_v1")
+
+    # Sanitize parameters (allow alphanumeric, underscore, hyphen, and dot)
+    data_type = re.sub(r"[^\w.-]", "", data_type_raw) or "courses"
+    adapter_id = re.sub(r"[^\w.-]", "", adapter_id_raw) or "generic_csv_v1"
+    include_metadata = request.args.get("include_metadata", "true").lower() == "true"
+
+    return data_type, adapter_id, include_metadata
+
+
+def _get_adapter_file_extension(export_service, adapter_id: str) -> str:
+    """Get file extension from adapter, with fallback to default."""
+    try:
+        adapter = export_service.registry.get_adapter_by_id(adapter_id)
+        if not adapter:
+            return _DEFAULT_EXPORT_EXTENSION
+
+        adapter_info = adapter.get_adapter_info()
+        supported_formats = adapter_info.get(
+            "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
+        )
+        return supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
+    except Exception as adapter_error:
+        logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
+        return _DEFAULT_EXPORT_EXTENSION
+
+
+def _export_institution(
+    export_service,
+    inst: Dict,
+    system_export_dir: Path,
+    adapter_id: str,
+    include_metadata: bool,
+    output_format: str,
+    data_type: str,
+    timestamp: str,
+    file_extension: str,
+) -> Dict:
+    """Export a single institution to its subdirectory."""
+    inst_id = inst.get("institution_id")
+    inst_short_name = inst.get("short_name", inst_id)
+
+    # Create subdirectory for this institution
+    inst_dir = system_export_dir / inst_short_name
+    inst_dir.mkdir(exist_ok=True)
+
+    logger.info(f"[EXPORT] Exporting institution: {inst_short_name} ({inst_id})")
+
+    # Create export config for this institution
+    config = ExportConfig(
+        institution_id=inst_id,
+        adapter_id=adapter_id,
+        export_view="standard",
+        include_metadata=include_metadata,
+        output_format=output_format,
+    )
+
+    # Export to institution directory
+    inst_filename = f"{data_type}_export_{timestamp}{file_extension}"
+    inst_output_path = inst_dir / inst_filename
+    result = export_service.export_data(config, str(inst_output_path))
+
+    if not result.success:
+        logger.warning(f"[EXPORT] Failed to export {inst_short_name}: {result.errors}")
+
+    return {
+        "institution_id": inst_id,
+        "institution_name": inst.get("name"),
+        "short_name": inst_short_name,
+        "success": result.success,
+        "records_exported": result.records_exported,
+        "file": inst_filename,
+        "errors": result.errors if not result.success else [],
+    }
+
+
 def _export_all_institutions(current_user: Dict[str, Any]):
     """
     Export all institutions for Site Admin as a zip of folders.
@@ -3387,23 +3466,8 @@ def _export_all_institutions(current_user: Dict[str, Any]):
     system_export_dir = None
 
     try:
-        # Get parameters
-        data_type_raw = request.args.get("export_data_type", "courses")
-        adapter_id_raw = request.args.get("export_adapter", "generic_csv_v1")
-
-        # Sanitize parameters (allow alphanumeric, underscore, hyphen, and dot)
-        data_type = re.sub(r"[^\w.-]", "", data_type_raw)
-        if not data_type:
-            data_type = "courses"
-
-        # Keep underscores and hyphens for valid adapter IDs like "generic_csv_v1"
-        adapter_id = re.sub(r"[^\w.-]", "", adapter_id_raw)
-        if not adapter_id:
-            adapter_id = "generic_csv_v1"
-
-        include_metadata = (
-            request.args.get("include_metadata", "true").lower() == "true"
-        )
+        # Get and sanitize parameters
+        data_type, adapter_id, include_metadata = _sanitize_export_params()
 
         logger.info(
             f"[EXPORT] Site Admin system-wide export: adapter={adapter_id}, data_type={data_type}"
@@ -3428,28 +3492,18 @@ def _export_all_institutions(current_user: Dict[str, Any]):
 
         export_service = create_export_service()
 
-        # Get adapter info for file extension
-        try:
-            adapter = export_service.registry.get_adapter_by_id(adapter_id)
-            if not adapter:
-                return (
-                    jsonify(
-                        {"success": False, "error": f"Adapter not found: {adapter_id}"}
-                    ),
-                    400,
-                )
-
-            adapter_info = adapter.get_adapter_info()
-            supported_formats = adapter_info.get(
-                "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
+        # Validate adapter exists
+        adapter = export_service.registry.get_adapter_by_id(adapter_id)
+        if not adapter:
+            return (
+                jsonify(
+                    {"success": False, "error": f"Adapter not found: {adapter_id}"}
+                ),
+                400,
             )
-            file_extension = (
-                supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
-            )
-        except Exception as adapter_error:
-            logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
-            file_extension = _DEFAULT_EXPORT_EXTENSION
 
+        # Get adapter file extension
+        file_extension = _get_adapter_file_extension(export_service, adapter_id)
         output_format = (
             file_extension.lstrip(".")
             if file_extension.startswith(".")
@@ -3457,51 +3511,20 @@ def _export_all_institutions(current_user: Dict[str, Any]):
         )
 
         # Export each institution to its own subdirectory
-        institution_results = []
-
-        for inst in institutions:
-            inst_id = inst.get("institution_id")
-            inst_short_name = inst.get("short_name", inst_id)
-
-            # Create subdirectory for this institution
-            inst_dir = system_export_dir / inst_short_name
-            inst_dir.mkdir(exist_ok=True)
-
-            logger.info(
-                f"[EXPORT] Exporting institution: {inst_short_name} ({inst_id})"
+        institution_results = [
+            _export_institution(
+                export_service,
+                inst,
+                system_export_dir,
+                adapter_id,
+                include_metadata,
+                output_format,
+                data_type,
+                timestamp,
+                file_extension,
             )
-
-            # Create export config for this institution
-            config = ExportConfig(
-                institution_id=inst_id,
-                adapter_id=adapter_id,
-                export_view="standard",
-                include_metadata=include_metadata,
-                output_format=output_format,
-            )
-
-            # Export to institution directory
-            inst_filename = f"{data_type}_export_{timestamp}{file_extension}"
-            inst_output_path = inst_dir / inst_filename
-
-            result = export_service.export_data(config, str(inst_output_path))
-
-            institution_results.append(
-                {
-                    "institution_id": inst_id,
-                    "institution_name": inst.get("name"),
-                    "short_name": inst_short_name,
-                    "success": result.success,
-                    "records_exported": result.records_exported,
-                    "file": inst_filename,
-                    "errors": result.errors if not result.success else [],
-                }
-            )
-
-            if not result.success:
-                logger.warning(
-                    f"[EXPORT] Failed to export {inst_short_name}: {result.errors}"
-                )
+            for inst in institutions
+        ]
 
         # Create system-level manifest
         system_manifest = {
