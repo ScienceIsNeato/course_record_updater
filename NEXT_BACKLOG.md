@@ -164,7 +164,22 @@
 **Definition of Done**: All exposed actions function or are intentionally hidden, documentation/tests updated.  
 **Hand-off**: UI polish that a background agent can execute once decisions are set.
 
-## Priority 11 – Monitoring & Alerting Foundations (Story)
+## Priority 11 – Database Backup & Point-in-Time Restore (Epic)
+**Status**: Not started  
+**Docs**: To be created - `scripts/backup_db.py`, `scripts/restore_db.py`  
+**Goal**: Implement automated database backup and point-in-time restore functionality for SQLite database to enable rollbacks when things go wrong.
+**Key Tasks**:
+- [ ] **Automated Backup System**: Scheduled backups (daily, weekly) with retention policy
+- [ ] **Backup Storage**: Local and cloud backup storage options (S3, Google Cloud Storage)
+- [ ] **Point-in-Time Restore**: Restore database to specific timestamp or backup version
+- [ ] **Backup Verification**: Automated backup integrity checks and restore testing
+- [ ] **Admin UI**: Backup management interface (trigger backup, view backups, restore)
+- [ ] **Disaster Recovery**: Document backup/restore procedures for production
+- [ ] **Backup Notifications**: Alert on backup failures or storage issues
+**Definition of Done**: Automated backups running, point-in-time restore tested, admin UI functional, disaster recovery documented.  
+**Hand-off**: Infrastructure work - requires cloud storage decisions and backup strategy approval.
+
+## Priority 12 – Monitoring & Alerting Foundations (Story)
 **Status**: Not started  
 **Docs**: `logging_config.py`, `STATUS.md` (needs update), vendor docs for Slack webhooks & Sentry  
 **Goal**: Establish lightweight observability (Slack alerts + Sentry capture) soon after the CEI POC demo so we can monitor live health without incurring costs.

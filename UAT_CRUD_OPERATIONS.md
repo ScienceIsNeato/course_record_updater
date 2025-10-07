@@ -64,10 +64,9 @@ For each entity above:
 4. **Instructor** - Manage section-scoped data (limited CRUD)
 
 ### Out of Scope (For This Phase)
-- ❌ Frontend UI components (focus on API functionality)
+- ❌ Frontend UI components (focus on API functionality - pure API only)
 - ❌ Batch operations beyond what's already implemented
-- ❌ Audit logging (nice-to-have, not critical)
-- ❌ Soft deletes (hard deletes are acceptable for greenfield project)
+- ❌ Soft deletes (hard deletes only for greenfield simplicity)
 
 ---
 
@@ -1202,81 +1201,681 @@ def test_course_with_program(test_institution, test_program):
 
 ---
 
-## ❓ Questions for User
+## ✅ Design Decisions (APPROVED)
 
-### 1. Soft Delete vs Hard Delete
-**Question**: For user/institution deletion, do you prefer:
-- **Option A**: Hard delete (remove from database, cascade delete dependencies)
-- **Option B**: Soft delete (mark as inactive/suspended, keep for audit trail)
-- **Option C**: Both (soft delete by default, hard delete with confirmation)
-
-**Recommendation**: Option C (both options available)
+### 1. Delete Strategy
+**Decision**: Hard delete only (for now)
+- Remove records from database permanently
+- Cascade delete dependencies where appropriate
+- **Future Enhancement**: Database backup/restore system for rollbacks (added to NEXT_BACKLOG.md)
 
 ### 2. Referential Integrity on Delete
-**Question**: When deleting entities with dependencies:
-- **Courses with Offerings**: Block delete OR cascade delete offerings?
-- **Sections with Assessment Data**: Block delete OR cascade delete assessments?
-- **Users who are Instructors**: Block delete OR reassign sections?
-
-**Recommendation**: 
-- Block delete by default (safer)
-- Provide force delete option with `?force=true` query param
+**Decision**: Block delete by default, allow force delete with warnings
+- **Courses with Offerings**: Block delete (use `?force=true` to cascade)
+- **Sections with Assessment Data**: Block delete (use `?force=true` to cascade)
+- **Users who are Instructors**: Block delete OR reassign sections
+- **Programs with Courses**: Keep existing behavior (reassign to default program) ✅
 
 ### 3. Instructor Update Permissions
-**Question**: Should instructors be able to:
-- Update their own section's enrollment numbers?
-- Update section status (assigned → in_progress → completed)?
-- Add/remove students from sections?
-
-**Recommendation**: 
-- YES to enrollment updates (they know the real count)
-- YES to assessment data updates (their job)
-- NO to status changes (admin-controlled)
+**Decision**: YES - Instructors can update enrollment numbers
+- Instructors know the real enrollment count
+- Can update assessment data (their primary job)
+- Cannot update section status (admin-controlled)
+- Cannot add/remove students (admin-controlled)
 
 ### 4. Program Admin Scope
-**Question**: Program admins assigned to multiple programs - can they:
-- Manage courses across ALL their programs?
-- Create courses and auto-assign to their programs?
-- Reassign instructors between their programs?
+**Decision**: YES - Program admins manage ALL their programs
+- Can manage courses across all assigned programs
+- Can create courses and auto-assign to their programs
+- Can reassign instructors between their programs
 
-**Recommendation**: YES to all (that's the point of multi-program admins)
-
-### 5. Course-Program Associations
-**Question**: When deleting a program:
-- **Current behavior**: Reassign courses to "default/unclassified" program ✅
-- **Desired behavior**: Same OR block delete if courses exist?
-
-**Recommendation**: Keep current behavior (already implemented and tested)
+### 5. Course-Program Associations (Program Delete)
+**Decision**: Keep existing behavior (reassign to default program)
+- Already implemented in `delete_program()` ✅
+- Already tested and validated ✅
+- Default "Unclassified" program serves this purpose
+- Cleaner than orphaned courses or blocking delete
 
 ### 6. Institution Delete Cascade
-**Question**: Deleting an institution deletes EVERYTHING:
-- All programs
-- All courses
-- All users
-- All terms
-- All offerings/sections
-- All assessment data
-
-**This is DESTRUCTIVE and IRREVERSIBLE**. Should we:
-- **Option A**: Require `?confirm=<institution_name>` to proceed
-- **Option B**: Require multi-step confirmation (type institution name in UI)
-- **Option C**: Not allow institution deletion at all
-
-**Recommendation**: Option A (confirmation required, but allow it)
+**Decision**: Site admin only, must type "i know what I'm doing"
+- Only site_admin role can delete institutions
+- Requires typing exact phrase: "i know what I'm doing"
+- Cascade deletes ALL related data (DESTRUCTIVE and IRREVERSIBLE)
+- Warning message explains consequences
 
 ### 7. API Versioning
-**Question**: Should we version the API endpoints now?
-- `/api/v1/users` vs `/api/users`
-
-**Recommendation**: NOT YET (greenfield project, no backward compatibility needed)
+**Decision**: NOT YET - No API versioning for now
+- Greenfield project with no backward compatibility concerns
+- Can add versioning later if needed (e.g., `/api/v1/` prefix)
 
 ### 8. Batch Operations Priority
-**Question**: Should we implement batch operations in this phase?
-- Batch user creation
-- Batch course updates
-- Batch section assignments
+**Decision**: NOT IN THIS PHASE - Defer batch operations
+- Focus on core CRUD operations first
+- Add batch operations later based on user needs (YAGNI)
 
-**Recommendation**: NOT IN THIS PHASE (YAGNI - add later if needed)
+### 9. Audit Logging (NEW)
+**Decision**: Comprehensive audit logging from ground up
+- Audit all CUD operations (Create, Update, Delete) - Read is too noisy
+- Store in dedicated `audit_log` table
+- UI access via site admin dashboard (panel already exists)
+- Export functionality for compliance
+- Retain audit logs forever (no deletion)
+
+---
+
+## 📋 Audit Logging System
+
+### Overview
+Comprehensive audit logging for all CRUD operations to provide:
+- **Data Lineage**: Track where each change originated
+- **Compliance**: Full audit trail for institutional requirements
+- **Debugging**: Investigate issues and understand system state changes
+- **Rollback Context**: Know what changed before implementing backup/restore (future)
+
+### Database Schema
+
+#### `audit_log` Table
+```sql
+CREATE TABLE audit_log (
+    audit_id TEXT PRIMARY KEY,           -- UUID
+    timestamp DATETIME NOT NULL,         -- When operation occurred (UTC)
+    
+    -- Who performed the action
+    user_id TEXT,                        -- User who made the change (NULL for system)
+    user_email TEXT,                     -- Email for quick reference
+    user_role TEXT,                      -- Role at time of action
+    
+    -- What was done
+    operation_type TEXT NOT NULL,        -- CREATE, UPDATE, DELETE
+    entity_type TEXT NOT NULL,           -- users, institutions, programs, courses, etc.
+    entity_id TEXT NOT NULL,             -- ID of affected entity
+    
+    -- Change details
+    old_values TEXT,                     -- JSON: Previous state (NULL for CREATE)
+    new_values TEXT,                     -- JSON: New state (NULL for DELETE)
+    changed_fields TEXT,                 -- JSON array: ["field1", "field2"] (UPDATE only)
+    
+    -- Context
+    source_type TEXT NOT NULL,           -- API, IMPORT, SYSTEM, SCRIPT
+    source_details TEXT,                 -- Additional context (e.g., "CEI Excel Import", "Manual Edit")
+    ip_address TEXT,                     -- Client IP (if from API request)
+    user_agent TEXT,                     -- Client user agent (if from API request)
+    
+    -- Request tracking
+    request_id TEXT,                     -- Group related operations in single request
+    session_id TEXT,                     -- User session ID
+    
+    -- Institution context (for multi-tenant filtering)
+    institution_id TEXT,                 -- Institution context (NULL for site-wide ops)
+    
+    -- Indexing for common queries
+    INDEX idx_timestamp ON audit_log(timestamp DESC),
+    INDEX idx_user_id ON audit_log(user_id),
+    INDEX idx_entity ON audit_log(entity_type, entity_id),
+    INDEX idx_operation ON audit_log(operation_type),
+    INDEX idx_institution ON audit_log(institution_id)
+);
+```
+
+### Audit Event Types
+
+```python
+# audit_service.py
+
+from enum import Enum
+from typing import Any, Dict, Optional
+import uuid
+from datetime import datetime, timezone
+import json
+
+class OperationType(Enum):
+    """Types of auditable operations"""
+    CREATE = "CREATE"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+
+class EntityType(Enum):
+    """Types of entities we audit"""
+    USER = "users"
+    INSTITUTION = "institutions"
+    PROGRAM = "programs"
+    COURSE = "courses"
+    TERM = "terms"
+    OFFERING = "course_offerings"
+    SECTION = "course_sections"
+    OUTCOME = "course_outcomes"
+    INVITATION = "user_invitations"
+
+class SourceType(Enum):
+    """Where the operation originated"""
+    API = "API"           # From API request
+    IMPORT = "IMPORT"     # From data import
+    SYSTEM = "SYSTEM"     # Automated system action
+    SCRIPT = "SCRIPT"     # From management script
+
+class AuditService:
+    """Service for creating and querying audit logs"""
+    
+    @staticmethod
+    def log_create(
+        entity_type: EntityType,
+        entity_id: str,
+        new_values: Dict[str, Any],
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+        source_type: SourceType = SourceType.API,
+        source_details: Optional[str] = None,
+        request_context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Log entity creation
+        
+        Args:
+            entity_type: Type of entity created
+            entity_id: ID of created entity
+            new_values: Complete entity state after creation
+            user_id: User who created (NULL for system)
+            institution_id: Institution context
+            source_type: Where operation originated
+            source_details: Additional context
+            request_context: Request metadata (IP, user agent, etc.)
+            
+        Returns:
+            audit_id: ID of created audit log entry
+        """
+        
+    @staticmethod
+    def log_update(
+        entity_type: EntityType,
+        entity_id: str,
+        old_values: Dict[str, Any],
+        new_values: Dict[str, Any],
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+        source_type: SourceType = SourceType.API,
+        source_details: Optional[str] = None,
+        request_context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Log entity update
+        
+        Args:
+            entity_type: Type of entity updated
+            entity_id: ID of updated entity
+            old_values: Entity state before update
+            new_values: Entity state after update
+            user_id: User who updated (NULL for system)
+            institution_id: Institution context
+            source_type: Where operation originated
+            source_details: Additional context
+            request_context: Request metadata
+            
+        Returns:
+            audit_id: ID of created audit log entry
+        """
+        
+    @staticmethod
+    def log_delete(
+        entity_type: EntityType,
+        entity_id: str,
+        old_values: Dict[str, Any],
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+        source_type: SourceType = SourceType.API,
+        source_details: Optional[str] = None,
+        request_context: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Log entity deletion
+        
+        Args:
+            entity_type: Type of entity deleted
+            entity_id: ID of deleted entity
+            old_values: Entity state before deletion
+            user_id: User who deleted (NULL for system)
+            institution_id: Institution context
+            source_type: Where operation originated
+            source_details: Additional context
+            request_context: Request metadata
+            
+        Returns:
+            audit_id: ID of created audit log entry
+        """
+        
+    @staticmethod
+    def get_entity_history(
+        entity_type: EntityType,
+        entity_id: str,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get audit history for specific entity"""
+        
+    @staticmethod
+    def get_user_activity(
+        user_id: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """Get all activity by specific user"""
+        
+    @staticmethod
+    def get_recent_activity(
+        institution_id: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get recent system activity (for dashboard)"""
+        
+    @staticmethod
+    def export_audit_log(
+        start_date: datetime,
+        end_date: datetime,
+        entity_type: Optional[EntityType] = None,
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+        format: str = "csv"
+    ) -> bytes:
+        """Export audit logs for compliance/analysis"""
+```
+
+### Integration Points
+
+#### Database Layer Integration
+Every CRUD method in `database_sqlite.py` calls audit logging:
+
+```python
+# Example: database_sqlite.py
+
+def update_course(self, course_id: str, course_data: Dict[str, Any]) -> bool:
+    """Update course with audit logging"""
+    try:
+        # Get old values BEFORE update
+        old_course = self.get_course_by_id(course_id)
+        if not old_course:
+            return False
+            
+        # Perform update
+        session = self.get_session()
+        course = session.query(CourseModel).filter_by(course_id=course_id).first()
+        if not course:
+            return False
+            
+        # Update fields
+        for key, value in course_data.items():
+            if hasattr(course, key):
+                setattr(course, key, value)
+        
+        session.commit()
+        
+        # Get new values AFTER update
+        new_course = self.get_course_by_id(course_id)
+        
+        # LOG THE CHANGE
+        from audit_service import AuditService, EntityType, SourceType
+        from auth_service import get_current_user_id
+        
+        AuditService.log_update(
+            entity_type=EntityType.COURSE,
+            entity_id=course_id,
+            old_values=old_course,
+            new_values=new_course,
+            user_id=get_current_user_id(),  # From Flask session
+            institution_id=course_data.get('institution_id'),
+            source_type=SourceType.API
+        )
+        
+        return True
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Update course failed: {e}")
+        return False
+```
+
+#### API Layer Integration
+API routes extract request context and pass to audit logging:
+
+```python
+# Example: api_routes.py
+
+@api.route("/courses/<course_id>", methods=["PUT"])
+@permission_required("manage_courses")
+def update_course_api(course_id: str):
+    """Update course with full audit context"""
+    try:
+        data = request.get_json()
+        
+        # Update course (this calls audit logging internally)
+        success = update_course(course_id, data)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Course updated successfully"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Course not found"
+            }), 404
+            
+    except Exception as e:
+        return handle_api_error(e, "Update course", "Failed to update course")
+```
+
+### UI Access (Site Admin Dashboard)
+
+**Existing UI Panel**: `templates/dashboard/site_admin_panels.html` lines 70-95
+- Panel already exists with "Recent System Activity" heading
+- Has buttons for "View All" and "Filter"
+- Currently shows loading spinner (not implemented)
+
+**Implementation Needed**:
+```javascript
+// static/audit.js
+
+async function loadRecentActivity() {
+    const response = await fetch('/api/audit/recent?limit=50');
+    const data = await response.json();
+    
+    const container = document.getElementById('activityTableContainer');
+    container.innerHTML = renderActivityTable(data.activities);
+}
+
+function renderActivityTable(activities) {
+    return `
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${activities.map(renderActivityRow).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderActivityRow(activity) {
+    const icon = getOperationIcon(activity.operation_type);
+    const color = getOperationColor(activity.operation_type);
+    
+    return `
+        <tr>
+            <td>${formatTimestamp(activity.timestamp)}</td>
+            <td>
+                <span class="user-badge" data-role="${activity.user_role}">
+                    ${activity.user_email || 'System'}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-${color}">
+                    ${icon} ${activity.operation_type}
+                </span>
+            </td>
+            <td>
+                <a href="#" onclick="viewEntity('${activity.entity_type}', '${activity.entity_id}')">
+                    ${activity.entity_type} #${activity.entity_id.substring(0, 8)}
+                </a>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-secondary" 
+                        onclick="viewAuditDetails('${activity.audit_id}')">
+                    View Details
+                </button>
+            </td>
+        </tr>
+    `;
+}
+```
+
+### API Endpoints for Audit Logging
+
+```python
+# api_routes.py
+
+@api.route("/audit/recent", methods=["GET"])
+@permission_required("view_all_data")  # Site admin only
+def get_recent_audit_activity():
+    """Get recent system activity for dashboard"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        institution_id = get_current_institution_id()  # NULL for site admin
+        
+        activities = AuditService.get_recent_activity(
+            institution_id=institution_id,
+            limit=limit
+        )
+        
+        return jsonify({
+            "success": True,
+            "activities": activities,
+            "count": len(activities)
+        }), 200
+        
+    except Exception as e:
+        return handle_api_error(e, "Get audit activity", "Failed to retrieve activity")
+
+@api.route("/audit/entity/<entity_type>/<entity_id>", methods=["GET"])
+@permission_required("view_program_data")  # Any admin role
+def get_entity_audit_history(entity_type: str, entity_id: str):
+    """Get audit history for specific entity"""
+    try:
+        history = AuditService.get_entity_history(
+            entity_type=EntityType(entity_type),
+            entity_id=entity_id,
+            limit=100
+        )
+        
+        return jsonify({
+            "success": True,
+            "history": history,
+            "count": len(history)
+        }), 200
+        
+    except Exception as e:
+        return handle_api_error(e, "Get entity history", "Failed to retrieve history")
+
+@api.route("/audit/export", methods=["POST"])
+@permission_required("view_all_data")  # Site admin only
+def export_audit_log():
+    """Export audit logs for compliance"""
+    try:
+        data = request.get_json()
+        start_date = datetime.fromisoformat(data['start_date'])
+        end_date = datetime.fromisoformat(data['end_date'])
+        
+        export_data = AuditService.export_audit_log(
+            start_date=start_date,
+            end_date=end_date,
+            entity_type=data.get('entity_type'),
+            user_id=data.get('user_id'),
+            institution_id=data.get('institution_id'),
+            format=data.get('format', 'csv')
+        )
+        
+        return Response(
+            export_data,
+            mimetype='text/csv' if data.get('format') == 'csv' else 'application/json',
+            headers={
+                'Content-Disposition': f'attachment; filename=audit_log_{start_date}_{end_date}.csv'
+            }
+        ), 200
+        
+    except Exception as e:
+        return handle_api_error(e, "Export audit log", "Failed to export audit log")
+
+@api.route("/audit/user/<user_id>", methods=["GET"])
+@permission_required("view_institution_data")  # Institution admin+
+def get_user_audit_activity(user_id: str):
+    """Get all activity by specific user"""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        activity = AuditService.get_user_activity(
+            user_id=user_id,
+            start_date=datetime.fromisoformat(start_date) if start_date else None,
+            end_date=datetime.fromisoformat(end_date) if end_date else None,
+            limit=100
+        )
+        
+        return jsonify({
+            "success": True,
+            "activity": activity,
+            "count": len(activity)
+        }), 200
+        
+    except Exception as e:
+        return handle_api_error(e, "Get user activity", "Failed to retrieve user activity")
+```
+
+### Sensitive Data Exclusion
+
+**Never log sensitive data in audit logs:**
+```python
+def sanitize_for_audit(entity_data: Dict[str, Any], entity_type: EntityType) -> Dict[str, Any]:
+    """Remove sensitive fields before audit logging"""
+    sensitive_fields = [
+        'password',
+        'password_hash',
+        'password_reset_token',
+        'email_verification_token',
+        'oauth_id',
+        'oauth_token',
+        'api_key',
+        'secret_key'
+    ]
+    
+    sanitized = entity_data.copy()
+    for field in sensitive_fields:
+        if field in sanitized:
+            sanitized[field] = '[REDACTED]'
+    
+    return sanitized
+```
+
+### Test Strategy for Audit Logging
+
+#### Unit Tests (`test_audit_service.py`)
+```python
+class TestAuditService:
+    def test_log_create_success(self):
+        """Test logging entity creation"""
+        
+    def test_log_update_tracks_changes(self):
+        """Test logging entity update with field changes"""
+        
+    def test_log_delete_preserves_state(self):
+        """Test logging entity deletion with final state"""
+        
+    def test_get_entity_history(self):
+        """Test retrieving entity audit history"""
+        
+    def test_get_recent_activity_filters_by_institution(self):
+        """Test recent activity respects institution context"""
+        
+    def test_sensitive_data_redacted(self):
+        """Test password fields are redacted in audit logs"""
+        
+    def test_export_audit_log_csv_format(self):
+        """Test exporting audit logs as CSV"""
+```
+
+#### Integration Tests (`test_crud_workflows_audit.py`)
+```python
+class TestAuditIntegration:
+    def test_course_crud_generates_audit_trail(self):
+        """Test creating/updating/deleting course logs to audit"""
+        # 1. Create course via API
+        # 2. Verify CREATE audit log entry exists
+        # 3. Update course via API
+        # 4. Verify UPDATE audit log entry exists
+        # 5. Delete course via API
+        # 6. Verify DELETE audit log entry exists
+        # 7. Verify all entries have correct user context
+        
+    def test_audit_history_shows_entity_lifecycle(self):
+        """Test get_entity_history returns complete timeline"""
+        # 1. Create entity
+        # 2. Update 3 times
+        # 3. Get entity history
+        # 4. Verify 4 entries (1 create + 3 updates)
+        # 5. Verify chronological order
+        
+    def test_institution_admin_sees_only_their_activity(self):
+        """Test audit log filtering by institution"""
+        # 1. CEI admin updates CEI course
+        # 2. RCC admin updates RCC course
+        # 3. CEI admin calls /api/audit/recent
+        # 4. Verify only sees CEI activity
+```
+
+#### E2E Tests (`test_audit_ui.py`)
+```python
+class TestAuditUI:
+    def test_site_admin_views_recent_activity(self, page):
+        """
+        TC-AUDIT-001: Site admin views recent system activity
+        
+        Steps:
+        1. Login as site admin
+        2. Navigate to dashboard
+        3. Click "Recent System Activity" panel
+        4. Verify activity table loads
+        5. Verify shows activity from all institutions
+        6. Verify shows operation types (CREATE, UPDATE, DELETE)
+        7. Verify shows user info and timestamps
+        """
+        
+    def test_site_admin_exports_audit_log(self, page):
+        """
+        TC-AUDIT-002: Site admin exports audit log for compliance
+        
+        Steps:
+        1. Login as site admin
+        2. Navigate to Recent System Activity panel
+        3. Click "Export" button
+        4. Select date range
+        5. Select format (CSV)
+        6. Click "Download"
+        7. Verify CSV file downloads
+        8. Verify CSV contains expected columns
+        9. Verify sensitive data is redacted
+        """
+        
+    def test_view_entity_audit_history(self, page):
+        """
+        TC-AUDIT-003: User views audit history for specific entity
+        
+        Steps:
+        1. Login as institution admin
+        2. Navigate to Courses page
+        3. Click on specific course
+        4. Click "History" button
+        5. Verify audit history modal opens
+        6. Verify shows all changes to course
+        7. Verify shows before/after values
+        8. Verify shows user who made each change
+        """
+```
+
+### Audit Log Retention
+
+**Decision**: Retain audit logs forever (no automatic deletion)
+- Compliance requirements often mandate long retention
+- Storage cost is minimal for text data
+- Can implement archival strategy later if needed
+
+**Future Enhancement** (not in this phase):
+- Archive old audit logs to separate table/storage
+- Compress archived logs
+- Implement data lifecycle management
 
 ---
 
@@ -1326,4 +1925,5 @@ def test_course_with_program(test_institution, test_program):
 ---
 
 *This is a comprehensive planning document. No code has been written yet. All implementation will follow after user approval and question resolution.*
+
 
