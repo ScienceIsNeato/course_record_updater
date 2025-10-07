@@ -78,6 +78,30 @@ All test users have password: `TestUser123!` or role-specific password
 - RCC: `susan.instructor@riverside.edu`
 - PTU: `david.instructor@pactech.edu`
 
+### Test Data Creation Strategy
+
+**IMPORTANT**: This test suite creates its OWN controlled test data using the Generic CSV adapter, ensuring:
+- Test isolation from production/development data
+- Predictable, known quantities for assertions
+- Reproducible test runs
+- No dependency on external test files
+
+**Approach**:
+1. Create minimal CSV files programmatically with known values
+2. Import via Generic CSV adapter to populate database
+3. Run data access tests against this controlled dataset
+4. Verify export contains exactly what was imported
+
+**Test Data Fixture** (created in test setup):
+```python
+# Create ZIP of CSVs with controlled test data
+# institutions.csv: 3 rows (CEI, RCC, PTU)
+# programs.csv: 6 rows (2 per institution)
+# courses.csv: Known count per institution
+# users.csv: Known users per role
+# etc.
+```
+
 ---
 
 ## 🧪 SCENARIO 1: Site Admin - Full System Access
@@ -186,10 +210,9 @@ client.post('/api/login', json={
     'password': 'SiteAdmin123!'
 })
 
-# Export via Generic CSV adapter
+# Export via Generic CSV adapter (always returns ZIP of CSVs)
 response = client.post('/api/export', json={
-    'adapter_id': 'generic_csv_adapter',
-    'export_format': 'csv'
+    'adapter_id': 'generic_csv_v1'
 })
 assert response.status_code == 200
 
@@ -321,7 +344,7 @@ client.post('/api/login', json={
 
 # Export
 response = client.post('/api/export', json={
-    'adapter_id': 'generic_csv_adapter'
+    'adapter_id': 'generic_csv_v1'
 })
 assert response.status_code == 200
 
@@ -495,7 +518,7 @@ client.post('/api/login', json={
 
 # Export
 response = client.post('/api/export', json={
-    'adapter_id': 'generic_csv_adapter'
+    'adapter_id': 'generic_csv_v1'
 })
 assert response.status_code == 200
 
@@ -618,7 +641,7 @@ client.post('/api/login', json={
 
 # Export
 response = client.post('/api/export', json={
-    'adapter_id': 'generic_csv_adapter'
+    'adapter_id': 'generic_csv_v1'
 })
 assert response.status_code == 200
 
@@ -673,7 +696,7 @@ assert dashboard_response.status_code in [401, 302], \
 
 # Attempt export access
 export_response = client.post('/api/export', json={
-    'adapter_id': 'generic_csv_adapter'
+    'adapter_id': 'generic_csv_v1'
 })
 assert export_response.status_code in [401, 302], \
     "Unauthenticated export access should be denied"
@@ -722,9 +745,11 @@ assert export_response.status_code in [401, 302], \
    - Tests validate expected behavior when fixed
    - TC-DAC-201 documents this limitation
 
-2. **Export Formats**: Only Generic CSV adapter tested
-   - Other adapters (CEI Excel, etc.) not in scope
-   - YAGNI on other formats for now
+2. **Adapters**: Only Generic CSV adapter tested
+   - **Generic CSV Adapter** (`generic_csv_v1`): Bidirectional ZIP format, institution-agnostic
+   - **CEI Excel Adapter** (`cei_excel_format_v1`): Customer-specific, import-only
+   - Testing focuses on Generic CSV as the universal bidirectional format
+   - Customer-specific adapters (CEI) not in UAT scope
 
 3. **Frontend Validation**: Deferred to later phase
    - TODO: Add UI visibility tests (which buttons/panels appear)
