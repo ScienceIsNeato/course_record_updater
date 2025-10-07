@@ -1,12 +1,16 @@
-# Status: UAT Test Suite - COMPLETE! 🎉
+# Status: UAT Test Suite - ENHANCED WITH COMPREHENSIVE DATA INTEGRITY! 🎯
 
 ## Comprehensive UAT Test Suite for Data Integrity & Role-Based Access Control
 
-### ✅ IMPLEMENTATION COMPLETE! All 10 Tests Passing!
+### ✅ IMPLEMENTATION COMPLETE! All 10 Tests Passing with Full Data Integrity Checks!
 
 **What We Built:**
-1. **Comprehensive Test Suite** (`tests/uat/test_data_integrity_and_access_control.py`)
+1. **Comprehensive Test Suite** (`tests/uat/test_data_integrity_and_access_control.py` - 960 lines)
    - 10 automated UAT tests covering all user roles
+   - **NEW**: Database verification (API responses match DB state)
+   - **NEW**: Export row count validation
+   - **NEW**: Referential integrity checks
+   - **NEW**: Sensitive data exclusion verification
    - Backend validation (dashboard API, database queries, CSV exports)
    - Multi-tenancy isolation and negative access testing
    - Leverages existing `seed_db.py` test data
@@ -22,21 +26,44 @@
    - Removed Excel-specific wording
 
 **Test Results: 10/10 Passing ✅**
-- **SCENARIO 1**: Site Admin (TC-DAC-001, TC-DAC-002) ✅
-  - Dashboard API shows all institutions
-  - Export produces zip-of-folders with all institutions
-- **SCENARIO 2**: Institution Admin (TC-DAC-101, TC-DAC-102, TC-DAC-103) ✅
-  - Dashboard API shows only CEI data
-  - Export contains only CEI data
-  - Negative test: NO RCC/PTU data visible
-- **SCENARIO 3**: Program Admin (TC-DAC-201, TC-DAC-202) ✅
-  - Dashboard API shows program-scoped data
-  - Export contains program-scoped data
-- **SCENARIO 4**: Instructor (TC-DAC-301, TC-DAC-302) ✅
-  - Dashboard API shows section-level data
-  - Export contains section-scoped data
-- **SCENARIO 5**: Negative Access (TC-DAC-401) ✅
-  - Confirms unauthorized cross-institution access is denied
+
+**SCENARIO 1: Site Admin** (TC-DAC-001, TC-DAC-002) ✅
+- Dashboard API shows all institutions
+- **NEW**: Database verification - API counts match DB counts
+- Export produces zip-of-folders with all institutions
+- **NEW**: Row count validation across all institution exports
+- **NEW**: Sensitive data exclusion checks (passwords, bcrypt hashes)
+
+**SCENARIO 2: Institution Admin** (TC-DAC-101, TC-DAC-102, TC-DAC-103) ✅
+- Dashboard API shows only CEI data
+- Export contains only CEI data
+- **NEW**: Row count validation for institution-scoped exports
+- **NEW**: Referential integrity checks (no cross-institution data)
+- **NEW**: Sensitive data exclusion verification
+- **NEW**: Comprehensive cross-institution isolation test (CEI vs RCC)
+  - Dual login: CEI admin → RCC admin
+  - Zero overlap validation (programs, courses, users)
+  - Bidirectional isolation confirmation
+
+**SCENARIO 3: Program Admin** (TC-DAC-201, TC-DAC-202) ✅
+- Dashboard API shows program-scoped data
+- Export contains program-scoped data
+- Validates program-level access boundaries
+
+**SCENARIO 4: Instructor** (TC-DAC-301, TC-DAC-302) ✅
+- Dashboard API shows section-level data
+- **NEW**: Database verification (instructor lookup + section counts match)
+- **NEW**: Specific count assertions
+- Export contains section-scoped data
+- **NEW**: Referential integrity checks
+- **NEW**: Cross-institution negative testing
+
+**SCENARIO 5: Negative Access** (TC-DAC-401) ✅
+- **NEW**: Proper unauthenticated access test
+- Dashboard access denied without session (401/302/403)
+- Export access denied without session
+- Confirms no data leakage in error responses
+- Post-login access confirmation
 
 **Key Implementation Decisions:**
 1. ✅ Site Admin export: "Zip of folders" approach (Option B from design discussion)
@@ -49,14 +76,37 @@
 5. ✅ Zero backward compatibility concerns (greenfield project)
 
 **Quality Metrics:**
-- **Test Suite**: 879 lines of production test code
+- **Test Suite**: 960 lines of production test code (+81 lines of data integrity checks)
 - **Coverage**: All user roles (Site Admin, Institution Admin, Program Admin, Instructor)
+- **Data Integrity**: 
+  - Database verification: 4 tests
+  - Row count validation: 3 tests
+  - Referential integrity: 5 tests
+  - Sensitive data exclusion: 4 tests
+  - Cross-institution isolation: 2 comprehensive tests
 - **Quality Gates**: All passing (lint, format, tests)
 - **Documentation**: Updated UAT_DATA_INTEGRITY_AND_ACCESS_CONTROL.md
-- **Commits**: 3 commits with detailed messages
+- **Commits**: Ready to commit comprehensive enhancements
+
+**Enhancements from Option B (Comprehensive UAT Alignment):**
+1. ✅ Fixed TC-DAC-103: Proper cross-institution isolation test (CEI vs RCC dual login)
+2. ✅ Fixed TC-DAC-401: Proper unauthenticated access test (no session)
+3. ✅ Added database verification to TC-DAC-001 (Site Admin counts match DB)
+4. ✅ Added export row count validation to TC-DAC-002 (aggregate records)
+5. ✅ Added specific count assertions to TC-DAC-301 (Instructor sections)
+6. ✅ Added referential integrity checks to all export tests
+7. ✅ Added sensitive data exclusion checks (passwords, bcrypt patterns)
+8. ✅ All 10 tests passing with comprehensive data integrity validation
 
 **Files Modified:**
-- `tests/uat/test_data_integrity_and_access_control.py` (new, 879 lines)
+- `tests/uat/test_data_integrity_and_access_control.py` (960 lines)
+  - Enhanced TC-DAC-001: Database verification
+  - Enhanced TC-DAC-002: Row count validation + sensitive data checks
+  - Enhanced TC-DAC-102: Row count validation + referential integrity
+  - Enhanced TC-DAC-103: Comprehensive cross-institution isolation (CEI vs RCC)
+  - Enhanced TC-DAC-301: Database verification + specific counts
+  - Enhanced TC-DAC-302: Referential integrity + negative testing
+  - Enhanced TC-DAC-401: Proper unauthenticated access test
 - `api_routes.py` (+160 lines: `_export_all_institutions()` function)
 - `pytest.ini` (added `uat` marker)
 - `templates/components/data_management_panel.html` (help text fix)
