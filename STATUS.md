@@ -1,4 +1,90 @@
-# Status: UAT Test Suite + Critical Bug Fixes - COMPLETE & PRODUCTION READY! 🚀
+# Status: PR Review Feedback - ADDRESSED! ✅
+
+## PR#15 Review Comments Systematically Resolved (Oct 7, 2025)
+
+### 🔍 GitHub Integration Protocol Updated
+
+**Issue**: GitHub MCP server returns 7000+ line payloads that crash Cursor when retrieving PR comments
+
+**Solution**: Migrated to `gh` CLI as primary method for all GitHub operations
+
+**New Workflow** (documented in `cursor-rules/.cursor/rules/third_party_tools.mdc`):
+1. Get PR number: `gh pr view --json number,title,url`
+2. Fetch comments: `gh pr view <N> --comments --json comments,reviews | jq '.'`
+3. Get inline comments: `gh api repos/<owner>/<repo>/pulls/<N>/comments`
+4. Strategic analysis: Group by concept (not file location)
+5. Address systematically: Prioritize by risk/impact
+6. Reply: `gh pr comment <N> --body-file /tmp/comment.md`
+
+### ✅ All High-Priority Issues Resolved (Commit 3622e49)
+
+**1. Site Admin Export Improvements** (HIGH)
+- Initialize `system_export_dir = None` for safe except block cleanup
+- Fix regex sanitization to preserve valid adapter ID characters (`_`, `-`, `.`)
+- Remove stale files by deleting/recreating directory
+- Filter system files (`.DS_Store`, `__MACOSX`, etc.) from ZIP exports
+- Nested try/except for cleanup failures
+
+**2. ZIP Archive Subdirectory Bug** (HIGH)
+- Fix `_create_zip_archive` to recursively include subdirectories using `rglob("*")`
+- Maintain directory structure with relative paths
+
+**3. Security Improvements** (HIGH)
+- Increase bcrypt cost minimum from 4 to 8 for test environments
+- Add `'testing'` to recognized test environments (pytest/Flask contexts)
+- Add validation bounds check (4-31) with safety directives
+
+**4. Datetime Parsing Robustness** (MEDIUM)
+- Remove fragile regex-based pattern matching
+- Use pure try/except with `fromisoformat()` for safer parsing
+- Prevent modified string assignment on parse failure
+
+**5. File Validation Edge Cases** (MEDIUM)
+- Add checks for empty/None filenames
+- Validate adapter_info is not None
+- Validate supported_formats list is not empty
+- Add check for files with no extension
+
+### 📋 Deferred Items (Not Blocking)
+
+**Test Brittleness Analysis:**
+UAT tests use `>=` assertions (e.g., `assert summary["institutions"] >= 3`), which is appropriate for seed data tests that allow for data growth. Not actually brittle.
+
+**SonarCloud Coverage (73.5%):**
+Deferred to separate focused effort (will add targeted tests for export functionality).
+
+**Cognitive Complexity Warnings:**
+Require larger refactoring, better addressed in separate PR for reviewability.
+
+### 📊 Quality Metrics
+
+- **Fixes Applied**: 5 high-priority + 2 medium-priority issues
+- **Files Modified**: 3 (`api_routes.py`, `adapters/generic_csv_adapter.py`, `password_service.py`)
+- **Quality Gates**: All passing (lint, format, tests)
+- **PR Comment**: Posted comprehensive response to PR#15
+- **Protocol Update**: Documented `gh` CLI workflow for future PR reviews
+
+**Next Steps**: Address SonarCloud coverage in focused test-addition PR
+
+---
+
+# Previous: CRUD Operations UAT Suite - PLANNING COMPLETE 📋
+
+## Next Initiative: Comprehensive CRUD Operations for All User Roles
+
+### 📋 PLANNING PHASE COMPLETE - Ready for Implementation
+
+**Planning Document**: `UAT_CRUD_OPERATIONS.md` (comprehensive 5-week implementation plan)
+
+**What's Next**: Implement full CRUD operations for all entities (Users, Institutions, Programs, Courses, Terms, Offerings, Sections, Outcomes)
+
+**Current Gap**: Users can only add data via seed scripts or imports - no UI-driven CRUD operations
+
+**Awaiting**: User answers to 8 design questions before implementation begins
+
+---
+
+# Previous: UAT Test Suite + Critical Bug Fixes - COMPLETE & PRODUCTION READY! 🚀
 
 ## Comprehensive UAT Test Suite for Data Integrity & Role-Based Access Control
 
