@@ -30,10 +30,20 @@ logger = get_logger(__name__)
 # Password configuration
 # Environment-aware bcrypt cost factor:
 # - Production/Development: 12 (2^12 = 4096 iterations, secure but slower ~2-3s per hash)
-# - Test/E2E: 4 (2^4 = 16 iterations, faster for test execution ~10-50ms per hash)
-# This prevents slow E2E tests while maintaining production security
-_ENV = os.getenv("FLASK_ENV", "development")
-BCRYPT_COST_FACTOR = 4 if _ENV in ["test", "e2e"] else 12
+# - Test/E2E/Testing: 8 (2^8 = 256 iterations, reasonable security while fast for tests ~50-100ms)
+# This prevents slow E2E tests while maintaining minimum security hygiene
+# Note: Minimum cost factor is 8 even for tests to prevent accidental production use
+_ENV = os.getenv("FLASK_ENV", "development").lower()
+# Test environments: 'test', 'e2e', 'testing' (pytest/Flask testing)
+TEST_ENVIRONMENTS = {"test", "e2e", "testing"}
+BCRYPT_COST_FACTOR = 8 if _ENV in TEST_ENVIRONMENTS else 12
+
+# Validate cost factor is within acceptable bounds
+# pylint: disable=comparison-of-constants (safety check for future modifications)
+if not (4 <= BCRYPT_COST_FACTOR <= 31):  # nosec B105  # noqa: PLR2004
+    raise ValueError(
+        f"Invalid BCRYPT_COST_FACTOR: {BCRYPT_COST_FACTOR}. Must be between 4 and 31."
+    )
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 128
 RESET_TOKEN_EXPIRY_HOURS = 24

@@ -2946,7 +2946,7 @@ def _validate_excel_import_request():
         raise ValueError("No Excel file provided")
 
     file = request.files["excel_file"]
-    if file.filename == "":
+    if not file.filename or file.filename == "":
         logger.warning("Empty filename in uploaded file")
         raise ValueError("No file selected")
 
@@ -2974,10 +2974,22 @@ def _validate_excel_import_request():
 
     # Get supported extensions
     adapter_info = adapter.get_adapter_info()
+    if not adapter_info:
+        raise ValueError(
+            f"Adapter info not available for: {import_params['adapter_id']}"
+        )
+
     supported_formats = adapter_info.get("supported_formats", [])
+    if not supported_formats:
+        raise ValueError(
+            f"No supported formats defined for adapter: {import_params['adapter_id']}"
+        )
 
     # Validate file extension
     file_ext = Path(file.filename).suffix.lower()
+    if not file_ext:
+        raise ValueError("File has no extension")
+
     if file_ext not in supported_formats:
         raise ValueError(
             f"Invalid file format {file_ext} for adapter {import_params['adapter_id']}. "
@@ -3371,17 +3383,21 @@ def _export_all_institutions(current_user: Dict[str, Any]):
     import shutil
     import zipfile
 
+    # Initialize temp directory variable for cleanup in except block
+    system_export_dir = None
+
     try:
         # Get parameters
         data_type_raw = request.args.get("export_data_type", "courses")
         adapter_id_raw = request.args.get("export_adapter", "generic_csv_v1")
 
-        # Sanitize parameters
-        data_type = re.sub(r"\W", "", data_type_raw)
+        # Sanitize parameters (allow alphanumeric, underscore, hyphen, and dot)
+        data_type = re.sub(r"[^\w.-]", "", data_type_raw)
         if not data_type:
             data_type = "courses"
 
-        adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw)
+        # Keep underscores and hyphens for valid adapter IDs like "generic_csv_v1"
+        adapter_id = re.sub(r"[^\w.-]", "", adapter_id_raw)
         if not adapter_id:
             adapter_id = "generic_csv_v1"
 
@@ -3398,11 +3414,14 @@ def _export_all_institutions(current_user: Dict[str, Any]):
         if not institutions:
             return jsonify({"success": False, "error": "No institutions found"}), 404
 
-        # Create temp directory for building system export
+        # Create temp directory for building system export (remove if exists to avoid stale files)
         temp_base = Path(tempfile.gettempdir())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         system_export_dir = temp_base / f"system_export_{timestamp}"
-        system_export_dir.mkdir(exist_ok=True)
+
+        if system_export_dir.exists():
+            shutil.rmtree(system_export_dir)
+        system_export_dir.mkdir(parents=True)
 
         export_service = create_export_service()
 
@@ -3502,8 +3521,14 @@ def _export_all_institutions(current_user: Dict[str, Any]):
         # Create final ZIP file
         system_zip_path = temp_base / f"system_export_{timestamp}.zip"
 
+        # Exclude system files and directories
+        excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}
+
         with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in system_export_dir.rglob("*"):
+                # Skip excluded files and directories
+                if any(pattern in file_path.parts for pattern in excluded_patterns):
+                    continue
                 if file_path.is_file():
                     arcname = file_path.relative_to(system_export_dir)
                     zipf.write(file_path, arcname)
@@ -3525,9 +3550,14 @@ def _export_all_institutions(current_user: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"[EXPORT] System export failed: {str(e)}", exc_info=True)
-        # Clean up temp directory on error
-        if "system_export_dir" in locals() and system_export_dir.exists():
-            shutil.rmtree(system_export_dir)
+        # Clean up temp directory on error (system_export_dir initialized to None above)
+        if system_export_dir is not None and system_export_dir.exists():
+            try:
+                shutil.rmtree(system_export_dir)
+            except Exception as cleanup_error:
+                logger.error(
+                    f"[EXPORT] Failed to cleanup temp directory: {str(cleanup_error)}"
+                )
         return (
             jsonify({"success": False, "error": f"System export failed: {str(e)}"}),
             500,

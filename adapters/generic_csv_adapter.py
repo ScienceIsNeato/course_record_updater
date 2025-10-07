@@ -446,19 +446,22 @@ class GenericCSVAdapter(FileBaseAdapter):
 
             # Deserialize ISO 8601 datetime strings to Python datetime objects
             # SQLite DateTime columns require datetime objects, not strings
-            if "T" in value and (":" in value or "Z" in value):
-                try:
-                    # Try parsing as ISO 8601 datetime
-                    from datetime import datetime
+            # Use try/except approach instead of pattern matching for robustness
+            try:
+                from datetime import datetime
 
-                    # Handle both with and without microseconds, with or without timezone
-                    if value.endswith("Z"):
-                        value = value[:-1] + "+00:00"
-                    record[key] = datetime.fromisoformat(value)
-                    continue
-                except (ValueError, AttributeError):
-                    # Not a valid ISO datetime, keep as string
-                    pass
+                # Prepare value for parsing (handle 'Z' timezone indicator)
+                val_to_parse = value
+                if val_to_parse.endswith("Z"):
+                    val_to_parse = val_to_parse[:-1] + "+00:00"
+
+                # Attempt to parse as ISO 8601 datetime
+                parsed_dt = datetime.fromisoformat(val_to_parse)
+                record[key] = parsed_dt
+                continue
+            except (ValueError, AttributeError, TypeError):
+                # Not a valid ISO datetime, keep as string
+                pass
 
             # Other values stay as strings
             record[key] = value
@@ -608,13 +611,16 @@ class GenericCSVAdapter(FileBaseAdapter):
 
     def _create_zip_archive(self, source_dir: Path, output_path: str) -> None:
         """
-        Create ZIP archive from directory contents.
+        Create ZIP archive from directory contents, including subdirectories.
 
         Args:
             source_dir: Directory containing files to ZIP
             output_path: Path to output ZIP file
         """
         with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            # Add all files from source directory
-            for file in sorted(source_dir.iterdir()):
-                zf.write(file, arcname=file.name)
+            # Add all files recursively, maintaining directory structure
+            for file_path in sorted(source_dir.rglob("*")):
+                if file_path.is_file():
+                    # Calculate relative path from source_dir to maintain structure
+                    arcname = file_path.relative_to(source_dir)
+                    zf.write(file_path, arcname)
