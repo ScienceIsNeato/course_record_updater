@@ -342,8 +342,10 @@ class AdapterRegistry:
             return self._get_public_and_institution_adapters(institution_id)
 
         elif user_role == "instructor":
-            # Instructors see only public adapters
-            return self._get_public_adapters()
+            # Instructors have no import/export permissions - return empty list
+            # Note: "public" adapters are available to all users WHO HAVE IMPORT/EXPORT PERMISSIONS,
+            # not to users without those permissions
+            return []
 
         else:
             logger.warning(f"Unknown user role: {user_role}")
