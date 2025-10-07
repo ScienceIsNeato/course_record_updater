@@ -3177,6 +3177,17 @@ def export_data():
         - export_adapter: Adapter to use - adapter determines file format
         - include_metadata: Include metadata (true/false) - defaults to true
         - anonymize_data: Anonymize personal info (true/false) - defaults to false
+
+    Site Admin Behavior:
+        - Exports ALL institutions as a zip containing subdirectories per institution
+        - Structure: system_export_TIMESTAMP.zip
+                       ├── system_manifest.json
+                       ├── cei/
+                       │   └── [institution export files]
+                       ├── rcc/
+                       │   └── [institution export files]
+                       └── ptu/
+                           └── [institution export files]
     """
     try:
         current_user = get_current_user()
@@ -3184,7 +3195,15 @@ def export_data():
             logger.error("[EXPORT] User not authenticated")
             return jsonify({"success": False, "error": "Not authenticated"}), 401
 
+        user_role = current_user.get("role")
         institution_id = current_user.get("institution_id")
+
+        # Site Admin: Export all institutions
+        if user_role == UserRole.SITE_ADMIN.value:
+            logger.info("[EXPORT] Site Admin export - exporting all institutions")
+            return _export_all_institutions(current_user)
+
+        # Other roles: Export single institution
         if not institution_id:
             logger.error(
                 f"[EXPORT] No institution_id for user: {current_user.get('email')}"
@@ -3307,3 +3326,187 @@ def export_data():
     except Exception as e:
         logger.error(f"Error during export: {str(e)}", exc_info=True)
         return jsonify({"success": False, "error": f"Export failed: {str(e)}"}), 500
+
+
+def _export_all_institutions(current_user: Dict[str, Any]):
+    """
+    Export all institutions for Site Admin as a zip of folders.
+
+    Creates structure:
+        system_export_TIMESTAMP.zip
+          ├── system_manifest.json
+          ├── <institution_short_name>/
+          │     └── [export files per adapter]
+          └── ...
+
+    Args:
+        current_user: Site Admin user dict
+
+    Returns:
+        Flask send_file response with system-wide export ZIP
+    """
+    import json
+    import shutil
+    import zipfile
+
+    try:
+        # Get parameters
+        data_type_raw = request.args.get("export_data_type", "courses")
+        adapter_id_raw = request.args.get("export_adapter", "generic_csv_v1")
+
+        # Sanitize parameters
+        data_type = re.sub(r"\W", "", data_type_raw)
+        if not data_type:
+            data_type = "courses"
+
+        adapter_id = re.sub(r"[^a-zA-Z0-9_-]", "", adapter_id_raw)
+        if not adapter_id:
+            adapter_id = "generic_csv_v1"
+
+        include_metadata = (
+            request.args.get("include_metadata", "true").lower() == "true"
+        )
+
+        logger.info(
+            f"[EXPORT] Site Admin system-wide export: adapter={adapter_id}, data_type={data_type}"
+        )
+
+        # Get all institutions
+        institutions = get_all_institutions()
+        if not institutions:
+            return jsonify({"success": False, "error": "No institutions found"}), 404
+
+        # Create temp directory for building system export
+        temp_base = Path(tempfile.gettempdir())
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        system_export_dir = temp_base / f"system_export_{timestamp}"
+        system_export_dir.mkdir(exist_ok=True)
+
+        export_service = create_export_service()
+
+        # Get adapter info for file extension
+        try:
+            adapter = export_service.registry.get_adapter_by_id(adapter_id)
+            if not adapter:
+                return (
+                    jsonify(
+                        {"success": False, "error": f"Adapter not found: {adapter_id}"}
+                    ),
+                    400,
+                )
+
+            adapter_info = adapter.get_adapter_info()
+            supported_formats = adapter_info.get(
+                "supported_formats", [_DEFAULT_EXPORT_EXTENSION]
+            )
+            file_extension = (
+                supported_formats[0] if supported_formats else _DEFAULT_EXPORT_EXTENSION
+            )
+        except Exception as adapter_error:
+            logger.error(f"[EXPORT] Error getting adapter info: {str(adapter_error)}")
+            file_extension = _DEFAULT_EXPORT_EXTENSION
+
+        output_format = (
+            file_extension.lstrip(".")
+            if file_extension.startswith(".")
+            else file_extension
+        )
+
+        # Export each institution to its own subdirectory
+        institution_results = []
+
+        for inst in institutions:
+            inst_id = inst.get("institution_id")
+            inst_short_name = inst.get("short_name", inst_id)
+
+            # Create subdirectory for this institution
+            inst_dir = system_export_dir / inst_short_name
+            inst_dir.mkdir(exist_ok=True)
+
+            logger.info(
+                f"[EXPORT] Exporting institution: {inst_short_name} ({inst_id})"
+            )
+
+            # Create export config for this institution
+            config = ExportConfig(
+                institution_id=inst_id,
+                adapter_id=adapter_id,
+                export_view="standard",
+                include_metadata=include_metadata,
+                output_format=output_format,
+            )
+
+            # Export to institution directory
+            inst_filename = f"{data_type}_export_{timestamp}{file_extension}"
+            inst_output_path = inst_dir / inst_filename
+
+            result = export_service.export_data(config, str(inst_output_path))
+
+            institution_results.append(
+                {
+                    "institution_id": inst_id,
+                    "institution_name": inst.get("name"),
+                    "short_name": inst_short_name,
+                    "success": result.success,
+                    "records_exported": result.records_exported,
+                    "file": inst_filename,
+                    "errors": result.errors if not result.success else [],
+                }
+            )
+
+            if not result.success:
+                logger.warning(
+                    f"[EXPORT] Failed to export {inst_short_name}: {result.errors}"
+                )
+
+        # Create system-level manifest
+        system_manifest = {
+            "format_version": "1.0",
+            "export_type": "system_wide",
+            "export_timestamp": timestamp,
+            "exported_by": current_user.get("email"),
+            "adapter_id": adapter_id,
+            "data_type": data_type,
+            "total_institutions": len(institutions),
+            "successful_exports": sum(1 for r in institution_results if r["success"]),
+            "failed_exports": sum(1 for r in institution_results if not r["success"]),
+            "institutions": institution_results,
+        }
+
+        manifest_path = system_export_dir / "system_manifest.json"
+        with open(manifest_path, "w") as f:
+            json.dump(system_manifest, f, indent=2)
+
+        # Create final ZIP file
+        system_zip_path = temp_base / f"system_export_{timestamp}.zip"
+
+        with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in system_export_dir.rglob("*"):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(system_export_dir)
+                    zipf.write(file_path, arcname)
+
+        # Clean up temp directory
+        shutil.rmtree(system_export_dir)
+
+        logger.info(
+            f"[EXPORT] System export complete: {system_manifest['successful_exports']}/{system_manifest['total_institutions']} institutions"
+        )
+
+        # Send file
+        return send_file(
+            str(system_zip_path),
+            as_attachment=True,
+            download_name=f"system_export_{timestamp}.zip",
+            mimetype="application/zip",
+        )
+
+    except Exception as e:
+        logger.error(f"[EXPORT] System export failed: {str(e)}", exc_info=True)
+        # Clean up temp directory on error
+        if "system_export_dir" in locals() and system_export_dir.exists():
+            shutil.rmtree(system_export_dir)
+        return (
+            jsonify({"success": False, "error": f"System export failed: {str(e)}"}),
+            500,
+        )
