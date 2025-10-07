@@ -2954,10 +2954,7 @@ def _validate_excel_import_request():
         f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
     )
 
-    # File type validation is handled by the adapter (adapter-driven architecture)
-    # Adapters declare their supported formats via get_adapter_info()["supported_formats"]
-
-    # Get form parameters
+    # Get form parameters (need adapter_id for validation)
     import_params = {
         "adapter_id": request.form.get("import_adapter", "cei_excel_format_v1"),
         "conflict_strategy": request.form.get("conflict_strategy", "use_theirs"),
@@ -2965,6 +2962,31 @@ def _validate_excel_import_request():
         "verbose_output": request.form.get("verbose_output", "false").lower() == "true",
         "import_data_type": request.form.get("import_data_type", "courses"),
     }
+
+    # Validate file extension against adapter's supported formats
+    from adapters.adapter_registry import AdapterRegistry
+
+    registry = AdapterRegistry()
+    adapter = registry.get_adapter_by_id(import_params["adapter_id"])
+
+    if not adapter:
+        raise ValueError(f"Adapter not found: {import_params['adapter_id']}")
+
+    # Get supported extensions
+    adapter_info = adapter.get_adapter_info()
+    supported_formats = adapter_info.get("supported_formats", [])
+
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in supported_formats:
+        raise ValueError(
+            f"Invalid file format {file_ext} for adapter {import_params['adapter_id']}. "
+            f"Supported formats: {', '.join(supported_formats)}"
+        )
+
+    logger.info(
+        f"File extension {file_ext} validated for adapter {import_params['adapter_id']}"
+    )
 
     return file, import_params
 
