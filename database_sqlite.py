@@ -153,6 +153,43 @@ class SQLiteDatabase(DatabaseInterface):
             )
             return to_dict(record) if record else None
 
+    def update_institution(
+        self, institution_id: str, institution_data: Dict[str, Any]
+    ) -> bool:
+        """Update institution details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                inst = session.get(Institution, institution_id)
+                if not inst:
+                    return False
+
+                for key, value in institution_data.items():
+                    if hasattr(inst, key) and key != "id":
+                        setattr(inst, key, value)
+
+                inst.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update institution: {e}")
+            return False
+
+    def delete_institution(self, institution_id: str) -> bool:
+        """
+        Delete institution (CASCADE deletes all related data).
+        WARNING: This is DESTRUCTIVE and IRREVERSIBLE.
+        """
+        try:
+            with self.sqlite.session_scope() as session:
+                inst = session.get(Institution, institution_id)
+                if not inst:
+                    return False
+                # SQLAlchemy cascade will handle deletion of related entities
+                session.delete(inst)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete institution: {e}")
+            return False
+
     # ------------------------------------------------------------------
     # User operations
     # ------------------------------------------------------------------
@@ -278,6 +315,36 @@ class SQLiteDatabase(DatabaseInterface):
     def update_user_active_status(self, user_id: str, active_user: bool) -> bool:
         status = "active" if active_user else "inactive"
         return self.update_user(user_id, {"account_status": status})
+
+    def update_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
+        """
+        Update user profile fields only (first_name, last_name, display_name).
+        Used for self-service profile updates by users.
+        """
+        allowed_fields = ["first_name", "last_name", "display_name"]
+        filtered_data = {k: v for k, v in profile_data.items() if k in allowed_fields}
+        if not filtered_data:
+            return False
+        return self.update_user(user_id, filtered_data)
+
+    def update_user_role(
+        self, user_id: str, new_role: str, program_ids: Optional[List[str]] = None
+    ) -> bool:
+        """
+        Update user's role and program associations.
+        Used by admins to change user roles and assignments.
+        """
+        update_data: Dict[str, Any] = {"role": new_role}
+        if program_ids is not None:
+            update_data["program_ids"] = program_ids
+        return self.update_user(user_id, update_data)
+
+    def deactivate_user(self, user_id: str) -> bool:
+        """
+        Soft delete: Mark user account as suspended.
+        Preserves user data for audit trail while preventing login.
+        """
+        return self.update_user(user_id, {"account_status": "suspended"})
 
     def calculate_and_update_active_users(self, institution_id: str) -> int:
         with self.sqlite.session_scope() as session:
@@ -1091,13 +1158,4 @@ class SQLiteDatabase(DatabaseInterface):
             if not program:
                 return False
             session.delete(program)
-            return True
-
-    def delete_institution(self, institution_id: str) -> bool:
-        """Delete an institution (for testing purposes)."""
-        with self.sqlite.session_scope() as session:
-            institution = session.get(Institution, institution_id)
-            if not institution:
-                return False
-            session.delete(institution)
             return True

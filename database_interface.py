@@ -87,6 +87,28 @@ class DatabaseInterface(ABC):
     def get_user_by_verification_token(self, token: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
+    @abstractmethod
+    def update_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
+        """Update user profile fields (first_name, last_name, display_name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_user_role(
+        self, user_id: str, new_role: str, program_ids: List[str] = None
+    ) -> bool:
+        """Update user's role and program associations"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def deactivate_user(self, user_id: str) -> bool:
+        """Soft delete: suspend user account"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_user(self, user_id: str) -> bool:
+        """Hard delete: remove user from database"""
+        raise NotImplementedError
+
     # Course operations
     @abstractmethod
     def create_course(self, course_data: Dict[str, Any]) -> Optional[str]:

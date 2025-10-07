@@ -171,6 +171,24 @@ def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_user_by_verification_token(token)
 
 
+def update_user_profile(user_id: str, profile_data: Dict[str, Any]) -> bool:
+    return _db_service.update_user_profile(user_id, profile_data)
+
+
+def update_user_role(
+    user_id: str, new_role: str, program_ids: List[str] = None
+) -> bool:
+    return _db_service.update_user_role(user_id, new_role, program_ids)
+
+
+def deactivate_user(user_id: str) -> bool:
+    return _db_service.deactivate_user(user_id)
+
+
+def delete_user(user_id: str) -> bool:
+    return _db_service.delete_user(user_id)
+
+
 # ---------------------------------------------------------------------------
 # Audit log operations
 # ---------------------------------------------------------------------------
