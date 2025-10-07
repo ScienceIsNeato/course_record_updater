@@ -463,8 +463,12 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Coverage report file (overwrite previous)
   COVERAGE_REPORT_FILE="logs/coverage_report.txt"
   
+  # Clean up old coverage data files to prevent race conditions
+  rm -f .coverage .coverage.*
+  
   # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
   # Use pytest-xdist for parallel execution (35% faster)
+  # pytest-cov automatically combines parallel coverage data with .coveragerc parallel=True setting
   COVERAGE_OUTPUT=$(python -m pytest tests/unit/ -n auto --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
   
   # Write detailed coverage report to file
@@ -782,9 +786,13 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       # Generate fresh coverage data and run SonarCloud analysis
       echo "🔧 Generating fresh coverage data for SonarCloud..."
       
+      # Clean up old coverage data files to prevent race conditions
+      rm -f .coverage .coverage.*
+      
       # Run Python tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
       # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
       # Use pytest-xdist for parallel execution (35% faster)
+      # pytest-cov automatically combines parallel coverage data with .coveragerc parallel=True setting
       if python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
         echo "✅ Python coverage data generated successfully"
         
