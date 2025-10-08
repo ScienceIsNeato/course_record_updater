@@ -4,7 +4,7 @@
 
 ### ✅ AUDIT API ENDPOINTS FULLY IMPLEMENTED
 
-**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Integration Tests (Partial) ✅ → Audit API Endpoints ✅ → Next: Audit API Tests
+**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Integration Tests (Partial) ✅ → Audit API Endpoints ✅ → Audit API Tests ✅ → Next: Wire Up UI or E2E Tests
 
 **Audit API Endpoints (NEW):**
 - ✅ **GET /api/audit/recent** - List recent audit logs (limit, institution_id filter)
@@ -13,6 +13,7 @@
 - ✅ **POST /api/audit/export** - Export logs as CSV or JSON (date range, filters for compliance)
 - ✅ All endpoints restricted to site admin only (`manage_users` permission)
 - ✅ Proper date parsing (ISO 8601), EntityType enum validation, BytesIO file downloads
+- ✅ **19/19 unit tests passing** (100% endpoint coverage, success + error paths)
 
 **Integration Test Improvements (Earlier):**
 - ✅ **REMOVED** all decorator mocking - tests use real auth now
