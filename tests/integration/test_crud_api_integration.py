@@ -291,10 +291,12 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("api_routes.update_term")
-    @patch("database_service.get_term_by_id")
-    def test_update_term_integration(self, mock_get_term, mock_update):
+    @patch("api_routes.get_active_terms")
+    def test_update_term_integration(self, mock_get_active_terms, mock_update):
         """Test PUT /api/terms/<id> full integration"""
-        mock_get_term.return_value = {"term_id": "term-123", "term_name": "FA2024"}
+        mock_get_active_terms.return_value = [
+            {"term_id": "term-123", "term_name": "FA2024"}
+        ]
         mock_update.return_value = True
 
         term_data = {"term_name": "SP2025"}
@@ -310,10 +312,12 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("api_routes.archive_term")
-    @patch("database_service.get_term_by_id")
-    def test_archive_term_integration(self, mock_get_term, mock_archive):
+    @patch("api_routes.get_active_terms")
+    def test_archive_term_integration(self, mock_get_active_terms, mock_archive):
         """Test POST /api/terms/<id>/archive soft delete"""
-        mock_get_term.return_value = {"term_id": "term-123", "term_name": "FA2024"}
+        mock_get_active_terms.return_value = [
+            {"term_id": "term-123", "term_name": "FA2024"}
+        ]
         mock_archive.return_value = True
 
         response = self.client.post(
@@ -327,10 +331,12 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         assert "archived" in data["message"].lower()
 
     @patch("api_routes.delete_term")
-    @patch("database_service.get_term_by_id")
-    def test_delete_term_integration(self, mock_get_term, mock_delete):
+    @patch("api_routes.get_active_terms")
+    def test_delete_term_integration(self, mock_get_active_terms, mock_delete):
         """Test DELETE /api/terms/<id> CASCADE delete"""
-        mock_get_term.return_value = {"term_id": "term-123", "term_name": "FA2024"}
+        mock_get_active_terms.return_value = [
+            {"term_id": "term-123", "term_name": "FA2024", "name": "Fall 2024"}
+        ]
         mock_delete.return_value = True
 
         response = self.client.delete(
@@ -440,10 +446,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         self._login_site_admin()
 
     @patch("api_routes.update_course_section")
-    @patch("database_service.get_section_by_id")
-    def test_update_section_integration(self, mock_get_section, mock_update):
+    @patch("api_routes.get_all_sections")
+    def test_update_section_integration(self, mock_get_all_sections, mock_update):
         """Test PUT /api/sections/<id> update"""
-        mock_get_section.return_value = {"section_id": "section-123", "capacity": 25}
+        mock_get_all_sections.return_value = [
+            {"section_id": "section-123", "capacity": 25}
+        ]
         mock_update.return_value = True
 
         section_data = {"capacity": 30, "enrolled": 22}
@@ -459,10 +467,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("api_routes.assign_instructor")
-    @patch("database_service.get_section_by_id")
-    def test_assign_instructor_integration(self, mock_get_section, mock_assign):
+    @patch("api_routes.get_all_sections")
+    def test_assign_instructor_integration(self, mock_get_all_sections, mock_assign):
         """Test PATCH /api/sections/<id>/instructor assign instructor"""
-        mock_get_section.return_value = {"section_id": "section-123", "capacity": 25}
+        mock_get_all_sections.return_value = [
+            {"section_id": "section-123", "capacity": 25}
+        ]
         mock_assign.return_value = True
 
         instructor_data = {"instructor_id": "instructor-456"}
@@ -479,10 +489,12 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         assert "assigned" in data["message"].lower()
 
     @patch("api_routes.delete_course_section")
-    @patch("database_service.get_section_by_id")
-    def test_delete_section_integration(self, mock_get_section, mock_delete):
+    @patch("api_routes.get_all_sections")
+    def test_delete_section_integration(self, mock_get_all_sections, mock_delete):
         """Test DELETE /api/sections/<id> delete"""
-        mock_get_section.return_value = {"section_id": "section-123", "capacity": 25}
+        mock_get_all_sections.return_value = [
+            {"section_id": "section-123", "capacity": 25}
+        ]
         mock_delete.return_value = True
 
         response = self.client.delete(
@@ -532,13 +544,16 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
         assert data["outcome_id"] == "outcome-123"
 
     @patch("api_routes.update_course_outcome")
-    @patch("database_service.get_course_outcome")
-    def test_update_outcome_integration(self, mock_get_outcome, mock_update):
+    @patch("api_routes.get_course_outcomes")
+    @patch("api_routes.get_all_courses")
+    def test_update_outcome_integration(
+        self, mock_get_courses, mock_get_outcomes, mock_update
+    ):
         """Test PUT /api/outcomes/<id> update description"""
-        mock_get_outcome.return_value = {
-            "outcome_id": "outcome-123",
-            "description": "Old description",
-        }
+        mock_get_courses.return_value = [{"course_id": "course-123"}]
+        mock_get_outcomes.return_value = [
+            {"outcome_id": "outcome-123", "description": "Old"}
+        ]
         mock_update.return_value = True
 
         outcome_data = {"description": "Updated outcome description"}
@@ -554,13 +569,16 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("api_routes.update_outcome_assessment")
-    @patch("database_service.get_course_outcome")
-    def test_update_outcome_assessment_integration(self, mock_get_outcome, mock_update):
+    @patch("api_routes.get_course_outcomes")
+    @patch("api_routes.get_all_courses")
+    def test_update_outcome_assessment_integration(
+        self, mock_get_courses, mock_get_outcomes, mock_update
+    ):
         """Test PUT /api/outcomes/<id>/assessment update assessment"""
-        mock_get_outcome.return_value = {
-            "outcome_id": "outcome-123",
-            "description": "Old description",
-        }
+        mock_get_courses.return_value = [{"course_id": "course-123"}]
+        mock_get_outcomes.return_value = [
+            {"outcome_id": "outcome-123", "description": "Old"}
+        ]
         mock_update.return_value = True
 
         assessment_data = {
@@ -579,13 +597,16 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("api_routes.delete_course_outcome")
-    @patch("database_service.get_course_outcome")
-    def test_delete_outcome_integration(self, mock_get_outcome, mock_delete):
+    @patch("api_routes.get_course_outcomes")
+    @patch("api_routes.get_all_courses")
+    def test_delete_outcome_integration(
+        self, mock_get_courses, mock_get_outcomes, mock_delete
+    ):
         """Test DELETE /api/outcomes/<id> delete"""
-        mock_get_outcome.return_value = {
-            "outcome_id": "outcome-123",
-            "description": "Old description",
-        }
+        mock_get_courses.return_value = [{"course_id": "course-123"}]
+        mock_get_outcomes.return_value = [
+            {"outcome_id": "outcome-123", "description": "Old"}
+        ]
         mock_delete.return_value = True
 
         response = self.client.delete(
