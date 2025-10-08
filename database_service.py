@@ -292,6 +292,10 @@ def get_course_outcomes(course_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_course_outcomes(course_id)
 
 
+def get_course_outcome(outcome_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_course_outcome(outcome_id)
+
+
 def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_by_id(course_id)
 
@@ -306,6 +310,10 @@ def get_all_instructors(institution_id: str) -> List[Dict[str, Any]]:
 
 def get_all_sections(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_all_sections(institution_id)
+
+
+def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_section_by_id(section_id)
 
 
 def create_course_offering(offering_data: Dict[str, Any]) -> Optional[str]:
@@ -363,6 +371,10 @@ def get_term_by_name(
 
 def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_active_terms(institution_id)
+
+
+def get_term_by_id(term_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_term_by_id(term_id)
 
 
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:

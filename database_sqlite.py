@@ -592,6 +592,12 @@ class SQLiteDatabase(DatabaseInterface):
             )
             return [to_dict(outcome) for outcome in outcomes]
 
+    def get_course_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get single course outcome by ID (includes assessment_data and narrative)"""
+        with self.sqlite.session_scope() as session:
+            outcome = session.get(CourseOutcome, outcome_id)
+            return to_dict(outcome) if outcome else None
+
     def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             course = session.get(Course, course_id)
@@ -636,6 +642,12 @@ class SQLiteDatabase(DatabaseInterface):
                 .all()
             )
             return [to_dict(section) for section in sections]
+
+    def get_section_by_id(self, section_id: str) -> Optional[Dict[str, Any]]:
+        """Get single section by ID"""
+        with self.sqlite.session_scope() as session:
+            section = session.get(CourseSection, section_id)
+            return to_dict(section) if section else None
 
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(offering_data)
@@ -810,6 +822,12 @@ class SQLiteDatabase(DatabaseInterface):
                 .all()
             )
             return [to_dict(term) for term in terms]
+
+    def get_term_by_id(self, term_id: str) -> Optional[Dict[str, Any]]:
+        """Get single term by ID"""
+        with self.sqlite.session_scope() as session:
+            term = session.get(Term, term_id)
+            return to_dict(term) if term else None
 
     def get_sections_by_term(self, term_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:

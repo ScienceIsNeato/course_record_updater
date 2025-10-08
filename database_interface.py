@@ -182,6 +182,11 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_course_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get single course outcome by ID (includes assessment_data and narrative)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
@@ -195,6 +200,11 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_all_sections(self, institution_id: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_section_by_id(self, section_id: str) -> Optional[Dict[str, Any]]:
+        """Get single section by ID"""
         raise NotImplementedError
 
     @abstractmethod
@@ -255,6 +265,11 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_active_terms(self, institution_id: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_term_by_id(self, term_id: str) -> Optional[Dict[str, Any]]:
+        """Get single term by ID"""
         raise NotImplementedError
 
     @abstractmethod
