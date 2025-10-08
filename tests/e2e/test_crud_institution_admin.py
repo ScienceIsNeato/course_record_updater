@@ -15,12 +15,13 @@ Test Naming Convention:
 import pytest
 from playwright.sync_api import Page
 
+from database_service import get_all_users  # Still needed for other tests
 from database_service import (
     get_active_terms,
     get_all_course_offerings,
     get_all_courses,
+    get_all_institutions,
     get_all_sections,
-    get_all_users,
     get_programs_by_institution,
 )
 from tests.e2e.conftest import BASE_URL
@@ -38,13 +39,21 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     Expected: Program created successfully within institution
     """
     # authenticated_page is already logged in as institution admin (sarah.admin@cei.edu)
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
+    # Find CEI institution (what sarah.admin is assigned to)
+    institutions = get_all_institutions()
+    print(
+        f"DEBUG: Found {len(institutions)} institutions: {[inst['short_name'] for inst in institutions]}"
+    )
+    cei_institution = next(
+        (inst for inst in institutions if inst["short_name"] == "CEI"), None
+    )
 
-    if not inst_admin:
-        pytest.skip("No institution admin found")
+    if not cei_institution:
+        pytest.skip(
+            f"CEI institution not found in database. Found: {[inst['short_name'] for inst in institutions]}"
+        )
 
-    institution_id = inst_admin["institution_id"]
+    institution_id = cei_institution["institution_id"]
     programs_before = get_programs_by_institution(institution_id)
 
     # Navigate to institution admin dashboard
