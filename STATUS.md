@@ -2,40 +2,37 @@
 
 ## CRUD Operations UAT Suite - TDD UI Implementation (Oct 8, 2025)
 
-### 🎉 FIRST TDD UI SUCCESS: User Management Modals Complete
+### 🎉 TDD UI SUCCESS: User & Institution Management Complete
 
-**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **User Management UI (TDD)** ✅
+**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **User Management UI (TDD)** ✅ → **Institution Management UI (TDD)** ✅
 
 **Latest Achievement (TDD UI - Oct 8):**
 
-**User Management Modals (TDD Red → Green → Refactor):**
-1. **RED Phase**: Wrote 23 tests first (all failing as expected)
-   - Role selection show/hide logic
-   - Form validation
-   - API calls with CSRF protection
-   - Loading states
-   - Error handling
-   - Modal closing and form reset
-   - Deactivate/Delete confirmation flows
+**2. Institution Management Modals (TDD Red → Green):**
+- **RED Phase**: Wrote 18 tests first (13 failing as expected)
+- **GREEN Phase**: All 18 tests passing ✅
+- **Coverage**: JS coverage increased to 82.28% (from 81.9%)
+- **Functionality**:
+  * Create Institution with admin user creation
+  * Edit Institution with all fields
+  * Delete Institution with typed confirmation ("i know what I'm doing")
+- **Tests**: Form validation, API calls, loading states, error handling, CSRF
+- **Files**: 267 lines implementation + 527 lines tests
 
-2. **GREEN Phase**: Implemented functionality to pass all tests
-   - `initializeInviteUserModal()`: Role-based form submission
-   - `initializeEditUserModal()`: Profile updates
-   - `openEditUserModal()`: Pre-populate user data
-   - `deactivateUser()`: Soft delete with confirmation
-   - `deleteUser()`: Hard delete with typed confirmation
+**1. User Management Modals (TDD Red → Green → Refactor):**
+- **RED Phase**: Wrote 23 tests first (11 failing as expected)
+- **GREEN Phase**: All 23 tests passing ✅
+- **REFACTOR Phase**: Fixed ESLint issues
+- **Coverage**: JS coverage at 81.9% (above 80% threshold)
+- **Functionality**:
+  * Invite User with role-based program selection
+  * Edit User profile updates
+  * Deactivate User (soft delete)
+  * Delete User with typed confirmation
+- **Tests**: Form validation, API calls, loading states, error handling, CSRF
+- **Files**: 303 lines implementation + 597 lines tests
 
-3. **REFACTOR Phase**: Fixed ESLint issues
-   - Added `// eslint-disable-line no-console` to console.error statements
-   - Maintained 81.9% JS coverage (above 80% threshold)
-
-**Quality Metrics:**
-- ✅ 23/23 JS tests passing
-- ✅ JS Coverage: 81.9% (Lines), 79.88% (Statements), 62.48% (Branches), 77.17% (Functions)
-- ✅ All quality gates passing
-- ✅ 902 lines of production code + tests added
-
-**Key Insight:** TDD worked perfectly - tests caught all edge cases before implementation!
+**Key Insight:** TDD caught all edge cases before implementation!
 
 **Latest Achievement (5 Tech Debt Tasks - Oct 8):**
 
