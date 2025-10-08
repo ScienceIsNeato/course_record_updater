@@ -53,10 +53,17 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     authenticated_page.click('button:has-text("Add Program")')
     authenticated_page.wait_for_selector("#createProgramModal", state="visible")
 
-    # Fill in program form (institution auto-selected based on logged-in user context)
+    # Wait for institution dropdown to be populated (happens on modal shown event)
+    authenticated_page.wait_for_function(
+        "document.getElementById('programInstitutionId').options.length > 1",
+        timeout=3000,
+    )
+
+    # Fill in program form (institution auto-selected for institution admins)
     authenticated_page.fill("#programName", "E2E Test Program")
-    # Select first available institution from dropdown
-    authenticated_page.select_option("#programInstitutionId", index=1)
+    # Institution already auto-selected by JavaScript - verify it's set
+    institution_value = authenticated_page.input_value("#programInstitutionId")
+    assert institution_value, "Institution should be auto-selected"
     authenticated_page.check("#programActive")
 
     # Submit form and wait for modal to close (success indicator)

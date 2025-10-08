@@ -833,6 +833,13 @@
 <script src="{{ url_for('static', filename='outcomeManagement.js') }}"></script>
 
 <script>
+    // Expose user context to JavaScript
+    window.userContext = {
+        institutionId: '{{ user.institution_id }}',
+        institutionName: '{{ user.institution_name }}',
+        role: '{{ user.role }}'
+    };
+
     // Institution Data Management Functions
     // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
     

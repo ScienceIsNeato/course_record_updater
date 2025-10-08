@@ -12,7 +12,50 @@
 document.addEventListener('DOMContentLoaded', () => {
   initializeCreateProgramModal();
   initializeEditProgramModal();
+  setupModalListeners();
 });
+
+/**
+ * Setup modal event listeners
+ * Loads data when modals are opened
+ */
+function setupModalListeners() {
+  const createModal = document.getElementById('createProgramModal');
+
+  if (createModal) {
+    // Bootstrap 5 modal event - load institutions when modal is shown
+    createModal.addEventListener('shown.bs.modal', async () => {
+      await loadInstitutionsForDropdown();
+    });
+  }
+}
+
+/**
+ * Load institutions into the dropdown
+ * For institution admins: uses their institution from userContext
+ * For site admins: would need to fetch all institutions (future enhancement)
+ */
+async function loadInstitutionsForDropdown() {
+  const select = document.getElementById('programInstitutionId');
+
+  if (!select) {
+    return;
+  }
+
+  // Use user's institution from the page context (set in template)
+  if (window.userContext && window.userContext.institutionId) {
+    select.innerHTML = '<option value="">Select Institution</option>';
+
+    const option = document.createElement('option');
+    option.value = window.userContext.institutionId;
+    option.textContent = window.userContext.institutionName;
+    option.selected = true; // Auto-select user's institution
+    select.appendChild(option);
+  } else {
+    // eslint-disable-next-line no-console
+    console.error('User context not available - cannot populate institution dropdown');
+  }
+}
 
 /**
  * Initialize Create Program Modal
