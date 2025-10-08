@@ -10,7 +10,7 @@
  */
 
 // Load the implementation
-require('../../../static/courseManagement.js');
+const { initCourseManagement } = require('../../../static/courseManagement.js');
 
 describe('Course Management - Create Course Modal', () => {
   let mockFetch;
@@ -58,8 +58,8 @@ describe('Course Management - Create Course Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize course management (replaces DOMContentLoaded trigger)
+    initCourseManagement();
   });
 
   afterEach(() => {
@@ -393,8 +393,8 @@ describe('Course Management - Edit Course Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize course management (replaces DOMContentLoaded trigger)
+    initCourseManagement();
   });
 
   afterEach(() => {

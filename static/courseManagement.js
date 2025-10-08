@@ -9,10 +9,136 @@
  */
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Handle case where DOM is already loaded (avoid race condition)
+function initCourseManagement() {
+  // Safety check: only initialize if form elements exist
+  if (!document.getElementById('createCourseForm') && !document.getElementById('editCourseForm')) {
+    return; // Forms not on page yet, skip initialization
+  }
+
   initializeCreateCourseModal();
   initializeEditCourseModal();
-});
+  setupModalListeners();
+}
+
+if (document.readyState === 'loading') {
+  // DOM still loading, wait for it
+  document.addEventListener('DOMContentLoaded', initCourseManagement);
+} else {
+  // DOM already loaded, initialize immediately
+  initCourseManagement();
+}
+
+/**
+ * Set up modal event listeners
+ * Populate dropdowns when modals are shown
+ */
+function setupModalListeners() {
+  const createModal = document.getElementById('createCourseModal');
+  const editModal = document.getElementById('editCourseModal');
+
+  if (createModal) {
+    createModal.addEventListener('show.bs.modal', () => {
+      loadProgramsForCreateDropdown();
+    });
+  }
+
+  if (editModal) {
+    editModal.addEventListener('show.bs.modal', () => {
+      loadProgramsForEditDropdown();
+    });
+  }
+}
+
+/**
+ * Load programs for create course dropdown
+ * Fetches programs from API based on user's institution
+ */
+async function loadProgramsForCreateDropdown() {
+  const select = document.getElementById('courseProgramIds');
+
+  if (!select) {
+    return;
+  }
+
+  // Clear existing options
+  select.innerHTML = '<option value="">Loading programs...</option>';
+
+  try {
+    const response = await fetch('/api/programs');
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch programs');
+    }
+
+    const data = await response.json();
+    const programs = data.programs || [];
+
+    // Populate dropdown
+    select.innerHTML = ''; // Clear loading message
+
+    if (programs.length === 0) {
+      select.innerHTML = '<option value="">No programs available</option>';
+      return;
+    }
+
+    programs.forEach(program => {
+      const option = document.createElement('option');
+      option.value = program.program_id;
+      option.textContent = `${program.name} (${program.short_name})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load programs for dropdown:', error);
+    select.innerHTML = '<option value="">Error loading programs</option>';
+  }
+}
+
+/**
+ * Load programs for edit course dropdown
+ * Fetches programs from API based on user's institution
+ */
+async function loadProgramsForEditDropdown() {
+  const select = document.getElementById('editCourseProgramIds');
+
+  if (!select) {
+    return;
+  }
+
+  // Clear existing options
+  select.innerHTML = '<option value="">Loading programs...</option>';
+
+  try {
+    const response = await fetch('/api/programs');
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch programs');
+    }
+
+    const data = await response.json();
+    const programs = data.programs || [];
+
+    // Populate dropdown
+    select.innerHTML = ''; // Clear loading message
+
+    if (programs.length === 0) {
+      select.innerHTML = '<option value="">No programs available</option>';
+      return;
+    }
+
+    programs.forEach(program => {
+      const option = document.createElement('option');
+      option.value = program.program_id;
+      option.textContent = `${program.name} (${program.short_name})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load programs for dropdown:', error);
+    select.innerHTML = '<option value="">Error loading programs</option>';
+  }
+}
 
 /**
  * Initialize Create Course Modal
@@ -245,3 +371,8 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
 // Expose functions to window for inline onclick handlers and testing
 window.openEditCourseModal = openEditCourseModal;
 window.deleteCourse = deleteCourse;
+
+// Export for testing (Node.js/Jest environment)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initCourseManagement, openEditCourseModal, deleteCourse };
+}
