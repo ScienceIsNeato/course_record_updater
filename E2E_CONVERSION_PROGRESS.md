@@ -2,11 +2,15 @@
 
 **Goal:** Convert all 28 E2E tests from API-based to UI-based interactions
 
-## ✅ Converted Tests (2/28)
+## ✅ Converted Tests (4/28 - 14% Complete!)
 
 ### Institution Admin (2/10 done)
 - ✅ **test_001**: Create program - Opens modal, fills name/short_name, submits
 - ✅ **test_007**: Create term - Opens modal, fills name/dates, submits
+
+### Site Admin (2/8 done)
+- ✅ **test_001**: Create institution - Opens modal, fills name/short_name, submits
+- ✅ **test_003**: Create user - Opens modal, waits for dropdown, fills form, submits
 
 ## 📋 Pattern That Works
 
@@ -31,7 +35,7 @@ authenticated_page.click('#createXForm button[type="submit"]')
 authenticated_page.wait_for_selector("#createXModal", state="hidden", timeout=5000)
 ```
 
-## 🚧 Remaining Tests (26/28)
+## 🚧 Remaining Tests (24/28)
 
 ### Institution Admin (8 more)
 - test_002: Update course ⚠️ Needs course list UI
@@ -49,8 +53,13 @@ authenticated_page.wait_for_selector("#createXModal", state="hidden", timeout=50
 ### Program Admin (6 tests)
 - test_001-006: TBD (need to review)
 
-### Site Admin (8 tests)
-- test_001-008: TBD (need to review)
+### Site Admin (6 more)
+- test_002: Update institution ⚠️ Needs institution list UI
+- test_004: Manage global users ⚠️ Needs user list UI
+- test_005: View all data ⚠️ Needs verification strategy
+- test_006: Delete institution ⚠️ Needs institution list UI
+- test_007: System reporting ⚠️ Needs reporting UI
+- test_008: Multi-institution workflows ⚠️ Complex test
 
 ### Others (6 tests)
 - test_import_export.py
