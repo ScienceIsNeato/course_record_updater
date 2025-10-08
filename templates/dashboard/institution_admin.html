@@ -845,5 +845,60 @@
         const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
         alert(`Export ${type} (${format}) feature coming soon!`);
     }
+
+    // Modal Helper Functions - Open CRUD modals
+    function createProgram() {
+        const modal = new bootstrap.Modal(document.getElementById('createProgramModal'));
+        modal.show();
+    }
+
+    function managePrograms() {
+        alert('Program management list coming soon!');
+    }
+
+    function createCourse() {
+        const modal = new bootstrap.Modal(document.getElementById('createCourseModal'));
+        modal.show();
+    }
+
+    function manageCourses() {
+        alert('Course management list coming soon!');
+    }
+
+    function createTerm() {
+        const modal = new bootstrap.Modal(document.getElementById('createTermModal'));
+        modal.show();
+    }
+
+    function manageTerms() {
+        alert('Term management list coming soon!');
+    }
+
+    function createOffering() {
+        const modal = new bootstrap.Modal(document.getElementById('createOfferingModal'));
+        modal.show();
+    }
+
+    function manageOfferings() {
+        alert('Offering management list coming soon!');
+    }
+
+    function createSection() {
+        const modal = new bootstrap.Modal(document.getElementById('createSectionModal'));
+        modal.show();
+    }
+
+    function manageSections() {
+        alert('Section management list coming soon!');
+    }
+
+    function createOutcome() {
+        const modal = new bootstrap.Modal(document.getElementById('createOutcomeModal'));
+        modal.show();
+    }
+
+    function manageOutcomes() {
+        alert('Outcome management list coming soon!');
+    }
 </script>
 {% endblock %}

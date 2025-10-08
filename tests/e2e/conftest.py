@@ -75,9 +75,12 @@ def browser_type_launch_args(browser_type_launch_args, pytestconfig):
         config["slow_mo"] = 1000  # 1 second between actions for debugging
         config["devtools"] = True
     else:
-        # Watch mode (default): visible with comfortable slow-mo
+        # Watch mode (default): visible with comfortable slow-mo + DevTools for console monitoring
         config["headless"] = False
         config["slow_mo"] = 350  # 350ms between actions - human-readable speed
+        config["devtools"] = (
+            True  # Always show DevTools in watch mode to catch console errors
+        )
 
     return config
 
@@ -110,9 +113,39 @@ def context(
 
 @pytest.fixture(scope="function")
 def page(context: BrowserContext) -> Generator[Page, None, None]:
-    """Create a new page for each test."""
+    """
+    Create a new page for each test with automatic console error monitoring.
+
+    Greenfield Project Policy: Console errors FAIL tests by default.
+    No exceptions unless explicitly discussed and documented.
+    """
     page = context.new_page()
+
+    # Set up console error monitoring (fail tests on any JS errors)
+    console_errors = []
+
+    def handle_console(msg):
+        if msg.type == "error":
+            error_text = msg.text
+            console_errors.append(error_text)
+            print(f"🔴 JavaScript Console Error: {error_text}")
+
+    page.on("console", handle_console)
+
+    # Store error list on page object for test access
+    page.console_errors = console_errors
+
     yield page
+
+    # Check for console errors at test end and fail if any found
+    if console_errors:
+        error_summary = "\n  - ".join(console_errors)
+        pytest.fail(
+            f"JavaScript console errors detected during test:\n  - {error_summary}\n\n"
+            f"Greenfield Policy: Console errors are NOT acceptable. "
+            f"Either fix the JavaScript issue or discuss with team if exception needed."
+        )
+
     page.close()
 
 
