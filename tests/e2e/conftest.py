@@ -296,6 +296,69 @@ def test_data_file():
 # Helper functions for common E2E operations
 
 
+@pytest.fixture(scope="function")
+def ensure_multiple_institutions():
+    """
+    Fixture that ensures at least 2 institutions exist for multi-tenancy tests.
+
+    Creates a temporary second institution if only 1 exists, and cleans it up after test.
+    Returns tuple: (second_institution_id, cleanup_function)
+
+    Usage:
+        def test_something(ensure_multiple_institutions):
+            second_inst_id, cleanup = ensure_multiple_institutions
+            # Test multi-tenant isolation
+            cleanup()  # Or let it auto-cleanup on teardown
+    """
+    from database_service import (
+        create_new_institution,
+        delete_institution,
+        get_all_institutions,
+    )
+
+    institutions = get_all_institutions()
+    created_temp_institution = False
+    temp_institution_id = None
+
+    # If we only have 1 institution, create a temporary second one
+    if len(institutions) < 2:
+        # Create minimal institution for testing
+        temp_institution_id, _ = create_new_institution(
+            institution_data={
+                "name": "Temp Test Institution",
+                "short_name": "TEMP",
+                "address": "123 Test St",
+            },
+            admin_user_data={
+                "email": "temp.admin@test.edu",
+                "first_name": "Temp",
+                "last_name": "Admin",
+                "password": "TempAdmin123!",
+            },
+        )
+        created_temp_institution = True
+
+    # Return the second institution (either existing or newly created)
+    institutions = get_all_institutions()
+    second_institution = institutions[1] if len(institutions) > 1 else None
+
+    def cleanup():
+        """Clean up temporary institution if we created one"""
+        if created_temp_institution and temp_institution_id:
+            try:
+                delete_institution(temp_institution_id)
+            except Exception:
+                pass  # Best effort cleanup
+
+    yield (
+        second_institution["institution_id"] if second_institution else None,
+        cleanup,
+    )
+
+    # Auto-cleanup on teardown
+    cleanup()
+
+
 def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 2000):
     """Wait for a modal to appear on the page."""
     page.wait_for_selector(modal_selector, state="visible", timeout=timeout)

@@ -415,7 +415,9 @@ def test_tc_crud_pa_005_create_sections(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-def test_tc_crud_pa_006_cannot_access_other_programs(authenticated_page: Page):
+def test_tc_crud_pa_006_cannot_access_other_programs(
+    authenticated_page: Page, ensure_multiple_institutions
+):
     """
     TC-CRUD-PA-006: Program Admin cannot access data from other programs
 
@@ -426,6 +428,11 @@ def test_tc_crud_pa_006_cannot_access_other_programs(authenticated_page: Page):
 
     Expected: Access denied to other programs' data
     """
+    second_inst_id, cleanup = ensure_multiple_institutions
+
+    if not second_inst_id:
+        pytest.skip("Could not ensure multiple institutions")
+
     # Get two program admins from different institutions (if available)
     users = get_all_users()
     prog_admins = [u for u in users if u["role"] == "program_admin"]
@@ -437,22 +444,27 @@ def test_tc_crud_pa_006_cannot_access_other_programs(authenticated_page: Page):
     prog_admin_email = prog_admin["email"]
     prog_admin_institution = prog_admin["institution_id"]
 
-    # Find a course from a DIFFERENT institution (if exists)
-    from database_service import get_all_institutions
+    # Use the second institution (either existing or temp-created)
+    other_courses = get_all_courses(second_inst_id)
 
-    institutions = get_all_institutions()
-
-    other_institution = next(
-        (i for i in institutions if i["institution_id"] != prog_admin_institution), None
-    )
-
-    if not other_institution:
-        pytest.skip("Need multiple institutions for cross-institution test")
-
-    other_courses = get_all_courses(other_institution["institution_id"])
-
+    # If no courses in second institution, create one for the test
     if not other_courses:
-        pytest.skip("No courses in other institution for test")
+        from database_service import create_course, get_programs_by_institution
+
+        programs = get_programs_by_institution(second_inst_id)
+        if not programs:
+            pytest.skip("No programs in second institution for test setup")
+
+        # Create a test course in the second institution
+        course_id = create_course(
+            {
+                "course_number": "TEST101",
+                "title": "Test Course for Multi-Tenant Check",
+                "institution_id": second_inst_id,
+                "program_ids": [programs[0]["program_id"]],
+            }
+        )
+        other_courses = [{"course_id": course_id}]
 
     other_course_id = other_courses[0]["course_id"]
 
