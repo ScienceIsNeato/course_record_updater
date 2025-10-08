@@ -6,7 +6,17 @@
 
 **Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅ → **Human-Friendly Watch Mode** ✅ → **All 8 Modals Wired to Dashboard** ✅
 
-**Latest: E2E Test UI Conversion Started - DB Connection Issue Discovered (Oct 8, 2025)**
+**Latest: Console Error Monitoring Catches Real Issues! (Oct 8, 2025)**
+- ✅ **Zero-Tolerance Policy**: ALL E2E tests now fail if ANY console errors occur
+- ✅ **DevTools Auto-Open**: Watch mode shows console in real-time  
+- 🔴 **Issues Caught Immediately**:
+  1. Dashboard JavaScript: `Failed to fetch` for `/api/instructors` and `/api/sections`
+  2. Program modal: Institution dropdown empty (no options to select)
+  3. Courses/Terms panels: Stuck in "Loading..." state (related to fetch failures)
+- **Root Cause**: Dashboard `script.js` makes API calls without proper error handling
+- **Next**: Fix API calls and populate institution dropdown in modals
+
+**Previous: E2E Test UI Conversion Started - DB Connection Issue Discovered (Oct 8, 2025)**
 - ✅ **UI Interaction Pattern**: Established clean pattern for modal-based CRUD testing
 - ⚠️  **DB Connection Issue**: E2E tests import `database_service` which connects to wrong DB
   * Server runs with `course_records_e2e.db` (via APP_ENV=e2e)
