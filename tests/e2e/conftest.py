@@ -35,6 +35,8 @@ TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 # Test user credentials
 INSTITUTION_ADMIN_EMAIL = "sarah.admin@cei.edu"
 INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+SITE_ADMIN_EMAIL = "siteadmin@system.local"
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"
 
 
 @pytest.fixture(scope="session")
@@ -146,6 +148,58 @@ def authenticated_page(page: Page) -> Page:
 
             raise Exception(
                 f"Login failed - still on login page after 10s. Errors: {error_text} URL: {current_url}"
+            )
+
+
+@pytest.fixture(scope="function")
+def authenticated_site_admin_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as site admin.
+
+    Properly handles CSRF token for secure authentication by submitting the actual
+    login form (which automatically handles CSRF and session management).
+
+    Usage:
+        def test_something(authenticated_site_admin_page):
+            authenticated_site_admin_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as siteadmin@system.local
+    """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', SITE_ADMIN_EMAIL)
+    page.fill('input[name="password"]', SITE_ADMIN_PASSWORD)
+
+    # Submit form and wait for JavaScript to handle login and redirect
+    page.click('button[type="submit"]')
+
+    # Wait for URL to change to dashboard (JavaScript redirect)
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        return page
+    except Exception:
+        # Check if still on login page with error message
+        current_url = page.url
+        if "/login" in current_url:
+            # Look for error message
+            error_elements = page.query_selector_all(
+                '.alert-danger, .error-message, [role="alert"]'
+            )
+            error_text = " | ".join(
+                [el.text_content() for el in error_elements if el.text_content()]
+            )
+
+            # If no error message, check console for JS errors
+            if not error_text:
+                error_text = "No error message found. Check if JavaScript is executing."
+
+            raise Exception(
+                f"Site admin login failed - still on login page after 2s. Errors: {error_text} URL: {current_url}"
             )
 
 
