@@ -271,6 +271,12 @@
                     <div class="mb-3">
                         <label for="programName" class="form-label">Program Name *</label>
                         <input type="text" class="form-control" id="programName" name="name" required>
+                        <small class="form-text text-muted">E.g., "Computer Science", "Nursing"</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="programShortName" class="form-label">Short Name *</label>
+                        <input type="text" class="form-control" id="programShortName" name="short_name" required maxlength="10">
+                        <small class="form-text text-muted">Abbreviation, e.g., "CS", "NURS" (auto-uppercased)</small>
                     </div>
                     <div class="mb-3">
                         <label for="programInstitutionId" class="form-label">Institution *</label>

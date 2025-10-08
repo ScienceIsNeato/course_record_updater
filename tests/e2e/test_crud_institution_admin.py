@@ -61,6 +61,7 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
 
     # Fill in program form (institution auto-selected for institution admins)
     authenticated_page.fill("#programName", "E2E Test Program")
+    authenticated_page.fill("#programShortName", "E2E")
     # Institution already auto-selected by JavaScript - verify it's set
     institution_value = authenticated_page.input_value("#programInstitutionId")
     assert institution_value, "Institution should be auto-selected"

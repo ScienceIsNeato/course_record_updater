@@ -21,6 +21,7 @@ describe('Program Management - Create Program Modal', () => {
     document.body.innerHTML = `
       <form id="createProgramForm">
         <input type="text" id="programName" name="name" required />
+        <input type="text" id="programShortName" name="short_name" required maxlength="10" />
         <select id="programInstitutionId" name="institution_id" required>
           <option value="">Select Institution</option>
           <option value="inst-1">Test University</option>
@@ -103,6 +104,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Computer Science';
+      document.getElementById('programShortName').value = 'CS';
       document.getElementById('programInstitutionId').value = 'inst-1';
       document.getElementById('programActive').checked = true;
 
@@ -132,6 +134,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Computer Science';
+      document.getElementById('programShortName').value = 'CS';
       document.getElementById('programInstitutionId').value = 'inst-1';
       document.getElementById('programActive').checked = false;
 
@@ -167,6 +170,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Test';
+      document.getElementById('programShortName').value = 'TEST';
       document.getElementById('programInstitutionId').value = 'inst-1';
 
       const btnText = document.querySelector('.btn-text');
@@ -228,6 +232,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Existing';
+      document.getElementById('programShortName').value = 'EXIST';
       document.getElementById('programInstitutionId').value = 'inst-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
@@ -247,6 +252,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Test';
+      document.getElementById('programShortName').value = 'TEST';
       document.getElementById('programInstitutionId').value = 'inst-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
@@ -270,6 +276,7 @@ describe('Program Management - Create Program Modal', () => {
 
       const form = document.getElementById('createProgramForm');
       document.getElementById('programName').value = 'Test';
+      document.getElementById('programShortName').value = 'TEST';
       document.getElementById('programInstitutionId').value = 'inst-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });

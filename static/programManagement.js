@@ -73,6 +73,7 @@ function initializeCreateProgramModal() {
 
     const programData = {
       name: document.getElementById('programName').value,
+      short_name: document.getElementById('programShortName').value,
       institution_id: document.getElementById('programInstitutionId').value,
       active: document.getElementById('programActive').checked
     };
