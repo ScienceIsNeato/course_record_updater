@@ -388,13 +388,17 @@ class TestCoursesCRUD:
 class TestTermsCRUD:
     """Tests for Terms CRUD endpoints."""
 
-    @patch("api_routes.get_active_terms")
     @patch("api_routes.get_current_institution_id")
-    def test_get_term_by_id_success(self, mock_get_inst_id, mock_get_terms, client):
+    @patch("api_routes.get_term_by_id")
+    def test_get_term_by_id_success(self, mock_get_term, mock_get_inst_id, client):
         """Test GET /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_terms.return_value = [{"term_id": "term-123", "name": "Fall 2024"}]
+        mock_get_term.return_value = {
+            "term_id": "term-123",
+            "name": "Fall 2024",
+            "institution_id": "inst-1",
+        }
 
         response = client.get("/api/terms/term-123")
 
@@ -404,17 +408,21 @@ class TestTermsCRUD:
         assert data["term"]["name"] == "Fall 2024"
 
     @patch("api_routes.update_term")
-    @patch("api_routes.get_active_terms")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_term_by_id")
     def test_update_term_success(
-        self, mock_get_inst_id, mock_get_terms, mock_update, client
+        self, mock_get_term, mock_get_inst_id, mock_update, client
     ):
         """Test PUT /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_terms.side_effect = [
-            [{"term_id": "term-123", "name": "Fall 2024"}],
-            [{"term_id": "term-123", "name": "Fall 2024 Updated"}],
+        mock_get_term.side_effect = [
+            {"term_id": "term-123", "name": "Fall 2024", "institution_id": "inst-1"},
+            {
+                "term_id": "term-123",
+                "name": "Fall 2024 Updated",
+                "institution_id": "inst-1",
+            },
         ]
         mock_update.return_value = True
 
@@ -429,15 +437,15 @@ class TestTermsCRUD:
         assert data["success"] is True
 
     @patch("api_routes.archive_term")
-    @patch("api_routes.get_active_terms")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_term_by_id")
     def test_archive_term_success(
-        self, mock_get_inst_id, mock_get_terms, mock_archive, client
+        self, mock_get_term, mock_get_inst_id, mock_archive, client
     ):
         """Test POST /api/terms/<id>/archive - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_terms.return_value = [{"term_id": "term-123"}]
+        mock_get_term.return_value = {"term_id": "term-123", "institution_id": "inst-1"}
         mock_archive.return_value = True
 
         response = client.post(
@@ -451,15 +459,19 @@ class TestTermsCRUD:
         assert "archived successfully" in data["message"]
 
     @patch("api_routes.delete_term")
-    @patch("api_routes.get_active_terms")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_term_by_id")
     def test_delete_term_success(
-        self, mock_get_inst_id, mock_get_terms, mock_delete, client
+        self, mock_get_term, mock_get_inst_id, mock_delete, client
     ):
         """Test DELETE /api/terms/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_terms.return_value = [{"term_id": "term-123", "name": "Fall 2024"}]
+        mock_get_term.return_value = {
+            "term_id": "term-123",
+            "name": "Fall 2024",
+            "institution_id": "inst-1",
+        }
         mock_delete.return_value = True
 
         response = client.delete(
@@ -575,17 +587,24 @@ class TestOfferingsCRUD:
 class TestSectionsCRUD:
     """Tests for Sections CRUD endpoints."""
 
-    @patch("api_routes.get_all_sections")
+    @patch("api_routes.get_course_offering")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_section_by_id")
     def test_get_section_by_id_success(
-        self, mock_get_inst_id, mock_get_sections, client
+        self, mock_get_section, mock_get_inst_id, mock_get_offering, client
     ):
         """Test GET /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_sections.return_value = [
-            {"section_id": "section-123", "section_number": "001"}
-        ]
+        mock_get_section.return_value = {
+            "section_id": "section-123",
+            "section_number": "001",
+            "offering_id": "offering-123",
+        }
+        mock_get_offering.return_value = {
+            "offering_id": "offering-123",
+            "institution_id": "inst-1",
+        }
 
         response = client.get("/api/sections/section-123")
 
@@ -595,18 +614,31 @@ class TestSectionsCRUD:
         assert data["section"]["section_number"] == "001"
 
     @patch("api_routes.update_course_section")
-    @patch("api_routes.get_all_sections")
+    @patch("api_routes.get_course_offering")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_section_by_id")
     def test_update_section_success(
-        self, mock_get_inst_id, mock_get_sections, mock_update, client
+        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_update, client
     ):
         """Test PUT /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_sections.side_effect = [
-            [{"section_id": "section-123", "enrollment": 20}],
-            [{"section_id": "section-123", "enrollment": 25}],
+        mock_get_section.side_effect = [
+            {
+                "section_id": "section-123",
+                "enrollment": 20,
+                "offering_id": "offering-123",
+            },
+            {
+                "section_id": "section-123",
+                "enrollment": 25,
+                "offering_id": "offering-123",
+            },
         ]
+        mock_get_offering.return_value = {
+            "offering_id": "offering-123",
+            "institution_id": "inst-1",
+        }
         mock_update.return_value = True
 
         response = client.put(
@@ -620,16 +652,24 @@ class TestSectionsCRUD:
         assert data["success"] is True
 
     @patch("api_routes.assign_instructor")
-    @patch("api_routes.get_all_sections")
+    @patch("api_routes.get_course_offering")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_section_by_id")
     def test_assign_instructor_success(
-        self, mock_get_inst_id, mock_get_sections, mock_assign, client
+        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_assign, client
     ):
         """Test PATCH /api/sections/<id>/instructor - success"""
         create_site_admin_session(client)
         csrf_token = get_csrf_token(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_sections.return_value = [{"section_id": "section-123"}]
+        mock_get_section.return_value = {
+            "section_id": "section-123",
+            "offering_id": "offering-123",
+        }
+        mock_get_offering.return_value = {
+            "offering_id": "offering-123",
+            "institution_id": "inst-1",
+        }
         mock_assign.return_value = True
 
         response = client.patch(
@@ -660,15 +700,23 @@ class TestSectionsCRUD:
         assert "instructor_id is required" in data["error"]
 
     @patch("api_routes.delete_course_section")
-    @patch("api_routes.get_all_sections")
+    @patch("api_routes.get_course_offering")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_section_by_id")
     def test_delete_section_success(
-        self, mock_get_inst_id, mock_get_sections, mock_delete, client
+        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_delete, client
     ):
         """Test DELETE /api/sections/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_sections.return_value = [{"section_id": "section-123"}]
+        mock_get_section.return_value = {
+            "section_id": "section-123",
+            "offering_id": "offering-123",
+        }
+        mock_get_offering.return_value = {
+            "offering_id": "offering-123",
+            "institution_id": "inst-1",
+        }
         mock_delete.return_value = True
 
         response = client.delete(
@@ -723,19 +771,24 @@ class TestOutcomesCRUD:
         data = response.get_json()
         assert "description is required" in data["error"]
 
-    @patch("api_routes.get_course_outcomes")
-    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_course_by_id")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_course_outcome")
     def test_get_outcome_success(
-        self, mock_get_inst_id, mock_get_courses, mock_get_outcomes, client
+        self, mock_get_outcome, mock_get_inst_id, mock_get_course, client
     ):
         """Test GET /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [
-            {"outcome_id": "outcome-123", "description": "Learn X"}
-        ]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-123",
+            "description": "Learn X",
+            "course_id": "course-123",
+        }
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "institution_id": "inst-1",
+        }
 
         response = client.get("/api/outcomes/outcome-123")
 
@@ -745,17 +798,23 @@ class TestOutcomesCRUD:
         assert data["outcome"]["description"] == "Learn X"
 
     @patch("api_routes.update_course_outcome")
-    @patch("api_routes.get_course_outcomes")
-    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_course_by_id")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_course_outcome")
     def test_update_outcome_success(
-        self, mock_get_inst_id, mock_get_courses, mock_get_outcomes, mock_update, client
+        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_update, client
     ):
         """Test PUT /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-123",
+            "course_id": "course-123",
+        }
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "institution_id": "inst-1",
+        }
         mock_update.return_value = True
 
         response = client.put(
@@ -805,17 +864,23 @@ class TestOutcomesCRUD:
         assert "assessment updated successfully" in data["message"]
 
     @patch("api_routes.delete_course_outcome")
-    @patch("api_routes.get_course_outcomes")
-    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_course_by_id")
     @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_course_outcome")
     def test_delete_outcome_success(
-        self, mock_get_inst_id, mock_get_courses, mock_get_outcomes, mock_delete, client
+        self, mock_get_outcome, mock_get_inst_id, mock_get_course, mock_delete, client
     ):
         """Test DELETE /api/outcomes/<id> - success"""
         create_site_admin_session(client)
         mock_get_inst_id.return_value = "inst-1"
-        mock_get_courses.return_value = [{"course_id": "course-123"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-123",
+            "course_id": "course-123",
+        }
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "institution_id": "inst-1",
+        }
         mock_delete.return_value = True
 
         response = client.delete(

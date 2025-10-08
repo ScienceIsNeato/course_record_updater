@@ -84,6 +84,7 @@ from database_service import (
     get_course_by_id,
     get_course_by_number,
     get_course_offering,
+    get_course_outcome,
     get_course_outcomes,
     get_courses_by_department,
     get_courses_by_program,
@@ -91,8 +92,10 @@ from database_service import (
     get_institution_instructor_count,
     get_program_by_id,
     get_programs_by_institution,
+    get_section_by_id,
     get_sections_by_instructor,
     get_sections_by_term,
+    get_term_by_id,
     get_unassigned_courses,
     get_user_by_id,
     get_users_by_role,
@@ -1483,17 +1486,17 @@ def create_term_api():
 def get_term_by_id_endpoint(term_id: str):
     """Get term details by term ID"""
     try:
-        # Note: We need to get term by ID - we'll use get_term_by_name as a workaround
-        # since we don't have a direct get_term_by_id in database_service yet
-        institution_id = get_current_institution_id()
-        terms = get_active_terms(institution_id)
+        term = get_term_by_id(term_id)
 
-        term = next((t for t in terms if t.get("term_id") == term_id), None)
-
-        if term:
-            return jsonify({"success": True, "term": term}), 200
-        else:
+        if not term:
             return jsonify({"success": False, "error": "Term not found"}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": "Term not found"}), 404
+
+        return jsonify({"success": True, "term": term}), 200
 
     except Exception as e:
         return handle_api_error(e, "Get term by ID", "Failed to retrieve term")
@@ -1512,20 +1515,21 @@ def update_term_endpoint(term_id: str):
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        # Verify institution access
-        institution_id = get_current_institution_id()
-        terms = get_active_terms(institution_id)
-        term = next((t for t in terms if t.get("term_id") == term_id), None)
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
 
         if not term:
+            return jsonify({"success": False, "error": "Term not found"}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Term not found"}), 404
 
         success = update_term(term_id, data)
 
         if success:
             # Fetch updated term
-            terms = get_active_terms(institution_id)
-            updated_term = next((t for t in terms if t.get("term_id") == term_id), None)
+            updated_term = get_term_by_id(term_id)
             return (
                 jsonify(
                     {
@@ -1552,12 +1556,14 @@ def archive_term_endpoint(term_id: str):
     Preserves term data but marks it as inactive.
     """
     try:
-        # Verify institution access
-        institution_id = get_current_institution_id()
-        terms = get_active_terms(institution_id)
-        term = next((t for t in terms if t.get("term_id") == term_id), None)
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
 
         if not term:
+            return jsonify({"success": False, "error": "Term not found"}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Term not found"}), 404
 
         success = archive_term(term_id)
@@ -1585,12 +1591,14 @@ def delete_term_endpoint(term_id: str):
     - Course sections
     """
     try:
-        # Verify institution access
-        institution_id = get_current_institution_id()
-        terms = get_active_terms(institution_id)
-        term = next((t for t in terms if t.get("term_id") == term_id), None)
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
 
         if not term:
+            return jsonify({"success": False, "error": "Term not found"}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Term not found"}), 404
 
         success = delete_term(term_id)
@@ -2447,14 +2455,18 @@ def create_section():
 def get_section_by_id_endpoint(section_id: str):
     """Get section details by section ID"""
     try:
-        institution_id = get_current_institution_id()
-        sections = get_all_sections(institution_id)
-        section = next((s for s in sections if s.get("section_id") == section_id), None)
+        section = get_section_by_id(section_id)
 
-        if section:
-            return jsonify({"success": True, "section": section}), 200
-        else:
+        if not section:
             return jsonify({"success": False, "error": "Section not found"}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": "Section not found"}), 404
+
+        return jsonify({"success": True, "section": section}), 200
 
     except Exception as e:
         return handle_api_error(e, "Get section by ID", "Failed to retrieve section")
@@ -2474,21 +2486,22 @@ def update_section_endpoint(section_id: str):
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
         # Check if section exists
-        institution_id = get_current_institution_id()
-        sections = get_all_sections(institution_id)
-        section = next((s for s in sections if s.get("section_id") == section_id), None)
+        section = get_section_by_id(section_id)
 
         if not section:
+            return jsonify({"success": False, "error": "Section not found"}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Section not found"}), 404
 
         success = update_course_section(section_id, data)
 
         if success:
             # Fetch updated section
-            sections = get_all_sections(institution_id)
-            updated_section = next(
-                (s for s in sections if s.get("section_id") == section_id), None
-            )
+            updated_section = get_section_by_id(section_id)
             return (
                 jsonify(
                     {
@@ -2526,11 +2539,15 @@ def assign_instructor_to_section_endpoint(section_id: str):
         instructor_id = data["instructor_id"]
 
         # Verify section exists
-        institution_id = get_current_institution_id()
-        sections = get_all_sections(institution_id)
-        section = next((s for s in sections if s.get("section_id") == section_id), None)
+        section = get_section_by_id(section_id)
 
         if not section:
+            return jsonify({"success": False, "error": "Section not found"}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Section not found"}), 404
 
         success = assign_instructor(section_id, instructor_id)
@@ -2562,11 +2579,15 @@ def delete_section_endpoint(section_id: str):
     """
     try:
         # Check if section exists
-        institution_id = get_current_institution_id()
-        sections = get_all_sections(institution_id)
-        section = next((s for s in sections if s.get("section_id") == section_id), None)
+        section = get_section_by_id(section_id)
 
         if not section:
+            return jsonify({"success": False, "error": "Section not found"}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Section not found"}), 404
 
         success = delete_course_section(section_id)
@@ -2640,20 +2661,18 @@ def create_course_outcome_endpoint(course_id: str):
 def get_course_outcome_by_id_endpoint(outcome_id: str):
     """Get course outcome details by outcome ID"""
     try:
-        # We need to iterate through courses to find the outcome
-        # This is inefficient but works for now
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+
+        # Verify institution access
         institution_id = get_current_institution_id()
-        courses = get_all_courses(institution_id)
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
 
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            outcome = next(
-                (o for o in outcomes if o.get("outcome_id") == outcome_id), None
-            )
-            if outcome:
-                return jsonify({"success": True, "outcome": outcome}), 200
-
-        return jsonify({"success": False, "error": "Outcome not found"}), 404
+        return jsonify({"success": True, "outcome": outcome}), 200
 
     except Exception as e:
         return handle_api_error(
@@ -2674,18 +2693,15 @@ def update_course_outcome_endpoint(outcome_id: str):
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
-        # We need to verify the outcome exists (inefficient but works)
+        # Verify outcome exists and institution access
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+
         institution_id = get_current_institution_id()
-        courses = get_all_courses(institution_id)
-
-        found = False
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            if any(o.get("outcome_id") == outcome_id for o in outcomes):
-                found = True
-                break
-
-        if not found:
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
         success = update_course_outcome(outcome_id, data)
@@ -2779,18 +2795,15 @@ def delete_course_outcome_endpoint(outcome_id: str):
     Removes the outcome from the database.
     """
     try:
-        # Verify the outcome exists
+        # Verify outcome exists and institution access
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+
         institution_id = get_current_institution_id()
-        courses = get_all_courses(institution_id)
-
-        found = False
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            if any(o.get("outcome_id") == outcome_id for o in outcomes):
-                found = True
-                break
-
-        if not found:
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
         success = delete_course_outcome(outcome_id)
