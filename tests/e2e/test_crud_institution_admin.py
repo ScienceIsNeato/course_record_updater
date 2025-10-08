@@ -67,91 +67,14 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     assert institution_value, "Institution should be auto-selected"
     authenticated_page.check("#programActive")
 
-    # COMPREHENSIVE DEBUG: Understand EXACTLY what's happening
-    debug_info = authenticated_page.evaluate(
-        """
-        () => {
-            const form = document.getElementById('createProgramForm');
-            const submitBtn = form.querySelector('button[type="submit"]');
-            
-            // Check form validation state
-            const allInputs = Array.from(form.querySelectorAll('input, select'));
-            const validationState = allInputs.map(input => ({
-                id: input.id,
-                value: input.value,
-                required: input.required,
-                valid: input.validity.valid,
-                validationMessage: input.validationMessage
-            }));
-            
-            // Check if fetch is available and being called
-            const originalFetch = window.fetch;
-            let fetchCalled = false;
-            let fetchArgs = null;
-            
-            window.fetch = function(...args) {
-                fetchCalled = true;
-                fetchArgs = args[0]; // URL
-                return originalFetch.apply(this, args);
-            };
-            
-            // Manually trigger submit and capture what happens
-            let submitEventFired = false;
-            let preventDefaultCalled = false;
-            
-            form.addEventListener('submit', (e) => {
-                submitEventFired = true;
-                preventDefaultCalled = e.defaultPrevented;
-            }, { once: true });
-            
-            // Dispatch submit event
-            const event = new Event('submit', { bubbles: true, cancelable: true });
-            form.dispatchEvent(event);
-            
-            // Wait a moment for async operations
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve({
-                        formValid: form.checkValidity(),
-                        validationState: validationState,
-                        submitEventFired: submitEventFired,
-                        preventDefaultCalled: preventDefaultCalled,
-                        fetchCalled: fetchCalled,
-                        fetchArgs: fetchArgs,
-                        submitBtnDisabled: submitBtn.disabled
-                    });
-                }, 500);
-            });
-        }
-    """
-    )
-    print(f"\n🔍 COMPREHENSIVE DEBUG INFO:")
-    print(f"Form Valid: {debug_info.get('formValid')}")
-    print(f"Submit Event Fired: {debug_info.get('submitEventFired')}")
-    print(f"preventDefault Called: {debug_info.get('preventDefaultCalled')}")
-    print(f"Fetch Called: {debug_info.get('fetchCalled')}")
-    print(f"Fetch Args: {debug_info.get('fetchArgs')}")
-    print(f"Submit Button Disabled: {debug_info.get('submitBtnDisabled')}")
-    print(f"\nValidation State:")
-    for field in debug_info.get("validationState", []):
-        if not field["valid"]:
-            print(
-                f"  ❌ {field['id']}: '{field['value']}' - {field['validationMessage']}"
-            )
-        else:
-            print(f"  ✅ {field['id']}: '{field['value']}'")
+    # Handle alert dialog (JavaScript shows success message in alert)
+    authenticated_page.once("dialog", lambda dialog: dialog.accept())
 
-    # If fetch was called, test passes!
-    if debug_info.get("fetchCalled"):
-        print("\n✅ SUCCESS: Fetch was called! Form submission working!")
-        # Handle alert dialog (JavaScript shows success message in alert)
-        authenticated_page.once("dialog", lambda dialog: dialog.accept())
-        authenticated_page.wait_for_selector(
-            "#createProgramModal", state="hidden", timeout=5000
-        )
-    else:
-        print("\n❌ PROBLEM: Fetch was NOT called. Form submission failed!")
-        print("This means the event listener is not working or validation failed.")
+    # Submit form and wait for modal to close (success indicator)
+    authenticated_page.click('#createProgramForm button[type="submit"]')
+    authenticated_page.wait_for_selector(
+        "#createProgramModal", state="hidden", timeout=5000
+    )
 
     # Success! Modal closed without error = program created
     print("✅ TC-CRUD-IA-001: Institution Admin successfully created program via UI")
@@ -362,38 +285,31 @@ def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
 
 @pytest.mark.e2e
 def test_tc_crud_ia_007_create_term(authenticated_page: Page):
-    """TC-CRUD-IA-007: Institution Admin creates new term"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
+    """TC-CRUD-IA-007: Institution Admin creates new term via UI"""
+    # Navigate to institution admin dashboard
+    authenticated_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_page.wait_for_load_state("networkidle")
 
-    if not inst_admin:
-        pytest.skip("No institution admin found")
+    # Click "Add Term" button to open modal
+    authenticated_page.click('button:has-text("Add Term")')
+    authenticated_page.wait_for_selector("#createTermModal", state="visible")
 
-    institution_id = inst_admin["institution_id"]
-    csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    # Fill in term form
+    authenticated_page.fill("#termName", "Spring 2099")
+    authenticated_page.fill("#termStartDate", "2099-01-15")
+    authenticated_page.fill("#termEndDate", "2099-05-15")
+    # termActive is checked by default, so no need to check it
+
+    # Handle alert dialog
+    authenticated_page.once("dialog", lambda dialog: dialog.accept())
+
+    # Submit form and wait for modal to close
+    authenticated_page.click('#createTermForm button[type="submit"]')
+    authenticated_page.wait_for_selector(
+        "#createTermModal", state="hidden", timeout=5000
     )
 
-    term_data = {
-        "term_name": "SP2099",
-        "name": "Spring 2099",
-        "start_date": "2099-01-15",
-        "end_date": "2099-05-15",
-        "is_active": True,
-        "institution_id": institution_id,
-    }
-
-    response = authenticated_page.request.post(
-        f"{BASE_URL}/api/terms",
-        data=term_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
-    )
-
-    assert response.ok
-    result = response.json()
-    assert result["success"] is True
-
-    print("✅ TC-CRUD-IA-007: Institution Admin successfully created term")
+    print("✅ TC-CRUD-IA-007: Institution Admin successfully created term via UI")
 
 
 @pytest.mark.e2e
