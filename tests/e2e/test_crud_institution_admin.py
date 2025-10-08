@@ -33,7 +33,7 @@ from tests.e2e.conftest import BASE_URL
 @pytest.mark.e2e
 def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     """
-    TC-CRUD-IA-001: Institution Admin creates new program
+    TC-CRUD-IA-001: Institution Admin creates new program via UI
 
     Expected: Program created successfully within institution
     """
@@ -47,34 +47,30 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     institution_id = inst_admin["institution_id"]
     programs_before = get_programs_by_institution(institution_id)
 
-    # Get CSRF token
-    csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    # Navigate to institution admin dashboard
+    authenticated_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_page.wait_for_load_state("networkidle")
+
+    # Click "Add Program" button to open modal
+    authenticated_page.click('button:has-text("Add Program")')
+    authenticated_page.wait_for_selector("#createProgramModal", state="visible")
+
+    # Fill in program form
+    authenticated_page.fill("#programName", "E2E Test Program")
+    authenticated_page.select_option("#programInstitutionId", str(institution_id))
+    authenticated_page.check("#programActive")
+
+    # Submit form and wait for modal to close
+    authenticated_page.click('#createProgramForm button[type="submit"]')
+    authenticated_page.wait_for_selector(
+        "#createProgramModal", state="hidden", timeout=5000
     )
-
-    # Create program
-    program_data = {
-        "name": "E2E Test Program",
-        "short_name": "E2ETEST",
-        "description": "Program created by E2E test",
-        "institution_id": institution_id,
-    }
-
-    response = authenticated_page.request.post(
-        f"{BASE_URL}/api/programs",
-        data=program_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
-    )
-
-    assert response.ok, f"Program creation failed: {response.status}"
-    result = response.json()
-    assert result["success"] is True
 
     # Verify in database
     programs_after = get_programs_by_institution(institution_id)
     assert len(programs_after) == len(programs_before) + 1
 
-    print("✅ TC-CRUD-IA-001: Institution Admin successfully created program")
+    print("✅ TC-CRUD-IA-001: Institution Admin successfully created program via UI")
 
 
 @pytest.mark.e2e
