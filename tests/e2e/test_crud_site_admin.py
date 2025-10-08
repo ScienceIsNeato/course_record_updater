@@ -30,12 +30,35 @@ from tests.e2e.conftest import BASE_URL
 @pytest.mark.e2e
 def test_tc_crud_sa_001_create_institution(authenticated_site_admin_page: Page):
     """
-    TC-CRUD-SA-001: Site Admin creates new institution
+    TC-CRUD-SA-001: Site Admin creates new institution via UI
 
     Expected: Institution created successfully
     """
-    # TODO: Implement institution creation via API/UI
-    pass
+    # Navigate to site admin dashboard
+    authenticated_site_admin_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_site_admin_page.wait_for_load_state("networkidle")
+
+    # Click "Add Institution" button to open modal
+    authenticated_site_admin_page.click('button:has-text("Add Institution")')
+    authenticated_site_admin_page.wait_for_selector(
+        "#createInstitutionModal", state="visible"
+    )
+
+    # Fill in institution form
+    authenticated_site_admin_page.fill("#institutionName", "E2E Test University")
+    authenticated_site_admin_page.fill("#institutionShortName", "E2ETU")
+    authenticated_site_admin_page.check("#institutionActive")
+
+    # Handle alert dialog
+    authenticated_site_admin_page.once("dialog", lambda dialog: dialog.accept())
+
+    # Submit form and wait for modal to close
+    authenticated_site_admin_page.click('#createInstitutionForm button[type="submit"]')
+    authenticated_site_admin_page.wait_for_selector(
+        "#createInstitutionModal", state="hidden", timeout=5000
+    )
+
+    print("✅ TC-CRUD-SA-001: Site Admin successfully created institution via UI")
 
 
 @pytest.mark.e2e
@@ -49,9 +72,41 @@ def test_tc_crud_sa_002_update_institution_settings(
 
 @pytest.mark.e2e
 def test_tc_crud_sa_003_create_institution_admin(authenticated_site_admin_page: Page):
-    """TC-CRUD-SA-003: Site Admin creates institution admin"""
-    # TODO: Implement institution admin creation via API/UI
-    pass
+    """TC-CRUD-SA-003: Site Admin creates institution admin via UI"""
+    # Navigate to site admin dashboard
+    authenticated_site_admin_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_site_admin_page.wait_for_load_state("networkidle")
+
+    # Click "Add User" button to open modal
+    authenticated_site_admin_page.click('button:has-text("Add User")')
+    authenticated_site_admin_page.wait_for_selector("#createUserModal", state="visible")
+
+    # Wait for institution dropdown to populate
+    authenticated_site_admin_page.wait_for_function(
+        "document.getElementById('userInstitutionId').options.length > 1", timeout=3000
+    )
+
+    # Fill in user form
+    authenticated_site_admin_page.fill("#userFirstName", "Test")
+    authenticated_site_admin_page.fill("#userLastName", "Admin")
+    authenticated_site_admin_page.fill(
+        "#userEmail",
+        f"testadmin-{authenticated_site_admin_page.evaluate('Date.now()')}@example.com",
+    )
+    authenticated_site_admin_page.select_option("#userRole", "institution_admin")
+    # Select first institution from dropdown
+    authenticated_site_admin_page.select_option("#userInstitutionId", index=1)
+
+    # Handle alert dialog
+    authenticated_site_admin_page.once("dialog", lambda dialog: dialog.accept())
+
+    # Submit form and wait for modal to close
+    authenticated_site_admin_page.click('#createUserForm button[type="submit"]')
+    authenticated_site_admin_page.wait_for_selector(
+        "#createUserModal", state="hidden", timeout=5000
+    )
+
+    print("✅ TC-CRUD-SA-003: Site Admin successfully created institution admin via UI")
 
 
 @pytest.mark.e2e
