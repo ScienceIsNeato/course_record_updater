@@ -4,9 +4,17 @@
 
 ### 🏆 COMPLETE TDD UI ACHIEVEMENT: 8/8 Entities, 146 Tests, 83.95% Coverage!
 
-**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅ → **Human-Friendly Watch Mode** ✅
+**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅ → **Human-Friendly Watch Mode** ✅ → **All 8 Modals Wired to Dashboard** ✅
 
-**Latest: Human-Friendly Watch Mode (Oct 8, 2025)**
+**Latest: All 8 Entity Modals Wired to Dashboard (Oct 8, 2025)**
+- ✅ **Site Admin Dashboard**: User + Institution modals (2 entities, 4 modals)
+- ✅ **Institution Admin Dashboard**: Program, Course, Term, Offering, Section, Outcome modals (6 entities, 12 modals)
+- ✅ **14 Total Modals**: All forms functional, backed by 146 JS tests, 83.95% coverage
+- ✅ **Button Handlers**: All "Add X" buttons now open modals instead of alerts
+- ✅ **JavaScript Loaded**: All 8 management scripts imported to respective dashboards
+- **Impact**: CRUD operations now fully accessible through live UI! 🎉
+
+**Previous: Human-Friendly Watch Mode (Oct 8, 2025)**
 - ✅ **3 Test Modes**: Headless (CI, fast) → Watch (visible, 350ms) → Debug (visible, 1s, DevTools)
 - ✅ **Smart Detection**: Auto-detects CI environment, respects PYTEST_DEBUG env var
 - ✅ **Easy Commands**:
