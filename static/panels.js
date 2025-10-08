@@ -710,3 +710,260 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { PanelManager };
 }
+
+// ============================================================================
+// AUDIT LOG FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Load and display recent audit logs in the System Activity panel
+ */
+async function loadAuditLogs(limit = 20) {
+  const container = document.getElementById('activityTableContainer');
+  if (!container) return;
+
+  // Show loading state
+  container.innerHTML = `
+    <div class="panel-loading">
+      <div class="spinner-border spinner-border-sm"></div>
+      Loading system activity...
+    </div>
+  `;
+
+  try {
+    const response = await fetch(`/api/audit/recent?limit=${limit}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      displayAuditLogs(data.logs);
+    } else {
+      throw new Error(data.error || 'Failed to load audit logs');
+    }
+  } catch (error) {
+    console.error('Error loading audit logs:', error); // eslint-disable-line no-console
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle"></i>
+        Failed to load system activity: ${escapeHtml(error.message)}
+      </div>
+    `;
+  }
+}
+
+/**
+ * Display audit logs in a table
+ */
+function displayAuditLogs(logs) {
+  const container = document.getElementById('activityTableContainer');
+  if (!container) return;
+
+  if (!logs || logs.length === 0) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-inbox fa-2x mb-2"></i>
+        <p>No recent activity to display</p>
+      </div>
+    `;
+    return;
+  }
+
+  const tableHTML = `
+    <div class="table-responsive">
+      <table class="table table-hover table-sm">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Entity</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${logs.map(log => createAuditLogRow(log)).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = tableHTML;
+}
+
+/**
+ * Create a table row for an audit log entry
+ */
+function createAuditLogRow(log) {
+  const timestamp = formatAuditTimestamp(log.timestamp);
+  const userDisplay = log.user_email || 'System';
+  const actionBadge = getActionBadge(log.operation_type);
+  const entityDisplay = formatEntityDisplay(log.entity_type, log.entity_id);
+  const detailsDisplay = getAuditDetails(log);
+
+  return `
+    <tr>
+      <td class="text-nowrap"><small>${timestamp}</small></td>
+      <td>${escapeHtml(userDisplay)}</td>
+      <td>${actionBadge}</td>
+      <td>${entityDisplay}</td>
+      <td><small class="text-muted">${detailsDisplay}</small></td>
+    </tr>
+  `;
+}
+
+/**
+ * Format timestamp for display
+ */
+function formatAuditTimestamp(timestamp) {
+  if (!timestamp) return '-';
+
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+/**
+ * Get action badge with color coding
+ */
+function getActionBadge(operationType) {
+  const badges = {
+    CREATE: '<span class="badge bg-success">Create</span>',
+    UPDATE: '<span class="badge bg-info">Update</span>',
+    DELETE: '<span class="badge bg-danger">Delete</span>'
+  };
+
+  return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+}
+
+/**
+ * Format entity display with icon
+ */
+function formatEntityDisplay(entityType, entityId) {
+  const icons = {
+    users: '👤',
+    institutions: '🏛️',
+    programs: '📚',
+    courses: '📖',
+    terms: '📅',
+    course_offerings: '📝',
+    course_sections: '👥',
+    course_outcomes: '🎯'
+  };
+
+  const icon = icons[entityType] || '📄';
+  const shortId = entityId ? entityId.substring(0, 8) : '';
+
+  return `${icon} <span class="text-muted">${shortId}</span>`;
+}
+
+/**
+ * Get audit details from changed fields
+ */
+function getAuditDetails(log) {
+  if (log.changed_fields) {
+    try {
+      const fields = JSON.parse(log.changed_fields);
+      if (Array.isArray(fields) && fields.length > 0) {
+        return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+      }
+    } catch (e) {
+      // Ignore JSON parse errors
+    }
+  }
+
+  if (log.operation_type === 'CREATE') {
+    return 'New entity created';
+  } else if (log.operation_type === 'DELETE') {
+    return 'Entity deleted';
+  }
+
+  return 'Entity modified';
+}
+
+/**
+ * HTML escape utility (duplicate from admin.js for standalone use)
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * View all activity - navigate to detailed audit log page
+ */
+function viewAllActivity() {
+  // TODO: Implement full audit log viewer page
+  alert(
+    'Full audit log viewer coming soon!\n\nFor now, you can export audit logs via the API:\nPOST /api/audit/export'
+  );
+}
+
+/**
+ * Filter activity - show filter modal
+ */
+function filterActivity() {
+  // TODO: Implement filter modal
+  alert(
+    'Activity filtering coming soon!\n\nFilters will include:\n- Date range\n- User\n- Action type\n- Entity type'
+  );
+}
+
+// Auto-load audit logs when panel is expanded
+document.addEventListener('DOMContentLoaded', () => {
+  const activityPanel = document.getElementById('system-activity-panel');
+  if (activityPanel) {
+    // Load logs on page load
+    loadAuditLogs(20);
+
+    // Reload logs when panel is toggled open
+    const toggleBtn = activityPanel.querySelector('.panel-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        // Check if panel is being opened (will be collapsed now, will be expanded after click)
+        const panelContent = activityPanel.querySelector('.panel-content');
+        if (panelContent && panelContent.style.display === 'none') {
+          // Panel is being opened, reload data
+          setTimeout(() => loadAuditLogs(20), 100);
+        }
+      });
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+      const panelContent = activityPanel.querySelector('.panel-content');
+      if (panelContent && panelContent.style.display !== 'none') {
+        loadAuditLogs(20);
+      }
+    }, 30000);
+  }
+});
+
+// Export for global use
+window.loadAuditLogs = loadAuditLogs;
+window.viewAllActivity = viewAllActivity;
+window.filterActivity = filterActivity;
+window.createAuditLogRow = createAuditLogRow;
+window.formatAuditTimestamp = formatAuditTimestamp;
+window.getActionBadge = getActionBadge;
+window.formatEntityDisplay = formatEntityDisplay;
+window.getAuditDetails = getAuditDetails;
+window.escapeHtml = escapeHtml;

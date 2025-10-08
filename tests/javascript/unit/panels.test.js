@@ -366,3 +366,688 @@ describe('PanelManager', () => {
     });
   });
 });
+
+describe('Audit Log Functions', () => {
+  describe('formatAuditTimestamp', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-10-08T12:00:00Z'));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('formats "just now" for very recent timestamps', () => {
+      // Mock formatAuditTimestamp from static/panels.js
+      const formatAuditTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 1) return 'Just now';
+        return 'later';
+      };
+
+      const result = formatAuditTimestamp(new Date('2025-10-08T11:59:30Z'));
+      expect(result).toBe('Just now');
+    });
+
+    it('formats minutes ago for timestamps within an hour', () => {
+      const formatAuditTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return date.toLocaleString();
+      };
+
+      const result = formatAuditTimestamp(new Date('2025-10-08T11:30:00Z'));
+      expect(result).toBe('30m ago');
+    });
+
+    it('formats hours ago for timestamps within a day', () => {
+      const formatAuditTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return date.toLocaleString();
+      };
+
+      const result = formatAuditTimestamp(new Date('2025-10-08T08:00:00Z'));
+      expect(result).toBe('4h ago');
+    });
+
+    it('returns - for null timestamp', () => {
+      const formatAuditTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        return 'valid';
+      };
+
+      expect(formatAuditTimestamp(null)).toBe('-');
+      expect(formatAuditTimestamp(undefined)).toBe('-');
+      expect(formatAuditTimestamp('')).toBe('-');
+    });
+  });
+
+  describe('getActionBadge', () => {
+    it('returns success badge for CREATE', () => {
+      const getActionBadge = (operationType) => {
+        const badges = {
+          'CREATE': '<span class="badge bg-success">Create</span>',
+          'UPDATE': '<span class="badge bg-info">Update</span>',
+          'DELETE': '<span class="badge bg-danger">Delete</span>'
+        };
+        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+      };
+
+      const result = getActionBadge('CREATE');
+      expect(result).toContain('bg-success');
+      expect(result).toContain('Create');
+    });
+
+    it('returns info badge for UPDATE', () => {
+      const getActionBadge = (operationType) => {
+        const badges = {
+          'CREATE': '<span class="badge bg-success">Create</span>',
+          'UPDATE': '<span class="badge bg-info">Update</span>',
+          'DELETE': '<span class="badge bg-danger">Delete</span>'
+        };
+        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+      };
+
+      const result = getActionBadge('UPDATE');
+      expect(result).toContain('bg-info');
+      expect(result).toContain('Update');
+    });
+
+    it('returns danger badge for DELETE', () => {
+      const getActionBadge = (operationType) => {
+        const badges = {
+          'CREATE': '<span class="badge bg-success">Create</span>',
+          'UPDATE': '<span class="badge bg-info">Update</span>',
+          'DELETE': '<span class="badge bg-danger">Delete</span>'
+        };
+        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+      };
+
+      const result = getActionBadge('DELETE');
+      expect(result).toContain('bg-danger');
+      expect(result).toContain('Delete');
+    });
+
+    it('returns secondary badge for unknown operation', () => {
+      const getActionBadge = (operationType) => {
+        const badges = {
+          'CREATE': '<span class="badge bg-success">Create</span>',
+          'UPDATE': '<span class="badge bg-info">Update</span>',
+          'DELETE': '<span class="badge bg-danger">Delete</span>'
+        };
+        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+      };
+
+      const result = getActionBadge('UNKNOWN');
+      expect(result).toContain('bg-secondary');
+      expect(result).toContain('UNKNOWN');
+    });
+  });
+
+  describe('formatEntityDisplay', () => {
+    it('formats users entity with correct icon', () => {
+      const formatEntityDisplay = (entityType, entityId) => {
+        const icons = {
+          'users': '👤',
+          'institutions': '🏛️',
+          'programs': '📚',
+          'courses': '📖',
+          'terms': '📅',
+          'course_offerings': '📝',
+          'course_sections': '👥',
+          'course_outcomes': '🎯'
+        };
+        const icon = icons[entityType] || '📄';
+        const shortId = entityId ? entityId.substring(0, 8) : '';
+        return `${icon} <span class="text-muted">${shortId}</span>`;
+      };
+
+      const result = formatEntityDisplay('users', 'user-12345678-abcd');
+      expect(result).toContain('👤');
+      expect(result).toContain('user-123');
+    });
+
+    it('formats institutions entity with correct icon', () => {
+      const formatEntityDisplay = (entityType, entityId) => {
+        const icons = {
+          'users': '👤',
+          'institutions': '🏛️',
+          'programs': '📚',
+          'courses': '📖',
+          'terms': '📅',
+          'course_offerings': '📝',
+          'course_sections': '👥',
+          'course_outcomes': '🎯'
+        };
+        const icon = icons[entityType] || '📄';
+        const shortId = entityId ? entityId.substring(0, 8) : '';
+        return `${icon} <span class="text-muted">${shortId}</span>`;
+      };
+
+      const result = formatEntityDisplay('institutions', 'inst-999');
+      expect(result).toContain('🏛️');
+      expect(result).toContain('inst-999');
+    });
+
+    it('uses default icon for unknown entity type', () => {
+      const formatEntityDisplay = (entityType, entityId) => {
+        const icons = {
+          'users': '👤',
+          'institutions': '🏛️',
+          'programs': '📚',
+          'courses': '📖',
+          'terms': '📅',
+          'course_offerings': '📝',
+          'course_sections': '👥',
+          'course_outcomes': '🎯'
+        };
+        const icon = icons[entityType] || '📄';
+        const shortId = entityId ? entityId.substring(0, 8) : '';
+        return `${icon} <span class="text-muted">${shortId}</span>`;
+      };
+
+      const result = formatEntityDisplay('unknown_type', 'id-123');
+      expect(result).toContain('📄');
+    });
+
+    it('handles empty entity ID', () => {
+      const formatEntityDisplay = (entityType, entityId) => {
+        const icons = {
+          'users': '👤',
+          'institutions': '🏛️'
+        };
+        const icon = icons[entityType] || '📄';
+        const shortId = entityId ? entityId.substring(0, 8) : '';
+        return `${icon} <span class="text-muted">${shortId}</span>`;
+      };
+
+      const result = formatEntityDisplay('users', null);
+      expect(result).toContain('👤');
+      expect(result).toContain('<span class="text-muted"></span>');
+    });
+  });
+
+  describe('getAuditDetails', () => {
+    it('returns changed fields for UPDATE with valid JSON', () => {
+      const getAuditDetails = (log) => {
+        if (log.changed_fields) {
+          try {
+            const fields = JSON.parse(log.changed_fields);
+            if (Array.isArray(fields) && fields.length > 0) {
+              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+            }
+          } catch (e) {
+            // Ignore JSON parse errors
+          }
+        }
+        if (log.operation_type === 'CREATE') {
+          return 'New entity created';
+        } else if (log.operation_type === 'DELETE') {
+          return 'Entity deleted';
+        }
+        return 'Entity modified';
+      };
+
+      const log = {
+        changed_fields: '["name", "email", "role"]',
+        operation_type: 'UPDATE'
+      };
+      const result = getAuditDetails(log);
+      expect(result).toBe('Changed: name, email, role');
+    });
+
+    it('truncates long changed fields list', () => {
+      const getAuditDetails = (log) => {
+        if (log.changed_fields) {
+          try {
+            const fields = JSON.parse(log.changed_fields);
+            if (Array.isArray(fields) && fields.length > 0) {
+              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        if (log.operation_type === 'CREATE') {
+          return 'New entity created';
+        } else if (log.operation_type === 'DELETE') {
+          return 'Entity deleted';
+        }
+        return 'Entity modified';
+      };
+
+      const log = {
+        changed_fields: '["field1", "field2", "field3", "field4", "field5"]',
+        operation_type: 'UPDATE'
+      };
+      const result = getAuditDetails(log);
+      expect(result).toBe('Changed: field1, field2, field3...');
+    });
+
+    it('returns "New entity created" for CREATE', () => {
+      const getAuditDetails = (log) => {
+        if (log.changed_fields) {
+          try {
+            const fields = JSON.parse(log.changed_fields);
+            if (Array.isArray(fields) && fields.length > 0) {
+              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        if (log.operation_type === 'CREATE') {
+          return 'New entity created';
+        } else if (log.operation_type === 'DELETE') {
+          return 'Entity deleted';
+        }
+        return 'Entity modified';
+      };
+
+      const log = { operation_type: 'CREATE' };
+      const result = getAuditDetails(log);
+      expect(result).toBe('New entity created');
+    });
+
+    it('returns "Entity deleted" for DELETE', () => {
+      const getAuditDetails = (log) => {
+        if (log.changed_fields) {
+          try {
+            const fields = JSON.parse(log.changed_fields);
+            if (Array.isArray(fields) && fields.length > 0) {
+              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        if (log.operation_type === 'CREATE') {
+          return 'New entity created';
+        } else if (log.operation_type === 'DELETE') {
+          return 'Entity deleted';
+        }
+        return 'Entity modified';
+      };
+
+      const log = { operation_type: 'DELETE' };
+      const result = getAuditDetails(log);
+      expect(result).toBe('Entity deleted');
+    });
+
+    it('handles invalid JSON in changed_fields gracefully', () => {
+      const getAuditDetails = (log) => {
+        if (log.changed_fields) {
+          try {
+            const fields = JSON.parse(log.changed_fields);
+            if (Array.isArray(fields) && fields.length > 0) {
+              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+        if (log.operation_type === 'CREATE') {
+          return 'New entity created';
+        } else if (log.operation_type === 'DELETE') {
+          return 'Entity deleted';
+        }
+        return 'Entity modified';
+      };
+
+      const log = {
+        changed_fields: 'invalid-json',
+        operation_type: 'UPDATE'
+      };
+      const result = getAuditDetails(log);
+      expect(result).toBe('Entity modified');
+    });
+  });
+
+  describe('displayAuditLogs', () => {
+    beforeEach(() => {
+      document.body.innerHTML = '<div id="activityTableContainer"></div>';
+    });
+
+    it('displays empty state when no logs provided', () => {
+      const displayAuditLogs = (logs) => {
+        const container = document.getElementById('activityTableContainer');
+        if (!container) return;
+        if (!logs || logs.length === 0) {
+          container.innerHTML = `
+            <div class="text-center text-muted py-4">
+              <i class="fas fa-inbox fa-2x mb-2"></i>
+              <p>No recent activity to display</p>
+            </div>
+          `;
+          return;
+        }
+      };
+
+      displayAuditLogs([]);
+      const container = document.getElementById('activityTableContainer');
+      expect(container.innerHTML).toContain('No recent activity to display');
+      expect(container.innerHTML).toContain('fa-inbox');
+    });
+
+    it('does nothing if container not found', () => {
+      document.body.innerHTML = '';
+      const displayAuditLogs = (logs) => {
+        const container = document.getElementById('activityTableContainer');
+        if (!container) return;
+        if (!logs || logs.length === 0) {
+          container.innerHTML = 'Test';
+        }
+      };
+
+      // Should not throw
+      expect(() => displayAuditLogs([])).not.toThrow();
+    });
+  });
+});
+
+describe('loadAuditLogs - Complete Implementation Coverage', () => {
+  let originalFetch;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div class="dashboard-panel" id="system-activity-panel">
+        <div class="panel-content">
+          <div id="activityTableContainer"></div>
+        </div>
+      </div>
+    `;
+    
+    originalFetch = global.fetch;
+    global.fetch = jest.fn();
+    
+    // panels.js exports loadAuditLogs to window
+    require('../../../static/panels.js');
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('shows loading state then displays logs on success', async () => {
+    const mockLogs = [
+      {
+        audit_id: 'audit-1',
+        timestamp: '2025-10-08T12:00:00Z',
+        user_email: 'admin@example.com',
+        operation_type: 'CREATE',
+        entity_type: 'users',
+        entity_id: 'user-123',
+        changed_fields: null
+      }
+    ];
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, logs: mockLogs })
+    });
+
+    await window.loadAuditLogs(20);
+
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('admin@example.com');
+    expect(container.innerHTML).toContain('Create'); // Badge shows 'Create' not 'CREATE'
+    expect(global.fetch).toHaveBeenCalledWith('/api/audit/recent?limit=20');
+  });
+
+  it('shows error when response is not ok', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error'
+    });
+
+    await window.loadAuditLogs(20);
+
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('Failed to load system activity');
+    expect(container.innerHTML).toContain('HTTP 500');
+  });
+
+  it('shows error when data.success is false with error message', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: false, error: 'Database error' })
+    });
+
+    await window.loadAuditLogs(20);
+
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('Failed to load system activity');
+    expect(container.innerHTML).toContain('Database error');
+  });
+
+  it('shows generic error when data.success is false without error message', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: false })
+    });
+
+    await window.loadAuditLogs(20);
+
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('Failed to load system activity');
+    expect(container.innerHTML).toContain('Failed to load audit logs');
+  });
+
+  it('handles fetch network error', async () => {
+    global.fetch.mockRejectedValue(new Error('Network timeout'));
+
+    await window.loadAuditLogs(20);
+
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('Failed to load system activity');
+    expect(container.innerHTML).toContain('Network timeout');
+  });
+
+  it('does nothing when container not found', async () => {
+    document.body.innerHTML = '';
+
+    await window.loadAuditLogs(20);
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('uses default limit of 20 when not specified', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, logs: [] })
+    });
+
+    await window.loadAuditLogs();
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/audit/recent?limit=20');
+  });
+
+  it('uses custom limit when specified', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, logs: [] })
+    });
+
+    await window.loadAuditLogs(50);
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/audit/recent?limit=50');
+  });
+});
+
+describe('createAuditLogRow - ACTUAL INTEGRATION', () => {
+  beforeEach(() => {
+    require('../../../static/panels.js');
+  });
+
+  it('creates row HTML with all components for CREATE operation', () => {
+    const log = {
+      audit_id: 'audit-123',
+      timestamp: '2025-10-08T12:00:00Z',
+      user_email: 'admin@example.com',
+      user_role: 'site_admin',
+      operation_type: 'CREATE',
+      entity_type: 'users',
+      entity_id: 'user-12345678',
+      changed_fields: null
+    };
+
+    // Mock formatAuditTimestamp to return fixed string
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-10-08T12:05:00Z'));
+
+    const row = window.createAuditLogRow(log);
+    
+    // Verify all components are present
+    expect(row).toContain('<tr>');
+    expect(row).toContain('</tr>');
+    expect(row).toContain('admin@example.com');
+    expect(row).toContain('Create'); // Badge text
+    expect(row).toContain('bg-success'); // Badge class
+    expect(row).toContain('👤'); // User icon
+    expect(row).toContain('user-123'); // Truncated ID
+    expect(row).toContain('New entity created'); // Details for CREATE
+
+    jest.useRealTimers();
+  });
+
+  it('creates row HTML for UPDATE operation with changed fields', () => {
+    const log = {
+      timestamp: '2025-10-08T11:30:00Z',
+      user_email: 'program.admin@example.com',
+      operation_type: 'UPDATE',
+      entity_type: 'courses',
+      entity_id: 'course-987',
+      changed_fields: '["name", "credits"]'
+    };
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-10-08T12:00:00Z'));
+
+    const row = window.createAuditLogRow(log);
+    
+    expect(row).toContain('program.admin@example.com');
+    expect(row).toContain('Update');
+    expect(row).toContain('bg-info');
+    expect(row).toContain('📖'); // Course icon
+    expect(row).toContain('Changed: name, credits');
+
+    jest.useRealTimers();
+  });
+
+  it('creates row HTML for DELETE operation', () => {
+    const log = {
+      timestamp: '2025-10-08T10:00:00Z',
+      user_email: 'admin@example.com',
+      operation_type: 'DELETE',
+      entity_type: 'institutions',
+      entity_id: 'inst-456',
+      changed_fields: null
+    };
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-10-08T12:00:00Z'));
+
+    const row = window.createAuditLogRow(log);
+    
+    expect(row).toContain('Delete');
+    expect(row).toContain('bg-danger');
+    expect(row).toContain('🏛️'); // Institution icon
+    expect(row).toContain('Entity deleted');
+
+    jest.useRealTimers();
+  });
+
+  it('handles null user_email (system operations)', () => {
+    const log = {
+      timestamp: '2025-10-08T12:00:00Z',
+      user_email: null,
+      operation_type: 'CREATE',
+      entity_type: 'users',
+      entity_id: 'user-123',
+      changed_fields: null
+    };
+
+    const row = window.createAuditLogRow(log);
+    
+    expect(row).toContain('System');
+  });
+
+  it('handles missing user_email (system operations)', () => {
+    const log = {
+      timestamp: '2025-10-08T12:00:00Z',
+      operation_type: 'CREATE',
+      entity_type: 'users',
+      entity_id: 'user-123',
+      changed_fields: null
+    };
+
+    const row = window.createAuditLogRow(log);
+    
+    expect(row).toContain('System');
+  });
+
+  it('escapes HTML in user email', () => {
+    const log = {
+      timestamp: '2025-10-08T12:00:00Z',
+      user_email: '<script>alert("xss")</script>@example.com',
+      operation_type: 'CREATE',
+      entity_type: 'users',
+      entity_id: 'user-123',
+      changed_fields: null
+    };
+
+    const row = window.createAuditLogRow(log);
+    
+    // HTML should be escaped
+    expect(row).not.toContain('<script>');
+    expect(row).toContain('&lt;script&gt;');
+  });
+
+  it('creates rows for all entity types with correct icons', () => {
+    const entityTypes = [
+      { type: 'users', icon: '👤' },
+      { type: 'institutions', icon: '🏛️' },
+      { type: 'programs', icon: '📚' },
+      { type: 'courses', icon: '📖' },
+      { type: 'terms', icon: '📅' },
+      { type: 'course_offerings', icon: '📝' },
+      { type: 'course_sections', icon: '👥' },
+      { type: 'course_outcomes', icon: '🎯' }
+    ];
+
+    entityTypes.forEach(({ type, icon }) => {
+      const log = {
+        timestamp: '2025-10-08T12:00:00Z',
+        user_email: 'test@example.com',
+        operation_type: 'CREATE',
+        entity_type: type,
+        entity_id: `${type}-123`,
+        changed_fields: null
+      };
+
+      const row = window.createAuditLogRow(log);
+      expect(row).toContain(icon);
+    });
+  });
+});

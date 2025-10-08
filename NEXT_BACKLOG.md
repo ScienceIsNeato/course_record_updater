@@ -191,3 +191,49 @@
 - [ ] Add smoke/UAT steps to trigger a synthetic error and confirm Slack + Sentry both capture the event.
 **Definition of Done**: Slack channel receives critical alerts, Sentry records application errors, rollout order documented, and toggles/secrets clearly defined.  
 **Hand-off**: Requires coordination with product owner and workspace access—keep with core team.
+
+## Priority 13 – JavaScript Test Coverage Enhancement (Epic) **QUALITY INVESTMENT**
+**Status**: Needs systematic attention  
+**Docs**: `jest.config.js`, `tests/javascript/unit/`, `static/*.js`  
+**Goal**: Bring all JavaScript test coverage metrics to meet or exceed established thresholds (80% lines, 75% branches, 90% functions).
+
+**Current State**:
+- **Overall Coverage**: Lines 78.24%, Branches 59.42%, Functions 74.21%
+- **Target Thresholds**: Lines 80%, Branches 75%, Functions 90%
+- **Tests Passing**: 238/238 ✅
+- **Gaps**: ~150 branch tests, ~60 function tests, ~100 line tests needed
+
+**Files Requiring Enhancement** (sorted by branch coverage gap):
+1. **panels.js**: 32.3% branches (90/279) - **LARGEST GAP** - needs +119 branch hits
+2. **program_dashboard.js**: 57.9% branches (106/183) - needs +31 branch hits
+3. **institution_dashboard.js**: 59.2% branches (119/201) - needs +32 branch hits
+4. **logger.js**: 60.0% branches (12/20) - needs +3 branch hits
+5. **admin.js**: 62.9% branches (163/259) - needs +31 branch hits
+6. **auth.js**: 65.1% branches (121/186) - needs +19 branch hits
+7. **instructor_dashboard.js**: 70.4% branches (95/135) - needs +6 branch hits
+8. **script.js**: 75.5% branches (209/277) - **ALREADY ABOVE THRESHOLD** ✅
+
+**Systematic Approach**:
+- [ ] **Phase 1**: Easy wins - logger.js, instructor_dashboard.js, auth.js (small gaps)
+- [ ] **Phase 2**: Dashboard files - institution/program dashboards (med gaps)
+- [ ] **Phase 3**: Complex files - admin.js, panels.js (large gaps)
+- [ ] **Phase 4**: Branch coverage focus - add tests for all if/else, switch, ternary paths
+- [ ] **Phase 5**: Function coverage focus - test all exported functions
+- [ ] **Phase 6**: Error path coverage - network failures, validation errors, edge cases
+
+**Test Categories to Add**:
+- **Branch Coverage**: if/else paths, switch cases, ternary operators, logical operators
+- **Function Coverage**: all exported functions, event handlers, callbacks
+- **Error Paths**: network errors, API failures, validation failures, null/undefined inputs
+- **Edge Cases**: empty arrays, zero values, boundary conditions, malformed data
+- **User Interactions**: button clicks, form submissions, modal actions, pagination
+
+**Definition of Done**:
+- All files meet or exceed: 80% lines, 75% branches, 90% functions
+- Pre-commit hooks pass without workarounds
+- Test quality maintained (no trivial tests just for coverage)
+- Error paths have meaningful assertions
+
+**Estimated Effort**: 6-8 hours (systematic file-by-file approach)  
+**Hand-off**: Can be delegated with clear file-level targets and examples  
+**Notes**: This is technical debt across all JavaScript files, not just new code. Audit functionality is fully working and tested via API (19/19 passing). Quality investment initiative to bring ALL JavaScript to coverage standards.
