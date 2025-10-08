@@ -6,7 +6,20 @@
 
 **Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅ → **Human-Friendly Watch Mode** ✅ → **All 8 Modals Wired to Dashboard** ✅
 
-**Latest: All 8 Entity Modals Wired to Dashboard (Oct 8, 2025)**
+**Latest: E2E Test UI Conversion Started - DB Connection Issue Discovered (Oct 8, 2025)**
+- ✅ **UI Interaction Pattern**: Established clean pattern for modal-based CRUD testing
+- ⚠️  **DB Connection Issue**: E2E tests import `database_service` which connects to wrong DB
+  * Server runs with `course_records_e2e.db` (via APP_ENV=e2e)
+  * Test Python code connects to DATABASE_URL (might be dev DB)
+  * Result: Tests query wrong database, find no data
+- 🤔 **Solutions to Consider**:
+  1. Make E2E tests purely UI-based (no direct DB queries for setup)
+  2. Configure DATABASE_URL for test process to use E2E DB
+  3. Create fixture that switches DB connection for E2E context
+  4. Use authenticated API calls for test setup instead of direct DB
+- **Status**: 1/28 tests converted, needs approach decision before continuing
+
+**Previous: All 8 Entity Modals Wired to Dashboard (Oct 8, 2025)**
 - ✅ **Site Admin Dashboard**: User + Institution modals (2 entities, 4 modals)
 - ✅ **Institution Admin Dashboard**: Program, Course, Term, Offering, Section, Outcome modals (6 entities, 12 modals)
 - ✅ **14 Total Modals**: All forms functional, backed by 146 JS tests, 83.95% coverage
