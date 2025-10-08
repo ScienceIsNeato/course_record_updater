@@ -1199,20 +1199,23 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
                           "Run 'npm run test:coverage' for details and add tests to increase coverage"
             else
               # Extract and display coverage summary for successful runs
-              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
               
               echo "✅ JavaScript Coverage: PASSED"
               echo ""
-              echo "📊 Coverage Summary:"
+              echo "📊 Coverage Summary (threshold: lines ≥ 80%):"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "  Lines:      $LINES ✅"
               echo "  Statements: $STATEMENTS"
               echo "  Branches:   $BRANCHES" 
               echo "  Functions:  $FUNCTIONS"
-              echo "  Lines:      $LINES ✅ (threshold: 80%)"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
               
-              add_success "JavaScript Coverage" "Line coverage threshold met: $LINES (80% required)"
+              add_success "JavaScript Coverage" "Lines: $LINES ✅ (threshold: 80%) | Statements: $STATEMENTS | Branches: $BRANCHES | Functions: $FUNCTIONS"
             fi
   fi
 fi

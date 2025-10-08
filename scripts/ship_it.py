@@ -295,9 +295,51 @@ class QualityGateExecutor:
 
         lines = [f"✅ PASSED CHECKS ({len(passed_checks)}):"]
         for result in passed_checks:
-            lines.append(f"   • {result.name}: Completed in {result.duration:.1f}s")
+            # Try to extract success message from bash output
+            message = self._extract_success_message(result)
+            if message:
+                lines.append(f"   • {result.name}: {message}")
+            else:
+                lines.append(f"   • {result.name}: Completed in {result.duration:.1f}s")
         lines.append("")
         return lines
+    
+    def _extract_success_message(self, result: CheckResult) -> Optional[str]:
+        """Extract success message from bash script output."""
+        # For JavaScript coverage, extract the actual percentages from the detailed output
+        if "JavaScript Coverage" in result.name:
+            lines_pct = None
+            statements_pct = None
+            branches_pct = None
+            functions_pct = None
+            
+            for line in result.output.split('\n'):
+                stripped = line.strip()
+                if stripped.startswith('Lines:'):
+                    lines_pct = stripped.split()[1]
+                elif stripped.startswith('Statements:'):
+                    statements_pct = stripped.split()[1]
+                elif stripped.startswith('Branches:'):
+                    branches_pct = stripped.split()[1]
+                elif stripped.startswith('Functions:'):
+                    functions_pct = stripped.split()[1]
+            
+            if lines_pct:
+                return f"Lines: {lines_pct} ✅ | Statements: {statements_pct} | Branches: {branches_pct} | Functions: {functions_pct}"
+        
+        # For other checks, look for pattern: "   • {name}: {message}"
+        for line in result.output.split('\n'):
+            stripped = line.strip()
+            if stripped.startswith('• '):
+                # Extract message after first ": "
+                parts = stripped.split(': ', 1)
+                if len(parts) == 2:
+                    check_name = parts[0].replace('• ', '').strip()
+                    message = parts[1].strip()
+                    # Match if bash name is substring of result.name
+                    if check_name in result.name or result.name in check_name:
+                        return message
+        return None
 
     def _filter_meaningful_lines(self, output_lines: List[str]) -> List[str]:
         """Filter out empty lines and pip noise from output."""
