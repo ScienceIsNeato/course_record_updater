@@ -15,6 +15,18 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_institution(
+        self, institution_id: str, institution_data: Dict[str, Any]
+    ) -> bool:
+        """Update institution details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_institution(self, institution_id: str) -> bool:
+        """Delete institution (CASCADE deletes all related data)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_institution_by_id(self, institution_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
@@ -115,6 +127,21 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_course(self, course_id: str, course_data: Dict[str, Any]) -> bool:
+        """Update course details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_programs(self, course_id: str, program_ids: List[str]) -> bool:
+        """Update course-program associations"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course(self, course_id: str) -> bool:
+        """Delete course (CASCADE deletes offerings and sections)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_course_by_number(self, course_number: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
@@ -126,6 +153,28 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def create_course_outcome(self, outcome_data: Dict[str, Any]) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_outcome(
+        self, outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update course outcome details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_outcome_assessment(
+        self,
+        outcome_id: str,
+        assessment_data: Dict[str, Any],
+        narrative: Optional[str] = None,
+    ) -> bool:
+        """Update outcome assessment data and narrative"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_outcome(self, outcome_id: str) -> bool:
+        """Delete course outcome"""
         raise NotImplementedError
 
     @abstractmethod
@@ -153,6 +202,18 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_course_offering(
+        self, offering_id: str, offering_data: Dict[str, Any]
+    ) -> bool:
+        """Update course offering details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_offering(self, offering_id: str) -> bool:
+        """Delete course offering (CASCADE deletes sections)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
@@ -172,6 +233,21 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_term(self, term_id: str, term_data: Dict[str, Any]) -> bool:
+        """Update term details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def archive_term(self, term_id: str) -> bool:
+        """Archive term (soft delete - set active=False)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_term(self, term_id: str) -> bool:
+        """Delete term (CASCADE deletes offerings and sections)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_term_by_name(
         self, name: str, institution_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
@@ -188,6 +264,23 @@ class DatabaseInterface(ABC):
     # Section operations
     @abstractmethod
     def create_course_section(self, section_data: Dict[str, Any]) -> Optional[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_section(
+        self, section_id: str, section_data: Dict[str, Any]
+    ) -> bool:
+        """Update course section details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assign_instructor(self, section_id: str, instructor_id: str) -> bool:
+        """Assign instructor to a section"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_section(self, section_id: str) -> bool:
+        """Delete course section"""
         raise NotImplementedError
 
     @abstractmethod

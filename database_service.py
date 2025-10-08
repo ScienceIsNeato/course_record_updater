@@ -122,6 +122,14 @@ def get_institution_by_short_name(short_name: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_institution_by_short_name(short_name)
 
 
+def update_institution(institution_id: str, institution_data: Dict[str, Any]) -> bool:
+    return _db_service.update_institution(institution_id, institution_data)
+
+
+def delete_institution(institution_id: str) -> bool:
+    return _db_service.delete_institution(institution_id)
+
+
 # ---------------------------------------------------------------------------
 # User operations
 # ---------------------------------------------------------------------------
@@ -240,6 +248,18 @@ def create_course(course_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course(course_data)
 
 
+def update_course(course_id: str, course_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course(course_id, course_data)
+
+
+def update_course_programs(course_id: str, program_ids: List[str]) -> bool:
+    return _db_service.update_course_programs(course_id, program_ids)
+
+
+def delete_course(course_id: str) -> bool:
+    return _db_service.delete_course(course_id)
+
+
 def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_by_number(course_number)
 
@@ -252,6 +272,20 @@ def get_courses_by_department(
 
 def create_course_outcome(outcome_data: Dict[str, Any]) -> str:
     return _db_service.create_course_outcome(outcome_data)
+
+
+def update_course_outcome(outcome_id: str, outcome_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_outcome(outcome_id, outcome_data)
+
+
+def update_outcome_assessment(
+    outcome_id: str, assessment_data: Dict[str, Any], narrative: Optional[str] = None
+) -> bool:
+    return _db_service.update_outcome_assessment(outcome_id, assessment_data, narrative)
+
+
+def delete_course_outcome(outcome_id: str) -> bool:
+    return _db_service.delete_course_outcome(outcome_id)
 
 
 def get_course_outcomes(course_id: str) -> List[Dict[str, Any]]:
@@ -278,6 +312,14 @@ def create_course_offering(offering_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course_offering(offering_data)
 
 
+def update_course_offering(offering_id: str, offering_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_offering(offering_id, offering_data)
+
+
+def delete_course_offering(offering_id: str) -> bool:
+    return _db_service.delete_course_offering(offering_id)
+
+
 def get_course_offering(offering_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_offering(offering_id)
 
@@ -301,6 +343,18 @@ def create_term(term_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_term(term_data)
 
 
+def update_term(term_id: str, term_data: Dict[str, Any]) -> bool:
+    return _db_service.update_term(term_id, term_data)
+
+
+def archive_term(term_id: str) -> bool:
+    return _db_service.archive_term(term_id)
+
+
+def delete_term(term_id: str) -> bool:
+    return _db_service.delete_term(term_id)
+
+
 def get_term_by_name(
     name: str, institution_id: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
@@ -322,6 +376,18 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
 
 def create_course_section(section_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course_section(section_data)
+
+
+def update_course_section(section_id: str, section_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_section(section_id, section_data)
+
+
+def assign_instructor(section_id: str, instructor_id: str) -> bool:
+    return _db_service.assign_instructor(section_id, instructor_id)
+
+
+def delete_course_section(section_id: str) -> bool:
+    return _db_service.delete_course_section(section_id)
 
 
 def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:

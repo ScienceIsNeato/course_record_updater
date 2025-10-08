@@ -412,6 +412,55 @@ class SQLiteDatabase(DatabaseInterface):
             logger.info("[SQLiteDatabase] Created course %s", course_id)
             return course_id
 
+    def update_course(self, course_id: str, course_data: Dict[str, Any]) -> bool:
+        """Update course details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                course = session.get(Course, course_id)
+                if not course:
+                    return False
+
+                # Handle program associations separately
+                if "program_ids" in course_data:
+                    program_ids = course_data.pop("program_ids")
+                    if program_ids is not None:
+                        programs = (
+                            session.execute(
+                                select(Program).where(Program.id.in_(program_ids))
+                            )
+                            .scalars()
+                            .all()
+                        )
+                        course.programs = list(programs)
+
+                # Update regular fields
+                for key, value in course_data.items():
+                    if hasattr(course, key) and key != "id":
+                        setattr(course, key, value)
+
+                course.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update course: {e}")
+            return False
+
+    def update_course_programs(self, course_id: str, program_ids: List[str]) -> bool:
+        """Update course-program associations."""
+        return self.update_course(course_id, {"program_ids": program_ids})
+
+    def delete_course(self, course_id: str) -> bool:
+        """Delete course (CASCADE deletes offerings, sections)."""
+        try:
+            with self.sqlite.session_scope() as session:
+                course = session.get(Course, course_id)
+                if not course:
+                    return False
+                session.delete(course)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete course: {e}")
+            return False
+
     def get_course_by_number(self, course_number: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             record = (
@@ -487,6 +536,51 @@ class SQLiteDatabase(DatabaseInterface):
             session.add(outcome)
             return outcome_id
 
+    def update_course_outcome(
+        self, outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update course outcome details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                outcome = session.get(CourseOutcome, outcome_id)
+                if not outcome:
+                    return False
+
+                for key, value in outcome_data.items():
+                    if hasattr(outcome, key) and key != "id":
+                        setattr(outcome, key, value)
+
+                outcome.last_modified = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update outcome: {e}")
+            return False
+
+    def update_outcome_assessment(
+        self,
+        outcome_id: str,
+        assessment_data: Dict[str, Any],
+        narrative: Optional[str] = None,
+    ) -> bool:
+        """Update outcome assessment data and narrative."""
+        update_data: Dict[str, Any] = {"assessment_data": assessment_data}
+        if narrative is not None:
+            update_data["narrative"] = narrative
+        return self.update_course_outcome(outcome_id, update_data)
+
+    def delete_course_outcome(self, outcome_id: str) -> bool:
+        """Delete course outcome."""
+        try:
+            with self.sqlite.session_scope() as session:
+                outcome = session.get(CourseOutcome, outcome_id)
+                if not outcome:
+                    return False
+                session.delete(outcome)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete outcome: {e}")
+            return False
+
     def get_course_outcomes(self, course_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             outcomes = (
@@ -561,6 +655,39 @@ class SQLiteDatabase(DatabaseInterface):
             session.add(offering)
             return offering_id
 
+    def update_course_offering(
+        self, offering_id: str, offering_data: Dict[str, Any]
+    ) -> bool:
+        """Update course offering details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                offering = session.get(CourseOffering, offering_id)
+                if not offering:
+                    return False
+
+                for key, value in offering_data.items():
+                    if hasattr(offering, key) and key != "id":
+                        setattr(offering, key, value)
+
+                offering.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update offering: {e}")
+            return False
+
+    def delete_course_offering(self, offering_id: str) -> bool:
+        """Delete course offering (CASCADE deletes sections)."""
+        try:
+            with self.sqlite.session_scope() as session:
+                offering = session.get(CourseOffering, offering_id)
+                if not offering:
+                    return False
+                session.delete(offering)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete offering: {e}")
+            return False
+
     def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             offering = session.get(CourseOffering, offering_id)
@@ -621,6 +748,41 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             session.add(term)
             return term_id
+
+    def update_term(self, term_id: str, term_data: Dict[str, Any]) -> bool:
+        """Update term details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                term = session.get(Term, term_id)
+                if not term:
+                    return False
+
+                for key, value in term_data.items():
+                    if hasattr(term, key) and key != "id":
+                        setattr(term, key, value)
+
+                term.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update term: {e}")
+            return False
+
+    def archive_term(self, term_id: str) -> bool:
+        """Archive term (soft delete - set active=False)."""
+        return self.update_term(term_id, {"active": False})
+
+    def delete_term(self, term_id: str) -> bool:
+        """Delete term (CASCADE deletes offerings and sections)."""
+        try:
+            with self.sqlite.session_scope() as session:
+                term = session.get(Term, term_id)
+                if not term:
+                    return False
+                session.delete(term)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete term: {e}")
+            return False
 
     def get_term_by_name(
         self, name: str, institution_id: Optional[str] = None
@@ -683,6 +845,50 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             session.add(section)
             return section_id
+
+    def update_course_section(
+        self, section_id: str, section_data: Dict[str, Any]
+    ) -> bool:
+        """Update course section details."""
+        try:
+            with self.sqlite.session_scope() as session:
+                section = session.get(CourseSection, section_id)
+                if not section:
+                    return False
+
+                for key, value in section_data.items():
+                    if hasattr(section, key) and key != "id":
+                        setattr(section, key, value)
+
+                section.updated_at = datetime.now(timezone.utc)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to update section: {e}")
+            return False
+
+    def assign_instructor(self, section_id: str, instructor_id: str) -> bool:
+        """Assign instructor to a section."""
+        return self.update_course_section(
+            section_id,
+            {
+                "instructor_id": instructor_id,
+                "status": "assigned",
+                "assigned_date": datetime.now(timezone.utc),
+            },
+        )
+
+    def delete_course_section(self, section_id: str) -> bool:
+        """Delete course section."""
+        try:
+            with self.sqlite.session_scope() as session:
+                section = session.get(CourseSection, section_id)
+                if not section:
+                    return False
+                session.delete(section)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete section: {e}")
+            return False
 
     def get_sections_by_instructor(self, instructor_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
@@ -1131,24 +1337,6 @@ class SQLiteDatabase(DatabaseInterface):
             if not user:
                 return False
             session.delete(user)
-            return True
-
-    def delete_course(self, course_id: str) -> bool:
-        """Delete a course (for testing purposes)."""
-        with self.sqlite.session_scope() as session:
-            course = session.get(Course, course_id)
-            if not course:
-                return False
-            session.delete(course)
-            return True
-
-    def delete_term(self, term_id: str) -> bool:
-        """Delete a term (for testing purposes)."""
-        with self.sqlite.session_scope() as session:
-            term = session.get(Term, term_id)
-            if not term:
-                return False
-            session.delete(term)
             return True
 
     def delete_program_simple(self, program_id: str) -> bool:

@@ -1153,3 +1153,427 @@ def test_uncovered_database_functions():
     courses = database_service.get_courses_by_department(inst_id, "NONEXISTENT")
     assert isinstance(courses, list)
     assert len(courses) == 0
+
+
+def test_user_crud_operations():
+    """Test Users CRUD: update_user_profile, update_user_role, deactivate_user, delete_user"""
+    # Setup institution
+    inst_id = database_service.create_institution(
+        {
+            "name": "User CRUD Test University",
+            "short_name": "UCTU",
+            "admin_email": "admin@uctu.edu",
+            "created_by": "system",
+        }
+    )
+
+    # Create test user
+    user_data = {
+        "email": "testuser@uctu.edu",
+        "first_name": "Test",
+        "last_name": "User",
+        "role": "instructor",
+        "institution_id": inst_id,
+        "account_status": "active",
+    }
+    user_id = database_service.create_user(user_data)
+    assert user_id is not None
+
+    # Test update_user_profile
+    profile_update = {
+        "first_name": "Updated",
+        "last_name": "Name",
+        "display_name": "Dr. Updated Name",
+    }
+    result = database_service.update_user_profile(user_id, profile_update)
+    assert result is True
+
+    user = database_service.get_user_by_id(user_id)
+    assert user["first_name"] == "Updated"
+    assert user["last_name"] == "Name"
+
+    # Test update_user_role
+    result = database_service.update_user_role(user_id, "program_admin", [])
+    assert result is True
+
+    user = database_service.get_user_by_id(user_id)
+    assert user["role"] == "program_admin"
+
+    # Test deactivate_user (soft delete)
+    result = database_service.deactivate_user(user_id)
+    assert result is True
+
+    user = database_service.get_user_by_id(user_id)
+    assert user["account_status"] == "suspended"
+
+    # Test delete_user (hard delete)
+    result = database_service.delete_user(user_id)
+    assert result is True
+
+    user = database_service.get_user_by_id(user_id)
+    assert user is None
+
+
+def test_institution_crud_operations():
+    """Test Institutions CRUD: update_institution, delete_institution"""
+    # Create test institution
+    inst_data = {
+        "name": "Institution CRUD Test",
+        "short_name": "ICT",
+        "admin_email": "admin@ict.edu",
+        "created_by": "system",
+    }
+    inst_id = database_service.create_institution(inst_data)
+    assert inst_id is not None
+
+    # Test update_institution
+    update_data = {
+        "name": "Updated Institution Name",
+        "short_name": "UIN",
+    }
+    result = database_service.update_institution(inst_id, update_data)
+    assert result is True
+
+    inst = database_service.get_institution_by_id(inst_id)
+    assert inst["name"] == "Updated Institution Name"
+    assert inst["short_name"] == "UIN"
+
+    # Test delete_institution (CASCADE deletes all related data)
+    result = database_service.delete_institution(inst_id)
+    assert result is True
+
+    inst = database_service.get_institution_by_id(inst_id)
+    assert inst is None
+
+
+def test_course_crud_operations():
+    """Test Courses CRUD: update_course, update_course_programs, delete_course"""
+    # Setup
+    inst_id = database_service.create_institution(
+        {
+            "name": "Course CRUD Test University",
+            "short_name": "CCTU",
+            "admin_email": "admin@cctu.edu",
+            "created_by": "system",
+        }
+    )
+
+    program_id = database_service.create_program(
+        {
+            "institution_id": inst_id,
+            "program_name": "Test Program",
+            "program_code": "TP",
+            "active": True,
+        }
+    )
+
+    course_data = {
+        "course_number": "CS101",
+        "course_title": "Intro to Testing",
+        "department": "Computer Science",
+        "credit_hours": 3,
+        "institution_id": inst_id,
+        "active": True,
+    }
+    course_id = database_service.create_course(course_data)
+    assert course_id is not None
+
+    # Test update_course
+    update_data = {
+        "course_title": "Advanced Testing",
+        "credit_hours": 4,
+    }
+    result = database_service.update_course(course_id, update_data)
+    assert result is True
+
+    course = database_service.get_course_by_id(course_id)
+    assert course["course_title"] == "Advanced Testing"
+    assert course["credit_hours"] == 4
+
+    # Test update_course_programs
+    result = database_service.update_course_programs(course_id, [program_id])
+    assert result is True
+
+    # Test delete_course (CASCADE deletes offerings and sections)
+    result = database_service.delete_course(course_id)
+    assert result is True
+
+    course = database_service.get_course_by_id(course_id)
+    assert course is None
+
+
+def test_term_crud_operations():
+    """Test Terms CRUD: update_term, archive_term, delete_term"""
+    # Setup
+    inst_id = database_service.create_institution(
+        {
+            "name": "Term CRUD Test University",
+            "short_name": "TCTU",
+            "admin_email": "admin@tctu.edu",
+            "created_by": "system",
+        }
+    )
+
+    term_data = {
+        "term_name": "FA2024",
+        "name": "Fall 2024",
+        "start_date": "2024-08-01",
+        "end_date": "2024-12-15",
+        "active": True,
+        "institution_id": inst_id,
+    }
+    term_id = database_service.create_term(term_data)
+    assert term_id is not None
+
+    # Test update_term
+    update_data = {
+        "name": "Fall 2024 Updated",
+        "end_date": "2024-12-20",
+    }
+    result = database_service.update_term(term_id, update_data)
+    assert result is True
+
+    term = database_service.get_term_by_name("FA2024", inst_id)
+    assert term["name"] == "Fall 2024 Updated"
+
+    # Test archive_term (soft delete - sets active=False)
+    result = database_service.archive_term(term_id)
+    assert result is True
+
+    term = database_service.get_term_by_name("FA2024", inst_id)
+    assert term["active"] is False
+
+    # Test delete_term (hard delete - CASCADE deletes offerings and sections)
+    result = database_service.delete_term(term_id)
+    assert result is True
+
+    term = database_service.get_term_by_name("FA2024", inst_id)
+    assert term is None
+
+
+def test_offering_crud_operations():
+    """Test Offerings CRUD: update_course_offering, delete_course_offering"""
+    # Setup
+    inst_id = database_service.create_institution(
+        {
+            "name": "Offering CRUD Test University",
+            "short_name": "OCTU",
+            "admin_email": "admin@octu.edu",
+            "created_by": "system",
+        }
+    )
+
+    course_id = database_service.create_course(
+        {
+            "course_number": "CS202",
+            "course_title": "Data Structures",
+            "department": "CS",
+            "credit_hours": 3,
+            "institution_id": inst_id,
+            "active": True,
+        }
+    )
+
+    term_id = database_service.create_term(
+        {
+            "term_name": "SP2025",
+            "name": "Spring 2025",
+            "start_date": "2025-01-01",
+            "end_date": "2025-05-15",
+            "active": True,
+            "institution_id": inst_id,
+        }
+    )
+
+    offering_data = {
+        "course_id": course_id,
+        "term_id": term_id,
+        "institution_id": inst_id,
+        "status": "active",
+        "capacity": 30,
+        "total_enrollment": 0,
+    }
+    offering_id = database_service.create_course_offering(offering_data)
+    assert offering_id is not None
+
+    # Test update_course_offering
+    update_data = {
+        "capacity": 40,
+        "total_enrollment": 25,
+        "status": "full",
+    }
+    result = database_service.update_course_offering(offering_id, update_data)
+    assert result is True
+
+    offering = database_service.get_course_offering(offering_id)
+    assert offering["capacity"] == 40
+    assert offering["total_enrollment"] == 25
+
+    # Test delete_course_offering (CASCADE deletes sections)
+    result = database_service.delete_course_offering(offering_id)
+    assert result is True
+
+    offering = database_service.get_course_offering(offering_id)
+    assert offering is None
+
+
+def test_section_crud_operations():
+    """Test Sections CRUD: update_course_section, assign_instructor, delete_course_section"""
+    # Setup
+    inst_id = database_service.create_institution(
+        {
+            "name": "Section CRUD Test University",
+            "short_name": "SCTU",
+            "admin_email": "admin@sctu.edu",
+            "created_by": "system",
+        }
+    )
+
+    instructor_id = database_service.create_user(
+        {
+            "email": "instructor@sctu.edu",
+            "first_name": "Section",
+            "last_name": "Instructor",
+            "role": "instructor",
+            "institution_id": inst_id,
+            "account_status": "active",
+        }
+    )
+
+    course_id = database_service.create_course(
+        {
+            "course_number": "CS303",
+            "course_title": "Algorithms",
+            "department": "CS",
+            "credit_hours": 3,
+            "institution_id": inst_id,
+            "active": True,
+        }
+    )
+
+    term_id = database_service.create_term(
+        {
+            "term_name": "FA2025",
+            "name": "Fall 2025",
+            "start_date": "2025-08-01",
+            "end_date": "2025-12-15",
+            "active": True,
+            "institution_id": inst_id,
+        }
+    )
+
+    offering_id = database_service.create_course_offering(
+        {
+            "course_id": course_id,
+            "term_id": term_id,
+            "institution_id": inst_id,
+            "status": "active",
+            "capacity": 30,
+        }
+    )
+
+    section_data = {
+        "offering_id": offering_id,
+        "section_number": "001",
+        "enrollment": 20,
+        "status": "unassigned",
+    }
+    section_id = database_service.create_course_section(section_data)
+    assert section_id is not None
+
+    # Test assign_instructor
+    result = database_service.assign_instructor(section_id, instructor_id)
+    assert result is True
+
+    sections = database_service.get_sections_by_instructor(instructor_id)
+    assert len(sections) == 1
+    assert sections[0]["section_id"] == section_id
+
+    # Test update_course_section
+    update_data = {
+        "enrollment": 25,
+        "status": "completed",
+        "grade_distribution": {"A": 10, "B": 10, "C": 5},
+    }
+    result = database_service.update_course_section(section_id, update_data)
+    assert result is True
+
+    # Test delete_course_section
+    result = database_service.delete_course_section(section_id)
+    assert result is True
+
+    sections = database_service.get_sections_by_instructor(instructor_id)
+    assert len(sections) == 0
+
+
+def test_outcome_crud_operations():
+    """Test Outcomes CRUD: update_course_outcome, update_outcome_assessment, delete_course_outcome"""
+    # Setup
+    inst_id = database_service.create_institution(
+        {
+            "name": "Outcome CRUD Test University",
+            "short_name": "OCRU",
+            "admin_email": "admin@ocru.edu",
+            "created_by": "system",
+        }
+    )
+
+    course_id = database_service.create_course(
+        {
+            "course_number": "CS404",
+            "course_title": "Software Engineering",
+            "department": "CS",
+            "credit_hours": 3,
+            "institution_id": inst_id,
+            "active": True,
+        }
+    )
+
+    outcome_data = {
+        "course_id": course_id,
+        "clo_number": 1,
+        "description": "Students will demonstrate proficiency in testing",
+        "assessment_method": "project",
+        "active": True,
+    }
+    outcome_id = database_service.create_course_outcome(outcome_data)
+    assert outcome_id is not None
+
+    # Test update_course_outcome
+    update_data = {
+        "description": "Students will master comprehensive testing strategies",
+        "assessment_method": "exam and project",
+    }
+    result = database_service.update_course_outcome(outcome_id, update_data)
+    assert result is True
+
+    outcomes = database_service.get_course_outcomes(course_id)
+    assert len(outcomes) == 1
+    assert (
+        outcomes[0]["description"]
+        == "Students will master comprehensive testing strategies"
+    )
+
+    # Test update_outcome_assessment
+    assessment_data = {
+        "students_assessed": 30,
+        "students_meeting": 27,
+        "percentage_meeting": 90.0,
+        "assessment_status": "completed",
+    }
+    narrative = "Students performed exceptionally well on the final project"
+    result = database_service.update_outcome_assessment(
+        outcome_id, assessment_data, narrative
+    )
+    assert result is True
+
+    outcomes = database_service.get_course_outcomes(course_id)
+    assert outcomes[0]["assessment_data"]["students_assessed"] == 30
+    assert outcomes[0]["narrative"] == narrative
+
+    # Test delete_course_outcome
+    result = database_service.delete_course_outcome(outcome_id)
+    assert result is True
+
+    outcomes = database_service.get_course_outcomes(course_id)
+    assert len(outcomes) == 0
