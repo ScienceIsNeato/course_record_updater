@@ -42,6 +42,47 @@ TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 
 
 @pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args, pytestconfig):
+    """
+    Configure browser launch options for human-friendly watch mode.
+
+    - In CI (headless): Fast execution, no slow-mo
+    - With --headed: Shows browser, slow-mo 350ms for visibility
+    - With --debug: Shows browser, pauses at each step (debugger mode)
+    - Default (watch mode): Shows browser, slow-mo 350ms
+
+    Usage:
+        pytest tests/e2e/                    # Watch mode: visible, slow-mo 350
+        pytest tests/e2e/ --headed           # Watch mode: visible, slow-mo 350
+        pytest tests/e2e/ --headed --debug   # Debug mode: visible, pauses at steps
+        HEADLESS=1 pytest tests/e2e/         # CI mode: fast, headless
+    """
+    config = {**browser_type_launch_args}
+
+    # Check if we're in debug mode (pytest --pdb or custom --debug flag)
+    debug_mode = pytestconfig.option.usepdb or os.getenv("PYTEST_DEBUG") == "1"
+
+    # Check if explicitly headless (CI mode)
+    explicit_headless = os.getenv("HEADLESS") == "1" or os.getenv("CI") == "true"
+
+    if explicit_headless:
+        # CI mode: fast, headless, no slow-mo
+        config["headless"] = True
+        config["slow_mo"] = 0
+    elif debug_mode:
+        # Debug mode: visible, very slow for inspection, devtools open
+        config["headless"] = False
+        config["slow_mo"] = 1000  # 1 second between actions for debugging
+        config["devtools"] = True
+    else:
+        # Watch mode (default): visible with comfortable slow-mo
+        config["headless"] = False
+        config["slow_mo"] = 350  # 350ms between actions - human-readable speed
+
+    return config
+
+
+@pytest.fixture(scope="session")
 def browser_context_args(browser_context_args):
     """Configure browser context with sensible defaults for E2E testing."""
     config = {

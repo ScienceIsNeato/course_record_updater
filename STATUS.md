@@ -4,7 +4,18 @@
 
 ### 🏆 COMPLETE TDD UI ACHIEVEMENT: 8/8 Entities, 146 Tests, 83.95% Coverage!
 
-**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅
+**Progress**: Database ✅ → API ✅ → Unit Tests ✅ → CSRF ✅ → Audit API ✅ → Audit UI ✅ → Integration Tests 100% ✅ → JS Coverage Fixed ✅ → E2E Tests (28 tests) ✅ → Tech Debt (5 tasks) ✅ → **ALL 8 ENTITY UIs (TDD)** ✅✅✅ → **Human-Friendly Watch Mode** ✅
+
+**Latest: Human-Friendly Watch Mode (Oct 8, 2025)**
+- ✅ **3 Test Modes**: Headless (CI, fast) → Watch (visible, 350ms) → Debug (visible, 1s, DevTools)
+- ✅ **Smart Detection**: Auto-detects CI environment, respects PYTEST_DEBUG env var
+- ✅ **Easy Commands**:
+  * `./run_uat.sh` - Fast headless (CI mode)
+  * `./run_uat.sh --watch` - Human speed (350ms slow-mo)
+  * `./run_uat.sh --debug` - Stepwise debugging (1s slow-mo + DevTools)
+- ✅ **Browser Options**: Configured via `browser_type_launch_args` fixture
+- ✅ **CI Safe**: Headless mode when `HEADLESS=1` or `CI=true`
+- **Impact**: E2E tests now beautiful to watch and debug! 🎬
 
 **🎉 TDD VICTORY - 146 Total Tests, 83.95% JS Coverage, ALL ENTITIES COMPLETE:**
 
