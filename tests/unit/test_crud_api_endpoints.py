@@ -12,7 +12,6 @@ from tests.test_utils import create_test_session
 def client():
     """Create test client."""
     app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for unit tests
     with app.test_client() as client:
         yield client
 
@@ -51,9 +50,19 @@ def create_instructor_session(client):
 
 
 def get_csrf_token(client):
-    """Get CSRF token from session."""
+    """Get CSRF token using Flask-WTF's generate_csrf."""
+    from flask import session as flask_session
+    from flask_wtf.csrf import generate_csrf
+
+    # Get the raw token from the session (created by create_test_session)
     with client.session_transaction() as sess:
-        return sess.get("csrf_token", "")
+        raw_token = sess.get("csrf_token")
+
+    # Generate the signed token from the raw token
+    with client.application.test_request_context():
+        if raw_token:
+            flask_session["csrf_token"] = raw_token
+        return generate_csrf()
 
 
 # ========================================
@@ -146,7 +155,10 @@ class TestUsersCRUD:
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_deactivate.return_value = True
 
-        response = client.post("/api/users/user-123/deactivate")
+        response = client.post(
+            "/api/users/user-123/deactivate",
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -159,7 +171,10 @@ class TestUsersCRUD:
         create_site_admin_session(client)
         mock_get_user.return_value = None
 
-        response = client.post("/api/users/nonexistent/deactivate")
+        response = client.post(
+            "/api/users/nonexistent/deactivate",
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 404
 
@@ -171,7 +186,9 @@ class TestUsersCRUD:
         mock_get_user.return_value = {"user_id": "user-123"}
         mock_delete.return_value = True
 
-        response = client.delete("/api/users/user-123")
+        response = client.delete(
+            "/api/users/user-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -180,7 +197,9 @@ class TestUsersCRUD:
     def test_delete_self_forbidden(self, client):
         """Test DELETE /api/users/<id> - cannot delete own account"""
         create_site_admin_session(client)
-        response = client.delete("/api/users/site-admin-123")
+        response = client.delete(
+            "/api/users/site-admin-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 400
         data = response.get_json()
@@ -206,7 +225,11 @@ class TestInstitutionsCRUD:
         ]
         mock_update.return_value = True
 
-        response = client.put("/api/institutions/inst-1", json={"name": "New Name"})
+        response = client.put(
+            "/api/institutions/inst-1",
+            json={"name": "New Name"},
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -220,7 +243,9 @@ class TestInstitutionsCRUD:
         mock_get_inst.return_value = None
 
         response = client.put(
-            "/api/institutions/nonexistent", json={"name": "New Name"}
+            "/api/institutions/nonexistent",
+            json={"name": "New Name"},
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 404
@@ -234,7 +259,8 @@ class TestInstitutionsCRUD:
         mock_delete.return_value = True
 
         response = client.delete(
-            "/api/institutions/inst-1?confirm=i know what I'm doing"
+            "/api/institutions/inst-1?confirm=i know what I'm doing",
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 200
@@ -244,7 +270,9 @@ class TestInstitutionsCRUD:
     def test_delete_institution_no_confirmation(self, client):
         """Test DELETE /api/institutions/<id> - requires confirmation"""
         create_site_admin_session(client)
-        response = client.delete("/api/institutions/inst-1")
+        response = client.delete(
+            "/api/institutions/inst-1", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 400
         data = response.get_json()
@@ -259,7 +287,8 @@ class TestInstitutionsCRUD:
         mock_get_inst.return_value = {"institution_id": "inst-1"}
 
         response = client.delete(
-            "/api/institutions/inst-1?confirm=i know what I'm doing"
+            "/api/institutions/inst-1?confirm=i know what I'm doing",
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 403
@@ -320,7 +349,9 @@ class TestCoursesCRUD:
         mock_update.return_value = True
 
         response = client.put(
-            "/api/courses/course-123", json={"course_title": "New Title"}
+            "/api/courses/course-123",
+            json={"course_title": "New Title"},
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 200
@@ -339,7 +370,9 @@ class TestCoursesCRUD:
         }
         mock_delete.return_value = True
 
-        response = client.delete("/api/courses/course-123")
+        response = client.delete(
+            "/api/courses/course-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -385,7 +418,11 @@ class TestTermsCRUD:
         ]
         mock_update.return_value = True
 
-        response = client.put("/api/terms/term-123", json={"name": "Fall 2024 Updated"})
+        response = client.put(
+            "/api/terms/term-123",
+            json={"name": "Fall 2024 Updated"},
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -403,7 +440,10 @@ class TestTermsCRUD:
         mock_get_terms.return_value = [{"term_id": "term-123"}]
         mock_archive.return_value = True
 
-        response = client.post("/api/terms/term-123/archive")
+        response = client.post(
+            "/api/terms/term-123/archive",
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -422,7 +462,9 @@ class TestTermsCRUD:
         mock_get_terms.return_value = [{"term_id": "term-123", "name": "Fall 2024"}]
         mock_delete.return_value = True
 
-        response = client.delete("/api/terms/term-123")
+        response = client.delete(
+            "/api/terms/term-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -448,6 +490,7 @@ class TestOfferingsCRUD:
         response = client.post(
             "/api/offerings",
             json={"course_id": "course-123", "term_id": "term-123", "capacity": 30},
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 201
@@ -459,7 +502,9 @@ class TestOfferingsCRUD:
         """Test POST /api/offerings - missing required fields"""
         create_site_admin_session(client)
         response = client.post(
-            "/api/offerings", json={"course_id": "course-123"}  # Missing term_id
+            "/api/offerings",
+            json={"course_id": "course-123"},  # Missing term_id
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 400
@@ -494,7 +539,11 @@ class TestOfferingsCRUD:
         ]
         mock_update.return_value = True
 
-        response = client.put("/api/offerings/offering-123", json={"capacity": 40})
+        response = client.put(
+            "/api/offerings/offering-123",
+            json={"capacity": 40},
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -508,7 +557,10 @@ class TestOfferingsCRUD:
         mock_get_offering.return_value = {"offering_id": "offering-123"}
         mock_delete.return_value = True
 
-        response = client.delete("/api/offerings/offering-123")
+        response = client.delete(
+            "/api/offerings/offering-123",
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -557,7 +609,11 @@ class TestSectionsCRUD:
         ]
         mock_update.return_value = True
 
-        response = client.put("/api/sections/section-123", json={"enrollment": 25})
+        response = client.put(
+            "/api/sections/section-123",
+            json={"enrollment": 25},
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -615,7 +671,9 @@ class TestSectionsCRUD:
         mock_get_sections.return_value = [{"section_id": "section-123"}]
         mock_delete.return_value = True
 
-        response = client.delete("/api/sections/section-123")
+        response = client.delete(
+            "/api/sections/section-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -641,6 +699,7 @@ class TestOutcomesCRUD:
         response = client.post(
             "/api/courses/course-123/outcomes",
             json={"description": "Students will learn X", "target_percentage": 80},
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 201
@@ -654,7 +713,11 @@ class TestOutcomesCRUD:
         create_site_admin_session(client)
         mock_get_course.return_value = {"course_id": "course-123"}
 
-        response = client.post("/api/courses/course-123/outcomes", json={})
+        response = client.post(
+            "/api/courses/course-123/outcomes",
+            json={},
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
 
         assert response.status_code == 400
         data = response.get_json()
@@ -696,7 +759,9 @@ class TestOutcomesCRUD:
         mock_update.return_value = True
 
         response = client.put(
-            "/api/outcomes/outcome-123", json={"description": "Updated description"}
+            "/api/outcomes/outcome-123",
+            json={"description": "Updated description"},
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 200
@@ -731,6 +796,7 @@ class TestOutcomesCRUD:
                 },
                 "narrative": "Students performed well",
             },
+            headers={"X-CSRFToken": get_csrf_token(client)},
         )
 
         assert response.status_code == 200
@@ -752,7 +818,9 @@ class TestOutcomesCRUD:
         mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
         mock_delete.return_value = True
 
-        response = client.delete("/api/outcomes/outcome-123")
+        response = client.delete(
+            "/api/outcomes/outcome-123", headers={"X-CSRFToken": get_csrf_token(client)}
+        )
 
         assert response.status_code == 200
         data = response.get_json()
