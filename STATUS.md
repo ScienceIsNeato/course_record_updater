@@ -1,17 +1,22 @@
-# Status: CRUD Operations UAT Suite - CSRF Protection Enabled! 🔒
+# Status: CRUD Operations UAT Suite - Integration Tests Refactored! 🔧
 
-## CRUD Operations UAT Suite - Proper CSRF Implementation (Oct 8, 2025)
+## CRUD Operations UAT Suite - Integration Test Improvements (Oct 8, 2025)
 
-### ✅ CSRF PROTECTION FULLY ENABLED - NO CORNERS CUT
+### ✅ INTEGRATION TESTS REFACTORED WITH REAL AUTH
 
-**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Next: Integration Tests
+**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Integration Tests (Partial) ✅ → Next: E2E Tests or Audit API
 
-**CSRF Protection:**
-- ❌ **REMOVED** all `WTF_CSRF_ENABLED = False` shortcuts from tests
-- ✅ **ADDED** proper CSRF token generation using Flask-WTF's `generate_csrf()`
-- ✅ **UPDATED** all 29 unit test requests with `X-CSRFToken` headers
-- ✅ **UPDATED** all 26 integration test requests with `X-CSRFToken` headers
-- ✅ **ALL 37 UNIT TESTS PASSING** with CSRF fully enabled
+**Integration Test Improvements:**
+- ✅ **REMOVED** all decorator mocking (`@patch("api_routes.login_required")`) - tests use real auth now
+- ✅ **FIXED** mocking targets from `database_service.X` to `api_routes.X` (patch where used, not where defined)
+- ✅ **5/26 tests passing** (20% success rate, up from 0%)
+- ✅ Passing tests: User GET/PATCH, Course GET, Institution validation, Offering GET
+- 🔧 Remaining failures: Functions not imported into `api_routes` (e.g., `create_course_offering`)
+
+**CSRF Protection (Completed Earlier):**
+- ✅ All `WTF_CSRF_ENABLED = False` shortcuts removed
+- ✅ Proper CSRF token generation using Flask-WTF's `generate_csrf()`
+- ✅ ALL 37 UNIT TESTS PASSING with CSRF fully enabled
 
 **Test Results:**
 - **44 new audit_service tests** (100% passing)

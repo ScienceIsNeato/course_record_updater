@@ -45,7 +45,7 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_user_by_id")
+    @patch("database_service.get_user_by_id")
     def test_get_user_by_id_integration(self, mock_get_user):
         """Test GET /api/users/<id> full integration"""
         mock_get_user.return_value = {
@@ -57,15 +57,16 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
             "institution_id": "inst-1",
         }
 
-        response = self.client.get("/api/users/user-123")
+        with patch("api_routes.login_required", lambda f: f):
+            response = self.client.get("/api/users/user-123")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["user"]["email"] == "instructor@example.com"
         assert data["user"]["role"] == "instructor"
 
-    @patch("api_routes.update_user_profile")
-    @patch("api_routes.get_user_by_id")
+    @patch("database_service.update_user_profile")
+    @patch("database_service.get_user_by_id")
     def test_update_profile_integration(self, mock_get_user, mock_update):
         """Test PATCH /api/users/<id>/profile full integration"""
         mock_update.return_value = True
@@ -77,41 +78,44 @@ class TestUsersCRUDIntegration(CommonAuthMixin):
 
         profile_data = {"first_name": "Jane", "last_name": "Smith"}
 
-        response = self.client.patch(
-            "/api/users/user-123/profile",
-            json=profile_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.login_required", lambda f: f):
+            response = self.client.patch(
+                "/api/users/user-123/profile",
+                json=profile_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
         assert data["user"]["first_name"] == "Jane"
 
-    @patch("api_routes.deactivate_user")
+    @patch("database_service.deactivate_user")
     def test_deactivate_user_integration(self, mock_deactivate):
         """Test POST /api/users/<id>/deactivate full integration"""
         mock_deactivate.return_value = True
 
-        response = self.client.post(
-            "/api/users/user-123/deactivate",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.post(
+                "/api/users/user-123/deactivate",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
         assert "suspended" in data["message"].lower()
 
-    @patch("api_routes.delete_user")
+    @patch("database_service.delete_user")
     def test_delete_user_integration(self, mock_delete):
         """Test DELETE /api/users/<id> full integration"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/users/user-456",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/users/user-456",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -129,7 +133,7 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.update_institution")
+    @patch("database_service.update_institution")
     def test_update_institution_integration(self, mock_update):
         """Test PUT /institutions/<id> full integration"""
         mock_update.return_value = True
@@ -139,38 +143,41 @@ class TestInstitutionsCRUDIntegration(CommonAuthMixin):
             "short_name": "UPD",
         }
 
-        response = self.client.put(
-            "/api/institutions/inst-1",
-            json=institution_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/institutions/inst-1",
+                json=institution_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
         assert "updated successfully" in data["message"].lower()
 
-    @patch("api_routes.delete_institution")
+    @patch("database_service.delete_institution")
     def test_delete_institution_with_confirmation_integration(self, mock_delete):
         """Test DELETE /institutions/<id> with confirmation"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/institutions/inst-1?confirm=i%20know%20what%20I%27m%20doing",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/institutions/inst-1?confirm=i%20know%20what%20I%27m%20doing",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.delete_institution")
+    @patch("database_service.delete_institution")
     def test_delete_institution_without_confirmation_fails(self, mock_delete):
         """Test DELETE /institutions/<id> requires confirmation"""
-        response = self.client.delete(
-            "/api/institutions/inst-1",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/institutions/inst-1",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 400
         data = response.get_json()
@@ -188,7 +195,7 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_course_by_id")
+    @patch("database_service.get_course_by_id")
     def test_get_course_by_id_integration(self, mock_get_course):
         """Test GET /api/courses/by-id/<id> full integration"""
         mock_get_course.return_value = {
@@ -198,15 +205,16 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
             "credit_hours": 3,
         }
 
-        response = self.client.get("/api/courses/by-id/course-123")
+        with patch("api_routes.login_required", lambda f: f):
+            response = self.client.get("/api/courses/by-id/course-123")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["course"]["course_number"] == "CS101"
         assert data["course"]["credit_hours"] == 3
 
-    @patch("api_routes.update_course")
-    @patch("api_routes.update_course_programs")
+    @patch("database_service.update_course")
+    @patch("database_service.update_course_programs")
     def test_update_course_integration(self, mock_update_programs, mock_update):
         """Test PUT /api/courses/<id> full integration"""
         mock_update.return_value = True
@@ -218,11 +226,12 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
             "program_ids": ["prog-1", "prog-2"],
         }
 
-        response = self.client.put(
-            "/api/courses/course-123",
-            json=course_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/courses/course-123",
+                json=course_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -230,15 +239,16 @@ class TestCoursesCRUDIntegration(CommonAuthMixin):
         mock_update.assert_called_once()
         mock_update_programs.assert_called_once()
 
-    @patch("api_routes.delete_course")
+    @patch("database_service.delete_course")
     def test_delete_course_integration(self, mock_delete):
         """Test DELETE /api/courses/<id> CASCADE delete"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/courses/course-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/courses/course-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -256,47 +266,50 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.update_term")
+    @patch("database_service.update_term")
     def test_update_term_integration(self, mock_update):
         """Test PUT /api/terms/<id> full integration"""
         mock_update.return_value = True
 
         term_data = {"term_name": "SP2025"}
 
-        response = self.client.put(
-            "/api/terms/term-123",
-            json=term_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/terms/term-123",
+                json=term_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.archive_term")
+    @patch("database_service.archive_term")
     def test_archive_term_integration(self, mock_archive):
         """Test POST /api/terms/<id>/archive soft delete"""
         mock_archive.return_value = True
 
-        response = self.client.post(
-            "/api/terms/term-123/archive",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.post(
+                "/api/terms/term-123/archive",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
         assert "archived" in data["message"].lower()
 
-    @patch("api_routes.delete_term")
+    @patch("database_service.delete_term")
     def test_delete_term_integration(self, mock_delete):
         """Test DELETE /api/terms/<id> CASCADE delete"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/terms/term-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/terms/term-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -314,7 +327,7 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.create_course_offering")
+    @patch("database_service.create_course_offering")
     def test_create_offering_integration(self, mock_create):
         """Test POST /api/offerings create"""
         # Mock returns offering_id (as per database_service.create_course_offering signature)
@@ -327,18 +340,19 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
             "enrolled": 0,
         }
 
-        response = self.client.post(
-            "/api/offerings",
-            json=offering_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.post(
+                "/api/offerings",
+                json=offering_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 201
         data = response.get_json()
         assert data["success"] is True
         assert data["offering_id"] == "offering-123"
 
-    @patch("api_routes.get_course_offering")
+    @patch("database_service.get_course_offering")
     def test_get_offering_by_id_integration(self, mock_get):
         """Test GET /api/offerings/<id> retrieve"""
         mock_get.return_value = {
@@ -347,38 +361,41 @@ class TestOfferingsCRUDIntegration(CommonAuthMixin):
             "capacity": 30,
         }
 
-        response = self.client.get("/api/offerings/offering-123")
+        with patch("api_routes.login_required", lambda f: f):
+            response = self.client.get("/api/offerings/offering-123")
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["offering"]["offering_id"] == "offering-123"
 
-    @patch("api_routes.update_course_offering")
+    @patch("database_service.update_course_offering")
     def test_update_offering_integration(self, mock_update):
         """Test PUT /api/offerings/<id> update"""
         mock_update.return_value = True
 
         offering_data = {"capacity": 35, "enrolled": 28}
 
-        response = self.client.put(
-            "/api/offerings/offering-123",
-            json=offering_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/offerings/offering-123",
+                json=offering_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.delete_course_offering")
+    @patch("database_service.delete_course_offering")
     def test_delete_offering_integration(self, mock_delete):
         """Test DELETE /api/offerings/<id> CASCADE delete"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/offerings/offering-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/offerings/offering-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -395,50 +412,53 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.update_course_section")
+    @patch("database_service.update_course_section")
     def test_update_section_integration(self, mock_update):
         """Test PUT /api/sections/<id> update"""
         mock_update.return_value = True
 
         section_data = {"capacity": 30, "enrolled": 22}
 
-        response = self.client.put(
-            "/api/sections/section-123",
-            json=section_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/sections/section-123",
+                json=section_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.assign_instructor")
+    @patch("database_service.assign_instructor")
     def test_assign_instructor_integration(self, mock_assign):
         """Test PATCH /api/sections/<id>/instructor assign instructor"""
         mock_assign.return_value = True
 
         instructor_data = {"instructor_id": "instructor-456"}
 
-        response = self.client.patch(
-            "/api/sections/section-123/instructor",
-            json=instructor_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.patch(
+                "/api/sections/section-123/instructor",
+                json=instructor_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
         assert "assigned" in data["message"].lower()
 
-    @patch("api_routes.delete_course_section")
+    @patch("database_service.delete_course_section")
     def test_delete_section_integration(self, mock_delete):
         """Test DELETE /api/sections/<id> delete"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/sections/section-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/sections/section-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -455,7 +475,7 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.create_course_outcome")
+    @patch("database_service.create_course_outcome")
     def test_create_outcome_integration(self, mock_create):
         """Test POST /api/courses/<id>/outcomes create"""
         mock_create.return_value = "outcome-123"
@@ -465,35 +485,37 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
             "outcome_type": "CLO",
         }
 
-        response = self.client.post(
-            "/api/courses/course-123/outcomes",
-            json=outcome_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.post(
+                "/api/courses/course-123/outcomes",
+                json=outcome_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 201
         data = response.get_json()
         assert data["success"] is True
         assert data["outcome_id"] == "outcome-123"
 
-    @patch("api_routes.update_course_outcome")
+    @patch("database_service.update_course_outcome")
     def test_update_outcome_integration(self, mock_update):
         """Test PUT /api/outcomes/<id> update description"""
         mock_update.return_value = True
 
         outcome_data = {"description": "Updated outcome description"}
 
-        response = self.client.put(
-            "/api/outcomes/outcome-123",
-            json=outcome_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/outcomes/outcome-123",
+                json=outcome_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.update_outcome_assessment")
+    @patch("database_service.update_outcome_assessment")
     def test_update_outcome_assessment_integration(self, mock_update):
         """Test PUT /api/outcomes/<id>/assessment update assessment"""
         mock_update.return_value = True
@@ -503,25 +525,27 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
             "assessment_data": {"score": 85, "method": "exam"},
         }
 
-        response = self.client.put(
-            "/api/outcomes/outcome-123/assessment",
-            json=assessment_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.put(
+                "/api/outcomes/outcome-123/assessment",
+                json=assessment_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("api_routes.delete_course_outcome")
+    @patch("database_service.delete_course_outcome")
     def test_delete_outcome_integration(self, mock_delete):
         """Test DELETE /api/outcomes/<id> delete"""
         mock_delete.return_value = True
 
-        response = self.client.delete(
-            "/api/outcomes/outcome-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            response = self.client.delete(
+                "/api/outcomes/outcome-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert response.status_code == 200
         data = response.get_json()
@@ -538,9 +562,9 @@ class TestCRUDWorkflows(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.create_course_offering")
-    @patch("api_routes.update_course_offering")
-    @patch("api_routes.delete_course_offering")
+    @patch("database_service.create_course_offering")
+    @patch("database_service.update_course_offering")
+    @patch("database_service.delete_course_offering")
     def test_offering_complete_lifecycle(self, mock_delete, mock_update, mock_create):
         """Test complete offering lifecycle: create → update → delete"""
         # Create
@@ -551,11 +575,12 @@ class TestCRUDWorkflows(CommonAuthMixin):
             "capacity": 30,
         }
 
-        create_response = self.client.post(
-            "/api/offerings",
-            json=offering_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            create_response = self.client.post(
+                "/api/offerings",
+                json=offering_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert create_response.status_code == 201
         offering_id = create_response.get_json()["offering_id"]
@@ -564,47 +589,51 @@ class TestCRUDWorkflows(CommonAuthMixin):
         mock_update.return_value = True
         update_data = {"capacity": 35}
 
-        update_response = self.client.put(
-            f"/api/offerings/{offering_id}",
-            json=update_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            update_response = self.client.put(
+                f"/api/offerings/{offering_id}",
+                json=update_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert update_response.status_code == 200
 
         # Delete
         mock_delete.return_value = True
 
-        delete_response = self.client.delete(
-            f"/api/offerings/{offering_id}",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            delete_response = self.client.delete(
+                f"/api/offerings/{offering_id}",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert delete_response.status_code == 200
 
-    @patch("api_routes.update_course")
-    @patch("api_routes.delete_course")
+    @patch("database_service.update_course")
+    @patch("database_service.delete_course")
     def test_course_update_and_cascade_delete(self, mock_delete, mock_update):
         """Test course update followed by CASCADE delete"""
         # Update course
         mock_update.return_value = True
         course_data = {"course_title": "Updated Title"}
 
-        update_response = self.client.put(
-            "/api/courses/course-123",
-            json=course_data,
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            update_response = self.client.put(
+                "/api/courses/course-123",
+                json=course_data,
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert update_response.status_code == 200
 
         # CASCADE delete (removes offerings, sections, outcomes)
         mock_delete.return_value = True
 
-        delete_response = self.client.delete(
-            "/api/courses/course-123",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
+        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+            delete_response = self.client.delete(
+                "/api/courses/course-123",
+                headers={"X-CSRFToken": get_csrf_token(self.client)},
+            )
 
         assert delete_response.status_code == 200
         data = delete_response.get_json()
