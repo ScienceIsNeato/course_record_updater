@@ -1,17 +1,23 @@
-# Status: CRUD Operations UAT Suite - Integration Tests Refactored! 🔧
+# Status: CRUD Operations UAT Suite - Audit API Endpoints Complete! 📊
 
-## CRUD Operations UAT Suite - Integration Test Improvements (Oct 8, 2025)
+## CRUD Operations UAT Suite - Audit API Implementation (Oct 8, 2025)
 
-### ✅ INTEGRATION TESTS REFACTORED WITH REAL AUTH
+### ✅ AUDIT API ENDPOINTS FULLY IMPLEMENTED
 
-**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Integration Tests (Partial) ✅ → Next: E2E Tests or Audit API
+**Progress**: Database Layer ✅ → API Layer ✅ → API Unit Tests ✅ → Coverage Fix ✅ → CSRF Proper Implementation ✅ → Integration Tests (Partial) ✅ → Audit API Endpoints ✅ → Next: Audit API Tests
 
-**Integration Test Improvements:**
-- ✅ **REMOVED** all decorator mocking (`@patch("api_routes.login_required")`) - tests use real auth now
-- ✅ **FIXED** mocking targets from `database_service.X` to `api_routes.X` (patch where used, not where defined)
-- ✅ **5/26 tests passing** (20% success rate, up from 0%)
-- ✅ Passing tests: User GET/PATCH, Course GET, Institution validation, Offering GET
-- 🔧 Remaining failures: Functions not imported into `api_routes` (e.g., `create_course_offering`)
+**Audit API Endpoints (NEW):**
+- ✅ **GET /api/audit/recent** - List recent audit logs (limit, institution_id filter)
+- ✅ **GET /api/audit/entity/<type>/<id>** - Complete history for any entity (users, courses, institutions, etc.)
+- ✅ **GET /api/audit/user/<id>** - All actions by specific user (with date range filtering)
+- ✅ **POST /api/audit/export** - Export logs as CSV or JSON (date range, filters for compliance)
+- ✅ All endpoints restricted to site admin only (`manage_users` permission)
+- ✅ Proper date parsing (ISO 8601), EntityType enum validation, BytesIO file downloads
+
+**Integration Test Improvements (Earlier):**
+- ✅ **REMOVED** all decorator mocking - tests use real auth now
+- ✅ **FIXED** mocking targets from `database_service.X` to `api_routes.X`
+- ✅ **5/26 tests passing** (User GET/PATCH, Course GET, Institution validation, Offering GET)
 
 **CSRF Protection (Completed Earlier):**
 - ✅ All `WTF_CSRF_ENABLED = False` shortcuts removed
