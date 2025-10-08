@@ -26,17 +26,19 @@ from database_service import (
     get_all_users,
 )
 
+# Import shared test credentials from root conftest
+from tests.conftest import (
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
+
 # Test configuration
 # E2E environment runs on port 3002 (see run_uat.sh and .envrc)
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3002")
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
-
-# Test user credentials
-INSTITUTION_ADMIN_EMAIL = "sarah.admin@cei.edu"
-INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
-SITE_ADMIN_EMAIL = "siteadmin@system.local"
-SITE_ADMIN_PASSWORD = "SiteAdmin123!"
 
 
 @pytest.fixture(scope="session")

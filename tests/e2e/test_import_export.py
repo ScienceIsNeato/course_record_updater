@@ -22,6 +22,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 # Import fixtures and helpers
+from tests.conftest import INSTITUTION_ADMIN_EMAIL, INSTITUTION_ADMIN_PASSWORD
 from tests.e2e.conftest import (
     BASE_URL,
     close_modal,
@@ -115,10 +116,12 @@ def test_login_form_submission_network_capture(page: Page, server_running: bool)
     page.wait_for_load_state("networkidle")
 
     # Fill form with known good credentials from seed
-    page.fill('input[name="email"]', "sarah.admin@cei.edu")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
 
-    print("📝 Filled form with sarah.admin@cei.edu / InstitutionAdmin123!")
+    print(
+        f"📝 Filled form with {INSTITUTION_ADMIN_EMAIL} / {INSTITUTION_ADMIN_PASSWORD}"
+    )
 
     # Submit form
     page.click('button[type="submit"]')
@@ -286,20 +289,22 @@ def test_login_success_after_fix(page: Page, server_running: bool):
 
     Verifies: Database seeded, login succeeds, redirects to dashboard
 
-    Note: Assumes run_uat.sh seeded the server's database with sarah.admin@cei.edu.
+    Note: Assumes run_uat.sh seeded the server's database with institution admin.
           E2E tests run in separate process and don't access DB directly.
     """
-    print("📝 Trusting run_uat.sh seeded sarah.admin@cei.edu / InstitutionAdmin123!")
+    print(
+        f"📝 Trusting run_uat.sh seeded {INSTITUTION_ADMIN_EMAIL} / {INSTITUTION_ADMIN_PASSWORD}"
+    )
 
     # Navigate to login
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    print("📝 Attempting login with sarah.admin@cei.edu")
+    print(f"📝 Attempting login with {INSTITUTION_ADMIN_EMAIL}")
 
     # Fill form
-    page.fill('input[name="email"]', "sarah.admin@cei.edu")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
 
     # Submit and wait for navigation
     page.click('button[type="submit"]')

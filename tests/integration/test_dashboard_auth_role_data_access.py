@@ -16,6 +16,7 @@ from typing import Any, Dict
 import pytest
 from flask import Flask
 
+from tests.conftest import INSTITUTION_ADMIN_EMAIL, SITE_ADMIN_EMAIL
 from tests.test_utils import create_test_session
 
 
@@ -98,13 +99,17 @@ class TestDashboardAuthRoleDataAccess:
         cei_users = db.get_all_users(self.cei_id) or []
 
         # Find site admin (system-wide, not institution-specific)
-        site_admin_email = "siteadmin@system.local"
+        site_admin_email = SITE_ADMIN_EMAIL
         self.site_admin = db.get_user_by_email(site_admin_email)
         assert self.site_admin, f"Site admin {site_admin_email} not found"
 
         # Find CEI users by email
         self.sarah_admin = next(
-            (user for user in cei_users if user.get("email") == "sarah.admin@cei.edu"),
+            (
+                user
+                for user in cei_users
+                if user.get("email") == INSTITUTION_ADMIN_EMAIL
+            ),
             None,
         )
         assert self.sarah_admin, "Sarah (institution admin) not found in CEI users"
@@ -448,7 +453,7 @@ class TestDashboardDataConsistency:
             pass  # Ignore database connection refresh errors
 
         # Find site admin
-        site_admin_email = "siteadmin@system.local"
+        site_admin_email = SITE_ADMIN_EMAIL
         self.site_admin = db.get_user_by_email(site_admin_email)
 
         # If site admin not found, try to re-seed the database
