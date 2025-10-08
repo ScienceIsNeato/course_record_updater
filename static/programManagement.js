@@ -9,11 +9,34 @@
  */
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Handle case where DOM is already loaded (avoid race condition)
+function initProgramManagement() {
+  // Safety check: only initialize if form elements exist
+  // (Prevents initialization from running before DOM is ready in test environments)
+  if (
+    !document.getElementById('createProgramForm') &&
+    !document.getElementById('editProgramForm')
+  ) {
+    return; // Forms not on page yet, skip initialization
+  }
+
   initializeCreateProgramModal();
   initializeEditProgramModal();
   setupModalListeners();
-});
+}
+
+if (document.readyState === 'loading') {
+  // DOM still loading, wait for it
+  document.addEventListener('DOMContentLoaded', initProgramManagement);
+} else {
+  // DOM already loaded, initialize immediately
+  initProgramManagement();
+}
+
+// Export for testing (Node.js/Jest environment)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initProgramManagement, openEditProgramModal };
+}
 
 /**
  * Setup modal event listeners

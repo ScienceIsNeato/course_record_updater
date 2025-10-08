@@ -67,14 +67,65 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     assert institution_value, "Institution should be auto-selected"
     authenticated_page.check("#programActive")
 
-    # Submit form and wait for modal to close (success indicator)
+    # DEBUG: Check if form and event listeners exist
+    debug_info = authenticated_page.evaluate(
+        """
+        () => {
+            const form = document.getElementById('createProgramForm');
+            if (!form) return 'Form NOT found';
+            
+            // Try to manually submit and see what happens
+            const submitBtn = form.querySelector('button[type="submit"]');
+            
+            return {
+                formExists: !!form,
+                buttonExists: !!submitBtn,
+                buttonDisabled: submitBtn ? submitBtn.disabled : null,
+                programManagementLoaded: typeof window.initializeCreateProgramModal !== 'undefined'
+            };
+        }
+    """
+    )
+    print(f"DEBUG: {debug_info}")
+
+    # DEBUG: Try to manually trigger form submission and check for errors
+    form_submit_result = authenticated_page.evaluate(
+        """
+        () => {
+            try {
+                const form = document.getElementById('createProgramForm');
+                const event = new Event('submit', { bubbles: true, cancelable: true });
+                form.dispatchEvent(event);
+                return 'Submit event dispatched';
+            } catch (e) {
+                return `Error: ${e.message}`;
+            }
+        }
+    """
+    )
+    print(f"DEBUG: Form submit result: {form_submit_result}")
+
+    # Now try the normal way - click the submit button
     authenticated_page.click('#createProgramForm button[type="submit"]')
+
+    # Wait a moment for JavaScript to execute
+    authenticated_page.wait_for_timeout(2000)
+
+    # Check if modal closed (success indicator)
+    is_hidden = authenticated_page.is_hidden("#createProgramModal")
+    print(f"DEBUG: Modal hidden after submit? {is_hidden}")
+
+    if not is_hidden:
+        # Modal still open - form submission didn't work
+        # Check for any visible error messages
+        error_text = authenticated_page.locator("body").inner_text()
+        print(f"DEBUG: Page content includes: {error_text[:200]}")
+
     authenticated_page.wait_for_selector(
         "#createProgramModal", state="hidden", timeout=5000
     )
 
     # Success! Modal closed without error = program created
-    # (A real user would verify by looking at the program list refreshing)
     print("✅ TC-CRUD-IA-001: Institution Admin successfully created program via UI")
 
 

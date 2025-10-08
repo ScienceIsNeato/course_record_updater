@@ -10,7 +10,7 @@
  */
 
 // Load the implementation
-require('../../../static/programManagement.js');
+const { initProgramManagement, openEditProgramModal } = require('../../../static/programManagement.js');
 
 describe('Program Management - Create Program Modal', () => {
   let mockFetch;
@@ -56,8 +56,8 @@ describe('Program Management - Create Program Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize program management (replaces DOMContentLoaded trigger)
+    initProgramManagement();
   });
 
   afterEach(() => {
@@ -325,8 +325,8 @@ describe('Program Management - Edit Program Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize program management (replaces DOMContentLoaded trigger)
+    initProgramManagement();
   });
 
   afterEach(() => {
