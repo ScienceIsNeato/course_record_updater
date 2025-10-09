@@ -9,10 +9,179 @@
  */
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+// Handle case where DOM is already loaded (avoid race condition)
+function initOfferingManagement() {
+  // Safety check: only initialize if form elements exist
+  if (
+    !document.getElementById('createOfferingForm') &&
+    !document.getElementById('editOfferingForm')
+  ) {
+    return; // Forms not on page yet, skip initialization
+  }
+
   initializeCreateOfferingModal();
   initializeEditOfferingModal();
-});
+  setupModalListeners();
+}
+
+if (document.readyState === 'loading') {
+  // DOM still loading, wait for it
+  document.addEventListener('DOMContentLoaded', initOfferingManagement);
+} else {
+  // DOM already loaded, initialize immediately
+  initOfferingManagement();
+}
+
+/**
+ * Set up modal event listeners
+ * Populate dropdowns when modals are shown
+ */
+function setupModalListeners() {
+  const createModal = document.getElementById('createOfferingModal');
+  const editModal = document.getElementById('editOfferingModal');
+
+  if (createModal) {
+    createModal.addEventListener('show.bs.modal', () => {
+      loadCoursesAndTermsForCreateDropdown();
+    });
+  }
+
+  if (editModal) {
+    editModal.addEventListener('show.bs.modal', () => {
+      loadCoursesAndTermsForEditDropdown();
+    });
+  }
+}
+
+/**
+ * Load courses and terms for create offering dropdowns
+ * Fetches from API and populates both select elements
+ */
+async function loadCoursesAndTermsForCreateDropdown() {
+  const courseSelect = document.getElementById('offeringCourseId');
+  const termSelect = document.getElementById('offeringTermId');
+
+  if (!courseSelect || !termSelect) {
+    return;
+  }
+
+  // Set loading state
+  courseSelect.innerHTML = '<option value="">Loading courses...</option>';
+  termSelect.innerHTML = '<option value="">Loading terms...</option>';
+
+  try {
+    // Fetch courses and terms in parallel
+    const [coursesResponse, termsResponse] = await Promise.all([
+      fetch('/api/courses'),
+      fetch('/api/terms')
+    ]);
+
+    if (!coursesResponse.ok || !termsResponse.ok) {
+      throw new Error('Failed to fetch dropdown data');
+    }
+
+    const coursesData = await coursesResponse.json();
+    const termsData = await termsResponse.json();
+
+    const courses = coursesData.courses || [];
+    const terms = termsData.terms || [];
+
+    // Populate courses dropdown
+    courseSelect.innerHTML = '<option value="">Select Course</option>';
+    courses.forEach(course => {
+      const option = document.createElement('option');
+      option.value = course.course_id;
+      option.textContent = `${course.course_number} - ${course.course_title}`;
+      courseSelect.appendChild(option);
+    });
+
+    // Populate terms dropdown
+    termSelect.innerHTML = '<option value="">Select Term</option>';
+    terms.forEach(term => {
+      const option = document.createElement('option');
+      option.value = term.term_id;
+      option.textContent = term.name;
+      termSelect.appendChild(option);
+    });
+
+    if (courses.length === 0) {
+      courseSelect.innerHTML = '<option value="">No courses available</option>';
+    }
+    if (terms.length === 0) {
+      termSelect.innerHTML = '<option value="">No terms available</option>';
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load dropdown data:', error);
+    courseSelect.innerHTML = '<option value="">Error loading courses</option>';
+    termSelect.innerHTML = '<option value="">Error loading terms</option>';
+  }
+}
+
+/**
+ * Load courses and terms for edit offering dropdowns
+ * Fetches from API and populates both select elements
+ */
+async function loadCoursesAndTermsForEditDropdown() {
+  const courseSelect = document.getElementById('editOfferingCourseId');
+  const termSelect = document.getElementById('editOfferingTermId');
+
+  if (!courseSelect || !termSelect) {
+    return;
+  }
+
+  // Set loading state
+  courseSelect.innerHTML = '<option value="">Loading courses...</option>';
+  termSelect.innerHTML = '<option value="">Loading terms...</option>';
+
+  try {
+    // Fetch courses and terms in parallel
+    const [coursesResponse, termsResponse] = await Promise.all([
+      fetch('/api/courses'),
+      fetch('/api/terms')
+    ]);
+
+    if (!coursesResponse.ok || !termsResponse.ok) {
+      throw new Error('Failed to fetch dropdown data');
+    }
+
+    const coursesData = await coursesResponse.json();
+    const termsData = await termsResponse.json();
+
+    const courses = coursesData.courses || [];
+    const terms = termsData.terms || [];
+
+    // Populate courses dropdown
+    courseSelect.innerHTML = '<option value="">Select Course</option>';
+    courses.forEach(course => {
+      const option = document.createElement('option');
+      option.value = course.course_id;
+      option.textContent = `${course.course_number} - ${course.course_title}`;
+      courseSelect.appendChild(option);
+    });
+
+    // Populate terms dropdown
+    termSelect.innerHTML = '<option value="">Select Term</option>';
+    terms.forEach(term => {
+      const option = document.createElement('option');
+      option.value = term.term_id;
+      option.textContent = term.name;
+      termSelect.appendChild(option);
+    });
+
+    if (courses.length === 0) {
+      courseSelect.innerHTML = '<option value="">No courses available</option>';
+    }
+    if (terms.length === 0) {
+      termSelect.innerHTML = '<option value="">No terms available</option>';
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to load dropdown data:', error);
+    courseSelect.innerHTML = '<option value="">Error loading courses</option>';
+    termSelect.innerHTML = '<option value="">Error loading terms</option>';
+  }
+}
 
 /**
  * Initialize Create Offering Modal
@@ -222,3 +391,8 @@ async function deleteOffering(offeringId, courseName, termName) {
 // Expose functions to window for inline onclick handlers and testing
 window.openEditOfferingModal = openEditOfferingModal;
 window.deleteOffering = deleteOffering;
+
+// Export for testing (Node.js/Jest environment)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { initOfferingManagement, openEditOfferingModal, deleteOffering };
+}

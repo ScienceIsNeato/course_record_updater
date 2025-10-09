@@ -10,7 +10,7 @@
  */
 
 // Load the implementation
-require('../../../static/offeringManagement.js');
+const { initOfferingManagement } = require('../../../static/offeringManagement.js');
 
 describe('Offering Management - Create Offering Modal', () => {
   let mockFetch;
@@ -61,8 +61,8 @@ describe('Offering Management - Create Offering Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize offering management (replaces DOMContentLoaded trigger)
+    initOfferingManagement();
   });
 
   afterEach(() => {
@@ -358,8 +358,8 @@ describe('Offering Management - Edit Offering Modal', () => {
       }
     };
 
-    // Trigger DOMContentLoaded to initialize event listeners
-    document.dispatchEvent(new Event('DOMContentLoaded'));
+    // Initialize offering management (replaces DOMContentLoaded trigger)
+    initOfferingManagement();
   });
 
   afterEach(() => {
