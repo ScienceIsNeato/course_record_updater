@@ -45,21 +45,45 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     # authenticated_page is already logged in as institution admin (sarah.admin@cei.edu)
     # Console error monitoring is automatic via the 'page' fixture
 
+    # Capture all console logs for debugging
+    console_logs = []
+    authenticated_page.on(
+        "console", lambda msg: console_logs.append(f"[{msg.type}] {msg.text}")
+    )
+
     # Navigate to institution admin dashboard
     authenticated_page.goto(f"{BASE_URL}/dashboard")
     authenticated_page.wait_for_load_state("networkidle")
+
+    print("\n=== CONSOLE LOGS AFTER PAGE LOAD ===")
+    for log in console_logs:
+        print(log)
+    console_logs.clear()
 
     # Click "Add Program" button to open modal
     authenticated_page.click('button:has-text("Add Program")')
     authenticated_page.wait_for_selector("#createProgramModal", state="visible")
 
-    # PAUSE: Inspect dropdown state in browser
-    authenticated_page.pause()
+    # Give event handlers time to execute
+    authenticated_page.wait_for_timeout(1000)
+
+    print("\n=== CONSOLE LOGS AFTER MODAL OPEN ===")
+    for log in console_logs:
+        print(log)
+
+    # Check dropdown state
+    dropdown_options = authenticated_page.evaluate(
+        "document.getElementById('programInstitutionId').options.length"
+    )
+    user_context = authenticated_page.evaluate("window.userContext")
+    print(f"\n=== DEBUG STATE ===")
+    print(f"Dropdown options count: {dropdown_options}")
+    print(f"window.userContext: {user_context}")
 
     # Wait for institution dropdown to be populated (happens on modal open event)
     authenticated_page.wait_for_function(
         "document.getElementById('programInstitutionId').options.length > 1",
-        timeout=3000,
+        timeout=5000,
     )
 
     # Fill in program form (institution auto-selected for institution admins)

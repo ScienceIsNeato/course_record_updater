@@ -27,9 +27,13 @@ function initProgramManagement() {
   }
 
   console.log('[programManagement] DEBUG: Forms found, initializing');
+  console.log('[programManagement] DEBUG: About to call initializeCreateProgramModal()');
   initializeCreateProgramModal();
+  console.log('[programManagement] DEBUG: About to call initializeEditProgramModal()');
   initializeEditProgramModal();
+  console.log('[programManagement] DEBUG: About to call setupModalListeners()');
   setupModalListeners();
+  console.log('[programManagement] DEBUG: Initialization complete');
 }
 
 console.log('[programManagement] DEBUG: Script loaded');
