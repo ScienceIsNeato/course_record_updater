@@ -42,6 +42,12 @@ def test_tc_crud_inst_001_update_own_profile(instructor_authenticated_page: Page
         "#usersTableContainer", timeout=10000
     )
 
+    # DEBUG: Check what users are actually showing up
+    table_text = instructor_authenticated_page.evaluate(
+        "document.querySelector('#usersTableContainer')?.innerText"
+    )
+    print(f"DEBUG: Users table content:\n{table_text}")
+
     # Find the instructor's own row and click Edit
     # The seeded instructor is "John Smith" (john.instructor@cei.edu)
     instructor_authenticated_page.wait_for_function(

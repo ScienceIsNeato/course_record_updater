@@ -64,26 +64,29 @@ async function loadUsers() {
     `;
     
     try {
-        const response = await fetch('/api/dashboard/data', {
+        const response = await fetch('/api/users', {
             headers: {
                 'Accept': 'application/json'
             }
         });
         
         if (!response.ok) {
-            throw new Error('Failed to load dashboard data');
+            throw new Error('Failed to load users');
         }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to load dashboard data');
+            throw new Error(data.error || 'Failed to load users');
         }
         
-        let users = data.data.users || [];
+        let users = data.users || [];
         
-        // Filter users: show equal scope or lower
-        // Role hierarchy: site_admin > institution_admin > program_admin > instructor
+        // Filter users: show colleagues and leadership (standard academic visibility)
+        // Instructors can see: other instructors, program admins, institution admins
+        // Program admins can see: instructors, other program admins, institution admins
+        // Institution admins can see: everyone at their institution
+        // Site admins can see: everyone
         const roleHierarchy = {
             'site_admin': 4,
             'institution_admin': 3,
@@ -94,10 +97,11 @@ async function loadUsers() {
         const currentUserRole = window.currentUser ? window.currentUser.role : 'instructor';
         const currentUserLevel = roleHierarchy[currentUserRole] || 1;
         
-        // Filter to users at equal or lower scope
+        // Show users at your level AND higher (colleagues + supervisors)
+        // This is standard academic workflow: instructors see program/institution leadership
         users = users.filter(user => {
             const userLevel = roleHierarchy[user.role] || 0;
-            return userLevel <= currentUserLevel;
+            return userLevel >= currentUserLevel; // Changed from <= to >=
         });
         
         // Apply role filter if selected
@@ -146,6 +150,9 @@ async function loadUsers() {
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="viewUser('${user.user_id}')">
                             <i class="fas fa-eye"></i> View
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary edit-user-btn" data-user='${JSON.stringify(user).replace(/'/g, "&apos;")}'>
+                            <i class="fas fa-edit"></i> Edit
                         </button>
                     </td>
                 </tr>
@@ -196,6 +203,90 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Handle Edit button clicks
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.edit-user-btn');
+    if (btn) {
+        const userData = JSON.parse(btn.dataset.user);
+        openEditUserModal(userData);
+    }
+});
+
+function openEditUserModal(user) {
+    document.getElementById('editUserId').value = user.user_id;
+    document.getElementById('editUserFirstName').value = user.first_name || '';
+    document.getElementById('editUserLastName').value = user.last_name || '';
+    document.getElementById('editUserEmail').value = user.email || '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    modal.show();
+}
+
+async function saveEditedUser() {
+    const userId = document.getElementById('editUserId').value;
+    const firstName = document.getElementById('editUserFirstName').value;
+    const lastName = document.getElementById('editUserLastName').value;
+    
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const response = await fetch(`/api/users/${userId}/profile`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || ''
+            },
+            body: JSON.stringify({
+                first_name: firstName,
+                last_name: lastName
+            })
+        });
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+            modal.hide();
+            await loadUsers(); // Reload the users list
+        } else {
+            const error = await response.json();
+            alert('Error updating user: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alert('Error updating user: ' + error.message);
+    }
+}
 </script>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div class="mb-3">
+                    <label for="editUserEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="editUserEmail" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserFirstName" class="form-label">First Name</label>
+                    <input type="text" class="form-control" id="editUserFirstName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserLastName" class="form-label">Last Name</label>
+                    <input type="text" class="form-control" id="editUserLastName" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditedUser()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
