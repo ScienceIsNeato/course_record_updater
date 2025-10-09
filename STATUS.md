@@ -71,8 +71,17 @@ page.wait_for_selector("#createXModal", state="hidden")
 - Success rate: 100% (all converted tests work!)
 - Code quality: All quality gates passing
 
-**🗡️ NEXT TARGETS:**
-22 tests remaining. Pattern is proven. Infrastructure is solid. Ready for rapid conversion!
+**🚧 CURRENT ISSUE:**
+E2E tests converted but not passing yet. Program modal dropdown not populating in time.
+- Test timeout: `wait_for_function` expects 2+ options, gets timeout after 3000ms
+- Possible causes: userContext not available, event timing, or dropdown logic issue
+- Course & offering modals work fine, so pattern is valid
+- Need debugging with DevTools in watch mode to see what's actually happening
+
+**🗡️ NEXT STEPS:**
+1. Debug program modal dropdown issue (test_tc_crud_ia_001 failing)
+2. Once fixed, verify all 6 converted tests pass
+3. Continue converting remaining 22 tests with proven pattern
 
 **Previous: 🏆 FIRST E2E UI TEST PASSING! (Oct 8, 2025)**
 - ✅ **BREAKTHROUGH**: Real UI interaction test works end-to-end!
