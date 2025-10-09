@@ -54,6 +54,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 /* eslint-disable no-console */
+console.log('[programManagement] DEBUG: About to define setupModalListeners');
 /**
  * Setup modal event listeners
  * Loads data when modals are opened
