@@ -268,23 +268,57 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
 
 
 @pytest.mark.e2e
-@pytest.mark.skip(reason="Section creation UI not yet implemented (greenfield TODO)")
 def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page):
     """
     TC-CRUD-PA-005: Program Admin creates course sections via UI
 
     Steps:
     1. Login as program admin (fixture provides this)
-    2. Navigate to sections page or course details
+    2. Navigate to sections page
     3. Click "Create Section" button
-    4. Fill section form
+    4. Fill section form (select offering, enter section number, status)
     5. Submit and verify section appears in sections list
 
     Expected: Section created successfully and visible in UI
-
-    TODO: Implement section creation UI before un-skipping this test
     """
-    pytest.skip("Section creation UI not yet implemented")
+    # Navigate to sections page
+    program_admin_authenticated_page.goto(f"{BASE_URL}/sections")
+    program_admin_authenticated_page.wait_for_load_state("networkidle")
+
+    # Click "Create Section" button
+    program_admin_authenticated_page.click('button:has-text("Create Section")')
+    program_admin_authenticated_page.wait_for_selector(
+        "#createSectionModal", state="visible"
+    )
+
+    # Wait for offerings dropdown to populate
+    program_admin_authenticated_page.wait_for_function(
+        "document.getElementById('sectionOfferingId').options.length > 1",
+        timeout=5000,
+    )
+
+    # Select first offering
+    program_admin_authenticated_page.select_option("#sectionOfferingId", index=1)
+
+    # Fill section form
+    program_admin_authenticated_page.fill("#sectionNumber", "999")
+    program_admin_authenticated_page.fill("#sectionCapacity", "30")
+    program_admin_authenticated_page.select_option("#sectionStatus", "open")
+
+    # Submit form
+    program_admin_authenticated_page.click("#createSectionBtn")
+    program_admin_authenticated_page.wait_for_selector(
+        "#createSectionModal", state="hidden", timeout=5000
+    )
+
+    # Verify section appears in sections list
+    program_admin_authenticated_page.wait_for_load_state("networkidle")
+    program_admin_authenticated_page.wait_for_function(
+        "document.querySelector('#sectionsTableContainer')?.innerText?.includes('999')",
+        timeout=5000,
+    )
+
+    print("✅ TC-CRUD-PA-005: Program Admin successfully created section via UI")
 
 
 @pytest.mark.e2e

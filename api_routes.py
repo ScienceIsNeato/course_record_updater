@@ -2432,7 +2432,7 @@ def list_sections():
 
 
 @api.route("/sections", methods=["POST"])
-@permission_required("manage_courses")
+@permission_required("manage_sections")
 def create_section():
     """
     Create a new course section
@@ -2511,7 +2511,7 @@ def get_section_by_id_endpoint(section_id: str):
 
 
 @api.route("/sections/<section_id>", methods=["PUT"])
-@permission_required("manage_courses")
+@permission_required("manage_sections")
 def update_section_endpoint(section_id: str):
     """
     Update section details
@@ -2608,7 +2608,7 @@ def assign_instructor_to_section_endpoint(section_id: str):
 
 
 @api.route("/sections/<section_id>", methods=["DELETE"])
-@permission_required("manage_courses")
+@permission_required("manage_sections")
 def delete_section_endpoint(section_id: str):
     """
     Delete section
