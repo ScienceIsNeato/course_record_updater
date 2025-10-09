@@ -2438,11 +2438,12 @@ def create_section():
     Create a new course section
 
     Request body should contain:
-    - course_id: Course ID
-    - term_id: Term ID
-    - section_number: Section number (optional, default "001")
+    - offering_id: Course offering ID (OR course_id + term_id)
+    - section_number: Section number (required)
     - instructor_id: Instructor ID (optional)
     - enrollment: Number of enrolled students (optional)
+    - capacity: Maximum enrollment (optional)
+    - status: Section status (optional, default "open")
     """
     try:
         data = request.get_json()
@@ -2450,8 +2451,24 @@ def create_section():
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
+        # If offering_id is provided, look up course_id and term_id
+        if data.get("offering_id"):
+            offering = get_course_offering(data["offering_id"])
+            if not offering:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Invalid offering_id",
+                        }
+                    ),
+                    400,
+                )
+            data["course_id"] = offering.get("course_id")
+            data["term_id"] = offering.get("term_id")
+
         # Validate required fields
-        required_fields = ["course_id", "term_id"]
+        required_fields = ["course_id", "term_id", "section_number"]
         missing_fields = [f for f in required_fields if not data.get(f)]
 
         if missing_fields:
