@@ -118,6 +118,7 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_PROGRAM_USERS.value,
         Permission.MANAGE_COURSES.value,
         Permission.VIEW_PROGRAM_DATA.value,
+        Permission.VIEW_INSTITUTION_DATA.value,  # Can view users/instructors at their institution
         Permission.MANAGE_SECTIONS.value,
         Permission.VIEW_SECTION_DATA.value,
         Permission.SUBMIT_ASSESSMENTS.value,
