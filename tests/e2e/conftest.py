@@ -335,6 +335,61 @@ def instructor_authenticated_page(page: Page) -> Page:
 
 
 @pytest.fixture(scope="function")
+def program_admin_authenticated_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as a program admin.
+
+    Logs in as lisa.prog@cei.edu (from seeded test data).
+
+    Usage:
+        def test_something(program_admin_authenticated_page):
+            program_admin_authenticated_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as program admin
+    """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Use program admin credentials from seeded data
+    PROGRAM_ADMIN_EMAIL = "lisa.prog@cei.edu"
+    PROGRAM_ADMIN_PASSWORD = "TestUser123!"  # From seed data
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
+
+    # Submit form and wait for JavaScript to handle login and redirect
+    page.click('button[type="submit"]')
+
+    # Wait for URL to change to dashboard (JavaScript redirect)
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        return page
+    except Exception:
+        # Check if still on login page with error message
+        current_url = page.url
+        if "/login" in current_url:
+            # Look for error message
+            error_elements = page.query_selector_all(
+                '.alert-danger, .error-message, [role="alert"]'
+            )
+            error_text = " | ".join(
+                [el.text_content() for el in error_elements if el.text_content()]
+            )
+
+            # If no error message, check console for JS errors
+            if not error_text:
+                error_text = "No error message found. Check if JavaScript is executing."
+
+            raise Exception(
+                f"Program admin login failed - still on login page after 2s. Errors: {error_text} URL: {current_url}"
+            )
+
+
+@pytest.fixture(scope="function")
 def database_backup():
     """
     Backup database before test and provide restore capability.

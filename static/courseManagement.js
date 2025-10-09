@@ -164,7 +164,7 @@ function initializeCreateCourseModal() {
       department: document.getElementById('courseDepartment').value,
       credit_hours: parseInt(document.getElementById('courseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('courseActive').checked
+      active: document.getElementById('courseActive')?.checked ?? true // Default to true if checkbox doesn't exist
     };
 
     const createBtn = document.getElementById('createCourseBtn');
@@ -247,7 +247,7 @@ function initializeEditCourseModal() {
       department: document.getElementById('editCourseDepartment').value,
       credit_hours: parseInt(document.getElementById('editCourseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('editCourseActive').checked
+      active: document.getElementById('editCourseActive')?.checked ?? true // Default to true if checkbox doesn't exist
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -312,8 +312,12 @@ function openEditCourseModal(courseId, courseData) {
   document.getElementById('editCourseTitle').value = courseData.course_title || '';
   document.getElementById('editCourseDepartment').value = courseData.department || '';
   document.getElementById('editCourseCreditHours').value = courseData.credit_hours || 3;
-  document.getElementById('editCourseActive').checked =
-    courseData.active !== undefined ? courseData.active : true;
+
+  // Set active checkbox if it exists in the DOM
+  const activeCheckbox = document.getElementById('editCourseActive');
+  if (activeCheckbox) {
+    activeCheckbox.checked = courseData.active !== undefined ? courseData.active : true;
+  }
 
   // Select program IDs in multi-select
   const programSelect = document.getElementById('editCourseProgramIds');
