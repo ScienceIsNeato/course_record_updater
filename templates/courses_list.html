@@ -55,23 +55,25 @@ async function loadCourses() {
     `;
     
     try {
-        const response = await fetch('/api/dashboard/data', {
+        // Greenfield fix: Use direct entity endpoint instead of enriched dashboard data
+        // This ensures fresh data after CRUD operations and correct RBAC scoping
+        const response = await fetch('/api/courses', {
             headers: {
                 'Accept': 'application/json'
             }
         });
         
         if (!response.ok) {
-            throw new Error('Failed to load dashboard data');
+            throw new Error('Failed to load courses');
         }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to load dashboard data');
+            throw new Error(data.error || 'Failed to load courses');
         }
         
-        const courses = data.data.courses || [];
+        const courses = data.courses || []; // Direct entity list, not data.data.courses
         
         if (courses.length === 0) {
             container.innerHTML = `

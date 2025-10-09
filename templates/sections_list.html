@@ -55,23 +55,25 @@ async function loadSections() {
     `;
     
     try {
-        const response = await fetch('/api/dashboard/data', {
+        // Greenfield fix: Use direct entity endpoint instead of enriched dashboard data
+        // This ensures fresh data after CRUD operations and correct RBAC scoping
+        const response = await fetch('/api/sections', {
             headers: {
                 'Accept': 'application/json'
             }
         });
         
         if (!response.ok) {
-            throw new Error('Failed to load dashboard data');
+            throw new Error('Failed to load sections');
         }
         
         const data = await response.json();
         
         if (!data.success) {
-            throw new Error(data.error || 'Failed to load dashboard data');
+            throw new Error(data.error || 'Failed to load sections');
         }
         
-        const sections = data.data.sections || [];
+        const sections = data.sections || []; // Direct entity list, not data.data.sections
         
         if (sections.length === 0) {
             container.innerHTML = `
