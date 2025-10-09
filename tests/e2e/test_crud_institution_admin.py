@@ -379,15 +379,52 @@ def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
 
 
 @pytest.mark.e2e
-@pytest.mark.skip(
-    reason="Edit section UI not yet implemented on sections list page - needs Edit button added"
-)
 def test_tc_crud_ia_009_assign_instructors_to_sections(authenticated_page: Page):
     """TC-CRUD-IA-009: Institution Admin assigns instructors to sections via UI"""
-    # TODO: Implement Edit button on sections list page that opens editSectionModal
-    # Current state: sections_list.html only has "View" button, not "Edit"
-    # The edit modal exists in institution_admin.html dashboard but not accessible from /sections
-    pytest.skip("Section edit UI needs to be added to sections list page")
+    # Navigate to sections page
+    authenticated_page.goto(f"{BASE_URL}/sections")
+    authenticated_page.wait_for_load_state("networkidle")
+    authenticated_page.wait_for_selector("#sectionsTableContainer", timeout=10000)
+
+    # Wait for sections table to load
+    authenticated_page.wait_for_function(
+        "document.querySelector('#sectionsTableContainer table tbody tr')", timeout=5000
+    )
+
+    # Click Edit button on first section
+    authenticated_page.click(
+        "#sectionsTableContainer table tbody tr:first-child button:has-text('Edit')"
+    )
+    authenticated_page.wait_for_selector("#editSectionModal", state="visible")
+
+    # Wait for instructor dropdown to populate
+    authenticated_page.wait_for_function(
+        "document.querySelector('#editSectionInstructorId').options.length > 1",
+        timeout=5000,
+    )
+
+    # Get section number for verification
+    section_number = authenticated_page.evaluate(
+        "document.querySelector('#editSectionNumber')?.value"
+    )
+
+    # Select an instructor (index 1 to skip "Unassigned" option)
+    authenticated_page.select_option("#editSectionInstructorId", index=1)
+
+    # Click Save Changes
+    authenticated_page.click("#editSectionModal button:has-text('Save Changes')")
+    authenticated_page.wait_for_selector("#editSectionModal", state="hidden")
+
+    # Verify the section still appears in the list after update
+    authenticated_page.wait_for_load_state("networkidle")
+    authenticated_page.wait_for_function(
+        f"document.querySelector('#sectionsTableContainer')?.innerText?.includes('{section_number}')",
+        timeout=5000,
+    )
+
+    print(
+        "✅ TC-CRUD-IA-009: Institution Admin successfully assigned instructor to section via UI"
+    )
 
 
 @pytest.mark.e2e

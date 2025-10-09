@@ -102,15 +102,15 @@ async function loadSections() {
         
         sections.forEach(section => {
             html += `
-                <tr>
+                <tr data-section='${JSON.stringify(section).replace(/'/g, '&apos;')}'>
                     <td><strong>${escapeHtml(section.section_number || '-')}</strong></td>
                     <td>${escapeHtml(section.course_number || '-')} - ${escapeHtml(section.course_title || '-')}</td>
                     <td>${escapeHtml(section.instructor_name || '-')}</td>
                     <td>${escapeHtml(section.term_name || '-')}</td>
                     <td>${section.enrollment_count || 0} / ${section.enrollment_capacity || 'N/A'}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewSection('${section.section_id}')">
-                            <i class="fas fa-eye"></i> View
+                        <button class="btn btn-sm btn-outline-primary edit-section-btn" data-section-id="${section.section_id}">
+                            <i class="fas fa-edit"></i> Edit
                         </button>
                     </td>
                 </tr>
@@ -125,6 +125,16 @@ async function loadSections() {
         
         container.innerHTML = html;
         
+        // Add event delegation for edit buttons
+        container.addEventListener('click', function(e) {
+            const btn = e.target.closest('.edit-section-btn');
+            if (btn) {
+                const row = btn.closest('tr');
+                const sectionData = JSON.parse(row.dataset.section);
+                editSection(btn.dataset.sectionId, sectionData);
+            }
+        });
+        
     } catch (error) {
         console.error('Error loading sections:', error);
         container.innerHTML = `
@@ -136,8 +146,75 @@ async function loadSections() {
     }
 }
 
-function viewSection(sectionId) {
-    alert('Section details view coming soon for section: ' + sectionId);
+async function editSection(sectionId, sectionData) {
+    // Open the edit modal and populate with section data
+    const modal = document.getElementById('editSectionModal');
+    if (!modal) return;
+    
+    // Populate form fields
+    document.getElementById('editSectionId').value = sectionId;
+    document.getElementById('editSectionNumber').value = sectionData.section_number || '';
+    document.getElementById('editSectionCapacity').value = sectionData.enrollment_capacity || '';
+    
+    // Load instructors for dropdown
+    try {
+        const response = await fetch('/api/users?role=instructor');
+        if (response.ok) {
+            const data = await response.json();
+            const instructorSelect = document.getElementById('editSectionInstructorId');
+            instructorSelect.innerHTML = '<option value="">Unassigned</option>';
+            (data.users || []).forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.user_id;
+                option.textContent = `${user.first_name} ${user.last_name}`;
+                if (user.user_id === sectionData.instructor_id) {
+                    option.selected = true;
+                }
+                instructorSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading instructors:', error);
+    }
+    
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+async function saveEditedSection() {
+    const sectionId = document.getElementById('editSectionId').value;
+    const instructorId = document.getElementById('editSectionInstructorId').value;
+    const capacity = document.getElementById('editSectionCapacity').value;
+    
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const response = await fetch(`/api/sections/${sectionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken || ''
+            },
+            body: JSON.stringify({
+                instructor_id: instructorId || null,
+                enrollment_capacity: parseInt(capacity) || 0
+            })
+        });
+        
+        if (response.ok) {
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editSectionModal'));
+            modal.hide();
+            // Reload sections list
+            await loadSections();
+        } else {
+            const error = await response.json();
+            alert('Error updating section: ' + (error.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error updating section:', error);
+        alert('Error updating section: ' + error.message);
+    }
 }
 
 function escapeHtml(text) {
@@ -147,5 +224,38 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 </script>
+
+<!-- Edit Section Modal -->
+<div class="modal fade" id="editSectionModal" tabindex="-1" aria-labelledby="editSectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSectionModalLabel">Edit Course Section</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editSectionId">
+                <div class="mb-3">
+                    <label for="editSectionNumber" class="form-label">Section Number</label>
+                    <input type="text" class="form-control" id="editSectionNumber" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="editSectionInstructorId" class="form-label">Instructor</label>
+                    <select class="form-control" id="editSectionInstructorId" name="instructor_id">
+                        <option value="">Unassigned</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="editSectionCapacity" class="form-label">Enrollment Capacity</label>
+                    <input type="number" class="form-control" id="editSectionCapacity" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditedSection()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
