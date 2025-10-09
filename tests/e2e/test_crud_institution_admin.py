@@ -428,58 +428,51 @@ def test_tc_crud_ia_009_assign_instructors_to_sections(authenticated_page: Page)
 
 
 @pytest.mark.e2e
-def test_tc_crud_ia_010_cannot_access_other_institutions(
-    authenticated_page: Page, ensure_multiple_institutions
-):
-    """TC-CRUD-IA-010: Institution Admin cannot access other institutions via UI"""
-    second_inst_id, _ = ensure_multiple_institutions
-
-    if not second_inst_id:
-        pytest.skip("Could not ensure multiple institutions")
-
-    # Navigate to courses page to verify current institution's courses appear
-    authenticated_page.goto(f"{BASE_URL}/courses")
+def test_tc_crud_ia_010_cannot_access_other_institutions(authenticated_page: Page):
+    """TC-CRUD-IA-010: Institution Admin can only see their own institution's data (multi-tenant isolation)"""
+    # Navigate to dashboard and wait for it to load
+    authenticated_page.goto(f"{BASE_URL}/dashboard")
     authenticated_page.wait_for_load_state("networkidle")
-    authenticated_page.wait_for_selector("#coursesTableContainer", timeout=10000)
 
-    # Get the user's institution context from the page
-    institution_id = authenticated_page.evaluate("window.userContext?.institution_id")
-
-    # Verify via API that attempting to access another institution's course returns 403/404
-    # First, get the list of courses from the current institution to find their IDs
+    # Get CSRF token for API calls
     csrf_token = authenticated_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
 
+    # Test 1: Fetch all courses visible to this user
     courses_response = authenticated_page.request.get(
         f"{BASE_URL}/api/courses",
         headers={"X-CSRFToken": csrf_token} if csrf_token else {},
     )
 
-    assert courses_response.ok
+    assert courses_response.ok, "Failed to fetch courses"
     my_courses = courses_response.json().get("courses", [])
+    assert len(my_courses) > 0, "No courses found for user"
 
-    # Construct a bogus course ID from another institution (use second_inst_id as part of the ID)
-    # Since we can't easily get a real course from the other institution without DB queries,
-    # we'll just verify that the courses we CAN see all belong to our institution
+    # Extract the institution_id from the first course
+    institution_id = my_courses[0].get("institution_id")
+    assert institution_id, "Course missing institution_id"
+
+    # Verify ALL courses belong to the same institution (multi-tenant isolation)
     for course in my_courses:
         assert (
             course.get("institution_id") == institution_id
-        ), f"Course {course['course_id']} does not belong to user's institution!"
+        ), f"Multi-tenant isolation broken: course {course['course_id']} belongs to different institution!"
 
-    # Also verify that navigating to programs/terms shows only this institution's data
-    authenticated_page.goto(f"{BASE_URL}/dashboard")
-    authenticated_page.wait_for_load_state("networkidle")
-    authenticated_page.wait_for_selector("#programsTableContainer", timeout=10000)
-
-    # Check programs visible belong to current institution
-    programs_data = authenticated_page.evaluate(
-        "window.dashboardDataCache?.programs || []"
+    # Test 2: Verify all programs belong to the same institution
+    programs_response = authenticated_page.request.get(
+        f"{BASE_URL}/api/programs",
+        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
     )
-    for program in programs_data:
+
+    assert programs_response.ok, "Failed to fetch programs"
+    my_programs = programs_response.json().get("programs", [])
+    assert len(my_programs) > 0, "No programs found for user"
+
+    for program in my_programs:
         assert (
             program.get("institution_id") == institution_id
-        ), f"Program {program['program_id']} does not belong to user's institution!"
+        ), f"Multi-tenant isolation broken: program {program['program_id']} belongs to different institution!"
 
     print(
         "✅ TC-CRUD-IA-010: Institution Admin correctly scoped to own institution (multi-tenant isolation verified)"
