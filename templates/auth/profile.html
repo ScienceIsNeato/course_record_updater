@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/cei_logo.jpg') }}" type="image/jpeg">
+    <meta name="color-scheme" content="light dark">
+    <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
 </head>
 <body>
     <!-- Navigation -->
@@ -178,6 +180,28 @@
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- Appearance / Theme -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-circle-half-stroke me-2"></i>Appearance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <label for="themePreference" class="form-label">Theme</label>
+                                <select id="themePreference" class="form-select">
+                                    <option value="system">Match system</option>
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                </select>
+                                <div class="form-text">Applies across the app on this device.</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
