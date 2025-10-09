@@ -104,6 +104,13 @@ class LoginService:
                 },
             )
 
+            # Fetch institution name if user has an institution
+            institution_name = None
+            if user.get("institution_id"):
+                institution = db.get_institution_by_id(user["institution_id"])
+                if institution:
+                    institution_name = institution.get("name")
+
             # Create user session
             SessionService.create_user_session(
                 {
@@ -111,6 +118,7 @@ class LoginService:
                     "email": user["email"],
                     "role": user["role"],
                     "institution_id": user.get("institution_id"),
+                    "institution_name": institution_name,
                     "program_ids": user.get("program_ids", []),
                     "display_name": user.get(
                         "display_name", user["email"].split("@")[0]

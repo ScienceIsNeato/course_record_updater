@@ -53,7 +53,10 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
     authenticated_page.click('button:has-text("Add Program")')
     authenticated_page.wait_for_selector("#createProgramModal", state="visible")
 
-    # Wait for institution dropdown to be populated (happens on modal shown event)
+    # PAUSE: Inspect dropdown state in browser
+    authenticated_page.pause()
+
+    # Wait for institution dropdown to be populated (happens on modal open event)
     authenticated_page.wait_for_function(
         "document.getElementById('programInstitutionId').options.length > 1",
         timeout=3000,

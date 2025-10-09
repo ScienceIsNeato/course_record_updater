@@ -86,6 +86,7 @@ class SessionService:
         session["email"] = user_data.get("email")
         session["role"] = user_data.get("role")
         session["institution_id"] = user_data.get("institution_id")
+        session["institution_name"] = user_data.get("institution_name")
         session["program_ids"] = user_data.get("program_ids", [])
         session["display_name"] = (
             user_data.get("display_name")
@@ -185,6 +186,7 @@ class SessionService:
             "email": session.get("email"),
             "role": session.get("role"),
             "institution_id": session.get("institution_id"),
+            "institution_name": session.get("institution_name"),
             "program_ids": session.get("program_ids", []),
             "display_name": session.get("display_name"),
             "created_at": session.get("created_at"),
