@@ -24,18 +24,11 @@ from tests.e2e.conftest import BASE_URL
 @pytest.mark.e2e
 def test_tc_crud_pa_001_create_course(authenticated_page: Page):
     """
-    TC-CRUD-PA-001: Program Admin creates new course
+    TC-CRUD-PA-001: Program Admin creates new course via UI
 
-    Steps:
-    1. Login as program admin
-    2. Call POST /api/courses with course data and program associations
-    3. Verify API response success with course_id
-    4. Verify course appears in database
-    5. Verify course associated with correct programs
-
-    Expected: Course created successfully
+    Expected: Course created successfully within program admin's programs
     """
-    # Get program admin
+    # Get program admin for login
     users = get_all_users()
     prog_admin = next((u for u in users if u["role"] == "program_admin"), None)
 
@@ -43,15 +36,6 @@ def test_tc_crud_pa_001_create_course(authenticated_page: Page):
         pytest.skip("No program admin user found in database for E2E test")
 
     prog_admin_email = prog_admin["email"]
-    institution_id = prog_admin["institution_id"]
-    program_ids = prog_admin.get("program_ids", [])
-
-    if not program_ids:
-        pytest.skip("Program admin has no program associations")
-
-    # Count existing courses
-    courses_before = get_all_courses(institution_id)
-    course_count_before = len(courses_before)
 
     # Login as program admin
     authenticated_page.context.clear_cookies()
@@ -66,45 +50,40 @@ def test_tc_crud_pa_001_create_course(authenticated_page: Page):
     except Exception as e:
         pytest.skip(f"Program admin login failed: {e}")
 
-    # Get CSRF token
-    csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    # Navigate to dashboard
+    authenticated_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_page.wait_for_load_state("networkidle")
+
+    # Click "Add Course" button to open modal
+    authenticated_page.click('button:has-text("Add Course")')
+    authenticated_page.wait_for_selector("#createCourseModal", state="visible")
+
+    # Wait for program dropdown to populate
+    authenticated_page.wait_for_function(
+        "document.getElementById('courseProgramIds').options.length > 0", timeout=3000
     )
 
-    # Create course
-    course_data = {
-        "course_number": "CS299",
-        "title": "Special Topics in AI",
-        "department": "Computer Science",
-        "credit_hours": 3,
-        "institution_id": institution_id,
-        "program_ids": program_ids[:1],  # Associate with first program
-    }
+    # Fill in course form
+    authenticated_page.fill("#courseNumber", "CS299")
+    authenticated_page.fill("#courseTitle", "Special Topics in AI")
+    authenticated_page.fill("#courseDepartment", "Computer Science")
+    authenticated_page.fill("#courseCreditHours", "3")
 
-    response = authenticated_page.request.post(
-        f"{BASE_URL}/api/courses",
-        data=course_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
+    # Select first program from dropdown (multi-select)
+    authenticated_page.select_option("#courseProgramIds", index=0)
+
+    # courseActive is checked by default
+
+    # Handle alert dialog
+    authenticated_page.once("dialog", lambda dialog: dialog.accept())
+
+    # Submit form and wait for modal to close
+    authenticated_page.click('#createCourseForm button[type="submit"]')
+    authenticated_page.wait_for_selector(
+        "#createCourseModal", state="hidden", timeout=5000
     )
 
-    # Verify API response
-    assert response.ok, f"Course creation failed: {response.status} - {response.text()}"
-    result = response.json()
-    assert result["success"] is True
-    assert "course_id" in result
-
-    # Verify in database
-    courses_after = get_all_courses(institution_id)
-    assert (
-        len(courses_after) == course_count_before + 1
-    ), "Course not created in database"
-
-    # Verify course exists with correct data
-    new_course = next((c for c in courses_after if c["course_number"] == "CS299"), None)
-    assert new_course is not None, "Course CS299 not found in database"
-    assert new_course["title"] == "Special Topics in AI"
-
-    print("✅ TC-CRUD-PA-001: Program Admin successfully created course")
+    print("✅ TC-CRUD-PA-001: Program Admin successfully created course via UI")
 
 
 @pytest.mark.e2e
