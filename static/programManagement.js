@@ -8,46 +8,62 @@
  * - API communication with CSRF protection
  */
 
+/* eslint-disable no-console */
 // Initialize when DOM is ready
 // Handle case where DOM is already loaded (avoid race condition)
 function initProgramManagement() {
+  console.log(
+    '[programManagement] DEBUG: initProgramManagement called, readyState =',
+    document.readyState
+  );
   // Safety check: only initialize if form elements exist
   // (Prevents initialization from running before DOM is ready in test environments)
   if (
     !document.getElementById('createProgramForm') &&
     !document.getElementById('editProgramForm')
   ) {
+    console.log('[programManagement] DEBUG: No forms found, skipping init');
     return; // Forms not on page yet, skip initialization
   }
 
+  console.log('[programManagement] DEBUG: Forms found, initializing');
   initializeCreateProgramModal();
   initializeEditProgramModal();
   setupModalListeners();
 }
 
+console.log('[programManagement] DEBUG: Script loaded');
 if (document.readyState === 'loading') {
   // DOM still loading, wait for it
+  console.log('[programManagement] DEBUG: Waiting for DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', initProgramManagement);
 } else {
   // DOM already loaded, initialize immediately
+  console.log('[programManagement] DEBUG: DOM already loaded, init now');
   initProgramManagement();
 }
+/* eslint-enable no-console */
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { initProgramManagement, openEditProgramModal };
 }
 
+/* eslint-disable no-console */
 /**
  * Setup modal event listeners
  * Loads data when modals are opened
  */
 function setupModalListeners() {
+  console.log('[programManagement] DEBUG: setupModalListeners called');
   const createModal = document.getElementById('createProgramModal');
+  console.log('[programManagement] DEBUG: createModal element found?', !!createModal);
 
   if (createModal) {
+    console.log('[programManagement] DEBUG: Attaching show.bs.modal listener');
     // Bootstrap 5 modal event - load institutions when modal is opening (before animation)
     createModal.addEventListener('show.bs.modal', async () => {
+      console.log('[programManagement] DEBUG: show.bs.modal event FIRED!');
       await loadInstitutionsForDropdown();
     });
   }
@@ -59,14 +75,19 @@ function setupModalListeners() {
  * For site admins: would need to fetch all institutions (future enhancement)
  */
 async function loadInstitutionsForDropdown() {
+  console.log('[programManagement] DEBUG: loadInstitutionsForDropdown called');
   const select = document.getElementById('programInstitutionId');
+  console.log('[programManagement] DEBUG: dropdown element found?', !!select);
 
   if (!select) {
     return;
   }
 
+  console.log('[programManagement] DEBUG: userContext =', window.userContext);
+
   // Use user's institution from the page context (set in template)
   if (window.userContext && window.userContext.institutionId) {
+    console.log('[programManagement] DEBUG: Populating dropdown');
     select.innerHTML = '<option value="">Select Institution</option>';
 
     const option = document.createElement('option');
@@ -74,11 +95,15 @@ async function loadInstitutionsForDropdown() {
     option.textContent = window.userContext.institutionName;
     option.selected = true; // Auto-select user's institution
     select.appendChild(option);
+
+    console.log('[programManagement] DEBUG: Dropdown now has', select.options.length, 'options');
   } else {
-    // eslint-disable-next-line no-console
-    console.error('User context not available - cannot populate institution dropdown');
+    console.error(
+      '[programManagement] ERROR: User context not available - cannot populate institution dropdown'
+    );
   }
 }
+/* eslint-enable no-console */
 
 /**
  * Initialize Create Program Modal
