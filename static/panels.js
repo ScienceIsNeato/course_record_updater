@@ -493,6 +493,28 @@ class PanelManager {
             value: course.title
           })) || []
       },
+      faculty: {
+        endpoint: '/api/users?role=instructor',
+        title: 'Faculty',
+        transform: data =>
+          data.users?.map(user => ({
+            label:
+              (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
+              user.email,
+            value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
+          })) || []
+      },
+      sections: {
+        endpoint: '/api/sections',
+        title: 'Sections',
+        transform: data =>
+          data.sections?.map(section => ({
+            label: section.course_number
+              ? `${section.course_number} Section ${section.section_number || section.section_id || ''}`
+              : `Section ${section.section_number || section.section_id || ''}`,
+            value: `${section.enrollment || 0} students`
+          })) || []
+      },
       users: {
         endpoint: '/api/users',
         title: 'Recent Users',
