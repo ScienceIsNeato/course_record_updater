@@ -146,7 +146,7 @@ class TestDashboardRoutes:
             # Verify the correct template was called for site_admin role
             mock_render.assert_called_once()
             call_args = mock_render.call_args
-            assert call_args[0][0] == "dashboard/site_admin_panels.html"
+            assert call_args[0][0] == "dashboard/site_admin.html"
             assert "user" in call_args[1]
 
     def test_dashboard_unknown_role(self):

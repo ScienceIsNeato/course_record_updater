@@ -454,7 +454,8 @@
             const data = await response.json();
             
             if (data.success) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('createInstitutionModal'));
+                const modalElement = document.getElementById('createInstitutionModal');
+                const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
                 modal.hide();
                 this.reset();
                 await loadSiteAdminData();
@@ -497,7 +498,8 @@
             const data = await response.json();
             
             if (data.success) {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+                const modalElement = document.getElementById('createUserModal');
+                const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
                 modal.hide();
                 this.reset();
                 await loadSiteAdminData();
