@@ -114,6 +114,13 @@ def create_new_institution(
     return _db_service.create_new_institution(institution_data, admin_user_data)
 
 
+def create_new_institution_simple(
+    name: str, short_name: str, active: bool = True
+) -> Optional[str]:
+    """Create a new institution without creating an admin user (site admin workflow)"""
+    return _db_service.create_new_institution_simple(name, short_name, active)
+
+
 def get_institution_instructor_count(institution_id: str) -> int:
     return _db_service.get_institution_instructor_count(institution_id)
 

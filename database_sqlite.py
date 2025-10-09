@@ -124,6 +124,17 @@ class SQLiteDatabase(DatabaseInterface):
             return None
         return institution_id, user_id
 
+    def create_new_institution_simple(
+        self, name: str, short_name: str, active: bool = True
+    ) -> Optional[str]:
+        """Create a new institution without creating an admin user (site admin workflow)"""
+        institution_data = {
+            "name": name,
+            "short_name": short_name,
+            "active": active,
+        }
+        return self.create_institution(institution_data)
+
     def get_institution_instructor_count(self, institution_id: str) -> int:
         with self.sqlite.session_scope() as session:
             return (

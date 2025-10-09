@@ -1849,9 +1849,8 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
-        """Test POST /api/institutions endpoint success."""
-        self._login_site_admin()
-
+        """Test POST /api/institutions/register endpoint success (public registration)."""
+        # No login needed - this is a public registration endpoint
         mock_create_institution.return_value = ("institution123", "user123")
 
         institution_data = {
@@ -1868,7 +1867,7 @@ class TestInstitutionEndpoints:
             },
         }
 
-        response = self.client.post("/api/institutions", json=institution_data)
+        response = self.client.post("/api/institutions/register", json=institution_data)
         assert response.status_code == 201
 
         data = json.loads(response.data)
@@ -1920,9 +1919,9 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_missing_data(self, mock_create_institution):
-        """Test POST /api/institutions with missing data."""
+        """Test POST /api/institutions/register with missing data."""
         with app.test_client() as client:
-            response = client.post("/api/institutions", json={})
+            response = client.post("/api/institutions/register", json={})
             assert response.status_code == 400
 
             data = json.loads(response.data)
@@ -1930,11 +1929,11 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_missing_admin_user_field(self, mock_create_institution):
-        """Test POST /api/institutions with missing admin user field."""
+        """Test POST /api/institutions/register with missing admin user field."""
         with app.test_client() as client:
             # Send institution data but missing admin user email
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",
@@ -1957,13 +1956,13 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_creation_failure(self, mock_create_institution):
-        """Test POST /api/institutions when institution creation fails."""
+        """Test POST /api/institutions/register when institution creation fails."""
         # Setup - make create_new_institution return None (failure)
         mock_create_institution.return_value = None
 
         with app.test_client() as client:
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",
@@ -1986,13 +1985,13 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_exception_handling(self, mock_create_institution):
-        """Test POST /api/institutions exception handling."""
+        """Test POST /api/institutions/register exception handling."""
         # Setup - make create_new_institution raise an exception
         mock_create_institution.side_effect = Exception("Database connection failed")
 
         with app.test_client() as client:
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",

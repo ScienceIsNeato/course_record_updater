@@ -525,7 +525,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeImportForm();
 
   // --- Dashboard Data Loading ---
-  loadDashboardData();
+  // Only load dashboard data if at least one dashboard element exists
+  const dashboardElements = ['coursesData', 'instructorsData', 'sectionsData', 'termsData'];
+  const hasDashboardElements = dashboardElements.some(id => document.getElementById(id));
+  if (hasDashboardElements) {
+    loadDashboardData();
+  }
 });
 
 // Dashboard data loading functions

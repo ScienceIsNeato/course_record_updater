@@ -47,7 +47,8 @@ def test_tc_crud_sa_001_create_institution(authenticated_site_admin_page: Page):
     # Fill in institution form
     authenticated_site_admin_page.fill("#institutionName", "E2E Test University")
     authenticated_site_admin_page.fill("#institutionShortName", "E2ETU")
-    authenticated_site_admin_page.check("#institutionActive")
+    # institutionActive checkbox is already checked by default, skip explicit check
+    # authenticated_site_admin_page.check("#institutionActive")
 
     # Handle alert dialog
     authenticated_site_admin_page.once("dialog", lambda dialog: dialog.accept())

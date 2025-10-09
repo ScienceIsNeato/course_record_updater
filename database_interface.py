@@ -45,6 +45,13 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def create_new_institution_simple(
+        self, name: str, short_name: str, active: bool = True
+    ) -> Optional[str]:
+        """Create a new institution without creating an admin user (site admin workflow)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_institution_instructor_count(self, institution_id: str) -> int:
         raise NotImplementedError
 

@@ -105,7 +105,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-university me-2"></i>Institution Management</h5>
                 <button class="btn btn-primary btn-sm" onclick="createInstitution()">
-                    <i class="fas fa-plus me-1"></i>New Institution
+                    <i class="fas fa-plus me-1"></i>Add Institution
                 </button>
             </div>
             <div class="card-body">
@@ -125,7 +125,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-users me-2"></i>User Management</h5>
                 <button class="btn btn-success btn-sm" onclick="inviteUser()">
-                    <i class="fas fa-user-plus me-1"></i>Invite User
+                    <i class="fas fa-user-plus me-1"></i>Add User
                 </button>
             </div>
             <div class="card-body">
@@ -178,6 +178,86 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Institution Modal -->
+<div class="modal fade" id="createInstitutionModal" tabindex="-1" aria-labelledby="createInstitutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createInstitutionForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createInstitutionModalLabel">Create New Institution</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="institutionName" class="form-label">Institution Name *</label>
+                        <input type="text" class="form-control" id="institutionName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="institutionShortName" class="form-label">Short Name *</label>
+                        <input type="text" class="form-control" id="institutionShortName" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="institutionActive" checked>
+                        <label class="form-check-label" for="institutionActive">Active</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Institution</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createUserForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createUserModalLabel">Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="userFirstName" class="form-label">First Name *</label>
+                        <input type="text" class="form-control" id="userFirstName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userLastName" class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" id="userLastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="userEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userRole" class="form-label">Role *</label>
+                        <select class="form-control" id="userRole" required>
+                            <option value="">Select role...</option>
+                            <option value="site_admin">Site Admin</option>
+                            <option value="institution_admin">Institution Admin</option>
+                            <option value="program_admin">Program Admin</option>
+                            <option value="instructor">Instructor</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userInstitutionId" class="form-label">Institution *</label>
+                        <select class="form-control" id="userInstitutionId" required>
+                            <option value="">Select institution...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -300,7 +380,8 @@
 
     // Action functions
     function createInstitution() {
-        alert('Create Institution feature coming soon!');
+        const modal = new bootstrap.Modal(document.getElementById('createInstitutionModal'));
+        modal.show();
     }
 
     function editInstitution(id) {
@@ -308,7 +389,27 @@
     }
 
     function inviteUser() {
-        alert('Invite User feature coming soon!');
+        const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+        // Load institutions for dropdown
+        loadInstitutionsForUserForm();
+        modal.show();
+    }
+
+    async function loadInstitutionsForUserForm() {
+        try {
+            const response = await fetch('/api/institutions');
+            const data = await response.json();
+            const select = document.getElementById('userInstitutionId');
+            
+            if (data.success && data.institutions) {
+                select.innerHTML = '<option value="">Select institution...</option>' +
+                    data.institutions.map(inst => 
+                        `<option value="${inst.institution_id}">${inst.name}</option>`
+                    ).join('');
+            }
+        } catch (error) {
+            console.error('Error loading institutions:', error);
+        }
     }
 
     function exportSystemData() {
@@ -330,5 +431,84 @@
     function showSystemSettings() {
         alert('System Settings feature coming soon!');
     }
+
+    // Form submission handlers
+    document.getElementById('createInstitutionForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('institutionName').value;
+        const shortName = document.getElementById('institutionShortName').value;
+        const active = document.getElementById('institutionActive').checked;
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/api/institutions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ name, short_name: shortName, active })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createInstitutionModal'));
+                modal.hide();
+                this.reset();
+                await loadSiteAdminData();
+                alert('Institution created successfully');
+            } else {
+                alert('Error creating institution: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error creating institution:', error);
+            alert('Error creating institution. Please try again.');
+        }
+    });
+
+    document.getElementById('createUserForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const firstName = document.getElementById('userFirstName').value;
+        const lastName = document.getElementById('userLastName').value;
+        const email = document.getElementById('userEmail').value;
+        const role = document.getElementById('userRole').value;
+        const institutionId = document.getElementById('userInstitutionId').value;
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    first_name: firstName,
+                    last_name: lastName,
+                    email,
+                    role,
+                    institution_id: institutionId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
+                modal.hide();
+                this.reset();
+                await loadSiteAdminData();
+                alert('User created successfully');
+            } else {
+                alert('Error creating user: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error creating user:', error);
+            alert('Error creating user. Please try again.');
+        }
+    });
 </script>
 {% endblock %}

@@ -319,7 +319,60 @@ def list_institutions():
 
 
 @api.route("/institutions", methods=["POST"])
-def create_institution():
+@permission_required("manage_institutions")
+def create_institution_admin():
+    """Site admin creates a new institution (without initial user)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+        # Simple institution creation for site admins
+        required_fields = ["name", "short_name"]
+        missing_fields = [f for f in required_fields if not data.get(f)]
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                    }
+                ),
+                400,
+            )
+
+        # Create institution (without admin user - site admin can add users separately)
+        from database_service import create_new_institution_simple
+
+        institution_id = create_new_institution_simple(
+            name=data["name"],
+            short_name=data["short_name"],
+            active=data.get("active", True),
+        )
+
+        if institution_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "institution_id": institution_id,
+                        "message": "Institution created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to create institution"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Create institution", "Failed to create institution")
+
+
+@api.route("/institutions/register", methods=["POST"])
+def create_institution_public():
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
         data = request.get_json()
