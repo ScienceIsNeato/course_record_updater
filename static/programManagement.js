@@ -59,17 +59,23 @@ if (typeof module !== 'undefined' && module.exports) {
  * Loads data when modals are opened
  */
 function setupModalListeners() {
-  console.log('[programManagement] DEBUG: setupModalListeners called');
-  const createModal = document.getElementById('createProgramModal');
-  console.log('[programManagement] DEBUG: createModal element found?', !!createModal);
+  try {
+    console.log('[programManagement] DEBUG: setupModalListeners called');
+    const createModal = document.getElementById('createProgramModal');
+    console.log('[programManagement] DEBUG: createModal element found?', !!createModal);
 
-  if (createModal) {
-    console.log('[programManagement] DEBUG: Attaching show.bs.modal listener');
-    // Bootstrap 5 modal event - load institutions when modal is opening (before animation)
-    createModal.addEventListener('show.bs.modal', async () => {
-      console.log('[programManagement] DEBUG: show.bs.modal event FIRED!');
-      await loadInstitutionsForDropdown();
-    });
+    if (createModal) {
+      console.log('[programManagement] DEBUG: Attaching show.bs.modal listener');
+      // Bootstrap 5 modal event - load institutions when modal is opening (before animation)
+      createModal.addEventListener('show.bs.modal', async () => {
+        console.log('[programManagement] DEBUG: show.bs.modal event FIRED!');
+        await loadInstitutionsForDropdown();
+      });
+    } else {
+      console.error('[programManagement] ERROR: createModal not found!');
+    }
+  } catch (error) {
+    console.error('[programManagement] FATAL ERROR in setupModalListeners:', error);
   }
 }
 
