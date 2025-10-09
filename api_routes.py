@@ -389,7 +389,7 @@ def get_institution_details(institution_id: str):
             current_user.get("institution_id") != institution_id
             and current_user.get("role") != UserRole.SITE_ADMIN.value
         ):
-            return jsonify({"success": False, "error": "Access denied"}), 403
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
         institution = get_institution_by_id(institution_id)
         if not institution:
@@ -629,14 +629,17 @@ def clear_program_context():
 
 
 @api.route("/users", methods=["GET"])
-@permission_required("manage_users")
+@permission_required("view_institution_data")  # Read-only access for viewing users
 def list_users():
     """
-    Get list of users, optionally filtered by role
+    Get list of users, optionally filtered by role (read-only)
 
     Query parameters:
     - role: Filter by user role (optional)
     - department: Filter by department (optional)
+
+    Note: Requires view_institution_data permission (read-only).
+    Use manage_users permission for create/update/delete operations.
     """
     try:
         # Resolve institution scope and validate access

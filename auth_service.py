@@ -123,9 +123,11 @@ ROLE_PERMISSIONS = {
         Permission.SUBMIT_ASSESSMENTS.value,
     ],
     UserRole.INSTRUCTOR.value: [
-        Permission.MANAGE_SECTIONS.value,
-        Permission.VIEW_SECTION_DATA.value,
-        Permission.SUBMIT_ASSESSMENTS.value,
+        Permission.MANAGE_SECTIONS.value,  # Can update own sections
+        Permission.VIEW_SECTION_DATA.value,  # Can view section details
+        Permission.SUBMIT_ASSESSMENTS.value,  # Can submit/update assessments
+        Permission.VIEW_PROGRAM_DATA.value,  # Can view courses (read-only)
+        Permission.VIEW_INSTITUTION_DATA.value,  # Can view users (read-only, own institution)
     ],
 }
 
