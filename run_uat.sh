@@ -143,9 +143,17 @@ export E2E_BASE_URL="http://localhost:${COURSE_RECORD_UPDATER_PORT}"
 # Set video recording flag
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
-# Set debug mode flag
+# Set debug/headless flags for Playwright
 if [ "$DEBUG_MODE" = "1" ]; then
     export PYTEST_DEBUG="1"
+    export HEADLESS="0"
+else
+    if [ "$MODE" = "headed" ]; then
+        export HEADLESS="0"
+    else
+        # Enforce true headless when not in watch/debug
+        export HEADLESS="1"
+    fi
 fi
 
 # Build pytest command

@@ -110,21 +110,18 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
     """TC-CRUD-IA-002: Institution Admin updates course details"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
-
-    if not inst_admin:
-        pytest.skip("No institution admin found")
-
-    institution_id = inst_admin["institution_id"]
-    courses = get_all_courses(institution_id)
-
+    # Ensure we're authenticated and on the dashboard (already handled by fixture)
+    # Fetch a course via authenticated API (institution-scoped by RBAC)
+    courses_resp = authenticated_page.request.get(f"{BASE_URL}/api/courses")
+    assert courses_resp.ok, f"Failed to list courses: {courses_resp.status}"
+    courses_payload = courses_resp.json()
+    courses = courses_payload.get("courses", [])
     if not courses:
-        pytest.skip("No courses found")
+        pytest.skip("No courses available to update")
 
     course_id = courses[0]["course_id"]
     csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+        "document.querySelector(\"meta[name='csrf-token']\")?.content"
     )
 
     course_data = {"title": "Updated by Institution Admin", "credit_hours": 4}
@@ -137,7 +134,7 @@ def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
 
     assert response.ok
     result = response.json()
-    assert result["success"] is True
+    assert result.get("success") is True
 
     print("✅ TC-CRUD-IA-002: Institution Admin successfully updated course")
 
@@ -145,17 +142,15 @@ def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_ia_003_delete_empty_program(authenticated_page: Page):
     """TC-CRUD-IA-003: Institution Admin deletes program with no courses"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
-
-    if not inst_admin:
-        pytest.skip("No institution admin found")
-
-    institution_id = inst_admin["institution_id"]
+    # Derive institution context from the authenticated page
+    user_ctx = authenticated_page.evaluate("window.userContext")
+    institution_id = user_ctx.get("institutionId") if user_ctx else None
+    if not institution_id:
+        pytest.skip("No institution context available for admin user")
 
     # First create an empty program to delete
     csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+        "document.querySelector(\"meta[name='csrf-token']\")?.content"
     )
 
     program_data = {
@@ -191,36 +186,35 @@ def test_tc_crud_ia_003_delete_empty_program(authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_ia_004_cannot_delete_program_with_courses(authenticated_page: Page):
     """TC-CRUD-IA-004: Institution Admin cannot delete program with courses"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
+    # Get institutions programs via API and find one with courses
+    progs_resp = authenticated_page.request.get(f"{BASE_URL}/api/programs")
+    assert progs_resp.ok, f"Failed to list programs: {progs_resp.status}"
+    programs = progs_resp.json().get("programs", [])
 
-    if not inst_admin:
-        pytest.skip("No institution admin found")
-
-    institution_id = inst_admin["institution_id"]
-    programs = get_programs_by_institution(institution_id)
-    courses = get_all_courses(institution_id)
-
-    # Find a program with courses
     program_with_courses = None
-    for program in programs:
-        if any(
-            c.get("program_ids") and program["program_id"] in c.get("program_ids", [])
-            for c in courses
-        ):
-            program_with_courses = program
-            break
+    for prog in programs:
+        pid = prog.get("program_id") or prog.get("id")
+        if not pid:
+            continue
+        courses_resp = authenticated_page.request.get(
+            f"{BASE_URL}/api/programs/{pid}/courses"
+        )
+        if courses_resp.ok:
+            prog_courses = courses_resp.json().get("courses", [])
+            if prog_courses:
+                program_with_courses = pid
+                break
 
     if not program_with_courses:
         pytest.skip("No program with courses found")
 
     csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+        "document.querySelector(\"meta[name='csrf-token']\")?.content"
     )
 
     # Attempt to delete program with courses (should fail or require force)
     response = authenticated_page.request.delete(
-        f"{BASE_URL}/api/programs/{program_with_courses['program_id']}",
+        f"{BASE_URL}/api/programs/{program_with_courses}",
         headers={"X-CSRFToken": csrf_token} if csrf_token else {},
     )
 
@@ -235,15 +229,13 @@ def test_tc_crud_ia_004_cannot_delete_program_with_courses(authenticated_page: P
 @pytest.mark.e2e
 def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page):
     """TC-CRUD-IA-005: Institution Admin invites new instructor"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
-
-    if not inst_admin:
-        pytest.skip("No institution admin found")
-
-    institution_id = inst_admin["institution_id"]
+    # Derive institution context from the authenticated session (no direct DB)
+    user_ctx = authenticated_page.evaluate("window.userContext")
+    institution_id = user_ctx.get("institutionId") if user_ctx else None
+    if not institution_id:
+        pytest.skip("No institution context available for admin user")
     csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+        "document.querySelector(\"meta[name='csrf-token']\")?.content"
     )
 
     # Create invitation
@@ -271,27 +263,32 @@ def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page):
 @pytest.mark.e2e
 def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
     """TC-CRUD-IA-006: Institution Admin can manage users within institution"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
+    # Derive institution context
+    user_ctx = authenticated_page.evaluate("window.userContext")
+    institution_id = user_ctx.get("institutionId") if user_ctx else None
+    if not institution_id:
+        pytest.skip("No institution context available for admin user")
 
-    if not inst_admin:
-        pytest.skip("No institution admin found")
+    # List users via API and pick a non-admin user in the same institution
+    users_resp = authenticated_page.request.get(f"{BASE_URL}/api/users")
+    assert users_resp.ok, f"Failed to list users: {users_resp.status}"
+    users_payload = users_resp.json()
+    users = users_payload.get("users", [])
+    target = next(
+        (
+            u
+            for u in users
+            if u.get("institution_id") == institution_id
+            and u.get("role") != "institution_admin"
+        ),
+        None,
+    )
+    if not target:
+        pytest.skip("No eligible users found to manage")
 
-    # Find a user in the same institution
-    institution_id = inst_admin["institution_id"]
-    inst_users = [
-        u
-        for u in users
-        if u.get("institution_id") == institution_id
-        and u["user_id"] != inst_admin["user_id"]
-    ]
-
-    if not inst_users:
-        pytest.skip("No other users in institution")
-
-    target_user_id = inst_users[0]["user_id"]
+    target_user_id = target["user_id"]
     csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+        "document.querySelector(\"meta[name='csrf-token']\")?.content"
     )
 
     # Update user profile
@@ -305,7 +302,7 @@ def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
 
     assert response.ok
     result = response.json()
-    assert result["success"] is True
+    assert result.get("success") is True
 
     print("✅ TC-CRUD-IA-006: Institution Admin successfully managed institution user")
 
@@ -325,6 +322,7 @@ def test_tc_crud_ia_007_create_term(authenticated_page: Page):
     authenticated_page.fill("#termName", "Spring 2099")
     authenticated_page.fill("#termStartDate", "2099-01-15")
     authenticated_page.fill("#termEndDate", "2099-05-15")
+    authenticated_page.fill("#termAssessmentDueDate", "2099-05-20")
     # termActive is checked by default, so no need to check it
 
     # Handle alert dialog

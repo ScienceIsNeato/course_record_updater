@@ -33,6 +33,9 @@ function initProgramManagement() {
   initializeEditProgramModal();
   console.log('[programManagement] DEBUG: About to call setupModalListeners()');
   setupModalListeners();
+  // Fallback: pre-populate institution dropdown on init in case modal event timing misses
+  // This is idempotent due to innerHTML reset inside loader
+  loadInstitutionsForDropdown();
   console.log('[programManagement] DEBUG: Initialization complete');
 }
 
@@ -67,8 +70,8 @@ function setupModalListeners() {
 
     if (createModal) {
       console.log('[programManagement] DEBUG: Attaching show.bs.modal listener');
-      // Bootstrap 5 modal event - load institutions when modal is opening (before animation)
-      createModal.addEventListener('show.bs.modal', async () => {
+      // Use 'shown.bs.modal' so DOM is fully visible and ready
+      createModal.addEventListener('shown.bs.modal', async () => {
         console.log('[programManagement] DEBUG: show.bs.modal event FIRED!');
         await loadInstitutionsForDropdown();
       });

@@ -1461,6 +1461,21 @@ def create_term_api():
                 400,
             )
 
+        # Ensure institution context is included
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        # Map conventional 'name' to legacy 'term_name' for storage compatibility
+        if data.get("name") and not data.get("term_name"):
+            data["term_name"] = data["name"]
+
+        # Attach institution_id to payload
+        data["institution_id"] = institution_id
+
         term_id = create_term(data)
 
         if term_id:
@@ -1785,6 +1800,25 @@ def delete_program_api(program_id: str):
                 400,
             )
 
+        # If program has courses and no explicit force flag, block deletion
+        try:
+            courses_for_program = get_courses_by_program(program_id)  # type: ignore[name-defined]
+        except Exception:
+            courses_for_program = []
+
+        force_flag = request.args.get("force", "false").lower() == "true"
+        if courses_for_program and not force_flag:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Cannot delete program with assigned courses without force",
+                        "code": "PROGRAM_HAS_COURSES",
+                    }
+                ),
+                403,
+            )
+
         # Get the default program for reassignment
         institution_id = program.get("institution_id")
         programs = get_programs_by_institution(institution_id) if institution_id else []
@@ -1804,7 +1838,8 @@ def delete_program_api(program_id: str):
             )
 
         # Delete program and reassign courses
-        success = delete_program(program_id, default_program["id"])
+        # Use program_id key from our program dicts
+        success = delete_program(program_id, default_program["program_id"])
 
         if success:
             return jsonify(
@@ -3772,6 +3807,90 @@ def check_lockout_status_api(email):
             jsonify({"success": False, "error": "Failed to check lockout status"}),
             500,
         )
+
+
+@api.route("/invitations", methods=["POST"])
+@permission_required("manage_institution_users")
+def create_invitation_public_api():
+    """
+    Create and send a user invitation via /api/invitations.
+
+    Accepts field names:
+    - email (alias: invitee_email)
+    - role (alias: invitee_role)
+    - program_ids (optional)
+    - personal_message (optional)
+
+    Returns 201 with invitation_id on success.
+    """
+    try:
+        from auth_service import get_current_institution_id, get_current_user
+        from invitation_service import InvitationError, InvitationService
+
+        payload = request.get_json()
+        if not payload:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Normalize fields
+        invitee_email = payload.get("invitee_email") or payload.get("email")
+        invitee_role = payload.get("invitee_role") or payload.get("role")
+        program_ids = payload.get("program_ids", [])
+        personal_message = payload.get("personal_message")
+
+        if not invitee_email:
+            return (
+                jsonify({"success": False, "error": "Missing required field: email"}),
+                400,
+            )
+        if not invitee_role:
+            return (
+                jsonify({"success": False, "error": "Missing required field: role"}),
+                400,
+            )
+
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        # Create and send invitation
+        invitation = InvitationService.create_invitation(
+            inviter_user_id=current_user["user_id"],
+            inviter_email=current_user["email"],
+            invitee_email=invitee_email,
+            invitee_role=invitee_role,
+            institution_id=institution_id,
+            program_ids=program_ids,
+            personal_message=personal_message,
+        )
+
+        email_sent = InvitationService.send_invitation(invitation)
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "invitation_id": invitation["id"],
+                    "message": (
+                        "Invitation created and sent successfully"
+                        if email_sent
+                        else "Invitation created but email failed to send"
+                    ),
+                }
+            ),
+            201,
+        )
+
+    except InvitationError as exc:
+        return handle_api_error(exc, "Create invitation", str(exc), 400)
+    except Exception as exc:
+        return handle_api_error(exc, "Create invitation", "Failed to create invitation")
 
 
 @api.route("/auth/unlock-account", methods=["POST"])

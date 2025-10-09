@@ -601,6 +601,39 @@ class TestInvitationEndpoints:
         call_args = mock_invitation_service.create_invitation.call_args[1]
         assert call_args["program_ids"] == ["prog-123", "prog-456"]
 
+    @patch("invitation_service.InvitationService")
+    def test_create_invitation_public_api_alias_fields(self, mock_invitation_service):
+        """Ensure /api/invitations accepts email/role aliases and returns 201."""
+        self._login_institution_admin()
+
+        mock_invitation_service.create_invitation.return_value = {
+            "id": "inv-999",
+            "invitee_email": "instructor@test.com",
+            "invitee_role": "instructor",
+            "status": "sent",
+        }
+        mock_invitation_service.send_invitation.return_value = True
+
+        # Use alias fields email/role
+        response = self.client.post(
+            "/api/invitations",
+            json={
+                "email": "instructor@test.com",
+                "role": "instructor",
+                "personal_message": "Welcome!",
+            },
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["invitation_id"] == "inv-999"
+
+        # Verify service was called with normalized args
+        call_args = mock_invitation_service.create_invitation.call_args[1]
+        assert call_args["invitee_email"] == "instructor@test.com"
+        assert call_args["invitee_role"] == "instructor"
+
 
 class TestAcceptInvitationEndpoints:
     """Test accept invitation API endpoints (Story 2.2)"""
