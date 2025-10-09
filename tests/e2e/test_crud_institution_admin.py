@@ -298,6 +298,13 @@ def test_tc_crud_ia_006_manage_institution_users(authenticated_page: Page):
     authenticated_page.wait_for_load_state("networkidle")
     # The users table renders first/last name combined
     authenticated_page.wait_for_selector("#usersTableContainer")
+
+    # Debug: print table contents
+    table_text = authenticated_page.evaluate(
+        "document.querySelector('#usersTableContainer')?.innerText"
+    )
+    print(f"DEBUG: Users table contents:\n{table_text}")
+
     authenticated_page.wait_for_function(
         "() => document.querySelector('#usersTableContainer')?.innerText?.includes('Updated ByInstAdmin')",
         timeout=5000,

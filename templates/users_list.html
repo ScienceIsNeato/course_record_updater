@@ -82,11 +82,11 @@ async function loadUsers() {
         
         let users = data.users || [];
         
-        // Filter users: show colleagues and leadership (standard academic visibility)
-        // Instructors can see: other instructors, program admins, institution admins
-        // Program admins can see: instructors, other program admins, institution admins
-        // Institution admins can see: everyone at their institution
-        // Site admins can see: everyone
+        // Filter users: role-based visibility
+        // - Site admins: see everyone
+        // - Institution admins: see everyone at their institution
+        // - Program admins: see instructors, other program admins, institution admins
+        // - Instructors: see other instructors, program admins, institution admins
         const roleHierarchy = {
             'site_admin': 4,
             'institution_admin': 3,
@@ -97,12 +97,14 @@ async function loadUsers() {
         const currentUserRole = window.currentUser ? window.currentUser.role : 'instructor';
         const currentUserLevel = roleHierarchy[currentUserRole] || 1;
         
-        // Show users at your level AND higher (colleagues + supervisors)
-        // This is standard academic workflow: instructors see program/institution leadership
-        users = users.filter(user => {
-            const userLevel = roleHierarchy[user.role] || 0;
-            return userLevel >= currentUserLevel; // Changed from <= to >=
-        });
+        // Institution admins and site admins see everyone (no filtering)
+        // Others see users at their level AND higher (colleagues + supervisors)
+        if (currentUserRole !== 'institution_admin' && currentUserRole !== 'site_admin') {
+            users = users.filter(user => {
+                const userLevel = roleHierarchy[user.role] || 0;
+                return userLevel >= currentUserLevel;
+            });
+        }
         
         // Apply role filter if selected
         const roleFilter = document.getElementById('roleFilter');
