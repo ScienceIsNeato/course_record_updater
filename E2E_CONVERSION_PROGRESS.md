@@ -2,15 +2,19 @@
 
 **Goal:** Convert all 28 E2E tests from API-based to UI-based interactions
 
-## ✅ Converted Tests (4/28 - 14% Complete!)
+## ✅ Converted Tests (6/28 - 21% Complete! 🎉)
 
-### Institution Admin (2/10 done)
+### Institution Admin (3/10 done)
 - ✅ **test_001**: Create program - Opens modal, fills name/short_name, submits
 - ✅ **test_007**: Create term - Opens modal, fills name/dates, submits
+- ✅ **test_008**: Create offering - Opens modal, selects course/term from dropdowns, submits
 
 ### Site Admin (2/8 done)
 - ✅ **test_001**: Create institution - Opens modal, fills name/short_name, submits
 - ✅ **test_003**: Create user - Opens modal, waits for dropdown, fills form, submits
+
+### Program Admin (1/6 done)
+- ✅ **test_001**: Create course - Opens modal, waits for program dropdown, fills form, submits
 
 ## 📋 Pattern That Works
 
@@ -35,23 +39,26 @@ authenticated_page.click('#createXForm button[type="submit"]')
 authenticated_page.wait_for_selector("#createXModal", state="hidden", timeout=5000)
 ```
 
-## 🚧 Remaining Tests (24/28)
+## 🚧 Remaining Tests (22/28)
 
-### Institution Admin (8 more)
+### Institution Admin (7 more)
 - test_002: Update course ⚠️ Needs course list UI
 - test_003: Delete program ⚠️ Needs program list UI  
 - test_004: Cannot delete program with courses ⚠️ Needs program list UI
 - test_005: Invite instructor ⚠️ Needs invite UI
 - test_006: Manage institution users ⚠️ Needs user list UI
-- test_008: Create course offerings ⚠️ Needs dropdown population
 - test_009: Assign instructors to sections ⚠️ Needs section list UI
 - test_010: Cannot access other institutions ⚠️ Needs multi-inst test
 
 ### Instructor (4 tests)
 - test_001-004: TBD (need to review)
 
-### Program Admin (6 tests)
-- test_001-006: TBD (need to review)
+### Program Admin (5 more)
+- test_002: Update section instructor ⚠️ Needs section list UI
+- test_003: Delete course ⚠️ Needs course list UI
+- test_004: Access within programs only ⚠️ Verification test
+- test_005: Cannot delete institution user ⚠️ Permission test
+- test_006: Cannot access other programs ⚠️ Permission test
 
 ### Site Admin (6 more)
 - test_002: Update institution ⚠️ Needs institution list UI
@@ -65,8 +72,22 @@ authenticated_page.wait_for_selector("#createXModal", state="hidden", timeout=50
 - test_import_export.py
 - test_csv_roundtrip.py
 
-## 🔧 UI Gaps Identified
+## 🔧 UI Gaps Status
 
+### ✅ FIXED:
+1. **Dropdown population:**
+   - ✅ Course modal: program dropdown (fetches from /api/programs)
+   - ✅ Offering modal: course & term dropdowns (parallel fetch, loading states)
+   
+2. **DOMContentLoaded race condition:**
+   - ✅ programManagement.js
+   - ✅ courseManagement.js
+   - ✅ offeringManagement.js
+
+3. **Template bugs:**
+   - ✅ Course form field IDs (courseCode → courseNumber, courseName → courseTitle)
+
+### 🚧 REMAINING:
 1. **List/Management UIs needed:**
    - Program list (view, edit, delete)
    - Course list (view, edit, delete)
@@ -74,12 +95,10 @@ authenticated_page.wait_for_selector("#createXModal", state="hidden", timeout=50
    - Section list (view, edit, assign instructor)
 
 2. **Dropdown population needed:**
-   - Offering modal: course dropdown, term dropdown
    - Section modal: offering dropdown, instructor dropdown
 
 3. **DOMContentLoaded race condition:**
-   - Fixed in: programManagement.js
-   - Needs fix in: offeringManagement.js, sectionManagement.js, others
+   - Needs fix in: sectionManagement.js, outcomeManagement.js, others
 
 ## 🎯 Next Steps
 
