@@ -46,8 +46,8 @@ function setupModalListeners() {
   const createModal = document.getElementById('createProgramModal');
 
   if (createModal) {
-    // Bootstrap 5 modal event - load institutions when modal is shown
-    createModal.addEventListener('shown.bs.modal', async () => {
+    // Bootstrap 5 modal event - load institutions when modal is opening (before animation)
+    createModal.addEventListener('show.bs.modal', async () => {
       await loadInstitutionsForDropdown();
     });
   }
