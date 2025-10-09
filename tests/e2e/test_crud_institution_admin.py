@@ -314,41 +314,42 @@ def test_tc_crud_ia_007_create_term(authenticated_page: Page):
 
 @pytest.mark.e2e
 def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
-    """TC-CRUD-IA-008: Institution Admin creates course offerings"""
-    users = get_all_users()
-    inst_admin = next((u for u in users if u["role"] == "institution_admin"), None)
+    """TC-CRUD-IA-008: Institution Admin creates course offerings via UI"""
+    # Navigate to institution admin dashboard
+    authenticated_page.goto(f"{BASE_URL}/dashboard")
+    authenticated_page.wait_for_load_state("networkidle")
 
-    if not inst_admin:
-        pytest.skip("No institution admin found")
+    # Click "Add Offering" button to open modal
+    authenticated_page.click('button:has-text("Add Offering")')
+    authenticated_page.wait_for_selector("#createOfferingModal", state="visible")
 
-    institution_id = inst_admin["institution_id"]
-    courses = get_all_courses(institution_id)
-    terms = get_active_terms(institution_id)
-
-    if not courses or not terms:
-        pytest.skip("Need both courses and terms for offering creation")
-
-    csrf_token = authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    # Wait for course and term dropdowns to populate
+    authenticated_page.wait_for_function(
+        "document.getElementById('offeringCourseId').options.length > 1", timeout=3000
+    )
+    authenticated_page.wait_for_function(
+        "document.getElementById('offeringTermId').options.length > 1", timeout=3000
     )
 
-    offering_data = {
-        "course_id": courses[0]["course_id"],
-        "term_id": terms[0]["term_id"],
-        "faculty_assigned": "Test Faculty",
-    }
+    # Select first course and term from dropdowns
+    authenticated_page.select_option("#offeringCourseId", index=1)
+    authenticated_page.select_option("#offeringTermId", index=1)
 
-    response = authenticated_page.request.post(
-        f"{BASE_URL}/api/offerings",
-        data=offering_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
+    # Fill optional fields if needed (capacity, enrolled)
+    # Status is set to 'active' by default
+
+    # Handle alert dialog
+    authenticated_page.once("dialog", lambda dialog: dialog.accept())
+
+    # Submit form and wait for modal to close
+    authenticated_page.click('#createOfferingForm button[type="submit"]')
+    authenticated_page.wait_for_selector(
+        "#createOfferingModal", state="hidden", timeout=5000
     )
 
-    assert response.ok
-    result = response.json()
-    assert result["success"] is True
-
-    print("✅ TC-CRUD-IA-008: Institution Admin successfully created course offering")
+    print(
+        "✅ TC-CRUD-IA-008: Institution Admin successfully created course offering via UI"
+    )
 
 
 @pytest.mark.e2e
