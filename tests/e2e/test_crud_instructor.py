@@ -108,19 +108,13 @@ def test_tc_crud_inst_002_update_section_assessment(
     page.wait_for_load_state("networkidle")
 
     # Wait for course selector to load
-    try:
-        page.wait_for_selector("#courseSelect option:not([value=''])", timeout=10000)
-    except Exception:
-        pytest.skip("No courses found for instructor - seed data may not have outcomes")
+    page.wait_for_selector("#courseSelect option:not([value=''])", timeout=10000)
 
     # Select first available course
     page.select_option("#courseSelect", index=1)
 
-    # Wait for outcomes to load - skip if none exist
-    try:
-        page.wait_for_selector(".update-assessment-btn", timeout=10000)
-    except Exception:
-        pytest.skip("No outcomes found for selected course - seed data needs outcomes")
+    # Wait for outcomes to load
+    page.wait_for_selector(".update-assessment-btn", timeout=10000)
 
     # Click first "Update Assessment" button
     page.click(".update-assessment-btn")
