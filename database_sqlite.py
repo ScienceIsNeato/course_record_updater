@@ -695,7 +695,7 @@ class SQLiteDatabase(DatabaseInterface):
                         section_dict["term_name"] = term.term_name
                 else:
                     print(
-                        f"[ENRICH-DEBUG]   WARNING: No offering found!", file=sys.stderr
+                        "[ENRICH-DEBUG]   WARNING: No offering found!", file=sys.stderr
                     )
 
                 # Get instructor details if assigned

@@ -27,11 +27,14 @@ from flask import (
 # Constants for error messages
 PERMISSION_DENIED_MSG = "Permission denied"
 USER_NOT_FOUND_MSG = "User not found"
+USER_NOT_AUTHENTICATED_MSG = "User not authenticated"
 INSTITUTION_NOT_FOUND_MSG = "Institution not found"
+FAILED_TO_CREATE_INSTITUTION_MSG = "Failed to create institution"
 TERM_NOT_FOUND_MSG = "Term not found"
 SECTION_NOT_FOUND_MSG = "Section not found"
 OUTCOME_NOT_FOUND_MSG = "Outcome not found"
 COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
+MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
 TIMEZONE_UTC_SUFFIX = "+00:00"
 
 import database_service
@@ -369,12 +372,14 @@ def create_institution_admin():
             )
         else:
             return (
-                jsonify({"success": False, "error": "Failed to create institution"}),
+                jsonify({"success": False, "error": FAILED_TO_CREATE_INSTITUTION_MSG}),
                 500,
             )
 
     except Exception as e:
-        return handle_api_error(e, "Create institution", "Failed to create institution")
+        return handle_api_error(
+            e, "Create institution", FAILED_TO_CREATE_INSTITUTION_MSG
+        )
 
 
 @api.route("/institutions/register", methods=["POST"])
@@ -414,7 +419,7 @@ def create_institution_public():
         result = create_new_institution(institution_data, user_data)
         if not result:
             return (
-                jsonify({"success": False, "error": "Failed to create institution"}),
+                jsonify({"success": False, "error": FAILED_TO_CREATE_INSTITUTION_MSG}),
                 500,
             )
 
@@ -433,7 +438,9 @@ def create_institution_public():
         )
 
     except Exception as e:
-        return handle_api_error(e, "Create institution", "Failed to create institution")
+        return handle_api_error(
+            e, "Create institution", FAILED_TO_CREATE_INSTITUTION_MSG
+        )
 
 
 @api.route("/institutions/<institution_id>", methods=["GET"])
@@ -3522,7 +3529,7 @@ def create_invitation_api():
         # Get current user and institution
         current_user = get_current_user()
         if not current_user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         institution_id = get_current_institution_id()
         if not institution_id:
@@ -4017,7 +4024,7 @@ def create_invitation_public_api():
 
         if not invitee_email:
             return (
-                jsonify({"success": False, "error": "Missing required field: email"}),
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
             )
         if not invitee_role:
@@ -4028,7 +4035,7 @@ def create_invitation_public_api():
 
         current_user = get_current_user()
         if not current_user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         institution_id = get_current_institution_id()
         if not institution_id:
@@ -4099,7 +4106,7 @@ def unlock_account_api():
 
         if "email" not in data:
             return (
-                jsonify({"success": False, "error": "Missing required field: email"}),
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
             )
 
@@ -4150,7 +4157,7 @@ def forgot_password_api():
 
         if "email" not in data:
             return (
-                jsonify({"success": False, "error": "Missing required field: email"}),
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
             )
 
@@ -4563,7 +4570,7 @@ def get_available_adapters():
 
         current_user = get_current_user()
         if not current_user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         registry = get_adapter_registry()
         user_role = current_user.get("role")
