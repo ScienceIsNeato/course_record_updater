@@ -643,35 +643,43 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_all_sections(self, institution_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
-            # Join with CourseOffering, Course, Term, and User (instructor) to enrich section data
-            results = session.execute(
-                select(
-                    CourseSection,
-                    Course.course_number,
-                    Course.course_title,
-                    Term.term_name,
-                    User.first_name.label("instructor_first_name"),
-                    User.last_name.label("instructor_last_name"),
+            sections = (
+                session.execute(
+                    select(CourseSection)
+                    .join(CourseOffering)
+                    .where(CourseOffering.institution_id == institution_id)
                 )
-                .join(CourseOffering, CourseSection.offering_id == CourseOffering.id)
-                .join(Course, CourseOffering.course_id == Course.id)
-                .join(Term, CourseOffering.term_id == Term.id)
-                .outerjoin(User, CourseSection.instructor_id == User.id)
-                .where(CourseOffering.institution_id == institution_id)
-            ).all()
+                .scalars()
+                .all()
+            )
 
-            # Enrich section dictionaries with course/term/instructor data
+            # Enrich sections with related data using separate queries
             enriched_sections = []
-            for row in results:
-                section_dict = to_dict(row[0])  # CourseSection
-                section_dict["course_number"] = row[1]  # Course.course_number
-                section_dict["course_title"] = row[2]  # Course.course_title
-                section_dict["term_name"] = row[3]  # Term.term_name
-                # Build instructor name
-                if row[4] and row[5]:  # instructor_first_name and instructor_last_name
-                    section_dict["instructor_name"] = f"{row[4]} {row[5]}"
-                else:
-                    section_dict["instructor_name"] = None
+            for section in sections:
+                section_dict = to_dict(section)
+
+                # Get offering details to find course and term
+                offering = session.get(CourseOffering, section.offering_id)
+                if offering:
+                    # Get course details
+                    course = session.get(Course, offering.course_id)
+                    if course:
+                        section_dict["course_number"] = course.course_number
+                        section_dict["course_title"] = course.course_title
+
+                    # Get term details
+                    term = session.get(Term, offering.term_id)
+                    if term:
+                        section_dict["term_name"] = term.term_name
+
+                # Get instructor details if assigned
+                if section.instructor_id:
+                    instructor = session.get(User, section.instructor_id)
+                    if instructor:
+                        section_dict["instructor_name"] = (
+                            f"{instructor.first_name} {instructor.last_name}"
+                        )
+
                 enriched_sections.append(section_dict)
 
             return enriched_sections
