@@ -196,8 +196,10 @@ def test_tc_crud_inst_002_update_section_assessment(
         text = opt.inner_text()
         print(f"  Option {i}: value='{value}', text='{text}'")
 
-    # Wait for course selector to load
-    page.wait_for_selector("#courseSelect option:not([value=''])", timeout=10000)
+    # Verify courses loaded (should have at least 2 options: empty + at least one course)
+    assert (
+        len(options) >= 2
+    ), f"Expected at least 2 options (empty + courses), got {len(options)}"
 
     # Select first available course
     page.select_option("#courseSelect", index=1)

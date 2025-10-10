@@ -51,18 +51,18 @@ class TestSanitizeForAudit:
 
     def test_sanitize_empty_dict(self):
         """Test sanitizing empty dict returns empty dict"""
-        result = sanitize_for_audit({}, EntityType.USER)
+        result = sanitize_for_audit({})
         assert result == {}
 
     def test_sanitize_none_returns_empty(self):
         """Test sanitizing None returns empty dict"""
-        result = sanitize_for_audit(None, EntityType.USER)
+        result = sanitize_for_audit(None)
         assert result == {}
 
     def test_sanitize_password_field(self):
         """Test password field is redacted"""
         data = {"email": "test@example.com", "password": "secret123"}
-        result = sanitize_for_audit(data, EntityType.USER)
+        result = sanitize_for_audit(data)
         assert result["email"] == "test@example.com"
         assert result["password"] == "[REDACTED]"
 
@@ -75,7 +75,7 @@ class TestSanitizeForAudit:
             "api_key": "key123",
             "oauth_token": "token123",
         }
-        result = sanitize_for_audit(data, EntityType.USER)
+        result = sanitize_for_audit(data)
         assert result["email"] == "test@example.com"
         assert result["password"] == "[REDACTED]"
         assert result["password_hash"] == "[REDACTED]"
@@ -90,7 +90,7 @@ class TestSanitizeForAudit:
             "last_name": "Doe",
             "role": "instructor",
         }
-        result = sanitize_for_audit(data, EntityType.USER)
+        result = sanitize_for_audit(data)
         assert result == data
 
 

@@ -740,6 +740,97 @@ def test_get_sections_by_term():
     assert isinstance(sections, list)
 
 
+def test_get_sections_by_instructor_enrichment():
+    """Test that get_sections_by_instructor returns enriched data with course info."""
+    # Create test institution
+    inst_id = database_service.create_institution(
+        {
+            "name": "Instructor Sections Test",
+            "short_name": "IST",
+            "admin_email": "admin@ist.edu",
+            "created_by": "system",
+        }
+    )
+
+    # Create instructor
+    instructor_data = {
+        "email": "prof@ist.edu",
+        "first_name": "Test",
+        "last_name": "Professor",
+        "role": "instructor",
+        "institution_id": inst_id,
+        "account_status": "active",
+    }
+    instructor_id = database_service.create_user(instructor_data)
+
+    # Create program
+    program_data = {
+        "name": "Computer Science",
+        "short_name": "CS",
+        "institution_id": inst_id,
+    }
+    program_id = database_service.create_program(program_data)
+
+    # Create course
+    course_data = {
+        "course_number": "CS-101",
+        "course_title": "Intro to CS",
+        "institution_id": inst_id,
+        "program_id": program_id,
+        "credits": 3,
+    }
+    course_id = database_service.create_course(course_data)
+
+    # Create term
+    term_data = {
+        "term_code": "FA2025",
+        "term_name": "Fall 2025",
+        "institution_id": inst_id,
+        "start_date": "2025-09-01",
+        "end_date": "2025-12-15",
+    }
+    term_id = database_service.create_term(term_data)
+
+    # Create offering
+    offering_data = {
+        "course_id": course_id,
+        "term_id": term_id,
+        "institution_id": inst_id,
+    }
+    offering_id = database_service.create_course_offering(offering_data)
+
+    # Create section assigned to instructor
+    section_data = {
+        "offering_id": offering_id,
+        "section_number": "001",
+        "instructor_id": instructor_id,
+        "enrollment": 25,
+    }
+    section_id = database_service.create_course_section(section_data)
+
+    # Get sections by instructor
+    sections = database_service.get_sections_by_instructor(instructor_id)
+
+    # Verify we got sections
+    assert len(sections) == 1
+    section = sections[0]
+
+    # Verify enrichment: should have course_id, course info, term info, instructor info
+    assert section["section_id"] == section_id
+    assert (
+        section["course_id"] == course_id
+    ), "Section should be enriched with course_id"
+    assert section["course_number"] == "CS-101", "Section should have course_number"
+    assert section["course_title"] == "Intro to CS", "Section should have course_title"
+    assert section["term_id"] == term_id, "Section should be enriched with term_id"
+    assert section["term_name"] == "Fall 2025", "Section should have term_name"
+    assert (
+        section["instructor_name"] == "Test Professor"
+    ), "Section should have instructor_name"
+    assert section["section_number"] == "001"
+    assert section["enrollment"] == 25
+
+
 def test_assign_course_to_default_program():
     """Test assigning a course to the default program."""
     # Create test institution

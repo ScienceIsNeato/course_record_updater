@@ -27,6 +27,12 @@ from flask import (
 # Constants for error messages
 PERMISSION_DENIED_MSG = "Permission denied"
 USER_NOT_FOUND_MSG = "User not found"
+INSTITUTION_NOT_FOUND_MSG = "Institution not found"
+TERM_NOT_FOUND_MSG = "Term not found"
+SECTION_NOT_FOUND_MSG = "Section not found"
+OUTCOME_NOT_FOUND_MSG = "Outcome not found"
+COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
+TIMEZONE_UTC_SUFFIX = "+00:00"
 
 import database_service
 
@@ -446,7 +452,7 @@ def get_institution_details(institution_id: str):
 
         institution = get_institution_by_id(institution_id)
         if not institution:
-            return jsonify({"success": False, "error": "Institution not found"}), 404
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
 
         # Add current instructor count
         institution["current_instructor_count"] = get_institution_instructor_count(
@@ -484,7 +490,7 @@ def update_institution_endpoint(institution_id: str):
         # Check if institution exists
         institution = get_institution_by_id(institution_id)
         if not institution:
-            return jsonify({"success": False, "error": "Institution not found"}), 404
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
 
         success = update_institution(institution_id, data)
 
@@ -550,7 +556,7 @@ def delete_institution_endpoint(institution_id: str):
         # Check if institution exists
         institution = get_institution_by_id(institution_id)
         if not institution:
-            return jsonify({"success": False, "error": "Institution not found"}), 404
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
 
         success = delete_institution(institution_id)
 
@@ -1604,12 +1610,12 @@ def get_term_by_id_endpoint(term_id: str):
         term = get_term_by_id(term_id)
 
         if not term:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         return jsonify({"success": True, "term": term}), 200
 
@@ -1634,11 +1640,11 @@ def update_term_endpoint(term_id: str):
         term = get_term_by_id(term_id)
 
         if not term:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         success = update_term(term_id, data)
 
@@ -1675,11 +1681,11 @@ def archive_term_endpoint(term_id: str):
         term = get_term_by_id(term_id)
 
         if not term:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         success = archive_term(term_id)
 
@@ -1710,11 +1716,11 @@ def delete_term_endpoint(term_id: str):
         term = get_term_by_id(term_id)
 
         if not term:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Term not found"}), 404
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
         success = delete_term(term_id)
 
@@ -2369,7 +2375,7 @@ def get_course_offering_endpoint(offering_id: str):
             return jsonify({"success": True, "offering": offering}), 200
         else:
             return (
-                jsonify({"success": False, "error": "Course offering not found"}),
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
                 404,
             )
 
@@ -2396,7 +2402,7 @@ def update_course_offering_endpoint(offering_id: str):
         offering = get_course_offering(offering_id)
         if not offering:
             return (
-                jsonify({"success": False, "error": "Course offering not found"}),
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
                 404,
             )
 
@@ -2441,7 +2447,7 @@ def delete_course_offering_endpoint(offering_id: str):
         offering = get_course_offering(offering_id)
         if not offering:
             return (
-                jsonify({"success": False, "error": "Course offering not found"}),
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
                 404,
             )
 
@@ -2632,13 +2638,13 @@ def get_section_by_id_endpoint(section_id: str):
         section = get_section_by_id(section_id)
 
         if not section:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         offering = get_course_offering(section.get("offering_id"))
         if not offering or offering.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         return jsonify({"success": True, "section": section}), 200
 
@@ -2663,13 +2669,13 @@ def update_section_endpoint(section_id: str):
         section = get_section_by_id(section_id)
 
         if not section:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         offering = get_course_offering(section.get("offering_id"))
         if not offering or offering.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         success = update_course_section(section_id, data)
 
@@ -2716,13 +2722,13 @@ def assign_instructor_to_section_endpoint(section_id: str):
         section = get_section_by_id(section_id)
 
         if not section:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         offering = get_course_offering(section.get("offering_id"))
         if not offering or offering.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         success = assign_instructor(section_id, instructor_id)
 
@@ -2756,13 +2762,13 @@ def delete_section_endpoint(section_id: str):
         section = get_section_by_id(section_id)
 
         if not section:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         offering = get_course_offering(section.get("offering_id"))
         if not offering or offering.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Section not found"}), 404
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
         success = delete_course_section(section_id)
 
@@ -2871,13 +2877,13 @@ def get_course_outcome_by_id_endpoint(outcome_id: str):
         outcome = get_course_outcome(outcome_id)
 
         if not outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Verify institution access
         institution_id = get_current_institution_id()
         course = get_course_by_id(outcome.get("course_id"))
         if not course or course.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         return jsonify({"success": True, "outcome": outcome}), 200
 
@@ -2904,12 +2910,12 @@ def update_course_outcome_endpoint(outcome_id: str):
         outcome = get_course_outcome(outcome_id)
 
         if not outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         course = get_course_by_id(outcome.get("course_id"))
         if not course or course.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         success = update_course_outcome(outcome_id, data)
 
@@ -2965,7 +2971,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
                 break
 
         if not found:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         success = update_outcome_assessment(outcome_id, assessment_data, narrative)
 
@@ -3006,12 +3012,12 @@ def delete_course_outcome_endpoint(outcome_id: str):
         outcome = get_course_outcome(outcome_id)
 
         if not outcome:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         institution_id = get_current_institution_id()
         course = get_course_by_id(outcome.get("course_id"))
         if not course or course.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": "Outcome not found"}), 404
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         success = delete_course_outcome(outcome_id)
 
@@ -5150,7 +5156,7 @@ def get_user_audit_activity(user_id: str):
         if start_date_str := request.args.get("start_date"):
             try:
                 start_date = datetime.fromisoformat(
-                    start_date_str.replace("Z", "+00:00")
+                    start_date_str.replace("Z", TIMEZONE_UTC_SUFFIX)
                 )
             except ValueError:
                 return (
@@ -5165,7 +5171,9 @@ def get_user_audit_activity(user_id: str):
 
         if end_date_str := request.args.get("end_date"):
             try:
-                end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+                end_date = datetime.fromisoformat(
+                    end_date_str.replace("Z", TIMEZONE_UTC_SUFFIX)
+                )
             except ValueError:
                 return (
                     jsonify(
@@ -5256,8 +5264,12 @@ def export_audit_logs():
             )
 
         try:
-            start_date = datetime.fromisoformat(start_date_str.replace("Z", "+00:00"))
-            end_date = datetime.fromisoformat(end_date_str.replace("Z", "+00:00"))
+            start_date = datetime.fromisoformat(
+                start_date_str.replace("Z", TIMEZONE_UTC_SUFFIX)
+            )
+            end_date = datetime.fromisoformat(
+                end_date_str.replace("Z", TIMEZONE_UTC_SUFFIX)
+            )
         except ValueError as e:
             return (
                 jsonify({"success": False, "error": f"Invalid date format: {str(e)}"}),

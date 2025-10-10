@@ -67,15 +67,12 @@ SENSITIVE_FIELDS = [
 ]
 
 
-def sanitize_for_audit(
-    entity_data: Dict[str, Any], entity_type: EntityType
-) -> Dict[str, Any]:
+def sanitize_for_audit(entity_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Remove sensitive fields before audit logging
 
     Args:
         entity_data: Entity data dictionary
-        entity_type: Type of entity being sanitized
 
     Returns:
         Sanitized dictionary with sensitive fields redacted
@@ -140,7 +137,7 @@ class AuditService:
         source_type: SourceType = SourceType.API,
         source_details: Optional[str] = None,
         request_context: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[str]:
         """
         Log entity creation
 
@@ -164,7 +161,7 @@ class AuditService:
             timestamp = datetime.now(timezone.utc)
 
             # Sanitize sensitive data
-            sanitized_new = sanitize_for_audit(new_values, entity_type)
+            sanitized_new = sanitize_for_audit(new_values)
 
             # Extract request context
             ip_address = None
@@ -238,7 +235,7 @@ class AuditService:
         source_type: SourceType = SourceType.API,
         source_details: Optional[str] = None,
         request_context: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[str]:
         """
         Log entity update
 
@@ -263,8 +260,8 @@ class AuditService:
             timestamp = datetime.now(timezone.utc)
 
             # Sanitize sensitive data
-            sanitized_old = sanitize_for_audit(old_values, entity_type)
-            sanitized_new = sanitize_for_audit(new_values, entity_type)
+            sanitized_old = sanitize_for_audit(old_values)
+            sanitized_new = sanitize_for_audit(new_values)
 
             # Determine which fields changed
             changed_fields = get_changed_fields(old_values, new_values)
@@ -340,7 +337,7 @@ class AuditService:
         source_type: SourceType = SourceType.API,
         source_details: Optional[str] = None,
         request_context: Optional[Dict[str, Any]] = None,
-    ) -> str:
+    ) -> Optional[str]:
         """
         Log entity deletion
 
@@ -364,7 +361,7 @@ class AuditService:
             timestamp = datetime.now(timezone.utc)
 
             # Sanitize sensitive data
-            sanitized_old = sanitize_for_audit(old_values, entity_type)
+            sanitized_old = sanitize_for_audit(old_values)
 
             # Extract request context
             ip_address = None
