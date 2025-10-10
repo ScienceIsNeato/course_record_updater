@@ -77,26 +77,61 @@ class MinimalSeeder:
 
         # Create CEI institution (minimal data)
         cei_id = db.create_institution({
-            "name": "California Engineering Institute",
-            "short_name": "CEI",
-            "admin_email": "admin@cei.edu",
-            "website_url": "https://cei.edu",
+                "name": "California Engineering Institute",
+                "short_name": "CEI",
+                "admin_email": "admin@cei.edu",
+                "website_url": "https://cei.edu",
             "created_by": site_admin["user_id"],
         })
         cei = db.get_institution_by_id(cei_id)
         self.log(f"   Created institution: {cei['name']}")
 
-        # Create CEI institution admin (different email from CSV data)
+        # Create CEI institution admin (matches test credentials)
         cei_admin_id = db.create_user({
-            "email": "bootstrap.admin@cei.edu",
+                "email": "sarah.admin@cei.edu",
             "password_hash": hash_password("InstitutionAdmin123!"),
-            "first_name": "Bootstrap",
-            "last_name": "Admin",
+                "first_name": "Sarah",
+                "last_name": "Chen",
             "role": "institution_admin",
             "institution_id": cei["institution_id"],
         })
         cei_admin = db.get_user_by_id(cei_admin_id)
         self.log(f"   Created institution admin: {cei_admin['email']}")
+        
+        # Create additional test users
+        self.log("👥 Creating test users...")
+        
+        # Program admin
+        prog_admin_id = db.create_user({
+                "email": "lisa.prog@cei.edu",
+            "password_hash": hash_password("TestUser123!"),
+                "first_name": "Lisa",
+            "last_name": "Martinez",
+                "role": "program_admin",
+            "institution_id": cei["institution_id"],
+        })
+        self.log(f"   Created program admin: lisa.prog@cei.edu")
+        
+        # Instructors
+        inst1_id = db.create_user({
+                "email": "john.instructor@cei.edu",
+            "password_hash": hash_password("TestUser123!"),
+                "first_name": "John",
+                "last_name": "Smith",
+                "role": "instructor",
+            "institution_id": cei["institution_id"],
+        })
+        self.log(f"   Created instructor: john.instructor@cei.edu")
+        
+        inst2_id = db.create_user({
+                "email": "jane.instructor@cei.edu",
+            "password_hash": hash_password("TestUser123!"),
+                "first_name": "Jane",
+            "last_name": "Doe",
+                "role": "instructor",
+            "institution_id": cei["institution_id"],
+        })
+        self.log(f"   Created instructor: jane.instructor@cei.edu")
 
         return {
             "site_admin_id": site_admin["user_id"],
@@ -160,7 +195,7 @@ def main():
     )
     parser.add_argument(
         "--clear",
-        action="store_true",
+        action="store_true", 
         help="Clear existing database before seeding",
     )
     parser.add_argument(
@@ -180,10 +215,12 @@ def main():
         # Create bootstrap entities
         bootstrap = seeder.create_bootstrap_entities()
 
-        # Import canonical test data
-        if not seeder.import_canonical_data(bootstrap["institution_id"]):
-            seeder.log("❌ Seeding failed during import")
-            return 1
+        # TODO: Re-enable CSV import once password hash issue is resolved
+        # For now, bootstrap creates all test data
+        # if not seeder.import_canonical_data(bootstrap["institution_id"]):
+        #     seeder.log("❌ Seeding failed during import")
+        #     return 1
+        seeder.log("⚠️  CSV import temporarily disabled - using bootstrap-only data")
 
         seeder.log("✅ Database seeding completed successfully!")
         seeder.log("")
@@ -192,14 +229,17 @@ def main():
         seeder.log("      Email: siteadmin@system.local")
         seeder.log("      Password: SiteAdmin123!")
         seeder.log("")
-        seeder.log("   Bootstrap Institution Admin:")
-        seeder.log("      Email: bootstrap.admin@cei.edu")
+        seeder.log("   Institution Admin:")
+        seeder.log("      Email: sarah.admin@cei.edu")
         seeder.log("      Password: InstitutionAdmin123!")
         seeder.log("")
-        seeder.log("   Canonical Data Accounts (from CSV):")
-        seeder.log("      Institution Admin: sarah.admin@cei.edu / InstitutionAdmin123!")
-        seeder.log("      Program Admin: lisa.prog@cei.edu / TestUser123!")
-        seeder.log("      Instructors: john.instructor@cei.edu, jane.instructor@cei.edu / TestUser123!")
+        seeder.log("   Program Admin:")
+        seeder.log("      Email: lisa.prog@cei.edu")
+        seeder.log("      Password: TestUser123!")
+        seeder.log("")
+        seeder.log("   Instructors:")
+        seeder.log("      john.instructor@cei.edu / TestUser123!")
+        seeder.log("      jane.instructor@cei.edu / TestUser123!")
         seeder.log("")
         seeder.log("🎯 Ready for UAT testing!")
 
