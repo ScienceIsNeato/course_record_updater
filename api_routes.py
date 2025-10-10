@@ -2761,6 +2761,39 @@ def delete_section_endpoint(section_id: str):
 # ========================================
 
 
+@api.route("/courses/<course_id>/outcomes", methods=["GET"])
+@permission_required("view_program_data")
+def list_course_outcomes_endpoint(course_id: str):
+    """
+    Get list of outcomes for a course
+
+    Returns outcomes with their assessment data for instructors to view/update
+    """
+    try:
+        # Check if course exists and user has access
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        # Get outcomes for this course
+        outcomes = get_course_outcomes(course_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "outcomes": outcomes,
+                "count": len(outcomes),
+                "course_number": course.get("course_number"),
+                "course_title": course.get("course_title"),
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course outcomes", "Failed to retrieve course outcomes"
+        )
+
+
 @api.route("/courses/<course_id>/outcomes", methods=["POST"])
 @permission_required("manage_courses")
 def create_course_outcome_endpoint(course_id: str):
@@ -2878,7 +2911,7 @@ def update_course_outcome_endpoint(outcome_id: str):
 
 
 @api.route("/outcomes/<outcome_id>/assessment", methods=["PUT"])
-@permission_required("manage_courses")
+@permission_required("submit_assessments")
 def update_outcome_assessment_endpoint(outcome_id: str):
     """
     Update course outcome assessment data

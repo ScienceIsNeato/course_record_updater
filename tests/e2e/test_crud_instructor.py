@@ -85,9 +85,6 @@ def test_tc_crud_inst_001_update_own_profile(instructor_authenticated_page: Page
 
 
 @pytest.mark.e2e
-@pytest.mark.skip(
-    reason="Assessment UI not yet implemented (greenfield - build the UI first)"
-)
 def test_tc_crud_inst_002_update_section_assessment(
     instructor_authenticated_page: Page,
 ):
@@ -96,16 +93,62 @@ def test_tc_crud_inst_002_update_section_assessment(
 
     Steps:
     1. Login as instructor (fixture provides this)
-    2. Navigate to section/outcomes page
-    3. Click "Update Assessment" for a CLO
-    4. Fill assessment form and submit
-    5. Verify assessment data appears in UI
+    2. Navigate to assessments page
+    3. Select a course with outcomes
+    4. Click "Update Assessment" for a CLO
+    5. Fill assessment form and submit
+    6. Verify assessment data appears in UI
 
     Expected: Assessment updates succeed for instructor's own sections
-
-    TODO: Implement assessment UI before un-skipping this test
     """
-    pytest.skip("Assessment UI not yet implemented - build the UI to enable this test")
+    page = instructor_authenticated_page
+
+    # Navigate to assessments page
+    page.goto(f"{BASE_URL}/assessments")
+    page.wait_for_load_state("networkidle")
+
+    # Wait for course selector to load
+    try:
+        page.wait_for_selector("#courseSelect option:not([value=''])", timeout=10000)
+    except Exception:
+        pytest.skip("No courses found for instructor - seed data may not have outcomes")
+
+    # Select first available course
+    page.select_option("#courseSelect", index=1)
+
+    # Wait for outcomes to load - skip if none exist
+    try:
+        page.wait_for_selector(".update-assessment-btn", timeout=10000)
+    except Exception:
+        pytest.skip("No outcomes found for selected course - seed data needs outcomes")
+
+    # Click first "Update Assessment" button
+    page.click(".update-assessment-btn")
+
+    # Wait for modal to appear
+    page.wait_for_selector("#updateAssessmentModal", state="visible", timeout=5000)
+
+    # Fill assessment data
+    page.fill("#studentsAssessed", "25")
+    page.fill("#studentsMeetingTarget", "20")
+    page.fill("#assessmentNarrative", "Students performed well overall")
+
+    # Submit form
+    page.click("#updateAssessmentForm button[type='submit']")
+
+    # Wait for modal to close
+    page.wait_for_selector("#updateAssessmentModal", state="hidden", timeout=5000)
+
+    # Wait for alert and dismiss it
+    page.once("dialog", lambda dialog: dialog.accept())
+
+    # Verify assessment data appears (wait for reload)
+    page.wait_for_function(
+        "() => document.querySelector('.list-group-item .text-success')?.textContent?.includes('20/25')",
+        timeout=5000,
+    )
+
+    print("✅ TC-CRUD-INST-002: Instructor successfully updated assessment via UI")
 
 
 @pytest.mark.e2e

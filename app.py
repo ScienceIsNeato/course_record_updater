@@ -202,6 +202,16 @@ def users_list():
     return render_template("users_list.html", user=user)
 
 
+@app.route("/assessments")
+@login_required
+def assessments_page():
+    """Display assessment/outcomes page for instructors"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    return render_template("assessments.html", user=user)
+
+
 @app.route("/sections")
 @login_required
 def sections_list():

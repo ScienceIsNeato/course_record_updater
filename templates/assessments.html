@@ -1,0 +1,278 @@
+{% extends "layout.html" %}
+
+{% block title %}Course Assessments{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Course Assessments</h1>
+    <p class="lead">View and update outcome assessments for your sections</p>
+    
+    <!-- Course Selector -->
+    <div class="mb-4">
+        <label for="courseSelect" class="form-label">Select Course:</label>
+        <select class="form-select" id="courseSelect">
+            <option value="">Loading courses...</option>
+        </select>
+    </div>
+    
+    <!-- Outcomes List -->
+    <div id="outcomesContainer">
+        <p class="text-muted">Select a course to view its outcomes</p>
+    </div>
+</div>
+
+<!-- Update Assessment Modal -->
+<div class="modal fade" id="updateAssessmentModal" tabindex="-1" aria-labelledby="updateAssessmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateAssessmentModalLabel">Update Assessment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="updateAssessmentForm">
+                <div class="modal-body">
+                    <input type="hidden" id="assessmentOutcomeId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Outcome Description:</label>
+                        <p id="assessmentOutcomeDescription" class="text-muted"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="studentsAssessed" class="form-label">Students Assessed *</label>
+                        <input type="number" class="form-control" id="studentsAssessed" name="students_assessed" required min="0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="studentsMeetingTarget" class="form-label">Students Meeting Target *</label>
+                        <input type="number" class="form-control" id="studentsMeetingTarget" name="students_meeting_target" required min="0">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assessmentNarrative" class="form-label">Narrative (Optional)</label>
+                        <textarea class="form-control" id="assessmentNarrative" name="narrative" rows="3" placeholder="Optional notes about this assessment"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Assessment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const courseSelect = document.getElementById('courseSelect');
+    const outcomesContainer = document.getElementById('outcomesContainer');
+    const updateAssessmentModal = document.getElementById('updateAssessmentModal');
+    const updateAssessmentForm = document.getElementById('updateAssessmentForm');
+    
+    // Load instructor's courses
+    async function loadCourses() {
+        try {
+            // Get sections for instructor
+            const sectionsResponse = await fetch('/api/sections');
+            if (!sectionsResponse.ok) throw new Error('Failed to load sections');
+            
+            const sectionsData = await sectionsResponse.json();
+            const sections = sectionsData.sections || [];
+            
+            // Get unique course IDs from sections
+            const courseIds = [...new Set(sections.map(s => s.course_id))];
+            
+            // Get course details
+            const coursesResponse = await fetch('/api/courses');
+            if (!coursesResponse.ok) throw new Error('Failed to load courses');
+            
+            const coursesData = await coursesResponse.json();
+            const allCourses = coursesData.courses || [];
+            
+            // Filter to only courses instructor has sections for
+            const instructorCourses = allCourses.filter(c => courseIds.includes(c.course_id));
+            
+            // Populate dropdown
+            courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
+            instructorCourses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.course_id;
+                option.textContent = `${course.course_number} - ${course.course_title}`;
+                courseSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading courses:', error);
+            courseSelect.innerHTML = '<option value="">Error loading courses</option>';
+        }
+    }
+    
+    // Load outcomes for selected course
+    async function loadOutcomes(courseId) {
+        if (!courseId) {
+            outcomesContainer.innerHTML = '<p class="text-muted">Select a course to view its outcomes</p>';
+            return;
+        }
+        
+        outcomesContainer.innerHTML = '<p>Loading outcomes...</p>';
+        
+        try {
+            const response = await fetch(`/api/courses/${courseId}/outcomes`);
+            if (!response.ok) throw new Error('Failed to load outcomes');
+            
+            const data = await response.json();
+            const outcomes = data.outcomes || [];
+            
+            if (outcomes.length === 0) {
+                outcomesContainer.innerHTML = `
+                    <div class="alert alert-info">
+                        No outcomes defined for ${data.course_number} - ${data.course_title}
+                    </div>
+                `;
+                return;
+            }
+            
+            // Display outcomes with update buttons
+            let html = `
+                <h3>${data.course_number} - ${data.course_title}</h3>
+                <p class="text-muted">Course Learning Outcomes (CLOs)</p>
+                <div class="list-group">
+            `;
+            
+            outcomes.forEach(outcome => {
+                const assessment = outcome.assessment_data || {};
+                const assessed = assessment.students_assessed || 0;
+                const meeting = assessment.students_meeting_target || 0;
+                const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
+                
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">${escapeHtml(outcome.description)}</h5>
+                                ${assessed > 0 ? `
+                                    <p class="mb-1 text-success">
+                                        Assessment: ${meeting}/${assessed} students meeting target (${percentage}%)
+                                    </p>
+                                ` : `
+                                    <p class="mb-1 text-muted">No assessment data yet</p>
+                                `}
+                                ${outcome.narrative ? `
+                                    <small class="text-muted">${escapeHtml(outcome.narrative)}</small>
+                                ` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary update-assessment-btn" 
+                                    data-outcome-id="${outcome.outcome_id}"
+                                    data-description="${escapeHtml(outcome.description)}"
+                                    data-assessed="${assessed}"
+                                    data-meeting="${meeting}"
+                                    data-narrative="${escapeHtml(outcome.narrative || '')}">
+                                Update Assessment
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            outcomesContainer.innerHTML = html;
+            
+            // Add click handlers for update buttons
+            document.querySelectorAll('.update-assessment-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    openUpdateAssessmentModal(this.dataset);
+                });
+            });
+            
+        } catch (error) {
+            console.error('Error loading outcomes:', error);
+            outcomesContainer.innerHTML = '<div class="alert alert-danger">Error loading outcomes</div>';
+        }
+    }
+    
+    // Open update assessment modal
+    function openUpdateAssessmentModal(outcomeData) {
+        document.getElementById('assessmentOutcomeId').value = outcomeData.outcomeId;
+        document.getElementById('assessmentOutcomeDescription').textContent = outcomeData.description;
+        document.getElementById('studentsAssessed').value = outcomeData.assessed || '';
+        document.getElementById('studentsMeetingTarget').value = outcomeData.meeting || '';
+        document.getElementById('assessmentNarrative').value = outcomeData.narrative || '';
+        
+        const modal = new bootstrap.Modal(updateAssessmentModal);
+        modal.show();
+    }
+    
+    // Handle assessment form submission
+    updateAssessmentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const outcomeId = document.getElementById('assessmentOutcomeId').value;
+        const studentsAssessed = parseInt(document.getElementById('studentsAssessed').value);
+        const studentsMeetingTarget = parseInt(document.getElementById('studentsMeetingTarget').value);
+        const narrative = document.getElementById('assessmentNarrative').value;
+        
+        if (studentsMeetingTarget > studentsAssessed) {
+            alert('Students meeting target cannot exceed students assessed');
+            return;
+        }
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            const response = await fetch(`/api/outcomes/${outcomeId}/assessment`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    assessment_data: {
+                        students_assessed: studentsAssessed,
+                        students_meeting_target: studentsMeetingTarget
+                    },
+                    narrative: narrative
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update assessment');
+            }
+            
+            // Close modal and reload outcomes
+            const modal = bootstrap.Modal.getInstance(updateAssessmentModal);
+            modal.hide();
+            
+            alert('Assessment updated successfully!');
+            
+            // Reload outcomes for current course
+            const currentCourseId = courseSelect.value;
+            if (currentCourseId) {
+                await loadOutcomes(currentCourseId);
+            }
+            
+        } catch (error) {
+            console.error('Error updating assessment:', error);
+            alert('Failed to update assessment: ' + error.message);
+        }
+    });
+    
+    // Course selection handler
+    courseSelect.addEventListener('change', function() {
+        loadOutcomes(this.value);
+    });
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Initialize
+    await loadCourses();
+});
+</script>
+{% endblock %}
+
