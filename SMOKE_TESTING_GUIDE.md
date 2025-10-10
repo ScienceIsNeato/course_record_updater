@@ -161,7 +161,7 @@ python -c "from database_service import db; print('DB Status:', db._client)"
 ### Web Interface Issues
 ```bash
 # Check server logs
-./tail_logs.sh
+./scripts/monitor_logs.sh
 
 # Verify static assets
 curl -I http://localhost:3001/static/script.js

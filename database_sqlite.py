@@ -655,15 +655,33 @@ class SQLiteDatabase(DatabaseInterface):
 
             # Enrich sections with related data using separate queries
             enriched_sections = []
-            for section in sections:
+
+            for i, section in enumerate(sections):
                 section_dict = to_dict(section)
+
+                # DEBUG: Print to stderr to see if this runs
+                import sys
+
+                print(
+                    f"[ENRICH-DEBUG] Section {i}: offering_id={section.offering_id}",
+                    file=sys.stderr,
+                )
 
                 # Get offering details to find course and term
                 offering = session.get(CourseOffering, section.offering_id)
+                print(
+                    f"[ENRICH-DEBUG]   Offering found: {offering is not None}",
+                    file=sys.stderr,
+                )
+
                 if offering:
                     # Add course_id for easy filtering (e.g., in assessment UI)
                     section_dict["course_id"] = offering.course_id
                     section_dict["term_id"] = offering.term_id
+                    print(
+                        f"[ENRICH-DEBUG]   Set course_id={offering.course_id}",
+                        file=sys.stderr,
+                    )
 
                     # Get course details
                     course = session.get(Course, offering.course_id)
@@ -675,6 +693,10 @@ class SQLiteDatabase(DatabaseInterface):
                     term = session.get(Term, offering.term_id)
                     if term:
                         section_dict["term_name"] = term.term_name
+                else:
+                    print(
+                        f"[ENRICH-DEBUG]   WARNING: No offering found!", file=sys.stderr
+                    )
 
                 # Get instructor details if assigned
                 if section.instructor_id:
@@ -964,7 +986,43 @@ class SQLiteDatabase(DatabaseInterface):
                 .scalars()
                 .all()
             )
-            return [to_dict(section) for section in sections]
+
+            # Enrich sections with related data (same as get_all_sections)
+            enriched_sections = []
+
+            for section in sections:
+                section_dict = to_dict(section)
+
+                # Get offering details to find course and term
+                offering = session.get(CourseOffering, section.offering_id)
+
+                if offering:
+                    # Add course_id for easy filtering (e.g., in assessment UI)
+                    section_dict["course_id"] = offering.course_id
+                    section_dict["term_id"] = offering.term_id
+
+                    # Get course details
+                    course = session.get(Course, offering.course_id)
+                    if course:
+                        section_dict["course_number"] = course.course_number
+                        section_dict["course_title"] = course.course_title
+
+                    # Get term details
+                    term = session.get(Term, offering.term_id)
+                    if term:
+                        section_dict["term_name"] = term.term_name
+
+                # Get instructor details if assigned (though we know it's this instructor)
+                if section.instructor_id:
+                    instructor = session.get(User, section.instructor_id)
+                    if instructor:
+                        section_dict["instructor_name"] = (
+                            f"{instructor.first_name} {instructor.last_name}"
+                        )
+
+                enriched_sections.append(section_dict)
+
+            return enriched_sections
 
     # ------------------------------------------------------------------
     # Program operations

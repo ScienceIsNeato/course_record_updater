@@ -11,8 +11,9 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Default log file
-LOG_FILE="logs/server.log"
+# Default log file and environment
+LOG_FILE=""
+ENVIRONMENT=""
 
 # Function to show usage
 show_usage() {
@@ -21,16 +22,23 @@ show_usage() {
     echo "Monitor Course Record Updater server logs in real-time"
     echo ""
     echo "Options:"
-    echo "  -f, --file FILE    Monitor specific log file (default: logs/server.log)"
+    echo "  --env ENV          Environment: dev, e2e, or uat (default: dev)"
+    echo "  -f, --file FILE    Monitor specific log file (overrides --env)"
     echo "  -n, --lines NUM    Show last NUM lines and exit (no follow)"
     echo "  --follow           Force follow mode even with -n"
     echo "  -h, --help         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                      # Monitor default server log (follow mode)"
-    echo "  $0 -n 50              # Show last 50 lines and exit"
-    echo "  $0 -n 20 --follow     # Show last 20 lines then follow"
-    echo "  $0 -f logs/database_location.txt  # View current SQLite database path"
+    echo "  $0                      # Monitor dev server log (follow mode)"
+    echo "  $0 --env e2e            # Monitor E2E test server log"
+    echo "  $0 --env e2e -n 50      # Show last 50 E2E log lines"
+    echo "  $0 -n 20 --follow       # Show last 20 dev lines then follow"
+    echo "  $0 -f logs/database_location.txt  # View specific file"
+    echo ""
+    echo "Environment Log Files:"
+    echo "  dev: logs/server.log"
+    echo "  e2e: logs/test_server.log"
+    echo "  uat: logs/test_server.log"
 }
 
 # Parse command line arguments
@@ -38,6 +46,10 @@ LINES=10
 FOLLOW=true
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --env)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
         -f|--file)
             LOG_FILE="$2"
             shift 2
@@ -62,6 +74,24 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Determine log file based on environment if not explicitly provided
+if [ -z "$LOG_FILE" ]; then
+    case "$ENVIRONMENT" in
+        e2e|uat)
+            LOG_FILE="logs/test_server.log"
+            ;;
+        dev|"")
+            LOG_FILE="logs/server.log"
+            ENVIRONMENT="dev"  # Set default
+            ;;
+        *)
+            echo -e "${RED}❌ Invalid environment: $ENVIRONMENT${NC}" >&2
+            echo -e "${YELLOW}Valid environments: dev, e2e, uat${NC}"
+            exit 1
+            ;;
+    esac
+fi
 
 # Check if log file exists
 if [ ! -f "$LOG_FILE" ]; then
@@ -105,6 +135,7 @@ colorize_logs() {
 # Main execution
 echo -e "${BLUE}📋 Course Record Updater - Log Monitor${NC}"
 echo -e "${BLUE}=======================================${NC}"
+echo -e "${BLUE}🌍 Environment: $ENVIRONMENT${NC}"
 echo -e "${BLUE}📁 Monitoring: $LOG_FILE${NC}"
 
 if [ "$FOLLOW" = true ]; then

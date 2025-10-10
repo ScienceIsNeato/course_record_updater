@@ -2513,6 +2513,28 @@ def list_sections():
                 )
             sections = get_all_sections(institution_id)
 
+            # DEBUG: Check if course_id is in sections
+            import sys
+
+            if sections:
+                print(
+                    f"[API-DEBUG] Got {len(sections)} sections from get_all_sections()",
+                    file=sys.stderr,
+                )
+                print(
+                    f"[API-DEBUG] First section keys: {list(sections[0].keys())}",
+                    file=sys.stderr,
+                )
+                print(
+                    f"[API-DEBUG] First section has course_id? {'course_id' in sections[0]}",
+                    file=sys.stderr,
+                )
+                if "course_id" in sections[0]:
+                    print(
+                        f"[API-DEBUG] First section course_id value: {sections[0]['course_id']}",
+                        file=sys.stderr,
+                    )
+
         # Filter based on permissions
         if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
             "view_all_sections"

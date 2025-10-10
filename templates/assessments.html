@@ -96,7 +96,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const sections = sectionsData.sections || [];
             console.log(`📢 Got ${sections.length} sections`);
             if (sections.length > 0) {
-                console.log(`📢 First section:`, sections[0]);
+                console.log(`📢 First section FULL:`, JSON.stringify(sections[0], null, 2));
+                console.log(`📢 First section course_id:`, sections[0].course_id);
+                console.log(`📢 First section offering_id:`, sections[0].offering_id);
             }
             
             // Get unique course IDs from sections
