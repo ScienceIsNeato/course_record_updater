@@ -322,7 +322,6 @@ def test_tc_crud_pa_005_create_sections(program_admin_authenticated_page: Page):
 
 
 @pytest.mark.e2e
-@pytest.mark.skip(reason="Multi-program access testing requires complex fixture setup")
 def test_tc_crud_pa_006_cannot_access_other_programs(
     program_admin_authenticated_page: Page,
 ):
@@ -333,11 +332,49 @@ def test_tc_crud_pa_006_cannot_access_other_programs(
     1. Login as program admin (fixture provides this)
     2. Get list of courses via API
     3. Verify all courses belong to program admin's programs
-    4. Attempt to access course from different program
-    5. Verify 403 or empty response
+    4. Verify courses from other programs are not visible
 
     Expected: Program admin cannot access courses from other programs
 
-    TODO: Requires seeded data with multiple program admins and programs
+    Note: lisa.prog@cei.edu is assigned to programs [3, 4] (Liberal Arts and Business)
     """
-    pytest.skip("Requires complex multi-program fixture setup")
+    page = program_admin_authenticated_page
+
+    # Navigate to dashboard to establish session
+    page.goto(f"{BASE_URL}/dashboard")
+    page.wait_for_load_state("networkidle")
+
+    # Get current user info to know their assigned programs
+    user_response = page.request.get(f"{BASE_URL}/api/me")
+    assert user_response.ok, f"Failed to fetch user info: {user_response.status}"
+
+    user_data = user_response.json()
+    user_program_ids = user_data.get("program_ids", [])
+    assert (
+        len(user_program_ids) > 0
+    ), f"Program admin should have at least one assigned program, got: {user_program_ids}"
+
+    # Get all courses via API - should be filtered by user's programs
+    courses_response = page.request.get(f"{BASE_URL}/api/courses")
+    assert courses_response.ok, f"Failed to fetch courses: {courses_response.status}"
+
+    courses_data = courses_response.json()
+    assert courses_data["success"], "Courses API should succeed"
+    courses = courses_data.get("courses", [])
+
+    print(f"User program_ids: {user_program_ids}")
+    print(f"Found {len(courses)} courses")
+
+    # Verify all visible courses belong to user's assigned programs
+    for course in courses:
+        course_program_ids = course.get("program_ids", [])
+        # Course should have at least one program ID that overlaps with user's programs
+        has_overlap = any(pid in user_program_ids for pid in course_program_ids)
+        assert has_overlap, (
+            f"Course {course.get('course_number')} (program_ids: {course_program_ids}) "
+            f"doesn't overlap with user's programs {user_program_ids}"
+        )
+
+    print(
+        f"✅ TC-CRUD-PA-006: Program Admin can only see courses in their assigned programs"
+    )

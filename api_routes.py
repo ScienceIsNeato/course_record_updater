@@ -681,6 +681,35 @@ def clear_program_context():
 # ========================================
 
 
+@api.route("/me", methods=["GET"])
+def get_current_user_info():
+    """
+    Get current authenticated user's information
+
+    Returns full user object including program_ids for RBAC validation
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        # Return user data with program_ids for program admin RBAC
+        return jsonify(
+            {
+                "success": True,
+                "user_id": current_user["user_id"],
+                "email": current_user["email"],
+                "first_name": current_user.get("first_name"),
+                "last_name": current_user.get("last_name"),
+                "role": current_user["role"],
+                "institution_id": current_user.get("institution_id"),
+                "program_ids": current_user.get("program_ids", []),
+            }
+        )
+    except Exception as e:
+        return handle_api_error(e, "Get current user", "Failed to get user information")
+
+
 @api.route("/users", methods=["GET"])
 @permission_required("view_institution_data")  # Read-only access for viewing users
 def list_users():
@@ -1124,8 +1153,23 @@ def _get_institution_courses(institution_id, current_program_id, department_filt
         context_info = f"department {department_filter}"
         return courses, context_info
     else:
+        # Get all courses for institution
         courses = get_all_courses(institution_id)
         context_info = f"institution {institution_id}"
+
+        # RBAC: Program admins can only see courses in their assigned programs
+        current_user = get_current_user()
+        if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
+            user_program_ids = current_user.get("program_ids", [])
+            if user_program_ids:
+                # Filter courses to only those that belong to user's programs
+                courses = [
+                    c
+                    for c in courses
+                    if any(pid in user_program_ids for pid in c.get("program_ids", []))
+                ]
+                context_info = f"programs {user_program_ids}"
+
         return courses, context_info
 
 
