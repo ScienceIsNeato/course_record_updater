@@ -85,9 +85,7 @@ def test_tc_crud_inst_001_update_own_profile(instructor_authenticated_page: Page
 
 
 @pytest.mark.e2e
-@pytest.mark.skip(
-    reason="Assessment page returning 500 error - needs debugging of /api/sections or /api/courses endpoint in E2E environment"
-)
+# Temporarily un-skipped to debug 500 error
 def test_tc_crud_inst_002_update_section_assessment(
     instructor_authenticated_page: Page,
 ):
@@ -111,9 +109,63 @@ def test_tc_crud_inst_002_update_section_assessment(
     """
     page = instructor_authenticated_page
 
+    # Add response listener to capture 500 errors
+    failed_requests = []
+
+    def log_response(response):
+        if response.status == 500:
+            failed_requests.append(
+                {
+                    "url": response.url,
+                    "status": response.status,
+                    "method": response.request.method,
+                }
+            )
+            print(f"🔴 500 ERROR: {response.request.method} {response.url}")
+
+    page.on("response", log_response)
+
     # Navigate to assessments page
     page.goto(f"{BASE_URL}/assessments")
     page.wait_for_load_state("networkidle")
+
+    # If we got 500 errors, print details before failing
+    if failed_requests:
+        print("\n🔴 Failed requests:")
+        for req in failed_requests:
+            print(f"  {req['method']} {req['url']} → {req['status']}")
+        # Try to get response body
+        import time
+
+        time.sleep(1)  # Give time for all requests to complete
+
+    # Debug: Check what's in the course selector
+    import time
+
+    time.sleep(2)  # Give JavaScript time to run
+
+    options_html = page.locator("#courseSelect").inner_html()
+    print(f"\n📋 Course selector HTML:\n{options_html}\n")
+
+    # Check if JavaScript loaded and ran
+    js_debug = page.evaluate(
+        """() => {
+        return {
+            courseSelectExists: !!document.getElementById('courseSelect'),
+            loadCoursesExists: typeof loadCourses !== 'undefined',
+            windowLoaded: document.readyState
+        };
+    }"""
+    )
+    print(f"JS Debug: {js_debug}")
+
+    # Try to get the actual options
+    options = page.locator("#courseSelect option").all()
+    print(f"Found {len(options)} options in dropdown")
+    for i, opt in enumerate(options):
+        value = opt.get_attribute("value")
+        text = opt.inner_text()
+        print(f"  Option {i}: value='{value}', text='{text}'")
 
     # Wait for course selector to load
     page.wait_for_selector("#courseSelect option:not([value=''])", timeout=10000)

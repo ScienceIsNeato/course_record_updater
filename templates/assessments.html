@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "dashboard/base_dashboard.html" %}
 
 {% block title %}Course Assessments{% endblock %}
 
@@ -65,14 +65,17 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     const courseSelect = document.getElementById('courseSelect');
     const outcomesContainer = document.getElementById('outcomesContainer');
     const updateAssessmentModal = document.getElementById('updateAssessmentModal');
     const updateAssessmentForm = document.getElementById('updateAssessmentForm');
     
+    console.log('Assessment page: DOMContentLoaded fired');
+    
     // Load instructor's courses
     async function loadCourses() {
+        console.log('Assessment page: loadCourses() called');
         try {
             // Get sections for instructor
             const sectionsResponse = await fetch('/api/sections');

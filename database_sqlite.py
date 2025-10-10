@@ -661,6 +661,10 @@ class SQLiteDatabase(DatabaseInterface):
                 # Get offering details to find course and term
                 offering = session.get(CourseOffering, section.offering_id)
                 if offering:
+                    # Add course_id for easy filtering (e.g., in assessment UI)
+                    section_dict["course_id"] = offering.course_id
+                    section_dict["term_id"] = offering.term_id
+
                     # Get course details
                     course = session.get(Course, offering.course_id)
                     if course:
