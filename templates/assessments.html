@@ -65,37 +65,57 @@
 
 {% block extra_js %}
 <script>
+// IMMEDIATE TEST: Does ANY JavaScript run?
+alert('🚨 ASSESSMENT JS LOADED!');
+console.log('📢 ASSESSMENT JS: Script tag loaded (before DOMContentLoaded)');
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('📢 ASSESSMENT JS: DOMContentLoaded fired');
+    
     const courseSelect = document.getElementById('courseSelect');
     const outcomesContainer = document.getElementById('outcomesContainer');
     const updateAssessmentModal = document.getElementById('updateAssessmentModal');
     const updateAssessmentForm = document.getElementById('updateAssessmentForm');
     
-    console.log('Assessment page: DOMContentLoaded fired');
+    console.log('📢 ASSESSMENT JS: Elements found:', {
+        courseSelect: !!courseSelect,
+        outcomesContainer: !!outcomesContainer
+    });
     
     // Load instructor's courses
     async function loadCourses() {
-        console.log('Assessment page: loadCourses() called');
+        console.log('📢 loadCourses() START');
         try {
             // Get sections for instructor
+            console.log('📢 Fetching /api/sections...');
             const sectionsResponse = await fetch('/api/sections');
+            console.log(`📢 /api/sections response: ${sectionsResponse.status}`);
             if (!sectionsResponse.ok) throw new Error('Failed to load sections');
             
             const sectionsData = await sectionsResponse.json();
             const sections = sectionsData.sections || [];
+            console.log(`📢 Got ${sections.length} sections`);
+            if (sections.length > 0) {
+                console.log(`📢 First section:`, sections[0]);
+            }
             
             // Get unique course IDs from sections
             const courseIds = [...new Set(sections.map(s => s.course_id))];
+            console.log(`📢 Unique course IDs: ${courseIds.length}`, courseIds);
             
             // Get course details
+            console.log('📢 Fetching /api/courses...');
             const coursesResponse = await fetch('/api/courses');
+            console.log(`📢 /api/courses response: ${coursesResponse.status}`);
             if (!coursesResponse.ok) throw new Error('Failed to load courses');
             
             const coursesData = await coursesResponse.json();
             const allCourses = coursesData.courses || [];
+            console.log(`📢 Got ${allCourses.length} total courses`);
             
             // Filter to only courses instructor has sections for
             const instructorCourses = allCourses.filter(c => courseIds.includes(c.course_id));
+            console.log(`📢 Filtered to ${instructorCourses.length} instructor courses`);
             
             // Populate dropdown
             courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
@@ -105,8 +125,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 option.textContent = `${course.course_number} - ${course.course_title}`;
                 courseSelect.appendChild(option);
             });
+            console.log('📢 loadCourses() COMPLETE');
         } catch (error) {
-            console.error('Error loading courses:', error);
+            console.error('❌ Error loading courses:', error);
             courseSelect.innerHTML = '<option value="">Error loading courses</option>';
         }
     }
@@ -273,8 +294,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
     
-    // Initialize
-    await loadCourses();
+    // Initialize - call async function
+    loadCourses().catch(err => console.error('Failed to load courses:', err));
 });
 </script>
 {% endblock %}

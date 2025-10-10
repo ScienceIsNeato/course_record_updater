@@ -109,6 +109,22 @@ def test_tc_crud_inst_002_update_section_assessment(
     """
     page = instructor_authenticated_page
 
+    # Add console listener to capture ALL console messages (not just errors)
+    console_messages = []
+
+    def log_console(msg):
+        console_messages.append(f"[{msg.type}] {msg.text}")
+        print(f"📢 CONSOLE [{msg.type}]: {msg.text}")
+
+    page.on("console", log_console)
+
+    # Add dialog listener to see if alerts fire
+    def log_dialog(dialog):
+        print(f"🚨 DIALOG DETECTED: {dialog.type} - {dialog.message}")
+        dialog.accept()  # Auto-accept to continue
+
+    page.on("dialog", log_dialog)
+
     # Add response listener to capture 500 errors
     failed_requests = []
 
@@ -128,6 +144,19 @@ def test_tc_crud_inst_002_update_section_assessment(
     # Navigate to assessments page
     page.goto(f"{BASE_URL}/assessments")
     page.wait_for_load_state("networkidle")
+
+    # DEBUG: Check if extra_js block is rendered
+    page_html = page.content()
+    if "🚨 ASSESSMENT JS LOADED!" in page_html:
+        print("✅ extra_js block IS rendered in HTML")
+    else:
+        print("❌ extra_js block NOT rendered in HTML!")
+        # Check what scripts ARE there
+        print(f"\nScripts in page: {page_html.count('<script')}")
+        if "extra_js" in page_html.lower():
+            print("'extra_js' text found in HTML (likely comment)")
+        if "formatTimestamp" in page_html:
+            print("✅ base_dashboard.html scripts present")
 
     # If we got 500 errors, print details before failing
     if failed_requests:
