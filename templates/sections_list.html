@@ -206,7 +206,7 @@ async function loadSections() {
                     <td>${escapeHtml(section.course_number || '-')} - ${escapeHtml(section.course_title || '-')}</td>
                     <td>${escapeHtml(section.instructor_name || '-')}</td>
                     <td>${escapeHtml(section.term_name || '-')}</td>
-                    <td>${section.enrollment_count || 0} / ${section.enrollment_capacity || 'N/A'}</td>
+                    <td>${section.enrollment || 0}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary edit-section-btn" data-section-id="${section.section_id}">
                             <i class="fas fa-edit"></i> Edit
