@@ -259,10 +259,16 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
 
     # Verify the updated title appears in the table
     program_admin_authenticated_page.wait_for_load_state("networkidle")
-    program_admin_authenticated_page.wait_for_function(
-        f"document.querySelector('#coursesTableContainer')?.innerText?.includes('{original_title} - Updated')",
-        timeout=5000,
+
+    # Verify the updated title in the table (read it back instead of wait_for_function)
+    updated_title = program_admin_authenticated_page.evaluate(
+        "document.querySelector('#coursesTableContainer table tbody tr td:nth-child(2)')?.innerText"
     )
+
+    expected_title = f"{original_title} - Updated"
+    assert (
+        expected_title in updated_title
+    ), f"Expected '{expected_title}' to be in '{updated_title}'"
 
     print("✅ TC-CRUD-PA-004: Program Admin successfully managed program course via UI")
 
