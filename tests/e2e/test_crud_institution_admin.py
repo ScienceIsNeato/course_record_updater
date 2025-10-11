@@ -207,8 +207,8 @@ def test_tc_crud_ia_004_cannot_delete_program_with_courses(authenticated_page: P
         headers={"X-CSRFToken": csrf_token} if csrf_token else {},
     )
 
-    # Expecting 400 or 403 (referential integrity violation)
-    assert response.status in [400, 403], f"Expected 400/403, got {response.status}"
+    # Expecting 409 Conflict (referential integrity violation)
+    assert response.status == 409, f"Expected 409 Conflict, got {response.status}"
 
     print(
         "✅ TC-CRUD-IA-004: Institution Admin correctly blocked from deleting program with courses"
