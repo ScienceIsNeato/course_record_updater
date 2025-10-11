@@ -77,7 +77,9 @@ class TestDashboardServiceScoped:
         mock_institution,
         service,
     ):
-        mock_programs.return_value = [{"id": "prog-1"}]
+        mock_programs.return_value = [
+            {"program_id": "prog-1", "institution_id": "inst-1"}
+        ]
         mock_courses.return_value = [
             {"course_id": "course-1", "program_ids": ["prog-1"]}
         ]
@@ -135,8 +137,8 @@ class TestDashboardServiceScoped:
         service,
     ):
         mock_programs.return_value = [
-            {"id": "prog-1", "name": "Program 1"},
-            {"id": "prog-2", "name": "Program 2"},
+            {"program_id": "prog-1", "name": "Program 1", "institution_id": "inst-1"},
+            {"program_id": "prog-2", "name": "Program 2", "institution_id": "inst-1"},
         ]
         # Same course appears in both programs - tests deduplication logic
         mock_courses.side_effect = [

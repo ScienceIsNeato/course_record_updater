@@ -584,7 +584,7 @@ class DashboardService:
     def _get_program_id(self, program: Optional[Dict[str, Any]]) -> Optional[str]:
         if not program:
             return None
-        return program.get("program_id") or program.get("id")
+        return program.get("program_id")
 
     def _get_course_id(self, course: Optional[Dict[str, Any]]) -> Optional[str]:
         if not course:

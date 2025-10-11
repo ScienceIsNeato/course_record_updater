@@ -67,7 +67,27 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             session.add(institution)
             logger.info("[SQLiteDatabase] Created institution %s", institution_id)
-            return institution_id
+
+        # Automatically create default program for the institution
+        default_program_data = {
+            "name": f"{short_name} Default Program",
+            "institution_id": institution_id,
+            "is_default": True,
+        }
+        default_program_id = self.create_program(default_program_data)
+        if default_program_id:
+            logger.info(
+                "[SQLiteDatabase] Created default program %s for institution %s",
+                default_program_id,
+                institution_id,
+            )
+        else:
+            logger.warning(
+                "[SQLiteDatabase] Failed to create default program for institution %s",
+                institution_id,
+            )
+
+        return institution_id
 
     def get_institution_by_id(self, institution_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
@@ -1029,10 +1049,7 @@ class SQLiteDatabase(DatabaseInterface):
     # ------------------------------------------------------------------
     def create_program(self, program_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(program_data)
-        # Use program_id if present, otherwise fall back to id (for CSV imports)
-        program_id = _ensure_uuid(
-            payload.pop("program_id", None) or payload.pop("id", None)
-        )
+        program_id = _ensure_uuid(payload.pop("program_id", None))
         program = Program(
             id=program_id,
             name=payload.get("name", ""),

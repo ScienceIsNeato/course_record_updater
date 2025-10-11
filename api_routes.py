@@ -1929,7 +1929,7 @@ def delete_program_api(program_id: str):
                         "code": "PROGRAM_HAS_COURSES",
                     }
                 ),
-                403,
+                409,  # 409 Conflict - referential integrity constraint
             )
 
         # Get the default program for reassignment
@@ -1940,6 +1940,12 @@ def delete_program_api(program_id: str):
         )
 
         if not default_program:
+            # This should never happen - institutions automatically get default programs
+            # But if it does, it's a server/data integrity issue, not a client error
+            logger.error(
+                "[API] No default program found for institution %s - data integrity issue",
+                institution_id,
+            )
             return (
                 jsonify(
                     {
@@ -1947,7 +1953,7 @@ def delete_program_api(program_id: str):
                         "error": "No default program found for course reassignment",
                     }
                 ),
-                500,
+                500,  # 500 Internal Server Error - this indicates a data integrity problem
             )
 
         # Delete program and reassign courses
