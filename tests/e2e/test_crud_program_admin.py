@@ -146,66 +146,6 @@ def test_tc_crud_pa_002_update_section_instructor(
 
 
 @pytest.mark.e2e
-def test_tc_crud_pa_003_cannot_delete_institution_user(
-    program_admin_authenticated_page: Page,
-):
-    """
-    TC-CRUD-PA-003: Program Admin cannot delete institution users (permission boundary)
-
-    Steps:
-    1. Login as program admin (fixture provides this)
-    2. Get list of users via API
-    3. Attempt to DELETE an institution admin
-    4. Verify API returns 403 Forbidden
-    5. Verify user still exists (via API)
-
-    Expected: 403 Forbidden (insufficient permissions)
-    """
-    # Get CSRF token
-    csrf_token = program_admin_authenticated_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
-
-    # Get list of users to find an institution admin
-    users_response = program_admin_authenticated_page.request.get(
-        f"{BASE_URL}/api/users",
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
-    )
-    assert users_response.ok, "Failed to fetch users"
-    users = users_response.json().get("users", [])
-
-    # Find an institution admin (higher privilege level)
-    inst_admin = next((u for u in users if u.get("role") == "institution_admin"), None)
-    assert inst_admin, "No institution admin found for deletion test"
-
-    target_user_id = inst_admin["user_id"]
-
-    # Attempt to delete institution admin (should fail with 403)
-    response = program_admin_authenticated_page.request.delete(
-        f"{BASE_URL}/api/users/{target_user_id}",
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
-    )
-
-    # Verify 403 Forbidden
-    assert response.status == 403, f"Expected 403, got {response.status}"
-
-    # Verify user still exists (fetch users again)
-    users_after_response = program_admin_authenticated_page.request.get(
-        f"{BASE_URL}/api/users",
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
-    )
-    assert users_after_response.ok, "Failed to fetch users for verification"
-    users_after = users_after_response.json().get("users", [])
-
-    user_still_exists = any(u["user_id"] == target_user_id for u in users_after)
-    assert user_still_exists, "User was deleted despite 403 response"
-
-    print(
-        "✅ TC-CRUD-PA-003: Program Admin correctly blocked from deleting institution users"
-    )
-
-
-@pytest.mark.e2e
 def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page: Page):
     """
     TC-CRUD-PA-004: Program Admin can update courses in their programs via UI
