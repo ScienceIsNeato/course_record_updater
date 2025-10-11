@@ -171,16 +171,29 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
         "document.querySelector('#coursesTableContainer table tbody tr')", timeout=5000
     )
 
-    # Get the first course's current title for verification
-    original_title = program_admin_authenticated_page.evaluate(
-        "document.querySelector('#coursesTableContainer table tbody tr td:nth-child(2)')?.innerText"
+    # Get the first course's current title and ID for verification
+    first_course_data = program_admin_authenticated_page.evaluate(
+        """
+        () => {
+            const firstRow = document.querySelector('#coursesTableContainer table tbody tr');
+            if (!firstRow) return null;
+            return {
+                title: firstRow.querySelector('td:nth-child(2)')?.innerText,
+                courseId: firstRow.querySelector('button[data-course-id]')?.getAttribute('data-course-id') ||
+                         firstRow.querySelector('[data-course-id]')?.getAttribute('data-course-id')
+            };
+        }
+        """
     )
 
-    # Skip test if no courses or title already updated from previous test
-    if not original_title or "Updated" in original_title:
-        pytest.skip(
-            f"No suitable course found for update test (title: {original_title})"
-        )
+    if not first_course_data or not first_course_data.get("title"):
+        pytest.skip("No courses found for update test")
+
+    original_title = first_course_data["title"]
+
+    # Skip test if title already updated from previous test
+    if "Updated" in original_title:
+        pytest.skip(f"Course already updated from previous test: {original_title}")
 
     # Click Edit button on first course
     program_admin_authenticated_page.click(
@@ -203,18 +216,32 @@ def test_tc_crud_pa_004_manage_program_courses(program_admin_authenticated_page:
         "#editCourseModal", state="hidden"
     )
 
-    # Verify the updated title appears in the table
+    # Verify the update succeeded by checking the edit modal shows updated title when reopened
     program_admin_authenticated_page.wait_for_load_state("networkidle")
+    program_admin_authenticated_page.wait_for_timeout(500)
 
-    # Verify the updated title in the table (read it back instead of wait_for_function)
-    updated_title = program_admin_authenticated_page.evaluate(
-        "document.querySelector('#coursesTableContainer table tbody tr td:nth-child(2)')?.innerText"
+    # Re-open the edit modal for the same course (first row) to verify the update persisted
+    program_admin_authenticated_page.click(
+        "#coursesTableContainer table tbody tr:first-child button:has-text('Edit')"
+    )
+    program_admin_authenticated_page.wait_for_selector(
+        "#editCourseModal", state="visible"
     )
 
+    # Get the title from the edit modal
+    modal_title = program_admin_authenticated_page.input_value("#editCourseTitle")
+
+    # Close the modal
+    program_admin_authenticated_page.click("#editCourseModal button:has-text('Cancel')")
+    program_admin_authenticated_page.wait_for_selector(
+        "#editCourseModal", state="hidden"
+    )
+
+    # Verify the update was persisted
     expected_title = f"{original_title} - Updated"
     assert (
-        expected_title in updated_title
-    ), f"Expected '{expected_title}' to be in '{updated_title}'"
+        modal_title == expected_title
+    ), f"Expected modal title to be '{expected_title}', got '{modal_title}'"
 
     print("✅ TC-CRUD-PA-004: Program Admin successfully managed program course via UI")
 
