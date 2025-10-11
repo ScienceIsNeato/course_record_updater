@@ -19,6 +19,7 @@
     cache: null,
     lastFetch: 0,
     refreshInterval: 5 * 60 * 1000,
+    intervalId: null,
 
     init() {
       document.addEventListener('visibilitychange', () => {
@@ -33,7 +34,18 @@
       }
 
       this.loadData();
-      setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
+      this.intervalId = setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => this.cleanup());
+      window.addEventListener('pagehide', () => this.cleanup());
+    },
+
+    cleanup() {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
     },
 
     async refresh() {
