@@ -67,7 +67,7 @@ CSV_COLUMNS = {
         "updated_at",
     ],
     "programs": [
-        "id",
+        "program_id",
         "name",
         "short_name",
         "description",

@@ -1029,7 +1029,10 @@ class SQLiteDatabase(DatabaseInterface):
     # ------------------------------------------------------------------
     def create_program(self, program_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(program_data)
-        program_id = _ensure_uuid(payload.pop("program_id", None))
+        # Use program_id if present, otherwise fall back to id (for CSV imports)
+        program_id = _ensure_uuid(
+            payload.pop("program_id", None) or payload.pop("id", None)
+        )
         program = Program(
             id=program_id,
             name=payload.get("name", ""),
