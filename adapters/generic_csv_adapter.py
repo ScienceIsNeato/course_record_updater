@@ -81,6 +81,7 @@ CSV_COLUMNS = {
     "users": [
         "id",
         "email",
+        "password_hash",
         "first_name",
         "last_name",
         "display_name",
@@ -89,6 +90,8 @@ CSV_COLUMNS = {
         "invited_by",
         "invited_at",
         "registration_completed_at",
+        "account_status",
+        "email_verified",
         "oauth_provider",
         "created_at",
         "updated_at",

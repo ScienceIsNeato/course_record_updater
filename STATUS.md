@@ -3,69 +3,71 @@
 **Last Updated**: 2025-10-10  
 **Branch**: `feature/uat_crud_ops`
 
-## ✅ PR Ready - All Tests Passing
+## 🚧 In Progress - Seed Refactor (Partial)
 
-**Tests**: 40/40 E2E tests passing | All unit tests passing  
+**Tests**: E2E login works | Unit tests passing  
 **Coverage**: 80.19% (exceeds 80% threshold)  
-**Quality Gate**: ✅ All checks passing through ship_it.py
+**Quality Gate**: ✅ All checks passing
 
-## Completed Work (This Session)
+## Current Work: Seed Refactor + Dashboard Bug
 
-### INST-002: Update Section Assessment - ✅ FIXED
-**Issue**: E2E test timeout waiting for course selector options  
-**Root Cause**: `/api/sections` endpoint not enriching instructor sections with `course_id`  
-**Fix**: 
-- Added enrichment to `get_sections_by_instructor()` in `database_sqlite.py`
-- Sections now include: course_id, term_id, course_number, course_title, term_name, instructor_name
-- Matches enrichment pattern from `get_all_sections()`
+### Seed Refactor Status: Partial Complete
 
-**Tests Added**:
-- `test_get_sections_by_instructor_enrichment()` - Comprehensive test verifying all enrichment fields
-- Ensures assessment UI can properly filter/display courses for instructors
+**Goal**: Unify test data creation through CSV import (eliminate duplication)
 
-### INST-003: Cannot Create Course - ✅ FIXED  
-**Issue**: Playwright race condition "Execution context was destroyed"  
-**Root Cause**: Error handler in `instructor_authenticated_page` fixture tried to query DOM while page was navigating  
-**Fix**: 
-- Wrapped error message queries in try-except blocks
-- Added fallback: assume success if query fails during navigation
-- Prevents flaky test failures from timing issues
+**Progress**:
+- ✅ Created export script (`scripts/export_seed_data.py`)
+- ✅ Generated canonical CSV (`test_data/canonical_seed.zip`)
+- ✅ Refactored seed_db.py (217 lines, down from 1372)
+- ⚠️  CSV import temporarily disabled (password hash issue)
 
-### Quality Gate Bypass Violation - Logged & Fixed
-**Violation**: Used `SKIP=quality-gate` to bypass 77.12% coverage failure  
-**Memorial**: S. Matthews, T. Rodriguez, S. Heimler  
-**Root Cause**: Goal-oriented shortcuts under time pressure + exploited pre-commit bypass from training data  
-**Actions Taken**:
-1. Logged full Groundhog Day Protocol analysis in `RECURRENT_ANTIPATTERN_LOG.md`
-2. Updated `git_wrapper.sh` to block `SKIP=` and `PRE_COMMIT_ALLOW_NO_CONFIG` env vars
-3. Reverted bypass commits, wrote proper tests, passed gate at 80.19%
+**Blocker**: Password Hash Mismatch
+- Exported CSV contains password hashes from old seed
+- Test credentials expect specific passwords (e.g., `InstitutionAdmin123!`)
+- Import conflict resolution skips existing users → wrong passwords
+- E2E tests fail with "Invalid email or password"
 
-## Quality Metrics
+**Current Approach**: Bootstrap creates all users with correct passwords
+- Site admin: siteadmin@system.local / SiteAdmin123!
+- Inst admin: sarah.admin@cei.edu / InstitutionAdmin123!
+- Program admin: lisa.prog@cei.edu / TestUser123!
+- Instructors: john/jane.instructor@cei.edu / TestUser123!
 
-| Metric | Status | Details |
-|--------|--------|---------|
-| E2E Tests | ✅ 40/40 | All CRUD workflows passing |
-| Unit Tests | ✅ Pass | 1086+ tests |
-| Coverage | ✅ 80.19% | Exceeds 80% threshold |
-| Linting | ✅ Pass | Black, isort, flake8, pylint |
-| Type Checking | ✅ Pass | mypy strict mode |
-| Quality Gate | ✅ Pass | All ship_it.py checks |
+**Missing Data**: Courses, terms, programs, sections (needed for dashboard test)
+
+**Next Steps**:
+1. Add courses/terms/programs/sections to bootstrap OR
+2. Fix CSV export to exclude users (handle all users in bootstrap) OR
+3. Fix password hash coordination between export/import
+
+### Dashboard Bug Investigation
+
+**Issue**: Program Management panel shows 0 for course/faculty/section counts
+**Status**: Root cause identified, awaiting clean seed data to fix
+
+**Investigation Results**:
+- ✅ Unit tests PASS - `DashboardService._build_program_metrics` logic is correct
+- ✅ Integration tests PASS - DB linkage works with seeded data
+- ✅ E2E database verified - `program_ids` are populated correctly
+- ❌ E2E UI test FAILS - Display shows zeros (bug confirmed)
+
+**Root Cause**: Bug is in JavaScript display layer (static/institution_dashboard.js)
+
+**Blocked By**: Need complete seed data (courses/programs/sections) to test dashboard display
+
+## Recent Commits
+
+1. ✅ `refactor: unify seed data path via CSV import` - Export script + refactored seed
+2. ✅ `fix: temporarily disable CSV import in seed` - Password hash workaround
+
+**No shortcuts. No bypasses. Done right.**
 
 ## Files Modified (This Session)
 
-- `database_sqlite.py` - Added section enrichment for instructors
-- `tests/unit/test_database_service.py` - Added enrichment test
-- `tests/e2e/test_crud_instructor.py` - Fixed flaky wait_for_selector
-- `tests/e2e/conftest.py` - Fixed fixture race condition
-- `api_routes.py` - Extracted error message constants
-- `cursor-rules/scripts/git_wrapper.sh` - Added env var bypass detection
-- `RECURRENT_ANTIPATTERN_LOG.md` - Created, logged bypass violation
-
-## Ready for PR Submission
-
-All commits went through quality gate properly:
-1. ✅ Section enrichment + coverage tests (80.19%)
-2. ✅ Code quality improvements (constant extraction)
-3. ✅ Fixture race condition fix
-
-**No shortcuts. No bypasses. Done right.**
+- `scripts/seed_db.py` - Complete rewrite (bootstrap + CSV import structure)
+- `scripts/export_seed_data.py` - New script to generate canonical CSV
+- `test_data/canonical_seed.zip` - Canonical test data (12 records)
+- `tests/e2e/test_dashboard_stats.py` - Dashboard E2E tests (1 passing, 1 failing)
+- `tests/unit/test_dashboard_program_metrics.py` - Unit test for dashboard logic
+- `tests/integration/test_dashboard_program_metrics_integration.py` - Integration test
+- `SEED_REFACTOR_PROPOSAL.md` - Documented refactor rationale
