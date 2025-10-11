@@ -98,34 +98,54 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
 
 @pytest.mark.e2e
 def test_tc_crud_ia_002_update_course_details(authenticated_page: Page):
-    """TC-CRUD-IA-002: Institution Admin updates course details"""
-    # Ensure we're authenticated and on the dashboard (already handled by fixture)
-    # Fetch a course via authenticated API (institution-scoped by RBAC)
-    courses_resp = authenticated_page.request.get(f"{BASE_URL}/api/courses")
-    assert courses_resp.ok, f"Failed to list courses: {courses_resp.status}"
-    courses_payload = courses_resp.json()
-    courses = courses_payload.get("courses", [])
-    if not courses:
+    """TC-CRUD-IA-002: Institution Admin updates course details via UI"""
+    # Navigate to courses page
+    authenticated_page.goto(f"{BASE_URL}/courses")
+    authenticated_page.wait_for_load_state("networkidle")
+
+    # Wait for courses table to load
+    authenticated_page.wait_for_selector("#coursesTableContainer table", timeout=10000)
+
+    # Get the first course's current title for later verification
+    original_title = authenticated_page.evaluate(
+        "document.querySelector('#coursesTableContainer table tbody tr td:nth-child(2)')?.innerText"
+    )
+
+    if not original_title:
         pytest.skip("No courses available to update")
 
-    course_id = courses[0]["course_id"]
-    csrf_token = authenticated_page.evaluate(
-        "document.querySelector(\"meta[name='csrf-token']\")?.content"
+    # Click Edit button on first course
+    authenticated_page.click(
+        "#coursesTableContainer table tbody tr:first-child button:has-text('Edit')"
+    )
+    authenticated_page.wait_for_selector("#editCourseModal", state="visible")
+
+    # Update course title
+    new_title = "Updated by Institution Admin E2E"
+    authenticated_page.fill("#editCourseTitle", new_title)
+
+    # Update credit hours
+    authenticated_page.fill("#editCourseCreditHours", "4")
+
+    # Click Save Changes button
+    authenticated_page.click("#editCourseModal button:has-text('Save Changes')")
+
+    # Wait for modal to close (indicates save completed)
+    authenticated_page.wait_for_selector(
+        "#editCourseModal", state="hidden", timeout=5000
     )
 
-    course_data = {"title": "Updated by Institution Admin", "credit_hours": 4}
+    # Wait for courses list to reload
+    authenticated_page.wait_for_load_state("networkidle")
 
-    response = authenticated_page.request.put(
-        f"{BASE_URL}/api/courses/{course_id}",
-        data=course_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
+    # Verify the updated title appears in the table
+    updated_title = authenticated_page.evaluate(
+        "document.querySelector('#coursesTableContainer table tbody tr td:nth-child(2)')?.innerText"
     )
 
-    assert response.ok
-    result = response.json()
-    assert result.get("success") is True
+    assert updated_title == new_title, f"Expected '{new_title}', got '{updated_title}'"
 
-    print("✅ TC-CRUD-IA-002: Institution Admin successfully updated course")
+    print("✅ TC-CRUD-IA-002: Institution Admin successfully updated course via UI")
 
 
 @pytest.mark.e2e
