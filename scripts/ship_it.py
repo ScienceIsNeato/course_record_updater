@@ -97,20 +97,22 @@ class QualityGateExecutor:
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
-        # Fast checks for commit validation (exclude slow checks >30s)
+        # Fast checks for commit validation (optimized for <40s total time)
+        # Key optimization: Run coverage instead of tests (coverage includes tests)
+        # This saves ~28s by avoiding duplicate test execution
         self.commit_checks = [
             ("black", "🎨 Code Formatting (black)"),
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
-            ("duplication", "🔄 Code Duplication Check"),
+            # Duplication check moved to PR validation (non-critical, saves 2.2s)
+            # ("duplication", "🔄 Code Duplication Check"),  # Moved to PR checks
             # ("sonar", "🔍 SonarCloud Quality Analysis"),  # Excluded from commit checks to avoid chicken-and-egg problem
         ]
 
