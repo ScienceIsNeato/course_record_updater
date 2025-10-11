@@ -166,7 +166,7 @@ class MinimalSeeder:
             result = import_excel(
                 file_path=canonical_file,
                 institution_id=institution_id,
-                conflict_strategy="skip",  # Skip duplicates (bootstrap entities)
+                conflict_strategy="use_mine",  # Keep bootstrap users, import courses/terms
                 dry_run=False,
                 adapter_id="generic_csv_v1",
                 verbose=self.verbose,
@@ -215,12 +215,10 @@ def main():
         # Create bootstrap entities
         bootstrap = seeder.create_bootstrap_entities()
 
-        # TODO: Re-enable CSV import once password hash issue is resolved
-        # For now, bootstrap creates all test data
-        # if not seeder.import_canonical_data(bootstrap["institution_id"]):
-        #     seeder.log("❌ Seeding failed during import")
-        #     return 1
-        seeder.log("⚠️  CSV import temporarily disabled - using bootstrap-only data")
+        # Import canonical test data (courses, terms, sections, etc.)
+        if not seeder.import_canonical_data(bootstrap["institution_id"]):
+            seeder.log("❌ Seeding failed during import")
+            return 1
 
         seeder.log("✅ Database seeding completed successfully!")
         seeder.log("")
