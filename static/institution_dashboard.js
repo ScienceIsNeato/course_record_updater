@@ -180,8 +180,13 @@
               </div>
               <small class="text-muted">${completed}/${total} complete</small>`,
             progress_sort: percent,
-            actions:
-              '<button class="btn btn-sm btn-outline-primary" onclick="return false;">Manage</button>'
+            actions: `
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="return false;">Manage</button>
+              <button class="btn btn-sm btn-outline-danger" 
+                      onclick="deleteProgram('${program.program_id}', '${(program.program_name || program.name || 'Unnamed Program').replace(/'/g, '&#39;')}'); return false;">
+                <i class="fas fa-trash"></i>
+              </button>
+            `
           };
         })
       });

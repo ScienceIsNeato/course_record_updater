@@ -308,12 +308,28 @@ async function deleteProgram(programId, programName) {
     if (response.ok) {
       alert(`${programName} deleted successfully.`);
 
-      if (typeof window.loadPrograms === 'function') {
+      // Refresh dashboard data if available
+      if (typeof window.InstitutionDashboard?.refresh === 'function') {
+        window.InstitutionDashboard.refresh();
+      } else if (typeof window.loadPrograms === 'function') {
         window.loadPrograms();
       }
     } else {
       const error = await response.json();
-      alert(`Failed to delete program: ${error.error || 'Unknown error'}`);
+      const errorMessage = error.error || 'Unknown error';
+
+      // Special handling for program with courses
+      if (response.status === 409 && error.code === 'PROGRAM_HAS_COURSES') {
+        alert(
+          'Cannot delete "' +
+            programName +
+            '" because it has courses assigned.\n\n' +
+            'Please reassign or remove courses from this program first, ' +
+            'or contact your system administrator for assistance.'
+        );
+      } else {
+        alert(`Failed to delete program: ${errorMessage}`);
+      }
     }
   } catch (error) {
     console.error('Error deleting program:', error); // eslint-disable-line no-console
