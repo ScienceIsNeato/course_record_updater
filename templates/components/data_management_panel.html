@@ -141,6 +141,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadAvailableAdapters() {
+    // Silently skip if dropdowns don't exist on this page
+    const importDropdown = document.getElementById('import_adapter');
+    const exportDropdown = document.getElementById('export_adapter');
+    if (!importDropdown && !exportDropdown) {
+        return;
+    }
+    
     try {
         const response = await fetch('/api/adapters', {
             method: 'GET',
@@ -162,7 +169,10 @@ async function loadAvailableAdapters() {
             populateAdapterDropdown('export_adapter', []);
         }
     } catch (error) {
-        console.error('Error loading adapters:', error);
+        // Only log error if dropdowns exist (otherwise it's expected)
+        if (importDropdown || exportDropdown) {
+            console.error('Error loading adapters:', error);
+        }
         populateAdapterDropdown('import_adapter', []);
         populateAdapterDropdown('export_adapter', []);
     }

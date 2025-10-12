@@ -1957,8 +1957,24 @@ def delete_program_api(program_id: str):
             )
 
         # Delete program and reassign courses
-        # Use program_id key from our program dicts
-        success = delete_program(program_id, default_program["program_id"])
+        # Handle both 'program_id' and 'id' keys for backward compatibility
+        default_prog_id = default_program.get("program_id") or default_program.get("id")
+        if not default_prog_id:
+            logger.error(
+                "[API] Default program %s has no program_id or id key: %s",
+                default_program.get("name", "unknown"),
+                list(default_program.keys()),
+            )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Default program data integrity issue",
+                    }
+                ),
+                500,
+            )
+        success = delete_program(program_id, default_prog_id)
 
         if success:
             return jsonify(

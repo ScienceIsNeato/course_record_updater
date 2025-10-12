@@ -225,10 +225,10 @@ class TestDashboardAuthRoleDataAccess:
         summary = data.get("summary", {})
 
         # Verify institution admin sees only CEI data
-        # CEI should have: 3 programs, 6 courses, 4 users, 6 sections (based on actual seeded data)
+        # CEI should have: 4 programs (CS, EE, Unclassified, + auto-created default), 6 courses, 4 users, 6 sections
         assert (
-            summary.get("programs", 0) == 3
-        ), "CEI should have 3 programs (CS, EE, Unclassified)"
+            summary.get("programs", 0) == 4
+        ), f"CEI should have 4 programs (including default), got {summary.get('programs', 0)}"
         assert summary.get("courses", 0) == 6, "CEI should have 6 courses (seeded data)"
         assert summary.get("users", 0) == 4, "CEI should have 4 users (seeded data)"
         assert (
@@ -239,15 +239,19 @@ class TestDashboardAuthRoleDataAccess:
         programs = data.get("programs", [])
         program_names = {prog.get("name") for prog in programs}
 
-        # Should only see CEI programs
+        # Should only see CEI programs (including auto-created default program)
         expected_cei_programs = {
             "Computer Science",
             "Electrical Engineering",
             "General Studies",
         }
+        # Check that the expected programs are present (plus the default program)
+        assert expected_cei_programs.issubset(
+            program_names
+        ), f"Expected CEI programs not found. Expected {expected_cei_programs}, got: {program_names}"
         assert (
-            program_names == expected_cei_programs
-        ), f"Institution admin should only see CEI programs. Found: {program_names}"
+            len(program_names) == 4
+        ), f"Expected 4 programs total (3 named + 1 default), got {len(program_names)}: {program_names}"
 
         # Should NOT see RCC or PTU programs
         forbidden_programs = {
@@ -281,16 +285,16 @@ class TestDashboardAuthRoleDataAccess:
         summary = data.get("summary", {})
 
         # Verify program admin sees exactly their program data
-        # Note: Current dashboard service returns 0 for program admins - this may be a bug to fix later
+        # Lisa manages CS & EE, so should see those 2 programs
         assert (
-            summary.get("programs", 0) == 0
-        ), "Program admin dashboard currently returns 0 programs (known issue)"
+            summary.get("programs", 0) == 2
+        ), f"Program admin should see 2 programs (CS, EE), got {summary.get('programs', 0)}"
         assert (
-            summary.get("courses", 0) == 0
-        ), "Program admin dashboard currently returns 0 courses (known issue)"
+            summary.get("courses", 0) >= 5
+        ), f"Program admin should see CS+EE courses, got {summary.get('courses', 0)}"
         assert (
-            summary.get("sections", 0) == 0
-        ), "Program admin dashboard currently returns 0 sections (known issue)"
+            summary.get("sections", 0) >= 5
+        ), f"Program admin should see CS+EE sections, got {summary.get('sections', 0)}"
         assert (
             summary.get("faculty", 0) >= 3
         ), "Lisa should see faculty at her institution"
@@ -358,12 +362,12 @@ class TestDashboardAuthRoleDataAccess:
                 instructor_id == self.john_instructor["user_id"]
             ), "Instructor should only see sections they are assigned to teach"
 
-        # Note: Instructor currently sees 0 courses due to dashboard service issue
+        # Instructor should see courses they teach
         courses = data.get("courses", [])
         instructor_course_count = len(courses)
         assert (
-            instructor_course_count == 0
-        ), "Instructor currently sees 0 courses (known dashboard service issue)"
+            instructor_course_count >= 2
+        ), f"Instructor should see courses they teach, got {instructor_course_count}"
 
     def test_unauthenticated_dashboard_access_denied(self):
         """
@@ -406,17 +410,15 @@ class TestDashboardAuthRoleDataAccess:
             course_numbers
         ), f"Program admin should not see other institutions' courses: {course_numbers}"
 
-        # Note: Program admin currently sees 0 programs due to dashboard service issue
+        # Program admin sees their assigned programs
         programs = data.get("programs", [])
         program_names = {prog.get("name") for prog in programs}
 
-        # Current behavior: program admin sees no programs (known issue)
+        # Lisa should only see her assigned programs (CS + EE), not Unclassified
+        expected_programs = {"Computer Science", "Electrical Engineering"}
         assert (
-            len(programs) == 0
-        ), f"Program admin currently sees 0 programs (known dashboard service issue). Found: {program_names}"
-
-        # TODO: When dashboard service is fixed, Lisa should only see her assigned programs (CS + EE), not Unclassified
-        # expected_programs = {"Computer Science", "Electrical Engineering"}
+            program_names == expected_programs
+        ), f"Program admin should only see assigned programs. Expected {expected_programs}, got: {program_names}"
         # assert program_names == expected_programs
 
 

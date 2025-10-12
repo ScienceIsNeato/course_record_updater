@@ -133,10 +133,11 @@ def test_institution_admin_dashboard_program_metrics_from_db():
     print(f"  Program Overview: {dashboard_data.get('program_overview')}")
 
     # Assert: Summary should show counts
+    # Note: Institution auto-creates a default program, so we have 2 total (CS + default)
     summary = dashboard_data.get("summary", {})
     assert (
-        summary["programs"] == 1
-    ), f"Expected 1 program in summary, got {summary.get('programs')}"
+        summary["programs"] == 2
+    ), f"Expected 2 programs in summary (CS + default), got {summary.get('programs')}"
     assert (
         summary["courses"] == 2
     ), f"Expected 2 courses in summary, got {summary.get('courses')}"
