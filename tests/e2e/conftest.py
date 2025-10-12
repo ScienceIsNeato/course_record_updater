@@ -203,8 +203,8 @@ def authenticated_page(page: Page) -> Page:
     # 3. Timeout (something went wrong)
     try:
         # Wait for URL to change to dashboard (JavaScript redirect)
-        # 2s timeout is appropriate now that bcrypt is fast in test environments
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        # Increased timeout to 5s for CI environments which can be slower
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
         return page
     except Exception:
         # Check if still on login page with error message
@@ -223,7 +223,7 @@ def authenticated_page(page: Page) -> Page:
                 error_text = "No error message found. Check if JavaScript is executing."
 
             raise Exception(
-                f"Login failed - still on login page after 10s. Errors: {error_text} URL: {current_url}"
+                f"Login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
             )
 
 
@@ -256,7 +256,7 @@ def authenticated_site_admin_page(page: Page) -> Page:
 
     # Wait for URL to change to dashboard (JavaScript redirect)
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
         return page
     except Exception:
         # Check if still on login page with error message
@@ -311,7 +311,7 @@ def instructor_authenticated_page(page: Page) -> Page:
 
     # Wait for URL to change to dashboard (JavaScript redirect)
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
         return page
     except Exception:
         # Check if still on login page with error message
@@ -385,7 +385,7 @@ def program_admin_authenticated_page(page: Page) -> Page:
 
     # Wait for URL to change to dashboard (JavaScript redirect)
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
         return page
     except Exception:
         # Check if still on login page with error message

@@ -131,7 +131,13 @@ function getCSRFToken() {
 
 // Load available adapters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    loadAvailableAdapters();
+    // Only load adapters if the dropdown elements exist on the page
+    const importDropdown = document.getElementById('import_adapter');
+    const exportDropdown = document.getElementById('export_adapter');
+    
+    if (importDropdown || exportDropdown) {
+        loadAvailableAdapters();
+    }
 });
 
 async function loadAvailableAdapters() {
