@@ -300,21 +300,21 @@ class TestDashboardAuthRoleDataAccess:
         ), "Lisa should see faculty at her institution"
         assert summary.get("users", 0) == 4, "Lisa should see users at her institution"
 
-        # Note: Program admin currently sees 0 courses and sections due to dashboard service issue
+        # Dashboard bug is FIXED! Program admin now correctly sees their program's data
         courses = data.get("courses", [])
         sections = data.get("sections", [])
 
-        # Current behavior: program admin sees no courses or sections (known issue)
+        # Fixed behavior: program admin sees their program's courses and sections
         assert (
-            len(courses) == 0
-        ), "Program admin currently sees 0 courses (known dashboard service issue)"
+            len(courses) == 5
+        ), f"Program admin should see CS and EE courses (5 total), got {len(courses)}"
         assert (
-            len(sections) == 0
-        ), "Program admin currently sees 0 sections (known dashboard service issue)"
+            len(sections) >= 5
+        ), f"Program admin should see CS and EE sections, got {len(sections)}"
 
-        # TODO: When dashboard service is fixed, program admin should see their program's courses and sections
-        # Expected future behavior:
-        # - Should see CS and EE courses: CS-101, CS-201, EE-101, EE-201, EE-301
+        # Verify courses are from the correct programs (CS and EE)
+        course_numbers = {c["course_number"] for c in courses}
+        expected_courses = {"CS-101", "CS-201", "EE-101", "EE-201", "EE-301"}
         # - Should see sections for those courses
         # - Should NOT see General Studies courses
 

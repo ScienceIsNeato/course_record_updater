@@ -146,12 +146,17 @@ def test_institution_admin_dashboard_program_metrics_from_db():
     ), f"Expected 2 sections in summary, got {summary.get('sections')}"
 
     # Assert: Program overview should have metrics
+    # Note: Institution auto-creates a default program, so we have 2 total (CS + default)
     program_overview = dashboard_data.get("program_overview", [])
     assert (
-        len(program_overview) == 1
-    ), f"Expected 1 program in overview, got {len(program_overview)}"
+        len(program_overview) == 2
+    ), f"Expected 2 programs in overview (CS + default), got {len(program_overview)}"
 
-    cs_metrics = program_overview[0]
+    # Find the CS program (not the default one)
+    cs_metrics = next(
+        (p for p in program_overview if p["program_name"] == "Computer Science"), None
+    )
+    assert cs_metrics is not None, "CS program not found in overview"
     print(f"\n📊 CS Program Metrics from DB:")
     print(f"  Program ID: {cs_metrics.get('program_id')}")
     print(f"  Program Name: {cs_metrics.get('program_name')}")
