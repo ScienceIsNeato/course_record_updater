@@ -2508,6 +2508,44 @@ def delete_course_offering_endpoint(offering_id: str):
 # ========================================
 
 
+def _determine_section_filters(current_user, instructor_id, term_id):
+    """Determine section filters based on user role and query parameters."""
+    if not instructor_id and not term_id:
+        if current_user["role"] == UserRole.INSTRUCTOR.value:
+            # Instructors see only their own sections
+            return current_user["user_id"], None
+    return instructor_id, term_id
+
+
+def _fetch_sections_by_filter(instructor_id, term_id):
+    """Fetch sections based on provided filters."""
+    if instructor_id:
+        return get_sections_by_instructor(instructor_id)
+    if term_id:
+        return get_sections_by_term(term_id)
+
+    # No filters - get all sections for institution
+    institution_id = get_current_institution_id()
+    if not institution_id:
+        return None, (
+            jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+            400,
+        )
+    return get_all_sections(institution_id), None
+
+
+def _filter_sections_by_permission(sections, current_user):
+    """Filter sections based on user permissions."""
+    if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
+        "view_all_sections"
+    ):
+        # Ensure instructors only see their own sections
+        return [
+            s for s in sections if s.get("instructor_id") == current_user["user_id"]
+        ]
+    return sections
+
+
 @api.route("/sections", methods=["GET"])
 @permission_required("view_section_data")
 def list_sections():
@@ -2521,63 +2559,24 @@ def list_sections():
     try:
         instructor_id = request.args.get("instructor_id")
         term_id = request.args.get("term_id")
-
         current_user = get_current_user()
 
-        # If no filters specified, determine default based on role
-        if not instructor_id and not term_id:
-            if current_user["role"] == UserRole.INSTRUCTOR.value:
-                # Instructors see only their own sections
-                instructor_id = current_user["user_id"]
-            # Program admins and site admins see all sections (no filter)
+        # Determine filters based on role
+        instructor_id, term_id = _determine_section_filters(
+            current_user, instructor_id, term_id
+        )
 
-        # Apply filters
-        if instructor_id:
-            sections = get_sections_by_instructor(instructor_id)
-        elif term_id:
-            sections = get_sections_by_term(term_id)
+        # Fetch sections
+        result = _fetch_sections_by_filter(instructor_id, term_id)
+        if isinstance(result, tuple):
+            sections, error_response = result
+            if error_response:
+                return error_response
         else:
-            # Get institution context - for development, use CEI
-            institution_id = get_current_institution_id()
-            if not institution_id:
-                return (
-                    jsonify(
-                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
-                    ),
-                    400,
-                )
-            sections = get_all_sections(institution_id)
+            sections = result
 
-            # DEBUG: Check if course_id is in sections
-            import sys
-
-            if sections:
-                print(
-                    f"[API-DEBUG] Got {len(sections)} sections from get_all_sections()",
-                    file=sys.stderr,
-                )
-                print(
-                    f"[API-DEBUG] First section keys: {list(sections[0].keys())}",
-                    file=sys.stderr,
-                )
-                print(
-                    f"[API-DEBUG] First section has course_id? {'course_id' in sections[0]}",
-                    file=sys.stderr,
-                )
-                if "course_id" in sections[0]:
-                    print(
-                        f"[API-DEBUG] First section course_id value: {sections[0]['course_id']}",
-                        file=sys.stderr,
-                    )
-
-        # Filter based on permissions
-        if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
-            "view_all_sections"
-        ):
-            # Ensure instructors only see their own sections
-            sections = [
-                s for s in sections if s.get("instructor_id") == current_user["user_id"]
-            ]
+        # Apply permission-based filtering
+        sections = _filter_sections_by_permission(sections, current_user)
 
         return jsonify({"success": True, "sections": sections, "count": len(sections)})
 
