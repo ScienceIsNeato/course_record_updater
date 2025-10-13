@@ -1,117 +1,137 @@
 # Project Status
 
-## 🔄 SonarCloud Quality Gate Fixes + PR Comment Resolution
+## 🔍 SonarCloud Duplication Analysis Tool Built
 
 ### Latest Update: October 13, 2025
 
-**Current Status**: All PR comments addressed ✅  
-**Commit Time**: ~40 seconds (maintained)  
+**Current Status**: Duplication detection tool created ✅  
+**SonarCloud Quality Gate**: Still FAILED (3 conditions)  
 **Test Execution**: All tests passing (35 E2E + 1184 unit + 145 integration + 29 smoke)  
-**Global Coverage**: 81.92% ✅ (+1.0% from baseline)  
-**Coverage on New Code (SonarCloud)**: Awaiting next scan
+**Global Coverage**: 81.92% ✅  
+**Commit Time**: ~40 seconds (maintained)
 
 ---
 
-## ✅ Completed Fixes
+## ✅ Tool Enhancement: Duplication Detection
 
-### 1. Cognitive Complexity (FIXED)
-- ✅ Refactored `list_sections()` in `api_routes.py`
-- Extracted 3 helper functions to reduce complexity from 17 → ~8
-- Committed: `21fe043`
+### What We Built
+Enhanced `scripts/sonar_issues_scraper.py` with precise duplication analysis:
+- **New Methods**:
+  - `get_duplicated_files()`: Fetches per-file duplication metrics from SonarCloud
+  - `get_duplications()`: Fetches detailed duplication block locations
+  - `print_duplication_report()`: Generates actionable reports with line numbers
+- **New CLI Flags**:
+  - `--duplication`: Enable duplication analysis
+  - `--duplication-output`: Specify output file (default: `logs/sonarcloud_duplications.txt`)
 
-### 2. Unit Tests for New API Modules (FIXED)
-- ✅ Added 48 comprehensive unit tests across 3 new modules:
-  - `tests/unit/test_api_audit.py`: 26 tests for audit routes (GET, POST endpoints, filtering, exports)
-  - `tests/unit/test_api_utils.py`: 19 tests for utility functions (mimetypes, scope resolution, error handling, JSON validation)
-  - `tests/unit/test_api_dashboard.py`: 3 tests for dashboard data endpoint
-- **Key Solution**: Mocked authentication decorators at module import time using `with patch(...):` before importing blueprints
-- **Coverage Impact**: Global coverage increased from 80.89% → 81.92% (+1.0%)
-- **Test Status**: All 48 tests passing
-- Committed: `30f5980`, `05733c5`
+### Duplication Report Summary
+**Overall**: 27 files with 3,236 duplicated lines
 
-### 3. PR Comment Resolution (ALL 9 COMMENTS ADDRESSED)
+**Top Duplications** (by impact):
+1. **`api/routes/audit.py`**: 230 lines (67.4% density) 🔴 **CRITICAL**
+   - Lines 44-76 duplicated from `api_routes.py`:5053
+   - Lines 98-137 duplicated from `api_routes.py`:5115
+   - Lines 159-222 duplicated from `api_routes.py`:5179
+   - **Root Cause**: API refactor extracted routes but didn't remove originals
 
-**Phase 1: Critical Fixes (HIGH PRIORITY)**
-- ✅ **Access Control Bug** (`8e641ca`): Fixed inverted user visibility filtering in `templates/users_list.html`
-  - Changed `userLevel >= currentUserLevel` → `userLevel <= currentUserLevel`
-  - Now correctly shows subordinates, not superiors
-- ✅ **Debug Code Pollution** (`799b9b9`): Removed all debug statements from production code
-  - `templates/assessments.html`: Removed `alert()` and `console.log()`
-  - `database_sqlite.py`: Removed debug `print()` statements and `import sys`
+2. **`api_routes.py`**: 232 lines (4.3% density)
+   - Lines 5053-5087, 5115-5154, 5179-5242
+   - These are the source of `api/routes/audit.py` duplications
 
-**Phase 2: Code Quality (MEDIUM PRIORITY)**
-- ✅ **Test Code Organization** (`31a173b`): Refactored test files for maintainability
-  - Moved `require` statements to top of files (2 files)
-  - Extracted duplicated mock function to `beforeEach` hook
-  - Replaced brittle `pytest.__version__` with timestamp for unique emails
+3. **JavaScript Dashboards**: 769 lines total
+   - `static/program_dashboard.js`: 159 lines (39.8%)
+   - `static/offeringManagement.js`: 138 lines (34.6%)
+   - `static/instructor_dashboard.js`: 120 lines (36.3%)
+   - `static/institution_dashboard.js`: 105 lines (23.1%)
+   - `static/courseManagement.js`: 98 lines (25.6%)
 
-**Phase 3: Documentation/Messages (LOW PRIORITY)**
-- ✅ **Message Consistency** (`a0350ee`): Fixed error messages and log paths
-  - Updated timeout messages from "2s" → "5s" (3 fixtures)
-  - Changed hardcoded log paths to use `${LOG_FILE}` variable
-
----
-
-## 🎯 Next Challenge: Remaining Coverage Gaps
-
-### Coverage Gaps in Modified Code (Updated Post-Test Fix)
-
-**Remaining**: ~402 uncovered lines across 7 files (down from 505)
-
-**Top Contributors**:
-1. **api_routes.py**: 232 uncovered lines (error paths, validation)
-2. **database_sqlite.py**: 145 uncovered lines (error handling)
-3. **audit_service.py**: 12 uncovered lines
-4. **database_service.py**: 9 uncovered lines
-5. **app.py**: 4 uncovered lines
-
-**Eliminated**:
-- ~~api/routes/audit.py: 73 lines~~ → Now covered by `test_api_audit.py`
-- ~~api/utils.py: 22 lines~~ → Now covered by `test_api_utils.py`
-- ~~api/routes/dashboard.py: 8 lines~~ → Now covered by `test_api_dashboard.py`
+4. **HTML Templates**: 308 lines total
+   - `templates/dashboard/institution_admin.html`: 82 lines (8.8%)
+   - `templates/index.html`: 54 lines (13.4%)
+   - `templates/index_authenticated.html`: 54 lines (20.2%)
+   - `templates/dashboard/program_admin.html`: 43 lines (18.8%)
+   - `templates/courses_list.html`: 40 lines (18.7%)
 
 ---
 
-## 🚧 Next Steps
+## 🎯 SonarCloud Quality Gate Status
 
-### Option 1: Add Error Path Tests to `api_routes.py` (Recommended)
-- Add tests for 400/500 error responses
-- Focus on validation failures and exception handling
-- Use existing test infrastructure in `test_api_routes.py`
-- Target: Cover ~100 of the 232 uncovered lines
+### Failed Conditions (3)
+1. **Coverage on New Code**: 68.7% (required ≥ 80%) ❌
+2. **Duplication on New Code**: 4.4% (required ≤ 3%) ❌
+3. **Security Rating on New Code**: B (required ≥ A) ❌
 
-### Option 2: Database Error Handling Tests
-- Add tests for error paths in `database_sqlite.py`
-- Focus on connection failures, constraint violations, rollback scenarios
-- Target: Cover ~50 of the 145 uncovered lines
-
-### Option 3: Push Current Progress & Await SonarCloud Scan
-- Commit current work
-- Push to GitHub
-- See if SonarCloud "Coverage on New Code" metric improves
-- Re-assess based on actual SonarCloud results
-
-**Recommendation**: Option 3 (push and scan) to see if the +1.0% global coverage increase and new API module tests are sufficient for SonarCloud.
+### Issues Breakdown
+- **Critical (1)**: Cognitive complexity in `api_routes.py:2513` (function `list_sections`)
+  - ⚠️ **Note**: This was already refactored in a previous commit, awaiting scan confirmation
+- **Major (22)**: Mostly accessibility issues in templates (low priority for PR merge)
 
 ---
 
-## 🔗 Related Issues
+## 📋 Task Priority Order (Per User)
 
-- **Cognitive Complexity**: Fixed (1/2 critical issues resolved)
-- **String Literal Duplication**: Likely false positive (already using constants)
-- **Duplication on New Code**: 4.4% (need ≤3%) - secondary priority
-- **Security Rating**: B (need A) - needs investigation
+### PRIORITY 1: Fix Duplication 4.4% → ≤3% (IN PROGRESS)
+**Target**: Eliminate ~200-300 duplicated lines
+
+**Action Plan**:
+1. **Immediate (High Impact)**: Remove duplicated audit routes from `api_routes.py`
+   - Delete lines 5053-5087, 5115-5154, 5179-5242 (~160 lines)
+   - Impact: Eliminates 230 duplicate lines (70% of Python duplications)
+   
+2. **JavaScript Dashboards**: Extract common patterns to utility functions
+   - Create `static/dashboard_utils.js` with shared functions
+   - Refactor 5 dashboard files to use shared utilities
+   - Impact: Eliminate ~300-400 duplicate lines
+
+3. **HTML Templates**: Create Jinja macros for repeated patterns
+   - Extract form patterns, status displays, table structures
+   - Impact: Eliminate ~150 duplicate lines
+
+**Status**: Tool built ✅, ready to start refactoring
+
+### PRIORITY 2: Fix Security Rating B → A
+**Target**: Fix 1 new security issue
+**Status**: Pending (need to identify the specific issue)
+
+### PRIORITY 3: Fix Coverage 68.7% → 80%
+**Target**: Add tests for ~1,400 uncovered lines
+**Status**: Deferred until duplication fixed (per user request)
 
 ---
 
-## 📝 Commit History (Recent)
+## 🔗 Useful Commands
 
-1. `a0350ee` - fix: correct timeout messages and log file paths in error messages ✅
-2. `31a173b` - refactor: improve test code organization and maintainability ✅
-3. `799b9b9` - fix: remove debug code pollution from production templates and services ✅
-4. `8e641ca` - fix: correct user visibility filtering to respect role hierarchy ✅
-5. `05733c5` - refactor: clean up redundant decorator patches in test_api_audit.py ✅
-6. `30f5980` - test: add unit tests for API utils and dashboard routes ✅
-7. `21fe043` - refactor: reduce cognitive complexity in list_sections endpoint ✅
+```bash
+# Generate duplication report
+python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater --duplication
 
-**Status**: All PR comments addressed, awaiting SonarCloud scan results
+# View full duplication details
+cat logs/sonarcloud_duplications.txt
+
+# Run quality gates
+cd /Users/pacey/Documents/SourceCode/course_record_updater && source venv/bin/activate && source .envrc && python scripts/ship_it.py --checks sonar
+```
+
+---
+
+## 📝 Recent Commits
+
+1. Current (uncommitted): Enhanced duplication detection tool
+2. `a0350ee` - fix: correct timeout messages and log file paths ✅
+3. `31a173b` - refactor: improve test code organization ✅
+4. `799b9b9` - fix: remove debug code pollution ✅
+5. `8e641ca` - fix: correct user visibility filtering ✅
+6. `05733c5` - refactor: clean up redundant decorator patches ✅
+7. `30f5980` - test: add unit tests for API utils and dashboard routes ✅
+8. `21fe043` - refactor: reduce cognitive complexity in list_sections ✅
+
+**Next Action**: Commit duplication tool, then systematically fix duplications
+
+---
+
+## 🔗 Related Documentation
+
+- Duplication Report: `logs/sonarcloud_duplications.txt`
+- SonarCloud Issues: `logs/sonarcloud_issues.txt`
+- PR Comments Analysis: `PR_COMMENTS_ANALYSIS.md`
+- Coverage Gaps: `logs/pr_coverage_gaps.txt`

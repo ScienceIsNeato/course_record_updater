@@ -119,6 +119,51 @@ class SonarCloudScraper:
 
         return response["hotspots"]
 
+    def get_duplications(self) -> List[Dict]:
+        """Get code duplications from SonarCloud"""
+        params = {
+            "componentKey": self.project_key,
+        }
+
+        response = self._make_api_request("duplications/show", params)
+
+        if not response or "duplications" not in response:
+            return []
+
+        return response["duplications"]
+    
+    def get_duplicated_files(self) -> List[Dict]:
+        """Get files with duplications"""
+        # Use measures API to get duplication metrics per file
+        params = {
+            "component": self.project_key,
+            "metricKeys": "duplicated_lines,duplicated_blocks,duplicated_files,duplicated_lines_density",
+            "ps": "500",  # Get up to 500 files
+        }
+
+        response = self._make_api_request("measures/component_tree", params)
+
+        if not response or "components" not in response:
+            return []
+
+        # Filter to only files with duplication
+        duplicated_files = []
+        for component in response["components"]:
+            measures = {m["metric"]: m.get("value", "0") for m in component.get("measures", [])}
+            dup_lines = int(measures.get("duplicated_lines", "0"))
+            
+            if dup_lines > 0:
+                duplicated_files.append({
+                    "key": component["key"],
+                    "name": component["name"],
+                    "path": component.get("path", ""),
+                    "duplicated_lines": dup_lines,
+                    "duplicated_blocks": int(measures.get("duplicated_blocks", "0")),
+                    "density": float(measures.get("duplicated_lines_density", "0.0"))
+                })
+
+        return sorted(duplicated_files, key=lambda x: x["duplicated_lines"], reverse=True)
+
     def format_issue(self, issue: Dict) -> str:
         """Format a single issue for display"""
         # Extract file path (remove project key prefix)
@@ -267,6 +312,72 @@ class SonarCloudScraper:
                 )
                 output(f"  💡 Use --max-display {len(hotspots)} to see all")
 
+    def print_duplication_report(self, output_file: str = None):
+        """Print detailed duplication report"""
+        print("\n🔄 Code Duplication Analysis")
+        print("=" * 60)
+        
+        duplicated_files = self.get_duplicated_files()
+        
+        if not duplicated_files:
+            print("✅ No duplications detected")
+            return
+        
+        total_dup_lines = sum(f["duplicated_lines"] for f in duplicated_files)
+        print("\n📊 Summary:")
+        print(f"  • {len(duplicated_files)} files with duplications")
+        print(f"  • {total_dup_lines} total duplicated lines")
+        
+        # Prepare output
+        def output(text: str):
+            print(text)
+            if output_file:
+                with open(output_file, "a", encoding="utf-8") as f:
+                    f.write(text + "\n")
+        
+        if output_file:
+            # Clear the file first
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write("🔄 SonarCloud Code Duplication Report\n")
+                f.write("=" * 70 + "\n\n")
+        
+        output(f"\n📁 Top {min(20, len(duplicated_files))} Files with Most Duplication:")
+        output("-" * 60)
+        
+        for i, file_info in enumerate(duplicated_files[:20], 1):
+            path = file_info["path"] or file_info["name"]
+            dup_lines = file_info["duplicated_lines"]
+            dup_blocks = file_info["duplicated_blocks"]
+            density = file_info["density"]
+            
+            output(f"\n{i:2d}. {path}")
+            output(f"    🔴 {dup_lines} duplicated lines in {dup_blocks} blocks ({density:.1f}% density)")
+            
+            # Fetch specific duplication details for this file
+            try:
+                params = {"key": file_info["key"]}
+                dup_response = self._make_api_request("duplications/show", params)
+                
+                if dup_response and "duplications" in dup_response:
+                    for dup in dup_response["duplications"][:3]:  # Show first 3 blocks
+                        blocks = dup.get("blocks", [])
+                        if len(blocks) >= 2:
+                            from_block = blocks[0]
+                            to_block = blocks[1]
+                            from_line = from_block.get("from", "?")
+                            to_line = to_block.get("from", "?")
+                            to_file = to_block.get("_ref", "").split(":")[-1]
+                            size = from_block.get("size", "?")
+                            
+                            output(f"      ↔ Lines {from_line}-{from_line + size - 1} duplicated in {to_file}:{to_line}")
+            except Exception as e:
+                output(f"      ⚠ Could not fetch duplication details: {e}")
+        
+        if len(duplicated_files) > 20:
+            output(f"\n  ... and {len(duplicated_files) - 20} more files with duplication")
+        
+        output(f"\n🔗 Full duplication view: https://sonarcloud.io/component_measures?id={self.project_key}&metric=duplicated_lines_density")
+    
     def print_actionable_summary(self):
         """Print actionable next steps"""
         print("\n💡 Next Steps:")
@@ -303,6 +414,16 @@ def main():
         default="logs/sonarcloud_issues.txt",
         help="File to write issues to (default: logs/sonarcloud_issues.txt)",
     )
+    parser.add_argument(
+        "--duplication",
+        action="store_true",
+        help="Generate detailed duplication report",
+    )
+    parser.add_argument(
+        "--duplication-output",
+        default="logs/sonarcloud_duplications.txt",
+        help="File to write duplication report to (default: logs/sonarcloud_duplications.txt)",
+    )
 
     args = parser.parse_args()
 
@@ -314,6 +435,12 @@ def main():
     # Always show security issues for review, even if quality gate passes
     # Write to file for easy reference
     scraper.print_issues_summary(args.max_display, args.output_file)
+    
+    # Generate duplication report if requested
+    if args.duplication:
+        scraper.print_duplication_report(args.duplication_output)
+        print(f"\n📄 Duplication report written to: {args.duplication_output}")
+    
     scraper.print_actionable_summary()
     
     if args.output_file:
