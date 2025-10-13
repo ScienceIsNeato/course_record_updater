@@ -14,9 +14,6 @@ from api.utils import handle_api_error
 from audit_service import AuditService, EntityType
 from auth_service import permission_required
 from constants import TIMEZONE_UTC_SUFFIX
-from logging_config import get_logger
-
-logger = get_logger(__name__)
 
 # Create blueprint
 audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
@@ -70,10 +67,7 @@ def get_recent_logs():
     except ValueError as e:
         return jsonify({"success": False, "error": f"Invalid parameter: {str(e)}"}), 400
     except Exception as e:
-        logger.error(
-            f"[AUDIT API] Failed to fetch recent logs: {str(e)}", exc_info=True
-        )
-        return jsonify({"success": False, "error": "Failed to fetch audit logs"}), 500
+        return handle_api_error(e, "Fetch recent audit logs", "Failed to fetch audit logs")
 
 
 @audit_bp.route("/entity/<entity_type>/<entity_id>", methods=["GET"])
@@ -127,13 +121,10 @@ def get_entity_history(entity_type: str, entity_id: str):
         )
 
     except Exception as e:
-        logger.error(
-            f"[AUDIT API] Failed to fetch entity history for {entity_type}/{entity_id}: {str(e)}",
-            exc_info=True,
-        )
-        return (
-            jsonify({"success": False, "error": "Failed to fetch entity history"}),
-            500,
+        return handle_api_error(
+            e,
+            f"Fetch entity history for {entity_type}/{entity_id}",
+            "Failed to fetch entity history"
         )
 
 
@@ -212,13 +203,10 @@ def get_user_activity(user_id: str):
         )
 
     except Exception as e:
-        logger.error(
-            f"[AUDIT API] Failed to fetch user activity for {user_id}: {str(e)}",
-            exc_info=True,
-        )
-        return (
-            jsonify({"success": False, "error": "Failed to fetch user activity"}),
-            500,
+        return handle_api_error(
+            e,
+            f"Fetch user activity for {user_id}",
+            "Failed to fetch user activity"
         )
 
 
@@ -328,13 +316,5 @@ def export_logs():
         )
 
     except Exception as e:
-        logger.error(
-            f"[AUDIT API] Failed to export audit logs: {str(e)}", exc_info=True
-        )
-        return (
-            jsonify(
-                {"success": False, "error": f"Failed to export audit logs: {str(e)}"}
-            ),
-            500,
-        )
+        return handle_api_error(e, "Export audit logs", f"Failed to export audit logs: {str(e)}")
 
