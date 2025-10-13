@@ -98,11 +98,11 @@ async function loadUsers() {
         const currentUserLevel = roleHierarchy[currentUserRole] || 1;
         
         // Institution admins and site admins see everyone (no filtering)
-        // Others see users at their level AND higher (colleagues + supervisors)
+        // Others see users at their level AND lower (colleagues + subordinates)
         if (currentUserRole !== 'institution_admin' && currentUserRole !== 'site_admin') {
             users = users.filter(user => {
                 const userLevel = roleHierarchy[user.role] || 0;
-                return userLevel >= currentUserLevel;
+                return userLevel <= currentUserLevel;
             });
         }
         
