@@ -116,7 +116,7 @@ start_flask_app() {
             echo -e "${GREEN}✅ Flask app started successfully on port $PORT${NC}"
             echo -e "${GREEN}📱 Access at http://localhost:$PORT${NC}"
             echo -e "${GREEN}🗄️  SQLite database at ${DB_PATH}${NC}"
-            echo -e "${BLUE}📋 Server logs: logs/server.log${NC}"
+            echo -e "${BLUE}📋 Server logs: ${LOG_FILE}${NC}"
             echo -e "${BLUE}📋 Use './scripts/monitor_logs.sh' to monitor server output${NC}"
             return 0
         fi
@@ -124,7 +124,7 @@ start_flask_app() {
     done
 
     echo -e "${RED}❌ Flask app started but is not responding on port $PORT${NC}" >&2
-    echo -e "${RED}❌ Check logs/server.log for details${NC}" >&2
+    echo -e "${RED}❌ Check ${LOG_FILE} for details${NC}" >&2
     return 1
 }
 

@@ -275,7 +275,7 @@ def authenticated_site_admin_page(page: Page) -> Page:
                 error_text = "No error message found. Check if JavaScript is executing."
 
             raise Exception(
-                f"Site admin login failed - still on login page after 2s. Errors: {error_text} URL: {current_url}"
+                f"Site admin login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
             )
 
 
@@ -342,7 +342,7 @@ def instructor_authenticated_page(page: Page) -> Page:
                     )
 
                 raise Exception(
-                    f"Instructor login failed - still on login page after 2s. Errors: {error_text} URL: {current_url}"
+                    f"Instructor login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
                 )
         except Exception as e:
             # If we can't even get the URL, the login likely succeeded but we had a timing issue
@@ -404,7 +404,7 @@ def program_admin_authenticated_page(page: Page) -> Page:
                 error_text = "No error message found. Check if JavaScript is executing."
 
             raise Exception(
-                f"Program admin login failed - still on login page after 2s. Errors: {error_text} URL: {current_url}"
+                f"Program admin login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
             )
 
 
