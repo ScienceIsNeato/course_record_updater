@@ -24,19 +24,6 @@ from flask import (
     url_for,
 )
 
-# Constants for error messages
-PERMISSION_DENIED_MSG = "Permission denied"
-USER_NOT_FOUND_MSG = "User not found"
-USER_NOT_AUTHENTICATED_MSG = "User not authenticated"
-INSTITUTION_NOT_FOUND_MSG = "Institution not found"
-FAILED_TO_CREATE_INSTITUTION_MSG = "Failed to create institution"
-TERM_NOT_FOUND_MSG = "Term not found"
-SECTION_NOT_FOUND_MSG = "Section not found"
-OUTCOME_NOT_FOUND_MSG = "Outcome not found"
-COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
-MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
-TIMEZONE_UTC_SUFFIX = "+00:00"
-
 import database_service
 
 # Import our services
@@ -54,13 +41,24 @@ from auth_service import (
 )
 from constants import (
     COURSE_NOT_FOUND_MSG,
+    COURSE_OFFERING_NOT_FOUND_MSG,
+    FAILED_TO_CREATE_INSTITUTION_MSG,
     INSTITUTION_CONTEXT_REQUIRED_MSG,
+    INSTITUTION_NOT_FOUND_MSG,
     INVALID_EMAIL_FORMAT_MSG,
     INVITATION_NOT_FOUND_MSG,
+    MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_DATA_PROVIDED_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
     NOT_FOUND_MSG,
+    OUTCOME_NOT_FOUND_MSG,
+    PERMISSION_DENIED_MSG,
     PROGRAM_NOT_FOUND_MSG,
+    SECTION_NOT_FOUND_MSG,
+    TERM_NOT_FOUND_MSG,
+    TIMEZONE_UTC_SUFFIX,
+    USER_NOT_AUTHENTICATED_MSG,
+    USER_NOT_FOUND_MSG,
 )
 from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
