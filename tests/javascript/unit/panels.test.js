@@ -1,6 +1,9 @@
 const { PanelManager } = require('../../../static/panels');
 const { setBody } = require('../helpers/dom');
 
+// Load panels.js for loadAuditLogs tests (loaded once at module level)
+require('../../../static/panels.js');
+
 describe('PanelManager', () => {
   beforeEach(() => {
     setBody(`
@@ -369,9 +372,25 @@ describe('PanelManager', () => {
 
 describe('Audit Log Functions', () => {
   describe('formatAuditTimestamp', () => {
+    let formatAuditTimestamp;
+
     beforeEach(() => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-10-08T12:00:00Z'));
+      
+      // Mock formatAuditTimestamp from static/panels.js (shared across all tests)
+      formatAuditTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return date.toLocaleString();
+      };
     });
 
     afterEach(() => {
@@ -379,63 +398,21 @@ describe('Audit Log Functions', () => {
     });
 
     it('formats "just now" for very recent timestamps', () => {
-      // Mock formatAuditTimestamp from static/panels.js
-      const formatAuditTimestamp = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        if (diffMins < 1) return 'Just now';
-        return 'later';
-      };
-
       const result = formatAuditTimestamp(new Date('2025-10-08T11:59:30Z'));
       expect(result).toBe('Just now');
     });
 
     it('formats minutes ago for timestamps within an hour', () => {
-      const formatAuditTimestamp = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleString();
-      };
-
       const result = formatAuditTimestamp(new Date('2025-10-08T11:30:00Z'));
       expect(result).toBe('30m ago');
     });
 
     it('formats hours ago for timestamps within a day', () => {
-      const formatAuditTimestamp = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleString();
-      };
-
       const result = formatAuditTimestamp(new Date('2025-10-08T08:00:00Z'));
       expect(result).toBe('4h ago');
     });
 
     it('returns - for null timestamp', () => {
-      const formatAuditTimestamp = (timestamp) => {
-        if (!timestamp) return '-';
-        return 'valid';
-      };
-
       expect(formatAuditTimestamp(null)).toBe('-');
       expect(formatAuditTimestamp(undefined)).toBe('-');
       expect(formatAuditTimestamp('')).toBe('-');
@@ -779,9 +756,6 @@ describe('loadAuditLogs - Complete Implementation Coverage', () => {
     
     originalFetch = global.fetch;
     global.fetch = jest.fn();
-    
-    // panels.js exports loadAuditLogs to window
-    require('../../../static/panels.js');
   });
 
   afterEach(() => {

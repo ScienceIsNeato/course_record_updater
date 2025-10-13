@@ -1,3 +1,6 @@
+// Load the implementation
+require('../../../static/outcomeManagement.js');
+
 /**
  * Unit Tests for Course Outcome (CLO) Management UI
  *
@@ -9,9 +12,6 @@
  * TDD Approach: Tests written before implementation
  * FINAL ENTITY in TDD UI Implementation!
  */
-
-// Load the implementation
-require('../../../static/outcomeManagement.js');
 
 describe('Outcome Management - Create Outcome Modal', () => {
   let mockFetch;

@@ -277,8 +277,12 @@ class TestInvitationAPI(CommonAuthMixin):
 
         Covers: test_tc_crud_ia_005_invite_instructor (E2E)
         """
+        # Use timestamp for unique email to avoid conflicts
+        import time
+
+        timestamp = int(time.time() * 1000)
         invitation_data = {
-            "email": f"newinstructor{pytest.__version__}@inst.edu",  # Unique email
+            "email": f"newinstructor{timestamp}@inst.edu",
             "first_name": "New",
             "last_name": "Instructor",
             "role": "instructor",
