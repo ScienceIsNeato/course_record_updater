@@ -5,7 +5,6 @@ This module contains common helper functions, error handlers, and utilities
 used across multiple API route modules.
 """
 
-import traceback
 from typing import Any, Dict, List, Tuple
 
 from flask import jsonify, request
@@ -97,10 +96,11 @@ def handle_api_error(
     Returns:
         tuple: (JSON response, HTTP status code)
     """
-    # Log full error details for debugging (includes stack trace)
+    # Log error with sanitized details (avoid logging user-controlled data)
+    # Only log the operation name and exception type, not the message
     logger.error(
-        f"{operation_name} failed: {str(e)}\n"
-        f"Full traceback:\n{traceback.format_exc()}"
+        f"{operation_name} failed with {type(e).__name__}",
+        exc_info=True  # This logs the traceback without the raw exception message
     )
 
     # Return sanitized response to user

@@ -102,9 +102,9 @@ function handleDashboardError(error, context, containers = {}) {
   console.error(`[Dashboard Error] ${context}:`, error);
 
   // Set error state for all provided containers
-  Object.entries(containers).forEach(([name, selector]) => {
+  for (const [name, selector] of Object.entries(containers)) {
     setDashboardError(selector, `Failed to load ${name}. Please refresh the page.`);
-  });
+  }
 }
 
 /**

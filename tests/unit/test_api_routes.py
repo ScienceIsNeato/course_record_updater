@@ -13,6 +13,7 @@ import pytest
 # Import the API blueprint and related modules
 from api_routes import api
 from app import app
+from constants import USER_NOT_FOUND_MSG
 
 TEST_PASSWORD = os.environ.get(
     "TEST_PASSWORD", "SecurePass123!"
@@ -1059,7 +1060,7 @@ class TestResendVerificationEndpoints:
         from registration_service import RegistrationError
 
         mock_registration_service.resend_verification_email.side_effect = (
-            RegistrationError("User not found")
+            RegistrationError(USER_NOT_FOUND_MSG)
         )
 
         with app.test_client() as client:
@@ -1070,7 +1071,7 @@ class TestResendVerificationEndpoints:
             assert response.status_code == 400  # RegistrationError returns 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "User not found" in data["error"]
+            assert USER_NOT_FOUND_MSG in data["error"]
 
     @patch("registration_service.RegistrationService")
     def test_resend_verification_already_verified(self, mock_registration_service):
@@ -2816,7 +2817,7 @@ class TestAPIRoutesErrorHandling:
 
         assert response.status_code == 404
         data = response.get_json()
-        assert data["error"] == "User not found"
+        assert data["error"] == USER_NOT_FOUND_MSG
         mock_get_user.assert_called_once_with("nonexistent-user")
 
     @patch("api_routes.get_current_institution_id")
