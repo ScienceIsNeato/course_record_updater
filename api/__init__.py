@@ -19,13 +19,14 @@ def register_blueprints(app: Flask) -> None:
         app: Flask application instance
     """
     # Import route modules
+    from api.routes.audit import audit_bp
     from api.routes.dashboard import dashboard_bp
 
     # Register blueprints
     app.register_blueprint(dashboard_bp)
-    
+    app.register_blueprint(audit_bp)
+
     # TODO: Add more blueprints as we extract them:
-    # from api.routes.audit import audit_bp
     # from api.routes.terms import terms_bp
     # from api.routes.outcomes import outcomes_bp
     # from api.routes.offerings import offerings_bp
