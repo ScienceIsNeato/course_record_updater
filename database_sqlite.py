@@ -679,29 +679,13 @@ class SQLiteDatabase(DatabaseInterface):
             for i, section in enumerate(sections):
                 section_dict = to_dict(section)
 
-                # DEBUG: Print to stderr to see if this runs
-                import sys
-
-                print(
-                    f"[ENRICH-DEBUG] Section {i}: offering_id={section.offering_id}",
-                    file=sys.stderr,
-                )
-
                 # Get offering details to find course and term
                 offering = session.get(CourseOffering, section.offering_id)
-                print(
-                    f"[ENRICH-DEBUG]   Offering found: {offering is not None}",
-                    file=sys.stderr,
-                )
 
                 if offering:
                     # Add course_id for easy filtering (e.g., in assessment UI)
                     section_dict["course_id"] = offering.course_id
                     section_dict["term_id"] = offering.term_id
-                    print(
-                        f"[ENRICH-DEBUG]   Set course_id={offering.course_id}",
-                        file=sys.stderr,
-                    )
 
                     # Get course details
                     course = session.get(Course, offering.course_id)
@@ -713,10 +697,6 @@ class SQLiteDatabase(DatabaseInterface):
                     term = session.get(Term, offering.term_id)
                     if term:
                         section_dict["term_name"] = term.term_name
-                else:
-                    print(
-                        "[ENRICH-DEBUG]   WARNING: No offering found!", file=sys.stderr
-                    )
 
                 # Get instructor details if assigned
                 if section.instructor_id:

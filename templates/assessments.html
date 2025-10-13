@@ -65,12 +65,7 @@
 
 {% block extra_js %}
 <script>
-// IMMEDIATE TEST: Does ANY JavaScript run?
-alert('🚨 ASSESSMENT JS LOADED!');
-console.log('📢 ASSESSMENT JS: Script tag loaded (before DOMContentLoaded)');
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📢 ASSESSMENT JS: DOMContentLoaded fired');
     
     const courseSelect = document.getElementById('courseSelect');
     const outcomesContainer = document.getElementById('outcomesContainer');
