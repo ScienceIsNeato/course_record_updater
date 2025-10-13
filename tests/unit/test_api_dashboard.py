@@ -7,7 +7,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from api.routes.dashboard import dashboard_bp
+# Patch login_required BEFORE importing dashboard routes
+with patch("auth_service.login_required", lambda f: f):
+    from api.routes.dashboard import dashboard_bp
+
 from dashboard_service import DashboardServiceError
 
 
@@ -42,7 +45,6 @@ class TestGetDashboardData:
 
     @patch("api.routes.dashboard.DashboardService")
     @patch("api.routes.dashboard.get_current_user")
-    @patch("api.routes.dashboard.login_required", lambda f: f)
     def test_get_dashboard_data_success(
         self, mock_get_user, mock_service_class, client, mock_user
     ):
@@ -68,7 +70,6 @@ class TestGetDashboardData:
 
     @patch("api.routes.dashboard.DashboardService")
     @patch("api.routes.dashboard.get_current_user")
-    @patch("api.routes.dashboard.login_required", lambda f: f)
     def test_get_dashboard_data_service_error(
         self, mock_get_user, mock_service_class, client, mock_user
     ):
@@ -89,7 +90,6 @@ class TestGetDashboardData:
 
     @patch("api.routes.dashboard.DashboardService")
     @patch("api.routes.dashboard.get_current_user")
-    @patch("api.routes.dashboard.login_required", lambda f: f)
     def test_get_dashboard_data_generic_exception(
         self, mock_get_user, mock_service_class, client, mock_user
     ):

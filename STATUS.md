@@ -1,112 +1,101 @@
 # Project Status
 
-## 🔄 API Refactoring: Incremental Extraction
+## 🔄 SonarCloud Quality Gate Fixes
 
 ### Latest Update: October 13, 2025
 
-**Current Status**: Preparing for incremental API refactoring  
+**Current Status**: Addressing SonarCloud "Coverage on New Code" failure  
 **Commit Time**: ~40 seconds (maintained)  
 **Test Execution**: All tests passing (35 E2E + unit + integration + smoke)  
-**Coverage**: 80%+ (must maintain throughout refactor)  
-**Strategy**: One domain at a time, source + tests together, commit after each
+**Global Coverage**: 80.89% ✅  
+**Coverage on New Code (SonarCloud)**: 68.7% ❌ (need 80%)
 
 ---
 
-## SonarCloud Issues (In Progress)
+## ✅ Completed Fixes
 
-### Blockers Identified
-1. **Security Rating on New Code**: 2/5 (need 1/5) ❌
-2. **Coverage on New Code**: 70.5% (need 80%) ❌
+### 1. Cognitive Complexity (FIXED)
+- ✅ Refactored `list_sections()` in `api_routes.py`
+- Extracted 3 helper functions to reduce complexity from 17 → ~8
+- Committed: `21fe043`
 
-### Progress Made ✅
-**Cognitive Complexity Fix (1/5 critical issues)**
-- ✅ Refactored `LoginService.authenticate_user()` from complexity 18 → ~12
-- Extracted `_validate_account_status()` helper method
-- Replaced nested if/elif with dictionary lookup
-- Maintains all functionality and error messages
-
-### Remaining Work
-
-**Critical Issues (4 remaining)**
-- ❌ api_routes.py:2484 - Cognitive Complexity 17 (need 15)
-- ⚠️  api_routes.py string literal constants (may be false positive - already using constants)
-
-**Coverage Gap (Main Blocker)**
-- Need ~40 more covered lines (out of 398 uncovered) to reach 80%
-- Focus areas:
-  - api_routes.py: 228 uncovered (error paths, validation)
-  - database_sqlite.py: 145 uncovered (error handling)
-  - audit_service.py: 12 uncovered
-  - database_service.py: 9 uncovered
-  - app.py: 4 uncovered
-
-**Accessibility Issues (23 major)**
-- Template form labels need proper associations
-- `role="status"` should be `<output>` elements
-- Low priority - doesn't block PR merge
+### 2. Test Infrastructure Challenges
+- ❌ Attempted to add unit tests for new API modules (`api/routes/audit.py`, `api/utils.py`, `api/routes/dashboard.py`)
+- **Issue**: These modules require complex authentication mocking that's causing test failures
+- **Reverted**: Test files to avoid breaking the build
 
 ---
 
-## Latest CI Fixes (Oct 12, 2025)
+## 🎯 Current Challenge: "Coverage on New Code"
 
-### CI Test Failures Resolved ✅
+### The Problem
+SonarCloud's "Coverage on New Code" metric is **68.7%** (need 80%). This metric ONLY counts coverage for lines modified in this PR/branch, not global coverage.
 
-**1. E2E Adapter Loading Error**
-- Fixed double-fetching issue in data_management_panel.html
-- Now silently skips adapter loading if dropdowns don't exist
+### Why Unit Tests for New API Modules Are Problematic
+1. New API modules (`api/routes/audit.py`, `api/utils.py`, `api/routes/dashboard.py`) are part of "new code"
+2. These require `@permission_required` and `@login_required` decorators
+3. Mocking these decorators in unit tests is complex and error-prone
+4. 33 test failures when attempted
 
-**2. Integration Test Failures (8 tests)**
-- Updated tests to expect correct data after dashboard bug fix
-- Program admin tests now expect actual program/course counts (not 0)
-
-**3. Smoke Test Failure (1 test)**
-- Corrected test assumption about program_admin permissions
-
-**4. API Bug Fix: Program Deletion KeyError**
-- Added defensive handling for both 'program_id' and 'id' keys
-
----
-
-## Test Suite Status
-
-### All Local Tests Passing ✅
-- **Unit Tests**: 1088 passing
-- **Integration Tests**: 145 passing
-- **Smoke Tests**: 29 passing
-- **E2E Tests**: 35/35 passing (100%) ✅
-- **Test Coverage**: 81.45% (local) vs 70.5% (SonarCloud "new code")
-
-### Quality Gates (Local)
-- ✅ All pre-commit hooks passing (~40s)
-- ✅ Code formatting (black, isort, prettier)
-- ✅ Linting (flake8, pylint, ESLint)
-- ✅ Type checking (mypy)
-- ✅ Test coverage >80%
-- ❌ SonarCloud coverage on new code <80% (PR blocker)
+### Alternative Strategy: Focus on `api_routes.py` Error Paths
+- `api_routes.py` has 232 uncovered lines (biggest contributor)
+- Most are error paths (400/500 responses)
+- Already has extensive test infrastructure
+- Easier to add error path tests than mock new API modules
 
 ---
 
-## Strategy for Coverage Gap
+## 📊 Coverage Gaps in Modified Code
 
-The discrepancy between local coverage (81.45%) and SonarCloud "new code" coverage (70.5%) suggests:
-1. SonarCloud only counts coverage for lines modified in this PR
-2. Many new error handling paths are untested
-3. Need targeted tests for validation logic and error paths
+**Total**: 505 uncovered lines across 8 files
 
-**Approach:**
-1. ✅ Fix critical cognitive complexity issues first (1/2 done)
-2. 🔄 Add tests for most common error paths (quick wins)
-3. 🔄 Focus on simple validation failures that are easy to test
-4. 🔄 Aim for 40+ newly covered lines to reach 80% threshold
+**Top Contributors**:
+1. **api_routes.py**: 232 uncovered lines (error paths, validation)
+2. **database_sqlite.py**: 145 uncovered lines (error handling)
+3. **api/routes/audit.py**: 73 uncovered lines (new module, no tests)
+4. **api/utils.py**: 22 uncovered lines (new module, no tests)
+5. **audit_service.py**: 12 uncovered lines
+6. **database_service.py**: 9 uncovered lines
+7. **api/routes/dashboard.py**: 8 uncovered lines (new module, no tests)
+8. **app.py**: 4 uncovered lines
 
 ---
 
-## Next Steps
+## 🚧 Next Steps
 
-1. Fix remaining cognitive complexity issue in api_routes.py
-2. Add tests for error validation in api_routes.py (focus on 400-level errors)
-3. Add tests for database error handling
-4. Re-run SonarCloud analysis to verify improvements
-5. Address accessibility issues if time permits (non-blocking)
+### Option 1: Add Error Path Tests to `api_routes.py` (Recommended)
+- Add tests for 400/500 error responses
+- Focus on validation failures and exception handling
+- Use existing test infrastructure
+- Target: Cover ~100 of the 232 uncovered lines
 
-**Target**: Green SonarCloud quality gate → Merge PR → Production deployment
+### Option 2: Fix Authentication Mocking for New API Modules
+- Debug and fix the 33 failing tests
+- Properly mock `@permission_required` and `@login_required`
+- More comprehensive but higher risk
+
+### Option 3: Integration Tests for New API Modules
+- Write integration tests instead of unit tests
+- Use real authentication flow
+- Slower but more reliable
+
+**Recommendation**: Start with Option 1 (error path tests in `api_routes.py`) as it's the path of least resistance and will give us the biggest coverage boost.
+
+---
+
+## 🔗 Related Issues
+
+- **Cognitive Complexity**: Fixed (1/2 critical issues resolved)
+- **String Literal Duplication**: Likely false positive (already using constants)
+- **Duplication on New Code**: 4.4% (need ≤3%) - secondary priority
+- **Security Rating**: B (need A) - needs investigation
+
+---
+
+## 📝 Commit History (Recent)
+
+1. `21fe043` - refactor: reduce cognitive complexity in list_sections endpoint
+2. `f8882f6` - test: add comprehensive unit tests for audit API routes (REVERTED)
+3. `ef3ff2e` - test: add unit tests for API utils and dashboard routes (REVERTED)
+
+**Status**: Clean working tree, ready for next approach

@@ -144,41 +144,44 @@ class TestResolveInstitutionScope:
 class TestHandleApiError:
     """Tests for handle_api_error utility."""
 
-    def test_handle_api_error_returns_json_response(self):
+    def test_handle_api_error_returns_json_response(self, app):
         """Test that error handler returns proper JSON response."""
         error = ValueError("Test error")
 
-        response, status_code = handle_api_error(
-            error, operation_name="Test operation", user_message="Test failed"
-        )
+        with app.app_context():
+            response, status_code = handle_api_error(
+                error, operation_name="Test operation", user_message="Test failed"
+            )
 
-        json_data = response.get_json()
-        assert json_data["success"] is False
-        assert json_data["error"] == "Test failed"
-        assert status_code == 500
+            json_data = response.get_json()
+            assert json_data["success"] is False
+            assert json_data["error"] == "Test failed"
+            assert status_code == 500
 
-    def test_handle_api_error_custom_status_code(self):
+    def test_handle_api_error_custom_status_code(self, app):
         """Test that custom status code is used."""
         error = ValueError("Test error")
 
-        response, status_code = handle_api_error(
-            error,
-            operation_name="Test operation",
-            user_message="Bad request",
-            status_code=400,
-        )
+        with app.app_context():
+            response, status_code = handle_api_error(
+                error,
+                operation_name="Test operation",
+                user_message="Bad request",
+                status_code=400,
+            )
 
-        assert status_code == 400
+            assert status_code == 400
 
-    def test_handle_api_error_default_message(self):
+    def test_handle_api_error_default_message(self, app):
         """Test that default message is used when not provided."""
         error = ValueError("Test error")
 
-        response, status_code = handle_api_error(error)
+        with app.app_context():
+            response, status_code = handle_api_error(error)
 
-        json_data = response.get_json()
-        assert json_data["error"] == "An error occurred"
-        assert status_code == 500
+            json_data = response.get_json()
+            assert json_data["error"] == "An error occurred"
+            assert status_code == 500
 
 
 class TestValidateRequestJson:
@@ -202,7 +205,7 @@ class TestValidateRequestJson:
 
     def test_validate_json_missing_data(self, app):
         """Test error when no JSON data is provided."""
-        with app.test_request_context("/test", method="POST"):
+        with app.test_request_context("/test", method="POST", json={}):
             with pytest.raises(ValueError, match="No JSON data provided"):
                 validate_request_json()
 
