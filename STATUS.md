@@ -1,13 +1,13 @@
 # Project Status
 
-## 🔄 SonarCloud Quality Gate Fixes
+## 🔄 SonarCloud Quality Gate Fixes + PR Comment Resolution
 
 ### Latest Update: October 13, 2025
 
-**Current Status**: Unit tests for new API modules completed ✅  
+**Current Status**: All PR comments addressed ✅  
 **Commit Time**: ~40 seconds (maintained)  
 **Test Execution**: All tests passing (35 E2E + 1184 unit + 145 integration + 29 smoke)  
-**Global Coverage**: 81.88% ✅ (+1.0% from previous)  
+**Global Coverage**: 81.92% ✅ (+1.0% from baseline)  
 **Coverage on New Code (SonarCloud)**: Awaiting next scan
 
 ---
@@ -25,9 +25,30 @@
   - `tests/unit/test_api_utils.py`: 19 tests for utility functions (mimetypes, scope resolution, error handling, JSON validation)
   - `tests/unit/test_api_dashboard.py`: 3 tests for dashboard data endpoint
 - **Key Solution**: Mocked authentication decorators at module import time using `with patch(...):` before importing blueprints
-- **Coverage Impact**: Global coverage increased from 80.89% → 81.88% (+1.0%)
+- **Coverage Impact**: Global coverage increased from 80.89% → 81.92% (+1.0%)
 - **Test Status**: All 48 tests passing
-- Committed: `30f5980`
+- Committed: `30f5980`, `05733c5`
+
+### 3. PR Comment Resolution (ALL 9 COMMENTS ADDRESSED)
+
+**Phase 1: Critical Fixes (HIGH PRIORITY)**
+- ✅ **Access Control Bug** (`8e641ca`): Fixed inverted user visibility filtering in `templates/users_list.html`
+  - Changed `userLevel >= currentUserLevel` → `userLevel <= currentUserLevel`
+  - Now correctly shows subordinates, not superiors
+- ✅ **Debug Code Pollution** (`799b9b9`): Removed all debug statements from production code
+  - `templates/assessments.html`: Removed `alert()` and `console.log()`
+  - `database_sqlite.py`: Removed debug `print()` statements and `import sys`
+
+**Phase 2: Code Quality (MEDIUM PRIORITY)**
+- ✅ **Test Code Organization** (`31a173b`): Refactored test files for maintainability
+  - Moved `require` statements to top of files (2 files)
+  - Extracted duplicated mock function to `beforeEach` hook
+  - Replaced brittle `pytest.__version__` with timestamp for unique emails
+
+**Phase 3: Documentation/Messages (LOW PRIORITY)**
+- ✅ **Message Consistency** (`a0350ee`): Fixed error messages and log paths
+  - Updated timeout messages from "2s" → "5s" (3 fixtures)
+  - Changed hardcoded log paths to use `${LOG_FILE}` variable
 
 ---
 
@@ -85,8 +106,12 @@
 
 ## 📝 Commit History (Recent)
 
-1. `30f5980` - test: add unit tests for API utils and dashboard routes ✅
-2. `21fe043` - refactor: reduce cognitive complexity in list_sections endpoint ✅
-3. (Previous reverted commits removed from history)
+1. `a0350ee` - fix: correct timeout messages and log file paths in error messages ✅
+2. `31a173b` - refactor: improve test code organization and maintainability ✅
+3. `799b9b9` - fix: remove debug code pollution from production templates and services ✅
+4. `8e641ca` - fix: correct user visibility filtering to respect role hierarchy ✅
+5. `05733c5` - refactor: clean up redundant decorator patches in test_api_audit.py ✅
+6. `30f5980` - test: add unit tests for API utils and dashboard routes ✅
+7. `21fe043` - refactor: reduce cognitive complexity in list_sections endpoint ✅
 
-**Status**: Clean working tree, ready to push or add more tests
+**Status**: All PR comments addressed, awaiting SonarCloud scan results
