@@ -14,9 +14,13 @@ from api.utils import handle_api_error
 from audit_service import AuditService, EntityType
 from auth_service import permission_required
 from constants import TIMEZONE_UTC_SUFFIX
+from logging_config import get_logger
 
 # Create blueprint
 audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 @audit_bp.route("/recent", methods=["GET"])
@@ -65,7 +69,9 @@ def get_recent_logs():
         )
 
     except ValueError as e:
-        return jsonify({"success": False, "error": f"Invalid parameter: {str(e)}"}), 400
+        # Don't log user-controlled exception message
+        logger.error(f"Fetch recent audit logs failed with {type(e).__name__}", exc_info=True)
+        return jsonify({"success": False, "error": "Invalid parameter"}), 400
     except Exception as e:
         return handle_api_error(e, "Fetch recent audit logs", "Failed to fetch audit logs")
 
@@ -266,8 +272,10 @@ def export_logs():
                 end_date_str.replace("Z", TIMEZONE_UTC_SUFFIX)
             )
         except ValueError as e:
+            # Don't log user-controlled exception message
+            logger.error(f"Audit export failed with {type(e).__name__}", exc_info=True)
             return (
-                jsonify({"success": False, "error": f"Invalid date format: {str(e)}"}),
+                jsonify({"success": False, "error": "Invalid date format"}),
                 400,
             )
 
@@ -316,5 +324,5 @@ def export_logs():
         )
 
     except Exception as e:
-        return handle_api_error(e, "Export audit logs", f"Failed to export audit logs: {str(e)}")
+        return handle_api_error(e, "Export audit logs", "Failed to export audit logs")
 
