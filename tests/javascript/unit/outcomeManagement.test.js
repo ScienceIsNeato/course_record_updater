@@ -1,4 +1,8 @@
-// Load the implementation
+/**
+ * Unit Tests for Course Outcome (CLO) Management UI
+ *
+ * Load the implementation at module level
+ */
 require('../../../static/outcomeManagement.js');
 
 /**

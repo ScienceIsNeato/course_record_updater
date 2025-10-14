@@ -4,6 +4,75 @@ const { setBody } = require('../helpers/dom');
 // Load panels.js for loadAuditLogs tests (loaded once at module level)
 require('../../../static/panels.js');
 
+// Extracted helper: Mock formatAuditTimestamp implementation
+function createFormatAuditTimestamp() {
+  return (timestamp) => {
+    if (!timestamp) return '-';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleString();
+  };
+}
+
+// Extracted helper: Mock getActionBadge implementation
+function createGetActionBadge() {
+  return (operationType) => {
+    const badges = {
+      'CREATE': '<span class="badge bg-success">Create</span>',
+      'UPDATE': '<span class="badge bg-info">Update</span>',
+      'DELETE': '<span class="badge bg-danger">Delete</span>'
+    };
+    return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
+  };
+}
+
+// Extracted helper: Mock formatEntityDisplay implementation
+function createFormatEntityDisplay() {
+  return (entityType, entityId) => {
+    const icons = {
+      'users': '👤',
+      'institutions': '🏛️',
+      'programs': '📚',
+      'courses': '📖',
+      'terms': '📅',
+      'course_offerings': '📝',
+      'course_sections': '👥',
+      'course_outcomes': '🎯'
+    };
+    const icon = icons[entityType] || '📄';
+    const shortId = entityId ? entityId.substring(0, 8) : '';
+    return `${icon} <span class="text-muted">${shortId}</span>`;
+  };
+}
+
+// Extracted helper: Mock getAuditDetails implementation
+function createGetAuditDetails() {
+  return (log) => {
+    if (log.changed_fields) {
+      try {
+        const fields = JSON.parse(log.changed_fields);
+        if (Array.isArray(fields) && fields.length > 0) {
+          return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
+        }
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+    }
+    if (log.operation_type === 'CREATE') {
+      return 'New entity created';
+    } else if (log.operation_type === 'DELETE') {
+      return 'Entity deleted';
+    }
+    return 'Entity modified';
+  };
+}
+
 describe('PanelManager', () => {
   beforeEach(() => {
     setBody(`
@@ -378,19 +447,8 @@ describe('Audit Log Functions', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2025-10-08T12:00:00Z'));
       
-      // Mock formatAuditTimestamp from static/panels.js (shared across all tests)
-      formatAuditTimestamp = (timestamp) => {
-        if (!timestamp) return '-';
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return date.toLocaleString();
-      };
+      // Use extracted helper
+      formatAuditTimestamp = createFormatAuditTimestamp();
     });
 
     afterEach(() => {
@@ -421,14 +479,7 @@ describe('Audit Log Functions', () => {
 
   describe('getActionBadge', () => {
     it('returns success badge for CREATE', () => {
-      const getActionBadge = (operationType) => {
-        const badges = {
-          'CREATE': '<span class="badge bg-success">Create</span>',
-          'UPDATE': '<span class="badge bg-info">Update</span>',
-          'DELETE': '<span class="badge bg-danger">Delete</span>'
-        };
-        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
-      };
+      const getActionBadge = createGetActionBadge();
 
       const result = getActionBadge('CREATE');
       expect(result).toContain('bg-success');
@@ -436,14 +487,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('returns info badge for UPDATE', () => {
-      const getActionBadge = (operationType) => {
-        const badges = {
-          'CREATE': '<span class="badge bg-success">Create</span>',
-          'UPDATE': '<span class="badge bg-info">Update</span>',
-          'DELETE': '<span class="badge bg-danger">Delete</span>'
-        };
-        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
-      };
+      const getActionBadge = createGetActionBadge();
 
       const result = getActionBadge('UPDATE');
       expect(result).toContain('bg-info');
@@ -451,14 +495,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('returns danger badge for DELETE', () => {
-      const getActionBadge = (operationType) => {
-        const badges = {
-          'CREATE': '<span class="badge bg-success">Create</span>',
-          'UPDATE': '<span class="badge bg-info">Update</span>',
-          'DELETE': '<span class="badge bg-danger">Delete</span>'
-        };
-        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
-      };
+      const getActionBadge = createGetActionBadge();
 
       const result = getActionBadge('DELETE');
       expect(result).toContain('bg-danger');
@@ -466,14 +503,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('returns secondary badge for unknown operation', () => {
-      const getActionBadge = (operationType) => {
-        const badges = {
-          'CREATE': '<span class="badge bg-success">Create</span>',
-          'UPDATE': '<span class="badge bg-info">Update</span>',
-          'DELETE': '<span class="badge bg-danger">Delete</span>'
-        };
-        return badges[operationType] || `<span class="badge bg-secondary">${operationType}</span>`;
-      };
+      const getActionBadge = createGetActionBadge();
 
       const result = getActionBadge('UNKNOWN');
       expect(result).toContain('bg-secondary');
@@ -483,21 +513,7 @@ describe('Audit Log Functions', () => {
 
   describe('formatEntityDisplay', () => {
     it('formats users entity with correct icon', () => {
-      const formatEntityDisplay = (entityType, entityId) => {
-        const icons = {
-          'users': '👤',
-          'institutions': '🏛️',
-          'programs': '📚',
-          'courses': '📖',
-          'terms': '📅',
-          'course_offerings': '📝',
-          'course_sections': '👥',
-          'course_outcomes': '🎯'
-        };
-        const icon = icons[entityType] || '📄';
-        const shortId = entityId ? entityId.substring(0, 8) : '';
-        return `${icon} <span class="text-muted">${shortId}</span>`;
-      };
+      const formatEntityDisplay = createFormatEntityDisplay();
 
       const result = formatEntityDisplay('users', 'user-12345678-abcd');
       expect(result).toContain('👤');
@@ -505,21 +521,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('formats institutions entity with correct icon', () => {
-      const formatEntityDisplay = (entityType, entityId) => {
-        const icons = {
-          'users': '👤',
-          'institutions': '🏛️',
-          'programs': '📚',
-          'courses': '📖',
-          'terms': '📅',
-          'course_offerings': '📝',
-          'course_sections': '👥',
-          'course_outcomes': '🎯'
-        };
-        const icon = icons[entityType] || '📄';
-        const shortId = entityId ? entityId.substring(0, 8) : '';
-        return `${icon} <span class="text-muted">${shortId}</span>`;
-      };
+      const formatEntityDisplay = createFormatEntityDisplay();
 
       const result = formatEntityDisplay('institutions', 'inst-999');
       expect(result).toContain('🏛️');
@@ -527,36 +529,14 @@ describe('Audit Log Functions', () => {
     });
 
     it('uses default icon for unknown entity type', () => {
-      const formatEntityDisplay = (entityType, entityId) => {
-        const icons = {
-          'users': '👤',
-          'institutions': '🏛️',
-          'programs': '📚',
-          'courses': '📖',
-          'terms': '📅',
-          'course_offerings': '📝',
-          'course_sections': '👥',
-          'course_outcomes': '🎯'
-        };
-        const icon = icons[entityType] || '📄';
-        const shortId = entityId ? entityId.substring(0, 8) : '';
-        return `${icon} <span class="text-muted">${shortId}</span>`;
-      };
+      const formatEntityDisplay = createFormatEntityDisplay();
 
       const result = formatEntityDisplay('unknown_type', 'id-123');
       expect(result).toContain('📄');
     });
 
     it('handles empty entity ID', () => {
-      const formatEntityDisplay = (entityType, entityId) => {
-        const icons = {
-          'users': '👤',
-          'institutions': '🏛️'
-        };
-        const icon = icons[entityType] || '📄';
-        const shortId = entityId ? entityId.substring(0, 8) : '';
-        return `${icon} <span class="text-muted">${shortId}</span>`;
-      };
+      const formatEntityDisplay = createFormatEntityDisplay();
 
       const result = formatEntityDisplay('users', null);
       expect(result).toContain('👤');
@@ -566,24 +546,7 @@ describe('Audit Log Functions', () => {
 
   describe('getAuditDetails', () => {
     it('returns changed fields for UPDATE with valid JSON', () => {
-      const getAuditDetails = (log) => {
-        if (log.changed_fields) {
-          try {
-            const fields = JSON.parse(log.changed_fields);
-            if (Array.isArray(fields) && fields.length > 0) {
-              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
-            }
-          } catch (e) {
-            // Ignore JSON parse errors
-          }
-        }
-        if (log.operation_type === 'CREATE') {
-          return 'New entity created';
-        } else if (log.operation_type === 'DELETE') {
-          return 'Entity deleted';
-        }
-        return 'Entity modified';
-      };
+      const getAuditDetails = createGetAuditDetails();
 
       const log = {
         changed_fields: '["name", "email", "role"]',
@@ -594,24 +557,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('truncates long changed fields list', () => {
-      const getAuditDetails = (log) => {
-        if (log.changed_fields) {
-          try {
-            const fields = JSON.parse(log.changed_fields);
-            if (Array.isArray(fields) && fields.length > 0) {
-              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        if (log.operation_type === 'CREATE') {
-          return 'New entity created';
-        } else if (log.operation_type === 'DELETE') {
-          return 'Entity deleted';
-        }
-        return 'Entity modified';
-      };
+      const getAuditDetails = createGetAuditDetails();
 
       const log = {
         changed_fields: '["field1", "field2", "field3", "field4", "field5"]',
@@ -622,24 +568,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('returns "New entity created" for CREATE', () => {
-      const getAuditDetails = (log) => {
-        if (log.changed_fields) {
-          try {
-            const fields = JSON.parse(log.changed_fields);
-            if (Array.isArray(fields) && fields.length > 0) {
-              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        if (log.operation_type === 'CREATE') {
-          return 'New entity created';
-        } else if (log.operation_type === 'DELETE') {
-          return 'Entity deleted';
-        }
-        return 'Entity modified';
-      };
+      const getAuditDetails = createGetAuditDetails();
 
       const log = { operation_type: 'CREATE' };
       const result = getAuditDetails(log);
@@ -647,24 +576,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('returns "Entity deleted" for DELETE', () => {
-      const getAuditDetails = (log) => {
-        if (log.changed_fields) {
-          try {
-            const fields = JSON.parse(log.changed_fields);
-            if (Array.isArray(fields) && fields.length > 0) {
-              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        if (log.operation_type === 'CREATE') {
-          return 'New entity created';
-        } else if (log.operation_type === 'DELETE') {
-          return 'Entity deleted';
-        }
-        return 'Entity modified';
-      };
+      const getAuditDetails = createGetAuditDetails();
 
       const log = { operation_type: 'DELETE' };
       const result = getAuditDetails(log);
@@ -672,24 +584,7 @@ describe('Audit Log Functions', () => {
     });
 
     it('handles invalid JSON in changed_fields gracefully', () => {
-      const getAuditDetails = (log) => {
-        if (log.changed_fields) {
-          try {
-            const fields = JSON.parse(log.changed_fields);
-            if (Array.isArray(fields) && fields.length > 0) {
-              return `Changed: ${fields.slice(0, 3).join(', ')}${fields.length > 3 ? '...' : ''}`;
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-        if (log.operation_type === 'CREATE') {
-          return 'New entity created';
-        } else if (log.operation_type === 'DELETE') {
-          return 'Entity deleted';
-        }
-        return 'Entity modified';
-      };
+      const getAuditDetails = createGetAuditDetails();
 
       const log = {
         changed_fields: 'invalid-json',

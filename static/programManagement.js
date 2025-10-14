@@ -89,19 +89,14 @@ function setupModalListeners() {
  * For site admins: would need to fetch all institutions (future enhancement)
  */
 async function loadInstitutionsForDropdown() {
-  console.log('[programManagement] DEBUG: loadInstitutionsForDropdown called');
   const select = document.getElementById('programInstitutionId');
-  console.log('[programManagement] DEBUG: dropdown element found?', !!select);
 
   if (!select) {
     return;
   }
 
-  console.log('[programManagement] DEBUG: userContext =', window.userContext);
-
   // Use user's institution from the page context (set in template)
   if (window.userContext && window.userContext.institutionId) {
-    console.log('[programManagement] DEBUG: Populating dropdown');
     select.innerHTML = '<option value="">Select Institution</option>';
 
     const option = document.createElement('option');
@@ -109,15 +104,8 @@ async function loadInstitutionsForDropdown() {
     option.textContent = window.userContext.institutionName;
     option.selected = true; // Auto-select user's institution
     select.appendChild(option);
-
-    console.log('[programManagement] DEBUG: Dropdown now has', select.options.length, 'options');
-  } else {
-    console.error(
-      '[programManagement] ERROR: User context not available - cannot populate institution dropdown'
-    );
   }
 }
-/* eslint-enable no-console */
 
 /**
  * Initialize Create Program Modal
