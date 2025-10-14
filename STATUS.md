@@ -52,11 +52,25 @@
 - [ ] Test Mailtrap SMTP (run test_mailtrap_smtp.py)
 - [ ] Optional: Test Bella's Gmail (run test_gmail_smtp.py)
 
-#### Phase 3: E2E Email Infrastructure (Not Started)
-- [ ] Gmail API OAuth2 setup
-- [ ] Implement GmailVerifier helper
-- [ ] Write basic E2E test (registration flow)
-- [ ] Document setup process
+#### Phase 3: E2E Email Infrastructure ⏳ DESIGN COMPLETE
+**Completed:**
+- [x] E2E test pseudo-code for ALL email flows
+  - Registration + verification flow
+  - Password reset flow
+  - Invitation flows (all variants)
+  - Welcome email flow
+  - Admin reminder flows (Phase 4 feature)
+- [x] Helper utility designs (MailtrapHelper, GmailHelper)
+- [x] Complete email flow mapping document
+- [x] Permission and security test designs
+- [x] Rate limiting test designs
+
+**Remaining (requires account setup + implementation):**
+- [ ] Set up Mailtrap account and get API token
+- [ ] Implement MailtrapHelper (API integration)
+- [ ] Convert pseudo-code tests to real E2E tests
+- [ ] Run E2E suite against test environment
+- [ ] Optional: Gmail API OAuth2 setup for GmailHelper
 
 #### Phase 4: Admin Instructor Reminder Feature (Not Started)
 - [ ] Data model addition
