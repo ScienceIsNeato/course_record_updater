@@ -97,20 +97,22 @@ class QualityGateExecutor:
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
-        # Fast checks for commit validation (exclude slow checks >30s)
+        # Fast checks for commit validation (optimized for <40s total time)
+        # Key optimization: Run coverage instead of tests (coverage includes tests)
+        # This saves ~28s by avoiding duplicate test execution
         self.commit_checks = [
             ("black", "🎨 Code Formatting (black)"),
             ("isort", "📚 Import Sorting (isort)"),
             ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
             ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
             ("js-format", "🎨 JavaScript Format Check (Prettier)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
+            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
-            ("duplication", "🔄 Code Duplication Check"),
+            # Duplication check moved to PR validation (non-critical, saves 2.2s)
+            # ("duplication", "🔄 Code Duplication Check"),  # Moved to PR checks
             # ("sonar", "🔍 SonarCloud Quality Analysis"),  # Excluded from commit checks to avoid chicken-and-egg problem
         ]
 
@@ -295,9 +297,51 @@ class QualityGateExecutor:
 
         lines = [f"✅ PASSED CHECKS ({len(passed_checks)}):"]
         for result in passed_checks:
-            lines.append(f"   • {result.name}: Completed in {result.duration:.1f}s")
+            # Try to extract success message from bash output
+            message = self._extract_success_message(result)
+            if message:
+                lines.append(f"   • {result.name}: {message}")
+            else:
+                lines.append(f"   • {result.name}: Completed in {result.duration:.1f}s")
         lines.append("")
         return lines
+    
+    def _extract_success_message(self, result: CheckResult) -> Optional[str]:
+        """Extract success message from bash script output."""
+        # For JavaScript coverage, extract the actual percentages from the detailed output
+        if "JavaScript Coverage" in result.name:
+            lines_pct = None
+            statements_pct = None
+            branches_pct = None
+            functions_pct = None
+            
+            for line in result.output.split('\n'):
+                stripped = line.strip()
+                if stripped.startswith('Lines:'):
+                    lines_pct = stripped.split()[1]
+                elif stripped.startswith('Statements:'):
+                    statements_pct = stripped.split()[1]
+                elif stripped.startswith('Branches:'):
+                    branches_pct = stripped.split()[1]
+                elif stripped.startswith('Functions:'):
+                    functions_pct = stripped.split()[1]
+            
+            if lines_pct:
+                return f"Lines: {lines_pct} ✅ | Statements: {statements_pct} | Branches: {branches_pct} | Functions: {functions_pct}"
+        
+        # For other checks, look for pattern: "   • {name}: {message}"
+        for line in result.output.split('\n'):
+            stripped = line.strip()
+            if stripped.startswith('• '):
+                # Extract message after first ": "
+                parts = stripped.split(': ', 1)
+                if len(parts) == 2:
+                    check_name = parts[0].replace('• ', '').strip()
+                    message = parts[1].strip()
+                    # Match if bash name is substring of result.name
+                    if check_name in result.name or result.name in check_name:
+                        return message
+        return None
 
     def _filter_meaningful_lines(self, output_lines: List[str]) -> List[str]:
         """Filter out empty lines and pip noise from output."""

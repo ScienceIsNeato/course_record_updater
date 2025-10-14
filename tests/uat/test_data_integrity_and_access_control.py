@@ -31,6 +31,12 @@ from database_service import (
     get_user_by_email,
     reset_database,
 )
+from tests.conftest import (
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
 
 
 class TestDataFixture:
@@ -199,7 +205,7 @@ class TestDataFixture:
                 # Site Admin
                 {
                     "id": "site-admin-001",
-                    "email": "siteadmin@system.local",
+                    "email": SITE_ADMIN_EMAIL,
                     "first_name": "Site",
                     "last_name": "Admin",
                     "display_name": "Site Administrator",
@@ -381,8 +387,8 @@ class TestSiteAdminAccess:
         login_response = self.client.post(
             "/api/auth/login",
             json={
-                "email": "siteadmin@system.local",
-                "password": "SiteAdmin123!",
+                "email": SITE_ADMIN_EMAIL,
+                "password": SITE_ADMIN_PASSWORD,
             },
         )
         assert (
@@ -429,8 +435,8 @@ class TestSiteAdminAccess:
         self.client.post(
             "/api/auth/login",
             json={
-                "email": "siteadmin@system.local",
-                "password": "SiteAdmin123!",
+                "email": SITE_ADMIN_EMAIL,
+                "password": SITE_ADMIN_PASSWORD,
             },
         )
 
@@ -519,8 +525,8 @@ class TestInstitutionAdminAccess:
         login_response = self.client.post(
             "/api/auth/login",
             json={
-                "email": "sarah.admin@cei.edu",
-                "password": "InstitutionAdmin123!",
+                "email": INSTITUTION_ADMIN_EMAIL,
+                "password": INSTITUTION_ADMIN_PASSWORD,
             },
         )
         assert (
@@ -572,8 +578,8 @@ class TestInstitutionAdminAccess:
         self.client.post(
             "/api/auth/login",
             json={
-                "email": "sarah.admin@cei.edu",
-                "password": "InstitutionAdmin123!",
+                "email": INSTITUTION_ADMIN_EMAIL,
+                "password": INSTITUTION_ADMIN_PASSWORD,
             },
         )
 
@@ -660,8 +666,8 @@ class TestInstitutionAdminAccess:
         cei_login = self.client.post(
             "/api/auth/login",
             json={
-                "email": "sarah.admin@cei.edu",
-                "password": "InstitutionAdmin123!",
+                "email": INSTITUTION_ADMIN_EMAIL,
+                "password": INSTITUTION_ADMIN_PASSWORD,
             },
         )
         assert cei_login.status_code == 200, "CEI admin login should succeed"
@@ -702,7 +708,7 @@ class TestInstitutionAdminAccess:
             "/api/auth/login",
             json={
                 "email": "mike.admin@riverside.edu",
-                "password": "InstitutionAdmin123!",
+                "password": INSTITUTION_ADMIN_PASSWORD,
             },
         )
         assert rcc_login.status_code == 200, "RCC admin login should succeed"

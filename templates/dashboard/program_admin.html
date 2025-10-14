@@ -47,7 +47,7 @@
             Course Management
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createCourseModal">
                 <i class="fas fa-plus"></i> Add Course
             </button>
             <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
@@ -146,6 +146,63 @@
 
 <!-- Panel 5: Data Management (Import/Export) -->
 {% include 'components/data_management_panel.html' %}
+
+<!-- Course Creation Modal -->
+<div class="modal fade" id="createCourseModal" tabindex="-1" aria-labelledby="createCourseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createCourseModalLabel">Create New Course</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createCourseForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="courseNumber" class="form-label">Course Number *</label>
+                            <input type="text" class="form-control" id="courseNumber" name="course_number" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="courseTitle" class="form-label">Course Title *</label>
+                            <input type="text" class="form-control" id="courseTitle" name="course_title" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="courseDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="courseCreditHours" class="form-label">Credit Hours *</label>
+                            <input type="number" class="form-control" id="courseCreditHours" name="credit_hours" min="0" max="12" step="0.5" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="courseDepartment" class="form-label">Department</label>
+                            <input type="text" class="form-control" id="courseDepartment" name="department">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="courseProgramIds" class="form-label">Program *</label>
+                        <select class="form-control" id="courseProgramIds" name="program_ids" required>
+                            <option value="">Please select a program...</option>
+                        </select>
+                        <small class="form-text text-muted">Select the program this course belongs to</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="createCourseBtn">
+                        <span class="btn-text">Create Course</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Creating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -153,6 +210,7 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='courseManagement.js') }}"></script>
 <script>
     // Program Data Management Functions
     // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)

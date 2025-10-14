@@ -15,6 +15,18 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_institution(
+        self, institution_id: str, institution_data: Dict[str, Any]
+    ) -> bool:
+        """Update institution details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_institution(self, institution_id: str) -> bool:
+        """Delete institution (CASCADE deletes all related data)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_institution_by_id(self, institution_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
@@ -30,6 +42,13 @@ class DatabaseInterface(ABC):
     def create_new_institution(
         self, institution_data: Dict[str, Any], admin_user_data: Dict[str, Any]
     ) -> Optional[Tuple[str, str]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_new_institution_simple(
+        self, name: str, short_name: str, active: bool = True
+    ) -> Optional[str]:
+        """Create a new institution without creating an admin user (site admin workflow)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -87,9 +106,46 @@ class DatabaseInterface(ABC):
     def get_user_by_verification_token(self, token: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
+    @abstractmethod
+    def update_user_profile(self, user_id: str, profile_data: Dict[str, Any]) -> bool:
+        """Update user profile fields (first_name, last_name, display_name)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_user_role(
+        self, user_id: str, new_role: str, program_ids: List[str] = None
+    ) -> bool:
+        """Update user's role and program associations"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def deactivate_user(self, user_id: str) -> bool:
+        """Soft delete: suspend user account"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_user(self, user_id: str) -> bool:
+        """Hard delete: remove user from database"""
+        raise NotImplementedError
+
     # Course operations
     @abstractmethod
     def create_course(self, course_data: Dict[str, Any]) -> Optional[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course(self, course_id: str, course_data: Dict[str, Any]) -> bool:
+        """Update course details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_programs(self, course_id: str, program_ids: List[str]) -> bool:
+        """Update course-program associations"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course(self, course_id: str) -> bool:
+        """Delete course (CASCADE deletes offerings and sections)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -107,7 +163,34 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_course_outcome(
+        self, outcome_id: str, outcome_data: Dict[str, Any]
+    ) -> bool:
+        """Update course outcome details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_outcome_assessment(
+        self,
+        outcome_id: str,
+        assessment_data: Dict[str, Any],
+        narrative: Optional[str] = None,
+    ) -> bool:
+        """Update outcome assessment data and narrative"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_outcome(self, outcome_id: str) -> bool:
+        """Delete course outcome"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_course_outcomes(self, course_id: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_course_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
+        """Get single course outcome by ID (includes assessment_data and narrative)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -127,7 +210,24 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_section_by_id(self, section_id: str) -> Optional[Dict[str, Any]]:
+        """Get single section by ID"""
+        raise NotImplementedError
+
+    @abstractmethod
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_offering(
+        self, offering_id: str, offering_data: Dict[str, Any]
+    ) -> bool:
+        """Update course offering details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_offering(self, offering_id: str) -> bool:
+        """Delete course offering (CASCADE deletes sections)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -150,6 +250,21 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def update_term(self, term_id: str, term_data: Dict[str, Any]) -> bool:
+        """Update term details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def archive_term(self, term_id: str) -> bool:
+        """Archive term (soft delete - set active=False)"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_term(self, term_id: str) -> bool:
+        """Delete term (CASCADE deletes offerings and sections)"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_term_by_name(
         self, name: str, institution_id: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
@@ -160,12 +275,34 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_term_by_id(self, term_id: str) -> Optional[Dict[str, Any]]:
+        """Get single term by ID"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_sections_by_term(self, term_id: str) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
     # Section operations
     @abstractmethod
     def create_course_section(self, section_data: Dict[str, Any]) -> Optional[str]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_course_section(
+        self, section_id: str, section_data: Dict[str, Any]
+    ) -> bool:
+        """Update course section details"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def assign_instructor(self, section_id: str, instructor_id: str) -> bool:
+        """Assign instructor to a section"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_course_section(self, section_id: str) -> bool:
+        """Delete course section"""
         raise NotImplementedError
 
     @abstractmethod
@@ -262,4 +399,47 @@ class DatabaseInterface(ABC):
     def list_invitations(
         self, institution_id: str, status: Optional[str], limit: int, offset: int
     ) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    # Audit log operations
+    @abstractmethod
+    def create_audit_log(self, audit_data: Dict[str, Any]) -> bool:
+        """Create audit log entry"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_by_entity(
+        self, entity_type: str, entity_id: str, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get audit history for specific entity"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_by_user(
+        self,
+        user_id: str,
+        start_date: Optional[Any] = None,
+        end_date: Optional[Any] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """Get all activity by specific user"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_recent_audit_logs(
+        self, institution_id: Optional[str] = None, limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Get recent system activity"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_audit_logs_filtered(
+        self,
+        start_date: Any,
+        end_date: Any,
+        entity_type: Optional[str] = None,
+        user_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get filtered audit logs for export"""
         raise NotImplementedError

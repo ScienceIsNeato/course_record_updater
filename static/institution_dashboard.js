@@ -19,6 +19,7 @@
     cache: null,
     lastFetch: 0,
     refreshInterval: 5 * 60 * 1000,
+    intervalId: null,
 
     init() {
       document.addEventListener('visibilitychange', () => {
@@ -33,7 +34,18 @@
       }
 
       this.loadData();
-      setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
+      this.intervalId = setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => this.cleanup());
+      window.addEventListener('pagehide', () => this.cleanup());
+    },
+
+    cleanup() {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
     },
 
     async refresh() {
@@ -80,6 +92,7 @@
     render(data) {
       this.updateHeader(data);
       this.renderPrograms(data.program_overview || [], data.programs || []);
+      this.renderCourses(data.courses || []);
       this.renderFaculty(data.faculty_assignments || [], data.faculty || []);
       this.renderSections(data.sections || [], data.courses || [], data.terms || []);
       this.renderAssessment(data.program_overview || []);
@@ -167,8 +180,13 @@
               </div>
               <small class="text-muted">${completed}/${total} complete</small>`,
             progress_sort: percent,
-            actions:
-              '<button class="btn btn-sm btn-outline-primary" onclick="return false;">Manage</button>'
+            actions: `
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="return false;">Manage</button>
+              <button class="btn btn-sm btn-outline-danger" 
+                      onclick="deleteProgram('${program.program_id}', '${(program.program_name || program.name || 'Unnamed Program').replace(/'/g, '&#39;')}'); return false;">
+                <i class="fas fa-trash"></i>
+              </button>
+            `
           };
         })
       });
@@ -264,7 +282,8 @@
           { key: 'section', label: 'Section', sortable: true },
           { key: 'faculty', label: 'Faculty', sortable: true },
           { key: 'enrollment', label: 'Enrollment', sortable: true },
-          { key: 'status', label: 'Status', sortable: true }
+          { key: 'status', label: 'Status', sortable: true },
+          { key: 'actions', label: 'Actions', sortable: false }
         ],
         data: sections.map(section => {
           const course = courseLookup.get(section.course_id) || {};
@@ -273,19 +292,64 @@
           const instructor = section.instructor_name || section.instructor || 'Unassigned';
           const enrollment = section.enrollment ?? 0;
           const status = (section.status || 'scheduled').replace(/_/g, ' ');
+          const safe = val =>
+            val === undefined || val === null ? '' : String(val).replace(/"/g, '&quot;');
+          const sectionId = section.section_id || section.id || '';
+          const sectionDataLiteral = `{"section_number":"${safe(section.section_number)}","instructor_id":"${safe(section.instructor_id)}","enrollment":${Number(enrollment) || 0},"status":"${safe(section.status || 'assigned')}"}`;
           return {
             course: number ? `${number} — ${title || ''}` : title || 'Course',
             section: section.section_number || section.section_id || '—',
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
-            status: status.charAt(0).toUpperCase() + status.slice(1)
+            status: status.charAt(0).toUpperCase() + status.slice(1),
+            actions: `<button class="btn btn-sm btn-outline-primary" onclick="window.openEditSectionModal('${safe(sectionId)}', ${sectionDataLiteral}); return false;">Edit</button>`
           };
         })
       });
 
       container.innerHTML = '';
       container.appendChild(table);
+    },
+
+    renderCourses(courses) {
+      // Reuse program container area for a simple courses table if present
+      // If the program container is not on this page, skip rendering courses
+      const coursesContainer = document.getElementById('courseManagementContainer');
+      if (!coursesContainer) return;
+
+      if (!courses.length) {
+        coursesContainer.innerHTML = this.renderEmptyState('No courses found', 'Add Course');
+        return;
+      }
+
+      const table = window.panelManager.createSortableTable({
+        id: 'institution-courses-table',
+        columns: [
+          { key: 'number', label: 'Course Number', sortable: true },
+          { key: 'title', label: 'Title', sortable: true },
+          { key: 'credits', label: 'Credits', sortable: true },
+          { key: 'department', label: 'Department', sortable: true },
+          { key: 'actions', label: 'Actions', sortable: false }
+        ],
+        data: courses.map(course => {
+          const courseId = course.course_id || course.id || '';
+          const safe = val =>
+            val === undefined || val === null ? '' : String(val).replace(/"/g, '&quot;');
+          const courseDataLiteral = `{"course_number":"${safe(course.course_number)}","course_title":"${safe(course.course_title || course.title)}","department":"${safe(course.department)}","credit_hours":${Number(course.credit_hours || 0)},"program_ids":${JSON.stringify(course.program_ids || [])},"active":${course.active !== false}}`;
+          return {
+            number: course.course_number || '-',
+            title: course.course_title || course.title || '-',
+            credits: (course.credit_hours ?? '-').toString(),
+            credits_sort: (course.credit_hours ?? 0).toString(),
+            department: course.department || '-',
+            actions: `<button class="btn btn-sm btn-outline-primary" onclick="window.openEditCourseModal('${safe(courseId)}', ${courseDataLiteral}); return false;">Edit</button>`
+          };
+        })
+      });
+
+      coursesContainer.innerHTML = '';
+      coursesContainer.appendChild(table);
     },
 
     renderAssessment(programOverview) {

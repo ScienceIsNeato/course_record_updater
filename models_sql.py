@@ -533,6 +533,47 @@ def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
     }
 
 
+class AuditLog(Base):  # type: ignore[valid-type,misc]
+    """Audit Log model for tracking all CRUD operations."""
+
+    __tablename__ = "audit_log"
+
+    audit_id = Column(String, primary_key=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+
+    # Who performed the action
+    user_id = Column(String, index=True)
+    user_email = Column(String)
+    user_role = Column(String)
+
+    # What was done
+    operation_type = Column(
+        String, nullable=False, index=True
+    )  # CREATE, UPDATE, DELETE
+    entity_type = Column(
+        String, nullable=False, index=True
+    )  # users, institutions, etc.
+    entity_id = Column(String, nullable=False, index=True)
+
+    # Change details
+    old_values = Column(Text)  # JSON: Previous state (NULL for CREATE)
+    new_values = Column(Text)  # JSON: New state (NULL for DELETE)
+    changed_fields = Column(Text)  # JSON array: changed field names (UPDATE only)
+
+    # Context
+    source_type = Column(String, nullable=False)  # API, IMPORT, SYSTEM, SCRIPT
+    source_details = Column(Text)
+    ip_address = Column(String)
+    user_agent = Column(Text)
+
+    # Request tracking
+    request_id = Column(String)
+    session_id = Column(String)
+
+    # Institution context (for multi-tenant filtering)
+    institution_id = Column(String, index=True)
+
+
 __all__ = [
     "Base",
     "Institution",
@@ -544,6 +585,7 @@ __all__ = [
     "CourseSection",
     "CourseOutcome",
     "UserInvitation",
+    "AuditLog",
     "course_program_table",
     "user_program_table",
     "to_dict",

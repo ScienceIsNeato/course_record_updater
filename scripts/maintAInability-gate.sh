@@ -1136,9 +1136,16 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript coverage"
-    echo "✅ JavaScript Coverage: SKIPPED (npm not available)"
-    add_success "JavaScript Coverage" "npm not available, JavaScript coverage skipped"
+    echo "❌ JavaScript Coverage: FAILED (npm not available)"
+    echo ""
+    echo "📋 Node.js and npm are required for JavaScript coverage checks."
+    echo ""
+    echo "🔧 Fix: Install Node.js and npm:"
+    echo "   • macOS: brew install node"
+    echo "   • Ubuntu: sudo apt-get install nodejs npm"
+    echo "   • Or download from: https://nodejs.org/"
+    echo ""
+    add_failure "JavaScript Coverage" "npm not found in PATH" "Install Node.js and npm, then run 'npm install' in the project directory"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1170,42 +1177,45 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
               
               echo ""
               echo "  📈 Coverage Summary:"
-              echo "    Statements: $STATEMENTS"
-              echo "    Branches:   $BRANCHES"
-              echo "    Functions:  $FUNCTIONS"
-              echo "    Lines:      $LINES"
-              echo "    Threshold:  80% (all categories)"
+              echo "    Statements: $STATEMENTS (threshold: 80%)"
+              echo "    Branches:   $BRANCHES (threshold: 75%)"
+              echo "    Functions:  $FUNCTIONS (threshold: 90%)"
+              echo "    Lines:      $LINES (threshold: 80%)"
               
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               echo ""
               
-              # Extract line coverage percentage for comparison
-              LINES_PERCENT=$(echo "$LINES" | grep -o '[0-9.]*' | head -1)
-              LINES_INT=$(echo "$LINES_PERCENT" | cut -d. -f1)
-              if [[ "$LINES_INT" -lt 80 ]]; then
-                add_failure "JavaScript Coverage" \
-                            "Line coverage threshold not met: $LINES (requires 80%)" \
-                            "Add more tests to increase line coverage or run 'npm run test:coverage' for details"
-              else
-                echo "✅ JavaScript Coverage: PASSED (Line coverage: $LINES)"
-                add_success "JavaScript Coverage" "Line coverage threshold met: $LINES (80% required)"
+              # Extract failure details from Jest output
+              FAILED_THRESHOLDS=$(echo "$JS_COVERAGE_OUTPUT" | grep "coverage threshold" | sed 's/^/  /')
+              if [[ -n "$FAILED_THRESHOLDS" ]]; then
+                echo "  ❌ Failed thresholds:"
+                echo "$FAILED_THRESHOLDS"
+                echo ""
               fi
+              
+              # Jest failed, so the check fails (don't parse individual metrics - Jest already did that)
+              add_failure "JavaScript Coverage" \
+                          "One or more coverage thresholds not met (statements: $STATEMENTS, branches: $BRANCHES, functions: $FUNCTIONS, lines: $LINES)" \
+                          "Run 'npm run test:coverage' for details and add tests to increase coverage"
             else
               # Extract and display coverage summary for successful runs
-              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
-              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "80%+")
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
               
               echo "✅ JavaScript Coverage: PASSED"
               echo ""
-              echo "📊 Coverage Summary:"
+              echo "📊 Coverage Summary (threshold: lines ≥ 80%):"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "  Lines:      $LINES ✅"
               echo "  Statements: $STATEMENTS"
               echo "  Branches:   $BRANCHES" 
               echo "  Functions:  $FUNCTIONS"
-              echo "  Lines:      $LINES ✅ (threshold: 80%)"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
               
-              add_success "JavaScript Coverage" "Line coverage threshold met: $LINES (80% required)"
+              add_success "JavaScript Coverage" "Lines: $LINES ✅ (threshold: 80%) | Statements: $STATEMENTS | Branches: $BRANCHES | Functions: $FUNCTIONS"
             fi
   fi
 fi

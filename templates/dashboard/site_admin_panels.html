@@ -335,9 +335,10 @@
         `;
     }
 
-    // Action Functions (stubs)
+    // Action Functions
     function createInstitution() {
-        alert('Create Institution feature coming soon!');
+        const modal = new bootstrap.Modal(document.getElementById('createInstitutionModal'));
+        modal.show();
     }
 
     function institutionSettings() {
@@ -345,6 +346,7 @@
     }
 
     function editInstitution(id) {
+        // This function is replaced by openEditInstitutionModal in institutionManagement.js
         alert(`Edit Institution ${id} feature coming soon!`);
     }
 
@@ -357,7 +359,8 @@
     }
 
     function inviteUser() {
-        alert('Invite User feature coming soon!');
+        const modal = new bootstrap.Modal(document.getElementById('inviteUserModal'));
+        modal.show();
     }
 
     function bulkImport() {
@@ -394,4 +397,179 @@
         alert('System Settings feature coming soon!');
     }
 </script>
+
+<!-- User Management Modals -->
+<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteUserModalLabel">Invite New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="inviteUserForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="userEmail" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="userEmail" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userFirstName" class="form-label">First Name *</label>
+                        <input type="text" class="form-control" id="userFirstName" name="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userLastName" class="form-label">Last Name *</label>
+                        <input type="text" class="form-control" id="userLastName" name="last_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userRole" class="form-label">Role *</label>
+                        <select class="form-control" id="userRole" name="role" required>
+                            <option value="">Select Role</option>
+                            <option value="site_admin">Site Admin</option>
+                            <option value="institution_admin">Institution Admin</option>
+                            <option value="program_admin">Program Admin</option>
+                            <option value="instructor">Instructor</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="userInstitutionGroup" style="display: none;">
+                        <label for="userInstitutionId" class="form-label">Institution *</label>
+                        <select class="form-control" id="userInstitutionId" name="institution_id">
+                            <option value="">Select Institution</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="userProgramGroup" style="display: none;">
+                        <label for="userProgramIds" class="form-label">Programs *</label>
+                        <select class="form-control" id="userProgramIds" name="program_ids" multiple size="5">
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="inviteUserBtn">
+                        <span class="btn-text">Send Invitation</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Sending...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Institution Management Modals -->
+<div class="modal fade" id="createInstitutionModal" tabindex="-1" aria-labelledby="createInstitutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createInstitutionModalLabel">Create New Institution</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="createInstitutionForm">
+                <div class="modal-body">
+                    <h6 class="mb-3">Institution Information</h6>
+                    <div class="mb-3">
+                        <label for="institutionName" class="form-label">Institution Name *</label>
+                        <input type="text" class="form-control" id="institutionName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="institutionShortName" class="form-label">Short Name *</label>
+                        <input type="text" class="form-control" id="institutionShortName" name="short_name" required>
+                        <small class="form-text text-muted">Abbreviation (e.g., "CEI")</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="institutionAddress" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="institutionAddress" name="address">
+                    </div>
+                    <div class="mb-3">
+                        <label for="institutionPhone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="institutionPhone" name="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="institutionWebsite" class="form-label">Website</label>
+                        <input type="url" class="form-control" id="institutionWebsite" name="website" placeholder="https://example.edu">
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h6 class="mb-3">Institution Administrator</h6>
+                    <div class="mb-3">
+                        <label for="adminEmail" class="form-label">Admin Email *</label>
+                        <input type="email" class="form-control" id="adminEmail" name="admin_email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminFirstName" class="form-label">Admin First Name *</label>
+                        <input type="text" class="form-control" id="adminFirstName" name="admin_first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adminLastName" class="form-label">Admin Last Name *</label>
+                        <input type="text" class="form-control" id="adminLastName" name="admin_last_name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="createInstitutionBtn">
+                        <span class="btn-text">Create Institution</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Creating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Institution Modal -->
+<div class="modal fade" id="editInstitutionModal" tabindex="-1" aria-labelledby="editInstitutionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editInstitutionModalLabel">Edit Institution</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editInstitutionForm">
+                <input type="hidden" id="editInstitutionId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editInstitutionName" class="form-label">Institution Name *</label>
+                        <input type="text" class="form-control" id="editInstitutionName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstitutionShortName" class="form-label">Short Name *</label>
+                        <input type="text" class="form-control" id="editInstitutionShortName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstitutionAddress" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="editInstitutionAddress">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstitutionPhone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="editInstitutionPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editInstitutionWebsite" class="form-label">Website</label>
+                        <input type="url" class="form-control" id="editInstitutionWebsite">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Update</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            Updating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Load our CRUD management scripts -->
+<script src="{{ url_for('static', filename='userManagement.js') }}"></script>
+<script src="{{ url_for('static', filename='institutionManagement.js') }}"></script>
+
 {% endblock %}

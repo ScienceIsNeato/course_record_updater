@@ -26,6 +26,7 @@ from database_service import (
     get_all_courses,
     get_all_sections,
     get_all_users,
+    get_programs_by_institution,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -200,6 +201,7 @@ class ExportService:
             LOGGER.info(f"Fetching export data for institution: {institution_id}")
 
             # Fetch all data types
+            programs = get_programs_by_institution(institution_id)
             courses = get_all_courses(institution_id)
             users = get_all_users(institution_id)
             terms = get_active_terms(institution_id)
@@ -207,6 +209,7 @@ class ExportService:
             offerings = get_all_course_offerings(institution_id)
 
             # Convert to list of dicts if needed
+            programs_list = [dict(program) for program in programs] if programs else []
             courses_list = [dict(course) for course in courses] if courses else []
             users_list = [dict(user) for user in users] if users else []
             terms_list = [dict(term) for term in terms] if terms else []
@@ -217,6 +220,7 @@ class ExportService:
 
             # Organize data for export
             export_data = {
+                "programs": programs_list,
                 "courses": courses_list,
                 "users": users_list,
                 "terms": terms_list,

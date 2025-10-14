@@ -24,11 +24,10 @@ from flask import (
     url_for,
 )
 
-# Constants for error messages
-PERMISSION_DENIED_MSG = "Permission denied"
-USER_NOT_FOUND_MSG = "User not found"
+import database_service
 
 # Import our services
+from audit_service import AuditService
 from auth_service import (
     UserRole,
     clear_current_program_id,
@@ -42,18 +41,31 @@ from auth_service import (
 )
 from constants import (
     COURSE_NOT_FOUND_MSG,
+    COURSE_OFFERING_NOT_FOUND_MSG,
+    FAILED_TO_CREATE_INSTITUTION_MSG,
     INSTITUTION_CONTEXT_REQUIRED_MSG,
+    INSTITUTION_NOT_FOUND_MSG,
     INVALID_EMAIL_FORMAT_MSG,
     INVITATION_NOT_FOUND_MSG,
+    MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_DATA_PROVIDED_MSG,
     NO_JSON_DATA_PROVIDED_MSG,
     NOT_FOUND_MSG,
+    OUTCOME_NOT_FOUND_MSG,
+    PERMISSION_DENIED_MSG,
     PROGRAM_NOT_FOUND_MSG,
+    SECTION_NOT_FOUND_MSG,
+    TERM_NOT_FOUND_MSG,
+    TIMEZONE_UTC_SUFFIX,
+    USER_NOT_AUTHENTICATED_MSG,
+    USER_NOT_FOUND_MSG,
 )
 from dashboard_service import DashboardService, DashboardServiceError
 from database_service import (
     add_course_to_program,
+    archive_term,
     assign_course_to_default_program,
+    assign_instructor,
     bulk_add_courses_to_program,
     bulk_remove_courses_from_program,
     create_course,
@@ -61,28 +73,52 @@ from database_service import (
     create_new_institution,
     create_program,
     create_term,
+    deactivate_user,
+    delete_course,
+    delete_course_offering,
+    delete_course_outcome,
+    delete_course_section,
+    delete_institution,
     delete_program,
+    delete_term,
+    delete_user,
     get_active_terms,
     get_all_courses,
     get_all_institutions,
     get_all_instructors,
     get_all_sections,
     get_all_users,
+    get_course_by_id,
     get_course_by_number,
+    get_course_offering,
+    get_course_outcome,
+    get_course_outcomes,
     get_courses_by_department,
     get_courses_by_program,
     get_institution_by_id,
     get_institution_instructor_count,
     get_program_by_id,
     get_programs_by_institution,
+    get_section_by_id,
     get_sections_by_instructor,
     get_sections_by_term,
+    get_term_by_id,
     get_unassigned_courses,
     get_user_by_id,
     get_users_by_role,
     remove_course_from_program,
+    update_course,
+    update_course_offering,
+    update_course_outcome,
+    update_course_programs,
+    update_course_section,
+    update_institution,
+    update_outcome_assessment,
     update_program,
+    update_term,
     update_user,
+    update_user_profile,
+    update_user_role,
 )
 from export_service import ExportConfig, create_export_service
 from import_service import import_excel
@@ -290,7 +326,62 @@ def list_institutions():
 
 
 @api.route("/institutions", methods=["POST"])
-def create_institution():
+@permission_required("manage_institutions")
+def create_institution_admin():
+    """Site admin creates a new institution (without initial user)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
+
+        # Simple institution creation for site admins
+        required_fields = ["name", "short_name"]
+        missing_fields = [f for f in required_fields if not data.get(f)]
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                    }
+                ),
+                400,
+            )
+
+        # Create institution (without admin user - site admin can add users separately)
+        from database_service import create_new_institution_simple
+
+        institution_id = create_new_institution_simple(
+            name=data["name"],
+            short_name=data["short_name"],
+            active=data.get("active", True),
+        )
+
+        if institution_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "institution_id": institution_id,
+                        "message": "Institution created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": FAILED_TO_CREATE_INSTITUTION_MSG}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Create institution", FAILED_TO_CREATE_INSTITUTION_MSG
+        )
+
+
+@api.route("/institutions/register", methods=["POST"])
+def create_institution_public():
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
         data = request.get_json()
@@ -326,7 +417,7 @@ def create_institution():
         result = create_new_institution(institution_data, user_data)
         if not result:
             return (
-                jsonify({"success": False, "error": "Failed to create institution"}),
+                jsonify({"success": False, "error": FAILED_TO_CREATE_INSTITUTION_MSG}),
                 500,
             )
 
@@ -345,7 +436,9 @@ def create_institution():
         )
 
     except Exception as e:
-        return handle_api_error(e, "Create institution", "Failed to create institution")
+        return handle_api_error(
+            e, "Create institution", FAILED_TO_CREATE_INSTITUTION_MSG
+        )
 
 
 @api.route("/institutions/<institution_id>", methods=["GET"])
@@ -360,11 +453,11 @@ def get_institution_details(institution_id: str):
             current_user.get("institution_id") != institution_id
             and current_user.get("role") != UserRole.SITE_ADMIN.value
         ):
-            return jsonify({"success": False, "error": "Access denied"}), 403
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
         institution = get_institution_by_id(institution_id)
         if not institution:
-            return jsonify({"success": False, "error": "Institution not found"}), 404
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
 
         # Add current instructor count
         institution["current_instructor_count"] = get_institution_instructor_count(
@@ -375,6 +468,121 @@ def get_institution_details(institution_id: str):
 
     except Exception as e:
         return handle_api_error(e, "Get institution", "Failed to retrieve institution")
+
+
+@api.route("/institutions/<institution_id>", methods=["PUT"])
+@permission_required("manage_institutions")
+def update_institution_endpoint(institution_id: str):
+    """
+    Update institution details (site admin or institution admin only)
+
+    Allows updating name, short_name, settings, contact information, etc.
+    """
+    try:
+        current_user = get_current_user()
+
+        # Only site admin or own institution admin can update
+        if (
+            current_user.get("role") != UserRole.SITE_ADMIN.value
+            and current_user.get("institution_id") != institution_id
+        ):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Check if institution exists
+        institution = get_institution_by_id(institution_id)
+        if not institution:
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
+
+        success = update_institution(institution_id, data)
+
+        if success:
+            updated_institution = get_institution_by_id(institution_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "institution": updated_institution,
+                        "message": "Institution updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to update institution"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Update institution", "Failed to update institution")
+
+
+@api.route("/institutions/<institution_id>", methods=["DELETE"])
+@permission_required("manage_institutions")
+def delete_institution_endpoint(institution_id: str):
+    """
+    Delete institution (site admin only - CASCADE deletes ALL related data)
+
+    WARNING: This is DESTRUCTIVE and IRREVERSIBLE. It will delete:
+    - All programs
+    - All courses
+    - All terms
+    - All offerings
+    - All sections
+    - All users
+    - All related data
+
+    Requires confirmation query parameter: ?confirm=i know what I'm doing
+    """
+    try:
+        current_user = get_current_user()
+
+        # Only site admin can delete institutions
+        if current_user.get("role") != UserRole.SITE_ADMIN.value:
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        # Check for confirmation
+        confirmation = request.args.get("confirm", "")
+        if confirmation != "i know what I'm doing":
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Confirmation required. Add query parameter: ?confirm=i know what I'm doing",
+                    }
+                ),
+                400,
+            )
+
+        # Check if institution exists
+        institution = get_institution_by_id(institution_id)
+        if not institution:
+            return jsonify({"success": False, "error": INSTITUTION_NOT_FOUND_MSG}), 404
+
+        success = delete_institution(institution_id)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Institution '{institution['name']}' and all related data deleted successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to delete institution"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Delete institution", "Failed to delete institution")
 
 
 # ========================================
@@ -484,15 +692,47 @@ def clear_program_context():
 # ========================================
 
 
+@api.route("/me", methods=["GET"])
+def get_current_user_info():
+    """
+    Get current authenticated user's information
+
+    Returns full user object including program_ids for RBAC validation
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        # Return user data with program_ids for program admin RBAC
+        return jsonify(
+            {
+                "success": True,
+                "user_id": current_user["user_id"],
+                "email": current_user["email"],
+                "first_name": current_user.get("first_name"),
+                "last_name": current_user.get("last_name"),
+                "role": current_user["role"],
+                "institution_id": current_user.get("institution_id"),
+                "program_ids": current_user.get("program_ids", []),
+            }
+        )
+    except Exception as e:
+        return handle_api_error(e, "Get current user", "Failed to get user information")
+
+
 @api.route("/users", methods=["GET"])
-@permission_required("manage_users")
+@permission_required("view_institution_data")  # Read-only access for viewing users
 def list_users():
     """
-    Get list of users, optionally filtered by role
+    Get list of users, optionally filtered by role (read-only)
 
     Query parameters:
     - role: Filter by user role (optional)
     - department: Filter by department (optional)
+
+    Note: Requires view_institution_data permission (read-only).
+    Use manage_users permission for create/update/delete operations.
     """
     try:
         # Resolve institution scope and validate access
@@ -693,6 +933,120 @@ def update_user_api(user_id: str):
         return handle_api_error(e, "Update user", "Failed to update user")
 
 
+@api.route("/users/<user_id>/profile", methods=["PATCH"])
+@login_required
+def update_user_profile_endpoint(user_id: str):
+    """
+    Update user profile (self-service or admin)
+
+    Allows users to update their own first_name, last_name, display_name.
+    Admins with manage_users permission can update any user's profile.
+    """
+    try:
+        current_user = get_current_user()
+
+        # Check if user is updating their own profile OR has manage_users permission
+        if current_user["user_id"] != user_id and not has_permission("manage_users"):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Update profile
+        success = update_user_profile(user_id, data)
+
+        if success:
+            updated_user = get_user_by_id(user_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "user": updated_user,
+                        "message": "Profile updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update profile"}), 500
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Update user profile", "Failed to update user profile"
+        )
+
+
+@api.route("/users/<user_id>/deactivate", methods=["POST"])
+@permission_required("manage_users")
+def deactivate_user_endpoint(user_id: str):
+    """
+    Deactivate (soft delete) a user account
+
+    Sets account_status to 'suspended' while preserving data for audit trail.
+    Users can be reactivated later if needed.
+    """
+    try:
+        # Check if user exists
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
+
+        success = deactivate_user(user_id)
+
+        if success:
+            return (
+                jsonify({"success": True, "message": "User deactivated successfully"}),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to deactivate user"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Deactivate user", "Failed to deactivate user")
+
+
+@api.route("/users/<user_id>", methods=["DELETE"])
+@permission_required("manage_users")
+def delete_user_endpoint(user_id: str):
+    """
+    Delete user (hard delete - permanent removal)
+
+    WARNING: This is irreversible and removes all user data.
+    Consider using deactivate endpoint instead for soft delete.
+    """
+    try:
+        current_user = get_current_user()
+
+        # Prevent self-deletion
+        if current_user["user_id"] == user_id:
+            return (
+                jsonify({"success": False, "error": "Cannot delete your own account"}),
+                400,
+            )
+
+        # Check if user exists
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
+
+        success = delete_user(user_id)
+
+        if success:
+            return (
+                jsonify({"success": True, "message": "User deleted successfully"}),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to delete user"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Delete user", "Failed to delete user")
+
+
 # ========================================
 # COURSE MANAGEMENT API
 # ========================================
@@ -810,8 +1164,23 @@ def _get_institution_courses(institution_id, current_program_id, department_filt
         context_info = f"department {department_filter}"
         return courses, context_info
     else:
+        # Get all courses for institution
         courses = get_all_courses(institution_id)
         context_info = f"institution {institution_id}"
+
+        # RBAC: Program admins can only see courses in their assigned programs
+        current_user = get_current_user()
+        if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
+            user_program_ids = current_user.get("program_ids", [])
+            if user_program_ids:
+                # Filter courses to only those that belong to user's programs
+                courses = [
+                    c
+                    for c in courses
+                    if any(pid in user_program_ids for pid in c.get("program_ids", []))
+                ]
+                context_info = f"programs {user_program_ids}"
+
         return courses, context_info
 
 
@@ -996,6 +1365,116 @@ def assign_course_to_default(course_id: str):
         )
 
 
+@api.route("/courses/by-id/<course_id>", methods=["GET"])
+@permission_required("view_program_data")
+def get_course_by_id_endpoint(course_id: str):
+    """Get course details by course ID"""
+    try:
+        course = get_course_by_id(course_id)
+
+        if course:
+            return jsonify({"success": True, "course": course}), 200
+        else:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+    except Exception as e:
+        return handle_api_error(e, "Get course by ID", "Failed to retrieve course")
+
+
+@api.route("/courses/<course_id>", methods=["PUT"])
+@permission_required("manage_courses")
+def update_course_endpoint(course_id: str):
+    """
+    Update course details
+
+    Allows updating course_title, department, credit_hours, description, etc.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Check if course exists
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        current_user = get_current_user()
+        if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
+            "institution_id"
+        ) != course.get("institution_id"):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        # Handle program associations separately if present
+        if "program_ids" in data:
+            program_ids = data.pop("program_ids")
+            update_course_programs(course_id, program_ids)
+
+        success = update_course(course_id, data)
+
+        if success:
+            updated_course = get_course_by_id(course_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "course": updated_course,
+                        "message": "Course updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update course"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update course", "Failed to update course")
+
+
+@api.route("/courses/<course_id>", methods=["DELETE"])
+@permission_required("manage_courses")
+def delete_course_endpoint(course_id: str):
+    """
+    Delete course (CASCADE deletes offerings and sections)
+
+    WARNING: This will also delete all associated:
+    - Course offerings
+    - Course sections
+    - Course outcomes
+    """
+    try:
+        # Check if course exists
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        current_user = get_current_user()
+        if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
+            "institution_id"
+        ) != course.get("institution_id"):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        success = delete_course(course_id)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Course '{course['course_number']}' deleted successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to delete course"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Delete course", "Failed to delete course")
+
+
 # ========================================
 # INSTRUCTOR MANAGEMENT API
 # ========================================
@@ -1093,6 +1572,21 @@ def create_term_api():
                 400,
             )
 
+        # Ensure institution context is included
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        # Map conventional 'name' to legacy 'term_name' for storage compatibility
+        if data.get("name") and not data.get("term_name"):
+            data["term_name"] = data["name"]
+
+        # Attach institution_id to payload
+        data["institution_id"] = institution_id
+
         term_id = create_term(data)
 
         if term_id:
@@ -1111,6 +1605,145 @@ def create_term_api():
 
     except Exception as e:
         return handle_api_error(e, "Create term", "Failed to create term")
+
+
+@api.route("/terms/<term_id>", methods=["GET"])
+@permission_required("view_program_data")
+def get_term_by_id_endpoint(term_id: str):
+    """Get term details by term ID"""
+    try:
+        term = get_term_by_id(term_id)
+
+        if not term:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        return jsonify({"success": True, "term": term}), 200
+
+    except Exception as e:
+        return handle_api_error(e, "Get term by ID", "Failed to retrieve term")
+
+
+@api.route("/terms/<term_id>", methods=["PUT"])
+@permission_required("manage_terms")
+def update_term_endpoint(term_id: str):
+    """
+    Update term details
+
+    Allows updating name, dates, active status, etc.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
+
+        if not term:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        success = update_term(term_id, data)
+
+        if success:
+            # Fetch updated term
+            updated_term = get_term_by_id(term_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "term": updated_term,
+                        "message": "Term updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update term"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update term", "Failed to update term")
+
+
+@api.route("/terms/<term_id>/archive", methods=["POST"])
+@permission_required("manage_terms")
+def archive_term_endpoint(term_id: str):
+    """
+    Archive a term (soft delete - sets active=False)
+
+    Preserves term data but marks it as inactive.
+    """
+    try:
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
+
+        if not term:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        success = archive_term(term_id)
+
+        if success:
+            return (
+                jsonify({"success": True, "message": "Term archived successfully"}),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to archive term"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Archive term", "Failed to archive term")
+
+
+@api.route("/terms/<term_id>", methods=["DELETE"])
+@permission_required("manage_terms")
+def delete_term_endpoint(term_id: str):
+    """
+    Delete term (hard delete - CASCADE deletes offerings and sections)
+
+    WARNING: This will also delete all associated:
+    - Course offerings
+    - Course sections
+    """
+    try:
+        # Verify term exists and institution access
+        term = get_term_by_id(term_id)
+
+        if not term:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        institution_id = get_current_institution_id()
+        if term.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
+
+        success = delete_term(term_id)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": f"Term '{term['name']}' deleted successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to delete term"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Delete term", "Failed to delete term")
 
 
 # ========================================
@@ -1278,6 +1911,25 @@ def delete_program_api(program_id: str):
                 400,
             )
 
+        # If program has courses and no explicit force flag, block deletion
+        try:
+            courses_for_program = get_courses_by_program(program_id)  # type: ignore[name-defined]
+        except Exception:
+            courses_for_program = []
+
+        force_flag = request.args.get("force", "false").lower() == "true"
+        if courses_for_program and not force_flag:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Cannot delete program with assigned courses without force",
+                        "code": "PROGRAM_HAS_COURSES",
+                    }
+                ),
+                409,  # 409 Conflict - referential integrity constraint
+            )
+
         # Get the default program for reassignment
         institution_id = program.get("institution_id")
         programs = get_programs_by_institution(institution_id) if institution_id else []
@@ -1286,6 +1938,12 @@ def delete_program_api(program_id: str):
         )
 
         if not default_program:
+            # This should never happen - institutions automatically get default programs
+            # But if it does, it's a server/data integrity issue, not a client error
+            logger.error(
+                "[API] No default program found for institution %s - data integrity issue",
+                institution_id,
+            )
             return (
                 jsonify(
                     {
@@ -1293,11 +1951,28 @@ def delete_program_api(program_id: str):
                         "error": "No default program found for course reassignment",
                     }
                 ),
-                500,
+                500,  # 500 Internal Server Error - this indicates a data integrity problem
             )
 
         # Delete program and reassign courses
-        success = delete_program(program_id, default_program["id"])
+        # Handle both 'program_id' and 'id' keys for backward compatibility
+        default_prog_id = default_program.get("program_id") or default_program.get("id")
+        if not default_prog_id:
+            logger.error(
+                "[API] Default program %s has no program_id or id key: %s",
+                default_program.get("name", "unknown"),
+                list(default_program.keys()),
+            )
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Default program data integrity issue",
+                    }
+                ),
+                500,
+            )
+        success = delete_program(program_id, default_prog_id)
 
         if success:
             return jsonify(
@@ -1605,8 +2280,268 @@ def get_course_programs(course_id: str):
 
 
 # ========================================
+# COURSE OFFERINGS MANAGEMENT API
+# ========================================
+
+
+@api.route("/offerings", methods=["POST"])
+@permission_required("manage_courses")
+def create_course_offering_endpoint():
+    """
+    Create a new course offering
+
+    Request body should contain:
+    - course_id: Course ID
+    - term_id: Term ID
+    - capacity: Maximum enrollment
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Validate required fields
+        required_fields = ["course_id", "term_id"]
+        missing_fields = [f for f in required_fields if not data.get(f)]
+
+        if missing_fields:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f'Missing required fields: {", ".join(missing_fields)}',
+                    }
+                ),
+                400,
+            )
+
+        # Add institution_id from context
+        data["institution_id"] = get_current_institution_id()
+        data.setdefault("status", "active")
+
+        offering_id = database_service.create_course_offering(data)
+
+        if offering_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "offering_id": offering_id,
+                        "message": "Course offering created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to create course offering"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Create course offering", "Failed to create course offering"
+        )
+
+
+@api.route("/offerings", methods=["GET"])
+@permission_required("view_program_data")
+def list_course_offerings():
+    """Get list of course offerings, optionally filtered by term or course"""
+    try:
+        term_id = request.args.get("term_id")
+        course_id = request.args.get("course_id")
+        institution_id = get_current_institution_id()
+
+        # For now, we'll return all sections which include offering information
+        sections = get_all_sections(institution_id)
+
+        # Filter by term if specified
+        if term_id:
+            sections = [s for s in sections if s.get("term_id") == term_id]
+
+        # Filter by course if specified
+        if course_id:
+            sections = [s for s in sections if s.get("course_id") == course_id]
+
+        # Extract unique offerings
+        offerings_dict = {}
+        for section in sections:
+            offering_id = section.get("offering_id")
+            if offering_id and offering_id not in offerings_dict:
+                offerings_dict[offering_id] = {
+                    "offering_id": offering_id,
+                    "course_id": section.get("course_id"),
+                    "term_id": section.get("term_id"),
+                    "status": section.get("status", "active"),
+                }
+
+        offerings = list(offerings_dict.values())
+
+        return (
+            jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
+            200,
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "List course offerings", "Failed to retrieve course offerings"
+        )
+
+
+@api.route("/offerings/<offering_id>", methods=["GET"])
+@permission_required("view_program_data")
+def get_course_offering_endpoint(offering_id: str):
+    """Get course offering details by ID"""
+    try:
+        offering = get_course_offering(offering_id)
+
+        if offering:
+            return jsonify({"success": True, "offering": offering}), 200
+        else:
+            return (
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
+                404,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course offering", "Failed to retrieve course offering"
+        )
+
+
+@api.route("/offerings/<offering_id>", methods=["PUT"])
+@permission_required("manage_courses")
+def update_course_offering_endpoint(offering_id: str):
+    """
+    Update course offering details
+
+    Allows updating capacity, total_enrollment, status, etc.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Check if offering exists
+        offering = get_course_offering(offering_id)
+        if not offering:
+            return (
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
+                404,
+            )
+
+        success = update_course_offering(offering_id, data)
+
+        if success:
+            updated_offering = get_course_offering(offering_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "offering": updated_offering,
+                        "message": "Course offering updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to update course offering"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Update course offering", "Failed to update course offering"
+        )
+
+
+@api.route("/offerings/<offering_id>", methods=["DELETE"])
+@permission_required("manage_courses")
+def delete_course_offering_endpoint(offering_id: str):
+    """
+    Delete course offering (CASCADE deletes sections)
+
+    WARNING: This will also delete all associated course sections.
+    """
+    try:
+        # Check if offering exists
+        offering = get_course_offering(offering_id)
+        if not offering:
+            return (
+                jsonify({"success": False, "error": COURSE_OFFERING_NOT_FOUND_MSG}),
+                404,
+            )
+
+        success = delete_course_offering(offering_id)
+
+        if success:
+            return (
+                jsonify(
+                    {"success": True, "message": "Course offering deleted successfully"}
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to delete course offering"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Delete course offering", "Failed to delete course offering"
+        )
+
+
+# ========================================
 # COURSE SECTION MANAGEMENT API
 # ========================================
+
+
+def _determine_section_filters(current_user, instructor_id, term_id):
+    """Determine section filters based on user role and query parameters."""
+    if not instructor_id and not term_id:
+        if current_user["role"] == UserRole.INSTRUCTOR.value:
+            # Instructors see only their own sections
+            return current_user["user_id"], None
+    return instructor_id, term_id
+
+
+def _fetch_sections_by_filter(instructor_id, term_id):
+    """Fetch sections based on provided filters."""
+    if instructor_id:
+        return get_sections_by_instructor(instructor_id)
+    if term_id:
+        return get_sections_by_term(term_id)
+
+    # No filters - get all sections for institution
+    institution_id = get_current_institution_id()
+    if not institution_id:
+        return None, (
+            jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+            400,
+        )
+    return get_all_sections(institution_id), None
+
+
+def _filter_sections_by_permission(sections, current_user):
+    """Filter sections based on user permissions."""
+    if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
+        "view_all_sections"
+    ):
+        # Ensure instructors only see their own sections
+        return [
+            s for s in sections if s.get("instructor_id") == current_user["user_id"]
+        ]
+    return sections
 
 
 @api.route("/sections", methods=["GET"])
@@ -1622,41 +2557,24 @@ def list_sections():
     try:
         instructor_id = request.args.get("instructor_id")
         term_id = request.args.get("term_id")
-
         current_user = get_current_user()
 
-        # If no filters specified, determine default based on role
-        if not instructor_id and not term_id:
-            if current_user["role"] == UserRole.INSTRUCTOR.value:
-                # Instructors see only their own sections
-                instructor_id = current_user["user_id"]
-            # Program admins and site admins see all sections (no filter)
+        # Determine filters based on role
+        instructor_id, term_id = _determine_section_filters(
+            current_user, instructor_id, term_id
+        )
 
-        # Apply filters
-        if instructor_id:
-            sections = get_sections_by_instructor(instructor_id)
-        elif term_id:
-            sections = get_sections_by_term(term_id)
+        # Fetch sections
+        result = _fetch_sections_by_filter(instructor_id, term_id)
+        if isinstance(result, tuple):
+            sections, error_response = result
+            if error_response:
+                return error_response
         else:
-            # Get institution context - for development, use CEI
-            institution_id = get_current_institution_id()
-            if not institution_id:
-                return (
-                    jsonify(
-                        {"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}
-                    ),
-                    400,
-                )
-            sections = get_all_sections(institution_id)
+            sections = result
 
-        # Filter based on permissions
-        if current_user["role"] == UserRole.INSTRUCTOR.value and not has_permission(
-            "view_all_sections"
-        ):
-            # Ensure instructors only see their own sections
-            sections = [
-                s for s in sections if s.get("instructor_id") == current_user["user_id"]
-            ]
+        # Apply permission-based filtering
+        sections = _filter_sections_by_permission(sections, current_user)
 
         return jsonify({"success": True, "sections": sections, "count": len(sections)})
 
@@ -1665,17 +2583,18 @@ def list_sections():
 
 
 @api.route("/sections", methods=["POST"])
-@permission_required("manage_courses")
+@permission_required("manage_sections")
 def create_section():
     """
     Create a new course section
 
     Request body should contain:
-    - course_id: Course ID
-    - term_id: Term ID
-    - section_number: Section number (optional, default "001")
+    - offering_id: Course offering ID (OR course_id + term_id)
+    - section_number: Section number (required)
     - instructor_id: Instructor ID (optional)
     - enrollment: Number of enrolled students (optional)
+    - capacity: Maximum enrollment (optional)
+    - status: Section status (optional, default "open")
     """
     try:
         data = request.get_json()
@@ -1683,8 +2602,24 @@ def create_section():
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
+        # If offering_id is provided, look up course_id and term_id
+        if data.get("offering_id"):
+            offering = get_course_offering(data["offering_id"])
+            if not offering:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Invalid offering_id",
+                        }
+                    ),
+                    400,
+                )
+            data["course_id"] = offering.get("course_id")
+            data["term_id"] = offering.get("term_id")
+
         # Validate required fields
-        required_fields = ["course_id", "term_id"]
+        required_fields = ["course_id", "term_id", "section_number"]
         missing_fields = [f for f in required_fields if not data.get(f)]
 
         if missing_fields:
@@ -1719,6 +2654,416 @@ def create_section():
 
     except Exception as e:
         return handle_api_error(e, "Create section", "Failed to create section")
+
+
+@api.route("/sections/<section_id>", methods=["GET"])
+@permission_required("view_section_data")
+def get_section_by_id_endpoint(section_id: str):
+    """Get section details by section ID"""
+    try:
+        section = get_section_by_id(section_id)
+
+        if not section:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        return jsonify({"success": True, "section": section}), 200
+
+    except Exception as e:
+        return handle_api_error(e, "Get section by ID", "Failed to retrieve section")
+
+
+@api.route("/sections/<section_id>", methods=["PUT"])
+@permission_required("manage_sections")
+def update_section_endpoint(section_id: str):
+    """
+    Update section details
+
+    Allows updating section_number, enrollment, capacity, instructor_id, etc.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Check if section exists
+        section = get_section_by_id(section_id)
+
+        if not section:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        success = update_course_section(section_id, data)
+
+        if success:
+            # Fetch updated section
+            updated_section = get_section_by_id(section_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "section": updated_section,
+                        "message": "Section updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update section"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update section", "Failed to update section")
+
+
+@api.route("/sections/<section_id>/instructor", methods=["PATCH"])
+@permission_required("manage_courses")
+def assign_instructor_to_section_endpoint(section_id: str):
+    """
+    Assign an instructor to a section
+
+    Request body should contain:
+    - instructor_id: Instructor user ID
+    """
+    try:
+        data = request.get_json()
+        if not data or "instructor_id" not in data:
+            return (
+                jsonify({"success": False, "error": "instructor_id is required"}),
+                400,
+            )
+
+        instructor_id = data["instructor_id"]
+
+        # Verify section exists
+        section = get_section_by_id(section_id)
+
+        if not section:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        success = assign_instructor(section_id, instructor_id)
+
+        if success:
+            return (
+                jsonify(
+                    {"success": True, "message": "Instructor assigned successfully"}
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to assign instructor"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Assign instructor", "Failed to assign instructor")
+
+
+@api.route("/sections/<section_id>", methods=["DELETE"])
+@permission_required("manage_sections")
+def delete_section_endpoint(section_id: str):
+    """
+    Delete section
+
+    Removes the section from the database.
+    """
+    try:
+        # Check if section exists
+        section = get_section_by_id(section_id)
+
+        if not section:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        offering = get_course_offering(section.get("offering_id"))
+        if not offering or offering.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        success = delete_course_section(section_id)
+
+        if success:
+            return (
+                jsonify({"success": True, "message": "Section deleted successfully"}),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to delete section"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Delete section", "Failed to delete section")
+
+
+# ========================================
+# COURSE OUTCOMES MANAGEMENT API
+# ========================================
+
+
+@api.route("/courses/<course_id>/outcomes", methods=["GET"])
+@permission_required("view_program_data")
+def list_course_outcomes_endpoint(course_id: str):
+    """
+    Get list of outcomes for a course
+
+    Returns outcomes with their assessment data for instructors to view/update
+    """
+    try:
+        # Check if course exists and user has access
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        # Get outcomes for this course
+        outcomes = get_course_outcomes(course_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "outcomes": outcomes,
+                "count": len(outcomes),
+                "course_number": course.get("course_number"),
+                "course_title": course.get("course_title"),
+            }
+        )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course outcomes", "Failed to retrieve course outcomes"
+        )
+
+
+@api.route("/courses/<course_id>/outcomes", methods=["POST"])
+@permission_required("manage_courses")
+def create_course_outcome_endpoint(course_id: str):
+    """
+    Create a new course outcome
+
+    Request body should contain:
+    - description: Outcome description
+    - target_percentage: Target achievement percentage (optional)
+    """
+    try:
+        data = request.get_json()
+        if not data or "description" not in data:
+            return jsonify({"success": False, "error": "description is required"}), 400
+
+        # Check if course exists
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        data["course_id"] = course_id
+
+        outcome_id = database_service.create_course_outcome(data)
+
+        if outcome_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "outcome_id": outcome_id,
+                        "message": "Course outcome created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to create course outcome"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Create course outcome", "Failed to create course outcome"
+        )
+
+
+@api.route("/outcomes/<outcome_id>", methods=["GET"])
+@permission_required("view_program_data")
+def get_course_outcome_by_id_endpoint(outcome_id: str):
+    """Get course outcome details by outcome ID"""
+    try:
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        return jsonify({"success": True, "outcome": outcome}), 200
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Get course outcome", "Failed to retrieve course outcome"
+        )
+
+
+@api.route("/outcomes/<outcome_id>", methods=["PUT"])
+@permission_required("manage_courses")
+def update_course_outcome_endpoint(outcome_id: str):
+    """
+    Update course outcome details
+
+    Allows updating description, target_percentage, etc.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Verify outcome exists and institution access
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        institution_id = get_current_institution_id()
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        success = update_course_outcome(outcome_id, data)
+
+        if success:
+            return (
+                jsonify(
+                    {"success": True, "message": "Course outcome updated successfully"}
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to update course outcome"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Update course outcome", "Failed to update course outcome"
+        )
+
+
+@api.route("/outcomes/<outcome_id>/assessment", methods=["PUT"])
+@permission_required("submit_assessments")
+def update_outcome_assessment_endpoint(outcome_id: str):
+    """
+    Update course outcome assessment data
+
+    Request body should contain:
+    - assessment_data: Dict with assessment metrics (students_assessed, students_meeting_target, etc.)
+    - narrative: Assessment narrative text (optional)
+    """
+    try:
+        data = request.get_json()
+        if not data or "assessment_data" not in data:
+            return (
+                jsonify({"success": False, "error": "assessment_data is required"}),
+                400,
+            )
+
+        assessment_data = data["assessment_data"]
+        narrative = data.get("narrative", "")
+
+        # Verify the outcome exists
+        institution_id = get_current_institution_id()
+        courses = get_all_courses(institution_id)
+
+        found = False
+        for course in courses:
+            outcomes = get_course_outcomes(course["course_id"])
+            if any(o.get("outcome_id") == outcome_id for o in outcomes):
+                found = True
+                break
+
+        if not found:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        success = update_outcome_assessment(outcome_id, assessment_data, narrative)
+
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": "Outcome assessment updated successfully",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify(
+                    {"success": False, "error": "Failed to update outcome assessment"}
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Update outcome assessment", "Failed to update outcome assessment"
+        )
+
+
+@api.route("/outcomes/<outcome_id>", methods=["DELETE"])
+@permission_required("manage_courses")
+def delete_course_outcome_endpoint(outcome_id: str):
+    """
+    Delete course outcome
+
+    Removes the outcome from the database.
+    """
+    try:
+        # Verify outcome exists and institution access
+        outcome = get_course_outcome(outcome_id)
+
+        if not outcome:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        institution_id = get_current_institution_id()
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        success = delete_course_outcome(outcome_id)
+
+        if success:
+            return (
+                jsonify(
+                    {"success": True, "message": "Course outcome deleted successfully"}
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to delete course outcome"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Delete course outcome", "Failed to delete course outcome"
+        )
 
 
 # ========================================
@@ -2203,7 +3548,7 @@ def create_invitation_api():
         # Get current user and institution
         current_user = get_current_user()
         if not current_user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         institution_id = get_current_institution_id()
         if not institution_id:
@@ -2668,6 +4013,90 @@ def check_lockout_status_api(email):
         )
 
 
+@api.route("/invitations", methods=["POST"])
+@permission_required("manage_institution_users")
+def create_invitation_public_api():
+    """
+    Create and send a user invitation via /api/invitations.
+
+    Accepts field names:
+    - email (alias: invitee_email)
+    - role (alias: invitee_role)
+    - program_ids (optional)
+    - personal_message (optional)
+
+    Returns 201 with invitation_id on success.
+    """
+    try:
+        from auth_service import get_current_institution_id, get_current_user
+        from invitation_service import InvitationError, InvitationService
+
+        payload = request.get_json()
+        if not payload:
+            return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Normalize fields
+        invitee_email = payload.get("invitee_email") or payload.get("email")
+        invitee_role = payload.get("invitee_role") or payload.get("role")
+        program_ids = payload.get("program_ids", [])
+        personal_message = payload.get("personal_message")
+
+        if not invitee_email:
+            return (
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
+                400,
+            )
+        if not invitee_role:
+            return (
+                jsonify({"success": False, "error": "Missing required field: role"}),
+                400,
+            )
+
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
+
+        institution_id = get_current_institution_id()
+        if not institution_id:
+            return (
+                jsonify({"success": False, "error": INSTITUTION_CONTEXT_REQUIRED_MSG}),
+                400,
+            )
+
+        # Create and send invitation
+        invitation = InvitationService.create_invitation(
+            inviter_user_id=current_user["user_id"],
+            inviter_email=current_user["email"],
+            invitee_email=invitee_email,
+            invitee_role=invitee_role,
+            institution_id=institution_id,
+            program_ids=program_ids,
+            personal_message=personal_message,
+        )
+
+        email_sent = InvitationService.send_invitation(invitation)
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "invitation_id": invitation["id"],
+                    "message": (
+                        "Invitation created and sent successfully"
+                        if email_sent
+                        else "Invitation created but email failed to send"
+                    ),
+                }
+            ),
+            201,
+        )
+
+    except InvitationError as exc:
+        return handle_api_error(exc, "Create invitation", str(exc), 400)
+    except Exception as exc:
+        return handle_api_error(exc, "Create invitation", "Failed to create invitation")
+
+
 @api.route("/auth/unlock-account", methods=["POST"])
 @login_required
 def unlock_account_api():
@@ -2696,7 +4125,7 @@ def unlock_account_api():
 
         if "email" not in data:
             return (
-                jsonify({"success": False, "error": "Missing required field: email"}),
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
             )
 
@@ -2747,7 +4176,7 @@ def forgot_password_api():
 
         if "email" not in data:
             return (
-                jsonify({"success": False, "error": "Missing required field: email"}),
+                jsonify({"success": False, "error": MISSING_REQUIRED_FIELD_EMAIL_MSG}),
                 400,
             )
 
@@ -3160,7 +4589,7 @@ def get_available_adapters():
 
         current_user = get_current_user()
         if not current_user:
-            return jsonify({"success": False, "error": "User not authenticated"}), 401
+            return jsonify({"success": False, "error": USER_NOT_AUTHENTICATED_MSG}), 401
 
         registry = get_adapter_registry()
         user_role = current_user.get("role")

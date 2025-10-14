@@ -42,7 +42,7 @@
 
 1. **Check screenshots**: `test-results/screenshots/`
 2. **Watch it fail**: `./run_uat.sh --watch --test <failing_test>`
-3. **Check server logs**: `./tail_logs.sh`
+3. **Check server logs**: `./scripts/monitor_logs.sh --env e2e`
 4. **Verify server running**: `curl http://localhost:3001/api/health`
 
 ---

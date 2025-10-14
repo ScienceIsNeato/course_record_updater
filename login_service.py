@@ -33,6 +33,33 @@ class LoginService:
     LOCKOUT_DURATION_MINUTES = 30
 
     @staticmethod
+    def _validate_account_status(user: Dict[str, Any]) -> None:
+        """
+        Validate user account status and raise appropriate error if not active.
+
+        Args:
+            user: User dictionary containing account_status field
+
+        Raises:
+            LoginError: If account is not active with appropriate message
+        """
+        account_status = user.get("account_status")
+        if account_status == "active":
+            return  # Account is valid
+
+        # Map status to error message
+        status_messages = {
+            "pending": "Account is pending activation. Please check your email for verification instructions.",
+            "suspended": "Account has been suspended. Please contact support.",
+            "deactivated": "Account has been deactivated. Please contact support.",
+        }
+
+        error_msg = status_messages.get(
+            account_status, "Account is not available for login"
+        )
+        raise LoginError(error_msg)
+
+    @staticmethod
     def authenticate_user(
         email: str, password: str, remember_me: bool = False
     ) -> Dict[str, Any]:
@@ -66,21 +93,7 @@ class LoginService:
                 raise LoginError(INVALID_CREDENTIALS_MSG)
 
             # Check account status
-            if user.get("account_status") != "active":
-                if user.get("account_status") == "pending":
-                    raise LoginError(
-                        "Account is pending activation. Please check your email for verification instructions."
-                    )
-                elif user.get("account_status") == "suspended":
-                    raise LoginError(
-                        "Account has been suspended. Please contact support."
-                    )
-                elif user.get("account_status") == "deactivated":
-                    raise LoginError(
-                        "Account has been deactivated. Please contact support."
-                    )
-                else:
-                    raise LoginError("Account is not available for login")
+            LoginService._validate_account_status(user)
 
             # Verify password
             password_hash = user.get("password_hash")
@@ -104,6 +117,13 @@ class LoginService:
                 },
             )
 
+            # Fetch institution name if user has an institution
+            institution_name = None
+            if user.get("institution_id"):
+                institution = db.get_institution_by_id(user["institution_id"])
+                if institution:
+                    institution_name = institution.get("name")
+
             # Create user session
             SessionService.create_user_session(
                 {
@@ -111,6 +131,7 @@ class LoginService:
                     "email": user["email"],
                     "role": user["role"],
                     "institution_id": user.get("institution_id"),
+                    "institution_name": institution_name,
                     "program_ids": user.get("program_ids", []),
                     "display_name": user.get(
                         "display_name", user["email"].split("@")[0]

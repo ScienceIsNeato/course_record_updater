@@ -131,10 +131,23 @@ function getCSRFToken() {
 
 // Load available adapters on page load
 document.addEventListener('DOMContentLoaded', function() {
-    loadAvailableAdapters();
+    // Only load adapters if the dropdown elements exist on the page
+    const importDropdown = document.getElementById('import_adapter');
+    const exportDropdown = document.getElementById('export_adapter');
+    
+    if (importDropdown || exportDropdown) {
+        loadAvailableAdapters();
+    }
 });
 
 async function loadAvailableAdapters() {
+    // Silently skip if dropdowns don't exist on this page
+    const importDropdown = document.getElementById('import_adapter');
+    const exportDropdown = document.getElementById('export_adapter');
+    if (!importDropdown && !exportDropdown) {
+        return;
+    }
+    
     try {
         const response = await fetch('/api/adapters', {
             method: 'GET',
@@ -156,9 +169,14 @@ async function loadAvailableAdapters() {
             populateAdapterDropdown('export_adapter', []);
         }
     } catch (error) {
-        console.error('Error loading adapters:', error);
-        populateAdapterDropdown('import_adapter', []);
-        populateAdapterDropdown('export_adapter', []);
+        // Silently handle errors - they're expected during page navigation/teardown
+        // Only populate empty dropdowns if they still exist
+        if (importDropdown) {
+            populateAdapterDropdown('import_adapter', []);
+        }
+        if (exportDropdown) {
+            populateAdapterDropdown('export_adapter', []);
+        }
     }
 }
 

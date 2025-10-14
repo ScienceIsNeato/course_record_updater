@@ -80,8 +80,20 @@ claim_port() {
 
 start_flask_app() {
     local PORT=${1:-$COURSE_RECORD_UPDATER_PORT}
+    
+    # Determine log file based on environment
+    local LOG_FILE="logs/server.log"
+    case "$APP_ENV" in
+        e2e|uat|ci)
+            LOG_FILE="logs/test_server.log"
+            ;;
+        dev|*)
+            LOG_FILE="logs/server.log"
+            ;;
+    esac
 
     echo -e "${BLUE}🌐 Starting Flask app on port $PORT...${NC}"
+    echo -e "${BLUE}📋 Server logs: ${LOG_FILE}${NC}"
 
     if [ -d "venv" ]; then
         echo -e "${BLUE}📦 Activating virtual environment...${NC}"
@@ -89,13 +101,13 @@ start_flask_app() {
         source venv/bin/activate
     fi
 
-    PYTHONUNBUFFERED=1 python app.py > logs/server.log 2>&1 &
+    PYTHONUNBUFFERED=1 python app.py > "$LOG_FILE" 2>&1 &
     FLASK_PID=$!
     sleep 2
 
     if ! kill -0 $FLASK_PID 2>/dev/null; then
         echo -e "${RED}❌ Flask app failed to start${NC}" >&2
-        echo -e "${RED}❌ Check logs/server.log for details${NC}" >&2
+        echo -e "${RED}❌ Check ${LOG_FILE} for details${NC}" >&2
         return 1
     fi
 
@@ -104,15 +116,15 @@ start_flask_app() {
             echo -e "${GREEN}✅ Flask app started successfully on port $PORT${NC}"
             echo -e "${GREEN}📱 Access at http://localhost:$PORT${NC}"
             echo -e "${GREEN}🗄️  SQLite database at ${DB_PATH}${NC}"
-            echo -e "${BLUE}📋 Server logs: logs/server.log${NC}"
-            echo -e "${BLUE}📋 Use './tail_logs.sh' to monitor server output${NC}"
+            echo -e "${BLUE}📋 Server logs: ${LOG_FILE}${NC}"
+            echo -e "${BLUE}📋 Use './scripts/monitor_logs.sh' to monitor server output${NC}"
             return 0
         fi
         sleep 1
     done
 
     echo -e "${RED}❌ Flask app started but is not responding on port $PORT${NC}" >&2
-    echo -e "${RED}❌ Check logs/server.log for details${NC}" >&2
+    echo -e "${RED}❌ Check ${LOG_FILE} for details${NC}" >&2
     return 1
 }
 

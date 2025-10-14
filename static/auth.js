@@ -386,6 +386,42 @@ function updatePasswordRequirements(password) {
   });
 }
 
+// Generic async form submission handler to reduce duplication
+async function submitAuthForm(config) {
+  const { form, submitBtn, endpoint, requestData, onSuccess, onError = null } = config;
+  if (!validateForm(form)) {
+    return;
+  }
+
+  setLoadingState(submitBtn, true);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      onSuccess(result);
+    } else if (onError) {
+      onError(response, result);
+    } else {
+      showError(result.error || 'Request failed. Please try again.');
+    }
+  } catch (error) {
+    console.error(`${endpoint} error:`, error); // eslint-disable-line no-console
+    showError('Network error. Please try again.');
+  } finally {
+    setLoadingState(submitBtn, false);
+  }
+}
+
 // Form Submission Handlers
 async function handleLogin(e) {
   e.preventDefault();
@@ -394,45 +430,29 @@ async function handleLogin(e) {
   const submitBtn = document.getElementById('loginBtn');
   const formData = new FormData(form);
 
-  // Validate form
-  if (!validateForm(form)) {
-    return;
-  }
-
-  setLoadingState(submitBtn, true);
-
-  try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify({
-        email: formData.get('email'),
-        password: formData.get('password'),
-        remember_me: formData.get('rememberMe') === 'on'
-      })
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.success) {
+  await submitAuthForm({
+    form,
+    submitBtn,
+    endpoint: '/api/auth/login',
+    requestData: {
+      email: formData.get('email'),
+      password: formData.get('password'),
+      remember_me: formData.get('rememberMe') === 'on'
+    },
+    onSuccess: () => {
       showSuccess('Login successful! Redirecting...');
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 1000);
-    } else if (response.status === 423) {
-      showAccountLockout();
-    } else {
-      showError(result.error || 'Login failed. Please try again.');
+    },
+    onError: (response, result) => {
+      if (response.status === 423) {
+        showAccountLockout();
+      } else {
+        showError(result.error || 'Login failed. Please try again.');
+      }
     }
-  } catch (error) {
-    console.error('Login error:', error); // eslint-disable-line no-console
-    showError('Network error. Please try again.');
-  } finally {
-    setLoadingState(submitBtn, false);
-  }
+  });
 }
 
 async function handleRegister(e) {
@@ -442,46 +462,25 @@ async function handleRegister(e) {
   const submitBtn = document.getElementById('registerBtn');
   const formData = new FormData(form);
 
-  // Validate form
-  if (!validateForm(form)) {
-    return;
-  }
-
-  setLoadingState(submitBtn, true);
-
-  try {
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      },
-      body: JSON.stringify({
-        email: formData.get('email'),
-        password: formData.get('password'),
-        first_name: formData.get('firstName'),
-        last_name: formData.get('lastName'),
-        institution_name: formData.get('institutionName'),
-        institution_website: formData.get('institutionWebsite') || null
-      })
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.success) {
+  await submitAuthForm({
+    form,
+    submitBtn,
+    endpoint: '/api/auth/register',
+    requestData: {
+      email: formData.get('email'),
+      password: formData.get('password'),
+      first_name: formData.get('firstName'),
+      last_name: formData.get('lastName'),
+      institution_name: formData.get('institutionName'),
+      institution_website: formData.get('institutionWebsite') || null
+    },
+    onSuccess: () => {
       showSuccess('Account created successfully! Please check your email to verify your account.');
       setTimeout(() => {
         window.location.href = '/login';
       }, 3000);
-    } else {
-      showError(result.error || 'Registration failed. Please try again.');
     }
-  } catch (error) {
-    console.error('Registration error:', error); // eslint-disable-line no-console
-    showError('Network error. Please try again.');
-  } finally {
-    setLoadingState(submitBtn, false);
-  }
+  });
 }
 
 async function handleForgotPassword(e) {

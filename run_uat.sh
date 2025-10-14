@@ -27,19 +27,23 @@ cd "$SCRIPT_DIR"
 # Default values
 MODE="headless"
 TEST_FILTER=""
-SLOWMO=""
 SAVE_VIDEOS="0"
+DEBUG_MODE="0"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --watch|-w)
             MODE="headed"
-            SLOWMO="--slowmo=500"
             shift
             ;;
         --headed|-h)
             MODE="headed"
+            shift
+            ;;
+        --debug|-d)
+            MODE="headed"
+            DEBUG_MODE="1"
             shift
             ;;
         --test|-t)
@@ -56,17 +60,24 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --watch, -w          Run with visible browser (watch mode)"
-            echo "  --headed, -h         Run with visible browser"
+            echo "  --watch, -w          Run with visible browser (slow-mo 350ms for visibility)"
+            echo "  --headed, -h         Same as --watch (visible browser, slow-mo 350ms)"
+            echo "  --debug, -d          Debug mode: visible browser + pause at each step + DevTools"
             echo "  --test, -t <name>    Run specific test (e.g., TC-IE-001)"
             echo "  --save-videos        Record video of test execution for debugging"
             echo "  --help               Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                       # Run all tests (headless)"
-            echo "  $0 --watch               # Watch tests run in browser"
+            echo "  $0                       # Run all tests (headless, fast)"
+            echo "  $0 --watch               # Watch tests run (visible, slow-mo 350ms)"
+            echo "  $0 --debug               # Debug mode (visible, 1s steps, DevTools)"
             echo "  $0 --test TC-IE-001      # Run specific test case"
             echo "  $0 --save-videos         # Record videos for debugging"
+            echo ""
+            echo "Modes Explained:"
+            echo "  Headless (default)   -> CI/fast execution, no browser window"
+            echo "  Watch (--watch)      -> Human-friendly: browser visible, 350ms slow-mo"
+            echo "  Debug (--debug)      -> Stepwise: browser visible, 1s slow-mo, DevTools open"
             exit 0
             ;;
         *)
@@ -132,6 +143,19 @@ export E2E_BASE_URL="http://localhost:${COURSE_RECORD_UPDATER_PORT}"
 # Set video recording flag
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
+# Set debug/headless flags for Playwright
+if [ "$DEBUG_MODE" = "1" ]; then
+    export PYTEST_DEBUG="1"
+    export HEADLESS="0"
+else
+    if [ "$MODE" = "headed" ]; then
+        export HEADLESS="0"
+    else
+        # Enforce true headless when not in watch/debug
+        export HEADLESS="1"
+    fi
+fi
+
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"
 
@@ -143,14 +167,6 @@ fi
 # Add mode flags
 if [ "$MODE" = "headed" ]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
-    if [ -n "$SLOWMO" ]; then
-        PYTEST_CMD="$PYTEST_CMD $SLOWMO"
-    fi
-fi
-
-# Add video recording if requested
-if [ "$VIDEO" = "on" ]; then
-    PYTEST_CMD="$PYTEST_CMD --video=on"
 fi
 
 # Add verbose output
@@ -158,7 +174,13 @@ PYTEST_CMD="$PYTEST_CMD -v"
 
 # Display test configuration
 echo -e "${BLUE}📋 Test Configuration:${NC}"
-echo -e "  Mode: ${GREEN}$MODE${NC}"
+if [ "$DEBUG_MODE" = "1" ]; then
+    echo -e "  Mode: ${GREEN}Debug (visible, 1s slow-mo, DevTools)${NC}"
+elif [ "$MODE" = "headed" ]; then
+    echo -e "  Mode: ${GREEN}Watch (visible, 350ms slow-mo)${NC}"
+else
+    echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
+fi
 if [ -n "$TEST_FILTER" ]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else

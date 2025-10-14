@@ -525,7 +525,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeImportForm();
 
   // --- Dashboard Data Loading ---
-  loadDashboardData();
+  // Only load dashboard data if at least one dashboard element exists
+  const dashboardElements = ['coursesData', 'instructorsData', 'sectionsData', 'termsData'];
+  const hasDashboardElements = dashboardElements.some(id => document.getElementById(id));
+  if (hasDashboardElements) {
+    loadDashboardData();
+  }
 });
 
 // Dashboard data loading functions
@@ -538,12 +543,17 @@ async function loadDashboardData() {
   ];
 
   for (const endpoint of endpoints) {
+    // Check if element exists BEFORE making API call (avoid unnecessary fetches)
+    const element = document.getElementById(endpoint.id);
+    if (!element) {
+      continue; // Skip endpoints for elements that don't exist on this page
+    }
+
     try {
       const response = await fetch(endpoint.url);
       const data = await response.json();
 
-      const element = document.getElementById(endpoint.id);
-      if (element && data.success) {
+      if (data.success) {
         const count = data.count || 0;
         element.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center">
@@ -552,16 +562,13 @@ async function loadDashboardData() {
                     </div>
                     ${count > 0 ? `<small class="text-muted mt-1 d-block">Last updated: ${new Date().toLocaleTimeString()}</small>` : ''}
                 `;
-      } else if (element) {
+      } else {
         element.innerHTML = '<small class="text-danger">Failed to load</small>';
       }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(`Failed to load ${endpoint.key}:`, error);
-      const element = document.getElementById(endpoint.id);
-      if (element) {
-        element.innerHTML = '<small class="text-danger">Error loading data</small>';
-      }
+      element.innerHTML = '<small class="text-danger">Error loading data</small>';
     }
   }
 

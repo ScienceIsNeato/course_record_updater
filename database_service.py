@@ -114,12 +114,27 @@ def create_new_institution(
     return _db_service.create_new_institution(institution_data, admin_user_data)
 
 
+def create_new_institution_simple(
+    name: str, short_name: str, active: bool = True
+) -> Optional[str]:
+    """Create a new institution without creating an admin user (site admin workflow)"""
+    return _db_service.create_new_institution_simple(name, short_name, active)
+
+
 def get_institution_instructor_count(institution_id: str) -> int:
     return _db_service.get_institution_instructor_count(institution_id)
 
 
 def get_institution_by_short_name(short_name: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_institution_by_short_name(short_name)
+
+
+def update_institution(institution_id: str, institution_data: Dict[str, Any]) -> bool:
+    return _db_service.update_institution(institution_id, institution_data)
+
+
+def delete_institution(institution_id: str) -> bool:
+    return _db_service.delete_institution(institution_id)
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +186,66 @@ def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_user_by_verification_token(token)
 
 
+def update_user_profile(user_id: str, profile_data: Dict[str, Any]) -> bool:
+    return _db_service.update_user_profile(user_id, profile_data)
+
+
+def update_user_role(
+    user_id: str, new_role: str, program_ids: List[str] = None
+) -> bool:
+    return _db_service.update_user_role(user_id, new_role, program_ids)
+
+
+def deactivate_user(user_id: str) -> bool:
+    return _db_service.deactivate_user(user_id)
+
+
+def delete_user(user_id: str) -> bool:
+    return _db_service.delete_user(user_id)
+
+
+# ---------------------------------------------------------------------------
+# Audit log operations
+# ---------------------------------------------------------------------------
+
+
+def create_audit_log(audit_data: Dict[str, Any]) -> bool:
+    return _db_service.create_audit_log(audit_data)
+
+
+def get_audit_logs_by_entity(
+    entity_type: str, entity_id: str, limit: int = 50
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_by_entity(entity_type, entity_id, limit)
+
+
+def get_audit_logs_by_user(
+    user_id: str,
+    start_date: Optional[Any] = None,
+    end_date: Optional[Any] = None,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_by_user(user_id, start_date, end_date, limit)
+
+
+def get_recent_audit_logs(
+    institution_id: Optional[str] = None, limit: int = 50
+) -> List[Dict[str, Any]]:
+    return _db_service.get_recent_audit_logs(institution_id, limit)
+
+
+def get_audit_logs_filtered(
+    start_date: Any,
+    end_date: Any,
+    entity_type: Optional[str] = None,
+    user_id: Optional[str] = None,
+    institution_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    return _db_service.get_audit_logs_filtered(
+        start_date, end_date, entity_type, user_id, institution_id
+    )
+
+
 # ---------------------------------------------------------------------------
 # Course operations
 # ---------------------------------------------------------------------------
@@ -178,6 +253,18 @@ def get_user_by_verification_token(token: str) -> Optional[Dict[str, Any]]:
 
 def create_course(course_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course(course_data)
+
+
+def update_course(course_id: str, course_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course(course_id, course_data)
+
+
+def update_course_programs(course_id: str, program_ids: List[str]) -> bool:
+    return _db_service.update_course_programs(course_id, program_ids)
+
+
+def delete_course(course_id: str) -> bool:
+    return _db_service.delete_course(course_id)
 
 
 def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
@@ -194,8 +281,26 @@ def create_course_outcome(outcome_data: Dict[str, Any]) -> str:
     return _db_service.create_course_outcome(outcome_data)
 
 
+def update_course_outcome(outcome_id: str, outcome_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_outcome(outcome_id, outcome_data)
+
+
+def update_outcome_assessment(
+    outcome_id: str, assessment_data: Dict[str, Any], narrative: Optional[str] = None
+) -> bool:
+    return _db_service.update_outcome_assessment(outcome_id, assessment_data, narrative)
+
+
+def delete_course_outcome(outcome_id: str) -> bool:
+    return _db_service.delete_course_outcome(outcome_id)
+
+
 def get_course_outcomes(course_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_course_outcomes(course_id)
+
+
+def get_course_outcome(outcome_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_course_outcome(outcome_id)
 
 
 def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
@@ -214,8 +319,20 @@ def get_all_sections(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_all_sections(institution_id)
 
 
+def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_section_by_id(section_id)
+
+
 def create_course_offering(offering_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course_offering(offering_data)
+
+
+def update_course_offering(offering_id: str, offering_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_offering(offering_id, offering_data)
+
+
+def delete_course_offering(offering_id: str) -> bool:
+    return _db_service.delete_course_offering(offering_id)
 
 
 def get_course_offering(offering_id: str) -> Optional[Dict[str, Any]]:
@@ -241,6 +358,18 @@ def create_term(term_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_term(term_data)
 
 
+def update_term(term_id: str, term_data: Dict[str, Any]) -> bool:
+    return _db_service.update_term(term_id, term_data)
+
+
+def archive_term(term_id: str) -> bool:
+    return _db_service.archive_term(term_id)
+
+
+def delete_term(term_id: str) -> bool:
+    return _db_service.delete_term(term_id)
+
+
 def get_term_by_name(
     name: str, institution_id: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
@@ -249,6 +378,10 @@ def get_term_by_name(
 
 def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_active_terms(institution_id)
+
+
+def get_term_by_id(term_id: str) -> Optional[Dict[str, Any]]:
+    return _db_service.get_term_by_id(term_id)
 
 
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
@@ -262,6 +395,18 @@ def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:
 
 def create_course_section(section_data: Dict[str, Any]) -> Optional[str]:
     return _db_service.create_course_section(section_data)
+
+
+def update_course_section(section_id: str, section_data: Dict[str, Any]) -> bool:
+    return _db_service.update_course_section(section_id, section_data)
+
+
+def assign_instructor(section_id: str, instructor_id: str) -> bool:
+    return _db_service.assign_instructor(section_id, instructor_id)
+
+
+def delete_course_section(section_id: str) -> bool:
+    return _db_service.delete_course_section(section_id)
 
 
 def get_sections_by_instructor(instructor_id: str) -> List[Dict[str, Any]]:

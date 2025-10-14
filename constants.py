@@ -28,6 +28,16 @@ NOT_FOUND_MSG = "not found"
 INVITATION_NOT_FOUND_MSG = "Invitation not found"
 INVALID_CREDENTIALS_MSG = "Invalid email or password"
 DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
+PERMISSION_DENIED_MSG = "Permission denied"
+USER_NOT_FOUND_MSG = "User not found"
+USER_NOT_AUTHENTICATED_MSG = "User not authenticated"
+INSTITUTION_NOT_FOUND_MSG = "Institution not found"
+FAILED_TO_CREATE_INSTITUTION_MSG = "Failed to create institution"
+TERM_NOT_FOUND_MSG = "Term not found"
+SECTION_NOT_FOUND_MSG = "Section not found"
+OUTCOME_NOT_FOUND_MSG = "Outcome not found"
+COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
+MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
 
 # SonarLint configuration constants
 SONAR_CLOUD_ORGANIZATION = "scienceisneato"
@@ -38,7 +48,6 @@ SONAR_REGION = "US"
 DASHBOARD_ENDPOINT = "dashboard"
 
 # Common error messages
-ERROR_USER_NOT_FOUND = "User not found"
 ERROR_COURSE_NOT_FOUND = "Course not found"
 ERROR_PROGRAM_NOT_FOUND = "Program not found"
 ERROR_INVITATION_NOT_FOUND = "Invitation not found"
@@ -113,4 +122,3 @@ ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
 
 # API error messages
 ERROR_PERMISSION_DENIED = "Permission denied"
-ERROR_USER_NOT_FOUND = "User not found"

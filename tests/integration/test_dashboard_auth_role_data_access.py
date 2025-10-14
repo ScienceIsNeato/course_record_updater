@@ -16,6 +16,7 @@ from typing import Any, Dict
 import pytest
 from flask import Flask
 
+from tests.conftest import INSTITUTION_ADMIN_EMAIL, SITE_ADMIN_EMAIL
 from tests.test_utils import create_test_session
 
 
@@ -98,13 +99,17 @@ class TestDashboardAuthRoleDataAccess:
         cei_users = db.get_all_users(self.cei_id) or []
 
         # Find site admin (system-wide, not institution-specific)
-        site_admin_email = "siteadmin@system.local"
+        site_admin_email = SITE_ADMIN_EMAIL
         self.site_admin = db.get_user_by_email(site_admin_email)
         assert self.site_admin, f"Site admin {site_admin_email} not found"
 
         # Find CEI users by email
         self.sarah_admin = next(
-            (user for user in cei_users if user.get("email") == "sarah.admin@cei.edu"),
+            (
+                user
+                for user in cei_users
+                if user.get("email") == INSTITUTION_ADMIN_EMAIL
+            ),
             None,
         )
         assert self.sarah_admin, "Sarah (institution admin) not found in CEI users"
@@ -220,10 +225,10 @@ class TestDashboardAuthRoleDataAccess:
         summary = data.get("summary", {})
 
         # Verify institution admin sees only CEI data
-        # CEI should have: 3 programs, 6 courses, 4 users, 6 sections (based on actual seeded data)
+        # CEI should have: 4 programs (CS, EE, Unclassified, + auto-created default), 6 courses, 4 users, 6 sections
         assert (
-            summary.get("programs", 0) == 3
-        ), "CEI should have 3 programs (CS, EE, Unclassified)"
+            summary.get("programs", 0) == 4
+        ), f"CEI should have 4 programs (including default), got {summary.get('programs', 0)}"
         assert summary.get("courses", 0) == 6, "CEI should have 6 courses (seeded data)"
         assert summary.get("users", 0) == 4, "CEI should have 4 users (seeded data)"
         assert (
@@ -234,15 +239,19 @@ class TestDashboardAuthRoleDataAccess:
         programs = data.get("programs", [])
         program_names = {prog.get("name") for prog in programs}
 
-        # Should only see CEI programs
+        # Should only see CEI programs (including auto-created default program)
         expected_cei_programs = {
             "Computer Science",
             "Electrical Engineering",
             "General Studies",
         }
+        # Check that the expected programs are present (plus the default program)
+        assert expected_cei_programs.issubset(
+            program_names
+        ), f"Expected CEI programs not found. Expected {expected_cei_programs}, got: {program_names}"
         assert (
-            program_names == expected_cei_programs
-        ), f"Institution admin should only see CEI programs. Found: {program_names}"
+            len(program_names) == 4
+        ), f"Expected 4 programs total (3 named + 1 default), got {len(program_names)}: {program_names}"
 
         # Should NOT see RCC or PTU programs
         forbidden_programs = {
@@ -276,36 +285,36 @@ class TestDashboardAuthRoleDataAccess:
         summary = data.get("summary", {})
 
         # Verify program admin sees exactly their program data
-        # Note: Current dashboard service returns 0 for program admins - this may be a bug to fix later
+        # Lisa manages CS & EE, so should see those 2 programs
         assert (
-            summary.get("programs", 0) == 0
-        ), "Program admin dashboard currently returns 0 programs (known issue)"
+            summary.get("programs", 0) == 2
+        ), f"Program admin should see 2 programs (CS, EE), got {summary.get('programs', 0)}"
         assert (
-            summary.get("courses", 0) == 0
-        ), "Program admin dashboard currently returns 0 courses (known issue)"
+            summary.get("courses", 0) >= 5
+        ), f"Program admin should see CS+EE courses, got {summary.get('courses', 0)}"
         assert (
-            summary.get("sections", 0) == 0
-        ), "Program admin dashboard currently returns 0 sections (known issue)"
+            summary.get("sections", 0) >= 5
+        ), f"Program admin should see CS+EE sections, got {summary.get('sections', 0)}"
         assert (
             summary.get("faculty", 0) >= 3
         ), "Lisa should see faculty at her institution"
         assert summary.get("users", 0) == 4, "Lisa should see users at her institution"
 
-        # Note: Program admin currently sees 0 courses and sections due to dashboard service issue
+        # Dashboard bug is FIXED! Program admin now correctly sees their program's data
         courses = data.get("courses", [])
         sections = data.get("sections", [])
 
-        # Current behavior: program admin sees no courses or sections (known issue)
+        # Fixed behavior: program admin sees their program's courses and sections
         assert (
-            len(courses) == 0
-        ), "Program admin currently sees 0 courses (known dashboard service issue)"
+            len(courses) == 5
+        ), f"Program admin should see CS and EE courses (5 total), got {len(courses)}"
         assert (
-            len(sections) == 0
-        ), "Program admin currently sees 0 sections (known dashboard service issue)"
+            len(sections) >= 5
+        ), f"Program admin should see CS and EE sections, got {len(sections)}"
 
-        # TODO: When dashboard service is fixed, program admin should see their program's courses and sections
-        # Expected future behavior:
-        # - Should see CS and EE courses: CS-101, CS-201, EE-101, EE-201, EE-301
+        # Verify courses are from the correct programs (CS and EE)
+        course_numbers = {c["course_number"] for c in courses}
+        expected_courses = {"CS-101", "CS-201", "EE-101", "EE-201", "EE-301"}
         # - Should see sections for those courses
         # - Should NOT see General Studies courses
 
@@ -353,12 +362,12 @@ class TestDashboardAuthRoleDataAccess:
                 instructor_id == self.john_instructor["user_id"]
             ), "Instructor should only see sections they are assigned to teach"
 
-        # Note: Instructor currently sees 0 courses due to dashboard service issue
+        # Instructor should see courses they teach
         courses = data.get("courses", [])
         instructor_course_count = len(courses)
         assert (
-            instructor_course_count == 0
-        ), "Instructor currently sees 0 courses (known dashboard service issue)"
+            instructor_course_count >= 2
+        ), f"Instructor should see courses they teach, got {instructor_course_count}"
 
     def test_unauthenticated_dashboard_access_denied(self):
         """
@@ -401,17 +410,15 @@ class TestDashboardAuthRoleDataAccess:
             course_numbers
         ), f"Program admin should not see other institutions' courses: {course_numbers}"
 
-        # Note: Program admin currently sees 0 programs due to dashboard service issue
+        # Program admin sees their assigned programs
         programs = data.get("programs", [])
         program_names = {prog.get("name") for prog in programs}
 
-        # Current behavior: program admin sees no programs (known issue)
+        # Lisa should only see her assigned programs (CS + EE), not Unclassified
+        expected_programs = {"Computer Science", "Electrical Engineering"}
         assert (
-            len(programs) == 0
-        ), f"Program admin currently sees 0 programs (known dashboard service issue). Found: {program_names}"
-
-        # TODO: When dashboard service is fixed, Lisa should only see her assigned programs (CS + EE), not Unclassified
-        # expected_programs = {"Computer Science", "Electrical Engineering"}
+            program_names == expected_programs
+        ), f"Program admin should only see assigned programs. Expected {expected_programs}, got: {program_names}"
         # assert program_names == expected_programs
 
 
@@ -448,7 +455,7 @@ class TestDashboardDataConsistency:
             pass  # Ignore database connection refresh errors
 
         # Find site admin
-        site_admin_email = "siteadmin@system.local"
+        site_admin_email = SITE_ADMIN_EMAIL
         self.site_admin = db.get_user_by_email(site_admin_email)
 
         # If site admin not found, try to re-seed the database

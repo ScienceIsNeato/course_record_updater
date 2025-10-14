@@ -13,6 +13,7 @@ import pytest
 # Import the API blueprint and related modules
 from api_routes import api
 from app import app
+from constants import USER_NOT_FOUND_MSG
 
 TEST_PASSWORD = os.environ.get(
     "TEST_PASSWORD", "SecurePass123!"
@@ -146,7 +147,7 @@ class TestDashboardRoutes:
             # Verify the correct template was called for site_admin role
             mock_render.assert_called_once()
             call_args = mock_render.call_args
-            assert call_args[0][0] == "dashboard/site_admin_panels.html"
+            assert call_args[0][0] == "dashboard/site_admin.html"
             assert "user" in call_args[1]
 
     def test_dashboard_unknown_role(self):
@@ -601,6 +602,39 @@ class TestInvitationEndpoints:
         call_args = mock_invitation_service.create_invitation.call_args[1]
         assert call_args["program_ids"] == ["prog-123", "prog-456"]
 
+    @patch("invitation_service.InvitationService")
+    def test_create_invitation_public_api_alias_fields(self, mock_invitation_service):
+        """Ensure /api/invitations accepts email/role aliases and returns 201."""
+        self._login_institution_admin()
+
+        mock_invitation_service.create_invitation.return_value = {
+            "id": "inv-999",
+            "invitee_email": "instructor@test.com",
+            "invitee_role": "instructor",
+            "status": "sent",
+        }
+        mock_invitation_service.send_invitation.return_value = True
+
+        # Use alias fields email/role
+        response = self.client.post(
+            "/api/invitations",
+            json={
+                "email": "instructor@test.com",
+                "role": "instructor",
+                "personal_message": "Welcome!",
+            },
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["invitation_id"] == "inv-999"
+
+        # Verify service was called with normalized args
+        call_args = mock_invitation_service.create_invitation.call_args[1]
+        assert call_args["invitee_email"] == "instructor@test.com"
+        assert call_args["invitee_role"] == "instructor"
+
 
 class TestAcceptInvitationEndpoints:
     """Test accept invitation API endpoints (Story 2.2)"""
@@ -1026,7 +1060,7 @@ class TestResendVerificationEndpoints:
         from registration_service import RegistrationError
 
         mock_registration_service.resend_verification_email.side_effect = (
-            RegistrationError("User not found")
+            RegistrationError(USER_NOT_FOUND_MSG)
         )
 
         with app.test_client() as client:
@@ -1037,7 +1071,7 @@ class TestResendVerificationEndpoints:
             assert response.status_code == 400  # RegistrationError returns 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "User not found" in data["error"]
+            assert USER_NOT_FOUND_MSG in data["error"]
 
     @patch("registration_service.RegistrationService")
     def test_resend_verification_already_verified(self, mock_registration_service):
@@ -1816,9 +1850,8 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_success(self, mock_create_institution):
-        """Test POST /api/institutions endpoint success."""
-        self._login_site_admin()
-
+        """Test POST /api/institutions/register endpoint success (public registration)."""
+        # No login needed - this is a public registration endpoint
         mock_create_institution.return_value = ("institution123", "user123")
 
         institution_data = {
@@ -1835,7 +1868,7 @@ class TestInstitutionEndpoints:
             },
         }
 
-        response = self.client.post("/api/institutions", json=institution_data)
+        response = self.client.post("/api/institutions/register", json=institution_data)
         assert response.status_code == 201
 
         data = json.loads(response.data)
@@ -1887,9 +1920,9 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_missing_data(self, mock_create_institution):
-        """Test POST /api/institutions with missing data."""
+        """Test POST /api/institutions/register with missing data."""
         with app.test_client() as client:
-            response = client.post("/api/institutions", json={})
+            response = client.post("/api/institutions/register", json={})
             assert response.status_code == 400
 
             data = json.loads(response.data)
@@ -1897,11 +1930,11 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_missing_admin_user_field(self, mock_create_institution):
-        """Test POST /api/institutions with missing admin user field."""
+        """Test POST /api/institutions/register with missing admin user field."""
         with app.test_client() as client:
             # Send institution data but missing admin user email
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",
@@ -1924,13 +1957,13 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_creation_failure(self, mock_create_institution):
-        """Test POST /api/institutions when institution creation fails."""
+        """Test POST /api/institutions/register when institution creation fails."""
         # Setup - make create_new_institution return None (failure)
         mock_create_institution.return_value = None
 
         with app.test_client() as client:
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",
@@ -1953,13 +1986,13 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.create_new_institution")
     def test_create_institution_exception_handling(self, mock_create_institution):
-        """Test POST /api/institutions exception handling."""
+        """Test POST /api/institutions/register exception handling."""
         # Setup - make create_new_institution raise an exception
         mock_create_institution.side_effect = Exception("Database connection failed")
 
         with app.test_client() as client:
             response = client.post(
-                "/api/institutions",
+                "/api/institutions/register",
                 json={
                     "institution": {
                         "name": "Test University",
@@ -2784,7 +2817,7 @@ class TestAPIRoutesErrorHandling:
 
         assert response.status_code == 404
         data = response.get_json()
-        assert data["error"] == "User not found"
+        assert data["error"] == USER_NOT_FOUND_MSG
         mock_get_user.assert_called_once_with("nonexistent-user")
 
     @patch("api_routes.get_current_institution_id")

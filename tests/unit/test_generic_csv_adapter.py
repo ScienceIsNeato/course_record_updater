@@ -195,7 +195,7 @@ class TestGenericCSVAdapterExport:
             assert "inst-1,Test University,TU" in lines[1]
 
     def test_export_excludes_sensitive_user_fields(self, tmp_path):
-        """User export should exclude password_hash and tokens."""
+        """User export includes password_hash (for test fixtures) but excludes active tokens."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
 
@@ -205,7 +205,7 @@ class TestGenericCSVAdapterExport:
                 {
                     "id": "user-1",
                     "email": "test@example.edu",
-                    "password_hash": "$2b$12$SENSITIVE_HASH",  # Should be excluded
+                    "password_hash": "$2b$12$SENSITIVE_HASH",  # Now included for test fixtures
                     "password_reset_token": "secret-token",  # Should be excluded
                     "email_verification_token": "verify-token",  # Should be excluded
                     "first_name": "John",
@@ -228,7 +228,7 @@ class TestGenericCSVAdapterExport:
 
         assert success is True
 
-        # Verify sensitive fields are excluded
+        # Verify sensitive fields handling
         with zipfile.ZipFile(output_file, "r") as zf:
             csv_content = zf.read("users.csv").decode("utf-8")
             csv_reader = csv.DictReader(csv_content.splitlines())
@@ -241,8 +241,10 @@ class TestGenericCSVAdapterExport:
             assert user["email"] == "test@example.edu"
             assert user["first_name"] == "John"
 
-            # Should NOT have sensitive fields
-            assert "password_hash" not in user
+            # Should have password_hash (for test fixtures)
+            assert user["password_hash"] == "$2b$12$SENSITIVE_HASH"
+
+            # Should NOT have active tokens (still sensitive)
             assert "password_reset_token" not in user
             assert "email_verification_token" not in user
 

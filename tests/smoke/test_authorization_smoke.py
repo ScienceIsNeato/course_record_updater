@@ -120,10 +120,11 @@ class TestAuthorizationSmoke:
             assert service.has_permission("manage_courses") is True
             assert service.has_permission("view_program_data") is True
 
-            # Should NOT have institution-level permissions
+            # Should NOT have full institution-level permissions
             assert service.has_permission("manage_institution_users") is False
             assert service.has_permission("manage_programs") is False
-            assert service.has_permission("view_institution_data") is False
+            # Program admins CAN view institution data (needed to see/assign instructors)
+            assert service.has_permission("view_institution_data") is True
 
             # Test role hierarchy
             assert service.has_role("program_admin") is True

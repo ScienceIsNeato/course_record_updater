@@ -5,6 +5,8 @@ import sys
 from flask import Flask, flash, redirect, render_template, url_for
 from flask_wtf.csrf import CSRFProtect
 
+from api import register_blueprints  # New modular API structure
+
 # Import new API routes and services
 from api_routes import api
 from auth_service import get_current_user, is_authenticated, login_required
@@ -68,8 +70,9 @@ def setup_logging():
 # Setup logging
 setup_logging()
 
-# Register API blueprint
-app.register_blueprint(api)
+# Register API blueprints
+app.register_blueprint(api)  # Legacy monolithic API (being refactored)
+register_blueprints(app)  # New modular API structure
 
 # Secret key configuration
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
@@ -173,8 +176,8 @@ def dashboard():
     elif role == "institution_admin":
         return render_template("dashboard/institution_admin.html", user=user)
     elif role == "site_admin":
-        # Use new panel-based UI for site admin
-        return render_template("dashboard/site_admin_panels.html", user=user)
+        # Use simplified site admin UI with working create modals
+        return render_template("dashboard/site_admin.html", user=user)
     else:
         flash("Unknown user role. Please contact administrator.", "danger")
         return redirect(url_for("index"))
@@ -200,6 +203,16 @@ def users_list():
         return redirect(url_for("login"))
 
     return render_template("users_list.html", user=user)
+
+
+@app.route("/assessments")
+@login_required
+def assessments_page():
+    """Display assessment/outcomes page for instructors"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    return render_template("assessments.html", user=user)
 
 
 @app.route("/sections")

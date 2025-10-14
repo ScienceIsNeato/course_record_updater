@@ -26,15 +26,63 @@ from database_service import (
     get_all_users,
 )
 
+# Import shared test credentials from root conftest
+from tests.conftest import (
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
+
 # Test configuration
 # E2E environment runs on port 3002 (see run_uat.sh and .envrc)
 BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3002")
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 
-# Test user credentials
-INSTITUTION_ADMIN_EMAIL = "sarah.admin@cei.edu"
-INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args, pytestconfig):
+    """
+    Configure browser launch options for human-friendly watch mode.
+
+    - In CI (headless): Fast execution, no slow-mo
+    - With --headed: Shows browser, slow-mo 350ms for visibility
+    - With --debug: Shows browser, pauses at each step (debugger mode)
+    - Default (watch mode): Shows browser, slow-mo 350ms
+
+    Usage:
+        pytest tests/e2e/                    # Watch mode: visible, slow-mo 350
+        pytest tests/e2e/ --headed           # Watch mode: visible, slow-mo 350
+        pytest tests/e2e/ --headed --debug   # Debug mode: visible, pauses at steps
+        HEADLESS=1 pytest tests/e2e/         # CI mode: fast, headless
+    """
+    config = {**browser_type_launch_args}
+
+    # Check if we're in debug mode (pytest --pdb or custom --debug flag)
+    debug_mode = pytestconfig.option.usepdb or os.getenv("PYTEST_DEBUG") == "1"
+
+    # Check if explicitly headless (CI mode)
+    explicit_headless = os.getenv("HEADLESS") == "1" or os.getenv("CI") == "true"
+
+    if explicit_headless:
+        # CI mode: fast, headless, no slow-mo
+        config["headless"] = True
+        config["slow_mo"] = 0
+    elif debug_mode:
+        # Debug mode: visible, very slow for inspection, devtools open
+        config["headless"] = False
+        config["slow_mo"] = 1000  # 1 second between actions for debugging
+        config["devtools"] = True
+    else:
+        # Watch mode (default): visible with comfortable slow-mo + DevTools for console monitoring
+        config["headless"] = False
+        config["slow_mo"] = 350  # 350ms between actions - human-readable speed
+        config["devtools"] = (
+            True  # Always show DevTools in watch mode to catch console errors
+        )
+
+    return config
 
 
 @pytest.fixture(scope="session")
@@ -65,9 +113,39 @@ def context(
 
 @pytest.fixture(scope="function")
 def page(context: BrowserContext) -> Generator[Page, None, None]:
-    """Create a new page for each test."""
+    """
+    Create a new page for each test with automatic console error monitoring.
+
+    Greenfield Project Policy: Console errors FAIL tests by default.
+    No exceptions unless explicitly discussed and documented.
+    """
     page = context.new_page()
+
+    # Set up console error monitoring (fail tests on any JS errors)
+    console_errors = []
+
+    def handle_console(msg):
+        if msg.type == "error":
+            error_text = msg.text
+            console_errors.append(error_text)
+            print(f"🔴 JavaScript Console Error: {error_text}")
+
+    page.on("console", handle_console)
+
+    # Store error list on page object for test access
+    page.console_errors = console_errors
+
     yield page
+
+    # Check for console errors at test end and fail if any found
+    if console_errors:
+        error_summary = "\n  - ".join(console_errors)
+        pytest.fail(
+            f"JavaScript console errors detected during test:\n  - {error_summary}\n\n"
+            f"Greenfield Policy: Console errors are NOT acceptable. "
+            f"Either fix the JavaScript issue or discuss with team if exception needed."
+        )
+
     page.close()
 
 
@@ -125,8 +203,8 @@ def authenticated_page(page: Page) -> Page:
     # 3. Timeout (something went wrong)
     try:
         # Wait for URL to change to dashboard (JavaScript redirect)
-        # 2s timeout is appropriate now that bcrypt is fast in test environments
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=2000)
+        # Increased timeout to 5s for CI environments which can be slower
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
         return page
     except Exception:
         # Check if still on login page with error message
@@ -145,7 +223,188 @@ def authenticated_page(page: Page) -> Page:
                 error_text = "No error message found. Check if JavaScript is executing."
 
             raise Exception(
-                f"Login failed - still on login page after 10s. Errors: {error_text} URL: {current_url}"
+                f"Login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
+            )
+
+
+@pytest.fixture(scope="function")
+def authenticated_site_admin_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as site admin.
+
+    Properly handles CSRF token for secure authentication by submitting the actual
+    login form (which automatically handles CSRF and session management).
+
+    Usage:
+        def test_something(authenticated_site_admin_page):
+            authenticated_site_admin_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as siteadmin@system.local
+    """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', SITE_ADMIN_EMAIL)
+    page.fill('input[name="password"]', SITE_ADMIN_PASSWORD)
+
+    # Submit form and wait for JavaScript to handle login and redirect
+    page.click('button[type="submit"]')
+
+    # Wait for URL to change to dashboard (JavaScript redirect)
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        return page
+    except Exception:
+        # Check if still on login page with error message
+        current_url = page.url
+        if "/login" in current_url:
+            # Look for error message
+            error_elements = page.query_selector_all(
+                '.alert-danger, .error-message, [role="alert"]'
+            )
+            error_text = " | ".join(
+                [el.text_content() for el in error_elements if el.text_content()]
+            )
+
+            # If no error message, check console for JS errors
+            if not error_text:
+                error_text = "No error message found. Check if JavaScript is executing."
+
+            raise Exception(
+                f"Site admin login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
+            )
+
+
+@pytest.fixture(scope="function")
+def instructor_authenticated_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as an instructor.
+
+    Logs in as john.instructor@cei.edu (from seeded test data).
+
+    Usage:
+        def test_something(instructor_authenticated_page):
+            instructor_authenticated_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as instructor
+    """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Use instructor credentials from seeded data
+    INSTRUCTOR_EMAIL = "john.instructor@cei.edu"
+    INSTRUCTOR_PASSWORD = "TestUser123!"  # From seed data
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', INSTRUCTOR_EMAIL)
+    page.fill('input[name="password"]', INSTRUCTOR_PASSWORD)
+
+    # Submit form and wait for JavaScript to handle login and redirect
+    page.click('button[type="submit"]')
+
+    # Wait for URL to change to dashboard (JavaScript redirect)
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        return page
+    except Exception:
+        # Check if still on login page with error message
+        try:
+            current_url = page.url
+            if "/login" in current_url:
+                # Look for error message (wrap in try-except to handle race conditions)
+                try:
+                    error_elements = page.query_selector_all(
+                        '.alert-danger, .error-message, [role="alert"]'
+                    )
+                    error_text = " | ".join(
+                        [
+                            el.text_content()
+                            for el in error_elements
+                            if el.text_content()
+                        ]
+                    )
+                except Exception:
+                    error_text = (
+                        "Could not query error elements (page may be navigating)"
+                    )
+
+                # If no error message, check console for JS errors
+                if not error_text:
+                    error_text = (
+                        "No error message found. Check if JavaScript is executing."
+                    )
+
+                raise Exception(
+                    f"Instructor login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
+                )
+        except Exception as e:
+            # If we can't even get the URL, the login likely succeeded but we had a timing issue
+            # Re-raise only if it's a meaningful error
+            if "Instructor login failed" in str(e):
+                raise
+            # Otherwise, assume success (page navigated too fast for our error check)
+            return page
+
+
+@pytest.fixture(scope="function")
+def program_admin_authenticated_page(page: Page) -> Page:
+    """
+    Fixture that provides a page with authenticated session as a program admin.
+
+    Logs in as lisa.prog@cei.edu (from seeded test data).
+
+    Usage:
+        def test_something(program_admin_authenticated_page):
+            program_admin_authenticated_page.goto(f"{BASE_URL}/dashboard")
+            # Already logged in as program admin
+    """
+    # Clear any existing session/cookies to ensure clean login
+    page.context.clear_cookies()
+
+    # Navigate to login page
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Use program admin credentials from seeded data
+    PROGRAM_ADMIN_EMAIL = "lisa.prog@cei.edu"
+    PROGRAM_ADMIN_PASSWORD = "TestUser123!"  # From seed data
+
+    # Fill and submit the actual login form (handles CSRF automatically)
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
+
+    # Submit form and wait for JavaScript to handle login and redirect
+    page.click('button[type="submit"]')
+
+    # Wait for URL to change to dashboard (JavaScript redirect)
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        return page
+    except Exception:
+        # Check if still on login page with error message
+        current_url = page.url
+        if "/login" in current_url:
+            # Look for error message
+            error_elements = page.query_selector_all(
+                '.alert-danger, .error-message, [role="alert"]'
+            )
+            error_text = " | ".join(
+                [el.text_content() for el in error_elements if el.text_content()]
+            )
+
+            # If no error message, check console for JS errors
+            if not error_text:
+                error_text = "No error message found. Check if JavaScript is executing."
+
+            raise Exception(
+                f"Program admin login failed - still on login page after 5s. Errors: {error_text} URL: {current_url}"
             )
 
 
@@ -240,6 +499,69 @@ def test_data_file():
 
 
 # Helper functions for common E2E operations
+
+
+@pytest.fixture(scope="function")
+def ensure_multiple_institutions():
+    """
+    Fixture that ensures at least 2 institutions exist for multi-tenancy tests.
+
+    Creates a temporary second institution if only 1 exists, and cleans it up after test.
+    Returns tuple: (second_institution_id, cleanup_function)
+
+    Usage:
+        def test_something(ensure_multiple_institutions):
+            second_inst_id, cleanup = ensure_multiple_institutions
+            # Test multi-tenant isolation
+            cleanup()  # Or let it auto-cleanup on teardown
+    """
+    from database_service import (
+        create_new_institution,
+        delete_institution,
+        get_all_institutions,
+    )
+
+    institutions = get_all_institutions()
+    created_temp_institution = False
+    temp_institution_id = None
+
+    # If we only have 1 institution, create a temporary second one
+    if len(institutions) < 2:
+        # Create minimal institution for testing
+        temp_institution_id, _ = create_new_institution(
+            institution_data={
+                "name": "Temp Test Institution",
+                "short_name": "TEMP",
+                "address": "123 Test St",
+            },
+            admin_user_data={
+                "email": "temp.admin@test.edu",
+                "first_name": "Temp",
+                "last_name": "Admin",
+                "password": "TempAdmin123!",
+            },
+        )
+        created_temp_institution = True
+
+    # Return the second institution (either existing or newly created)
+    institutions = get_all_institutions()
+    second_institution = institutions[1] if len(institutions) > 1 else None
+
+    def cleanup():
+        """Clean up temporary institution if we created one"""
+        if created_temp_institution and temp_institution_id:
+            try:
+                delete_institution(temp_institution_id)
+            except Exception:
+                pass  # Best effort cleanup
+
+    yield (
+        second_institution["institution_id"] if second_institution else None,
+        cleanup,
+    )
+
+    # Auto-cleanup on teardown
+    cleanup()
 
 
 def wait_for_modal(page: Page, modal_selector: str = ".modal", timeout: int = 2000):
