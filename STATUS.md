@@ -2,9 +2,8 @@
 
 ## 🎯 Email System V1 - In Progress
 
-### Current Phase: Phase 1 - Email Service Interface ✅ COMPLETE
+### Current Phase: Phase 2 - Test Infrastructure (HYBRID APPROACH)
 **Started**: October 14, 2025
-**Completed**: October 14, 2025
 **Branch**: feature/email_service
 
 ### Implementation Progress
@@ -14,24 +13,44 @@
 - [x] Implement base provider abstract class
 - [x] Implement console provider (dev mode)
 - [x] Implement Gmail SMTP provider
+- [x] Implement Mailtrap SMTP provider (sandbox testing)
 - [x] Refactor EmailService to use provider pattern
+- [x] Enhanced safety measures (only allow test accounts in non-prod)
 - [x] Run tests and validate
-- [x] Commit: `f5179d1` - feat: add email provider infrastructure
+- [x] Commit: `3c9da8a` - feat: add Mailtrap provider for hybrid email testing
 
 **Outcome:**
-- All 36 email service tests pass
+- All 49 email service tests pass (13 new for MailtrapProvider)
 - Zero breaking changes to existing code
 - Email sending now uses swappable provider pattern
 - Console provider for development (logs to console/files)
 - Gmail provider ready for production SMTP
+- Mailtrap provider for sandbox testing (no phone verification needed!)
 - Type-safe with mypy strict mode
+- Coverage: 81.83%
 
-#### Phase 2: Gmail Test Accounts (Next)
-- [ ] Create 5 Gmail test accounts
-- [ ] Enable 2FA and generate app passwords
-- [ ] Configure staging environment
-- [ ] Test sending from system account
-- [ ] Document credentials in `.env.example`
+#### Phase 2: Test Infrastructure (HYBRID APPROACH) ⏳ IN PROGRESS
+**Strategy:** Mailtrap for most testing + Bella Barkington (Gmail) for real delivery verification
+
+**Completed:**
+- [x] Planning document created (planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md)
+- [x] Mailtrap provider implemented and tested
+- [x] Gmail third-party integration tests (skipped until account setup)
+- [x] Test scripts created (test_mailtrap_smtp.py, test_gmail_smtp.py)
+- [x] Safety measures implemented (block non-test emails in dev)
+- [x] Environment matrix updated (Local Dev = Mailtrap)
+
+**Remaining (requires manual setup):**
+- [ ] Create Mailtrap account (~5 min)
+  - Sign up at https://mailtrap.io/
+  - Get SMTP credentials
+  - Update `.env` file
+- [ ] Create Bella's Gmail account (~10 min)
+  - Email: lassie.tests.instructor1.test@gmail.com
+  - Enable 2FA
+  - Generate app password
+- [ ] Test Mailtrap SMTP (run test_mailtrap_smtp.py)
+- [ ] Optional: Test Bella's Gmail (run test_gmail_smtp.py)
 
 #### Phase 3: E2E Email Infrastructure (Not Started)
 - [ ] Gmail API OAuth2 setup
@@ -74,10 +93,30 @@
 - [ ] System ready for CEI demo
 
 ### Notes
-- Plan document: See attached `email-system-v1.plan.md`
+- **HYBRID APPROACH**: Mailtrap for most testing (no phone verification issues!) + Bella (Gmail) for real delivery
+- Plan document: `planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md`
 - Phase 1 maintains 100% backward compatibility
 - Provider pattern allows easy migration to SendGrid/Mailgun later
-- Test accounts will only be used in non-production environments
+- Enhanced safety: only lassie.tests@gmail.com or @mailtrap.io allowed in non-production
+- All provider code fully unit tested (no external dependencies needed)
 
-### Recent Commits
+### Recent Commits (Most Recent First)
+- `0da5b0d` - test: add comprehensive unit tests for MailtrapProvider
+- `5685603` - test: add Gmail third-party integration tests (skipped until setup)
+- `4ad26bc` - docs: fix test instructions in email implementation plan
+- `3c9da8a` - feat: add Mailtrap provider for hybrid email testing
+- `b5ccb1f` - fix: update EmailService tests for provider pattern
 - `f5179d1` - feat: add email provider infrastructure for swappable backends
+
+### What Can Be Done Without Account Setup
+✅ **Everything code-related is done!** All that's left requires manual account creation:
+1. Mailtrap account (~5 min) - recommended for most testing
+2. Bella's Gmail (~10 min) - optional, for real delivery verification
+
+### Next Session Actions
+When ready to set up accounts:
+1. Go to https://mailtrap.io/ and create free account
+2. Get SMTP credentials and update `.env`
+3. Run: `python scripts/test_mailtrap_smtp.py`
+4. Verify 3 test emails appear in Mailtrap inbox
+5. (Optional) Set up Bella's Gmail for live testing
