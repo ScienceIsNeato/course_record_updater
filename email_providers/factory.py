@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional
 from email_providers.base_provider import EmailProvider
 from email_providers.console_provider import ConsoleProvider
 from email_providers.gmail_provider import GmailProvider
+from email_providers.mailtrap_provider import MailtrapProvider
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -45,10 +46,12 @@ def create_email_provider(
         provider = ConsoleProvider()
     elif provider_name == "gmail":
         provider = GmailProvider()
+    elif provider_name == "mailtrap":
+        provider = MailtrapProvider()
     else:
         raise ValueError(
             f"Unknown email provider: {provider_name}. "
-            f"Valid options: console, gmail"
+            f"Valid options: console, gmail, mailtrap"
         )
         
     # Configure provider
@@ -73,16 +76,22 @@ def _determine_provider_from_environment() -> str:
     
     Logic:
     - If MAIL_SUPPRESS_SEND=true -> console
+    - If MAIL_SERVER contains "mailtrap" -> mailtrap
     - If ENV=production or PRODUCTION=true -> gmail
     - If MAIL_USERNAME is set -> gmail
     - Default -> console (safe for development)
     
     Returns:
-        Provider name ("console" or "gmail")
+        Provider name ("console", "gmail", or "mailtrap")
     """
     # Check explicit suppress flag
     if os.getenv("MAIL_SUPPRESS_SEND", "false").lower() == "true":
         return "console"
+    
+    # Check if Mailtrap is configured
+    mail_server = os.getenv("MAIL_SERVER", "").lower()
+    if "mailtrap" in mail_server:
+        return "mailtrap"
         
     # Check environment type
     env = os.getenv("ENV", "development").lower()

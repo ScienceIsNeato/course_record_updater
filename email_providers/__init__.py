@@ -13,11 +13,13 @@ from email_providers.base_provider import EmailProvider
 from email_providers.console_provider import ConsoleProvider
 from email_providers.factory import create_email_provider
 from email_providers.gmail_provider import GmailProvider
+from email_providers.mailtrap_provider import MailtrapProvider
 
 __all__ = [
     "EmailProvider",
     "ConsoleProvider",
     "GmailProvider",
+    "MailtrapProvider",
     "create_email_provider",
 ]
 
