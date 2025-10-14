@@ -147,46 +147,70 @@ Once you've set up your email provider (Mailtrap or Gmail), test it:
 
 ### Test Mailtrap SMTP
 
-```python
-"""
-Quick test script for Gmail SMTP configuration
-"""
-import os
-from flask import Flask
-from email_service import EmailService
-
-app = Flask(__name__)
-app.config["MAIL_SERVER"] = "smtp.gmail.com"
-app.config["MAIL_PORT"] = 587
-app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = "lassie.tests.system.test@gmail.com"
-app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
-app.config["MAIL_DEFAULT_SENDER"] = "lassie.tests.system.test@gmail.com"
-app.config["MAIL_SUPPRESS_SEND"] = False  # Enable real sending
-app.config["BASE_URL"] = "http://localhost:3001"
-
-EmailService.configure_app(app)
-
-with app.app_context():
-    success = EmailService.send_verification_email(
-        email="lassie.tests.instructor1.test@gmail.com",
-        verification_token="test-token-123",
-        user_name="Bella Barkington"
-    )
-    
-    if success:
-        print("✅ Test email sent successfully!")
-        print("Check lassie.tests.instructor1.test@gmail.com inbox")
-    else:
-        print("❌ Failed to send test email")
-```
-
-Run test:
 ```bash
 cd ${AGENT_HOME} && source venv/bin/activate && source .envrc
-export MAIL_PASSWORD="<app-password>"
+python scripts/test_mailtrap_smtp.py
+```
+
+**Expected Output:**
+```
+🔍 Testing Mailtrap SMTP Configuration...
+============================================================
+
+📧 Configuration:
+   Server: sandbox.smtp.mailtrap.io:2525
+   From: system@lassietests.mailtrap.io
+   Username: <your-username>
+
+📨 Sending 3 test emails...
+   All emails will be caught in your Mailtrap inbox
+
+   → Sending to Rufus McWoof (rufus@lassietests.mailtrap.io)...
+      ✅ Sent successfully
+   → Sending to Fido Fetchsworth (fido@lassietests.mailtrap.io)...
+      ✅ Sent successfully
+   → Sending to Daisy Pawsalot (daisy@lassietests.mailtrap.io)...
+      ✅ Sent successfully
+
+============================================================
+📊 Results: 3/3 emails sent
+
+✅ SUCCESS! All test emails sent to Mailtrap!
+
+📬 Check your Mailtrap inbox:
+   https://mailtrap.io/inboxes
+   Look for 3 verification emails
+```
+
+### Test Gmail SMTP (optional - for Bella)
+
+If you want to test real Gmail delivery with Bella:
+
+1. Update `.env` to use Gmail:
+```bash
+# Comment out Mailtrap, uncomment Gmail
+# MAIL_SERVER=sandbox.smtp.mailtrap.io
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=lassie.tests.instructor1.test@gmail.com
+MAIL_PASSWORD=<bella-app-password>
+```
+
+2. Run test:
+```bash
+cd ${AGENT_HOME} && source venv/bin/activate && source .envrc
 python scripts/test_gmail_smtp.py
 ```
+
+3. Check Bella's inbox:
+- Login to `lassie.tests.instructor1.test@gmail.com`
+- Look for email from "Course Record Updater (Test)"
+- Subject: "Verify your Course Record Updater account"
+
+**Note:** For most testing, stick with Mailtrap. Only use Gmail when you need to verify actual delivery.
+
+---
 
 ### Environment Configuration Matrix
 
