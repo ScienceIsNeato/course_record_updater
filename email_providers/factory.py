@@ -90,7 +90,7 @@ def _determine_provider_from_environment() -> str:
     
     # Check if Mailtrap is configured
     mail_server = os.getenv("MAIL_SERVER", "").lower()
-    if "mailtrap" in mail_server:
+    if "mailtrap" in mail_server or "sandbox.smtp" in mail_server:
         return "mailtrap"
         
     # Check environment type

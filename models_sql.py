@@ -574,6 +574,9 @@ class AuditLog(Base):  # type: ignore[valid-type,misc]
     institution_id = Column(String, index=True)
 
 
+# Import BulkEmailJob to ensure it's registered with Base
+from bulk_email_models.bulk_email_job import BulkEmailJob  # noqa: E402
+
 __all__ = [
     "Base",
     "Institution",
@@ -586,6 +589,7 @@ __all__ = [
     "CourseOutcome",
     "UserInvitation",
     "AuditLog",
+    "BulkEmailJob",
     "course_program_table",
     "user_program_table",
     "to_dict",

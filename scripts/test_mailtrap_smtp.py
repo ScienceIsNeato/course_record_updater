@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-Quick test script for Mailtrap SMTP configuration
+Test Mailtrap by sending verification emails via API
 
-Tests that Mailtrap SMTP is working by sending test emails.
-Run after setting up Mailtrap account and configuring .env file.
+Uses EmailManager for intelligent rate limiting, exponential backoff, and retries.
 
 Usage:
     cd ${AGENT_HOME} && source venv/bin/activate && source .envrc
@@ -13,124 +12,145 @@ Usage:
 import os
 import sys
 
-from flask import Flask
+import requests
 
-from email_service import EmailService
+# Add the project root to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from email_providers.email_manager import EmailManager
 
 
-def test_mailtrap_smtp():
-    """Test Mailtrap SMTP by sending verification email"""
+def test_mailtrap_api():
+    """Test Mailtrap API by sending verification emails"""
     
-    print("\n🔍 Testing Mailtrap SMTP Configuration...")
+    print("\n🔍 Testing Mailtrap API with EmailManager...")
     print("=" * 60)
     
     # Check required env vars
-    required_vars = ["MAIL_USERNAME", "MAIL_PASSWORD", "MAIL_SERVER"]
-    missing = [var for var in required_vars if not os.getenv(var)]
+    api_token = os.getenv("MAILTRAP_API_TOKEN")
     
-    if missing:
-        print("\n❌ ERROR: Missing required environment variables:")
-        for var in missing:
-            print(f"   - {var}")
-        print("\nAdd these to your .env file:")
-        print("   MAIL_SERVER=sandbox.smtp.mailtrap.io")
-        print("   MAIL_PORT=2525")
-        print("   MAIL_USERNAME=<your-mailtrap-username>")
-        print("   MAIL_PASSWORD=<your-mailtrap-password>")
+    if not api_token:
+        print("\n❌ ERROR: Missing MAILTRAP_API_TOKEN")
+        print("Add this to your .env file:")
+        print("   MAILTRAP_API_TOKEN=<your-api-token>")
         return False
     
-    # Check if Mailtrap is configured
-    mail_server = os.getenv("MAIL_SERVER", "")
-    if "mailtrap" not in mail_server.lower():
-        print(f"\n⚠️  WARNING: MAIL_SERVER is set to '{mail_server}'")
-        print("   This doesn't look like Mailtrap. Expected: sandbox.smtp.mailtrap.io")
-        print("   Continuing anyway...")
-    
-    # Create Flask app context
-    app = Flask(__name__)
-    app.config["SECRET_KEY"] = "test-key"
-    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
-    app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "2525"))
-    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "false").lower() == "true"
-    app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "false").lower() == "true"
-    app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
-    app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
-    app.config["MAIL_DEFAULT_SENDER"] = os.getenv(
-        "MAIL_DEFAULT_SENDER", "system@lassietests.mailtrap.io"
-    )
-    app.config["MAIL_SUPPRESS_SEND"] = False  # Enable real sending
-    app.config["BASE_URL"] = os.getenv("BASE_URL", "http://localhost:3001")
-    
-    # Print config (hide password)
     print(f"\n📧 Configuration:")
-    print(f"   Server: {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
-    print(f"   TLS: {app.config['MAIL_USE_TLS']}")
-    print(f"   SSL: {app.config['MAIL_USE_SSL']}")
-    print(f"   From: {app.config['MAIL_DEFAULT_SENDER']}")
-    print(f"   Username: {app.config['MAIL_USERNAME']}")
-    print(f"   Password: {'*' * 16} (hidden)")
+    print(f"   API Token: {'*' * len(api_token)}")
+    print(f"   From: system@demomailtrap.co")
+    print(f"   Rate Limiting: 1 email every 10 seconds")
+    print(f"   Retry Logic: 3 attempts with exponential backoff (5s, 10s, 20s)")
     
-    EmailService.configure_app(app)
-    
-    # Test recipients (all caught by Mailtrap)
+    # Test recipients
     test_recipients = [
-        ("rufus@lassietests.mailtrap.io", "Rufus McWoof"),
-        ("fido@lassietests.mailtrap.io", "Fido Fetchsworth"),
-        ("daisy@lassietests.mailtrap.io", "Daisy Pawsalot"),
+        {
+            "email": "rufus@lassietests.mailtrap.io",
+            "name": "Rufus McWoof"
+        },
+        {
+            "email": "fido@lassietests.mailtrap.io", 
+            "name": "Fido Fetchsworth"
+        },
+        {
+            "email": "daisy@lassietests.mailtrap.io",
+            "name": "Daisy Pawsalot"
+        }
     ]
     
-    print(f"\n📨 Sending {len(test_recipients)} test emails...")
-    print("   All emails will be caught in your Mailtrap inbox")
+    print(f"\n📨 Queueing {len(test_recipients)} test emails...")
     
-    success_count = 0
+    # Create email manager with conservative settings for Mailtrap free plan
+    email_manager = EmailManager(
+        rate=0.1,  # 1 email every 10 seconds
+        max_retries=3,
+        base_delay=5.0,  # Start with 5 second delay
+        max_delay=60.0  # Cap at 60 seconds
+    )
     
-    try:
-        with app.app_context():
-            for email, name in test_recipients:
-                print(f"\n   → Sending to {name} ({email})...")
-                
-                success = EmailService.send_verification_email(
-                    email=email,
-                    verification_token=f"test-token-{name.replace(' ', '-').lower()}",
-                    user_name=name
-                )
-                
-                if success:
-                    print(f"      ✅ Sent successfully")
-                    success_count += 1
-                else:
-                    print(f"      ❌ Failed")
-        
-        print(f"\n{'=' * 60}")
-        print(f"📊 Results: {success_count}/{len(test_recipients)} emails sent")
-        
-        if success_count == len(test_recipients):
-            print("\n✅ SUCCESS! All test emails sent to Mailtrap!")
-            print(f"\n📬 Check your Mailtrap inbox:")
-            print(f"   https://mailtrap.io/inboxes")
-            print(f"   Look for {len(test_recipients)} verification emails")
-            print(f"   Subjects: 'Verify your Course Record Updater account'")
-            return True
-        else:
-            print(f"\n⚠️  PARTIAL SUCCESS: {success_count} sent, {len(test_recipients) - success_count} failed")
-            return False
+    # Add all emails to the queue
+    for recipient in test_recipients:
+        email_manager.add_email(
+            to_email=recipient["email"],
+            subject="Verify your Course Record Updater account",
+            html_body=f"<h1>Hello {recipient['name']}!</h1><p>Please verify your account.</p>",
+            text_body=f"Hello {recipient['name']}! Please verify your account.",
+            metadata={"name": recipient["name"]}
+        )
+        print(f"   ✓ Queued: {recipient['name']} ({recipient['email']})")
+    
+    # Define the send function that EmailManager will call
+    def send_via_mailtrap_api(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
+        """Send email via Mailtrap API"""
+        try:
+            url = "https://sandbox.api.mailtrap.io/api/send/4102679"
+            headers = {
+                "Authorization": f"Bearer {api_token}",
+                "Content-Type": "application/json"
+            }
             
-    except Exception as e:
-        print(f"\n❌ ERROR: {e}")
-        print("\n💡 Common issues:")
-        print("   - Wrong Mailtrap credentials")
-        print("   - Incorrect server/port (should be sandbox.smtp.mailtrap.io:2525)")
-        print("   - Network/firewall issues")
+            payload = {
+                "from": {
+                    "email": "system@demomailtrap.co",
+                    "name": "Course Record Updater (Test)"
+                },
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "text": text_body,
+                "html": html_body,
+                "category": "Course Record Updater"
+            }
+            
+            response = requests.post(url, headers=headers, json=payload)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("success"):
+                    print(f"   → ✅ Sent to {to_email}")
+                    return True
+                else:
+                    print(f"   → ❌ API error for {to_email}: {result}")
+                    return False
+            elif response.status_code == 429:
+                # Rate limited - let EmailManager handle retry
+                print(f"   → ⏳ Rate limited for {to_email} (will retry with backoff)")
+                return False
+            else:
+                print(f"   → ❌ HTTP {response.status_code} for {to_email}")
+                return False
+                
+        except Exception as e:
+            print(f"   → ❌ Error sending to {to_email}: {e}")
+            return False
+    
+    # Send all emails with intelligent rate limiting and retries
+    print("\n🚀 Starting intelligent email sending...")
+    print("   (Rate limiting + exponential backoff will manage timing)")
+    print()
+    
+    stats = email_manager.send_all(send_via_mailtrap_api, timeout=60)
+    
+    print("\n" + "=" * 60)
+    print(f"📊 Final Results:")
+    print(f"   ✅ Sent: {stats['sent']}")
+    print(f"   ❌ Failed: {stats['failed']}")
+    print(f"   ⏳ Pending: {stats['pending']}")
+    
+    # Show failed jobs if any
+    if stats['failed'] > 0:
+        print("\n❌ Failed Jobs:")
+        for job in email_manager.get_failed_jobs():
+            print(f"   - {job.to_email}: {job.last_error} (attempts: {job.attempts})")
+    
+    if stats['sent'] == len(test_recipients):
+        print("\n✅ SUCCESS! All test emails sent to Mailtrap!")
+        print("\n📬 Check your Mailtrap inbox:")
+        print("   https://mailtrap.io/inboxes")
+        return True
+    else:
+        print(f"\n⚠️  PARTIAL SUCCESS: {stats['sent']}/{len(test_recipients)} sent")
         return False
 
-if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("  Mailtrap SMTP Test Script")
-    print("=" * 60)
-    
-    success = test_mailtrap_smtp()
-    
-    print("\n" + "=" * 60)
-    
-    sys.exit(0 if success else 1)
 
+if __name__ == "__main__":
+    success = test_mailtrap_api()
+    sys.exit(0 if success else 1)

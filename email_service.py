@@ -343,13 +343,14 @@ class EmailService:
             ),
         }
 
-        # Determine provider type based on MAIL_SUPPRESS_SEND flag
+        # Determine provider type based on MAIL_SUPPRESS_SEND flag and server config
         # If True -> console provider (dev mode)
-        # If False -> gmail provider (production/testing with real SMTP)
+        # If False -> auto-detect based on MAIL_SERVER
         if current_app.config.get("MAIL_SUPPRESS_SEND", False):
             provider_name = "console"
         else:
-            provider_name = "gmail"
+            # Let factory auto-detect based on MAIL_SERVER
+            provider_name = None
 
         return create_email_provider(provider_name=provider_name, config=config)
 
