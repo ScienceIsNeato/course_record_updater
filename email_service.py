@@ -15,17 +15,18 @@ Features:
 """
 
 import os
-import smtplib
 from datetime import datetime, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from typing import Dict, List, Optional, Union
+from typing import Optional
 from urllib.parse import urljoin
 
 from flask import current_app
 
 # Import constants to avoid duplication
 from constants import DEFAULT_BASE_URL
+
+# Import email provider infrastructure
+from email_providers import create_email_provider
+from email_providers.base_provider import EmailProvider
 
 # Import centralized logging
 from logging_config import get_logger
@@ -40,8 +41,6 @@ DEFAULT_FROM_NAME = "Course Record Updater"
 
 class EmailServiceError(Exception):
     """Raised when email service encounters an error"""
-
-    pass
 
 
 class EmailService:
@@ -321,10 +320,44 @@ class EmailService:
     # Private helper methods
 
     @staticmethod
+    def _get_email_provider() -> EmailProvider:
+        """
+        Get configured email provider instance
+
+        Returns:
+            Configured EmailProvider (console or gmail based on config)
+        """
+        # Build config from Flask app config
+        config = {
+            "server": current_app.config.get("MAIL_SERVER", "smtp.gmail.com"),
+            "port": current_app.config.get("MAIL_PORT", 587),
+            "use_tls": current_app.config.get("MAIL_USE_TLS", True),
+            "use_ssl": current_app.config.get("MAIL_USE_SSL", False),
+            "username": current_app.config.get("MAIL_USERNAME"),
+            "password": current_app.config.get("MAIL_PASSWORD"),
+            "default_sender": current_app.config.get(
+                "MAIL_DEFAULT_SENDER", DEFAULT_FROM_EMAIL
+            ),
+            "default_sender_name": current_app.config.get(
+                "MAIL_DEFAULT_SENDER_NAME", DEFAULT_FROM_NAME
+            ),
+        }
+
+        # Determine provider type based on MAIL_SUPPRESS_SEND flag
+        # If True -> console provider (dev mode)
+        # If False -> gmail provider (production/testing with real SMTP)
+        if current_app.config.get("MAIL_SUPPRESS_SEND", False):
+            provider_name = "console"
+        else:
+            provider_name = "gmail"
+
+        return create_email_provider(provider_name=provider_name, config=config)
+
+    @staticmethod
     def _send_email(
         to_email: str, subject: str, html_body: str, text_body: str
     ) -> bool:
-        """Send email using configured SMTP settings"""
+        """Send email using configured email provider"""
         try:
             # CRITICAL PROTECTION: Block protected domains (e.g., CEI) in non-production environments
             is_production = current_app.config.get(
@@ -339,62 +372,22 @@ class EmailService:
                     f"Cannot send emails to protected domain ({to_email.split('@')[1] if '@' in to_email else to_email}) in non-production environment"
                 )
 
-            # Check if email sending is suppressed (development mode)
-            if current_app.config.get("MAIL_SUPPRESS_SEND", False):
+            # Get email provider (console or gmail based on config)
+            provider = EmailService._get_email_provider()
+
+            # Send email via provider
+            success = provider.send_email(to_email, subject, html_body, text_body)
+
+            if success:
                 logger.info(
-                    "[Email Service] Email suppressed (dev mode): %s -> %s",
-                    subject,
-                    to_email,
+                    f"[Email Service] Email sent successfully to {logger.sanitize(to_email)}"
                 )
-                logger.info("[Email Service] Email content:\n%s", text_body)
-                return True
-
-            # Get configuration
-            mail_server = current_app.config.get("MAIL_SERVER")
-            mail_port = current_app.config.get("MAIL_PORT", 587)
-            mail_use_tls = current_app.config.get("MAIL_USE_TLS", True)
-            mail_use_ssl = current_app.config.get("MAIL_USE_SSL", False)
-            mail_username = current_app.config.get("MAIL_USERNAME")
-            mail_password = current_app.config.get("MAIL_PASSWORD")
-            from_email = current_app.config.get(
-                "MAIL_DEFAULT_SENDER", DEFAULT_FROM_EMAIL
-            )
-            from_name = current_app.config.get(
-                "MAIL_DEFAULT_SENDER_NAME", DEFAULT_FROM_NAME
-            )
-
-            # Create message
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"{from_name} <{from_email}>"
-            msg["To"] = to_email
-
-            # Add text and HTML parts
-            text_part = MIMEText(text_body, "plain")
-            html_part = MIMEText(html_body, "html")
-
-            msg.attach(text_part)
-            msg.attach(html_part)
-
-            # Send email
-            server: Union[smtplib.SMTP, smtplib.SMTP_SSL]
-            if mail_use_ssl:
-                server = smtplib.SMTP_SSL(mail_server, mail_port)
             else:
-                server = smtplib.SMTP(mail_server, mail_port)
-                if mail_use_tls:
-                    server.starttls()
+                logger.error(
+                    f"[Email Service] Provider reported failure sending to {logger.sanitize(to_email)}"
+                )
 
-            if mail_username and mail_password:
-                server.login(mail_username, mail_password)
-
-            server.send_message(msg)
-            server.quit()
-
-            logger.info(
-                f"[Email Service] Email sent successfully to {logger.sanitize(to_email)}"
-            )
-            return True
+            return success
 
         except EmailServiceError:
             # Re-raise EmailServiceError (protection errors) to caller
