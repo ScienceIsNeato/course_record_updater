@@ -48,7 +48,6 @@ SONAR_REGION = "US"
 DASHBOARD_ENDPOINT = "dashboard"
 
 # Common error messages
-ERROR_USER_NOT_FOUND = "User not found"
 ERROR_COURSE_NOT_FOUND = "Course not found"
 ERROR_PROGRAM_NOT_FOUND = "Program not found"
 ERROR_INVITATION_NOT_FOUND = "Invitation not found"
@@ -123,4 +122,3 @@ ERROR_AUTHENTICATION_REQUIRED = "Authentication required"
 
 # API error messages
 ERROR_PERMISSION_DENIED = "Permission denied"
-ERROR_USER_NOT_FOUND = "User not found"
