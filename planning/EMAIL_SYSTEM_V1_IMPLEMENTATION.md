@@ -216,7 +216,7 @@ python scripts/test_gmail_smtp.py
 
 | Environment | Provider | Email Sending | Recipient Filter |
 |------------|----------|---------------|------------------|
-| Local Dev | console | No (logs only) | N/A |
+| Local Dev | mailtrap | Yes (sandbox) | All caught in Mailtrap |
 | CI/Testing | console | No (logs only) | N/A |
 | Staging | gmail | Yes | Test accounts only |
 | Production | gmail | Yes | Real users |

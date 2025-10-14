@@ -372,6 +372,34 @@ class EmailService:
                     f"Cannot send emails to protected domain ({to_email.split('@')[1] if '@' in to_email else to_email}) in non-production environment"
                 )
 
+            # ADDITIONAL PROTECTION: In non-production, only allow lassie test accounts or mailtrap
+            if not is_production:
+                email_domain = to_email.split("@")[1] if "@" in to_email else ""
+
+                # Allow Mailtrap sandbox addresses
+                if "mailtrap.io" in email_domain:
+                    pass  # Mailtrap is safe
+                # Only allow our specific test Gmail accounts
+                elif "gmail.com" in email_domain:
+                    if "lassie.tests" not in to_email:
+                        logger.error(
+                            f"[Email Service] BLOCKED: Attempted to send to non-test Gmail account in {current_app.config.get('ENV', 'development')} environment: {to_email}"
+                        )
+                        raise EmailServiceError(
+                            f"Only lassie.tests Gmail accounts allowed in non-production (attempted: {to_email})"
+                        )
+                # Block all other real domains in non-production
+                elif email_domain and not any(
+                    test_marker in email_domain.lower()
+                    for test_marker in ["test", "example", "localhost"]
+                ):
+                    logger.error(
+                        f"[Email Service] BLOCKED: Attempted to send to real domain in {current_app.config.get('ENV', 'development')} environment: {to_email}"
+                    )
+                    raise EmailServiceError(
+                        f"Only test accounts (lassie.tests@gmail.com or @mailtrap.io) allowed in non-production (attempted: {to_email})"
+                    )
+
             # Get email provider (console or gmail based on config)
             provider = EmailService._get_email_provider()
 
