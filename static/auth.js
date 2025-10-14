@@ -409,12 +409,10 @@ async function submitAuthForm(config) {
 
     if (response.ok && result.success) {
       onSuccess(result);
+    } else if (onError) {
+      onError(response, result);
     } else {
-      if (onError) {
-        onError(response, result);
-      } else {
-        showError(result.error || 'Request failed. Please try again.');
-      }
+      showError(result.error || 'Request failed. Please try again.');
     }
   } catch (error) {
     console.error(`${endpoint} error:`, error); // eslint-disable-line no-console
