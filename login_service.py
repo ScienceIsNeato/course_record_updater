@@ -95,6 +95,13 @@ class LoginService:
             # Check account status
             LoginService._validate_account_status(user)
 
+            # Check email verification
+            if not user.get("email_verified", False):
+                raise LoginError(
+                    "Please verify your email address before logging in. "
+                    "Check your inbox for the verification link."
+                )
+
             # Verify password
             password_hash = user.get("password_hash")
             if not password_hash:

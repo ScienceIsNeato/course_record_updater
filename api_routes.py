@@ -3907,7 +3907,7 @@ def login_api():
         return jsonify({"success": False, "error": "Account is locked"}), 423
     except LoginError as e:
         logger.error(f"User login failed: {e}")
-        return jsonify({"success": False, "error": "Invalid email or password"}), 401
+        return jsonify({"success": False, "error": str(e)}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
         return handle_api_error(e, "User login", "An unexpected error occurred")

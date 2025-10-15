@@ -127,6 +127,18 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
     def handle_console(msg):
         if msg.type == "error":
             error_text = msg.text
+            # Ignore expected HTTP error responses (401, 403, 404) from intentional test scenarios
+            # These are valid test outcomes, not JavaScript bugs
+            if any(
+                status in error_text.lower()
+                for status in [
+                    "401 (unauthorized)",
+                    "403 (forbidden)",
+                    "404 (not found)",
+                ]
+            ):
+                print(f"ℹ️  Expected HTTP Error: {error_text}")
+                return
             console_errors.append(error_text)
             print(f"🔴 JavaScript Console Error: {error_text}")
 

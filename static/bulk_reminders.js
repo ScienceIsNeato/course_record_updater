@@ -2,7 +2,24 @@
  * Bulk Instructor Reminders
  *
  * Handles sending reminder emails to multiple instructors with
- * real-time progress tracking.
+ * real-time progress tracking, rate limiting, and job status monitoring.
+ *
+ * @class BulkReminderManager
+ *
+ * @example
+ * // Initialize on page load
+ * const manager = new BulkReminderManager();
+ * manager.init();
+ *
+ * // Open modal from button
+ * openBulkReminderModal();
+ *
+ * @property {bootstrap.Modal|null} modal - Bootstrap modal instance
+ * @property {Set<string>} selectedInstructors - Set of selected instructor IDs
+ * @property {Array<Object>} allInstructors - Array of all available instructors
+ * @property {string|null} currentJobId - ID of currently running job
+ * @property {number|null} pollingInterval - Interval ID for status polling
+ * @property {number} pollingIntervalMs - Polling interval in milliseconds (2000ms)
  */
 
 class BulkReminderManager {
@@ -17,6 +34,9 @@ class BulkReminderManager {
 
   /**
    * Initialize the bulk reminder system
+   * Sets up modal instance and event listeners
+   *
+   * @returns {void}
    */
   init() {
     // Get modal instance
@@ -37,6 +57,9 @@ class BulkReminderManager {
 
   /**
    * Set up all event listeners
+   * Attaches handlers for buttons, modal events, and user input
+   *
+   * @returns {void}
    */
   setupEventListeners() {
     // Select All / Deselect All
@@ -77,6 +100,8 @@ class BulkReminderManager {
 
   /**
    * Show the reminder modal
+   *
+   * @returns {void}
    */
   show() {
     if (this.modal) {
@@ -126,6 +151,10 @@ class BulkReminderManager {
 
   /**
    * Fetch instructors from the API
+   * Calls GET /api/instructors and transforms response
+   *
+   * @returns {Promise<Array<{id: string, name: string, email: string, courses: Array}>>}
+   * @throws {Error} If API request fails or returns error
    */
   async fetchInstructors() {
     const response = await fetch('/api/instructors');
@@ -244,6 +273,10 @@ class BulkReminderManager {
 
   /**
    * Send reminders to selected instructors
+   * Posts to API, switches to progress view, and starts polling
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} If API request fails
    */
   async sendReminders() {
     if (this.selectedInstructors.size === 0) {
@@ -476,6 +509,11 @@ class BulkReminderManager {
 
   /**
    * Add a status message to the log
+   * Displays timestamped message with appropriate icon and color
+   *
+   * @param {string} message - Message text to display
+   * @param {string} [type='info'] - Message type: 'info', 'success', 'warning', 'danger'
+   * @returns {void}
    */
   addStatusMessage(message, type = 'info') {
     const container = document.getElementById('reminderStatusMessages');
@@ -518,6 +556,9 @@ class BulkReminderManager {
 
   /**
    * Reset modal to initial state
+   * Clears all selections, stops polling, and resets UI elements
+   *
+   * @returns {void}
    */
   resetModal() {
     // Stop any active polling
