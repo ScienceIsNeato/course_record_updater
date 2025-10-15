@@ -336,7 +336,7 @@ class TestEmailURLBuilding:
     def test_verification_url_building(self, app_context):
         """Test verification URL building"""
         url = EmailService._build_verification_url("test-token-123")
-        assert url == "http://localhost:5000/verify-email/test-token-123"
+        assert url == "http://localhost:5000/api/auth/verify-email/test-token-123"
 
     def test_password_reset_url_building(self, app_context):
         """Test password reset URL building"""

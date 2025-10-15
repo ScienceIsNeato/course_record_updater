@@ -123,37 +123,39 @@ def forgot_password():
     return render_template("auth/forgot_password.html")
 
 
-@app.route("/verify-email/<token>")
-def verify_email_web(token):
+@app.route("/reset-password/<token>")
+def reset_password_form(token):
     """
-    Email verification landing page - handles verification link from email
+    Password reset form page - handles reset link from email
 
-    Verifies the token and redirects to login with appropriate message
+    Validates token and displays password reset form.
+    The form will POST to /api/auth/reset-password when submitted.
     """
     from logging_config import get_logger
-    from registration_service import verify_email
+    from password_reset_service import PasswordResetService
 
     logger = get_logger(__name__)
 
     try:
-        result = verify_email(token)
+        # Validate the reset token
+        validation_result = PasswordResetService.validate_reset_token(token)
 
-        if result.get("success"):
-            # Verification successful - redirect to login with success message
-            flash("Email verified successfully! You can now log in.", "success")
-            return redirect(url_for("login"))
-        else:
-            # Verification failed - show error
-            flash(result.get("message", "Email verification failed"), "danger")
-            return redirect(url_for("login"))
+        if validation_result.get("valid"):
+            # Token is valid - show reset form with token and email
+            return render_template(
+                "auth/reset_password.html",
+                token=token,
+                email=validation_result.get("email"),
+            )
+
+        # Token invalid or expired
+        flash("This password reset link is invalid or has expired.", "danger")
+        return redirect(url_for("forgot_password"))
 
     except Exception as e:  # pylint: disable=broad-except
-        logger.error(f"Email verification error: {e}")
-        flash(
-            "An error occurred during email verification. Please try again or contact support.",
-            "danger",
-        )
-        return redirect(url_for("login"))
+        logger.error(f"Password reset token validation error: {e}")
+        flash("An error occurred. Please request a new password reset link.", "danger")
+        return redirect(url_for("forgot_password"))
 
 
 @app.route("/profile")

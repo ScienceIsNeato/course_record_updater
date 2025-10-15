@@ -429,13 +429,21 @@ class EmailService:
 
     @staticmethod
     def _build_verification_url(token: str) -> str:
-        """Build email verification URL"""
+        """
+        Build email verification URL
+
+        Returns API endpoint that frontend JavaScript will handle
+        """
         base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
-        return urljoin(base_url, f"/verify-email/{token}")
+        return urljoin(base_url, f"/api/auth/verify-email/{token}")
 
     @staticmethod
     def _build_password_reset_url(token: str) -> str:
-        """Build password reset URL"""
+        """
+        Build password reset URL
+
+        Returns web route that displays password reset form
+        """
         base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
         return urljoin(base_url, f"/reset-password/{token}")
 
