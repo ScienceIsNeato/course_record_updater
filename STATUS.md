@@ -1,25 +1,25 @@
 # Current Status
 
-## 🎯 CURRENT: UAT E2E Test Suite Status Assessment
+## ✅ COMPLETED: UAT-001 Updated for New Email System (Commit 00c3d43)
 
-### What We Just Discovered
-1. **Database seeding bug FIXED**: `seed_db.py` had field naming mismatch (`id` vs `program_id`)
-   - Fixed lines 344 and 360-361
+### What Was Accomplished
+1. **Database seeding bug FIXED** (Commit 7b3d918):
+   - Fixed `seed_db.py` field naming mismatch (`id` vs `program_id`)
    - Seeding now works: 133 entities created successfully
-   
-2. **UAT-001 exists but needs update**: Complete registration/password workflow test
-   - Uses old Mailtrap email utilities
-   - Needs update for new Ethereal/Brevo architecture
-   - Test file: `tests/e2e/test_uat_001_registration_password.py`
 
-3. **E2E suite mostly passing**: 57/58 tests passing
-   - 1 failing test: `test_tc_crud_ia_005_invite_instructor` (email-related)
-   - Likely needs same email system updates as UAT-001
+2. **UAT-001 Updated for Ethereal** (Commit 00c3d43):
+   - Changed test email to `@ethereal.email` domain (whitelisted)
+   - Removed all Mailtrap references
+   - Fixed button text inconsistency: "Log In" → "Sign In"
+   - Test now compatible with Brevo/Ethereal architecture
+
+3. **UI consistency verified**: Login button consistently uses "Sign In" across all templates
 
 ### Next Actions
-1. Update UAT-001 to use new email system (Ethereal IMAP)
-2. Fix failing E2E test `test_tc_crud_ia_005_invite_instructor`
-3. Implement remaining UAT tests (UAT-002 through UAT-010)
+1. Run UAT-001 test to verify it passes with Ethereal IMAP
+2. Fix failing E2E test `test_tc_crud_ia_005_invite_instructor` (email-related)
+3. Clean up legacy Mailtrap code from `email_utils.py`
+4. Implement remaining UAT tests (UAT-002 through UAT-010)
 
 See `UAT_STATUS.md` for full details.
 

@@ -11,6 +11,10 @@ Provides shared setup/teardown logic for browser automation tests including:
 import os
 import shutil
 import subprocess
+
+# Test configuration
+# Import E2E port constant (hardcoded, not configurable)
+import sys
 import time
 from pathlib import Path
 from typing import Generator
@@ -34,9 +38,11 @@ from tests.conftest import (
     SITE_ADMIN_PASSWORD,
 )
 
-# Test configuration
-# E2E environment runs on port 3002 (see run_uat.sh and .envrc)
-BASE_URL = os.getenv("E2E_BASE_URL", "http://localhost:3002")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from constants import E2E_TEST_PORT
+
+# E2E environment runs on dedicated port (hardcoded in constants.py)
+BASE_URL = f"http://localhost:{E2E_TEST_PORT}"
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 

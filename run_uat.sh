@@ -128,17 +128,17 @@ echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
 python scripts/seed_db.py
 echo ""
 
+# Get E2E port from constants.py (hardcoded, not env var)
+E2E_PORT=$(python3 -c "from constants import E2E_TEST_PORT; print(E2E_TEST_PORT)")
+
 # Start server in E2E mode (explicit environment argument)
-echo -e "${YELLOW}🚀 Starting E2E server on port $COURSE_RECORD_UPDATER_PORT...${NC}"
-if ! ./restart_server.sh e2e; then
+echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
+if ! PORT=$E2E_PORT ./restart_server.sh e2e; then
     echo -e "${RED}❌ E2E server failed to start${NC}"
     echo -e "${YELLOW}Check logs/server.log for details${NC}"
     exit 1
 fi
 echo ""
-
-# Set E2E base URL from environment (port 3002)
-export E2E_BASE_URL="http://localhost:${COURSE_RECORD_UPDATER_PORT}"
 
 # Set video recording flag
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
@@ -202,8 +202,9 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
-    # Kill server on E2E port (3002) specifically
-    local PIDS=$(lsof -ti:3002 2>/dev/null || true)
+    # Kill server on E2E port (from constants.py) specifically
+    local E2E_PORT=$(python3 -c "from constants import E2E_TEST_PORT; print(E2E_TEST_PORT)" 2>/dev/null || echo "3002")
+    local PIDS=$(lsof -ti:$E2E_PORT 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
             echo -e "${BLUE}  Stopping E2E server (PID: $PID)${NC}"
