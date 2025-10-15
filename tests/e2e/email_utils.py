@@ -1,10 +1,15 @@
 """
 Email verification utilities for E2E tests.
 
-Provides functions to interact with Mailtrap API for email verification,
-including fetching emails, extracting tokens, and waiting for email delivery.
+Provides functions to interact with email services for verification:
+- Ethereal Email (IMAP for E2E testing)
+- Mailtrap (API for legacy support)
+
+Includes fetching emails, extracting tokens, and waiting for email delivery.
 """
 
+import email
+import imaplib
 import os
 import re
 import time
@@ -21,16 +26,16 @@ MAILTRAP_ACCOUNT_ID = os.getenv("MAILTRAP_ACCOUNT_ID", "335505888614cb")
 MAILTRAP_INBOX_ID = os.getenv("MAILTRAP_INBOX_ID")
 MAILTRAP_API_BASE = f"https://mailtrap.io/api/accounts/{MAILTRAP_ACCOUNT_ID}"
 
-# Use Mailtrap UI scraper for email verification
-# Mailtrap Sandbox API v2 doesn't support reading messages, so we scrape the UI
-SKIP_EMAIL_VERIFICATION = MAILTRAP_INBOX_ID is None
+# Email verification strategy
+# Use Ethereal IMAP if configured, otherwise skip verification
+ETHEREAL_USER = os.getenv("ETHEREAL_USER")
+ETHEREAL_PASS = os.getenv("ETHEREAL_PASS")
+ETHEREAL_IMAP_HOST = os.getenv("ETHEREAL_IMAP_HOST", "imap.ethereal.email")
+ETHEREAL_IMAP_PORT = int(os.getenv("ETHEREAL_IMAP_PORT", "993"))
 
-# Check if scraping is available (requires Mailtrap web credentials)
-USE_MAILTRAP_SCRAPER = bool(
-    os.getenv("MAILTRAP_WEB_EMAIL")
-    and os.getenv("MAILTRAP_WEB_PASSWORD")
-    and MAILTRAP_INBOX_ID
-)
+# Skip email verification only if Ethereal is not configured
+SKIP_EMAIL_VERIFICATION = not (ETHEREAL_USER and ETHEREAL_PASS)
+USE_ETHEREAL_IMAP = bool(ETHEREAL_USER and ETHEREAL_PASS)
 
 
 class MailtrapError(Exception):
@@ -143,33 +148,45 @@ def wait_for_email(
     unique_identifier: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Wait for an email to arrive in Mailtrap inbox.
+    Legacy function - delegates to Ethereal IMAP.
 
-    Uses UI scraping since Mailtrap API doesn't support reading messages.
+    DEPRECATED: Use wait_for_email_via_imap() directly for new code.
 
     Args:
         recipient_email: Email address of recipient
         subject_substring: Optional subject filter
         timeout: Maximum seconds to wait
-        poll_interval: Seconds between polling attempts (ignored if using scraper)
-        inbox_id: Optional inbox ID
-        unique_identifier: Optional unique string to find in email (e.g. timestamp)
+        poll_interval: Seconds between polling attempts (ignored)
+        inbox_id: Optional inbox ID (ignored)
+        unique_identifier: Optional unique string to find in email
 
     Returns:
         Email dictionary if found within timeout, None otherwise
     """
-    if USE_MAILTRAP_SCRAPER:
-        # Use UI scraper for reliable email fetching
-        from tests.e2e.mailtrap_scraper import wait_for_email as scraper_wait
+    # Delegate to Ethereal IMAP implementation
+    return wait_for_email_via_imap(
+        recipient_email=recipient_email,
+        subject_substring=subject_substring,
+        unique_identifier=unique_identifier,
+        timeout=timeout,
+        poll_interval=int(poll_interval),
+    )
 
-        return scraper_wait(
-            recipient_email=recipient_email,
-            subject_substring=subject_substring,
-            unique_identifier=unique_identifier,
-            timeout=timeout,
-        )
 
-    # Fallback to API method (won't work with current Mailtrap setup)
+# Legacy Mailtrap API implementation (no longer functional)
+def _wait_for_email_mailtrap_legacy(
+    recipient_email: str,
+    subject_substring: Optional[str] = None,
+    timeout: int = 30,
+    poll_interval: float = 2.0,
+    inbox_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Legacy Mailtrap API implementation - kept for reference only.
+
+    NOTE: Mailtrap Sandbox API v2 doesn't support reading messages.
+    This function is no longer functional.
+    """
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -338,3 +355,190 @@ def verify_email_content(
                 return False
 
     return True
+
+
+# ============================================================================
+# Ethereal Email IMAP Functions
+# ============================================================================
+
+
+def wait_for_email_via_imap(
+    recipient_email: str,
+    subject_substring: Optional[str] = None,
+    unique_identifier: Optional[str] = None,
+    timeout: int = 30,
+    poll_interval: int = 2,
+) -> Optional[Dict[str, Any]]:
+    """
+    Wait for an email to appear in Ethereal inbox via IMAP.
+
+    Args:
+        recipient_email: Email address to look for (usually ETHEREAL_USER)
+        subject_substring: Optional substring to match in subject
+        unique_identifier: Optional unique string to find in email body/subject
+        timeout: Maximum seconds to wait
+        poll_interval: Seconds between polling attempts
+
+    Returns:
+        Email dictionary if found, None otherwise
+        Keys: subject, from, to, body, html_body
+    """
+    if not USE_ETHEREAL_IMAP:
+        print("⚠️  Ethereal IMAP not configured, skipping email verification")
+        return None
+
+    print(f"\n📥 Polling Ethereal IMAP inbox for email...")
+    if subject_substring:
+        print(f"   Subject contains: {subject_substring}")
+    if unique_identifier:
+        print(f"   Unique ID: {unique_identifier}")
+
+    max_attempts = timeout // poll_interval
+
+    for attempt in range(1, max_attempts + 1):
+        print(f"   Attempt {attempt}/{max_attempts}...")
+
+        try:
+            # Connect to IMAP server
+            mail = imaplib.IMAP4_SSL(ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT)
+            mail.login(ETHEREAL_USER, ETHEREAL_PASS)
+            mail.select("INBOX")
+
+            # Search for all emails
+            status, messages = mail.search(None, "ALL")
+
+            if status == "OK" and messages[0]:
+                email_ids = messages[0].split()
+
+                # Check most recent emails first (reverse order)
+                for email_id in reversed(email_ids):
+                    status, msg_data = mail.fetch(email_id, "(RFC822)")
+
+                    if status == "OK":
+                        # Parse email
+                        email_message = email.message_from_bytes(msg_data[0][1])
+
+                        # Extract subject
+                        subject = email_message.get("Subject", "")
+
+                        # Check if this email matches our criteria
+                        if subject_substring and subject_substring not in subject:
+                            continue
+
+                        # Extract body
+                        body = ""
+                        html_body = ""
+                        if email_message.is_multipart():
+                            for part in email_message.walk():
+                                content_type = part.get_content_type()
+                                if content_type == "text/plain":
+                                    body = part.get_payload(decode=True).decode()
+                                elif content_type == "text/html":
+                                    html_body = part.get_payload(decode=True).decode()
+                        else:
+                            body = email_message.get_payload(decode=True).decode()
+
+                        # Check unique identifier if specified
+                        if unique_identifier:
+                            if (
+                                unique_identifier not in subject
+                                and unique_identifier not in body
+                            ):
+                                continue
+
+                        # Found a match!
+                        mail.close()
+                        mail.logout()
+
+                        print(f"✅ Email found on attempt {attempt}!")
+                        print(f"   Subject: {subject}")
+
+                        return {
+                            "subject": subject,
+                            "from": email_message.get("From", ""),
+                            "to": email_message.get("To", ""),
+                            "body": body,
+                            "html_body": html_body,
+                        }
+
+            mail.close()
+            mail.logout()
+
+        except Exception as e:
+            print(f"   ⚠️  IMAP error: {e}")
+
+        # Wait before next attempt
+        if attempt < max_attempts:
+            time.sleep(poll_interval)
+
+    print(f"❌ Email not found after {max_attempts} attempts ({timeout}s)")
+    return None
+
+
+def extract_verification_link_from_email(email_dict: Dict[str, Any]) -> Optional[str]:
+    """
+    Extract verification link from email body.
+
+    Args:
+        email_dict: Email dictionary with 'body' or 'html_body' key
+
+    Returns:
+        Verification URL if found, None otherwise
+    """
+    html_body = email_dict.get("html_body", "")
+    text_body = email_dict.get("body", "")
+
+    # Search for verification link patterns
+    # Pattern 1: /api/auth/verify-email/{token}
+    # Pattern 2: /verify-email?token={token}
+    patterns = [
+        r"(https?://[^\s]+/api/auth/verify-email/[a-zA-Z0-9._-]+)",
+        r"(https?://[^\s]+/verify-email\?token=[a-zA-Z0-9._-]+)",
+    ]
+
+    for pattern in patterns:
+        # Try HTML body first
+        match = re.search(pattern, html_body)
+        if match:
+            return match.group(1)
+
+        # Try text body
+        match = re.search(pattern, text_body)
+        if match:
+            return match.group(1)
+
+    return None
+
+
+def extract_password_reset_link_from_email(email_dict: Dict[str, Any]) -> Optional[str]:
+    """
+    Extract password reset link from email body.
+
+    Args:
+        email_dict: Email dictionary with 'body' or 'html_body' key
+
+    Returns:
+        Reset URL if found, None otherwise
+    """
+    html_body = email_dict.get("html_body", "")
+    text_body = email_dict.get("body", "")
+
+    # Search for reset link patterns
+    # Pattern: /reset-password/{token} or /reset-password?token={token}
+    patterns = [
+        r"(https?://[^\s]+/reset-password/[a-zA-Z0-9._-]+)",
+        r"(https?://[^\s]+/reset-password\?token=[a-zA-Z0-9._-]+)",
+    ]
+
+    for pattern in patterns:
+        # Try HTML body first
+        match = re.search(pattern, html_body)
+        if match:
+            return match.group(1)
+
+        # Try text body
+        match = re.search(pattern, text_body)
+        if match:
+            return match.group(1)
+
+    return None

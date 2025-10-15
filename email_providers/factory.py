@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 
 from email_providers.base_provider import EmailProvider
 from email_providers.console_provider import ConsoleProvider
+from email_providers.ethereal_provider import EtherealProvider
 from email_providers.gmail_provider import GmailProvider
 from email_providers.mailtrap_provider import MailtrapProvider
 from logging_config import get_logger
@@ -48,10 +49,12 @@ def create_email_provider(
         provider = GmailProvider()
     elif provider_name == "mailtrap":
         provider = MailtrapProvider()
+    elif provider_name == "ethereal":
+        provider = EtherealProvider()
     else:
         raise ValueError(
             f"Unknown email provider: {provider_name}. "
-            f"Valid options: console, gmail, mailtrap"
+            f"Valid options: console, gmail, mailtrap, ethereal"
         )
         
     # Configure provider
@@ -76,17 +79,22 @@ def _determine_provider_from_environment() -> str:
     
     Logic:
     - If MAIL_SUPPRESS_SEND=true -> console
+    - If ETHEREAL_USER is set -> ethereal (E2E testing)
     - If MAIL_SERVER contains "mailtrap" -> mailtrap
     - If ENV=production or PRODUCTION=true -> gmail
     - If MAIL_USERNAME is set -> gmail
     - Default -> console (safe for development)
     
     Returns:
-        Provider name ("console", "gmail", or "mailtrap")
+        Provider name ("console", "gmail", "mailtrap", or "ethereal")
     """
     # Check explicit suppress flag
     if os.getenv("MAIL_SUPPRESS_SEND", "false").lower() == "true":
         return "console"
+    
+    # Check if Ethereal is configured (E2E testing)
+    if os.getenv("ETHEREAL_USER"):
+        return "ethereal"
     
     # Check if Mailtrap is configured
     mail_server = os.getenv("MAIL_SERVER", "").lower()
@@ -115,8 +123,9 @@ def _load_config_from_environment() -> Dict[str, Any]:
     Returns:
         Configuration dictionary with settings from environment
     """
-    return {
-        # SMTP settings
+    # Build base config
+    config = {
+        # Standard SMTP settings (Gmail, Mailtrap)
         "server": os.getenv("MAIL_SERVER", "smtp.gmail.com"),
         "port": int(os.getenv("MAIL_PORT", "587")),
         "use_tls": os.getenv("MAIL_USE_TLS", "true").lower() == "true",
@@ -133,4 +142,16 @@ def _load_config_from_environment() -> Dict[str, Any]:
         "write_to_files": True,
         "log_dir": "logs/emails",
     }
+    
+    # Add Ethereal-specific settings if Ethereal is configured
+    if os.getenv("ETHEREAL_USER"):
+        config.update({
+            "smtp_host": os.getenv("ETHEREAL_SMTP_HOST", "smtp.ethereal.email"),
+            "smtp_port": int(os.getenv("ETHEREAL_SMTP_PORT", "587")),
+            "username": os.getenv("ETHEREAL_USER"),
+            "password": os.getenv("ETHEREAL_PASS"),
+            "from_email": os.getenv("ETHEREAL_USER"),
+        })
+    
+    return config
 

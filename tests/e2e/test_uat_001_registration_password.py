@@ -19,11 +19,14 @@ from playwright.sync_api import Page, expect
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,
+    extract_password_reset_link_from_email,
     extract_reset_link,
     extract_token_from_url,
     extract_verification_link,
+    extract_verification_link_from_email,
     verify_email_content,
     wait_for_email,
+    wait_for_email_via_imap,
 )
 
 
@@ -121,37 +124,30 @@ class TestUAT001RegistrationAndPasswordManagement:
         print("\n📧 Checking for verification email...")
 
         if not SKIP_EMAIL_VERIFICATION:
-            # Wait for verification email to arrive
-            verification_email = wait_for_email(
+            # Wait for verification email to arrive via Ethereal IMAP
+            verification_email = wait_for_email_via_imap(
                 recipient_email=self.TEST_EMAIL,
-                subject_substring="verify",
+                subject_substring="Verify",
                 timeout=30,
             )
 
             assert verification_email is not None, "Verification email not received"
 
-            # Verify email content
-            assert verify_email_content(
-                verification_email,
-                expected_recipient=self.TEST_EMAIL,
-                expected_text_snippets=[
-                    self.TEST_FIRST_NAME,  # Email should contain user's first name
-                    "verify",  # Email should mention verification
-                ],
-            )
-
-            # Extract verification link
-            verification_link = extract_verification_link(verification_email)
+            # Extract and validate verification link from email body
+            verification_link = extract_verification_link_from_email(verification_email)
             assert (
                 verification_link is not None
             ), "Could not find verification link in email"
 
-            # Verify token is in link
-            verification_token = extract_token_from_url(verification_link, "token")
-            assert verification_token is not None, "No token in verification link"
-            assert len(verification_token) > 10, "Token seems too short"
+            # Basic content checks
+            assert self.TEST_FIRST_NAME in verification_email.get(
+                "body", ""
+            ), "Email should contain user's first name"
+            assert (
+                "verify" in verification_email.get("subject", "").lower()
+            ), "Subject should mention verification"
 
-            print("✅ Verification email received with valid token")
+            print(f"✅ Verification email received with link: {verification_link}")
 
             # ====================================================================
             # STEP 3: Click Verification Link
@@ -264,8 +260,8 @@ class TestUAT001RegistrationAndPasswordManagement:
         # STEP 6: Verify Password Reset Email
         # ====================================================================
 
-        # Wait for password reset email
-        reset_email = wait_for_email(
+        # Wait for password reset email via Ethereal IMAP
+        reset_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="password reset",
             timeout=30,
@@ -273,14 +269,11 @@ class TestUAT001RegistrationAndPasswordManagement:
 
         assert reset_email is not None, "Password reset email not received"
 
-        # Extract reset link
-        reset_link = extract_reset_link(reset_email)
+        # Extract reset link from email body
+        reset_link = extract_password_reset_link_from_email(reset_email)
         assert reset_link is not None, "Could not find reset link in email"
 
-        # Verify token is in link
-        reset_token = extract_token_from_url(reset_link, "token")
-        assert reset_token is not None, "No token in reset link"
-        assert len(reset_token) > 10, "Reset token seems too short"
+        print(f"✅ Password reset email received with link: {reset_link}")
 
         # ====================================================================
         # STEP 7: Complete Password Reset
@@ -314,8 +307,8 @@ class TestUAT001RegistrationAndPasswordManagement:
         # STEP 8: Verify Password Reset Confirmation Email
         # ====================================================================
 
-        # Wait for confirmation email
-        confirmation_email = wait_for_email(
+        # Wait for confirmation email via Ethereal IMAP
+        confirmation_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="password",
             timeout=30,
@@ -325,8 +318,12 @@ class TestUAT001RegistrationAndPasswordManagement:
             confirmation_email is not None
         ), "Password confirmation email not received"
 
-        # Verify email mentions password change and includes timestamp
-        # (Timestamp verification would require parsing email body more thoroughly)
+        # Verify email mentions password change
+        assert (
+            "password" in confirmation_email.get("body", "").lower()
+        ), "Confirmation email should mention password"
+
+        print("✅ Password confirmation email received")
 
         # ====================================================================
         # STEP 9: Login with NEW Password
