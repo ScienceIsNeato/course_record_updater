@@ -1,17 +1,18 @@
 # Status - UAT Test Implementation (Email System V1)
 
-## Current State: UAT Testing in Progress 🧪
+## Current State: UAT-001 Complete ✅
 
 ### Last Completed (October 15, 2025)
-**UAT-001 COMPLETE!** Registration & Password Management workflow fully tested with E2E browser automation.
+**UAT-001 COMPLETE!** Full self-registration workflow implemented and tested end-to-end.
 
-### Latest Commit (f28777b)
-"fix: display specific login error messages and handle expected HTTP errors in E2E tests"
-- Fixed login API to pass through specific error messages (not generic "Invalid email or password")
-- Added email verification check during login
-- Updated E2E test framework to ignore expected HTTP errors (401, 403, 404)
-- UAT-001 now passing completely
-- Created issue #18 for database schema validation improvements
+### Latest Commit (2d48a9f)
+"refactor: implement pragmatic hybrid routing for email links"
+- **Architecture Decision**: Email verification uses API route (stateless), password reset uses web form (stateful)
+- Email verification: `/api/auth/verify-email/{token}` returns JSON
+- Password reset: `/reset-password/{token}` displays HTML form
+- Cleaned up redundant routes, no duplication
+- UAT-001 test validates complete flow: registration → email → verify → login
+- All tests passing (with or without Mailtrap configured)
 
 ## ✅ Completed Work
 
