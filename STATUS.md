@@ -5,14 +5,18 @@
 ### Last Completed (October 15, 2025)
 **UAT-001 COMPLETE!** Full self-registration workflow implemented and tested end-to-end.
 
-### Latest Commit (2d48a9f)
-"refactor: implement pragmatic hybrid routing for email links"
-- **Architecture Decision**: Email verification uses API route (stateless), password reset uses web form (stateful)
-- Email verification: `/api/auth/verify-email/{token}` returns JSON
-- Password reset: `/reset-password/{token}` displays HTML form
-- Cleaned up redundant routes, no duplication
-- UAT-001 test validates complete flow: registration → email → verify → login
-- All tests passing (with or without Mailtrap configured)
+### Latest Commit (ca5a628)
+"docs: document Mailtrap Sandbox API limitation for E2E testing"
+- **Finding**: Mailtrap Sandbox API v2 is send-only (no read endpoint for messages)
+- ✅ Emails successfully sent via SMTP and visible in Mailtrap UI
+- ❌ Automated E2E email verification not possible with current Mailtrap setup
+- UAT-001 validates: registration → email sent → security checks
+- Manual verification required for email content (link provided in test output)
+
+### Architecture Decisions
+- Email verification: `/api/auth/verify-email/{token}` (API route for stateless verification)
+- Password reset: `/reset-password/{token}` (web route with HTML form for stateful flow)
+- Pragmatic hybrid approach - right tool for each job
 
 ## ✅ Completed Work
 
