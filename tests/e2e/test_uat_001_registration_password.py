@@ -3,15 +3,16 @@ UAT-001: Complete User Registration & Password Management Workflow
 
 Tests the entire authentication email lifecycle from registration through
 password reset, including:
-- New user registration with email verification
+- New user registration with email verification via Ethereal Email
 - Password reset request
 - Password reset completion with confirmation email
-- Security: Expired token handling
+- Security: Unverified users cannot log in
+- Security: Old password no longer works after reset
+
+Uses Ethereal Email (IMAP) for automated email verification in E2E tests.
 
 Estimated Duration: 3-4 minutes
 """
-
-import os
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -20,12 +21,7 @@ from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,
     extract_password_reset_link_from_email,
-    extract_reset_link,
-    extract_token_from_url,
-    extract_verification_link,
     extract_verification_link_from_email,
-    verify_email_content,
-    wait_for_email,
     wait_for_email_via_imap,
 )
 
@@ -40,7 +36,8 @@ class TestUAT001RegistrationAndPasswordManagement:
     """
 
     # Test user credentials
-    TEST_EMAIL = "jane.smith@test.com"
+    # Using Ethereal domain for E2E email verification
+    TEST_EMAIL = "jane.smith@ethereal.email"
     TEST_PASSWORD = "JaneSmith123!"
     TEST_NEW_PASSWORD = "JaneNewPassword456!"
     TEST_FIRST_NAME = "Jane"
@@ -48,28 +45,20 @@ class TestUAT001RegistrationAndPasswordManagement:
 
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
-        """Clean up emails before and after test."""
+        """Setup and teardown for UAT-001 test."""
         if SKIP_EMAIL_VERIFICATION:
             print(
-                "\n⚠️  MAILTRAP_INBOX_ID not configured - email verification will be skipped"
+                "\n⚠️  Ethereal Email not configured - email verification will be skipped"
             )
             print(
-                "   Set MAILTRAP_INBOX_ID in .envrc to enable email verification tests"
+                "   Set ETHEREAL_USER and ETHEREAL_PASS in .envrc to enable email verification"
             )
-            print(
-                "   Find your inbox ID at: https://mailtrap.io/inboxes/YOUR_INBOX_ID\n"
-            )
-        # Note: Mailtrap cleanup endpoint currently has issues, skipping for now
-        # Emails will accumulate in inbox but won't affect test results
+            print("   Get free account at: https://ethereal.email/\n")
 
         yield
 
-        # Cleanup after test (currently disabled due to API issues)
-        # if not SKIP_EMAIL_VERIFICATION:
-        #     try:
-        #         delete_all_emails()
-        #     except Exception as e:
-        #         print(f"Warning: Could not clean up emails after test: {e}")
+        # Note: Ethereal emails are temporary and auto-expire
+        # No cleanup needed
 
     def test_complete_registration_and_password_workflow(self, page: Page):
         """
@@ -174,10 +163,10 @@ class TestUAT001RegistrationAndPasswordManagement:
         else:
             print("\n⚠️  Email verification automated testing not available")
             print(
-                "📧 Mailtrap Sandbox API v2 does not support reading messages programmatically"
+                "📧 Ethereal Email credentials not configured (ETHEREAL_USER/ETHEREAL_PASS)"
             )
             print(
-                f"🔗 Manual verification: https://mailtrap.io/inboxes/{os.getenv('MAILTRAP_INBOX_ID', '4102679')}/messages"
+                f"🔗 Manual verification: Log into https://ethereal.email/ to check inbox"
             )
             print("   Expected: Verification email sent to", self.TEST_EMAIL)
             print("   Subject: 'Verify your Course Record Updater account'")
@@ -338,7 +327,7 @@ class TestUAT001RegistrationAndPasswordManagement:
         page.fill('input[name="password"]', self.TEST_NEW_PASSWORD)
 
         # Submit login
-        page.click('button[type="submit"]:has-text("Log In")')
+        page.click('button[type="submit"]:has-text("Sign In")')
 
         # Verify successful login
         expect(page).to_have_url(f"{BASE_URL}/dashboard", timeout=5000)
@@ -361,7 +350,7 @@ class TestUAT001RegistrationAndPasswordManagement:
         page.fill('input[name="password"]', self.TEST_PASSWORD)  # OLD password
 
         # Submit login
-        page.click('button[type="submit"]:has-text("Log In")')
+        page.click('button[type="submit"]:has-text("Sign In")')
 
         # Verify login fails
         expect(
