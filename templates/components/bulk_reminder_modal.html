@@ -1,0 +1,157 @@
+<!-- Bulk Instructor Reminder Modal -->
+<div class="modal fade" id="bulkReminderModal" tabindex="-1" aria-labelledby="bulkReminderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkReminderModalLabel">
+                    <i class="fas fa-envelope-open-text me-2"></i>Send Instructor Reminders
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Select Instructors -->
+                <div id="reminderStep1">
+                    <h6 class="mb-3">Select Instructors</h6>
+                    
+                    <!-- Select All / Deselect All -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllInstructors">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllInstructors">
+                            <i class="fas fa-square"></i> Deselect All
+                        </button>
+                        <span class="ms-3 text-muted">
+                            <span id="selectedInstructorCount">0</span> instructor(s) selected
+                        </span>
+                    </div>
+
+                    <!-- Instructor List with Checkboxes -->
+                    <div id="instructorListContainer" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                        <div class="text-center text-muted py-4">
+                            <div class="spinner-border spinner-border-sm me-2"></div>
+                            Loading instructors...
+                        </div>
+                    </div>
+
+                    <!-- Optional Message Fields -->
+                    <div class="mt-4">
+                        <h6 class="mb-3">Optional: Customize Message</h6>
+                        
+                        <div class="mb-3">
+                            <label for="reminderTerm" class="form-label">Term/Semester</label>
+                            <input type="text" class="form-control" id="reminderTerm" 
+                                   placeholder="e.g., Fall 2024" maxlength="50">
+                            <small class="form-text text-muted">Leave blank to omit from reminder</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reminderDeadline" class="form-label">Deadline</label>
+                            <input type="date" class="form-control" id="reminderDeadline">
+                            <small class="form-text text-muted">Leave blank to omit from reminder</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reminderMessage" class="form-label">Personal Message</label>
+                            <textarea class="form-control" id="reminderMessage" rows="3" 
+                                      maxlength="500" placeholder="Add a personal note (optional)"></textarea>
+                            <small class="form-text text-muted">
+                                <span id="messageCharCount">0</span>/500 characters
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Progress Display (Hidden Initially) -->
+                <div id="reminderStep2" style="display: none;">
+                    <h6 class="mb-3">Sending Reminders...</h6>
+                    
+                    <div class="text-center mb-4">
+                        <div class="progress" style="height: 30px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 id="reminderProgressBar"
+                                 style="width: 0%"
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                <span id="reminderProgressText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Details -->
+                    <div class="row text-center mb-4">
+                        <div class="col-4">
+                            <div class="card border-success">
+                                <div class="card-body py-2">
+                                    <div class="text-success fs-4 fw-bold" id="reminderSentCount">0</div>
+                                    <small class="text-muted">Sent</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-danger">
+                                <div class="card-body py-2">
+                                    <div class="text-danger fs-4 fw-bold" id="reminderFailedCount">0</div>
+                                    <small class="text-muted">Failed</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-warning">
+                                <div class="card-body py-2">
+                                    <div class="text-warning fs-4 fw-bold" id="reminderPendingCount">0</div>
+                                    <small class="text-muted">Pending</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Status Messages -->
+                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto; background: #f8f9fa;">
+                        <div id="reminderStatusMessages">
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Starting bulk reminder job...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Failed Recipients (if any) -->
+                    <div id="reminderFailedRecipients" style="display: none;" class="mt-3">
+                        <h6 class="text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Failed Recipients
+                        </h6>
+                        <div class="alert alert-danger small" id="reminderFailedList"></div>
+                    </div>
+
+                    <!-- Completion Message -->
+                    <div id="reminderComplete" style="display: none;" class="mt-3 alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Complete!</strong> All reminders have been processed.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <!-- Step 1 Footer -->
+                <div id="reminderFooter1">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="sendRemindersButton" disabled>
+                        <i class="fas fa-paper-plane me-1"></i>
+                        Send Reminders
+                    </button>
+                </div>
+                
+                <!-- Step 2 Footer -->
+                <div id="reminderFooter2" style="display: none;">
+                    <button type="button" class="btn btn-secondary" id="closeProgressButton" disabled>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

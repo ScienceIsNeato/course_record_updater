@@ -159,7 +159,7 @@
             <button class="btn btn-sm btn-success" title="Coming soon" onclick="return false;">
                 <i class="fas fa-user-plus"></i> Invite Faculty
             </button>
-            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-outline-secondary" onclick="openBulkReminderModal()">
                 <i class="fas fa-envelope"></i> Send Reminders
             </button>
         </div>
@@ -931,4 +931,11 @@
         alert('Outcome management list coming soon!');
     }
 </script>
+
+<!-- Include Bulk Reminder Modal -->
+{% include 'components/bulk_reminder_modal.html' %}
+
+<!-- Bulk Reminder JavaScript -->
+<script src="{{ url_for('static', filename='bulk_reminders.js') }}"></script>
+
 {% endblock %}
