@@ -11,6 +11,8 @@ password reset, including:
 Estimated Duration: 3-4 minutes
 """
 
+import os
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -174,8 +176,16 @@ class TestUAT001RegistrationAndPasswordManagement:
             page.wait_for_load_state("networkidle")
 
         else:
-            print("\n⚠️  Email verification skipped (Mailtrap not configured)")
-            print("🔒 Testing security: Unverified user should NOT be able to log in")
+            print("\n⚠️  Email verification automated testing not available")
+            print(
+                "📧 Mailtrap Sandbox API v2 does not support reading messages programmatically"
+            )
+            print(
+                f"🔗 Manual verification: https://mailtrap.io/inboxes/{os.getenv('MAILTRAP_INBOX_ID', '4102679')}/messages"
+            )
+            print("   Expected: Verification email sent to", self.TEST_EMAIL)
+            print("   Subject: 'Verify your Course Record Updater account'")
+            print("\n🔒 Testing security: Unverified user should NOT be able to log in")
 
             # Try to login with unverified account
             page.fill('input[name="email"]', self.TEST_EMAIL)
