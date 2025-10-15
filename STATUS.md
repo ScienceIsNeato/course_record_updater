@@ -5,20 +5,22 @@
 ### Last Completed (October 15, 2025)
 **UAT-001 COMPLETE!** Full self-registration workflow implemented and tested end-to-end.
 
-### Latest Investigation
-"Mailtrap UI Scraper Investigation"
-- **Finding 1**: Mailtrap Sandbox API v2 is send-only (no read endpoint)
-- **Finding 2**: Built UI scraper using Playwright as workaround
-- **Finding 3**: API credentials (Account ID + token) ≠ web login credentials
-- Created functional scraper in `tests/e2e/mailtrap_scraper.py`
-- Requires actual Mailtrap email/password for web login to work
+### Latest Commit (a0a73c3)
+"feat: complete Ethereal Email integration for E2E testing"
+- **Migrated from Mailtrap to Ethereal Email** for full E2E automation
+- ✅ Ethereal provides IMAP/POP3/SMTP access (free, no API limits)
+- ✅ Created `EtherealEmailProvider` with SMTP sending
+- ✅ Added `wait_for_email_via_imap()` for programmatic email reading
+- ✅ UAT-001 fully automated - no manual verification needed
+- ✅ Third-party integration test validates send/receive cycle (5.69s)
 
-### Current Status (Production-Ready)
-- ✅ Emails successfully sent via SMTP to Mailtrap sandbox
-- ✅ Security checks automated (unverified login blocking)
-- ✅ UAT-001 passes: registration → email sent → security validated
-- ℹ️  Manual verification for email content: https://mailtrap.io/inboxes/4102679/messages
-- 📄 See `MAILTRAP_SCRAPER_FINDINGS.md` for detailed analysis
+### Current Status (Fully Automated E2E)
+- ✅ Emails sent via Ethereal SMTP (smtp.ethereal.email:587)
+- ✅ Emails retrieved via Ethereal IMAP (imap.ethereal.email:993)
+- ✅ Full email verification automated in UAT-001
+- ✅ Provider auto-detected when ETHEREAL_USER environment variable set
+- 📧 Account: patience11@ethereal.email
+- 🎯 **Ready to run UAT-001 with full automation!**
 
 ### Architecture Decisions
 - Email verification: `/api/auth/verify-email/{token}` (API route for stateless verification)
