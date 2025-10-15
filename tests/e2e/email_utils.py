@@ -19,12 +19,10 @@ MAILTRAP_ACCOUNT_ID = os.getenv("MAILTRAP_ACCOUNT_ID", "335505888614cb")
 # Note: Set MAILTRAP_INBOX_ID in .envrc to your actual Mailtrap inbox ID
 # You can find this in Mailtrap dashboard URL: https://mailtrap.io/inboxes/YOUR_INBOX_ID
 MAILTRAP_INBOX_ID = os.getenv("MAILTRAP_INBOX_ID")
-MAILTRAP_API_BASE = "https://sandbox.api.mailtrap.io/api/accounts/335505888614cb"
+MAILTRAP_API_BASE = f"https://mailtrap.io/api/accounts/{MAILTRAP_ACCOUNT_ID}"
 
-# Skip email verification if inbox ID not configured
-# NOTE: Currently skipping email verification due to Mailtrap API issues
-# Emails ARE being sent successfully (check Mailtrap UI), but API fetch is failing
-SKIP_EMAIL_VERIFICATION = True  # MAILTRAP_INBOX_ID is None
+# Skip email verification only if Mailtrap is not configured
+SKIP_EMAIL_VERIFICATION = MAILTRAP_INBOX_ID is None
 
 
 class MailtrapError(Exception):
