@@ -21,11 +21,15 @@ MAILTRAP_ACCOUNT_ID = os.getenv("MAILTRAP_ACCOUNT_ID", "335505888614cb")
 MAILTRAP_INBOX_ID = os.getenv("MAILTRAP_INBOX_ID")
 MAILTRAP_API_BASE = f"https://mailtrap.io/api/accounts/{MAILTRAP_ACCOUNT_ID}"
 
-# Skip email verification - Mailtrap Sandbox API v2 does not support reading messages
-# Emails ARE being sent successfully, but must be verified manually in Mailtrap UI
-# See: https://mailtrap.io/inboxes/4102679/messages
-SKIP_EMAIL_VERIFICATION = (
-    True  # TODO: Switch to Mailosaur or similar service for automated E2E testing
+# Use Mailtrap UI scraper for email verification
+# Mailtrap Sandbox API v2 doesn't support reading messages, so we scrape the UI
+SKIP_EMAIL_VERIFICATION = MAILTRAP_INBOX_ID is None
+
+# Check if scraping is available (requires Mailtrap web credentials)
+USE_MAILTRAP_SCRAPER = bool(
+    os.getenv("MAILTRAP_WEB_EMAIL")
+    and os.getenv("MAILTRAP_WEB_PASSWORD")
+    and MAILTRAP_INBOX_ID
 )
 
 
@@ -136,20 +140,36 @@ def wait_for_email(
     timeout: int = 30,
     poll_interval: float = 2.0,
     inbox_id: Optional[str] = None,
+    unique_identifier: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Wait for an email to arrive in Mailtrap inbox.
+
+    Uses UI scraping since Mailtrap API doesn't support reading messages.
 
     Args:
         recipient_email: Email address of recipient
         subject_substring: Optional subject filter
         timeout: Maximum seconds to wait
-        poll_interval: Seconds between polling attempts
+        poll_interval: Seconds between polling attempts (ignored if using scraper)
         inbox_id: Optional inbox ID
+        unique_identifier: Optional unique string to find in email (e.g. timestamp)
 
     Returns:
         Email dictionary if found within timeout, None otherwise
     """
+    if USE_MAILTRAP_SCRAPER:
+        # Use UI scraper for reliable email fetching
+        from tests.e2e.mailtrap_scraper import wait_for_email as scraper_wait
+
+        return scraper_wait(
+            recipient_email=recipient_email,
+            subject_substring=subject_substring,
+            unique_identifier=unique_identifier,
+            timeout=timeout,
+        )
+
+    # Fallback to API method (won't work with current Mailtrap setup)
     start_time = time.time()
 
     while time.time() - start_time < timeout:
