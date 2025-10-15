@@ -17,7 +17,6 @@ from playwright.sync_api import Page, expect
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,
-    delete_all_emails,
     extract_reset_link,
     extract_token_from_url,
     extract_verification_link,
@@ -67,9 +66,7 @@ class TestUAT001RegistrationAndPasswordManagement:
         #     except Exception as e:
         #         print(f"Warning: Could not clean up emails after test: {e}")
 
-    def test_complete_registration_and_password_workflow(
-        self, page: Page, server_running
-    ):
+    def test_complete_registration_and_password_workflow(self, page: Page):
         """
         Test complete user journey from registration through password reset.
 
@@ -119,6 +116,8 @@ class TestUAT001RegistrationAndPasswordManagement:
         # STEP 2: Verify Email Received
         # ====================================================================
 
+        print("\n📧 Checking for verification email...")
+
         if not SKIP_EMAIL_VERIFICATION:
             # Wait for verification email to arrive
             verification_email = wait_for_email(
@@ -150,29 +149,29 @@ class TestUAT001RegistrationAndPasswordManagement:
             assert verification_token is not None, "No token in verification link"
             assert len(verification_token) > 10, "Token seems too short"
 
+            print("✅ Verification email received with valid token")
+
             # ====================================================================
             # STEP 3: Click Verification Link
             # ====================================================================
 
+            print("\n🔗 Clicking verification link...")
+
             # Navigate to verification link
             page.goto(verification_link)
             page.wait_for_load_state("networkidle")
-        else:
-            print("\n⏭️  Skipping email verification steps (email API not configured)\n")
 
-        # Verify user is still on login page (or redirected there after verification)
-        if not SKIP_EMAIL_VERIFICATION:
+            # Should be redirected to login page with success message
             expect(page).to_have_url(f"{BASE_URL}/login", timeout=5000)
             expect(
                 page.locator('.alert-success:has-text("Email verified")')
-            ).to_be_visible()
+            ).to_be_visible(timeout=5000)
 
-        # ====================================================================
-        # STEP 4: Verify Unverified User Cannot Login
-        # ====================================================================
+            print("✅ Email verification successful")
 
-        if SKIP_EMAIL_VERIFICATION:
-            print("\n🔒 Testing security: Unverified user should NOT be able to log in")
+        else:
+            print("\n⚠️  Email verification skipped (Mailtrap not configured)")
+            print("🔒 Testing security: Unverified user should NOT be able to log in")
 
             # Try to login with unverified account
             page.fill('input[name="email"]', self.TEST_EMAIL)
@@ -183,7 +182,6 @@ class TestUAT001RegistrationAndPasswordManagement:
             expect(page).to_have_url(f"{BASE_URL}/login", timeout=5000)
 
             # Verify helpful error message is displayed
-            # The message should mention "verify" or "verification"
             error_alert = page.locator(".alert-danger, .alert-warning")
             expect(error_alert).to_be_visible(timeout=5000)
 

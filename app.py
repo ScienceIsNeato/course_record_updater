@@ -123,6 +123,39 @@ def forgot_password():
     return render_template("auth/forgot_password.html")
 
 
+@app.route("/verify-email/<token>")
+def verify_email_web(token):
+    """
+    Email verification landing page - handles verification link from email
+
+    Verifies the token and redirects to login with appropriate message
+    """
+    from logging_config import get_logger
+    from registration_service import verify_email
+
+    logger = get_logger(__name__)
+
+    try:
+        result = verify_email(token)
+
+        if result.get("success"):
+            # Verification successful - redirect to login with success message
+            flash("Email verified successfully! You can now log in.", "success")
+            return redirect(url_for("login"))
+        else:
+            # Verification failed - show error
+            flash(result.get("message", "Email verification failed"), "danger")
+            return redirect(url_for("login"))
+
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error(f"Email verification error: {e}")
+        flash(
+            "An error occurred during email verification. Please try again or contact support.",
+            "danger",
+        )
+        return redirect(url_for("login"))
+
+
 @app.route("/profile")
 @login_required
 def profile():
