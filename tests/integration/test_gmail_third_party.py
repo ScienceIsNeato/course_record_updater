@@ -1,177 +1,128 @@
 """
 Third-party integration tests for Gmail email delivery
 
-Tests actual Gmail SMTP delivery using Bella Barkington's test account.
-Requires manual setup of Gmail account with app password.
+Sends test emails TO Bella's Gmail (lassie.tests.instructor1.test@gmail.com)
+using the configured SMTP provider. Manual inbox verification required.
 
-To run these tests:
-1. Create Bella's Gmail account: lassie.tests.instructor1.test@gmail.com
-2. Enable 2FA and generate app password
-3. Set environment variables:
-   - GMAIL_TEST_USERNAME=lassie.tests.instructor1.test@gmail.com
-   - GMAIL_TEST_PASSWORD=<app-password>
-4. Remove @pytest.mark.skip decorator
-5. Run: pytest tests/integration/test_gmail_third_party.py -v
+To run:
+1. Remove @pytest.mark.skip decorator
+2. Run: pytest tests/integration/test_gmail_third_party.py -v -s
+3. Manually check Bella's Gmail inbox for test emails
 """
 
 import os
 import time
+from datetime import datetime
 
 import pytest
 
+from app import app as flask_app
 from email_service import EmailService
 
 
-@pytest.mark.skip(
-    reason="Requires manual Gmail account setup with app password. "
-    "See docstring for setup instructions."
-)
-class TestGmailThirdPartyIntegration:
+@pytest.mark.third_party
+@pytest.mark.skip(reason="Manual Gmail inbox verification required after running")
+class TestGmailDeliveryVerification:
     """
-    Real Gmail integration tests using Bella Barkington's test account
+    Gmail delivery verification tests
 
-    These tests actually send emails via Gmail SMTP and verify delivery.
-    Marked as skip until Gmail account is properly configured.
+    Sends emails TO Bella's Gmail using configured SMTP (Ethereal/Mailtrap/etc.)
+    Manual verification: Check Bella's inbox after running tests.
     """
 
     @pytest.fixture(autouse=True)
-    def setup_gmail_config(self, app):
-        """Configure app to use Gmail SMTP for Bella's account"""
-        # Check for required environment variables
-        gmail_username = os.getenv("GMAIL_TEST_USERNAME")
-        gmail_password = os.getenv("GMAIL_TEST_PASSWORD")
+    def setup_test(self):
+        """Configure test environment"""
+        # Ensure email sending is enabled
+        flask_app.config["MAIL_SUPPRESS_SEND"] = False
 
-        if not gmail_username or not gmail_password:
-            pytest.fail(
-                "Missing required environment variables:\n"
-                "  GMAIL_TEST_USERNAME=lassie.tests.instructor1.test@gmail.com\n"
-                "  GMAIL_TEST_PASSWORD=<app-password>"
-            )
+        # Get recipient email from environment
+        self.recipient_email = os.getenv(
+            "GMAIL_TEST_USERNAME", "lassie.tests.instructor1.test@gmail.com"
+        )
 
-        # Configure Flask app for Gmail
-        app.config["MAIL_SERVER"] = "smtp.gmail.com"
-        app.config["MAIL_PORT"] = 587
-        app.config["MAIL_USE_TLS"] = True
-        app.config["MAIL_USE_SSL"] = False
-        app.config["MAIL_USERNAME"] = gmail_username
-        app.config["MAIL_PASSWORD"] = gmail_password
-        app.config["MAIL_DEFAULT_SENDER"] = gmail_username
-        app.config["MAIL_DEFAULT_SENDER_NAME"] = "Course Record Test System"
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable real sending
+        # Generate unique test identifier
+        self.test_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.test_id = f"TEST-{int(time.time())}"
 
-        EmailService.configure_app(app)
+        # Track SMTP provider being used
+        self.smtp_server = flask_app.config.get("MAIL_SERVER", "unknown")
+
+        EmailService.configure_app(flask_app)
 
         yield
 
-    def test_send_verification_email_via_gmail(self, app):
+    def test_send_verification_email_to_gmail(self):
         """
-        Test sending verification email through Gmail SMTP
+        Send verification email TO Bella's Gmail inbox
 
-        TDD: This test is expected to FAIL until Gmail account is set up.
+        Uses configured SMTP provider to send email to Bella's Gmail.
+        Manual verification: Check inbox after test completes.
         """
-        with app.app_context():
-            # Attempt to send verification email to Bella's account
+        with flask_app.app_context():
+            # Send verification email
             success = EmailService.send_verification_email(
-                email="lassie.tests.instructor1.test@gmail.com",
-                verification_token="test-token-bella-123",
+                email=self.recipient_email,
+                verification_token=f"{self.test_id}-verification",
                 user_name="Bella Barkington",
             )
 
-            # Assert email was sent successfully
-            assert success is True, "Failed to send verification email via Gmail SMTP"
+            # Assert send succeeded
+            assert success, f"Failed to send email to {self.recipient_email}"
 
-    def test_gmail_smtp_authentication(self, app):
-        """
-        Test that Gmail SMTP authentication works
+            # Print verification instructions
+            print("\n" + "=" * 80)
+            print("✅ VERIFICATION EMAIL SENT")
+            print("=" * 80)
+            print(f"   Timestamp: {self.test_timestamp}")
+            print(f"   Test ID: {self.test_id}")
+            print(f"   Recipient: {self.recipient_email}")
+            print(f"   SMTP Server: {self.smtp_server}")
+            print(f"   Email Type: Verification")
+            print("\n📬 MANUAL VERIFICATION REQUIRED:")
+            print(f"   1. Open Gmail: https://mail.google.com")
+            print(f"   2. Login as: {self.recipient_email}")
+            print(f"   3. Look for email with Test ID in subject: {self.test_id}")
+            print(f"   4. Verify email contains:")
+            print(f"      ✓ Subject mentions 'Verify'")
+            print(f"      ✓ Body addresses 'Bella Barkington'")
+            print(f"      ✓ Verification link present")
+            print(f"      ✓ Test ID: {self.test_id}")
+            print("=" * 80 + "\n")
 
-        TDD: This test is expected to FAIL until credentials are configured.
+    def test_send_password_reset_email_to_gmail(self):
         """
-        with app.app_context():
-            # Try to send a simple test email
-            success = EmailService.send_verification_email(
-                email="lassie.tests.instructor1.test@gmail.com",
-                verification_token="auth-test-token",
+        Send password reset email TO Bella's Gmail inbox
+
+        Tests password reset email flow with manual verification.
+        """
+        with flask_app.app_context():
+            # Send password reset email
+            success = EmailService.send_password_reset_email(
+                email=self.recipient_email,
+                reset_token=f"{self.test_id}-reset",
                 user_name="Bella Barkington",
             )
 
-            assert success is True, "Gmail SMTP authentication failed"
+            # Assert send succeeded
+            assert success, f"Failed to send password reset to {self.recipient_email}"
 
-    def test_gmail_email_formatting(self, app):
-        """
-        Test that emails sent via Gmail are properly formatted
-
-        Manual verification required:
-        1. Run this test with skip removed
-        2. Check Bella's inbox
-        3. Verify email has:
-           - Proper from address
-           - Subject line
-           - HTML formatting
-           - Verification link
-        """
-        with app.app_context():
-            success = EmailService.send_verification_email(
-                email="lassie.tests.instructor1.test@gmail.com",
-                verification_token="format-test-token",
-                user_name="Bella Barkington",
-            )
-
-            assert success is True
-
-            # Give Gmail a moment to process
-            time.sleep(2)
-
-            # Manual verification step - check inbox
-            print("\n" + "=" * 60)
-            print("📧 MANUAL VERIFICATION REQUIRED:")
-            print("   1. Log into: lassie.tests.instructor1.test@gmail.com")
-            print("   2. Check inbox for verification email")
-            print("   3. Verify:")
-            print("      - From: Course Record Test System")
-            print("      - Subject: Verify your Course Record Updater account")
-            print("      - Body: Contains 'Hello Bella Barkington'")
-            print("      - Link: Contains 'format-test-token'")
-            print("=" * 60)
-
-
-@pytest.mark.skip(
-    reason="Requires manual Gmail account setup and inbox access. "
-    "See docstring for setup instructions."
-)
-class TestGmailDeliveryVerification:
-    """
-    Email delivery verification tests
-
-    These tests would use Gmail API or IMAP to programmatically verify
-    email delivery. Requires additional setup (OAuth2 or app password + IMAP).
-
-    Phase 3 feature - not implemented yet.
-    """
-
-    def test_verify_email_delivered_to_inbox(self):
-        """
-        TDD placeholder: Verify email actually arrives in Bella's inbox
-
-        Would use Gmail API to:
-        1. Send verification email
-        2. Wait for delivery
-        3. Check inbox for email
-        4. Verify content
-
-        Not implemented - requires Gmail API setup.
-        """
-        pytest.fail("Not implemented - requires Gmail API setup")
-
-    def test_verify_email_content_matches(self):
-        """
-        TDD placeholder: Verify delivered email content matches template
-
-        Would use Gmail API to:
-        1. Send email
-        2. Fetch from inbox
-        3. Parse HTML/text
-        4. Assert content matches expected values
-
-        Not implemented - requires Gmail API setup.
-        """
-        pytest.fail("Not implemented - requires Gmail API setup")
+            # Print verification instructions
+            print("\n" + "=" * 80)
+            print("✅ PASSWORD RESET EMAIL SENT")
+            print("=" * 80)
+            print(f"   Timestamp: {self.test_timestamp}")
+            print(f"   Test ID: {self.test_id}")
+            print(f"   Recipient: {self.recipient_email}")
+            print(f"   SMTP Server: {self.smtp_server}")
+            print(f"   Email Type: Password Reset")
+            print("\n📬 MANUAL VERIFICATION REQUIRED:")
+            print(f"   1. Open Gmail: https://mail.google.com")
+            print(f"   2. Login as: {self.recipient_email}")
+            print(f"   3. Look for password reset email")
+            print(f"   4. Verify email contains:")
+            print(f"      ✓ Subject mentions 'Password Reset'")
+            print(f"      ✓ Body addresses 'Bella Barkington'")
+            print(f"      ✓ Reset link present")
+            print(f"      ✓ Test ID in link: {self.test_id}")
+            print("=" * 80 + "\n")

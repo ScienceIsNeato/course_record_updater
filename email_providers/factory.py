@@ -2,16 +2,18 @@
 Email Provider Factory
 
 Creates appropriate email provider based on configuration or environment.
+
+Simplified architecture:
+- Brevo: All real email sending (dev, staging, prod with whitelist protection)
+- Ethereal: Automated E2E testing only (with IMAP verification)
 """
 
 import os
 from typing import Any, Dict, Optional
 
 from email_providers.base_provider import EmailProvider
-from email_providers.console_provider import ConsoleProvider
+from email_providers.brevo_provider import BrevoProvider
 from email_providers.ethereal_provider import EtherealProvider
-from email_providers.gmail_provider import GmailProvider
-from email_providers.mailtrap_provider import MailtrapProvider
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -24,8 +26,8 @@ def create_email_provider(
     Create and configure an email provider
     
     Args:
-        provider_name: Provider to create ("console", "gmail").
-                      If None, determined from environment/config.
+        provider_name: Provider to create ("brevo" or "ethereal").
+                      If None, determined from environment.
         config: Configuration dictionary for the provider.
                If None, loaded from environment variables.
                
@@ -33,7 +35,7 @@ def create_email_provider(
         Configured EmailProvider instance
         
     Raises:
-        ValueError: If provider_name is invalid
+        ValueError: If provider_name is invalid or required config missing
     """
     # Determine provider if not specified
     if provider_name is None:
@@ -43,18 +45,14 @@ def create_email_provider(
     
     # Create provider instance
     provider: EmailProvider
-    if provider_name == "console":
-        provider = ConsoleProvider()
-    elif provider_name == "gmail":
-        provider = GmailProvider()
-    elif provider_name == "mailtrap":
-        provider = MailtrapProvider()
+    if provider_name == "brevo":
+        provider = BrevoProvider()
     elif provider_name == "ethereal":
         provider = EtherealProvider()
     else:
         raise ValueError(
             f"Unknown email provider: {provider_name}. "
-            f"Valid options: console, gmail, mailtrap, ethereal"
+            f"Valid options: brevo, ethereal"
         )
         
     # Configure provider
@@ -62,12 +60,6 @@ def create_email_provider(
         config = _load_config_from_environment()
         
     provider.configure(config)
-    
-    # Validate configuration
-    if not provider.validate_configuration():
-        logger.warning(
-            f"[Email Factory] Provider {provider_name} configuration may be incomplete"
-        )
         
     logger.info(f"[Email Factory] Created provider: {provider_name}")
     return provider
@@ -78,42 +70,30 @@ def _determine_provider_from_environment() -> str:
     Determine which provider to use based on environment
     
     Logic:
-    - If MAIL_SUPPRESS_SEND=true -> console
-    - If ETHEREAL_USER is set -> ethereal (E2E testing)
-    - If MAIL_SERVER contains "mailtrap" -> mailtrap
-    - If ENV=production or PRODUCTION=true -> gmail
-    - If MAIL_USERNAME is set -> gmail
-    - Default -> console (safe for development)
+    1. If EMAIL_PROVIDER is explicitly set, use that (override)
+    2. Otherwise, use environment-based mapping:
+       - test/testing -> ethereal (E2E tests with IMAP verification)
+       - development/staging/production -> brevo (real email sending)
     
     Returns:
-        Provider name ("console", "gmail", "mailtrap", or "ethereal")
+        Provider name ("brevo" or "ethereal")
     """
-    # Check explicit suppress flag
-    if os.getenv("MAIL_SUPPRESS_SEND", "false").lower() == "true":
-        return "console"
+    # Check for explicit override
+    explicit_provider = os.getenv("EMAIL_PROVIDER")
+    if explicit_provider:
+        logger.info(f"[Email Factory] Using explicit EMAIL_PROVIDER: {explicit_provider}")
+        return explicit_provider.lower()
     
-    # Check if Ethereal is configured (E2E testing)
-    if os.getenv("ETHEREAL_USER"):
-        return "ethereal"
-    
-    # Check if Mailtrap is configured
-    mail_server = os.getenv("MAIL_SERVER", "").lower()
-    if "mailtrap" in mail_server or "sandbox.smtp" in mail_server:
-        return "mailtrap"
-        
-    # Check environment type
+    # Environment-based mapping
     env = os.getenv("ENV", "development").lower()
-    is_production = os.getenv("PRODUCTION", "false").lower() == "true"
+    is_testing = os.getenv("TESTING", "").lower() in ("true", "1", "yes")
     
-    if env == "production" or is_production:
-        return "gmail"
-        
-    # Check if SMTP credentials are configured
-    if os.getenv("MAIL_USERNAME"):
-        return "gmail"
-        
-    # Default to console for safety
-    return "console"
+    # Map environment to provider
+    if env == "test" or is_testing:
+        return "ethereal"
+    else:
+        # development, staging, production all use Brevo
+        return "brevo"
 
 
 def _load_config_from_environment() -> Dict[str, Any]:
@@ -123,35 +103,36 @@ def _load_config_from_environment() -> Dict[str, Any]:
     Returns:
         Configuration dictionary with settings from environment
     """
-    # Build base config
-    config = {
-        # Standard SMTP settings (Gmail, Mailtrap)
-        "server": os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-        "port": int(os.getenv("MAIL_PORT", "587")),
-        "use_tls": os.getenv("MAIL_USE_TLS", "true").lower() == "true",
-        "use_ssl": os.getenv("MAIL_USE_SSL", "false").lower() == "true",
-        "username": os.getenv("MAIL_USERNAME"),
-        "password": os.getenv("MAIL_PASSWORD"),
+    # Build base config with explicit Any type
+    config: Dict[str, Any] = {
         "default_sender": os.getenv(
-            "MAIL_DEFAULT_SENDER", os.getenv("MAIL_USERNAME", "noreply@courserecord.app")
+            "MAIL_DEFAULT_SENDER", 
+            "noreply@courserecord.app"
         ),
         "default_sender_name": os.getenv(
-            "MAIL_DEFAULT_SENDER_NAME", "Course Record Updater"
+            "MAIL_DEFAULT_SENDER_NAME", 
+            "Course Record Updater"
         ),
-        # Console provider settings
-        "write_to_files": True,
-        "log_dir": "logs/emails",
     }
+    
+    # Add Brevo-specific settings if Brevo is configured
+    if os.getenv("BREVO_API_KEY"):
+        config.update({
+            "api_key": os.getenv("BREVO_API_KEY"),
+            "sender_email": os.getenv("BREVO_SENDER_EMAIL") or config.get("default_sender"),
+            "sender_name": os.getenv("BREVO_SENDER_NAME") or config.get("default_sender_name"),
+        })
     
     # Add Ethereal-specific settings if Ethereal is configured
     if os.getenv("ETHEREAL_USER"):
         config.update({
             "smtp_host": os.getenv("ETHEREAL_SMTP_HOST", "smtp.ethereal.email"),
             "smtp_port": int(os.getenv("ETHEREAL_SMTP_PORT", "587")),
+            "imap_host": os.getenv("ETHEREAL_IMAP_HOST", "imap.ethereal.email"),
+            "imap_port": int(os.getenv("ETHEREAL_IMAP_PORT", "993")),
             "username": os.getenv("ETHEREAL_USER"),
             "password": os.getenv("ETHEREAL_PASS"),
             "from_email": os.getenv("ETHEREAL_USER"),
         })
     
     return config
-

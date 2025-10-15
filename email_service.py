@@ -25,7 +25,7 @@ from flask import current_app
 from constants import DEFAULT_BASE_URL
 
 # Import email provider infrastructure
-from email_providers import create_email_provider
+from email_providers import create_email_provider, get_email_whitelist
 from email_providers.base_provider import EmailProvider
 
 # Import centralized logging
@@ -373,32 +373,16 @@ class EmailService:
                     f"Cannot send emails to protected domain ({to_email.split('@')[1] if '@' in to_email else to_email}) in non-production environment"
                 )
 
-            # ADDITIONAL PROTECTION: In non-production, only allow lassie test accounts or mailtrap
+            # WHITELIST PROTECTION: In non-production, only allow whitelisted emails
             if not is_production:
-                email_domain = to_email.split("@")[1] if "@" in to_email else ""
-
-                # Allow Mailtrap sandbox addresses
-                if "mailtrap.io" in email_domain:
-                    pass  # Mailtrap is safe
-                # Only allow our specific test Gmail accounts
-                elif "gmail.com" in email_domain:
-                    if "lassie.tests" not in to_email:
-                        logger.error(
-                            f"[Email Service] BLOCKED: Attempted to send to non-test Gmail account in {current_app.config.get('ENV', 'development')} environment: {to_email}"
-                        )
-                        raise EmailServiceError(
-                            f"Only lassie.tests Gmail accounts allowed in non-production (attempted: {to_email})"
-                        )
-                # Block all other real domains in non-production
-                elif email_domain and not any(
-                    test_marker in email_domain.lower()
-                    for test_marker in ["test", "example", "localhost"]
-                ):
+                whitelist = get_email_whitelist()
+                if not whitelist.is_allowed(to_email):
                     logger.error(
-                        f"[Email Service] BLOCKED: Attempted to send to real domain in {current_app.config.get('ENV', 'development')} environment: {to_email}"
+                        f"[Email Service] BLOCKED: Email not on whitelist in {current_app.config.get('ENV', 'development')} environment: {to_email}"
                     )
                     raise EmailServiceError(
-                        f"Only test accounts (lassie.tests@gmail.com or @mailtrap.io) allowed in non-production (attempted: {to_email})"
+                        f"Email address not on whitelist for non-production environment: {to_email}. "
+                        f"Add to EMAIL_WHITELIST environment variable to allow."
                     )
 
             # Get email provider (console or gmail based on config)

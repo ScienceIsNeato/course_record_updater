@@ -1,29 +1,24 @@
 """
 Email Provider Package
 
-Provides abstraction layer for email sending to support multiple backends.
-Currently supports:
-- ConsoleProvider: Development mode, logs emails to console/files
-- GmailProvider: Gmail SMTP for production/staging
-- EtherealProvider: Ethereal.email for E2E testing with IMAP verification
-- MailtrapProvider: Mailtrap SMTP for testing
+Simplified email architecture with two providers:
+- BrevoProvider: All real email sending (dev, staging, prod)
+- EtherealProvider: Automated E2E testing with IMAP verification
 
-Future providers can be added (SendGrid, Mailgun, etc.) without changing application code.
+Whitelist protection is handled at the EmailService layer, not provider layer.
 """
 
 from email_providers.base_provider import EmailProvider
-from email_providers.console_provider import ConsoleProvider
+from email_providers.brevo_provider import BrevoProvider
 from email_providers.ethereal_provider import EtherealProvider
 from email_providers.factory import create_email_provider
-from email_providers.gmail_provider import GmailProvider
-from email_providers.mailtrap_provider import MailtrapProvider
+from email_providers.whitelist import EmailWhitelist, get_email_whitelist
 
 __all__ = [
     "EmailProvider",
-    "ConsoleProvider",
+    "BrevoProvider",
     "EtherealProvider",
-    "GmailProvider",
-    "MailtrapProvider",
+    "EmailWhitelist",
     "create_email_provider",
+    "get_email_whitelist",
 ]
-

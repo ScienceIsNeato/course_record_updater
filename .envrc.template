@@ -1,33 +1,112 @@
-# .envrc.template - Environment configuration logic (version controlled)
-# Copy to .envrc and add your secrets
+# =============================================================================
+# Course Record Updater - Environment Configuration Template
+# =============================================================================
+# Copy this file to .envrc and fill in your values
+# Run `source .envrc` to load into your shell
+# =============================================================================
 
-# Path Management
-export AGENT_HOME="${AGENT_HOME:-$(pwd)}"
+# =============================================================================
+# ENVIRONMENT
+# =============================================================================
+export ENV="development"  # development, staging, or production
+export PRODUCTION="false"  # Set to "true" only in production
 
-# Environment Configuration (dev, e2e, or ci)
-export APP_ENV="${APP_ENV:-dev}"  # Defaults to dev
+# =============================================================================
+# DATABASE
+# =============================================================================
+export DATABASE_URL="sqlite:///course_records_dev.db"
 
-# Environment-specific configuration
-# Note: Set explicitly based on APP_ENV (override any existing values)
-case "$APP_ENV" in
-  dev)
-    export DATABASE_URL="sqlite:///course_records_dev.db"
-    export COURSE_RECORD_UPDATER_PORT="3001"
-    ;;
-  e2e)
-    export DATABASE_URL="sqlite:///course_records_e2e.db"
-    export COURSE_RECORD_UPDATER_PORT="3002"
-    ;;
-  ci)
-    export DATABASE_URL="sqlite:///course_records_ci.db"
-    export COURSE_RECORD_UPDATER_PORT="3003"
-    ;;
-esac
+# =============================================================================
+# FLASK CONFIGURATION
+# =============================================================================
+export SECRET_KEY="your-secret-key-here-change-in-production"
+export BASE_URL="http://localhost:3001"
+export DEFAULT_PORT="3001"
 
-# Shared configuration (all environments)
-export DATABASE_TYPE="sqlite"
-export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"  # Always DEBUG for troubleshooting
+# =============================================================================
+# EMAIL CONFIGURATION
+# =============================================================================
 
-# Environment info (helpful for debugging)
-echo "🌍 Environment: $APP_ENV | Port: $COURSE_RECORD_UPDATER_PORT | DB: $DATABASE_URL"
+# Email Provider Selection
+# Explicit override (optional) - if not set, determined by ENV variable
+# Options: "brevo" (real email) or "ethereal" (E2E testing)
+# Default mapping:
+#   - test/testing -> ethereal
+#   - development/staging/production -> brevo
+# Recommendation: Set explicitly to avoid ambiguity
+export EMAIL_PROVIDER="brevo"  # or "ethereal" for E2E testing
 
+# Email Whitelist (REQUIRED for non-production environments)
+# Comma-separated list of allowed recipient addresses
+# Supports wildcards: *@ethereal.email allows all ethereal addresses
+# Example: "dev@example.com,test@example.com,*@ethereal.email"
+export EMAIL_WHITELIST="your-email@example.com,*@ethereal.email"
+
+# -----------------------------------------------------------------------------
+# Brevo Configuration (Production & Staging - Real Email Sending)
+# -----------------------------------------------------------------------------
+# Free tier: 300 emails/day
+# Sign up at: https://www.brevo.com/
+export BREVO_API_KEY="your-brevo-api-key-here"
+export BREVO_SENDER_EMAIL="your-verified-sender@example.com"
+export BREVO_SENDER_NAME="Your App Name"
+
+# -----------------------------------------------------------------------------
+# Ethereal Email Configuration (E2E Testing Only - Fake SMTP with IMAP)
+# -----------------------------------------------------------------------------
+# Create free account at: https://ethereal.email/
+# Only used in automated tests for email verification
+export ETHEREAL_USER="your-ethereal-username@ethereal.email"
+export ETHEREAL_PASS="your-ethereal-password"
+export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
+export ETHEREAL_SMTP_PORT="587"
+export ETHEREAL_IMAP_HOST="imap.ethereal.email"
+export ETHEREAL_IMAP_PORT="993"
+
+# =============================================================================
+# AUTHENTICATION
+# =============================================================================
+export SESSION_COOKIE_SECURE="false"  # Set to "true" in production (HTTPS only)
+export SESSION_COOKIE_HTTPONLY="true"
+export SESSION_COOKIE_SAMESITE="Lax"
+export PERMANENT_SESSION_LIFETIME="3600"  # 1 hour in seconds
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+export LOG_LEVEL="INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+export LOG_FILE="logs/application.log"
+
+# =============================================================================
+# PATH MANAGEMENT (for Cursor AI)
+# =============================================================================
+export AGENT_HOME="/absolute/path/to/your/project"
+
+# =============================================================================
+# ENVIRONMENT-SPECIFIC NOTES
+# =============================================================================
+
+# LOCAL DEVELOPMENT:
+# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for development)
+# - Use Brevo for real email sending to whitelisted addresses
+# - Add your personal email to EMAIL_WHITELIST
+# - Configure both Brevo AND Ethereal (Ethereal used in E2E tests)
+
+# STAGING:
+# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for staging)
+# - Use Brevo with production API key
+# - Keep EMAIL_WHITELIST to prevent accidental emails to real users
+# - Whitelist: QA team emails, test accounts
+
+# PRODUCTION:
+# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for production)
+# - Use Brevo with production API key
+# - Remove EMAIL_WHITELIST (or leave empty) to allow all recipients
+# - Set ENV="production" and PRODUCTION="true"
+# - Set SESSION_COOKIE_SECURE="true"
+# - Use strong SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+
+# E2E TESTING:
+# - Set EMAIL_PROVIDER="ethereal" (or set ENV="test", which auto-selects ethereal)
+# - Ethereal provides IMAP verification for automated tests
+# - No real emails sent, all caught in Ethereal's fake inbox
