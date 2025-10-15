@@ -341,7 +341,7 @@ class DatabaseSeeder:
                 program_name, institution_id
             )
             if existing_program:
-                program_id = existing_program["id"]
+                program_id = existing_program["program_id"]  # Database returns 'program_id', not 'id'
                 self.created_entities["programs"].append(program_id)
                 self.log(
                     f"   Found existing program: {prog_data['name']} ({prog_data['short_name']})"
@@ -357,7 +357,8 @@ class DatabaseSeeder:
                 description=cast(str, prog_data.get("description", "")),
                 is_default=cast(bool, prog_data.get("is_default", False)),
             )
-            schema["id"] = schema.pop("program_id")
+            # Database service expects 'program_id' field, not 'id'
+            # No need to rename - create_schema already returns program_id
 
             program_id = db.create_program(schema)
             if program_id:
