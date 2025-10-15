@@ -49,15 +49,40 @@ class BulkEmailService:
         Returns:
             Job ID for tracking progress
         """
-        # TODO(bulk-reminders): Fetch instructor details from database
-        # For now, using placeholder data until we integrate with user management
+        # Fetch instructor details from database
+        from sqlalchemy import select
+
+        from models_sql import User
+
         recipients = []
         for instructor_id in instructor_ids:
+            # Query user by ID
+            user = db.execute(
+                select(User).where(User.id == instructor_id)
+            ).scalar_one_or_none()
+
+            if not user:
+                logger.warning(
+                    f"[BulkEmailService] Instructor {instructor_id} not found, skipping"
+                )
+                continue
+
+            if not user.email:
+                logger.warning(
+                    f"[BulkEmailService] Instructor {instructor_id} has no email, skipping"
+                )
+                continue
+
+            # Build full name from first_name and last_name
+            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+            if not full_name:
+                full_name = str(user.email)  # Fallback to email if no name
+
             recipients.append(
                 {
-                    "user_id": instructor_id,
-                    "email": "instructor{0}@example.com".format(instructor_id),
-                    "name": "Instructor {0}".format(instructor_id),
+                    "user_id": user.id,
+                    "email": user.email,
+                    "name": full_name,
                 }
             )
 
@@ -135,7 +160,7 @@ class BulkEmailService:
                 )
 
             # Get email service instance
-            email_service = EmailService(current_app)  # type: ignore[call-arg]
+            email_service = EmailService()
 
             # Define send function that uses EmailService
             def send_email(

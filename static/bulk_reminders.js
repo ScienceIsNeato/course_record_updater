@@ -108,8 +108,6 @@ class BulkReminderManager {
         `;
 
     try {
-      // TODO: Replace with actual API endpoint for fetching instructors
-      // For now, using mock data
       const instructors = await this.fetchInstructors();
 
       this.allInstructors = instructors;
@@ -128,40 +126,30 @@ class BulkReminderManager {
 
   /**
    * Fetch instructors from the API
-   * TODO: Replace with actual API call
    */
   async fetchInstructors() {
-    // Mock data for now - replace with actual API call
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve([
-          {
-            id: 'inst-1',
-            name: 'Dr. Jane Smith',
-            email: 'jane.smith@example.com',
-            courses: ['CS 101', 'CS 201']
-          },
-          {
-            id: 'inst-2',
-            name: 'Prof. John Doe',
-            email: 'john.doe@example.com',
-            courses: ['MATH 301']
-          },
-          {
-            id: 'inst-3',
-            name: 'Dr. Alice Johnson',
-            email: 'alice.johnson@example.com',
-            courses: ['ENG 101', 'ENG 102']
-          },
-          {
-            id: 'inst-4',
-            name: 'Prof. Bob Wilson',
-            email: 'bob.wilson@example.com',
-            courses: ['HIST 201']
-          }
-        ]);
-      }, 500);
-    });
+    const response = await fetch('/api/instructors');
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch instructors: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch instructors');
+    }
+
+    // Transform API response to expected format
+    // API returns: { success: true, instructors: [...], count: N }
+    // Each instructor has: user_id, first_name, last_name, email, role, etc.
+    return data.instructors.map(instructor => ({
+      id: instructor.user_id,
+      name:
+        `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim() || instructor.email,
+      email: instructor.email,
+      courses: [] // TODO: Add course assignment data when available
+    }));
   }
 
   /**
