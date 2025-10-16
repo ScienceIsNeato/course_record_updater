@@ -99,8 +99,8 @@ export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (test
 # Email Whitelist (REQUIRED for non-production environments)
 # Comma-separated list of allowed recipient addresses
 # Supports wildcards: *@ethereal.email allows all ethereal addresses
-# Default allows common test domains and ethereal
-export EMAIL_WHITELIST="*@ethereal.email,*@example.com,*@test.com"
+# Default allows common test domains, ethereal, and seeded test accounts
+export EMAIL_WHITELIST="*@ethereal.email,*@example.com,*@test.com,*@system.local,*@cei.edu,*@inst.edu"
 
 # =============================================================================
 # BREVO EMAIL CONFIGURATION (Production Email Provider)
