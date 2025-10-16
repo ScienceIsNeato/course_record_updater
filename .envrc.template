@@ -21,7 +21,7 @@ export DATABASE_URL_CI="sqlite:///course_records_ci.db"
 # =============================================================================
 # FLASK CONFIGURATION
 # =============================================================================
-export SECRET_KEY="your-secret-key-here-change-in-production"
+# export SECRET_KEY="your-secret-key-here-change-in-production"
 
 # Base URL configuration (environment-specific)
 export BASE_URL_DEV="http://localhost:3001"
@@ -47,24 +47,24 @@ export LASSIE_DEFAULT_PORT_E2E="3002"   # E2E test server port (separate from de
 # Comma-separated list of allowed recipient addresses
 # Supports wildcards: *@ethereal.email allows all ethereal addresses
 # Example: "dev@example.com,test@example.com,*@ethereal.email"
-export EMAIL_WHITELIST="your-email@example.com,*@ethereal.email"
+# export EMAIL_WHITELIST="your-email@example.com,*@ethereal.email"
 
 # -----------------------------------------------------------------------------
 # Brevo Configuration (Production & Staging - Real Email Sending)
 # -----------------------------------------------------------------------------
 # Free tier: 300 emails/day
 # Sign up at: https://www.brevo.com/
-export BREVO_API_KEY="your-brevo-api-key-here"
-export BREVO_SENDER_EMAIL="your-verified-sender@example.com"
-export BREVO_SENDER_NAME="Your App Name"
+# export BREVO_API_KEY="your-brevo-api-key-here"
+# export BREVO_SENDER_EMAIL="your-verified-sender@example.com"
+# export BREVO_SENDER_NAME="Your App Name"
 
 # -----------------------------------------------------------------------------
 # Ethereal Email Configuration (E2E Testing Only - Fake SMTP with IMAP)
 # -----------------------------------------------------------------------------
 # Create free account at: https://ethereal.email/
 # Only used in automated tests for email verification
-export ETHEREAL_USER="your-ethereal-username@ethereal.email"
-export ETHEREAL_PASS="your-ethereal-password"
+# export ETHEREAL_USER="your-ethereal-username@ethereal.email"
+# export ETHEREAL_PASS="your-ethereal-password"
 export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
 export ETHEREAL_SMTP_PORT="587"
 export ETHEREAL_IMAP_HOST="imap.ethereal.email"
@@ -87,7 +87,7 @@ export LOG_FILE="logs/application.log"
 # =============================================================================
 # PATH MANAGEMENT (for Cursor AI)
 # =============================================================================
-export AGENT_HOME="/absolute/path/to/your/project"
+# export AGENT_HOME="/absolute/path/to/your/project"
 
 # =============================================================================
 # ENVIRONMENT-SPECIFIC NOTES
