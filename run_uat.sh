@@ -109,11 +109,14 @@ elif [ "${CI:-false}" = "true" ]; then
     echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
 fi
 
-# Load environment variables from .envrc
+# Load environment variables from .envrc (skip in CI if credentials already set)
 if [ -f ".envrc" ]; then
     source .envrc
-elif [ -f ".envrc.template" ]; then
+elif [ -f ".envrc.template" ] && [ -z "$ETHEREAL_USER" ]; then
+    # Only source template if Ethereal credentials not already set (i.e., not in CI with secrets)
     source .envrc.template
+elif [ "${CI:-false}" = "true" ]; then
+    echo -e "${BLUE}🔵 CI detected with credentials already set, skipping .envrc.template${NC}"
 fi
 
 # Set ENV to "test" so email factory automatically selects Ethereal
