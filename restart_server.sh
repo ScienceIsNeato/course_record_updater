@@ -111,7 +111,7 @@ start_flask_app() {
     # Determine log file based on environment
     local LOG_FILE="logs/server.log"
     case "$APP_ENV" in
-        e2e|uat|ci)
+        e2e|uat)
             LOG_FILE="logs/test_server.log"
             ;;
         dev|*)
@@ -189,10 +189,8 @@ main() {
         e2e|uat)
             PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
             ;;
-        ci)
-            PORT="${LASSIE_DEFAULT_PORT_CI:-3003}"
-            ;;
         *)
+            # Default to dev port
             PORT="${LASSIE_DEFAULT_PORT_DEV:-3001}"
             ;;
     esac
