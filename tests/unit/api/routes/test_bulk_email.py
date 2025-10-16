@@ -11,6 +11,7 @@ module-level import pollution. Use `pytest tests/unit/api/routes/test_bulk_email
 to run them in isolation.
 """
 
+import importlib
 import json
 import sys
 import unittest
@@ -40,14 +41,23 @@ class TestBulkEmailAPI(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Restore original permission_required"""
+        """Restore original permission_required and clean up imports"""
         import auth_service
 
+        # Restore original
         auth_service.permission_required = cls._original_permission_required
 
-        # Remove the bulk_email module so it gets reimported fresh in other tests
-        if "api.routes.bulk_email" in sys.modules:
-            del sys.modules["api.routes.bulk_email"]
+        # Force complete module cleanup
+        modules_to_remove = [
+            "api.routes.bulk_email",
+            "bulk_email_service",  # Also imported by bulk_email
+        ]
+        for module_name in modules_to_remove:
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+
+        # Force reload of auth_service to ensure clean state
+        importlib.reload(auth_service)
 
     def setUp(self):
         """Set up test fixtures"""

@@ -7,6 +7,30 @@ import pytest
 
 import database_service
 
+
+def pytest_collection_modifyitems(config, items):
+    """
+    Modify test collection order to run bulk_email tests FIRST.
+
+    This is necessary because bulk_email tests need to mock permission_required
+    before any other test imports the main Flask app (which auto-imports bulk_email).
+
+    Running bulk_email tests first ensures the mock is applied before the decorators
+    are evaluated.
+    """
+    bulk_email_tests = []
+    other_tests = []
+
+    for item in items:
+        if "test_bulk_email" in str(item.fspath):
+            bulk_email_tests.append(item)
+        else:
+            other_tests.append(item)
+
+    # Run bulk_email tests FIRST
+    items[:] = bulk_email_tests + other_tests
+
+
 # Shared test credentials (seeded by seed_db.py)
 SITE_ADMIN_EMAIL = "siteadmin@system.local"
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"

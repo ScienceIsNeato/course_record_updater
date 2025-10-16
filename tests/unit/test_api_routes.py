@@ -682,12 +682,11 @@ class TestAcceptInvitationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/accept-invitation")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
+            # Should return 400 Bad Request (after fix for silent=True)
+            assert response.status_code == 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "Failed to accept invitation" in data["error"]
+            assert "No JSON data provided" in data["error"]
 
     def test_accept_invitation_missing_token(self):
         """Test invitation acceptance with missing token."""
