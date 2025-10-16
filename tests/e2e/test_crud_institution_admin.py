@@ -258,10 +258,16 @@ def test_tc_crud_ia_005_invite_instructor(authenticated_page: Page):
         "institution_id": institution_id,
     }
 
+    # Send as JSON (API expects JSON body)
+    import json as json_module
+
     response = authenticated_page.request.post(
         f"{BASE_URL}/api/invitations",
-        data=invitation_data,
-        headers={"X-CSRFToken": csrf_token} if csrf_token else {},
+        data=json_module.dumps(invitation_data),
+        headers={
+            "Content-Type": "application/json",
+            **({"X-CSRFToken": csrf_token} if csrf_token else {}),
+        },
     )
 
     assert response.ok, f"Invitation creation failed: {response.status}"
