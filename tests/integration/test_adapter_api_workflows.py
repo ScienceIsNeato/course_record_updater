@@ -44,14 +44,14 @@ class TestAdapterAPIWorkflows:
         assert "adapters" in data
         assert len(data["adapters"]) >= 1
 
-        # Should find MockU adapter
-        mocku_adapter = next(
+        # Should find CEI adapter (real customer adapter)
+        cei_adapter = next(
             (a for a in data["adapters"] if a["id"] == "cei_excel_format_v1"), None
         )
-        assert mocku_adapter is not None
-        assert mocku_adapter["name"] == "MockU Excel Format v1.2"
-        assert ".xlsx" in mocku_adapter["supported_formats"]
-        assert "courses" in mocku_adapter["data_types"]
+        assert cei_adapter is not None
+        assert cei_adapter["name"] == "CEI Excel Format v1.2"
+        assert ".xlsx" in cei_adapter["supported_formats"]
+        assert "courses" in cei_adapter["data_types"]
 
     def test_institution_admin_adapter_discovery_workflow(self, client):
         """Test institution admin only sees their institution's adapters."""
@@ -225,31 +225,30 @@ class TestAdapterAPIWorkflows:
         assert response.status_code == 200
 
         data = response.get_json()
-        mocku_adapter = next(
+        cei_adapter = next(
             (a for a in data["adapters"] if a["id"] == "cei_excel_format_v1"), None
         )
-        assert mocku_adapter is not None
+        assert cei_adapter is not None
 
-        # Verify required metadata fields
+        # Verify required metadata fields (note: institution_id may be None for global adapters like CEI)
         required_fields = [
             "id",
             "name",
             "description",
             "supported_formats",
-            "institution_id",
             "data_types",
         ]
         for field in required_fields:
-            assert field in mocku_adapter
-            assert mocku_adapter[field] is not None
+            assert field in cei_adapter
+            assert cei_adapter[field] is not None
 
         # Verify data types are sensible
-        assert isinstance(mocku_adapter["data_types"], list)
-        assert len(mocku_adapter["data_types"]) > 0
+        assert isinstance(cei_adapter["data_types"], list)
+        assert len(cei_adapter["data_types"]) > 0
 
         # Verify supported formats
-        assert isinstance(mocku_adapter["supported_formats"], list)
-        assert ".xlsx" in mocku_adapter["supported_formats"]
+        assert isinstance(cei_adapter["supported_formats"], list)
+        assert ".xlsx" in cei_adapter["supported_formats"]
 
     def test_error_handling_in_api_workflows(self, client):
         """Test API error handling for various failure scenarios."""

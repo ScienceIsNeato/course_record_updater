@@ -147,16 +147,16 @@ class TestAdapterWorkflows:
             "institution_id": self.institution_id,  # Use the actual MockU institution ID
         }
 
-        # Should have access to MockU adapter
+        # Should have access to generic CSV adapter (institution-scoped)
         has_access, message = self.export_service.validate_export_access(
-            user, "cei_excel_format_v1"
+            user, "generic_csv_v1"
         )
         assert has_access is True
         assert message == "Access granted"
 
-        # Should not have access to non-existent adapter
+        # Should NOT have access to CEI adapter (global, customer-specific)
         has_access, message = self.export_service.validate_export_access(
-            user, "other_institution_adapter"
+            user, "cei_excel_format_v1"
         )
         assert has_access is False
         assert "Access denied" in message
