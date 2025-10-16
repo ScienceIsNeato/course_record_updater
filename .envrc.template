@@ -98,6 +98,12 @@ export LASSIE_DEFAULT_PORT_E2E="3002"
 # =============================================================================
 export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (testing)
 
+# Email Whitelist (REQUIRED for non-production environments)
+# Comma-separated list of allowed recipient addresses
+# Supports wildcards: *@ethereal.email allows all ethereal addresses
+# Default allows common test domains and ethereal
+export EMAIL_WHITELIST="*@ethereal.email,*@example.com,*@test.com"
+
 # =============================================================================
 # BREVO EMAIL CONFIGURATION (Production Email Provider)
 # =============================================================================
