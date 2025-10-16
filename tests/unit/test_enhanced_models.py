@@ -66,11 +66,11 @@ class TestEnhancedUserModel:
     def test_user_model_with_optional_fields(self):
         """Test User model creation with optional fields"""
         user_data = User.create_schema(
-            email="admin@cei.edu",
+            email="admin@mocku.test",
             first_name="Admin",
             last_name="User",
             role="institution_admin",
-            institution_id="cei-institution",
+            institution_id="mocku-institution",
             password_hash="hashed_password",
             account_status="active",
             program_ids=["program1", "program2"],
@@ -304,18 +304,18 @@ class TestEnhancedInstitutionModel:
         """Test enhanced Institution model with auth fields"""
         institution_data = Institution.create_schema(
             name="College of Eastern Idaho",
-            short_name="CEI",
+            short_name="MockU",
             created_by="admin-user-id",
-            admin_email="admin@cei.edu",
-            website_url="https://cei.edu",
+            admin_email="admin@mocku.test",
+            website_url="https://mocku.test",
         )
 
         # Verify core fields
         assert institution_data["name"] == "College of Eastern Idaho"
-        assert institution_data["short_name"] == "CEI"
+        assert institution_data["short_name"] == "MOCKU"  # Model converts to uppercase
         assert institution_data["created_by"] == "admin-user-id"
-        assert institution_data["admin_email"] == "admin@cei.edu"
-        assert institution_data["website_url"] == "https://cei.edu"
+        assert institution_data["admin_email"] == "admin@mocku.test"
+        assert institution_data["website_url"] == "https://mocku.test"
 
         # Verify auth defaults
         assert institution_data["allow_self_registration"] is False

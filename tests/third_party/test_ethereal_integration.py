@@ -22,9 +22,9 @@ import pytest
 
 
 @pytest.mark.third_party
-def test_ethereal_send_and_receive():
+def test_ethereal_send_and_remockuve():
     """
-    Test complete Ethereal Email send/receive cycle.
+    Test complete Ethereal Email send/remockuve cycle.
 
     This test:
     1. Generates a unique identifier
@@ -149,4 +149,4 @@ def test_ethereal_send_and_receive():
 
 if __name__ == "__main__":
     # Allow running directly for quick testing
-    test_ethereal_send_and_receive()
+    test_ethereal_send_and_remockuve()

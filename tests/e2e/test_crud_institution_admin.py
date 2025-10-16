@@ -31,7 +31,7 @@ def test_tc_crud_ia_001_create_program(authenticated_page: Page):
 
     Expected: Program created successfully within institution
     """
-    # authenticated_page is already logged in as institution admin (sarah.admin@cei.edu)
+    # authenticated_page is already logged in as institution admin (sarah.admin@mocku.test)
     # Console error monitoring is automatic via the 'page' fixture
 
     # Capture all console logs for debugging

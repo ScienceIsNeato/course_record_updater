@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 class SonarCloudScraper:
-    def __init__(self, project_key: str, organization: str = "scienceisneato"):
+    def __init__(self, project_key: str, organization: str = "scienmockusneato"):
         self.project_key = project_key
         self.organization = organization
         self.base_url = "https://sonarcloud.io/api"
@@ -396,7 +396,7 @@ def main():
         description="Scrape SonarCloud issues for actionable feedback"
     )
     parser.add_argument(
-        "--project-key", default="scienceisneato_courserecordupdater", help="SonarCloud project key"
+        "--project-key", default="scienmockusneato_courserecordupdater", help="SonarCloud project key"
     )
     parser.add_argument(
         "--severity",

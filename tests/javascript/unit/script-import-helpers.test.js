@@ -193,7 +193,7 @@ describe('script.js Import Helper Functions', () => {
         <form id="excelImportForm">
           <input type="file" id="excel_file" />
           <select id="import_adapter">
-            <option value="cei_excel_adapter" selected>CEI Excel Adapter</option>
+            <option value="mocku_excel_adapter" selected>MockU Excel Adapter</option>
           </select>
           <input type="checkbox" id="dry_run" />
           <div id="importBtnText"></div>
@@ -240,7 +240,7 @@ describe('script.js Import Helper Functions', () => {
       const formData = fetchCall[1].body;
       
       // Verify FormData contents (note: FormData.get() is available in jsdom)
-      expect(formData.get('adapter_name')).toBe('cei_excel_adapter');
+      expect(formData.get('adapter_name')).toBe('mocku_excel_adapter');
       expect(formData.get('conflict_strategy')).toBe('use_theirs');
       expect(formData.get('dry_run')).toBe('false');
       

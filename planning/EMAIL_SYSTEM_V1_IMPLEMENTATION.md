@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implementing swappable email infrastructure for CEI demo with Gmail SMTP integration and E2E testing capabilities.
+Implementing swappable email infrastructure for MockU demo with Gmail SMTP integration and E2E testing capabilities.
 
 ## Phase 1: Email Service Interface ✅ COMPLETE
 
@@ -473,7 +473,7 @@ JavaScript in `static/instructor_reminder.js`:
 - [ ] Phase 4: Admins can send course reminders
 - [ ] All transactional emails work (verification, reset, invitation, welcome)
 - [ ] Documentation complete
-- [ ] System ready for CEI demo
+- [ ] System ready for MockU demo
 
 ---
 

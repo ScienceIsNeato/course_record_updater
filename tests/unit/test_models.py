@@ -25,7 +25,7 @@ class TestUser:
     def test_create_user_schema_basic(self):
         """Test creating a basic user schema"""
         user = User.create_schema(
-            email="john.doe@cei.edu",
+            email="john.doe@mocku.test",
             first_name="John",
             last_name="Doe",
             role="instructor",
@@ -33,7 +33,7 @@ class TestUser:
             password_hash="$2b$12$test_hash",
         )
 
-        assert user["email"] == "john.doe@cei.edu"
+        assert user["email"] == "john.doe@mocku.test"
         assert user["first_name"] == "John"
         assert user["last_name"] == "Doe"
         assert user["role"] == "instructor"
@@ -45,7 +45,7 @@ class TestUser:
     def test_create_user_schema_with_optional_fields(self):
         """Test creating user schema with optional fields"""
         user = User.create_schema(
-            email="jane.smith@cei.edu",
+            email="jane.smith@mocku.test",
             first_name="Jane",
             last_name="Smith",
             role="program_admin",
@@ -63,7 +63,7 @@ class TestUser:
         """Test that invalid role raises ValueError"""
         with pytest.raises(ValueError, match="Invalid role"):
             User.create_schema(
-                email="test@cei.edu",
+                email="test@mocku.test",
                 first_name="Test",
                 last_name="User",
                 role="invalid_role",
@@ -225,7 +225,7 @@ class TestValidationFunctions:
 
     def test_validate_email(self):
         """Test email validation"""
-        assert validate_email("john.doe@cei.edu") is True
+        assert validate_email("john.doe@mocku.test") is True
         assert validate_email("test@example.com") is True
         assert validate_email("invalid.email") is False
         assert validate_email("@invalid.com") is False
@@ -406,7 +406,7 @@ class TestModelValidationEdgeCases:
         invalid_terms = [
             "Fall 2024",  # Wrong order
             "24 Fall",  # Two-digit year
-            "2024Fall",  # No space, not CEI format
+            "2024Fall",  # No space, not MockU format
         ]
 
         for term_name in invalid_terms:
@@ -428,7 +428,7 @@ class TestModelValidationEdgeCases:
         """Test parse_cei_term comprehensive functionality."""
         from adapters.cei_excel_adapter import parse_cei_term
 
-        # Test valid CEI term formats
+        # Test valid MockU term formats
         valid_terms = ["FA2024", "SP2025", "SU2023", "WI2026"]
 
         expected_results = [
@@ -438,8 +438,8 @@ class TestModelValidationEdgeCases:
             ("2026", "Winter"),
         ]
 
-        for cei_term, expected in zip(valid_terms, expected_results):
-            result = parse_cei_term(cei_term)
+        for mocku_term, expected in zip(valid_terms, expected_results):
+            result = parse_cei_term(mocku_term)
             assert result == expected, f"Expected {expected}, got {result}"
 
     def test_user_model_comprehensive_functionality(self):

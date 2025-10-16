@@ -227,7 +227,7 @@ const REFRESH_CONFIG = {
 - [ ] Zero threading errors in logs
 
 ### **User Experience**
-- [ ] Faster perceived performance
+- [ ] Faster permockuved performance
 - [ ] Consistent data state (no partial loads)
 - [ ] Reliable refresh functionality
 - [ ] Clear last-updated indicators

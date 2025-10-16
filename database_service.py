@@ -104,8 +104,8 @@ def get_all_institutions() -> List[Dict[str, Any]]:
     return _db_service.get_all_institutions()
 
 
-def create_default_cei_institution() -> Optional[str]:
-    return _db_service.create_default_cei_institution()
+def create_default_mocku_institution() -> Optional[str]:
+    return _db_service.create_default_mocku_institution()
 
 
 def create_new_institution(
@@ -528,7 +528,7 @@ __all__ = [
     "create_institution",
     "get_institution_by_id",
     "get_all_institutions",
-    "create_default_cei_institution",
+    "create_default_mocku_institution",
     "create_new_institution",
     "get_institution_instructor_count",
     "get_institution_by_short_name",

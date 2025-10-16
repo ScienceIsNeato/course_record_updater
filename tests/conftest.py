@@ -34,7 +34,7 @@ def pytest_collection_modifyitems(config, items):
 # Shared test credentials (seeded by seed_db.py)
 SITE_ADMIN_EMAIL = "siteadmin@system.local"
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"
-INSTITUTION_ADMIN_EMAIL = "sarah.admin@cei.edu"
+INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
 INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
 
 

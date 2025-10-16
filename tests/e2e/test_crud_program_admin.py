@@ -336,7 +336,7 @@ def test_tc_crud_pa_006_cannot_access_other_programs(
 
     Expected: Program admin cannot access courses from other programs
 
-    Note: lisa.prog@cei.edu is assigned to programs [3, 4] (Liberal Arts and Business)
+    Note: lisa.prog@mocku.test is assigned to programs [3, 4] (Liberal Arts and Business)
     """
     page = program_admin_authenticated_page
 

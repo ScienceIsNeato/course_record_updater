@@ -16,7 +16,7 @@ from openpyxl import Workbook
 from adapters.adapter_registry import get_adapter_registry
 from database_factory import get_database_service
 from database_service import (
-    create_default_cei_institution,
+    create_default_mocku_institution,
     get_active_terms,
     get_all_courses,
     get_all_users,
@@ -33,20 +33,20 @@ class TestAdapterWorkflows:
         """Set up test environment."""
         self.registry = get_adapter_registry()
 
-        # Ensure CEI institution exists
-        self.institution_id = create_default_cei_institution()
+        # Ensure MockU institution exists
+        self.institution_id = create_default_mocku_institution()
 
         # Initialize services with institution ID
         self.import_service = ImportService(self.institution_id)
         self.export_service = ExportService()
 
     def create_test_excel_file(self, file_path: str, data: list) -> None:
-        """Create a test Excel file with CEI format data."""
+        """Create a test Excel file with MockU format data."""
         workbook = Workbook()
         worksheet = workbook.active
         worksheet.title = "Test Data"
 
-        # Headers for CEI format
+        # Headers for MockU format
         headers = [
             "course",
             "section",
@@ -81,7 +81,7 @@ class TestAdapterWorkflows:
                 "effterm_c": "FA2024",
                 "students": "25",
                 "Faculty Name": "Dr. John Smith",
-                "email": "john.smith@cei.edu",
+                "email": "john.smith@mocku.test",
             },
             {
                 "course": "ENG-201",
@@ -89,7 +89,7 @@ class TestAdapterWorkflows:
                 "effterm_c": "FA2024",
                 "students": "30",
                 "Faculty Name": "Prof. Jane Doe",
-                "email": "jane.doe@cei.edu",
+                "email": "jane.doe@mocku.test",
             },
         ]
 
@@ -98,7 +98,7 @@ class TestAdapterWorkflows:
             input_file = Path(tmp_dir) / "test_import.xlsx"
             self.create_test_excel_file(str(input_file), test_data)
 
-            # Step 2: Import data using CEI adapter
+            # Step 2: Import data using MockU adapter
             import_result = self.import_service.import_excel_file(
                 file_path=str(input_file),
                 conflict_strategy=ConflictStrategy.USE_THEIRS,
@@ -141,13 +141,13 @@ class TestAdapterWorkflows:
 
     def test_institution_admin_adapter_access(self):
         """Test that institution admin can only access their institution's adapters."""
-        # Use the actual CEI institution ID
+        # Use the actual MockU institution ID
         user = {
             "role": "institution_admin",
-            "institution_id": self.institution_id,  # Use the actual CEI institution ID
+            "institution_id": self.institution_id,  # Use the actual MockU institution ID
         }
 
-        # Should have access to CEI adapter
+        # Should have access to MockU adapter
         has_access, message = self.export_service.validate_export_access(
             user, "cei_excel_format_v1"
         )
@@ -178,16 +178,16 @@ class TestAdapterWorkflows:
         adapters = self.registry.get_all_adapters()
         assert len(adapters) >= 1
 
-        # Should find CEI adapter
-        cei_adapter_found = any(
+        # Should find MockU adapter
+        mocku_adapter_found = any(
             adapter["id"] == "cei_excel_format_v1" for adapter in adapters
         )
-        assert cei_adapter_found is True
+        assert mocku_adapter_found is True
 
         # Test getting specific adapter
-        cei_adapter = self.registry.get_adapter_by_id("cei_excel_format_v1")
-        assert cei_adapter is not None
-        assert cei_adapter.supports_export() is True
+        mocku_adapter = self.registry.get_adapter_by_id("cei_excel_format_v1")
+        assert mocku_adapter is not None
+        assert mocku_adapter.supports_export() is True
 
     def test_roundtrip_data_consistency(self):
         """Test that import->export->import maintains data consistency."""
@@ -199,7 +199,7 @@ class TestAdapterWorkflows:
                 "effterm_c": "SP2024",
                 "students": "15",
                 "Faculty Name": "Dr. Albert Einstein",
-                "email": "einstein@cei.edu",
+                "email": "einstein@mocku.test",
             }
         ]
 
@@ -252,7 +252,7 @@ class TestAdapterWorkflows:
                 (u for u in final_users if "Einstein" in u.get("last_name", "")), None
             )
             assert einstein is not None
-            assert einstein.get("email") == "einstein@cei.edu"
+            assert einstein.get("email") == "einstein@mocku.test"
 
     def test_adapter_error_handling(self):
         """Test adapter error handling for invalid files."""
@@ -302,7 +302,7 @@ class TestAdapterWorkflows:
         site_admin_adapters = self.registry.get_adapters_for_user(
             "site_admin", self.institution_id
         )
-        # Use the actual CEI institution ID
+        # Use the actual MockU institution ID
         institution_admin_adapters = self.registry.get_adapters_for_user(
             "institution_admin", self.institution_id
         )

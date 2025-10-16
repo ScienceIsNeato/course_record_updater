@@ -42,7 +42,7 @@ def test_export():
 
         logger.info(f"✅ Found adapter: {adapter.get_adapter_info()['name']}")
 
-        # Use CEI institution (from seed_db.py)
+        # Use MockU institution (from seed_db.py)
         inst_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"  # California Engineering Institute
         inst_name = "California Engineering Institute"
         logger.info(f"📍 Using institution: {inst_name}")

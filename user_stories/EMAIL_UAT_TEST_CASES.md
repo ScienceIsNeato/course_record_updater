@@ -18,7 +18,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit registration
    - Verify: "Check your email for verification link" message displayed
    - Check Mailtrap inbox for jane.smith@test.com
-   - Verify email received within 30 seconds
+   - Verify email remockuved within 30 seconds
    - Extract verification link from email body
    - Verify email subject: "Welcome! Please verify your email"
    - Verify email contains user's first name
@@ -34,7 +34,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit reset request
    - Verify: "Check your email for reset instructions" message
    - Check Mailtrap inbox
-   - Verify password reset email received
+   - Verify password reset email remockuved
    - Extract reset link with token
    - Verify token is in link query params
    - Click reset link
@@ -45,7 +45,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit reset
    - Verify: "Password reset successful" message
    - Check Mailtrap inbox
-   - Verify password reset confirmation email received
+   - Verify password reset confirmation email remockuved
    - Verify email includes timestamp
    - Login with NEW password
    - Verify: Login successful
@@ -90,12 +90,12 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Click "Invite User"
    - Enter email: michael.brown@test.com
    - Select role: Instructor
-   - Add personal message: "Welcome to CEI! Looking forward to working with you."
+   - Add personal message: "Welcome to MockU! Looking forward to working with you."
    - Select institution and program
    - Submit invitation
    - Verify: Success message "Invitation sent to michael.brown@test.com"
    - Check Mailtrap inbox for michael.brown@test.com
-   - Verify invitation email received
+   - Verify invitation email remockuved
    - Verify email contains personal message from admin
    - Verify email contains registration link with token
    - Extract invitation token from link
@@ -116,7 +116,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - (Still logged in as Dr. Williams)
    - Invite Dr. Jennifer Lee as Program Admin
    - Check Mailtrap inbox for jennifer.lee@test.com
-   - Verify invitation email received
+   - Verify invitation email remockuved
    - Extract registration link
    - Complete registration for Dr. Lee
    - Login as Dr. Lee
@@ -320,8 +320,8 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 
 7. **Verify Successful Emails Only**
    - Check Mailtrap inboxes
-   - Verify: Alice, Carol, Emma received emails
-   - Verify: Invalid/deleted users did NOT receive emails
+   - Verify: Alice, Carol, Emma remockuved emails
+   - Verify: Invalid/deleted users did NOT remockuve emails
    - Verify: Email content correct for successful sends
 
 8. **Job History Reflects Failures**
@@ -346,7 +346,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 - ✅ Retry logic works with exponential backoff
 - ✅ Failed recipients section displays correctly
 - ✅ Partial success reported accurately
-- ✅ Only valid emails receive reminders
+- ✅ Only valid emails remockuve reminders
 - ✅ Job history shows failure details
 - ✅ Error messages are specific and actionable
 
@@ -392,8 +392,8 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 
 3. **Verify Email Scoping**
    - Check Mailtrap inboxes
-   - Verify: Only CS instructors received emails
-   - Verify: Nursing instructors did NOT receive emails
+   - Verify: Only CS instructors remockuved emails
+   - Verify: Nursing instructors did NOT remockuve emails
 
 4. **Cross-Program Admin Cannot View Job**
    - Logout
@@ -496,7 +496,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 
 4. **Special Characters in Message**
    - Enter message with special characters:
-     - "Hello! <script>alert('test')</script> Please submit data by 12/15/2025. Contact me @ sarah@cei.edu or call (555) 123-4567."
+     - "Hello! <script>alert('test')</script> Please submit data by 12/15/2025. Contact me @ sarah@mocku.test or call (555) 123-4567."
    - Submit reminder
    - Verify: Email sent successfully
    - Check email content

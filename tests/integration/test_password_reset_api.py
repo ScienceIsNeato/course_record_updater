@@ -105,7 +105,7 @@ class TestPasswordResetAPI:
         # Execute
         response = client.post(
             "/api/auth/forgot-password",
-            data=json.dumps({"email": "test@cei.edu"}),
+            data=json.dumps({"email": "test@mocku.test"}),
             content_type="application/json",
         )
 

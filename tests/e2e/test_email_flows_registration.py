@@ -36,7 +36,7 @@ class TestNewUserRegistrationFlow:
 
     def test_complete_registration_and_verification_flow(self, browser, base_url):
         """
-        FULL E2E: User registers → receives email → verifies → logs in
+        FULL E2E: User registers → remockuves email → verifies → logs in
 
         Steps:
         1. Navigate to registration page
@@ -50,7 +50,7 @@ class TestNewUserRegistrationFlow:
         9. Verify dashboard access
 
         Email Assertions:
-        - Verification email received within 5 seconds
+        - Verification email remockuved within 5 seconds
         - Email contains correct user name
         - Email contains valid verification link
         - Link format: {BASE_URL}/verify?token=<token>
@@ -82,7 +82,7 @@ class TestNewUserRegistrationFlow:
         # )
 
         # 5. Assert email content
-        # assert verification_email is not None, "Verification email not received"
+        # assert verification_email is not None, "Verification email not remockuved"
         # assert "Dr. Sarah Johnson" in verification_email.html_body
         # assert test_email in verification_email.html_body
 
@@ -188,7 +188,7 @@ class TestPasswordResetFlow:
 
     def test_complete_password_reset_flow(self, browser, base_url):
         """
-        FULL E2E: User requests reset → receives email → resets password → receives confirmation
+        FULL E2E: User requests reset → remockuves email → resets password → remockuves confirmation
 
         Steps:
         1. Navigate to login page
@@ -202,11 +202,11 @@ class TestPasswordResetFlow:
         9. Log in with new password
 
         Email Assertions:
-        - Reset email received within 5 seconds
+        - Reset email remockuved within 5 seconds
         - Email contains user name
         - Email contains valid reset link
         - Link format: {BASE_URL}/reset-password?token=<token>
-        - Confirmation email received after reset
+        - Confirmation email remockuved after reset
         - Confirmation email confirms password changed
         """
         # Setup: Create existing user account
@@ -320,7 +320,7 @@ class TestInvitationFlow:
         self, browser, base_url
     ):
         """
-        FULL E2E: Admin sends invitation → User receives email → Completes registration
+        FULL E2E: Admin sends invitation → User remockuves email → Completes registration
 
         Steps:
         1. Log in as institution admin
@@ -336,7 +336,7 @@ class TestInvitationFlow:
         11. Log in as new user
 
         Email Assertions:
-        - Invitation email received within 5 seconds
+        - Invitation email remockuved within 5 seconds
         - Email contains inviter name (Dr. Alice Chen)
         - Email contains institution name
         - Email contains role being invited to
@@ -430,7 +430,7 @@ class TestInvitationFlow:
 
 class TestWelcomeEmailFlow:
     """
-    E2E: User receives welcome email after successful verification
+    E2E: User remockuves welcome email after successful verification
 
     Email Flow: Verification Complete → Welcome Email
 
@@ -440,7 +440,7 @@ class TestWelcomeEmailFlow:
 
     def test_welcome_email_sent_after_verification(self, browser, base_url):
         """
-        E2E: After verification, user receives welcome email
+        E2E: After verification, user remockuves welcome email
 
         Steps:
         1. Complete registration flow
@@ -448,7 +448,7 @@ class TestWelcomeEmailFlow:
         3. Check for welcome email
 
         Email Assertions:
-        - Welcome email received after verification
+        - Welcome email remockuved after verification
         - Email contains user name
         - Email contains getting started information
         - Email contains useful links (dashboard, support, etc.)
@@ -481,7 +481,7 @@ class TestMultiUserEmailFlowIntegration:
         """
         pass
 
-    def test_concurrent_registrations_all_receive_emails(self, browser, base_url):
+    def test_concurrent_registrations_all_remockuve_emails(self, browser, base_url):
         """
         STRESS TEST: Multiple simultaneous registrations
 

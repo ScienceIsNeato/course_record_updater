@@ -472,10 +472,10 @@ class TestPTUCSVAdapter:
 ```python
 # adapters/registry.py
 AVAILABLE_ADAPTERS = {
-    'cei_excel_v1': {
-        'class': 'CEIExcelAdapter',
+    'mocku_excel_v1': {
+        'class': 'MockUExcelAdapter',
         'module': 'adapters.cei_excel_adapter',
-        'institution_id': 'cei_institution_id',
+        'institution_id': 'mocku_institution_id',
         'active': True
     },
     'ptu_csv_enrollment_v1': {

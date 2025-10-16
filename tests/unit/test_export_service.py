@@ -24,7 +24,7 @@ class TestExportService:
         assert service.registry is not None
         # Check that the registry can discover adapters
         adapters = service.registry.get_all_adapters()
-        assert len(adapters) >= 1  # Should have at least CEI adapter
+        assert len(adapters) >= 1  # Should have at least MockU adapter
 
     def test_export_config_creation(self):
         """Test ExportConfig dataclass creation."""
@@ -126,7 +126,7 @@ class TestExportServiceAdapterRegistry:
     def test_validate_export_access_success(self):
         """Test successful export access validation."""
         service = ExportService()
-        user = {"role": "site_admin", "institution_id": "cei_institution_id"}
+        user = {"role": "site_admin", "institution_id": "mocku_institution_id"}
 
         has_access, message = service.validate_export_access(
             user, "cei_excel_format_v1"
@@ -150,7 +150,7 @@ class TestExportServiceAdapterRegistry:
     def test_validate_export_access_adapter_not_found(self):
         """Test export access validation with non-existent adapter."""
         service = ExportService()
-        user = {"role": "site_admin", "institution_id": "cei_institution_id"}
+        user = {"role": "site_admin", "institution_id": "mocku_institution_id"}
 
         has_access, message = service.validate_export_access(
             user, "nonexistent_adapter"

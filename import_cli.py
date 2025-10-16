@@ -35,10 +35,10 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs
-  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-mine --dry-run
-  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --manual-review --verbose
-  %(prog)s --file cei_data.xlsx --institution-id cei-inst-001 --use-theirs --adapter cei_excel_adapter
+  %(prog)s --file mocku_data.xlsx --institution-id mocku-inst-001 --use-theirs
+  %(prog)s --file mocku_data.xlsx --institution-id mocku-inst-001 --use-mine --dry-run
+  %(prog)s --file mocku_data.xlsx --institution-id mocku-inst-001 --manual-review --verbose
+  %(prog)s --file mocku_data.xlsx --institution-id mocku-inst-001 --use-theirs --adapter cei_excel_adapter
 
 Conflict Resolution Strategies:
   --use-mine       Keep existing data, skip import conflicts
@@ -264,7 +264,7 @@ def main():
     """Main CLI function"""
     args = parse_arguments()
 
-    print("🚀 CEI Course Data Import Tool")
+    print("🚀 MockU Course Data Import Tool")
     print("=" * 40)
 
     # Validate input file

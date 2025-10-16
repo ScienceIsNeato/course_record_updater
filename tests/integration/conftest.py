@@ -26,10 +26,10 @@ def client():
 @pytest.fixture(scope="class", autouse=True)
 def setup_integration_test_data():
     """
-    Set up integration test data including default CEI institution.
+    Set up integration test data including default MockU institution.
 
     This fixture runs once per test class and ensures that:
-    1. A baseline CEI institution exists for historical test data
+    1. A baseline MockU institution exists for historical test data
     2. Basic test data is available for integration tests
     3. Database connection is properly established
     """
@@ -48,12 +48,12 @@ def setup_integration_test_data():
 
         # Check if data already exists to avoid duplicate seeding
         institutions = db.get_all_institutions() or []
-        cei_exists = any(
+        mocku_exists = any(
             "California Engineering Institute" in inst.get("name", "")
             for inst in institutions
         )
 
-        if not cei_exists:
+        if not mocku_exists:
             # Create full seeded dataset for integration tests
             seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
             seeder.seed_full_dataset()
@@ -79,7 +79,7 @@ def setup_integration_test_database(tmp_path_factory):
     # Set up email whitelist for integration tests to allow test emails
     # Use wildcard to allow all test emails
     os.environ["EMAIL_WHITELIST"] = (
-        "*@inst.edu,*@example.com,*@testu.edu,*@eu.edu,*@cei.edu,*@ethereal.email"
+        "*@inst.test,*@example.com,*@testu.edu,*@eu.edu,*@mocku.test,*@ethereal.email"
     )
 
     # Create temporary database for integration tests

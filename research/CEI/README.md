@@ -5,13 +5,13 @@
 ### Primary Stakeholders
 - **Dr. Leslie Jernberg**
   - Position: Business Faculty, Faculty Assessment Champion
-  - Email: leslie.jernberg@cei.edu
+  - Email: leslie.jernberg@cei.test
   - Phone: 208.535.5353
   - Role: Will demonstrate current process and requirements
 
 - **Matthew R. Taylor, Ph.D.**
   - Position: Dean, Health Sciences
-  - Email: matthew.taylor@cei.edu
+  - Email: matthew.taylor@cei.test
   - Phone: 208.535.5412
   - Role: Decision maker, introduced Leslie as key contact
 

@@ -8,13 +8,13 @@
 
 ## Phase 1: Data Foundation & Import (Weeks 1-2)
 
-### Milestone 1.1: CEI Data Import Utility
-**Goal:** Backfill Firestore with CEI's existing 1,543 CLO records
+### Milestone 1.1: MockU Data Import Utility
+**Goal:** Backfill Firestore with MockU's existing 1,543 CLO records
 
 **Week 1 Tasks:**
-- [ ] Create Excel import utility for CEI's 2024FA spreadsheet
+- [ ] Create Excel import utility for MockU's 2024FA spreadsheet
 - [ ] Design enhanced data model supporting CLOs as primary entities
-- [ ] Map CEI fields to new data structure:
+- [ ] Map MockU fields to new data structure:
   - Course info: course, combo, Faculty Name, Term
   - Enrollment: Enrolled Students, Total W's, pass_course, dci_course
   - CLO data: cllo_text, passed_c, took_c, %, result
@@ -23,14 +23,14 @@
 - [ ] Test import with sample data
 
 **Week 2 Tasks:**
-- [ ] Execute full CEI data import (1,543 records)
+- [ ] Execute full MockU data import (1,543 records)
 - [ ] Verify data integrity and completeness
 - [ ] Create instructor user accounts for all 145 faculty members
 - [ ] Associate instructors with their course assignments
 - [ ] Generate import report and validation summary
 
 **Deliverables:**
-- ✅ CEI historical data fully imported
+- ✅ MockU historical data fully imported
 - ✅ All instructor accounts created
 - ✅ Course-instructor relationships established
 - ✅ Data validation report showing 100% integrity
@@ -138,7 +138,7 @@
 - [ ] Add auto-save functionality for data entry forms
 
 **Week 8 Tasks:**
-- [ ] Implement the exact data entry form from CEI screenshot:
+- [ ] Implement the exact data entry form from MockU screenshot:
   - Course info section (course, combo, term)
   - Enrollment data (Enrolled Students, Total W's, pass_course, DCIF)
   - CLO assessment table (cllo_text, assessment_tool, passed, took, percent, result)
@@ -149,7 +149,7 @@
 
 **Deliverables:**
 - ✅ Instructors can complete course assessments in under 2 hours
-- ✅ Exact replica of CEI's current data entry workflow
+- ✅ Exact replica of MockU's current data entry workflow
 - ✅ Auto-save prevents data loss
 - ✅ Clear submission and confirmation process
 
@@ -197,7 +197,7 @@
 
 **Week 10 Continued:**
 - [ ] Build Access database export functionality
-- [ ] Create Excel export matching CEI's current templates
+- [ ] Create Excel export matching MockU's current templates
 - [ ] Implement scheduled automatic exports
 - [ ] Add custom export formats for different stakeholders
 - [ ] Test integration with existing reporting workflows
@@ -236,7 +236,7 @@
 - [ ] Performance optimization for large datasets
 - [ ] Database indexing and query optimization
 - [ ] Caching implementation for frequently accessed data
-- [ ] Load testing with full CEI dataset
+- [ ] Load testing with full MockU dataset
 - [ ] Security audit and penetration testing
 
 ---
@@ -244,12 +244,12 @@
 ## Phase 7: Deployment & Training (Weeks 13-14)
 
 ### Milestone 7.1: Production Deployment
-**Goal:** Deploy system to production with full CEI data
+**Goal:** Deploy system to production with full MockU data
 
 **Week 13 Tasks:**
 - [ ] Production environment setup on Google Cloud Run
 - [ ] SSL certificate and domain configuration
-- [ ] Production database migration with full CEI data
+- [ ] Production database migration with full MockU data
 - [ ] Backup and disaster recovery procedures
 - [ ] Monitoring and alerting setup
 
@@ -261,7 +261,7 @@
 - [ ] Go-live preparation and rollback procedures
 
 **Deliverables:**
-- ✅ System deployed to production with full CEI data
+- ✅ System deployed to production with full MockU data
 - ✅ All 145 instructor accounts ready for use
 - ✅ Backup and recovery procedures tested
 - ✅ System ready for full faculty use
@@ -270,7 +270,7 @@
 **Goal:** Ensure successful adoption by instructors and administrators
 
 **Week 14 Continued:**
-- [ ] Create training materials specific to CEI workflow
+- [ ] Create training materials specific to MockU workflow
 - [ ] Conduct program administrator training (Leslie and team)
 - [ ] Develop instructor onboarding materials
 - [ ] Set up support procedures and escalation paths
@@ -294,7 +294,7 @@
 - [ ] **Quality:** Significant improvement in data consistency and accuracy
 - [ ] **Efficiency:** Assessment compilation time reduced from weeks to hours
 - [ ] **Satisfaction:** High instructor and administrator satisfaction scores
-- [ ] **Adoption:** System becomes primary assessment workflow for CEI
+- [ ] **Adoption:** System becomes primary assessment workflow for MockU
 
 ---
 
@@ -316,7 +316,7 @@
 - **Scope Creep:** Clear focus on instructor management workflow
 - **Timeline Delays:** Built-in buffer time and parallel development streams
 - **Resource Constraints:** Clear prioritization and milestone-based delivery
-- **Stakeholder Alignment:** Regular check-ins with Leslie and CEI leadership
+- **Stakeholder Alignment:** Regular check-ins with Leslie and MockU leadership
 
 ---
 
@@ -334,4 +334,4 @@
 - Faculty development integration
 - Predictive analytics for program improvement
 
-This timeline transforms the current generic course system into a focused, efficient instructor management platform that directly addresses Leslie's "push out the data and pull it back" workflow while maintaining compatibility with CEI's existing Access-based processes.
+This timeline transforms the current generic course system into a focused, efficient instructor management platform that directly addresses Leslie's "push out the data and pull it back" workflow while maintaining compatibility with MockU's existing Access-based processes.

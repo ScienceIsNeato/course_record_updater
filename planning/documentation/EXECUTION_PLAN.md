@@ -1,10 +1,10 @@
 # **Project Plan – Learning Outcomes AsSaaSment**
-**Pilot: College of Eastern Idaho (CEI) – NWCCU Accreditation**
+**Pilot: College of Eastern Idaho (MockU) – NWCCU Accreditation**
 
 ---
 
 ## 1. Purpose
-This document outlines the phased plan for developing a lightweight SaaS tool to help departments at U.S. community colleges track and report **student learning outcomes (SLOs)** for accreditation. The first pilot will be with **CEI’s Biology Department**, aligned to **NWCCU** standards.
+This document outlines the phased plan for developing a lightweight SaaS tool to help departments at U.S. community colleges track and report **student learning outcomes (SLOs)** for accreditation. The first pilot will be with **MockU’s Biology Department**, aligned to **NWCCU** standards.
 
 ---
 
@@ -26,8 +26,8 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
 
 ## 4. Execution Plan (Phased)
 
-### **Phase 1 – Requirements Validation (CEI/NWCCU)**
-- Meet with CEI Biology leadership (Matt + boss).
+### **Phase 1 – Requirements Validation (MockU/NWCCU)**
+- Meet with MockU Biology leadership (Matt + boss).
 - Validate assumptions: required data fields, report format, cadence, workflow.
 - Collect sample NWCCU reports/templates.
 - Deliverables:
@@ -38,9 +38,9 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
 ### **Phase 2 – MVP Build (Pilot Only)**
 - Core workflows:
   - Manual entry form (course + outcomes data)
-  - File upload + adapter parsing (initially just NWCCU/CEI style)
+  - File upload + adapter parsing (initially just NWCCU/MockU style)
   - Ledger view (sortable/searchable)
-  - Report Builder (Word/PDF export modeled on CEI submission format)
+  - Report Builder (Word/PDF export modeled on MockU submission format)
 - Costs:
   - Cloud hosting (Cloud Run/Firestore): $25–50/month
   - Domain & SSL: ~$20/year
@@ -48,7 +48,7 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
   - One-time adapter development: ~20–40 hrs
 
 ### **Phase 3 – Pilot Test & Feedback**
-- Biology department at CEI runs one cycle using the tool.
+- Biology department at MockU runs one cycle using the tool.
 - Feedback collected from faculty, admins, and dean.
 - Iterations: UI polish, adapter tweaks, export refinements.
 
@@ -101,7 +101,7 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
 
 ---
 
-## 6. Validation Meeting Agenda (CEI Pilot)
+## 6. Validation Meeting Agenda (MockU Pilot)
 
 **A. Current Workflow**
 - How is the NWCCU report currently produced?
@@ -137,7 +137,7 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
 | Domain & SSL | $20/year |
 | Cloud Run + Firestore | $25–50/month |
 | Development | Sweat equity |
-| Adapter Dev (CEI/NWCCU) | ~20–40 hrs (your time) |
+| Adapter Dev (MockU/NWCCU) | ~20–40 hrs (your time) |
 | Expansion Adapter (future) | ~$500/region if outsourced |
 
 ---
@@ -159,14 +159,14 @@ This document outlines the phased plan for developing a lightweight SaaS tool to
 ## 9. Key References
 - [NWCCU Accreditation Standards](https://nwccu.org/accreditation/standards-policies/)
 - [NWCCU Resources](https://nwccu.org/resources/)
-- [College of Eastern Idaho – Accreditation](https://cei.edu/accreditation)
+- [College of Eastern Idaho – Accreditation](https://mocku.test/accreditation)
 
 ---
 
 ## 10. Next Steps
 1. Meet with Matt’s boss → validate assumptions.
-2. Capture actual CEI/NWCCU reporting templates.
+2. Capture actual MockU/NWCCU reporting templates.
 3. Update data model + user flows.
-4. Build CEI/NWCCU adapter + MVP.
+4. Build MockU/NWCCU adapter + MVP.
 5. Run pilot Fall 2025.
 6. Iterate + expand to other NWCCU colleges.

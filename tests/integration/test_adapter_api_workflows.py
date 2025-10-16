@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from database_service import create_default_cei_institution
+from database_service import create_default_mocku_institution
 
 
 @pytest.mark.integration
@@ -20,15 +20,15 @@ class TestAdapterAPIWorkflows:
 
     def setup_method(self):
         """Set up test environment."""
-        # Ensure CEI institution exists
-        self.institution_id = create_default_cei_institution()
+        # Ensure MockU institution exists
+        self.institution_id = create_default_mocku_institution()
 
     def test_site_admin_adapter_discovery_workflow(self, client):
         """Test site admin can discover all available adapters via API."""
         # Mock site admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site-admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -44,21 +44,21 @@ class TestAdapterAPIWorkflows:
         assert "adapters" in data
         assert len(data["adapters"]) >= 1
 
-        # Should find CEI adapter
-        cei_adapter = next(
+        # Should find MockU adapter
+        mocku_adapter = next(
             (a for a in data["adapters"] if a["id"] == "cei_excel_format_v1"), None
         )
-        assert cei_adapter is not None
-        assert cei_adapter["name"] == "CEI Excel Format v1.2"
-        assert ".xlsx" in cei_adapter["supported_formats"]
-        assert "courses" in cei_adapter["data_types"]
+        assert mocku_adapter is not None
+        assert mocku_adapter["name"] == "MockU Excel Format v1.2"
+        assert ".xlsx" in mocku_adapter["supported_formats"]
+        assert "courses" in mocku_adapter["data_types"]
 
     def test_institution_admin_adapter_discovery_workflow(self, client):
         """Test institution admin only sees their institution's adapters."""
         # Mock institution admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
             sess["user_id"] = "test-institution-admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "institution_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -85,7 +85,7 @@ class TestAdapterAPIWorkflows:
         # Mock instructor user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-instructor-123"
-            sess["email"] = "instructor@cei.edu"
+            sess["email"] = "instructor@mocku.test"
             sess["role"] = "instructor"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -118,7 +118,7 @@ class TestAdapterAPIWorkflows:
         workbook = Workbook()
         worksheet = workbook.active
 
-        # CEI format headers
+        # MockU format headers
         headers = [
             "course",
             "section",
@@ -136,7 +136,7 @@ class TestAdapterAPIWorkflows:
         worksheet.cell(row=2, column=3, value="FA2024")
         worksheet.cell(row=2, column=4, value="10")
         worksheet.cell(row=2, column=5, value="Test Instructor")
-        worksheet.cell(row=2, column=6, value="test@cei.edu")
+        worksheet.cell(row=2, column=6, value="test@mocku.test")
 
         workbook.save(file_path)
 
@@ -145,7 +145,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -179,7 +179,7 @@ class TestAdapterAPIWorkflows:
         # Mock instructor user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-instructor-123"
-            sess["email"] = "instructor@cei.edu"
+            sess["email"] = "instructor@mocku.test"
             sess["role"] = "instructor"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -213,7 +213,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -225,10 +225,10 @@ class TestAdapterAPIWorkflows:
         assert response.status_code == 200
 
         data = response.get_json()
-        cei_adapter = next(
+        mocku_adapter = next(
             (a for a in data["adapters"] if a["id"] == "cei_excel_format_v1"), None
         )
-        assert cei_adapter is not None
+        assert mocku_adapter is not None
 
         # Verify required metadata fields
         required_fields = [
@@ -240,23 +240,23 @@ class TestAdapterAPIWorkflows:
             "data_types",
         ]
         for field in required_fields:
-            assert field in cei_adapter
-            assert cei_adapter[field] is not None
+            assert field in mocku_adapter
+            assert mocku_adapter[field] is not None
 
         # Verify data types are sensible
-        assert isinstance(cei_adapter["data_types"], list)
-        assert len(cei_adapter["data_types"]) > 0
+        assert isinstance(mocku_adapter["data_types"], list)
+        assert len(mocku_adapter["data_types"]) > 0
 
         # Verify supported formats
-        assert isinstance(cei_adapter["supported_formats"], list)
-        assert ".xlsx" in cei_adapter["supported_formats"]
+        assert isinstance(mocku_adapter["supported_formats"], list)
+        assert ".xlsx" in mocku_adapter["supported_formats"]
 
     def test_error_handling_in_api_workflows(self, client):
         """Test API error handling for various failure scenarios."""
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -313,7 +313,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -354,7 +354,7 @@ class TestAdapterAPIWorkflows:
         for role, should_have_access, description in roles_and_expected_access:
             with client.session_transaction() as sess:
                 sess["user_id"] = f"test-{role}-123"
-                sess["email"] = f"{role}@cei.edu"
+                sess["email"] = f"{role}@mocku.test"
                 sess["role"] = role
                 sess["institution_id"] = self.institution_id
                 sess["program_ids"] = []

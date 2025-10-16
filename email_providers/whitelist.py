@@ -64,7 +64,7 @@ class EmailWhitelist:
 
     def is_allowed(self, email: str) -> bool:
         """
-        Check if an email address is allowed to receive emails
+        Check if an email address is allowed to remockuve emails
         
         Args:
             email: Email address to check

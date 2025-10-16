@@ -1,7 +1,7 @@
 """
 API Routes Module
 
-This module defines the new REST API endpoints for the CEI Course Management System.
+This module defines the new REST API endpoints for the MockU Course Management System.
 These routes provide a proper REST API structure while maintaining backward compatibility
 with the existing single-page application.
 """
@@ -3208,7 +3208,7 @@ def health_check():
         {
             "success": True,
             "status": "healthy",
-            "message": "CEI Course Management API is running",
+            "message": "MockU Course Management API is running",
             "version": "2.0.0",
         }
     )
@@ -4365,7 +4365,7 @@ def excel_import_api():
 def _validate_excel_import_request():
     """Validate the Excel import request and extract parameters."""
     # Debug: Log request information
-    logger.info("Excel import request received")
+    logger.info("Excel import request remockuved")
     logger.info("Request files: %s", list(request.files.keys()))
     logger.info("Request form: %s", dict(request.form))
 
@@ -4380,7 +4380,7 @@ def _validate_excel_import_request():
         raise ValueError("No file selected")
 
     logger.info(
-        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+        f"File remockuved: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
     )
 
     # Get form parameters (need adapter_id for validation)
@@ -4458,18 +4458,18 @@ def _determine_target_institution(user_role, user_institution_id, adapter_id):
     if user_role == UserRole.SITE_ADMIN.value:
         # Site admins can import for any institution - let adapter determine it
         if adapter_id == "cei_excel_format_v1":
-            # CEI adapter always imports for CEI institution
-            from database_service import create_default_cei_institution
+            # MockU adapter always imports for MockU institution
+            from database_service import create_default_mocku_institution
 
-            institution_id = create_default_cei_institution()
+            institution_id = create_default_mocku_institution()
             if not institution_id:
-                raise ValueError("Failed to create/find CEI institution")
+                raise ValueError("Failed to create/find MockU institution")
             return institution_id
         else:
             # For other adapters, site admin needs to specify institution
             # TODO: Add institution selection UI for site admins
             raise ValueError(
-                "Site admin must specify target institution for non-CEI adapters"
+                "Site admin must specify target institution for non-MockU adapters"
             )
     else:
         # Institution/program admins use their own institution
@@ -4645,7 +4645,7 @@ def export_data():
         - Exports ALL institutions as a zip containing subdirectories per institution
         - Structure: system_export_TIMESTAMP.zip
                        ├── system_manifest.json
-                       ├── cei/
+                       ├── mocku/
                        │   └── [institution export files]
                        ├── rcc/
                        │   └── [institution export files]

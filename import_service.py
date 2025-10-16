@@ -21,7 +21,7 @@ from database_service import (
     create_course,
     create_course_offering,
     create_course_section,
-    create_default_cei_institution,
+    create_default_mocku_institution,
     create_term,
     create_user,
     get_course_by_number,

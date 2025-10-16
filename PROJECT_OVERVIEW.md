@@ -42,7 +42,7 @@ A web application built with Python (Flask) that allows:
 *   **Database Service/Handler:**
     *   Separate component/module responsible for all interactions with SQLite via SQLAlchemy.
     *   Provides functions like `save_course`, `get_all_courses`, `update_course`, `delete_course`.
-    *   Called by the Flask endpoint handlers *after* receiving validated data from an adapter.
+    *   Called by the Flask endpoint handlers *after* remockuving validated data from an adapter.
 *   **Database:**
     *   SQLite (SQLAlchemy ORM).
     *   Flexible schema, free tier, GCP integration.
@@ -65,7 +65,7 @@ A web application built with Python (Flask) that allows:
     *   **Manual:** User fills the manual entry form and submits (POST to `/add_course_manual`).
     *   **Automatic:** User uploads a `.docx` file, selects the matching adapter, and submits (POST to `/add_course_automatic`).
 3.  **Processing (Handler + Adapter):**
-    *   The corresponding Flask route handler receives the request.
+    *   The corresponding Flask route handler remockuves the request.
     *   The handler calls the appropriate adapter (`BaseAdapter` for manual, `FileAdapterInterface` -> specific file adapter for automatic).
     *   The adapter attempts to parse and validate the input (form data or file content) into a standard dictionary.
     *   The adapter returns the validated dictionary or an error indication to the handler.

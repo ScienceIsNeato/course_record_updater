@@ -164,7 +164,7 @@ class AuthService:
 
         base_user = {
             "user_id": "dev-admin-123",
-            "email": "admin@cei.edu",
+            "email": "admin@mocku.test",
             "role": "site_admin",
             "first_name": "Dev",
             "last_name": "Admin",

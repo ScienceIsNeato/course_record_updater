@@ -39,7 +39,7 @@
 **Key Attributes:**
 - `institution_id` (UUID, primary key)
 - `name` (e.g., "College of Eastern Idaho")
-- `short_name` (e.g., "CEI")
+- `short_name` (e.g., "MockU")
 - `website_url`
 - `primary_accreditor` (e.g., "NWCCU")
 - `created_at`, `updated_at`

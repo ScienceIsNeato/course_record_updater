@@ -29,8 +29,8 @@ BaseAdapter (Abstract)
 └── get_adapter_info() -> dict
 
 Institution-Specific Adapters
-├── CEIExcelAdapter
-│   ├── handles: .xlsx files with CEI's course/faculty structure
+├── MockUExcelAdapter
+│   ├── handles: .xlsx files with MockU's course/faculty structure
 │   ├── detects: courses, sections, faculty, assessments
 │   └── validates: column headers, data formats
 ├── PTUCSVAdapter
@@ -108,10 +108,10 @@ class BaseAdapter:
 ```python
 def get_adapter_info(self) -> Dict[str, Any]:
     return {
-        "name": "CEI Excel Format",
-        "description": "Imports course, faculty, and assessment data from CEI's Excel exports",
+        "name": "MockU Excel Format",
+        "description": "Imports course, faculty, and assessment data from MockU's Excel exports",
         "supported_formats": [".xlsx", ".xls"],
-        "institution_id": "cei_institution_id",
+        "institution_id": "mocku_institution_id",
         "data_types": ["courses", "sections", "faculty", "assessments"],
         "version": "1.2.0",
         "created_by": "System Developer",
@@ -138,8 +138,8 @@ def get_adapter_info(self) -> Dict[str, Any]:
     <label>Import Adapter:</label>
     <select name="import_adapter">
         <!-- Populated based on user's institution scope -->
-        <option value="cei_excel_v1">CEI Excel Format v1.2</option>
-        <option value="cei_csv_v1">CEI CSV Format v1.0</option>
+        <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
+        <option value="mocku_csv_v1">MockU CSV Format v1.0</option>
     </select>
     <small>Only adapters for your institution are shown</small>
 </div>
@@ -150,12 +150,12 @@ def get_adapter_info(self) -> Dict[str, Any]:
 <div class="compatibility-check" id="compatibilityStatus">
     <!-- Populated after file upload and adapter selection -->
     <div class="alert alert-success">
-        ✅ File compatible with CEI Excel Format
+        ✅ File compatible with MockU Excel Format
         Detected data types: Courses (45), Faculty (12), Assessments (180)
     </div>
     <!-- OR -->
     <div class="alert alert-danger">
-        ❌ File incompatible with CEI Excel Format
+        ❌ File incompatible with MockU Excel Format
         Contact your institution admin to request a custom adapter for this format.
     </div>
 </div>
@@ -169,7 +169,7 @@ def get_adapter_info(self) -> Dict[str, Any]:
     <label>Output Format:</label>
     <select name="export_adapter">
         <!-- Same institution-scoped adapters -->
-        <option value="cei_excel_v1">CEI Excel Format v1.2</option>
+        <option value="mocku_excel_v1">MockU Excel Format v1.2</option>
         <option value="generic_csv">Generic CSV Format</option>
     </select>
 </div>
@@ -224,8 +224,8 @@ def get_adapter_info(self) -> Dict[str, Any]:
 ```
 adapters/
 ├── base_adapter.py              # Abstract base class
-├── cei_excel_adapter.py         # CEI Excel format handler
-├── cei_csv_adapter.py           # CEI CSV format handler
+├── cei_excel_adapter.py         # MockU Excel format handler
+├── mocku_csv_adapter.py           # MockU CSV format handler
 ├── ptu_csv_adapter.py           # PTU CSV format handler
 ├── rcc_json_adapter.py          # RCC JSON format handler
 └── adapter_registry.py          # Adapter discovery and management
@@ -361,7 +361,7 @@ python import_cli.py \
   --dry-run
 
 # List available adapters for institution
-python import_cli.py --list-adapters --institution-id cei_institution_id
+python import_cli.py --list-adapters --institution-id mocku_institution_id
 
 # Validate file compatibility only
 python import_cli.py --file sample.xlsx --adapter cei_excel_format_v1 --validate-only
@@ -372,8 +372,8 @@ python import_cli.py --file sample.xlsx --adapter cei_excel_format_v1 --validate
 # Export using institution-specific adapter
 python export_cli.py \
   --adapter cei_excel_format_v1 \
-  --output "cei_export.xlsx" \
-  --institution-id cei_institution_id
+  --output "mocku_export.xlsx" \
+  --institution-id mocku_institution_id
 
 # Export with specific data types
 python export_cli.py \
@@ -389,7 +389,7 @@ python scripts/round_trip_validate.py \
   --input tests/data/sanitized_import.xlsx \
   --adapter cei_excel_format_v1 \
   --export build-output/roundtrip_export.xlsx \
-  --institution-id cei_institution_id
+  --institution-id mocku_institution_id
 
 # Validate all adapters in CI
 python scripts/round_trip_validate.py --all-adapters
@@ -438,7 +438,7 @@ fetch('/api/export/generate', {
     body: JSON.stringify({
         adapter_id: 'cei_excel_format_v1',
         data_types: ['courses', 'faculty'],
-        institution_id: 'cei_institution_id'
+        institution_id: 'mocku_institution_id'
     })
 });
 ```

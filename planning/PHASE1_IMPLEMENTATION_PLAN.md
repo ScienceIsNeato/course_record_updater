@@ -34,7 +34,7 @@ course_record = {
 # New entity structure
 User = {
     'user_id': 'uuid',
-    'email': 'john.smith@cei.edu',
+    'email': 'john.smith@mocku.test',
     'first_name': 'John',
     'last_name': 'Smith',
     'role': 'instructor',  # instructor, program_admin, site_admin
@@ -163,7 +163,7 @@ def update_outcome_assessment(outcome_id: str, assessment_data: dict) -> bool
 - ✅ Integrates seamlessly with Firestore
 - ✅ Handles email/password, SSO, MFA
 - ✅ Session management built-in
-- ✅ CEI can use existing institutional email
+- ✅ MockU can use existing institutional email
 
 **Option B: Custom JWT Implementation**
 - More control but more complexity
@@ -282,7 +282,7 @@ PUT    /api/outcomes/<id>               # Update outcome
 PUT    /api/outcomes/<id>/assessment    # Update assessment data
 
 # Import API (existing pattern extended)
-POST   /api/import/cei-excel            # CEI data import
+POST   /api/import/mocku-excel            # MockU data import
 GET    /api/import/status/<import_id>   # Import status
 ```
 
@@ -326,7 +326,7 @@ GET    /api/import/status/<import_id>   # Import status
 - [ ] Begin UI transformation (instructor dashboard)
 - [ ] Add basic course section assignment interface
 - [ ] Integration testing with new data model
-- [ ] Prepare for CEI import adapter development
+- [ ] Prepare for MockU import adapter development
 
 ---
 
@@ -337,14 +337,14 @@ GET    /api/import/status/<import_id>   # Import status
 - [ ] Authentication system functional with role-based access
 - [ ] REST API endpoints responding correctly
 - [ ] Backward compatibility maintained (current system still works)
-- [ ] New relational data model supports CEI requirements
+- [ ] New relational data model supports MockU requirements
 
 ### Business Validation
 - [ ] Can create users with different roles
 - [ ] Can assign instructors to course sections
 - [ ] Can track course outcomes separately from sections
-- [ ] Data model supports CEI's 1,543 CLO records structure
-- [ ] Ready for CEI import adapter implementation
+- [ ] Data model supports MockU's 1,543 CLO records structure
+- [ ] Ready for MockU import adapter implementation
 
 ---
 
@@ -360,4 +360,4 @@ GET    /api/import/status/<import_id>   # Import status
 - **Testing overhead**: Build tests incrementally, not all at end
 - **Integration complexity**: Test each component independently first
 
-This plan provides a solid foundation for scaling your current system to meet CEI's enterprise requirements while maintaining the architectural strengths you've already built.
+This plan provides a solid foundation for scaling your current system to meet MockU's enterprise requirements while maintaining the architectural strengths you've already built.

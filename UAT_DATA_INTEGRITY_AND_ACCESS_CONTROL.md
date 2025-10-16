@@ -65,16 +65,16 @@ All test users have password: `TestUser123!` or role-specific password
 - `siteadmin@system.local` (password: `SiteAdmin123!`)
 
 **Institution Admins** (one per institution):
-- CEI: `sarah.admin@cei.edu` (password: `InstitutionAdmin123!`)
+- MockU: `sarah.admin@mocku.test` (password: `InstitutionAdmin123!`)
 - RCC: `mike.admin@riverside.edu` (password: `InstitutionAdmin123!`)
 - PTU: `admin@pactech.edu` (password: `InstitutionAdmin123!`)
 
 **Program Admins** (program-scoped):
-- CEI CS/EE: `lisa.prog@cei.edu`
+- MockU CS/EE: `lisa.prog@mocku.test`
 - RCC Liberal Arts: `robert.prog@riverside.edu`
 
 **Instructors** (section-scoped):
-- CEI: `john.instructor@cei.edu`
+- MockU: `john.instructor@mocku.test`
 - RCC: `susan.instructor@riverside.edu`
 - PTU: `david.instructor@pactech.edu`
 
@@ -95,7 +95,7 @@ All test users have password: `TestUser123!` or role-specific password
 **Test Data Fixture** (created in test setup):
 ```python
 # Create ZIP of CSVs with controlled test data
-# institutions.csv: 3 rows (CEI, RCC, PTU)
+# institutions.csv: 3 rows (MockU, RCC, PTU)
 # programs.csv: 6 rows (2 per institution)
 # courses.csv: Known count per institution
 # users.csv: Known users per role
@@ -160,7 +160,7 @@ assert 'Pacific Technical University' in institution_names
 **Expected Results**:
 - ✅ **Status**: 200 OK
 - ✅ **Summary Counts**: Shows aggregated data from all 3 institutions
-- ✅ **Institutions Array**: Contains CEI, RCC, PTU
+- ✅ **Institutions Array**: Contains MockU, RCC, PTU
 - ✅ **Programs Array**: Contains programs from all institutions
 - ✅ **Courses Array**: Contains courses from all institutions
 - ✅ **Users Array**: Contains users from all institutions
@@ -233,7 +233,7 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 **Expected Results**:
 - ✅ **Status**: 200 OK
 - ✅ **ZIP Format**: Response is valid ZIP file
-- ✅ **institutions.csv**: Contains 3+ rows (CEI, RCC, PTU)
+- ✅ **institutions.csv**: Contains 3+ rows (MockU, RCC, PTU)
 - ✅ **programs.csv**: Contains 6+ rows (all programs)
 - ✅ **courses.csv**: Contains 15+ rows (all courses)
 - ✅ **users.csv**: Contains 9+ rows (all users, passwords excluded)
@@ -277,16 +277,16 @@ Validate that Institution Admin sees ONLY their institution's data, with complet
 
 ---
 
-### **TC-DAC-101: Institution Admin Dashboard API - CEI Only**
-**Purpose**: Verify CEI admin sees only CEI data, not RCC or PTU
+### **TC-DAC-101: Institution Admin Dashboard API - MockU Only**
+**Purpose**: Verify MockU admin sees only MockU data, not RCC or PTU
 
 **Prerequisites**: Database seeded
 
 **Test Steps**:
 ```python
-# Login as CEI institution admin
+# Login as MockU institution admin
 client.post('/api/login', json={
-    'email': 'sarah.admin@cei.edu',
+    'email': 'sarah.admin@mocku.test',
     'password': 'InstitutionAdmin123!'
 })
 
@@ -297,12 +297,12 @@ assert response.status_code == 200
 data = response.get_json()['data']
 summary = data['summary']
 
-# Validate CEI-only counts (based on seeded data)
-assert summary.get('programs') == 3, "CEI has 3 programs: CS, EE, Unclassified"
-assert summary.get('courses') >= 4, "CEI has 4+ courses"
-assert summary.get('users') >= 4, "CEI has 4+ users"
+# Validate MockU-only counts (based on seeded data)
+assert summary.get('programs') == 3, "MockU has 3 programs: CS, EE, Unclassified"
+assert summary.get('courses') >= 4, "MockU has 4+ courses"
+assert summary.get('users') >= 4, "MockU has 4+ users"
 
-# Validate program names are CEI only
+# Validate program names are MockU only
 programs = data.get('programs', [])
 program_names = {prog['name'] for prog in programs}
 assert program_names == {'Computer Science', 'Electrical Engineering', 'General Studies'}
@@ -314,31 +314,31 @@ assert 'Pacific Technical University' not in {i.get('name', '') for i in data.ge
 
 **Expected Results**:
 - ✅ **Programs**: Exactly 3 (CS, EE, General Studies)
-- ✅ **Courses**: Only CEI courses visible
-- ✅ **Users**: Only CEI users visible
-- ✅ **Sections**: Only CEI sections visible
+- ✅ **Courses**: Only MockU courses visible
+- ✅ **Users**: Only MockU users visible
+- ✅ **Sections**: Only MockU sections visible
 - ✅ **Negative**: NO RCC programs (Liberal Arts, Business)
 - ✅ **Negative**: NO PTU programs (Mechanical Engineering)
 
 **Critical Assertions**:
 - [ ] Program count is exactly 3
-- [ ] All program names are CEI programs
+- [ ] All program names are MockU programs
 - [ ] No forbidden program names present (Liberal Arts, Business, etc.)
 - [ ] Course numbers don't include RCC/PTU courses
 - [ ] User list doesn't include RCC/PTU users
 
 ---
 
-### **TC-DAC-102: Institution Admin CSV Export - CEI Only**
-**Purpose**: Verify export contains only CEI data
+### **TC-DAC-102: Institution Admin CSV Export - MockU Only**
+**Purpose**: Verify export contains only MockU data
 
 **Prerequisites**: TC-DAC-101 passed
 
 **Test Steps**:
 ```python
-# Login as CEI admin
+# Login as MockU admin
 client.post('/api/login', json={
-    'email': 'sarah.admin@cei.edu',
+    'email': 'sarah.admin@mocku.test',
     'password': 'InstitutionAdmin123!'
 })
 
@@ -353,12 +353,12 @@ import zipfile, io
 zip_buffer = io.BytesIO(response.data)
 
 with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
-    # Check institutions.csv - should have ONLY 1 row (CEI)
+    # Check institutions.csv - should have ONLY 1 row (MockU)
     inst_csv = zip_file.read('institutions.csv').decode('utf-8')
     inst_lines = inst_csv.strip().split('\n')
     assert len(inst_lines) == 2, f"Expected 1 institution (+ header), got {len(inst_lines)-1}"
     
-    # Check programs.csv - should have ONLY 3 rows (CEI programs)
+    # Check programs.csv - should have ONLY 3 rows (MockU programs)
     prog_csv = zip_file.read('programs.csv').decode('utf-8')
     prog_lines = prog_csv.strip().split('\n')
     assert len(prog_lines) == 4, f"Expected 3 programs (+ header), got {len(prog_lines)-1}"
@@ -374,9 +374,9 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 ```
 
 **Expected Results**:
-- ✅ **institutions.csv**: 1 row (CEI only)
+- ✅ **institutions.csv**: 1 row (MockU only)
 - ✅ **programs.csv**: 3 rows (CS, EE, General Studies)
-- ✅ **courses.csv**: Only CEI courses
+- ✅ **courses.csv**: Only MockU courses
 - ✅ **Negative**: NO RCC or PTU institution data
 - ✅ **Negative**: NO RCC or PTU program names in ANY CSV
 
@@ -385,24 +385,24 @@ with zipfile.ZipFile(zip_buffer, 'r') as zip_file:
 - [ ] Export contains exactly 3 programs
 - [ ] No RCC text anywhere in ZIP
 - [ ] No PTU text anywhere in ZIP
-- [ ] Course count matches CEI course count from database
+- [ ] Course count matches MockU course count from database
 
 ---
 
-### **TC-DAC-103: Cross-Institution Isolation - RCC vs CEI**
-**Purpose**: Verify RCC admin sees completely different data than CEI admin
+### **TC-DAC-103: Cross-Institution Isolation - RCC vs MockU**
+**Purpose**: Verify RCC admin sees completely different data than MockU admin
 
 **Prerequisites**: TC-DAC-101 and TC-DAC-102 passed
 
 **Test Steps**:
 ```python
-# First, get CEI admin's data
+# First, get MockU admin's data
 client.post('/api/login', json={
-    'email': 'sarah.admin@cei.edu',
+    'email': 'sarah.admin@mocku.test',
     'password': 'InstitutionAdmin123!'
 })
-cei_response = client.get('/api/dashboard/data')
-cei_programs = {p['name'] for p in cei_response.get_json()['data']['programs']}
+mocku_response = client.get('/api/dashboard/data')
+mocku_programs = {p['name'] for p in mocku_response.get_json()['data']['programs']}
 
 # Logout and login as RCC admin
 client.post('/api/logout')
@@ -414,25 +414,25 @@ rcc_response = client.get('/api/dashboard/data')
 rcc_programs = {p['name'] for p in rcc_response.get_json()['data']['programs']}
 
 # Verify NO overlap
-assert cei_programs.isdisjoint(rcc_programs), \
-    f"Data leakage! CEI and RCC programs overlap: {cei_programs & rcc_programs}"
+assert mocku_programs.isdisjoint(rcc_programs), \
+    f"Data leakage! MockU and RCC programs overlap: {mocku_programs & rcc_programs}"
 
-# Verify RCC admin sees RCC programs, not CEI
+# Verify RCC admin sees RCC programs, not MockU
 assert 'Liberal Arts' in rcc_programs or 'Business Administration' in rcc_programs
 assert 'Computer Science' not in rcc_programs
 assert 'Electrical Engineering' not in rcc_programs
 ```
 
 **Expected Results**:
-- ✅ **Complete Isolation**: Zero overlap between CEI and RCC data
+- ✅ **Complete Isolation**: Zero overlap between MockU and RCC data
 - ✅ **RCC Programs**: Sees Liberal Arts, Business (not CS, EE)
-- ✅ **CEI Programs**: Sees CS, EE (not Liberal Arts, Business)
+- ✅ **MockU Programs**: Sees CS, EE (not Liberal Arts, Business)
 - ✅ **Data Integrity**: Both institution admins see their complete data
 
 **Critical Assertions**:
 - [ ] No program name overlap between institutions
 - [ ] RCC admin sees RCC programs only
-- [ ] CEI admin sees CEI programs only
+- [ ] MockU admin sees MockU programs only
 - [ ] No course data leakage between institutions
 - [ ] No user data leakage between institutions
 
@@ -446,15 +446,15 @@ Validate that Program Admin sees only data for their assigned programs, not othe
 ---
 
 ### **TC-DAC-201: Program Admin Dashboard API - CS/EE Programs Only**
-**Purpose**: Verify CEI CS/EE program admin sees only CS and EE data, not General Studies
+**Purpose**: Verify MockU CS/EE program admin sees only CS and EE data, not General Studies
 
-**Prerequisites**: Database seeded with Lisa (CS/EE admin) at CEI
+**Prerequisites**: Database seeded with Lisa (CS/EE admin) at MockU
 
 **Test Steps**:
 ```python
-# Login as Lisa - CS and EE program admin at CEI
+# Login as Lisa - CS and EE program admin at MockU
 client.post('/api/login', json={
-    'email': 'lisa.prog@cei.edu',
+    'email': 'lisa.prog@mocku.test',
     'password': 'TestUser123!'
 })
 
@@ -512,7 +512,7 @@ Program admin dashboard currently returns 0 courses/sections. This test validate
 ```python
 # Login as Lisa (CS/EE program admin)
 client.post('/api/login', json={
-    'email': 'lisa.prog@cei.edu',
+    'email': 'lisa.prog@mocku.test',
     'password': 'TestUser123!'
 })
 
@@ -564,13 +564,13 @@ Validate that Instructor sees only sections they are assigned to teach, not othe
 ### **TC-DAC-301: Instructor Dashboard API - Assigned Sections Only**
 **Purpose**: Verify instructor sees only their 6 assigned sections
 
-**Prerequisites**: Database seeded with John (instructor) assigned to 6 sections at CEI
+**Prerequisites**: Database seeded with John (instructor) assigned to 6 sections at MockU
 
 **Test Steps**:
 ```python
-# Login as John - instructor at CEI with 6 sections
+# Login as John - instructor at MockU with 6 sections
 client.post('/api/login', json={
-    'email': 'john.instructor@cei.edu',
+    'email': 'john.instructor@mocku.test',
     'password': 'TestUser123!'
 })
 
@@ -605,7 +605,7 @@ for section in sections:
 ```python
 from database_service import get_sections_by_instructor, get_user_by_email
 
-john = get_user_by_email('john.instructor@cei.edu')
+john = get_user_by_email('john.instructor@mocku.test')
 john_sections = get_sections_by_instructor(john['user_id']) or []
 
 print(f"Database sections for John: {len(john_sections)}")
@@ -635,7 +635,7 @@ assert total_enrollment == 120
 ```python
 # Login as John
 client.post('/api/login', json={
-    'email': 'john.instructor@cei.edu',
+    'email': 'john.instructor@mocku.test',
     'password': 'TestUser123!'
 })
 
@@ -747,9 +747,9 @@ assert export_response.status_code in [401, 302], \
 
 2. **Adapters**: Only Generic CSV adapter tested
    - **Generic CSV Adapter** (`generic_csv_v1`): Bidirectional ZIP format, institution-agnostic
-   - **CEI Excel Adapter** (`cei_excel_format_v1`): Customer-specific, import-only
+   - **MockU Excel Adapter** (`cei_excel_format_v1`): Customer-specific, import-only
    - Testing focuses on Generic CSV as the universal bidirectional format
-   - Customer-specific adapters (CEI) not in UAT scope
+   - Customer-specific adapters (MockU) not in UAT scope
 
 3. **Frontend Validation**: Deferred to later phase
    - TODO: Add UI visibility tests (which buttons/panels appear)

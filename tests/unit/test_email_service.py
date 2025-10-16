@@ -2,7 +2,7 @@
 Unit tests for Email Service
 
 Tests email functionality including templates, SMTP integration, and
-CRITICAL PROTECTION against sending emails to CEI/protected domains.
+CRITICAL PROTECTION against sending emails to MockU/protected domains.
 """
 
 from unittest.mock import MagicMock, Mock, patch
@@ -43,13 +43,13 @@ def app_context(app):
 
 
 class TestEmailProtection:
-    """Test critical protection against sending emails to CEI/protected domains"""
+    """Test critical protection against sending emails to MockU/protected domains"""
 
-    def test_protected_domain_detection_cei_edu(self):
-        """Test detection of cei.edu domain"""
-        assert EmailService._is_protected_email("test@cei.edu") is True
-        assert EmailService._is_protected_email("admin@cei.edu") is True
-        assert EmailService._is_protected_email("student@cei.edu") is True
+    def test_protected_domain_detection_mocku_edu(self):
+        """Test detection of mocku.test domain"""
+        assert EmailService._is_protected_email("test@mocku.test") is True
+        assert EmailService._is_protected_email("admin@mocku.test") is True
+        assert EmailService._is_protected_email("student@mocku.test") is True
 
     def test_protected_domain_detection_coastal_domains(self):
         """Test detection of coastal education domains"""
@@ -59,7 +59,7 @@ class TestEmailProtection:
 
     def test_protected_domain_detection_subdomains(self):
         """Test detection of subdomains of protected domains"""
-        assert EmailService._is_protected_email("test@mail.cei.edu") is True
+        assert EmailService._is_protected_email("test@mail.mocku.test") is True
         assert EmailService._is_protected_email("admin@student.coastal.edu") is True
 
     def test_safe_domain_detection(self):
@@ -73,7 +73,7 @@ class TestEmailProtection:
         """Test handling of invalid email formats"""
         assert EmailService._is_protected_email("") is False
         assert EmailService._is_protected_email("invalid-email") is False
-        assert EmailService._is_protected_email("@cei.edu") is False
+        assert EmailService._is_protected_email("@mocku.test") is False
         assert EmailService._is_protected_email(None) is False
 
     def test_protected_email_blocking_verification(self, app_context):
@@ -83,7 +83,7 @@ class TestEmailProtection:
             match="Cannot send emails to protected domain.*in non-production environment",
         ):
             EmailService.send_verification_email(
-                email="test@cei.edu",
+                email="test@mocku.test",
                 verification_token="test-token",
                 user_name="Test User",
             )
@@ -121,7 +121,7 @@ class TestEmailProtection:
             match="Cannot send emails to protected domain.*in non-production environment",
         ):
             EmailService.send_welcome_email(
-                email="student@cei.edu",
+                email="student@mocku.test",
                 user_name="Student User",
                 institution_name="Test Institution",
             )
@@ -178,7 +178,7 @@ class TestEmailProtection:
 
         # Should fail for protected domains
         with pytest.raises(EmailServiceError):
-            send_verification_email("test@cei.edu", "token", "User")
+            send_verification_email("test@mocku.test", "token", "User")
 
         with pytest.raises(EmailServiceError):
             send_password_reset_email("test@coastal.edu", "token", "User")
@@ -204,7 +204,7 @@ class TestEmailProtection:
         with app.app_context():
             # Should NOT raise exception in production mode
             result = EmailService.send_verification_email(
-                email="test@cei.edu",
+                email="test@mocku.test",
                 verification_token="test-token",
                 user_name="Test User",
             )

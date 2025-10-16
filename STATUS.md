@@ -1,5 +1,45 @@
 # Current Status
 
+## ✅ COMPLETED: CEI → MockU Test Data Refactor
+
+### What Was Accomplished
+Replaced all test data using "CEI" (real customer) with "MockU" (obvious mock institution) to prevent confusion and improve test data integrity.
+
+### Scope of Changes
+- **Preserved**: CEI adapter (`cei_excel_adapter.py`), CEI adapter tests, and `research/CEI/` documentation (real customer references)
+- **Replaced**: All test data, seeded users, and fixture data
+- **Total**: 287 files updated across codebase
+
+### Key Changes
+1. **Email Addresses**: `@cei.test` → `@mocku.test` for all test accounts
+2. **Institution Names**: Test institution names using "CEI" → "MockU"
+3. **Seed Data**: All seeded test accounts now use `@mocku.test` domain
+4. **Test Fixtures**: Updated to use MockU data throughout
+
+### Files Changed
+- **Test fixtures**: Updated all test data in `tests/` directories
+- **Seed scripts**: `scripts/seed_db.py` now seeds MockU users
+- **Configuration**: `.envrc.template` email whitelist includes `*@mocku.test`
+- **Documentation**: All test-related docs updated to reference MockU
+
+### Test Corrections
+1. Fixed `parse_cei_term` function references (incorrectly renamed to `parse_mocku_term`)
+2. Updated test expectations for uppercase conversion (`MockU` → `MOCKU` in `short_name`)
+3. All 1,219 tests passing after corrections
+
+### Why This Matters
+- **Real Domain**: `cei.edu` is a real university domain - shouldn't be in our test data
+- **Clear Intent**: "MockU" is obviously test data, "CEI" could be confused with real customer
+- **Adapter Integrity**: CEI adapter and research files preserved for real customer integration
+- **Test Hygiene**: Clear separation between real customer code and test data
+
+### Quality Gate Status
+- ✅ All 1,219 tests passing
+- ✅ CEI adapter and research files preserved
+- ✅ Test data clearly marked as mock data
+
+---
+
 ## ✅ COMPLETED: E2E Test CI Fix - Credential Override (Commit 85ab6de)
 
 ### Issue Resolved
@@ -120,7 +160,7 @@ Fixed the pre-existing integration test failure for generic CSV adapter export.
 
 2. **Integration Test Fixtures**:
    - Added `setup_integration_test_database` with EMAIL_WHITELIST configuration
-   - Whitelist allows test emails: `*@inst.edu`, `*@example.com`, `*@ethereal.email`, etc.
+   - Whitelist allows test emails: `*@inst.test`, `*@example.com`, `*@ethereal.email`, etc.
    - Fixes invitation/email tests failing due to whitelist blocking
    - Added `clean_database_between_tests` for test isolation
 

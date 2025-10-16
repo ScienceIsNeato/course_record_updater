@@ -247,7 +247,7 @@ def test_tc_ie_003_imported_course_visibility(
         take_screenshot(page, "tc_ie_003_no_courses")
         pytest.fail("No courses found in courses list view")
 
-    # Verify courses are visible (seed data has 6 CEI courses)
+    # Verify courses are visible (seed data has 6 MockU courses)
     course_count = course_elements.count()
     assert course_count >= 5, f"Expected at least 5 courses, found {course_count}"
 
@@ -345,7 +345,7 @@ def test_tc_ie_004_imported_instructor_visibility(
         take_screenshot(page, "tc_ie_004_no_instructors")
         pytest.fail("No instructors found in users list view")
 
-    # Verify instructors are visible (seed data has 2 instructors for CEI)
+    # Verify instructors are visible (seed data has 2 instructors for MockU)
     instructor_count = user_elements.count()
     assert (
         instructor_count >= 2
@@ -418,7 +418,7 @@ def test_tc_ie_005_imported_section_visibility(
         take_screenshot(page, "tc_ie_005_no_sections")
         pytest.fail("No sections found in sections list view")
 
-    # Verify sections are visible (seed data has 6 CEI sections)
+    # Verify sections are visible (seed data has 6 MockU sections)
     section_count = section_elements.count()
     assert section_count >= 5, f"Expected at least 5 sections, found {section_count}"
 

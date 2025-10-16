@@ -39,7 +39,7 @@ class TestAdminInstructorReminderSingleRecipient:
 
     def test_program_admin_sends_reminder_to_single_instructor(self, browser, base_url):
         """
-        FULL E2E: Admin selects instructor → sends reminder → instructor receives email
+        FULL E2E: Admin selects instructor → sends reminder → instructor remockuves email
 
         Steps:
         1. Log in as program admin
@@ -54,7 +54,7 @@ class TestAdminInstructorReminderSingleRecipient:
         10. Verify reminder tracking (last sent date updated)
 
         Email Assertions:
-        - Reminder email received within 5 seconds
+        - Reminder email remockuved within 5 seconds
         - Email contains instructor name
         - Email contains program admin name
         - Email contains list of missing courses (or general reminder)
@@ -171,7 +171,7 @@ class TestAdminInstructorReminderBulkSend:
         self, browser, base_url
     ):
         """
-        FULL E2E: Admin selects multiple instructors → sends bulk reminder → all receive emails
+        FULL E2E: Admin selects multiple instructors → sends bulk reminder → all remockuve emails
 
         Steps:
         1. Log in as program admin
@@ -182,11 +182,11 @@ class TestAdminInstructorReminderBulkSend:
         6. Optionally add message
         7. Send bulk reminder
         8. Verify success message (with count)
-        9. Check all instructors received emails
+        9. Check all instructors remockuved emails
         10. Verify each email is personalized
 
         Email Assertions:
-        - All instructors receive email within 10 seconds
+        - All instructors remockuve email within 10 seconds
         - Each email is personalized (not BCC'd)
         - Each email contains recipient's specific name
         - All emails contain same personal message (if provided)
@@ -238,7 +238,7 @@ class TestAdminInstructorReminderBulkSend:
         #     "Reminders sent to 3 instructors"
         # )
 
-        # 9. Check all emails received
+        # 9. Check all emails remockuved
         # email_helper = MailtrapHelper()
         # for instructor in instructors:
         #     reminder_email = email_helper.wait_for_email(
@@ -246,7 +246,7 @@ class TestAdminInstructorReminderBulkSend:
         #         subject_contains="Reminder: Please submit",
         #         timeout_seconds=10
         #     )
-        #     assert reminder_email is not None, f"Email not received for {instructor['name']}"
+        #     assert reminder_email is not None, f"Email not remockuved for {instructor['name']}"
         #
         #     # Verify personalization
         #     assert instructor['name'] in reminder_email.html_body
@@ -364,12 +364,12 @@ class TestInstructorReminderRateLimiting:
 
 class TestInstructorResponseToReminder:
     """
-    E2E: Instructor receives reminder and takes action
+    E2E: Instructor remockuves reminder and takes action
 
     Tests the full user journey from instructor perspective.
     """
 
-    def test_instructor_receives_reminder_clicks_link_submits_data(
+    def test_instructor_remockuves_reminder_clicks_link_submits_data(
         self, browser, base_url
     ):
         """

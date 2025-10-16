@@ -109,7 +109,7 @@ class TestUAT001RegistrationAndPasswordManagement:
         # The fact that we're on the login page indicates successful registration
 
         # ====================================================================
-        # STEP 2: Verify Email Received
+        # STEP 2: Verify Email Remockuved
         # ====================================================================
 
         print("\n📧 Checking for verification email...")
@@ -122,7 +122,7 @@ class TestUAT001RegistrationAndPasswordManagement:
                 timeout=30,
             )
 
-            assert verification_email is not None, "Verification email not received"
+            assert verification_email is not None, "Verification email not remockuved"
 
             # Extract and validate verification link from email body
             verification_link = extract_verification_link_from_email(verification_email)
@@ -138,7 +138,7 @@ class TestUAT001RegistrationAndPasswordManagement:
                 "verify" in verification_email.get("subject", "").lower()
             ), "Subject should mention verification"
 
-            print(f"✅ Verification email received with link: {verification_link}")
+            print(f"✅ Verification email remockuved with link: {verification_link}")
 
             # ====================================================================
             # STEP 3: Click Verification Link
@@ -260,13 +260,13 @@ class TestUAT001RegistrationAndPasswordManagement:
             timeout=30,
         )
 
-        assert reset_email is not None, "Password reset email not received"
+        assert reset_email is not None, "Password reset email not remockuved"
 
         # Extract reset link from email body
         reset_link = extract_password_reset_link_from_email(reset_email)
         assert reset_link is not None, "Could not find reset link in email"
 
-        print(f"✅ Password reset email received with link: {reset_link}")
+        print(f"✅ Password reset email remockuved with link: {reset_link}")
 
         # ====================================================================
         # STEP 7: Complete Password Reset
@@ -327,14 +327,14 @@ class TestUAT001RegistrationAndPasswordManagement:
 
         assert (
             confirmation_email is not None
-        ), "Password confirmation email not received"
+        ), "Password confirmation email not remockuved"
 
         # Verify email mentions password change
         assert (
             "password" in confirmation_email.get("body", "").lower()
         ), "Confirmation email should mention password"
 
-        print("✅ Password confirmation email received")
+        print("✅ Password confirmation email remockuved")
 
         # ====================================================================
         # STEP 9: Login with NEW Password

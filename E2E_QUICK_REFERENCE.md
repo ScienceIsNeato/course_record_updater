@@ -84,7 +84,7 @@
 source venv/bin/activate
 
 # 3. Verify test data exists
-ls research/CEI/2024FA_test_data.xlsx
+ls research/MockU/2024FA_test_data.xlsx
 
 # 4. Run tests
 ./run_uat.sh

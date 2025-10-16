@@ -72,7 +72,7 @@ Services that support reading messages programmatically:
 ## Recommendation
 **Option C** for now (keep current approach), then **Option B** (migrate to Mailosaur) when time permits for a more robust solution.
 
-The current setup is sufficient for the CEI demo - emails send successfully, security checks are automated, and manual verification takes seconds.
+The current setup is sufficient for the MockU demo - emails send successfully, security checks are automated, and manual verification takes seconds.
 
 ## Files Created
 - `tests/e2e/mailtrap_scraper.py` - UI scraper implementation (functional, just needs valid credentials)

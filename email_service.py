@@ -49,12 +49,12 @@ class EmailService:
 
     Handles template-based emails with secure token embedding
 
-    CRITICAL SECURITY: Protects CEI email addresses from being used in testing
+    CRITICAL SECURITY: Protects MockU email addresses from being used in testing
     """
 
     # Protected email domains - NEVER send emails to these in testing/development
     PROTECTED_DOMAINS = [
-        "cei.edu",
+        "mocku.test",
         "coastaledu.org",
         "coastal.edu",
         "coastalcarolina.edu",
@@ -64,7 +64,7 @@ class EmailService:
     @staticmethod
     def _is_protected_email(email: Optional[str]) -> bool:
         """
-        Check if email address is from a protected domain (e.g., CEI)
+        Check if email address is from a protected domain (e.g., MockU)
 
         Args:
             email: Email address to check (can be None)
@@ -75,7 +75,7 @@ class EmailService:
         if not email or "@" not in email:
             return False
 
-        # Handle malformed emails like "@cei.edu"
+        # Handle malformed emails like "@mocku.test"
         email_parts = email.split("@")
         if len(email_parts) != 2 or not email_parts[0]:
             return False
@@ -339,7 +339,7 @@ class EmailService:
     ) -> bool:
         """Send email using configured email provider"""
         try:
-            # CRITICAL PROTECTION: Block protected domains (e.g., CEI) in non-production environments
+            # CRITICAL PROTECTION: Block protected domains (e.g., MockU) in non-production environments
             is_production = current_app.config.get(
                 "ENV"
             ) == "production" or current_app.config.get("PRODUCTION", False)
@@ -523,7 +523,7 @@ This email was sent to {email}
         </div>
         <div class="content">
             <h2>Hello, {user_name}</h2>
-            <p>We received a request to reset your password for your Course Record Updater account.</p>
+            <p>We remockuved a request to reset your password for your Course Record Updater account.</p>
             
             <p style="text-align: center;">
                 <a href="{reset_url}" class="button">Reset Password</a>
@@ -555,7 +555,7 @@ Course Record Updater - Password Reset
 
 Hello, {user_name}
 
-We received a request to reset your password for your Course Record Updater account.
+We remockuved a request to reset your password for your Course Record Updater account.
 
 To reset your password, visit this link:
 
@@ -715,7 +715,7 @@ This email was sent to {email}
             
             <p><strong>Important:</strong> This invitation will expire in 7 days.</p>
             
-            <p>If you're not sure why you received this invitation, please contact {inviter_name} directly.</p>
+            <p>If you're not sure why you remockuved this invitation, please contact {inviter_name} directly.</p>
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
@@ -757,7 +757,7 @@ Join {institution_name}
 
 Important: This invitation will expire in 7 days.
 
-If you're not sure why you received this invitation, please contact {inviter_name} directly.
+If you're not sure why you remockuved this invitation, please contact {inviter_name} directly.
 
 This email was sent to {email}
 

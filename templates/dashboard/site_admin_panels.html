@@ -1,6 +1,6 @@
 {% extends "dashboard/base_dashboard.html" %}
 
-{% block title %}Site Administrator Dashboard - CEI Course Admin{% endblock %}
+{% block title %}Site Administrator Dashboard - MockU Course Admin{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
@@ -281,10 +281,10 @@
     function renderSystemActivity(activityItems) {
         const container = document.getElementById('activityTableContainer');
         const data = activityItems.length ? activityItems : [
-            { timestamp: '2:34 PM', institution: 'CEI', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
+            { timestamp: '2:34 PM', institution: 'MockU', user: 'Sarah Johnson', action: 'CLO Assessment', details: 'CS-101' },
             { timestamp: '1:15 PM', institution: 'RCC', user: 'Mike Admin', action: 'User Created', details: 'New Instructor' },
             { timestamp: '11:30 AM', institution: 'PTU', user: 'System', action: 'Term Created', details: 'Spring 2025' },
-            { timestamp: '10:45 AM', institution: 'CEI', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
+            { timestamp: '10:45 AM', institution: 'MockU', user: 'John Smith', action: 'CLO Completed', details: 'EE-101.2' }
         ];
 
         const table = panelManager.createSortableTable({
@@ -476,7 +476,7 @@
                     <div class="mb-3">
                         <label for="institutionShortName" class="form-label">Short Name *</label>
                         <input type="text" class="form-control" id="institutionShortName" name="short_name" required>
-                        <small class="form-text text-muted">Abbreviation (e.g., "CEI")</small>
+                        <small class="form-text text-muted">Abbreviation (e.g., "MockU")</small>
                     </div>
                     <div class="mb-3">
                         <label for="institutionAddress" class="form-label">Address</label>

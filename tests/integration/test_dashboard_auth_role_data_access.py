@@ -54,9 +54,9 @@ class TestDashboardAuthRoleDataAccess:
         except Exception:
             pass  # Ignore database connection refresh errors
 
-        # Get all institutions to find CEI
+        # Get all institutions to find MockU
         institutions = db.get_all_institutions() or []
-        self.cei_institution = next(
+        self.mocku_institution = next(
             (
                 inst
                 for inst in institutions
@@ -65,8 +65,8 @@ class TestDashboardAuthRoleDataAccess:
             None,
         )
 
-        # If CEI not found, try to re-seed the database
-        if not self.cei_institution:
+        # If MockU not found, try to re-seed the database
+        if not self.mocku_institution:
             try:
                 import sys
                 from pathlib import Path
@@ -81,7 +81,7 @@ class TestDashboardAuthRoleDataAccess:
 
                 # Try again after seeding
                 institutions = db.get_all_institutions() or []
-                self.cei_institution = next(
+                self.mocku_institution = next(
                     (
                         inst
                         for inst in institutions
@@ -92,54 +92,58 @@ class TestDashboardAuthRoleDataAccess:
             except Exception as e:
                 print(f"⚠️ Failed to re-seed database: {e}")
 
-        assert self.cei_institution, "CEI institution not found in seeded data"
-        self.cei_id = self.cei_institution["institution_id"]
+        assert self.mocku_institution, "MockU institution not found in seeded data"
+        self.mocku_id = self.mocku_institution["institution_id"]
 
-        # Get all users at CEI to find our test users
-        cei_users = db.get_all_users(self.cei_id) or []
+        # Get all users at MockU to find our test users
+        mocku_users = db.get_all_users(self.mocku_id) or []
 
         # Find site admin (system-wide, not institution-specific)
         site_admin_email = SITE_ADMIN_EMAIL
         self.site_admin = db.get_user_by_email(site_admin_email)
         assert self.site_admin, f"Site admin {site_admin_email} not found"
 
-        # Find CEI users by email
+        # Find MockU users by email
         self.sarah_admin = next(
             (
                 user
-                for user in cei_users
+                for user in mocku_users
                 if user.get("email") == INSTITUTION_ADMIN_EMAIL
             ),
             None,
         )
-        assert self.sarah_admin, "Sarah (institution admin) not found in CEI users"
+        assert self.sarah_admin, "Sarah (institution admin) not found in MockU users"
 
         self.lisa_program_admin = next(
-            (user for user in cei_users if user.get("email") == "lisa.prog@cei.edu"),
+            (
+                user
+                for user in mocku_users
+                if user.get("email") == "lisa.prog@mocku.test"
+            ),
             None,
         )
-        assert self.lisa_program_admin, "Lisa (program admin) not found in CEI users"
+        assert self.lisa_program_admin, "Lisa (program admin) not found in MockU users"
 
         self.john_instructor = next(
             (
                 user
-                for user in cei_users
-                if user.get("email") == "john.instructor@cei.edu"
+                for user in mocku_users
+                if user.get("email") == "john.instructor@mocku.test"
             ),
             None,
         )
-        assert self.john_instructor, "John (instructor) not found in CEI users"
+        assert self.john_instructor, "John (instructor) not found in MockU users"
 
         # Get program data for Lisa
-        cei_programs = db.get_programs_by_institution(self.cei_id) or []
+        mocku_programs = db.get_programs_by_institution(self.mocku_id) or []
         self.cs_program = next(
-            (prog for prog in cei_programs if prog.get("name") == "Computer Science"),
+            (prog for prog in mocku_programs if prog.get("name") == "Computer Science"),
             None,
         )
         self.ee_program = next(
             (
                 prog
-                for prog in cei_programs
+                for prog in mocku_programs
                 if prog.get("name") == "Electrical Engineering"
             ),
             None,
@@ -161,7 +165,7 @@ class TestDashboardAuthRoleDataAccess:
     def test_site_admin_dashboard_data_access(self):
         """
         Test: Site Admin sees aggregated data across ALL institutions
-        Expected: All institutions, programs, courses, users across CEI + RCC + PTU
+        Expected: All institutions, programs, courses, users across MockU + RCC + PTU
         """
         # Login as site admin (use dynamic seeded data)
         site_admin_user = {
@@ -179,7 +183,7 @@ class TestDashboardAuthRoleDataAccess:
         # Verify site admin sees system-wide aggregated data
         assert (
             summary.get("institutions", 0) >= 3
-        ), "Should see CEI + RCC + PTU institutions"
+        ), "Should see MockU + RCC + PTU institutions"
         assert (
             summary.get("programs", 0) >= 8
         ), "Should see all programs across institutions"
@@ -193,7 +197,9 @@ class TestDashboardAuthRoleDataAccess:
 
         # Verify data arrays contain cross-institutional data
         institutions = data.get("institutions", [])
-        assert len(institutions) >= 3, "Should have institution data for CEI, RCC, PTU"
+        assert (
+            len(institutions) >= 3
+        ), "Should have institution data for MockU, RCC, PTU"
 
         # Check that institutions have expected names
         institution_names = {inst.get("name") for inst in institutions}
@@ -209,9 +215,9 @@ class TestDashboardAuthRoleDataAccess:
     def test_institution_admin_dashboard_data_access(self):
         """
         Test: Institution Admin sees only THEIR institution's data
-        Expected: CEI data only (not RCC or PTU data)
+        Expected: MockU data only (not RCC or PTU data)
         """
-        # Login as CEI institution admin (use dynamic seeded data)
+        # Login as MockU institution admin (use dynamic seeded data)
         institution_admin_user = {
             "user_id": self.sarah_admin["user_id"],
             "email": self.sarah_admin["email"],
@@ -224,31 +230,33 @@ class TestDashboardAuthRoleDataAccess:
         data = self._get_dashboard_data()
         summary = data.get("summary", {})
 
-        # Verify institution admin sees only CEI data
-        # CEI should have: 4 programs (CS, EE, Unclassified, + auto-created default), 6 courses, 4 users, 6 sections
+        # Verify institution admin sees only MockU data
+        # MockU should have: 4 programs (CS, EE, Unclassified, + auto-created default), 6 courses, 4 users, 6 sections
         assert (
             summary.get("programs", 0) == 4
-        ), f"CEI should have 4 programs (including default), got {summary.get('programs', 0)}"
-        assert summary.get("courses", 0) == 6, "CEI should have 6 courses (seeded data)"
-        assert summary.get("users", 0) == 4, "CEI should have 4 users (seeded data)"
+        ), f"MockU should have 4 programs (including default), got {summary.get('programs', 0)}"
+        assert (
+            summary.get("courses", 0) == 6
+        ), "MockU should have 6 courses (seeded data)"
+        assert summary.get("users", 0) == 4, "MockU should have 4 users (seeded data)"
         assert (
             summary.get("sections", 0) == 6
-        ), "CEI should have 6 sections (seeded data)"
+        ), "MockU should have 6 sections (seeded data)"
 
         # Verify no cross-institutional data leakage
         programs = data.get("programs", [])
         program_names = {prog.get("name") for prog in programs}
 
-        # Should only see CEI programs (including auto-created default program)
-        expected_cei_programs = {
+        # Should only see MockU programs (including auto-created default program)
+        expected_mocku_programs = {
             "Computer Science",
             "Electrical Engineering",
             "General Studies",
         }
         # Check that the expected programs are present (plus the default program)
-        assert expected_cei_programs.issubset(
+        assert expected_mocku_programs.issubset(
             program_names
-        ), f"Expected CEI programs not found. Expected {expected_cei_programs}, got: {program_names}"
+        ), f"Expected MockU programs not found. Expected {expected_mocku_programs}, got: {program_names}"
         assert (
             len(program_names) == 4
         ), f"Expected 4 programs total (3 named + 1 default), got {len(program_names)}: {program_names}"
@@ -328,7 +336,7 @@ class TestDashboardAuthRoleDataAccess:
         Test: Instructor sees only sections THEY are assigned to teach
         Expected: John should see only his assigned sections, not all sections
         """
-        # Login as John - Instructor at CEI (use dynamic seeded data)
+        # Login as John - Instructor at MockU (use dynamic seeded data)
         instructor_user = {
             "user_id": self.john_instructor["user_id"],
             "email": self.john_instructor["email"],
@@ -562,15 +570,15 @@ class TestDashboardDataConsistency:
 # Test data expectations based on seed_db.py
 # Note: These constants should be updated if seed data changes
 EXPECTED_SEEDED_DATA = {
-    "total_institutions": 3,  # CEI, RCC, PTU
-    "total_programs": 8,  # 3 CEI + 3 RCC + 2 PTU
-    "total_courses": 7,  # 4 CEI + 2 RCC + 1 PTU
+    "total_institutions": 3,  # MockU, RCC, PTU
+    "total_programs": 8,  # 3 MockU + 3 RCC + 2 PTU
+    "total_courses": 7,  # 4 MockU + 2 RCC + 1 PTU
     "total_sections": 14,  # 2 sections per course
-    "cei_courses": 4,  # CS-101, CS-201, EE-101, EE-201
-    "cei_sections": 8,  # 2 per course
-    "cei_students": 180,  # Total enrollment
+    "mocku_courses": 4,  # CS-101, CS-201, EE-101, EE-201
+    "mocku_sections": 8,  # 2 per course
+    "mocku_students": 180,  # Total enrollment
     "lisa_programs": 2,  # CS + EE
-    "lisa_courses": 4,  # All CEI CS/EE courses
+    "lisa_courses": 4,  # All MockU CS/EE courses
     "lisa_sections": 8,  # All sections for her courses
     "lisa_students": 180,  # All enrollment in her courses
 }

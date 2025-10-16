@@ -29,7 +29,7 @@ class TestInvitationServiceCreation:
         # Execute
         result = InvitationService.create_invitation(
             inviter_user_id="user-123",
-            inviter_email="admin@cei.edu",
+            inviter_email="admin@mocku.test",
             invitee_email="instructor@example.com",
             invitee_role="instructor",
             institution_id="inst-123",
@@ -54,7 +54,7 @@ class TestInvitationServiceCreation:
         with pytest.raises(InvitationError, match="Invalid role"):
             InvitationService.create_invitation(
                 inviter_user_id="user-123",
-                inviter_email="admin@cei.edu",
+                inviter_email="admin@mocku.test",
                 invitee_email="instructor@example.com",
                 invitee_role="invalid_role",
                 institution_id="inst-123",
@@ -70,7 +70,7 @@ class TestInvitationServiceCreation:
         with pytest.raises(InvitationError, match="already exists"):
             InvitationService.create_invitation(
                 inviter_user_id="user-123",
-                inviter_email="admin@cei.edu",
+                inviter_email="admin@mocku.test",
                 invitee_email="existing@example.com",
                 invitee_role="instructor",
                 institution_id="inst-123",
@@ -87,7 +87,7 @@ class TestInvitationServiceCreation:
         with pytest.raises(InvitationError, match="Pending invitation already exists"):
             InvitationService.create_invitation(
                 inviter_user_id="user-123",
-                inviter_email="admin@cei.edu",
+                inviter_email="admin@mocku.test",
                 invitee_email="instructor@example.com",
                 invitee_role="instructor",
                 institution_id="inst-123",
@@ -104,7 +104,7 @@ class TestInvitationServiceCreation:
         # Execute
         result = InvitationService.create_invitation(
             inviter_user_id="user-123",
-            inviter_email="admin@cei.edu",
+            inviter_email="admin@mocku.test",
             invitee_email="instructor@example.com",
             invitee_role="program_admin",
             institution_id="inst-123",
@@ -129,7 +129,7 @@ class TestInvitationServiceCreation:
         with pytest.raises(InvitationError, match="Failed to save invitation"):
             InvitationService.create_invitation(
                 inviter_user_id="user-123",
-                inviter_email="admin@cei.edu",
+                inviter_email="admin@mocku.test",
                 invitee_email="instructor@example.com",
                 invitee_role="instructor",
                 institution_id="inst-123",
@@ -152,7 +152,7 @@ class TestInvitationServiceEmail:
             "id": "inv-123",
             "email": "instructor@example.com",
             "token": "secure-token-123",
-            "inviter_email": "admin@cei.edu",
+            "inviter_email": "admin@mocku.test",
             "role": "instructor",
             "institution_id": "inst-123",
             "expires_at": "2024-01-01T00:00:00",
@@ -197,7 +197,7 @@ class TestInvitationServiceEmail:
             "id": "inv-123",
             "email": "instructor@example.com",
             "token": "secure-token-123",
-            "inviter_email": "admin@cei.edu",
+            "inviter_email": "admin@mocku.test",
             "role": "instructor",
             "institution_id": "inst-123",
             "expires_at": "2024-01-01T00:00:00",
@@ -390,7 +390,7 @@ class TestInvitationServiceManagement:
             "expires_at": future_date.isoformat(),
             "email": "instructor@example.com",
             "token": "secure-token-123",
-            "inviter_email": "admin@cei.edu",
+            "inviter_email": "admin@mocku.test",
             "role": "instructor",
             "institution_id": "inst-123",
         }
@@ -439,7 +439,7 @@ class TestInvitationServiceManagement:
             "expires_at": past_date.isoformat(),
             "email": "instructor@example.com",
             "token": "secure-token-123",
-            "inviter_email": "admin@cei.edu",
+            "inviter_email": "admin@mocku.test",
             "role": "instructor",
             "institution_id": "inst-123",
         }
@@ -588,7 +588,7 @@ class TestInvitationServiceIntegration:
         # Step 1: Create invitation
         invitation = InvitationService.create_invitation(
             inviter_user_id="admin-123",
-            inviter_email="admin@cei.edu",
+            inviter_email="admin@mocku.test",
             invitee_email="instructor@example.com",
             invitee_role="instructor",
             institution_id="inst-123",

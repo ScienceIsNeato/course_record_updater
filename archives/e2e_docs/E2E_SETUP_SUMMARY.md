@@ -70,7 +70,7 @@ requirements-dev.txt           # Added Playwright dependencies
 ./run_uat.sh --watch
 ```
 Opens a **real Chrome browser** and you can **watch the tests run**:
-- Logging in as sarah.admin@cei.edu
+- Logging in as sarah.admin@mocku.test
 - Navigating to dashboard
 - Clicking "Excel Import" button
 - Uploading test file
@@ -204,9 +204,9 @@ open test-results/videos/
 
 ### Test Data Missing
 ```
-Test data file not found: research/CEI/2024FA_test_data.xlsx
+Test data file not found: research/MockU/2024FA_test_data.xlsx
 ```
-**Fix**: Ensure test data file exists in `research/CEI/`
+**Fix**: Ensure test data file exists in `research/MockU/`
 
 ### Browser Issues
 ```

@@ -75,7 +75,7 @@ Based on user stories in `planning/user_stories/`:
 **Script**: `scripts/seed_db.py`
 
 **Entities Created** (Full Seed):
-- 3 Institutions (CEI, RCC, PTU)
+- 3 Institutions (MockU, RCC, PTU)
 - 10 Users (1 site admin, 3 institution admins, 2 program admins, 4 instructors)
 - 8 Programs (CS, EE, GEN, LA, BUS, EXPL, ME, PRE)
 - 15 Courses
@@ -92,17 +92,17 @@ Site Admin:
   Password: SiteAdmin123!
 
 Institution Admins:
-  CEI: sarah.admin@cei.edu / InstitutionAdmin123!
+  MockU: sarah.admin@mocku.test / InstitutionAdmin123!
   RCC: mike.admin@riverside.edu / InstitutionAdmin123!
   PTU: admin@pactech.edu / InstitutionAdmin123!
 
 Program Admins:
-  CEI CS/EE: lisa.prog@cei.edu / TestUser123!
+  MockU CS/EE: lisa.prog@mocku.test / TestUser123!
   RCC Liberal Arts: robert.prog@riverside.edu / TestUser123!
 
 Instructors:
-  CEI CS: john.instructor@cei.edu / TestUser123!
-  CEI EE: jane.instructor@cei.edu / TestUser123!
+  MockU CS: john.instructor@mocku.test / TestUser123!
+  MockU EE: jane.instructor@mocku.test / TestUser123!
   RCC: susan.instructor@riverside.edu / TestUser123!
   PTU ME: david.instructor@pactech.edu / TestUser123!
 ```

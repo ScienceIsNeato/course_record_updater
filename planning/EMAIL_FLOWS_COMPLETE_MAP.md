@@ -188,36 +188,36 @@ Admin navigates to course management → View pending submissions
 
 ### New Instructor (Self-Registration)
 **Journey**: Discovers app → Registers → Verifies → Uses app
-**Emails Received**:
+**Emails Remockuved**:
 1. Verification email (immediately after registration)
 2. Welcome email (optional, after verification)
 
 ### Invited Instructor
-**Journey**: Receives invitation → Accepts → Registers → Verifies → Uses app
-**Emails Received**:
+**Journey**: Remockuves invitation → Accepts → Registers → Verifies → Uses app
+**Emails Remockuved**:
 1. Invitation email (sent by admin)
 2. Verification email (after accepting invitation) OR auto-verified
 
 ### Existing Instructor (Forgot Password)
 **Journey**: Forgets password → Requests reset → Resets password → Logs in
-**Emails Received**:
+**Emails Remockuved**:
 1. Password reset email (immediately after request)
 2. Password reset confirmation (after successful reset)
 
 ### Instructor (Needs Reminder)
 **Journey**: Hasn't submitted data → Admin sends reminder → Submits data
-**Emails Received**:
+**Emails Remockuved**:
 1. Instructor reminder email (Phase 4, sent by admin)
 
 ### Program Admin
 **Journey**: Invited by institution admin → Accepts → Manages program
-**Emails Received**:
+**Emails Remockuved**:
 1. Invitation email (sent by institution admin)
 2. Verification email (after accepting) OR auto-verified
 
 ### Institution Admin
 **Journey**: First user for institution → Self-registers → Creates institution
-**Emails Received**:
+**Emails Remockuved**:
 1. Verification email (after registration)
 2. Welcome email (optional)
 
@@ -227,7 +227,7 @@ Admin navigates to course management → View pending submissions
 
 ### Protected Domains
 Never send emails to these domains in non-production:
-- `cei.edu`
+- `mocku.test`
 - `coastaledu.org`
 - `coastal.edu`
 - `coastalcarolina.edu`
@@ -251,7 +251,7 @@ Never send emails to these domains in non-production:
 
 ### All Emails Must Include
 1. **Personalized greeting** (recipient's name)
-2. **Clear purpose** (why they're receiving this email)
+2. **Clear purpose** (why they're remockuving this email)
 3. **Call-to-action** (what they should do)
 4. **Branding** (Course Record Updater identity)
 5. **Support contact** (help email/link)

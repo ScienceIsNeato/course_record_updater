@@ -71,7 +71,7 @@ class FileBaseAdapter(ABC):
                               'assessments', 'programs', 'terms']
 
         Example:
-            ['courses', 'faculty', 'assessments']  # CEI Excel file
+            ['courses', 'faculty', 'assessments']  # MockU Excel file
             ['students', 'enrollments']            # Student enrollment CSV
         """
         pass
@@ -103,10 +103,10 @@ class FileBaseAdapter(ABC):
         Example (Institution-Specific):
             {
                 "id": "cei_excel_format_v1",
-                "name": "CEI Excel Format v1.2",
-                "description": "Imports course, faculty, and assessment data from CEI's Excel exports",
+                "name": "MockU Excel Format v1.2",
+                "description": "Imports course, faculty, and assessment data from MockU's Excel exports",
                 "supported_formats": [".xlsx", ".xls"],
-                "institution_id": "cei_institution_id",
+                "institution_id": "mocku_institution_id",
                 "data_types": ["courses", "faculty", "assessments"],
                 "version": "1.2.0",
                 "public": False,
@@ -159,17 +159,17 @@ class FileBaseAdapter(ABC):
                         'course_number': 'MATH101',
                         'title': 'Calculus I',
                         'credits': 4,
-                        'institution_id': 'cei_institution_id',
+                        'institution_id': 'mocku_institution_id',
                         'created_at': '2024-09-25T10:30:00Z'
                     }
                 ],
                 'faculty': [
                     {
-                        'email': 'prof.smith@cei.edu',
+                        'email': 'prof.smith@mocku.test',
                         'first_name': 'John',
                         'last_name': 'Smith',
                         'role': 'instructor',
-                        'institution_id': 'cei_institution_id',
+                        'institution_id': 'mocku_institution_id',
                         'created_at': '2024-09-25T10:30:00Z'
                     }
                 ]
@@ -217,12 +217,12 @@ class FileBaseAdapter(ABC):
                         'course_number': 'MATH101',
                         'title': 'Calculus I',
                         'credits': 4,
-                        'institution_id': 'cei_institution_id'
+                        'institution_id': 'mocku_institution_id'
                     }
                 ],
                 'users': [
                     {
-                        'email': 'prof.smith@cei.edu',
+                        'email': 'prof.smith@mocku.test',
                         'first_name': 'John',
                         'last_name': 'Smith',
                         'role': 'instructor'

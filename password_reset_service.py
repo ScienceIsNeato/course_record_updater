@@ -79,7 +79,7 @@ class PasswordResetService:
                 )
                 return {
                     "request_success": True,
-                    "message": "If an account with this email exists, you will receive a password reset link.",
+                    "message": "If an account with this email exists, you will remockuve a password reset link.",
                 }
 
             # Check if account is active
@@ -119,7 +119,7 @@ class PasswordResetService:
 
             return {
                 "request_success": True,
-                "message": "If an account with this email exists, you will receive a password reset link.",
+                "message": "If an account with this email exists, you will remockuve a password reset link.",
             }
 
         except EmailServiceError as e:

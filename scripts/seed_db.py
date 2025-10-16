@@ -75,9 +75,9 @@ class DatabaseSeeder:
         institutions = [
             {
                 "name": "California Engineering Institute",
-                "short_name": "CEI",
-                "admin_email": "admin@cei.edu",
-                "website_url": "https://cei.edu",
+                "short_name": "MockU",
+                "admin_email": "admin@mocku.test",
+                "website_url": "https://mocku.test",
                 "created_by": "system",
             },
             {
@@ -183,10 +183,10 @@ class DatabaseSeeder:
 
         admin_data = [
             {
-                "email": "sarah.admin@cei.edu",
+                "email": "sarah.admin@mocku.test",
                 "first_name": "Sarah",
                 "last_name": "Johnson",
-                "institution_idx": 0,  # CEI
+                "institution_idx": 0,  # MockU
                 "display_name": "Dr. Johnson",
             },
             {
@@ -258,7 +258,7 @@ class DatabaseSeeder:
     def _get_programs_data(self) -> List[dict]:
         """Get program seed data"""
         return [
-            # CEI Programs
+            # MockU Programs
             {
                 "name": PROGRAM_COMPUTER_SCIENCE,
                 "short_name": "CS",
@@ -276,7 +276,7 @@ class DatabaseSeeder:
             {
                 "name": "General Studies",
                 "short_name": "GEN",
-                "description": "General Studies and undeclared majors at CEI",
+                "description": "General Studies and undeclared majors at MockU",
                 "institution_idx": 0,
                 "admin_idx": 0,
                 "is_default": True,
@@ -400,9 +400,9 @@ class DatabaseSeeder:
         self.log("👥 Creating program admins and instructors...")
 
         users_data = [
-            # CEI Users
+            # MockU Users
             {
-                "email": "lisa.prog@cei.edu",
+                "email": "lisa.prog@mocku.test",
                 "first_name": "Lisa",
                 "last_name": "Wang",
                 "role": "program_admin",
@@ -411,7 +411,7 @@ class DatabaseSeeder:
                 "display_name": "Prof. Wang",
             },
             {
-                "email": "john.instructor@cei.edu",
+                "email": "john.instructor@mocku.test",
                 "first_name": "John",
                 "last_name": "Smith",
                 "role": "instructor",
@@ -420,7 +420,7 @@ class DatabaseSeeder:
                 "display_name": "Dr. Smith",
             },
             {
-                "email": "jane.instructor@cei.edu",
+                "email": "jane.instructor@mocku.test",
                 "first_name": "Jane",
                 "last_name": "Davis",
                 "role": "instructor",
@@ -530,7 +530,7 @@ class DatabaseSeeder:
                 "start_date": f"{current_year}-08-15",
                 "end_date": f"{current_year}-12-15",
                 "assessment_due_date": f"{current_year}-12-01",
-                "institution_idx": 0,  # CEI
+                "institution_idx": 0,  # MockU
             },
             {
                 "name": f"Fall {current_year}",
@@ -552,7 +552,7 @@ class DatabaseSeeder:
                 "start_date": f"{current_year + 1}-01-15",
                 "end_date": f"{current_year + 1}-05-15",
                 "assessment_due_date": f"{current_year + 1}-05-01",
-                "institution_idx": 0,  # CEI
+                "institution_idx": 0,  # MockU
             },
             {
                 "name": f"Spring {current_year + 1}",
@@ -602,7 +602,7 @@ class DatabaseSeeder:
         self.log("📖 Creating sample courses...")
 
         courses_data = [
-            # CEI CS Courses
+            # MockU CS Courses
             {
                 "course_number": "CS-101",
                 "course_title": "Introduction to Computer Science",
@@ -619,7 +619,7 @@ class DatabaseSeeder:
                 "institution_idx": 0,
                 "program_ids": [0],  # CS program
             },
-            # CEI EE Courses
+            # MockU EE Courses
             {
                 "course_number": "EE-101",
                 "course_title": "Circuit Analysis",
@@ -644,7 +644,7 @@ class DatabaseSeeder:
                 "institution_idx": 0,
                 "program_ids": [1],  # EE program
             },
-            # CEI General Studies
+            # MockU General Studies
             {
                 "course_number": "GEN-100",
                 "course_title": "First Year Seminar",
@@ -1080,11 +1080,11 @@ class DatabaseSeeder:
 
         invitations_data = [
             {
-                "email": "newprof@cei.edu",
+                "email": "newprof@mocku.test",
                 "role": "instructor",
                 "institution_idx": 0,
                 "admin_idx": 0,
-                "personal_message": "Welcome to CEI! We are excited to have you join our Computer Science department.",
+                "personal_message": "Welcome to MockU! We are excited to have you join our Computer Science department.",
             },
             {
                 "email": "dept.head@riverside.edu",
@@ -1267,17 +1267,17 @@ class DatabaseSeeder:
         self.log("     Role: Site Administrator")
         self.log("")
         self.log("   Institution Admins:")
-        self.log("     CEI: sarah.admin@cei.edu / InstitutionAdmin123!")
+        self.log("     MockU: sarah.admin@mocku.test / InstitutionAdmin123!")
         self.log("     RCC: mike.admin@riverside.edu / InstitutionAdmin123!")
         self.log("     PTU: admin@pactech.edu / InstitutionAdmin123!")
         self.log("")
         self.log("   Program Admins:")
-        self.log("     CEI CS/EE: lisa.prog@cei.edu / TestUser123!")
+        self.log("     MockU CS/EE: lisa.prog@mocku.test / TestUser123!")
         self.log("     RCC Liberal Arts: robert.prog@riverside.edu / TestUser123!")
         self.log("")
         self.log("   Instructors:")
-        self.log("     CEI CS: john.instructor@cei.edu / TestUser123!")
-        self.log("     CEI EE: jane.instructor@cei.edu / TestUser123!")
+        self.log("     MockU CS: john.instructor@mocku.test / TestUser123!")
+        self.log("     MockU EE: jane.instructor@mocku.test / TestUser123!")
         self.log("     RCC: susan.instructor@riverside.edu / TestUser123!")
         self.log("     PTU ME: david.instructor@pactech.edu / TestUser123!")
 

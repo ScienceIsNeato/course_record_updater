@@ -105,15 +105,15 @@ class SQLiteDatabase(DatabaseInterface):
             )
             return [to_dict(record) for record in records]
 
-    def create_default_cei_institution(self) -> Optional[str]:
-        existing = self.get_institution_by_short_name("CEI")
+    def create_default_mocku_institution(self) -> Optional[str]:
+        existing = self.get_institution_by_short_name("MockU")
         if existing:
             return existing["institution_id"]
 
-        cei_payload = {
+        mocku_payload = {
             "name": "College of Eastern Idaho",
-            "short_name": "CEI",
-            "domain": "cei.edu",
+            "short_name": "MockU",
+            "domain": "mocku.test",
             "timezone": DEFAULT_INSTITUTION_TIMEZONE,
             "is_active": True,
             "billing_settings": {
@@ -128,7 +128,7 @@ class SQLiteDatabase(DatabaseInterface):
             },
             "created_at": datetime.now(timezone.utc),
         }
-        return self.create_institution(cei_payload)
+        return self.create_institution(mocku_payload)
 
     def create_new_institution(
         self, institution_data: Dict[str, Any], admin_user_data: Dict[str, Any]

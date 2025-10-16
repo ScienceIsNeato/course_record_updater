@@ -59,22 +59,22 @@ class TestImportBusinessLogic:
         ]
 
     def create_test_excel_file(self, courses_data):
-        """Create a temporary Excel file with the REAL CEI format"""
-        # Create DataFrame with ACTUAL CEI columns (matching real file)
+        """Create a temporary Excel file with the REAL MockU format"""
+        # Create DataFrame with ACTUAL MockU columns (matching real file)
         rows = []
         for course in courses_data:
-            # Create multiple rows per course to simulate CEI format
+            # Create multiple rows per course to simulate MockU format
             for section in range(1, 3):  # 2 sections per course
                 rows.append(
                     {
                         "course": course["course_number"],  # REAL: lowercase 'course'
                         "combo": f"{course['course_number']}:Instructor Name",
                         "cllo_text": f"Learning outcome for {course['course_number']}",
-                        "students": 25,  # Required column for CEI format
+                        "students": 25,  # Required column for MockU format
                         "Enrolled Students": 25,  # REAL: 'Enrolled Students'
                         "Total W's": 1,
                         "Faculty Name": f"Instructor{section} Name",  # REAL: 'Faculty Name'
-                        "email": f"instructor{section}@cei.edu",  # Required for test format
+                        "email": f"instructor{section}@mocku.test",  # Required for test format
                         "effterm_c": "FA2024",
                         "endterm_c": None,
                         "Term": "FA2024",  # REAL: 'Term'
@@ -175,19 +175,19 @@ class TestImportBusinessLogic:
 
         mock_get_course.side_effect = mock_get_course_side_effect
 
-        # Mock users with matching data structure (using real CEI email format)
+        # Mock users with matching data structure (using real MockU email format)
         def mock_get_user_side_effect(email):
-            if "instructor1.name@cei.edu" in email:
+            if "instructor1.name@mocku.test" in email:
                 return {
-                    "email": "instructor1.name@cei.edu",
+                    "email": "instructor1.name@mocku.test",
                     "first_name": "Instructor1",
                     "last_name": "Name",
                     "role": "instructor",
                     "department": "Mathematics",  # Matches MATH-101
                 }
-            elif "instructor2.name@cei.edu" in email:
+            elif "instructor2.name@mocku.test" in email:
                 return {
-                    "email": "instructor2.name@cei.edu",
+                    "email": "instructor2.name@mocku.test",
                     "first_name": "Instructor2",
                     "last_name": "Name",
                     "role": "instructor",
@@ -219,7 +219,7 @@ class TestImportBusinessLogic:
             # Should NOT attempt to create courses since they exist
             mock_create_course.assert_not_called()
 
-            # Note: With real CEI format, course titles differ ("Course MATH-101" vs "College Algebra")
+            # Note: With real MockU format, course titles differ ("Course MATH-101" vs "College Algebra")
             # so the system correctly updates courses instead of skipping them.
             # This is the correct behavior - when data differs, it should be updated.
 
@@ -249,7 +249,7 @@ class TestImportBusinessLogic:
             return None  # BIO-101 doesn't exist yet
 
         mock_get_course.side_effect = mock_get_course_side_effect
-        mock_get_user.return_value = {"email": "test@cei.edu"}
+        mock_get_user.return_value = {"email": "test@mocku.test"}
         mock_create_course.return_value = "new_course_id"
 
         # Import extended data (includes new BIO-101 course)
@@ -283,7 +283,7 @@ class TestImportBusinessLogic:
             assert len(bio_course_calls) > 0, "Should attempt to create BIO-101"
 
             # Note: Existing courses (MATH-101, ENG-102) will be updated due to title differences
-            # This is correct behavior with the real CEI format
+            # This is correct behavior with the real MockU format
 
         finally:
             os.unlink(excel_file)

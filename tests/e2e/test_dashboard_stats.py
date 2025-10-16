@@ -47,7 +47,7 @@ def test_tc_dashboard_001_institution_admin_summary_stats_display(
     print(f"  Sections: {section_count}")
 
     # Assert that all counts are greater than zero
-    # The seeded CEI institution should have:
+    # The seeded MockU institution should have:
     # - 2 programs (CS, EE)
     # - 5+ courses
     # - 2+ faculty (john.instructor, jane.instructor)
@@ -55,14 +55,14 @@ def test_tc_dashboard_001_institution_admin_summary_stats_display(
 
     assert (
         program_count != "0"
-    ), "Program count should not be zero (CEI has CS and EE programs)"
+    ), "Program count should not be zero (MockU has CS and EE programs)"
     assert (
         course_count != "0"
-    ), "Course count should not be zero (CEI has multiple courses)"
+    ), "Course count should not be zero (MockU has multiple courses)"
     assert (
         faculty_count != "0"
-    ), "Faculty count should not be zero (CEI has instructors)"
-    assert section_count != "0", "Section count should not be zero (CEI has sections)"
+    ), "Faculty count should not be zero (MockU has instructors)"
+    assert section_count != "0", "Section count should not be zero (MockU has sections)"
 
     # Verify the counts are reasonable numbers
     assert int(program_count) >= 2, f"Expected at least 2 programs, got {program_count}"

@@ -326,7 +326,7 @@ class TestFrontendSmoke:
         static_assets = [
             "/static/style.css",
             "/static/script.js",
-            "/static/images/cei_logo.jpg",
+            "/static/images/mocku_logo.jpg",
         ]
 
         for asset in static_assets:

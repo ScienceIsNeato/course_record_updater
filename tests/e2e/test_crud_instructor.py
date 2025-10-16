@@ -49,7 +49,7 @@ def test_tc_crud_inst_001_update_own_profile(instructor_authenticated_page: Page
     print(f"DEBUG: Users table content:\n{table_text}")
 
     # Find the instructor's own row and click Edit
-    # The seeded instructor is "John Smith" (john.instructor@cei.edu)
+    # The seeded instructor is "John Smith" (john.instructor@mocku.test)
     instructor_authenticated_page.wait_for_function(
         "document.querySelector('#usersTableContainer')?.innerText?.includes('John Smith')",
         timeout=5000,
@@ -325,7 +325,7 @@ def test_tc_crud_inst_004_cannot_manage_users(instructor_authenticated_page: Pag
 
     # Pick any user that isn't the logged-in instructor (John Smith)
     target_user = next(
-        (u for u in users if u.get("email") != "john.instructor@cei.edu"), None
+        (u for u in users if u.get("email") != "john.instructor@mocku.test"), None
     )
     assert target_user, "No target user found for deletion test"
 

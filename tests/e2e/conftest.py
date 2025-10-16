@@ -43,7 +43,7 @@ from constants import E2E_TEST_PORT
 
 # E2E environment runs on dedicated port (hardcoded in constants.py)
 BASE_URL = f"http://localhost:{E2E_TEST_PORT}"
-TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "CEI"
+TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "MockU"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
 
 
@@ -200,7 +200,7 @@ def authenticated_page(page: Page) -> Page:
     Usage:
         def test_something(authenticated_page):
             authenticated_page.goto(f"{BASE_URL}/dashboard")
-            # Already logged in as sarah.admin@cei.edu
+            # Already logged in as sarah.admin@mocku.test
     """
     # Clear any existing session/cookies to ensure clean login
     page.context.clear_cookies()
@@ -303,7 +303,7 @@ def instructor_authenticated_page(page: Page) -> Page:
     """
     Fixture that provides a page with authenticated session as an instructor.
 
-    Logs in as john.instructor@cei.edu (from seeded test data).
+    Logs in as john.instructor@mocku.test (from seeded test data).
 
     Usage:
         def test_something(instructor_authenticated_page):
@@ -318,7 +318,7 @@ def instructor_authenticated_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use instructor credentials from seeded data
-    INSTRUCTOR_EMAIL = "john.instructor@cei.edu"
+    INSTRUCTOR_EMAIL = "john.instructor@mocku.test"
     INSTRUCTOR_PASSWORD = "TestUser123!"  # From seed data
 
     # Fill and submit the actual login form (handles CSRF automatically)
@@ -377,7 +377,7 @@ def program_admin_authenticated_page(page: Page) -> Page:
     """
     Fixture that provides a page with authenticated session as a program admin.
 
-    Logs in as lisa.prog@cei.edu (from seeded test data).
+    Logs in as lisa.prog@mocku.test (from seeded test data).
 
     Usage:
         def test_something(program_admin_authenticated_page):
@@ -392,7 +392,7 @@ def program_admin_authenticated_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use program admin credentials from seeded data
-    PROGRAM_ADMIN_EMAIL = "lisa.prog@cei.edu"
+    PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
     PROGRAM_ADMIN_PASSWORD = "TestUser123!"  # From seed data
 
     # Fill and submit the actual login form (handles CSRF automatically)
@@ -516,8 +516,8 @@ def reset_account_locks():
     test_accounts = [
         SITE_ADMIN_EMAIL,
         INSTITUTION_ADMIN_EMAIL,
-        "john.instructor@cei.edu",  # Instructor
-        "lisa.prog@cei.edu",  # Program admin
+        "john.instructor@mocku.test",  # Instructor
+        "lisa.prog@mocku.test",  # Program admin
     ]
 
     for email in test_accounts:
@@ -542,7 +542,7 @@ def test_data_file():
     if not TEST_FILE.exists():
         pytest.skip(
             f"Test data file not found: {TEST_FILE}. "
-            f"Please ensure research/CEI/2024FA_test_data.xlsx exists."
+            f"Please ensure research/MockU/2024FA_test_data.xlsx exists."
         )
 
     return TEST_FILE
