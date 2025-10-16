@@ -336,13 +336,18 @@ jobs:
         python -m playwright install --with-deps chromium
     - name: Run E2E Tests (using ship_it.py)
       run: |
-        # Source environment template for non-sensitive E2E configuration
-        source .envrc.template
+        # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
+        export ENV="test"
+        export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+        export LASSIE_DEFAULT_PORT_E2E="3002"
         
-        # Override placeholder Ethereal credentials with real ones from GitHub secrets
-        # (sourcing .envrc.template sets placeholders, so we must override after)
+        # Set Ethereal credentials from GitHub secrets for email verification
         export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"
         export ETHEREAL_PASS="${{ secrets.ETHEREAL_PASS }}"
+        export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
+        export ETHEREAL_SMTP_PORT="587"
+        export ETHEREAL_IMAP_HOST="imap.ethereal.email"
+        export ETHEREAL_IMAP_PORT="993"
         
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
         python scripts/ship_it.py --checks e2e
