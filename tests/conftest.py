@@ -15,43 +15,37 @@ INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def ensure_test_database():
+def ensure_test_database(tmp_path_factory):
     """Provide isolated test database.
 
-    KISS approach:
+    KISS approach with pytest-xdist support:
     - If DATABASE_URL already set (e.g., by run_uat.sh): use it
-    - Otherwise: create a temporary database for this test session
+    - Otherwise: create a temporary database for this test session/worker
+    - Each pytest-xdist worker gets its own database (via tmp_path_factory)
 
-    This prevents SQLite locking when tests run in parallel.
+    Args:
+        tmp_path_factory: pytest fixture that creates unique temp dirs per worker
     """
     # If already set (E2E tests), use it
     if os.environ.get("DATABASE_URL"):
-        print(
-            f"[conftest] Using pre-configured DATABASE_URL: {os.environ['DATABASE_URL']}",
-            flush=True,
-        )
         os.environ["DATABASE_TYPE"] = "sqlite"
         database_service.refresh_connection()
         yield
         return
 
     # Create temporary database for unit tests
-    fd, temp_db_path = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
+    # tmp_path_factory is xdist-aware and creates unique dirs per worker
+    temp_dir = tmp_path_factory.mktemp("test_db")
+    temp_db_path = temp_dir / "test.db"
 
     os.environ["DATABASE_URL"] = f"sqlite:///{temp_db_path}"
     os.environ["DATABASE_TYPE"] = "sqlite"
-    print(f"[conftest] Created temporary test database: {temp_db_path}", flush=True)
 
     database_service.refresh_connection()
 
     yield
 
-    # Cleanup
-    try:
-        os.unlink(temp_db_path)
-    except Exception:
-        pass  # Best effort cleanup
+    # Cleanup happens automatically via tmp_path_factory
 
 
 @pytest.fixture(autouse=True)
