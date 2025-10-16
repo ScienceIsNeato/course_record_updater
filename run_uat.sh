@@ -122,6 +122,10 @@ fi
 # Set ENV to "test" so email factory automatically selects Ethereal
 export ENV="test"
 
+# Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
+# This overrides any EMAIL_PROVIDER=brevo from .envrc.template
+unset EMAIL_PROVIDER
+
 # Restart server to ensure fresh database with test credentials
 echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
 

@@ -67,6 +67,12 @@ if [ -n "$SAVED_ENV" ]; then
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
 fi
 
+# For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
+if [ "$APP_ENV" = "e2e" ] || [ "$APP_ENV" = "uat" ]; then
+    unset EMAIL_PROVIDER
+    echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for E2E (will auto-select Ethereal)${NC}"
+fi
+
 # Determine database and base URL based on environment
 case "$APP_ENV" in
     dev)

@@ -24,10 +24,8 @@ User Personas:
 
 import pytest
 
-pytestmark = pytest.mark.skip(
-    reason="E2E test infrastructure not yet configured - Backend feature implemented, "
-    "awaiting browser automation setup for UI testing"
-)
+# Email flow tests - requires Ethereal credentials (ETHEREAL_USER, ETHEREAL_PASS)
+# Tests will be skipped automatically if credentials are not configured
 
 
 class TestAdminInstructorReminderSingleRecipient:

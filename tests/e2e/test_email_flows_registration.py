@@ -18,12 +18,8 @@ TEST DATA:
 
 import pytest
 
-# PSEUDO-CODE MARKER: These tests are design/planning only
-# Remove @pytest.mark.skip when implementing actual E2E infrastructure
-
-pytestmark = pytest.mark.skip(
-    reason="E2E email flow tests - pseudo-code only, implement in Phase 3"
-)
+# Email flow tests - requires Ethereal credentials (ETHEREAL_USER, ETHEREAL_PASS)
+# Tests will be skipped automatically if credentials are not configured
 
 
 class TestNewUserRegistrationFlow:
