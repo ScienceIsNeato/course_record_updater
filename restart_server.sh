@@ -2,7 +2,7 @@
 
 # restart_server.sh - Environment-aware server restart using SQLite backend
 # Usage: ./restart_server.sh <env>
-#   <env> = dev | e2e | ci
+#   <env> = dev | e2e
 # Returns 0 on success, 1 on failure
 
 set -euo pipefail
@@ -68,7 +68,7 @@ if [ -n "$SAVED_ENV" ]; then
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
 fi
 
-# Determine database and base URL based on environment (same pattern as port)
+# Determine database and base URL based on environment
 case "$APP_ENV" in
     dev)
         DATABASE_URL="${DATABASE_URL_DEV:-sqlite:///course_records_dev.db}"
@@ -78,11 +78,8 @@ case "$APP_ENV" in
         DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
         BASE_URL="${BASE_URL_E2E:-http://localhost:3002}"
         ;;
-    ci)
-        DATABASE_URL="${DATABASE_URL_CI:-sqlite:///course_records_ci.db}"
-        BASE_URL="${BASE_URL_CI:-http://localhost:3001}"
-        ;;
     *)
+        # Default to dev environment
         DATABASE_URL="${DATABASE_URL_DEV:-sqlite:///course_records_dev.db}"
         BASE_URL="${BASE_URL_DEV:-http://localhost:3001}"
         ;;
@@ -138,13 +135,13 @@ start_flask_app() {
     export DATABASE_URL="$DATABASE_URL"
     export BASE_URL="$BASE_URL"
     export ENV="$ENV"
-    export ETHEREAL_USER="$ETHEREAL_USER"
-    export ETHEREAL_PASS="$ETHEREAL_PASS"
-    export ETHEREAL_SMTP_HOST="$ETHEREAL_SMTP_HOST"
-    export ETHEREAL_SMTP_PORT="$ETHEREAL_SMTP_PORT"
-    export ETHEREAL_IMAP_HOST="$ETHEREAL_IMAP_HOST"
-    export ETHEREAL_IMAP_PORT="$ETHEREAL_IMAP_PORT"
-    export EMAIL_WHITELIST="$EMAIL_WHITELIST"
+    export ETHEREAL_USER="${ETHEREAL_USER:-}"
+    export ETHEREAL_PASS="${ETHEREAL_PASS:-}"
+    export ETHEREAL_SMTP_HOST="${ETHEREAL_SMTP_HOST:-smtp.ethereal.email}"
+    export ETHEREAL_SMTP_PORT="${ETHEREAL_SMTP_PORT:-587}"
+    export ETHEREAL_IMAP_HOST="${ETHEREAL_IMAP_HOST:-imap.ethereal.email}"
+    export ETHEREAL_IMAP_PORT="${ETHEREAL_IMAP_PORT:-993}"
+    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@example.com}"
     
     # Debug: Check if env vars are set
     echo -e "${BLUE}📧 Email configuration:${NC}"
