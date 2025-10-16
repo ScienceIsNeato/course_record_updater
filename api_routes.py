@@ -4870,6 +4870,42 @@ def _export_institution(
     }
 
 
+def _create_system_export_zip(system_export_dir, temp_base, timestamp, unique_id):
+    """Create ZIP file from system export directory, excluding system files."""
+    import zipfile
+
+    system_zip_path = temp_base / f"system_export_{timestamp}_{unique_id}.zip"
+    excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}
+
+    with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in system_export_dir.rglob("*"):
+            if any(pattern in file_path.parts for pattern in excluded_patterns):
+                continue
+            if file_path.is_file():
+                arcname = file_path.relative_to(system_export_dir)
+                zipf.write(file_path, arcname)
+
+    return system_zip_path
+
+
+def _create_system_manifest(
+    current_user, timestamp, adapter_id, data_type, institutions, institution_results
+):
+    """Create system-level export manifest with export metadata."""
+    return {
+        "format_version": "1.0",
+        "export_type": "system_wide",
+        "export_timestamp": timestamp,
+        "exported_by": current_user.get("email"),
+        "adapter_id": adapter_id,
+        "data_type": data_type,
+        "total_institutions": len(institutions),
+        "successful_exports": sum(1 for r in institution_results if r["success"]),
+        "failed_exports": sum(1 for r in institution_results if not r["success"]),
+        "institutions": institution_results,
+    }
+
+
 def _export_all_institutions(current_user: Dict[str, Any]):
     """
     Export all institutions for Site Admin as a zip of folders.
@@ -4889,39 +4925,28 @@ def _export_all_institutions(current_user: Dict[str, Any]):
     """
     import json
     import shutil
-    import zipfile
+    import uuid
 
-    # Initialize temp directory variable for cleanup in except block
     system_export_dir = None
 
     try:
-        # Get and sanitize parameters
         data_type, adapter_id, include_metadata = _sanitize_export_params()
-
         logger.info(
             f"[EXPORT] Site Admin system-wide export: adapter={adapter_id}, data_type={data_type}"
         )
 
-        # Get all institutions
         institutions = get_all_institutions()
         if not institutions:
             return jsonify({"success": False, "error": "No institutions found"}), 404
 
-        # Create temp directory for building system export
-        # Use UUID for uniqueness to prevent race conditions in parallel test execution
+        # Setup export directory with UUID for uniqueness
         temp_base = Path(tempfile.gettempdir())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        import uuid
-
-        unique_id = uuid.uuid4().hex[:8]  # Short UUID for readability
+        unique_id = uuid.uuid4().hex[:8]
         system_export_dir = temp_base / f"system_export_{timestamp}_{unique_id}"
-
-        # Create directory - should not exist due to UUID, but use exist_ok as safety net
         system_export_dir.mkdir(parents=True, exist_ok=True)
 
         export_service = create_export_service()
-
-        # Validate adapter exists
         adapter = export_service.registry.get_adapter_by_id(adapter_id)
         if not adapter:
             return (
@@ -4931,7 +4956,6 @@ def _export_all_institutions(current_user: Dict[str, Any]):
                 400,
             )
 
-        # Get adapter file extension
         file_extension = _get_adapter_file_extension(export_service, adapter_id)
         output_format = (
             file_extension.lstrip(".")
@@ -4939,7 +4963,7 @@ def _export_all_institutions(current_user: Dict[str, Any]):
             else file_extension
         )
 
-        # Export each institution to its own subdirectory
+        # Export institutions
         institution_results = [
             _export_institution(
                 export_service,
@@ -4955,47 +4979,29 @@ def _export_all_institutions(current_user: Dict[str, Any]):
             for inst in institutions
         ]
 
-        # Create system-level manifest
-        system_manifest = {
-            "format_version": "1.0",
-            "export_type": "system_wide",
-            "export_timestamp": timestamp,
-            "exported_by": current_user.get("email"),
-            "adapter_id": adapter_id,
-            "data_type": data_type,
-            "total_institutions": len(institutions),
-            "successful_exports": sum(1 for r in institution_results if r["success"]),
-            "failed_exports": sum(1 for r in institution_results if not r["success"]),
-            "institutions": institution_results,
-        }
-
+        # Create manifest
+        system_manifest = _create_system_manifest(
+            current_user,
+            timestamp,
+            adapter_id,
+            data_type,
+            institutions,
+            institution_results,
+        )
         manifest_path = system_export_dir / "system_manifest.json"
         with open(manifest_path, "w") as f:
             json.dump(system_manifest, f, indent=2)
 
-        # Create final ZIP file with unique ID to prevent collisions
-        system_zip_path = temp_base / f"system_export_{timestamp}_{unique_id}.zip"
-
-        # Exclude system files and directories
-        excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}
-
-        with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for file_path in system_export_dir.rglob("*"):
-                # Skip excluded files and directories
-                if any(pattern in file_path.parts for pattern in excluded_patterns):
-                    continue
-                if file_path.is_file():
-                    arcname = file_path.relative_to(system_export_dir)
-                    zipf.write(file_path, arcname)
-
-        # Clean up temp directory
+        # Create ZIP
+        system_zip_path = _create_system_export_zip(
+            system_export_dir, temp_base, timestamp, unique_id
+        )
         shutil.rmtree(system_export_dir)
 
         logger.info(
             f"[EXPORT] System export complete: {system_manifest['successful_exports']}/{system_manifest['total_institutions']} institutions"
         )
 
-        # Send file
         return send_file(
             str(system_zip_path),
             as_attachment=True,
@@ -5005,7 +5011,6 @@ def _export_all_institutions(current_user: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"[EXPORT] System export failed: {str(e)}", exc_info=True)
-        # Clean up temp directory on error (system_export_dir initialized to None above)
         if system_export_dir is not None and system_export_dir.exists():
             try:
                 shutil.rmtree(system_export_dir)
