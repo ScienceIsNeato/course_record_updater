@@ -1,5 +1,41 @@
 # Current Status
 
+## ✅ COMPLETED: Generic CSV Export Fix (Commit 55722d4)
+
+### What Was Accomplished
+Fixed the pre-existing integration test failure for generic CSV adapter export.
+
+**Root Cause**: Database singleton wasn't refreshing properly between test setup and export service queries, causing export_service to query the wrong database instance.
+
+**Fixes**:
+1. **export_service.py**: 
+   - Fixed dictionary keys to match generic CSV adapter expectations
+   - Changed "offerings" → "course_offerings", "sections" → "course_sections"
+   - Added missing "institutions" data to export
+   - Improved logging for better debugging
+
+2. **tests/integration/conftest.py**: 
+   - Changed `refresh_database_service()` to `database_service.refresh_connection()`
+   - Ensures module-level singleton gets updated so all modules use the same test database
+
+### Test Results
+- ✅ `test_generic_csv_adapter_export_and_parse_with_database` now passes
+- ✅ All 154 integration tests passing (151 passed, 3 intentionally skipped)
+- ✅ Export correctly fetches: institutions, programs, courses, users, terms, course_offerings, course_sections
+
+### The 3 Skipped Tests (Intentional)
+1. `test_dashboard_cards_present` - Requires Selenium authentication setup
+2. `test_send_verification_email_to_gmail` - Manual third-party Gmail verification
+3. `test_send_password_reset_email_to_gmail` - Manual third-party Gmail verification
+
+### Quality Gate Status
+- ✅ All quality gates passing
+- ✅ Pre-commit hook passed
+- ✅ Pushed to origin
+- 🔄 CI validation in progress
+
+---
+
 ## ✅ COMPLETED: Unit & Integration Test Database Fixes (Commit bbe00ec)
 
 ### What Was Accomplished

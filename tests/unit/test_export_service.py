@@ -77,8 +77,9 @@ class TestExportService:
         assert data["courses"] == []
         assert data["users"] == []
         assert data["terms"] == []
-        assert "offerings" in data
-        assert "sections" in data
+        assert "course_offerings" in data
+        assert "course_sections" in data
+        assert "institutions" in data
 
     @patch("export_service.get_all_courses")
     @patch("export_service.get_all_users")

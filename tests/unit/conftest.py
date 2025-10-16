@@ -41,10 +41,9 @@ def setup_unit_test_database(tmp_path_factory, worker_id):
     # Initialize database tables
     # Import here to ensure environment variables are set first
     import database_service
-    from database_factory import refresh_database_service
 
-    # Refresh database service to pick up new DATABASE_URL
-    refresh_database_service()
+    # Refresh connection to pick up new DATABASE_URL (updates module-level singleton)
+    database_service.refresh_connection()
 
     # Create all tables
     database_service.reset_database()
