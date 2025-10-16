@@ -75,6 +75,7 @@ export PRODUCTION="false"  # Set to "true" only in production
 # =============================================================================
 # DATABASE (environment-specific)
 # =============================================================================
+export DATABASE_TYPE="sqlite"
 export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
 export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
 

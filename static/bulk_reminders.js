@@ -550,7 +550,7 @@ class BulkReminderManager {
 
     // Limit to last 50 messages
     while (container.children.length > 50) {
-      container.removeChild(container.firstChild);
+      container.firstChild.remove();
     }
   }
 
