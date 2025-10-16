@@ -81,8 +81,7 @@ The `APP_ENV` variable controls which environment is active:
 | Environment | Port | Database | Use Case |
 |-------------|------|----------|----------|
 | `dev` | 3001 | `course_records_dev.db` | Local development |
-| `e2e` | 3002 | `course_records_e2e.db` | E2E testing |
-| `ci` | 3003 | `course_records_ci.db` | CI pipeline |
+| `e2e` | 3002 | `course_records_e2e.db` | E2E testing (local & CI) |
 
 ### Usage Examples
 
@@ -175,7 +174,7 @@ This ensures credentials from GitHub secrets are never overridden.
 - Solution: Copy `.envrc.template` to `.envrc`
 
 **"Port already in use"**
-- Solution: Check which environment is running: `lsof -i :3001 :3002 :3003`
+- Solution: Check which environment is running: `lsof -i :3001 :3002`
 - Each environment uses a different port to avoid conflicts
 
 **Secrets not loading**

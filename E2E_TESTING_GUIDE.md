@@ -139,7 +139,6 @@ E2E tests use isolated environment to prevent interference with development:
 |-------------|------|----------|---------|
 | dev | 3001 | `course_records_dev.db` | Local development |
 | e2e | 3002 | `course_records_e2e.db` | E2E tests (local & CI) |
-| ci | 3003 | `course_records_ci.db` | CI pipeline |
 
 Environment managed via `APP_ENV` variable and `.envrc` file.
 

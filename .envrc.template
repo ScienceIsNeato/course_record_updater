@@ -77,7 +77,6 @@ export PRODUCTION="false"  # Set to "true" only in production
 # =============================================================================
 export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
 export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
-export DATABASE_URL_CI="sqlite:///course_records_ci.db"
 
 # =============================================================================
 # FLASK CONFIGURATION
@@ -87,7 +86,6 @@ export DATABASE_URL_CI="sqlite:///course_records_ci.db"
 # Base URL configuration (environment-specific)
 export BASE_URL_DEV="http://localhost:3001"
 export BASE_URL_E2E="http://localhost:3002"
-export BASE_URL_CI="http://localhost:3001"
 
 # Port configuration
 export LASSIE_DEFAULT_PORT_DEV="3001"

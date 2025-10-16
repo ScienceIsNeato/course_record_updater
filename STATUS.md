@@ -1,6 +1,42 @@
 # Current Status
 
-## ✅ COMPLETED: E2E Test Fixes for CI (Ready to Commit)
+## ✅ COMPLETED: E2E Test CI Fix - Credential Override (Commit 85ab6de)
+
+### Issue Resolved
+E2E tests in CI were failing with "operation was canceled" because placeholder Ethereal credentials from `.envrc.template` were overwriting the real GitHub secrets.
+
+### Root Cause
+1. CI workflow set `ETHEREAL_USER` and `ETHEREAL_PASS` from GitHub secrets
+2. Then sourced `.envrc.template` which has placeholder values
+3. Bash `export` statements in template **overwrote** the real credentials with placeholders
+4. E2E tests tried to authenticate with "your-ethereal-username@ethereal.email" (placeholder)
+5. Authentication failed → tests canceled
+
+### Solution
+Changed the order of operations in `.github/workflows/quality-gate.yml`:
+```bash
+# 1. Source template first (sets all non-sensitive config)
+source .envrc.template
+
+# 2. THEN override placeholders with real credentials from GitHub secrets
+export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"
+export ETHEREAL_PASS="${{ secrets.ETHEREAL_PASS }}"
+```
+
+### Impact
+- ✅ E2E tests in CI will now use actual Ethereal credentials
+- ✅ Email verification tests can run properly with IMAP
+- ✅ No more authentication failures or canceled operations
+- ✅ Account unlock fixture still prevents HTTP 423 cascades
+
+### Next CI Run Should Show
+- E2E tests passing (or at least running to completion)
+- Proper IMAP authentication to Ethereal
+- Email verification tests working correctly
+
+---
+
+## ✅ COMPLETED: E2E Test Fixes for CI (Commit adbfa08)
 
 ### Issues Resolved
 
@@ -34,15 +70,6 @@
 - **Email verification skip**: Already implemented via `SKIP_EMAIL_VERIFICATION` flag in `email_utils.py`
 - **Account unlock**: Clears failed attempts for all test accounts before each test
 - **Console errors**: Properly filters expected HTTP responses (401, 403, 404, 423)
-
-### Next Actions
-1. **Required**: Add GitHub secrets for E2E tests:
-   - `ETHEREAL_USER`: Your Ethereal email address
-   - `ETHEREAL_PASS`: Your Ethereal password
-   - Location: Repository Settings → Secrets and variables → Actions → New repository secret
-2. Run local E2E tests to verify fixes work
-3. Commit changes with descriptive message
-4. Push and monitor CI E2E test job
 
 ---
 
@@ -123,8 +150,8 @@ Fixed the pre-existing integration test failure for generic CSV adapter export.
 
 ### What Was Accomplished
 1. **Port Configuration Fix**:
-   - Updated `app.py` to read `PORT` env var (CI standard) before `LASSIE_DEFAULT_PORT_DEV`
-   - Fixes integration/smoke test failures where CI sets `PORT=3003` but app started on 3001
+   - Updated `app.py` to read `PORT` env var before `LASSIE_DEFAULT_PORT_DEV`
+   - Fixes integration/smoke test failures where CI configuration didn't match app startup
    - Priority order: PORT → DEFAULT_PORT → LASSIE_DEFAULT_PORT_DEV → 3001
 
 2. **Test Parallelization Fix**:

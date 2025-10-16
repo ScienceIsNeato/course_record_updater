@@ -17,21 +17,20 @@ NC='\033[0m'
 if [ -z "${1:-}" ]; then
     echo -e "${RED}❌ Error: Environment argument required${NC}" >&2
     echo -e "${YELLOW}Usage: $0 <env>${NC}" >&2
-    echo -e "${YELLOW}  <env> = dev | e2e | ci${NC}" >&2
+    echo -e "${YELLOW}  <env> = dev | e2e${NC}" >&2
     echo "" >&2
     echo -e "${BLUE}Examples:${NC}" >&2
     echo -e "  ${GREEN}$0 dev${NC}  # Start dev server on port 3001" >&2
     echo -e "  ${GREEN}$0 e2e${NC}  # Start E2E server on port 3002" >&2
-    echo -e "  ${GREEN}$0 ci${NC}   # Start CI server on port 3003" >&2
     exit 1
 fi
 
 ENV_ARG="$1"
 
 # Validate environment
-if [[ ! "$ENV_ARG" =~ ^(dev|e2e|ci)$ ]]; then
+if [[ ! "$ENV_ARG" =~ ^(dev|e2e)$ ]]; then
     echo -e "${RED}❌ Error: Invalid environment '$ENV_ARG'${NC}" >&2
-    echo -e "${YELLOW}Valid environments: dev, e2e, ci${NC}" >&2
+    echo -e "${YELLOW}Valid environments: dev, e2e${NC}" >&2
     exit 1
 fi
 
