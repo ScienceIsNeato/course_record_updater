@@ -330,7 +330,7 @@ def list_institutions():
 def create_institution_admin():
     """Site admin creates a new institution (without initial user)"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -384,7 +384,7 @@ def create_institution_admin():
 def create_institution_public():
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate required fields
         required_institution_fields = ["name", "short_name", "domain"]
@@ -488,7 +488,7 @@ def update_institution_endpoint(institution_id: str):
         ):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -822,7 +822,7 @@ def create_user():
     - department: User's department (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -903,7 +903,7 @@ def update_user_api(user_id: str):
     - account_status: User's account status
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -949,7 +949,7 @@ def update_user_profile_endpoint(user_id: str):
         if current_user["user_id"] != user_id and not has_permission("manage_users"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1208,7 +1208,7 @@ def create_course_api():
     - credit_hours: Number of credit hours (optional, default 3)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1390,7 +1390,7 @@ def update_course_endpoint(course_id: str):
     Allows updating course_title, department, credit_hours, description, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1552,7 +1552,7 @@ def create_term_api():
     - assessment_due_date: Assessment due date (YYYY-MM-DD)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1637,7 +1637,7 @@ def update_term_endpoint(term_id: str):
     Allows updating name, dates, active status, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1783,7 +1783,7 @@ def list_programs():
 def create_program_api():
     """Create a new program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -1873,7 +1873,7 @@ def get_program(program_id: str):
 def update_program_api(program_id: str):
     """Update an existing program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2026,7 +2026,7 @@ def get_program_courses(program_id: str):
 def add_course_to_program_api(program_id: str):
     """Add a course to a program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2166,7 +2166,7 @@ def bulk_manage_program_courses(program_id: str):
         if validation_response:
             return validation_response
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         action = data.get("action")
         course_ids = data.get("course_ids", [])
 
@@ -2191,7 +2191,7 @@ def bulk_manage_program_courses(program_id: str):
 
 def _validate_bulk_manage_request():
     """Validate bulk manage request data."""
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2296,7 +2296,7 @@ def create_course_offering_endpoint():
     - capacity: Maximum enrollment
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2421,7 +2421,7 @@ def update_course_offering_endpoint(offering_id: str):
     Allows updating capacity, total_enrollment, status, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2597,7 +2597,7 @@ def create_section():
     - status: Section status (optional, default "open")
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -2687,7 +2687,7 @@ def update_section_endpoint(section_id: str):
     Allows updating section_number, enrollment, capacity, instructor_id, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2735,7 +2735,7 @@ def assign_instructor_to_section_endpoint(section_id: str):
     - instructor_id: Instructor user ID
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "instructor_id" not in data:
             return (
                 jsonify({"success": False, "error": "instructor_id is required"}),
@@ -2859,7 +2859,7 @@ def create_course_outcome_endpoint(course_id: str):
     - target_percentage: Target achievement percentage (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "description" not in data:
             return jsonify({"success": False, "error": "description is required"}), 400
 
@@ -2928,7 +2928,7 @@ def update_course_outcome_endpoint(outcome_id: str):
     Allows updating description, target_percentage, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2975,7 +2975,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
     - narrative: Assessment narrative text (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "assessment_data" not in data:
             return (
                 jsonify({"success": False, "error": "assessment_data is required"}),
@@ -3261,7 +3261,7 @@ def register_institution_admin_api():
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate required fields
         required_fields = [
@@ -3411,7 +3411,7 @@ def resend_verification_email_api():
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate email
         email = data.get("email", "").strip().lower()
@@ -3529,8 +3529,8 @@ def create_invitation_api():
         from auth_service import get_current_institution_id, get_current_user
         from invitation_service import InvitationService
 
-        # Get request data
-        data = request.get_json()
+        # Get request data (silent=True prevents 415 exception, returns None instead)
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3621,7 +3621,7 @@ def accept_invitation_api():
         from invitation_service import InvitationService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3873,7 +3873,7 @@ def login_api():
         from password_service import AccountLockedError
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4031,7 +4031,7 @@ def create_invitation_public_api():
         from auth_service import get_current_institution_id, get_current_user
         from invitation_service import InvitationError, InvitationService
 
-        payload = request.get_json()
+        payload = request.get_json(silent=True)
         if not payload:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4119,7 +4119,7 @@ def unlock_account_api():
         from login_service import LoginService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4170,7 +4170,7 @@ def forgot_password_api():
         from password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4218,7 +4218,7 @@ def reset_password_api():
         from password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 

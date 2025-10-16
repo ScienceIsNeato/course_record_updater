@@ -5,6 +5,10 @@ Tests the bulk email endpoints for sending reminders and tracking progress.
 
 NOTE: This file patches permission_required at import time to avoid affecting
 other tests. The patch is cleaned up in setUpClass/tearDownClass.
+
+IMPORTANT: These tests must run in a separate pytest process to avoid
+module-level import pollution. Use `pytest tests/unit/api/routes/test_bulk_email.py`
+to run them in isolation.
 """
 
 import json
