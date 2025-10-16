@@ -2,31 +2,54 @@
 Unit tests for Bulk Email API routes.
 
 Tests the bulk email endpoints for sending reminders and tracking progress.
+
+NOTE: This file patches permission_required at import time to avoid affecting
+other tests. The patch is cleaned up in setUpClass/tearDownClass.
 """
 
 import json
+import sys
 import unittest
 from unittest.mock import Mock, patch
 
 from flask import Flask
 
-# Import auth_service and patch permission_required BEFORE importing bulk_email
-import auth_service
-
-# Mock permission_required to accept all arguments and just return the function
-auth_service.permission_required = lambda perm, context_keys=None: lambda f: f  # type: ignore
-
-from api.routes.bulk_email import bulk_email_bp
-
 
 class TestBulkEmailAPI(unittest.TestCase):
     """Test bulk email API endpoints"""
+
+    @classmethod
+    def setUpClass(cls):
+        """Patch permission_required before importing bulk_email module"""
+        # Save original permission_required
+        import auth_service
+
+        cls._original_permission_required = auth_service.permission_required
+
+        # Replace with mock that bypasses auth checks
+        auth_service.permission_required = lambda perm, context_keys=None: lambda f: f
+
+        # NOW import the blueprint (it will use our mocked permission_required)
+        from api.routes.bulk_email import bulk_email_bp
+
+        cls.bulk_email_bp = bulk_email_bp
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore original permission_required"""
+        import auth_service
+
+        auth_service.permission_required = cls._original_permission_required
+
+        # Remove the bulk_email module so it gets reimported fresh in other tests
+        if "api.routes.bulk_email" in sys.modules:
+            del sys.modules["api.routes.bulk_email"]
 
     def setUp(self):
         """Set up test fixtures"""
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
-        self.app.register_blueprint(bulk_email_bp)
+        self.app.register_blueprint(self.bulk_email_bp)
         self.client = self.app.test_client()
 
         # Mock current user
