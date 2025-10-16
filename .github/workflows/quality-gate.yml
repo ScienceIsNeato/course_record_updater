@@ -339,15 +339,17 @@ jobs:
         # Source environment template for non-sensitive E2E configuration
         source .envrc.template
         
+        # Override placeholder Ethereal credentials with real ones from GitHub secrets
+        # (sourcing .envrc.template sets placeholders, so we must override after)
+        export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"
+        export ETHEREAL_PASS="${{ secrets.ETHEREAL_PASS }}"
+        
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
         python scripts/ship_it.py --checks e2e
       env:
         CI: true
         GITHUB_ACTIONS: true
         APP_ENV: e2e
-        # Ethereal credentials from GitHub secrets (user will add these)
-        ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}
-        ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}
     - name: Upload E2E Test Artifacts
       if: failure()
       uses: actions/upload-artifact@v4
