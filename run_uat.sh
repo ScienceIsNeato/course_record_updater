@@ -109,33 +109,36 @@ elif [ "${CI:-false}" = "true" ]; then
     echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
 fi
 
-# Restart server to ensure fresh database with test credentials
-echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
-
-# Clear E2E database to ensure fresh state
-rm -f course_records_e2e.db course_records_e2e.db-* 2>/dev/null || true
-
-# Set E2E environment for database seeding
-export APP_ENV="e2e"
+# Load environment variables from .envrc
 if [ -f ".envrc" ]; then
     source .envrc
 elif [ -f ".envrc.template" ]; then
     source .envrc.template
 fi
 
+# Set ENV to "test" so email factory automatically selects Ethereal
+export ENV="test"
+
+# Restart server to ensure fresh database with test credentials
+echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
+
+# Clear E2E database to ensure fresh state (restart_server.sh will select correct DB)
+E2E_DB="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+E2E_DB_FILE="${E2E_DB#sqlite:///}"
+echo -e "${BLUE}🗑️  Clearing E2E database: $E2E_DB_FILE${NC}"
+rm -f "$E2E_DB_FILE" "${E2E_DB_FILE}-"* 2>/dev/null || true
+
 # Seed E2E database with test data
 echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
 python scripts/seed_db.py
 echo ""
 
-# Get E2E port from constants.py (hardcoded, not env var)
-E2E_PORT=$(python3 -c "from constants import E2E_TEST_PORT; print(E2E_TEST_PORT)")
-
-# Start server in E2E mode (explicit environment argument)
+# Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
+E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
 echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
-if ! PORT=$E2E_PORT ./restart_server.sh e2e; then
+if ! ./restart_server.sh e2e; then
     echo -e "${RED}❌ E2E server failed to start${NC}"
-    echo -e "${YELLOW}Check logs/server.log for details${NC}"
+    echo -e "${YELLOW}Check logs/test_server.log for details${NC}"
     exit 1
 fi
 echo ""
@@ -155,6 +158,9 @@ else
         export HEADLESS="1"
     fi
 fi
+
+# Set DATABASE_URL for pytest so it doesn't create a temp database
+export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
 
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"
@@ -202,8 +208,8 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
-    # Kill server on E2E port (from constants.py) specifically
-    local E2E_PORT=$(python3 -c "from constants import E2E_TEST_PORT; print(E2E_TEST_PORT)" 2>/dev/null || echo "3002")
+    # Kill server on E2E port (from LASSIE_DEFAULT_PORT_E2E env var)
+    local E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
     local PIDS=$(lsof -ti:$E2E_PORT 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do

@@ -11,6 +11,51 @@ For comprehensive authentication system validation:
 
 ## Automated Testing Strategy
 
+## Core Testing Principles
+
+### 🎯 NEVER Use Hardcoded Strings in Tests
+
+**Philosophy**: All string comparisons in tests MUST use constants from `constants.py`. This ensures:
+- **Consistency**: Single source of truth for all error messages, labels, and text
+- **Maintainability**: Change the message once, update all tests automatically
+- **SonarCloud Compliance**: Avoids string literal duplication errors
+- **Type Safety**: Catch typos at import time, not test runtime
+
+**✅ CORRECT**:
+```python
+from constants import INVALID_CREDENTIALS_MSG
+
+def test_login_failure(page):
+    # Use constant for string comparison
+    expect(
+        page.locator(f'.alert-danger:has-text("{INVALID_CREDENTIALS_MSG}")')
+    ).to_be_visible()
+```
+
+**❌ WRONG**:
+```python
+def test_login_failure(page):
+    # Hardcoded string - NEVER do this
+    expect(
+        page.locator('.alert-danger:has-text("Invalid credentials")')
+    ).to_be_visible()
+```
+
+**Process**:
+1. Check `constants.py` for an existing constant
+2. If it doesn't exist, add it to `constants.py` first
+3. Import and use the constant in your test
+4. Never duplicate strings across test files
+
+**Applies to**:
+- Error messages (`INVALID_CREDENTIALS_MSG`)
+- Success messages
+- Button labels
+- Page titles
+- API response messages
+- Validation messages
+- Any user-facing text
+
 ## Problem Statement
 
 We discovered that frontend JavaScript errors were only caught through manual testing (clicking buttons and checking browser console). This is inefficient and error-prone. We need automated testing to catch these issues without human intervention.

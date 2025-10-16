@@ -37,6 +37,8 @@ def create_email_provider(
     Raises:
         ValueError: If provider_name is invalid or required config missing
     """
+    logger.info(f"[Email Factory] create_email_provider called: provider_name={provider_name}, config={'provided' if config else 'None'}")
+    
     # Determine provider if not specified
     if provider_name is None:
         provider_name = _determine_provider_from_environment()
@@ -124,15 +126,20 @@ def _load_config_from_environment() -> Dict[str, Any]:
         })
     
     # Add Ethereal-specific settings if Ethereal is configured
-    if os.getenv("ETHEREAL_USER"):
+    ethereal_user = os.getenv("ETHEREAL_USER")
+    logger.info(f"[Email Factory] ETHEREAL_USER from environment: {ethereal_user}")
+    logger.info(f"[Email Factory] ENV from environment: {os.getenv('ENV')}")
+    
+    if ethereal_user:
         config.update({
             "smtp_host": os.getenv("ETHEREAL_SMTP_HOST", "smtp.ethereal.email"),
             "smtp_port": int(os.getenv("ETHEREAL_SMTP_PORT", "587")),
             "imap_host": os.getenv("ETHEREAL_IMAP_HOST", "imap.ethereal.email"),
             "imap_port": int(os.getenv("ETHEREAL_IMAP_PORT", "993")),
-            "username": os.getenv("ETHEREAL_USER"),
+            "username": ethereal_user,
             "password": os.getenv("ETHEREAL_PASS"),
-            "from_email": os.getenv("ETHEREAL_USER"),
+            "from_email": ethereal_user,
         })
+        logger.info(f"[Email Factory] Ethereal configuration loaded for {ethereal_user}")
     
     return config

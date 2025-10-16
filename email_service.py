@@ -325,34 +325,13 @@ class EmailService:
         Get configured email provider instance
 
         Returns:
-            Configured EmailProvider (console or gmail based on config)
+            Configured EmailProvider (determined by environment)
         """
-        # Build config from Flask app config
-        config = {
-            "server": current_app.config.get("MAIL_SERVER", "smtp.gmail.com"),
-            "port": current_app.config.get("MAIL_PORT", 587),
-            "use_tls": current_app.config.get("MAIL_USE_TLS", True),
-            "use_ssl": current_app.config.get("MAIL_USE_SSL", False),
-            "username": current_app.config.get("MAIL_USERNAME"),
-            "password": current_app.config.get("MAIL_PASSWORD"),
-            "default_sender": current_app.config.get(
-                "MAIL_DEFAULT_SENDER", DEFAULT_FROM_EMAIL
-            ),
-            "default_sender_name": current_app.config.get(
-                "MAIL_DEFAULT_SENDER_NAME", DEFAULT_FROM_NAME
-            ),
-        }
-
-        # Determine provider type based on MAIL_SUPPRESS_SEND flag and server config
-        # If True -> console provider (dev mode)
-        # If False -> auto-detect based on MAIL_SERVER
-        if current_app.config.get("MAIL_SUPPRESS_SEND", False):
-            provider_name = "console"
-        else:
-            # Let factory auto-detect based on MAIL_SERVER
-            provider_name = None
-
-        return create_email_provider(provider_name=provider_name, config=config)
+        # Let factory auto-detect provider and load config from environment
+        # Provider selection based on ENV variable:
+        #   - test/e2e -> ethereal (IMAP verification)
+        #   - development/production -> brevo (real email)
+        return create_email_provider()
 
     @staticmethod
     def _send_email(

@@ -123,6 +123,11 @@ class User(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     oauth_provider = Column(String)
     oauth_id = Column(String)
     password_reset_token = Column(String)
+    password_reset_token_data = Column(
+        PickleType
+    )  # Stores token metadata (expires_at, etc.)
+    password_reset_requested_at = Column(DateTime)
+    password_reset_completed_at = Column(DateTime)
     password_reset_expires_at = Column(DateTime)
     extras = Column(PickleType, default=dict)
 
@@ -377,7 +382,8 @@ def _institution_to_dict(model: Institution) -> Dict[str, Any]:
 def _user_to_dict(model: User) -> Dict[str, Any]:
     """Convert User model to dictionary."""
     data = {
-        "user_id": model.id,
+        "id": model.id,  # Primary key (conventional)
+        "user_id": model.id,  # Legacy compatibility
         "email": model.email,
         "password_hash": model.password_hash,
         "first_name": model.first_name,
@@ -398,6 +404,9 @@ def _user_to_dict(model: User) -> Dict[str, Any]:
         "oauth_provider": model.oauth_provider,
         "oauth_id": model.oauth_id,
         "password_reset_token": model.password_reset_token,
+        "password_reset_token_data": model.password_reset_token_data,
+        "password_reset_requested_at": model.password_reset_requested_at,
+        "password_reset_completed_at": model.password_reset_completed_at,
         "password_reset_expires_at": model.password_reset_expires_at,
         "created_at": model.created_at,
         "updated_at": model.updated_at,

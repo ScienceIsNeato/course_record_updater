@@ -10,9 +10,13 @@ from unittest.mock import Mock, patch
 
 from flask import Flask
 
-# Patch permission_required BEFORE importing bulk_email routes
-with patch("auth_service.permission_required", lambda perm: lambda f: f):
-    from api.routes.bulk_email import bulk_email_bp
+# Import auth_service and patch permission_required BEFORE importing bulk_email
+import auth_service
+
+# Mock permission_required to accept all arguments and just return the function
+auth_service.permission_required = lambda perm, context_keys=None: lambda f: f  # type: ignore
+
+from api.routes.bulk_email import bulk_email_bp
 
 
 class TestBulkEmailAPI(unittest.TestCase):
@@ -28,6 +32,7 @@ class TestBulkEmailAPI(unittest.TestCase):
         # Mock current user
         self.mock_user = {
             "id": "test-user-123",
+            "user_id": "test-user-123",  # Required for logging
             "email": "admin@example.com",
             "role": "program_admin",
         }
@@ -152,6 +157,7 @@ class TestBulkEmailAPI(unittest.TestCase):
             "id": "job-123",
             "job_type": "instructor_reminder",
             "status": "running",
+            "created_by_user_id": "test-user-123",  # Match the mock user
             "recipient_count": 5,
             "emails_sent": 3,
             "emails_failed": 0,

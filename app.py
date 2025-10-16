@@ -14,6 +14,7 @@ from auth_service import get_current_user, is_authenticated, login_required
 # Import constants
 from constants import DASHBOARD_ENDPOINT
 from database_service import check_db_connection
+from email_service import EmailService
 from logging_config import get_app_logger
 
 # Unused imports removed
@@ -73,6 +74,9 @@ setup_logging()
 # Register API blueprints
 app.register_blueprint(api)  # Legacy monolithic API (being refactored)
 register_blueprints(app)  # New modular API structure
+
+# Configure email service (sets BASE_URL and other email settings)
+EmailService.configure_app(app)
 
 # Secret key configuration
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
@@ -262,11 +266,9 @@ def sections_list():
 
 
 if __name__ == "__main__":
-    # Use PORT environment variable if available (common in deployment),
-    # otherwise use COURSE_RECORD_UPDATER_PORT from .envrc, or default to 3001
-    port = int(
-        os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
-    )
+    # Use LASSIE_DEFAULT_PORT_DEV environment variable
+    # This is set in .envrc and should always be available
+    port = int(os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001))
     # Debug mode should be controlled by FLASK_DEBUG environment variable
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 

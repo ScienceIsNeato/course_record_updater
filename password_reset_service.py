@@ -95,7 +95,7 @@ class PasswordResetService:
             reset_data = {
                 "password_reset_token": reset_token,
                 "password_reset_token_data": token_data,
-                "password_reset_requested_at": datetime.now().isoformat(),
+                "password_reset_requested_at": datetime.now(),
             }
 
             success = db.update_user(user["user_id"], reset_data)
@@ -184,8 +184,8 @@ class PasswordResetService:
                 "password_hash": password_hash,
                 "password_reset_token": None,
                 "password_reset_token_data": None,
-                "password_reset_completed_at": datetime.now().isoformat(),
-                "password_changed_at": datetime.now().isoformat(),
+                "password_reset_completed_at": datetime.now(),
+                "password_changed_at": datetime.now(),
             }
 
             success = db.update_user(user["user_id"], update_data)

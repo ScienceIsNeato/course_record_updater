@@ -32,6 +32,7 @@ class TestLoginServiceAuthentication:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
+            "email_verified": True,  # Required for login
             "institution_id": "inst-123",
             "display_name": "Test User",
             "login_count": 5,
@@ -94,6 +95,7 @@ class TestLoginServiceAuthentication:
             "email": "test@example.com",
             "password_hash": "hashed-password",
             "account_status": "active",
+            "email_verified": True,  # Required for login
         }
         mock_password_service.verify_password.return_value = False
         mock_password_service.track_failed_login.return_value = None
@@ -162,6 +164,7 @@ class TestLoginServiceAuthentication:
             "user_id": "user-123",
             "email": "test@example.com",
             "account_status": "active",
+            "email_verified": True,  # Required for login
             # No password_hash field
         }
 
@@ -186,6 +189,7 @@ class TestLoginServiceAuthentication:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
+            "email_verified": True,  # Required for login
             "login_count": 0,
         }
         mock_password_service.verify_password.return_value = True
@@ -564,6 +568,7 @@ class TestLoginServiceIntegration:
             "password_hash": "hashed-password",
             "role": "instructor",
             "account_status": "active",
+            "email_verified": True,  # Required for login
             "login_count": 0,
         }
         mock_password_service.verify_password.return_value = True

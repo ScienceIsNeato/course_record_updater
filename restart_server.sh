@@ -43,6 +43,9 @@ mkdir -p logs
 echo -e "${BLUE}🎯 Course Record Updater - Environment-aware Restart${NC}"
 echo -e "${BLUE}=====================================================${NC}"
 
+# Save any pre-set environment variables that should not be overridden
+SAVED_ENV="${ENV:-}"
+
 # Load environment configuration
 if [ -f ".envrc" ]; then
     # Local development: source .envrc (which sources .envrc.template)
@@ -59,13 +62,40 @@ else
     exit 1
 fi
 
+# Restore pre-set ENV (e.g., ENV="test" from run_uat.sh)
+if [ -n "$SAVED_ENV" ]; then
+    export ENV="$SAVED_ENV"
+    echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
+fi
+
+# Determine database and base URL based on environment (same pattern as port)
+case "$APP_ENV" in
+    dev)
+        DATABASE_URL="${DATABASE_URL_DEV:-sqlite:///course_records_dev.db}"
+        BASE_URL="${BASE_URL_DEV:-http://localhost:3001}"
+        ;;
+    e2e|uat)
+        DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+        BASE_URL="${BASE_URL_E2E:-http://localhost:3002}"
+        ;;
+    ci)
+        DATABASE_URL="${DATABASE_URL_CI:-sqlite:///course_records_ci.db}"
+        BASE_URL="${BASE_URL_CI:-http://localhost:3001}"
+        ;;
+    *)
+        DATABASE_URL="${DATABASE_URL_DEV:-sqlite:///course_records_dev.db}"
+        BASE_URL="${BASE_URL_DEV:-http://localhost:3001}"
+        ;;
+esac
+
+export DATABASE_URL
 DB_PATH="${DATABASE_URL#sqlite:///}"
 echo -e "${BLUE}🔧 Using database: ${DB_PATH}${NC}"
 
 echo "SQLite database located at: ${DB_PATH}" > logs/database_location.txt
 
 claim_port() {
-    local PORT=${1:-$COURSE_RECORD_UPDATER_PORT}
+    local PORT=$1
     if lsof -i :$PORT > /dev/null 2>&1; then
         echo -e "${YELLOW}⚠️  Port $PORT occupied; reclaiming...${NC}"
         local PIDS
@@ -79,7 +109,7 @@ claim_port() {
 }
 
 start_flask_app() {
-    local PORT=${1:-$COURSE_RECORD_UPDATER_PORT}
+    local PORT=$1
     
     # Determine log file based on environment
     local LOG_FILE="logs/server.log"
@@ -101,7 +131,31 @@ start_flask_app() {
         source venv/bin/activate
     fi
 
-    PYTHONUNBUFFERED=1 python app.py > "$LOG_FILE" 2>&1 &
+    # Export environment variables for Flask app
+    # Note: Must re-export with value assignment for subprocess inheritance
+    export LASSIE_DEFAULT_PORT_DEV="$PORT"
+    export PYTHONUNBUFFERED=1
+    export DATABASE_URL="$DATABASE_URL"
+    export BASE_URL="$BASE_URL"
+    export ENV="$ENV"
+    export ETHEREAL_USER="$ETHEREAL_USER"
+    export ETHEREAL_PASS="$ETHEREAL_PASS"
+    export ETHEREAL_SMTP_HOST="$ETHEREAL_SMTP_HOST"
+    export ETHEREAL_SMTP_PORT="$ETHEREAL_SMTP_PORT"
+    export ETHEREAL_IMAP_HOST="$ETHEREAL_IMAP_HOST"
+    export ETHEREAL_IMAP_PORT="$ETHEREAL_IMAP_PORT"
+    export EMAIL_WHITELIST="$EMAIL_WHITELIST"
+    
+    # Debug: Check if env vars are set
+    echo -e "${BLUE}📧 Email configuration:${NC}"
+    echo -e "   ENV=${ENV}"
+    echo -e "   DATABASE_URL=${DATABASE_URL}"
+    echo -e "   BASE_URL=${BASE_URL}"
+    echo -e "   ETHEREAL_USER=${ETHEREAL_USER}"
+    
+    # Start Flask app
+    # Explicitly pass DATABASE_URL in the command to ensure subprocess gets it
+    DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$LOG_FILE" 2>&1 &
     FLASK_PID=$!
     sleep 2
 
@@ -129,8 +183,26 @@ start_flask_app() {
 }
 
 main() {
-    claim_port "$COURSE_RECORD_UPDATER_PORT"
-    start_flask_app "$COURSE_RECORD_UPDATER_PORT"
+    # Determine port based on environment
+    local PORT
+    case "$APP_ENV" in
+        dev)
+            PORT="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            ;;
+        e2e|uat)
+            PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+            ;;
+        ci)
+            PORT="${LASSIE_DEFAULT_PORT_CI:-3003}"
+            ;;
+        *)
+            PORT="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            ;;
+    esac
+    
+    echo -e "${BLUE}🌐 Starting Flask app on port $PORT...${NC}"
+    claim_port "$PORT"
+    start_flask_app "$PORT"
 }
 
 main "$@"

@@ -12,29 +12,36 @@ export ENV="development"  # development, staging, or production
 export PRODUCTION="false"  # Set to "true" only in production
 
 # =============================================================================
-# DATABASE
+# DATABASE (environment-specific)
 # =============================================================================
-export DATABASE_URL="sqlite:///course_records_dev.db"
+export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
+export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+export DATABASE_URL_CI="sqlite:///course_records_ci.db"
 
 # =============================================================================
 # FLASK CONFIGURATION
 # =============================================================================
 export SECRET_KEY="your-secret-key-here-change-in-production"
-export BASE_URL="http://localhost:3001"
-export DEFAULT_PORT="3001"
+
+# Base URL configuration (environment-specific)
+export BASE_URL_DEV="http://localhost:3001"
+export BASE_URL_E2E="http://localhost:3002"
+export BASE_URL_CI="http://localhost:3001"
+
+# Port configuration (environment-specific)
+export LASSIE_DEFAULT_PORT_DEV="3001"   # Development server port
+export LASSIE_DEFAULT_PORT_E2E="3002"   # E2E test server port (separate from dev)
 
 # =============================================================================
 # EMAIL CONFIGURATION
 # =============================================================================
 
 # Email Provider Selection
-# Explicit override (optional) - if not set, determined by ENV variable
-# Options: "brevo" (real email) or "ethereal" (E2E testing)
-# Default mapping:
-#   - test/testing -> ethereal
-#   - development/staging/production -> brevo
-# Recommendation: Set explicitly to avoid ambiguity
-export EMAIL_PROVIDER="brevo"  # or "ethereal" for E2E testing
+# Automatically determined by ENV variable:
+#   - test/testing/e2e -> ethereal (IMAP verification)
+#   - development/staging/production -> brevo (real email)
+# Override only if needed: export EMAIL_PROVIDER="brevo"
+# Leave unset for automatic selection (recommended)
 
 # Email Whitelist (REQUIRED for non-production environments)
 # Comma-separated list of allowed recipient addresses
