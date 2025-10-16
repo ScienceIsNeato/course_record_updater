@@ -30,12 +30,15 @@ from database_service import (
     get_all_users,
 )
 
-# Import shared test credentials from root conftest
+# Import shared test credentials from root conftest (worker-aware for parallel execution)
 from tests.conftest import (
     INSTITUTION_ADMIN_EMAIL,
     INSTITUTION_ADMIN_PASSWORD,
     SITE_ADMIN_EMAIL,
     SITE_ADMIN_PASSWORD,
+    get_institution_admin_credentials,
+    get_site_admin_credentials,
+    get_worker_email,
 )
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -210,8 +213,10 @@ def authenticated_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Fill and submit the actual login form (handles CSRF automatically)
-    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
-    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
+    # Use worker-specific credentials for parallel test execution
+    admin_email, admin_password = get_institution_admin_credentials()
+    page.fill('input[name="email"]', admin_email)
+    page.fill('input[name="password"]', admin_password)
 
     # Submit form and wait for JavaScript to handle login and redirect
     page.click('button[type="submit"]')
@@ -267,8 +272,10 @@ def authenticated_site_admin_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Fill and submit the actual login form (handles CSRF automatically)
-    page.fill('input[name="email"]', SITE_ADMIN_EMAIL)
-    page.fill('input[name="password"]', SITE_ADMIN_PASSWORD)
+    # Use worker-specific credentials for parallel test execution
+    site_admin_email, site_admin_password = get_site_admin_credentials()
+    page.fill('input[name="email"]', site_admin_email)
+    page.fill('input[name="password"]', site_admin_password)
 
     # Submit form and wait for JavaScript to handle login and redirect
     page.click('button[type="submit"]')
@@ -317,8 +324,8 @@ def instructor_authenticated_page(page: Page) -> Page:
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    # Use instructor credentials from seeded data
-    INSTRUCTOR_EMAIL = "john.instructor@mocku.test"
+    # Use instructor credentials from seeded data (worker-specific for parallel execution)
+    INSTRUCTOR_EMAIL = get_worker_email("john.instructor@mocku.test")
     INSTRUCTOR_PASSWORD = "TestUser123!"  # From seed data
 
     # Fill and submit the actual login form (handles CSRF automatically)
@@ -391,8 +398,8 @@ def program_admin_authenticated_page(page: Page) -> Page:
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    # Use program admin credentials from seeded data
-    PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
+    # Use program admin credentials from seeded data (worker-specific for parallel execution)
+    PROGRAM_ADMIN_EMAIL = get_worker_email("lisa.prog@mocku.test")
     PROGRAM_ADMIN_PASSWORD = "TestUser123!"  # From seed data
 
     # Fill and submit the actual login form (handles CSRF automatically)

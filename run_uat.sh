@@ -140,6 +140,11 @@ echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
 python scripts/seed_db.py
 echo ""
 
+# Create worker-specific accounts for parallel test execution
+echo -e "${YELLOW}🔧 Creating worker-specific test accounts...${NC}"
+python scripts/seed_worker_accounts.py --workers 4
+echo ""
+
 # Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
 E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
 echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"

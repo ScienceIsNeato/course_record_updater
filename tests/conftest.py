@@ -38,6 +38,46 @@ INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
 INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
 
 
+def get_worker_id():
+    """Get pytest-xdist worker ID (e.g., 'gw0' -> 0, 'gw1' -> 1, None -> use base account)"""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", None)
+    if worker_id and worker_id.startswith("gw"):
+        try:
+            return int(worker_id[2:])  # Extract number from 'gw0', 'gw1', etc.
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
+def get_worker_email(base_email: str) -> str:
+    """Get worker-specific email address for parallel test execution.
+
+    Args:
+        base_email: Base email (e.g., 'siteadmin@system.local')
+
+    Returns:
+        Worker-specific email (e.g., 'siteadmin_worker0@system.local') or base email if not in parallel mode
+    """
+    worker_id = get_worker_id()
+    if worker_id is None:
+        return base_email
+
+    # Insert worker suffix before @domain
+    email_parts = base_email.rsplit("@", 1)
+    return f"{email_parts[0]}_worker{worker_id}@{email_parts[1]}"
+
+
+# Worker-aware credential getters (use these in E2E tests for parallel execution)
+def get_site_admin_credentials() -> tuple[str, str]:
+    """Get site admin credentials for current worker"""
+    return (get_worker_email(SITE_ADMIN_EMAIL), SITE_ADMIN_PASSWORD)
+
+
+def get_institution_admin_credentials() -> tuple[str, str]:
+    """Get institution admin credentials for current worker"""
+    return (get_worker_email(INSTITUTION_ADMIN_EMAIL), INSTITUTION_ADMIN_PASSWORD)
+
+
 @pytest.fixture(scope="session", autouse=True)
 def ensure_test_database(tmp_path_factory):
     """Provide isolated test database.
