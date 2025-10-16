@@ -336,7 +336,7 @@ jobs:
         python -m playwright install --with-deps chromium
     - name: Run E2E Tests (using ship_it.py)
       run: |
-        # Source environment template for E2E configuration
+        # Source environment template for non-sensitive E2E configuration
         source .envrc.template
         
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
@@ -345,6 +345,9 @@ jobs:
         CI: true
         GITHUB_ACTIONS: true
         APP_ENV: e2e
+        # Ethereal credentials from GitHub secrets (user will add these)
+        ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}
+        ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}
     - name: Upload E2E Test Artifacts
       if: failure()
       uses: actions/upload-artifact@v4

@@ -133,7 +133,7 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
     def handle_console(msg):
         if msg.type == "error":
             error_text = msg.text
-            # Ignore expected HTTP error responses (401, 403, 404) from intentional test scenarios
+            # Ignore expected HTTP error responses from intentional test scenarios
             # These are valid test outcomes, not JavaScript bugs
             if any(
                 status in error_text.lower()
@@ -141,6 +141,7 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
                     "401 (unauthorized)",
                     "403 (forbidden)",
                     "404 (not found)",
+                    "423 (locked)",  # Account lockout - expected during failed login tests
                 ]
             ):
                 print(f"ℹ️  Expected HTTP Error: {error_text}")
@@ -496,6 +497,37 @@ def server_running():
     # Database is seeded by run_uat.sh before server starts
     # No need to seed again here - just verify server is responding
     return True
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_account_locks():
+    """
+    Reset account locks before each E2E test to prevent HTTP 423 errors.
+
+    E2E tests may fail at login, causing account lockouts. This fixture
+    clears all failed login attempts before each test runs to ensure
+    accounts are not locked.
+
+    Runs automatically before every E2E test.
+    """
+    from password_service import PasswordService
+
+    # Clear failed login attempts for all test accounts
+    test_accounts = [
+        SITE_ADMIN_EMAIL,
+        INSTITUTION_ADMIN_EMAIL,
+        "john.instructor@cei.edu",  # Instructor
+        "lisa.prog@cei.edu",  # Program admin
+    ]
+
+    for email in test_accounts:
+        try:
+            PasswordService.clear_failed_attempts(email)
+        except Exception:
+            # Best effort - if account doesn't exist or clearing fails, continue
+            pass
+
+    yield
 
 
 @pytest.fixture(scope="function")
