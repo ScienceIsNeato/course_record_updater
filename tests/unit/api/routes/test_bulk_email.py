@@ -3,67 +3,28 @@ Unit tests for Bulk Email API routes.
 
 Tests the bulk email endpoints for sending reminders and tracking progress.
 
-NOTE: This file patches permission_required at import time to avoid affecting
-other tests. The patch is cleaned up in setUpClass/tearDownClass.
-
-IMPORTANT: These tests must run in a separate pytest process to avoid
-module-level import pollution. Use `pytest tests/unit/api/routes/test_bulk_email.py`
-to run them in isolation.
+NOTE: bulk_email.py uses @lazy_permission_required decorator which resolves
+permission checks at RUNTIME, not import time. This allows proper mocking
+in tests without import pollution issues.
 """
 
-import importlib
 import json
-import sys
 import unittest
 from unittest.mock import Mock, patch
 
 from flask import Flask
 
+from api.routes.bulk_email import bulk_email_bp
+
 
 class TestBulkEmailAPI(unittest.TestCase):
     """Test bulk email API endpoints"""
-
-    @classmethod
-    def setUpClass(cls):
-        """Patch permission_required before importing bulk_email module"""
-        # Save original permission_required
-        import auth_service
-
-        cls._original_permission_required = auth_service.permission_required
-
-        # Replace with mock that bypasses auth checks
-        auth_service.permission_required = lambda perm, context_keys=None: lambda f: f
-
-        # NOW import the blueprint (it will use our mocked permission_required)
-        from api.routes.bulk_email import bulk_email_bp
-
-        cls.bulk_email_bp = bulk_email_bp
-
-    @classmethod
-    def tearDownClass(cls):
-        """Restore original permission_required and clean up imports"""
-        import auth_service
-
-        # Restore original
-        auth_service.permission_required = cls._original_permission_required
-
-        # Force complete module cleanup
-        modules_to_remove = [
-            "api.routes.bulk_email",
-            "bulk_email_service",  # Also imported by bulk_email
-        ]
-        for module_name in modules_to_remove:
-            if module_name in sys.modules:
-                del sys.modules[module_name]
-
-        # Force reload of auth_service to ensure clean state
-        importlib.reload(auth_service)
 
     def setUp(self):
         """Set up test fixtures"""
         self.app = Flask(__name__)
         self.app.config["TESTING"] = True
-        self.app.register_blueprint(self.bulk_email_bp)
+        self.app.register_blueprint(bulk_email_bp)
         self.client = self.app.test_client()
 
         # Mock current user
@@ -73,6 +34,18 @@ class TestBulkEmailAPI(unittest.TestCase):
             "email": "admin@example.com",
             "role": "program_admin",
         }
+
+        # Patch permission_required to bypass auth checks
+        # This works because lazy_permission_required imports it at runtime
+        self.permission_patcher = patch(
+            "auth_service.permission_required",
+            lambda perm, context_keys=None: lambda f: f,
+        )
+        self.permission_patcher.start()
+
+    def tearDown(self):
+        """Clean up patches"""
+        self.permission_patcher.stop()
 
     @patch("api.routes.bulk_email.get_current_user")
     @patch("api.routes.bulk_email.BulkEmailService")
