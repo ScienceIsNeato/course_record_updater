@@ -1,8 +1,69 @@
+#!/bin/bash
 # =============================================================================
 # Course Record Updater - Environment Configuration Template
 # =============================================================================
-# Copy this file to .envrc and fill in your values
-# Run `source .envrc` to load into your shell
+# 
+# This template provides default configuration values for the application.
+# 
+# USAGE:
+# 1. Copy this file: cp .envrc.template .envrc
+# 2. Update values in .envrc with your local settings
+# 3. Load variables: source .envrc (or use direnv)
+# 
+# NOTE: .envrc is git-ignored for security. Never commit sensitive data!
+#
+# =============================================================================
+# ENVIRONMENT VARIABLE PATTERN (IMPORTANT!)
+# =============================================================================
+#
+# This template follows a strict pattern to prevent credential override issues:
+#
+# ✅ DO: Export variables with valid default values
+#    export DATABASE_URL="sqlite:///course_records.db"
+#    export LOG_LEVEL="INFO"
+#
+# ✅ DO: Comment out variables that require user-specific values
+#    # export BREVO_API_KEY="your-api-key-here"
+#    # export ETHEREAL_USER="your-username@ethereal.email"
+#
+# ❌ DON'T: Export placeholder values that would break if used
+#    export ETHEREAL_USER="your-username@ethereal.email"  # BAD!
+#
+# WHY THIS MATTERS:
+# - When bash sources this file, every `export` statement overwrites that variable
+# - If CI sets ETHEREAL_USER from secrets, then sources this template with a
+#   placeholder export, the placeholder overwrites the real credential
+# - Solution: Only export valid defaults, comment out user-specific values
+#
+# =============================================================================
+# HOW TO SET SENSITIVE/USER-SPECIFIC VALUES
+# =============================================================================
+#
+# 1. LOCAL DEVELOPMENT (.envrc - not committed):
+#    Copy this template and uncomment/set real values in .envrc:
+#    
+#    cp .envrc.template .envrc
+#    # Then edit .envrc:
+#    export ETHEREAL_USER="real-user@ethereal.email"
+#    export ETHEREAL_PASS="real-password"
+#    export BREVO_API_KEY="real-brevo-api-key"
+#
+# 2. CI/CD (GitHub Secrets):
+#    Add secrets via: GitHub repo → Settings → Secrets and variables → Actions
+#    Then reference in workflow YAML:
+#    
+#    env:
+#      ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}
+#      ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}
+#    
+#    CI exports these BEFORE sourcing .envrc.template (order matters!)
+#
+# 3. PRODUCTION (Environment variables):
+#    Set directly in hosting environment:
+#    - Heroku: heroku config:set BREVO_API_KEY=xxx
+#    - AWS: Environment variables in ECS/Lambda/EB
+#    - Never commit production credentials to any file
+#
 # =============================================================================
 
 # =============================================================================
@@ -28,43 +89,45 @@ export BASE_URL_DEV="http://localhost:3001"
 export BASE_URL_E2E="http://localhost:3002"
 export BASE_URL_CI="http://localhost:3001"
 
-# Port configuration (environment-specific)
-export LASSIE_DEFAULT_PORT_DEV="3001"   # Development server port
-export LASSIE_DEFAULT_PORT_E2E="3002"   # E2E test server port (separate from dev)
+# Port configuration
+export LASSIE_DEFAULT_PORT_DEV="3001"
+export LASSIE_DEFAULT_PORT_E2E="3002"
 
 # =============================================================================
-# EMAIL CONFIGURATION
+# EMAIL PROVIDER SELECTION
 # =============================================================================
+export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (testing)
 
-# Email Provider Selection
-# Automatically determined by ENV variable:
-#   - test/testing/e2e -> ethereal (IMAP verification)
-#   - development/staging/production -> brevo (real email)
-# Override only if needed: export EMAIL_PROVIDER="brevo"
-# Leave unset for automatic selection (recommended)
-
-# Email Whitelist (REQUIRED for non-production environments)
-# Comma-separated list of allowed recipient addresses
-# Supports wildcards: *@ethereal.email allows all ethereal addresses
-# Example: "dev@example.com,test@example.com,*@ethereal.email"
-# export EMAIL_WHITELIST="your-email@example.com,*@ethereal.email"
-
-# -----------------------------------------------------------------------------
-# Brevo Configuration (Production & Staging - Real Email Sending)
-# -----------------------------------------------------------------------------
-# Free tier: 300 emails/day
-# Sign up at: https://www.brevo.com/
-# export BREVO_API_KEY="your-brevo-api-key-here"
-# export BREVO_SENDER_EMAIL="your-verified-sender@example.com"
-# export BREVO_SENDER_NAME="Your App Name"
+# =============================================================================
+# BREVO EMAIL CONFIGURATION (Production Email Provider)
+# =============================================================================
+# Create account and get API key from: https://app.brevo.com/settings/keys/api
+# LOCAL: Uncomment and set in .envrc (not committed):
+#   export BREVO_API_KEY="your-brevo-api-key"
+#   export BREVO_SENDER_EMAIL="noreply@yourdomain.com"
+#   export BREVO_SENDER_NAME="Your App Name"
+#
+# CI: Add as GitHub secrets (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME)
+#
+# export BREVO_API_KEY="<set-in-.envrc-or-ci-secrets>"
+# export BREVO_SENDER_EMAIL="<set-in-.envrc-or-ci-secrets>"
+# export BREVO_SENDER_NAME="<set-in-.envrc-or-ci-secrets>"
 
 # -----------------------------------------------------------------------------
 # Ethereal Email Configuration (E2E Testing Only - Fake SMTP with IMAP)
 # -----------------------------------------------------------------------------
 # Create free account at: https://ethereal.email/
 # Only used in automated tests for email verification
-# export ETHEREAL_USER="your-ethereal-username@ethereal.email"
-# export ETHEREAL_PASS="your-ethereal-password"
+#
+# LOCAL: Uncomment and set in .envrc (not committed):
+#   export ETHEREAL_USER="your-ethereal-username@ethereal.email"
+#   export ETHEREAL_PASS="your-ethereal-password"
+#
+# CI: Add as GitHub secrets (ETHEREAL_USER, ETHEREAL_PASS)
+#   GitHub workflow exports these BEFORE sourcing this template
+#
+# export ETHEREAL_USER="<set-in-.envrc-or-ci-secrets>"
+# export ETHEREAL_PASS="<set-in-.envrc-or-ci-secrets>"
 export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
 export ETHEREAL_SMTP_PORT="587"
 export ETHEREAL_IMAP_HOST="imap.ethereal.email"
@@ -87,33 +150,5 @@ export LOG_FILE="logs/application.log"
 # =============================================================================
 # PATH MANAGEMENT (for Cursor AI)
 # =============================================================================
+# Uncomment and set to your workspace root for Cursor AI agent
 # export AGENT_HOME="/absolute/path/to/your/project"
-
-# =============================================================================
-# ENVIRONMENT-SPECIFIC NOTES
-# =============================================================================
-
-# LOCAL DEVELOPMENT:
-# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for development)
-# - Use Brevo for real email sending to whitelisted addresses
-# - Add your personal email to EMAIL_WHITELIST
-# - Configure both Brevo AND Ethereal (Ethereal used in E2E tests)
-
-# STAGING:
-# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for staging)
-# - Use Brevo with production API key
-# - Keep EMAIL_WHITELIST to prevent accidental emails to real users
-# - Whitelist: QA team emails, test accounts
-
-# PRODUCTION:
-# - Set EMAIL_PROVIDER="brevo" (or omit, defaults to brevo for production)
-# - Use Brevo with production API key
-# - Remove EMAIL_WHITELIST (or leave empty) to allow all recipients
-# - Set ENV="production" and PRODUCTION="true"
-# - Set SESSION_COOKIE_SECURE="true"
-# - Use strong SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_hex(32))")
-
-# E2E TESTING:
-# - Set EMAIL_PROVIDER="ethereal" (or set ENV="test", which auto-selects ethereal)
-# - Ethereal provides IMAP verification for automated tests
-# - No real emails sent, all caught in Ethereal's fake inbox
