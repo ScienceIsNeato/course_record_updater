@@ -5,6 +5,8 @@ This module provides common fixtures for integration tests,
 including database setup and institution creation.
 """
 
+import os
+
 import pytest
 
 
@@ -62,3 +64,53 @@ def setup_integration_test_data():
     except Exception as e:
         print(f"⚠️  Warning: Could not seed database for integration tests: {e}")
         # Don't fail the tests if this setup fails - let individual tests handle it
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_integration_test_database(tmp_path_factory):
+    """
+    Set up integration test database with email whitelist configuration.
+
+    This runs once per test session and:
+    1. Creates a temporary database for integration tests
+    2. Configures email whitelist to allow test emails
+    3. Sets up environment variables for integration testing
+    """
+    # Set up email whitelist for integration tests to allow test emails
+    # Use wildcard to allow all test emails
+    os.environ["EMAIL_WHITELIST"] = (
+        "*@inst.edu,*@example.com,*@testu.edu,*@eu.edu,*@cei.edu,*@ethereal.email"
+    )
+
+    # Create temporary database for integration tests
+    db_path = tmp_path_factory.mktemp("data") / "integration_test.db"
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ["DATABASE_TYPE"] = "sqlite"
+
+    # Initialize database
+    import database_service
+    from database_factory import refresh_database_service
+
+    refresh_database_service()
+    database_service.reset_database()
+
+    yield db_path
+
+    # Cleanup email whitelist after tests
+    if "EMAIL_WHITELIST" in os.environ:
+        del os.environ["EMAIL_WHITELIST"]
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clean_database_between_tests():
+    """
+    Clean database between integration tests to prevent pollution.
+
+    This ensures each test starts with a fresh database state.
+    """
+    import database_service
+
+    # Reset database to clean state
+    database_service.reset_database()
+
+    yield
