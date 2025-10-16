@@ -152,9 +152,7 @@ class TestLoginAPI:
         )  # Returns 400 with silent=True for missing JSON
         data = json.loads(response.data)
         assert data["success"] is False
-        assert (
-            "An unexpected error occurred" in data["error"]
-        )  # Generic error message from handle_api_error
+        assert "No JSON data provided" in data["error"]
 
     @patch("login_service.SessionService")
     @patch("login_service.PasswordService")

@@ -87,11 +87,10 @@ def setup_integration_test_database(tmp_path_factory):
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     os.environ["DATABASE_TYPE"] = "sqlite"
 
-    # Initialize database
+    # Initialize database - must call refresh_connection() to update module-level singleton
     import database_service
-    from database_factory import refresh_database_service
 
-    refresh_database_service()
+    database_service.refresh_connection()
     database_service.reset_database()
 
     yield db_path

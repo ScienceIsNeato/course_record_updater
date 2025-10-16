@@ -73,7 +73,7 @@ class TestPasswordResetAPI:
         assert response.status_code == 400
         data = json.loads(response.data)
         assert data["success"] is False
-        assert "Password reset request failed" in data["error"]
+        assert "No JSON data provided" in data["error"]
 
     @patch("password_reset_service.PasswordResetService")
     def test_forgot_password_rate_limit(self, mock_service, client):
