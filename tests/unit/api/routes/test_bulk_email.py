@@ -12,9 +12,23 @@ import json
 import unittest
 from unittest.mock import Mock, patch
 
+import pytest
 from flask import Flask
 
 from api.routes.bulk_email import bulk_email_bp
+
+
+# Module-level fixture to bypass permission checks for ALL tests in this file
+# This runs BEFORE test class instantiation, ensuring patches are active
+# when decorators are evaluated (critical for pytest-xdist parallel execution)
+@pytest.fixture(scope="module", autouse=True)
+def bypass_permissions():
+    """Bypass permission checks for all bulk_email route tests"""
+    with patch(
+        "auth_service.permission_required",
+        lambda perm, context_keys=None: lambda f: f,
+    ):
+        yield
 
 
 class TestBulkEmailAPI(unittest.TestCase):
@@ -34,18 +48,6 @@ class TestBulkEmailAPI(unittest.TestCase):
             "email": "admin@example.com",
             "role": "program_admin",
         }
-
-        # Patch permission_required to bypass auth checks
-        # This works because lazy_permission_required imports it at runtime
-        self.permission_patcher = patch(
-            "auth_service.permission_required",
-            lambda perm, context_keys=None: lambda f: f,
-        )
-        self.permission_patcher.start()
-
-    def tearDown(self):
-        """Clean up patches"""
-        self.permission_patcher.stop()
 
     @patch("api.routes.bulk_email.get_current_user")
     @patch("api.routes.bulk_email.BulkEmailService")

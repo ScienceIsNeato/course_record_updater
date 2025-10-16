@@ -266,9 +266,19 @@ def sections_list():
 
 
 if __name__ == "__main__":
-    # Use LASSIE_DEFAULT_PORT_DEV environment variable
-    # This is set in .envrc and should always be available
-    port = int(os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001))
+    # Port selection priority (for CI/multi-environment compatibility):
+    # 1. PORT (standard env var, used by CI)
+    # 2. DEFAULT_PORT (CI fallback)
+    # 3. LASSIE_DEFAULT_PORT_DEV (local dev default from .envrc)
+    # 4. 3001 (hardcoded fallback)
+    port = int(
+        os.environ.get(
+            "PORT",
+            os.environ.get(
+                "DEFAULT_PORT", os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001)
+            ),
+        )
+    )
     # Debug mode should be controlled by FLASK_DEBUG environment variable
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
