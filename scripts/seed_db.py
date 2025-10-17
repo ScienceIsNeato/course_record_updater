@@ -37,7 +37,15 @@ from password_service import hash_password
 class DatabaseSeeder:
     """Handles database seeding operations"""
 
-    def __init__(self, verbose: bool = True, num_workers: int = 4):
+    def __init__(self, verbose: bool = False, num_workers: int = 4):
+        """
+        Initialize database seeder.
+        
+        Args:
+            verbose: If True, log every individual creation (slow, noisy). 
+                     If False, show only progress summaries (fast, clean).
+            num_workers: Number of parallel workers (for future parallel seeding)
+        """
         self.verbose = verbose
         self.num_workers = num_workers  # Number of parallel test workers to support
         self.created_entities: Dict[str, List[str]] = {
@@ -55,11 +63,15 @@ class DatabaseSeeder:
         """Log message if verbose mode is enabled"""
         if self.verbose:
             print(f"[SEED] {message}")
+    
+    def progress(self, message: str):
+        """Always log progress (even in non-verbose mode)"""
+        print(f"[SEED] {message}")
 
     def clear_database(self, preserve_site_admin=False):
         """Clear existing test data by resetting the SQLite database."""
         action = "except site admin" if preserve_site_admin else ""
-        self.log(f"🧹 Resetting database {action}...")
+        self.progress(f"🧹 Resetting database {action}...")
 
         if not db.reset_database():
             self.log("   Warning: Database reset is not supported on this backend.")
@@ -71,7 +83,7 @@ class DatabaseSeeder:
 
     def create_institutions(self) -> List[str]:
         """Create test institutions (idempotent - checks for existing)"""
-        self.log("🏢 Creating test institutions...")
+        self.progress("🏢 Creating test institutions...")
 
         institutions = [
             {
@@ -134,7 +146,7 @@ class DatabaseSeeder:
 
     def create_site_admin(self) -> Optional[str]:
         """Create the site administrator user (idempotent - checks for existing)"""
-        self.log("👑 Creating site administrator...")
+        self.progress("👑 Creating site administrator...")
 
         try:
             email = "siteadmin@system.local"
@@ -180,7 +192,7 @@ class DatabaseSeeder:
 
     def create_institution_admins(self, institution_ids: List[str]) -> List[str]:
         """Create institution administrators"""
-        self.log("🎓 Creating institution administrators...")
+        self.progress("🎓 Creating institution administrators...")
 
         admin_data = [
             {
@@ -380,7 +392,7 @@ class DatabaseSeeder:
         self, institution_ids: List[str], admin_ids: List[str]
     ) -> List[str]:
         """Create academic programs"""
-        self.log("📚 Creating academic programs...")
+        self.progress("📚 Creating academic programs...")
 
         programs_data = self._get_programs_data()
         program_ids = []
@@ -398,7 +410,7 @@ class DatabaseSeeder:
         self, institution_ids: List[str], program_ids: List[str]
     ) -> List[str]:
         """Create program administrators and instructors"""
-        self.log("👥 Creating program admins and instructors...")
+        self.progress("👥 Creating program admins and instructors...")
 
         users_data = [
             # MockU Users
@@ -519,7 +531,7 @@ class DatabaseSeeder:
 
     def create_terms(self, institution_ids: List[str]) -> List[str]:
         """Create academic terms"""
-        self.log("📅 Creating academic terms...")
+        self.progress("📅 Creating academic terms...")
 
         # Create terms for current and next semester
         current_year = datetime.now().year
@@ -600,7 +612,7 @@ class DatabaseSeeder:
         self, institution_ids: List[str], program_ids: List[str]
     ) -> List[str]:
         """Create sample courses"""
-        self.log("📖 Creating sample courses...")
+        self.progress("📖 Creating sample courses...")
 
         courses_data = [
             # MockU CS Courses
@@ -774,7 +786,7 @@ class DatabaseSeeder:
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
         """Create course offerings for the created courses"""
-        self.log("📅 Creating course offerings...")
+        self.progress("📅 Creating course offerings...")
 
         from database_service import (
             create_course_offering,
@@ -833,7 +845,7 @@ class DatabaseSeeder:
         self, course_ids: List[str], institution_ids: List[str]
     ) -> List[str]:
         """Create course sections for the created courses"""
-        self.log("📋 Creating course sections...")
+        self.progress("📋 Creating course sections...")
 
         from database_service import (
             create_course_section,
@@ -949,7 +961,7 @@ class DatabaseSeeder:
 
     def create_course_outcomes(self, course_ids: List[str]) -> List[str]:
         """Create course learning outcomes (CLOs) for courses"""
-        self.log("🎯 Creating course learning outcomes (CLOs)...")
+        self.progress("🎯 Creating course learning outcomes (CLOs)...")
 
         from database_service import create_course_outcome, get_course_by_id
         from models import CourseOutcome
@@ -1079,7 +1091,7 @@ class DatabaseSeeder:
         self, institution_ids: List[str], admin_ids: List[str]
     ) -> List[str]:
         """Create sample pending invitations"""
-        self.log("📧 Creating sample invitations...")
+        self.progress("📧 Creating sample invitations...")
 
         invitations_data = [
             {
@@ -1180,7 +1192,7 @@ class DatabaseSeeder:
         # Create sample invitations
         self.create_sample_invitations(institution_ids, admin_ids)
 
-        self.log("✅ Database seeding completed successfully!")
+        self.progress("✅ Database seeding completed successfully!")
         self.print_summary()
         return True
 
@@ -1250,39 +1262,39 @@ class DatabaseSeeder:
             self.created_entities["programs"].append(program_id)
             self.log("   Created default program")
 
-        self.log("✅ Minimal dataset created successfully!")
+        self.progress("✅ Minimal dataset created successfully!")
         self.print_summary()
         return True
 
     def print_summary(self):
         """Print summary of created entities"""
-        self.log("\n📊 Seeding Summary:")
+        self.progress("\n📊 Seeding Summary:")
         for entity_type, entities in self.created_entities.items():
             if entities:
-                self.log(f"   {entity_type.title()}: {len(entities)} created")
+                self.progress(f"   {entity_type.title()}: {len(entities)} created")
 
     def print_test_accounts(self):
         """Print test account information for UAT"""
-        self.log("\n🔑 Test Accounts for UAT:")
-        self.log("   Site Admin:")
-        self.log("     Email: siteadmin@system.local")
-        self.log("     Password: SiteAdmin123!")
-        self.log("     Role: Site Administrator")
-        self.log("")
-        self.log("   Institution Admins:")
-        self.log("     MockU: sarah.admin@mocku.test / InstitutionAdmin123!")
-        self.log("     RCC: mike.admin@riverside.edu / InstitutionAdmin123!")
-        self.log("     PTU: admin@pactech.edu / InstitutionAdmin123!")
-        self.log("")
-        self.log("   Program Admins:")
-        self.log("     MockU CS/EE: lisa.prog@mocku.test / TestUser123!")
-        self.log("     RCC Liberal Arts: robert.prog@riverside.edu / TestUser123!")
-        self.log("")
-        self.log("   Instructors:")
-        self.log("     MockU CS: john.instructor@mocku.test / TestUser123!")
-        self.log("     MockU EE: jane.instructor@mocku.test / TestUser123!")
-        self.log("     RCC: susan.instructor@riverside.edu / TestUser123!")
-        self.log("     PTU ME: david.instructor@pactech.edu / TestUser123!")
+        self.progress("\n🔑 Test Accounts for UAT:")
+        self.progress("   Site Admin:")
+        self.progress("     Email: siteadmin@system.local")
+        self.progress("     Password: SiteAdmin123!")
+        self.progress("     Role: Site Administrator")
+        self.progress("")
+        self.progress("   Institution Admins:")
+        self.progress("     MockU: sarah.admin@mocku.test / InstitutionAdmin123!")
+        self.progress("     RCC: mike.admin@riverside.edu / InstitutionAdmin123!")
+        self.progress("     PTU: admin@pactech.edu / InstitutionAdmin123!")
+        self.progress("")
+        self.progress("   Program Admins:")
+        self.progress("     MockU CS/EE: lisa.prog@mocku.test / TestUser123!")
+        self.progress("     RCC Liberal Arts: robert.prog@riverside.edu / TestUser123!")
+        self.progress("")
+        self.progress("   Instructors:")
+        self.progress("     MockU CS: john.instructor@mocku.test / TestUser123!")
+        self.progress("     MockU EE: jane.instructor@mocku.test / TestUser123!")
+        self.progress("     RCC: susan.instructor@riverside.edu / TestUser123!")
+        self.progress("     PTU ME: david.instructor@pactech.edu / TestUser123!")
 
 
 def main():
@@ -1323,12 +1335,10 @@ Examples:
         help="Create minimal dataset instead of full dataset",
     )
 
-    parser.add_argument("--quiet", action="store_true", help="Suppress verbose output")
-
     args = parser.parse_args()
 
-    # Initialize seeder
-    seeder = DatabaseSeeder(verbose=not args.quiet)
+    # Initialize seeder (verbose=False by default for clean output)
+    seeder = DatabaseSeeder()
 
     # Check database connection
     if not db.check_db_connection():
