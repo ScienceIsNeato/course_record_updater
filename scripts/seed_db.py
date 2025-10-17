@@ -41,7 +41,7 @@ class BaselineSeeder:
 
         institutions = [
             {
-                "name": "California Engineering Institute",
+                "name": "Mock University",
                 "short_name": "MockU",
                 "admin_email": "admin@mocku.test",
                 "website_url": "https://mocku.test",
