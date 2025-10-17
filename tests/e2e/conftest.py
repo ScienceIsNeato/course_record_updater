@@ -43,11 +43,63 @@ from tests.conftest import (
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from constants import E2E_TEST_PORT
+from tests.conftest import get_worker_id
 
-# E2E environment runs on dedicated port (hardcoded in constants.py)
-BASE_URL = f"http://localhost:{E2E_TEST_PORT}"
+
+# E2E environment runs on dedicated port (worker-aware for parallel execution)
+def get_worker_port():
+    """Get port number for current worker (3002 + worker_id)"""
+    worker_id = get_worker_id()
+    if worker_id is None:
+        return E2E_TEST_PORT  # Default to 3002 for serial execution
+    return E2E_TEST_PORT + worker_id  # 3002, 3003, 3004, 3005 for workers 0-3
+
+
+BASE_URL = f"http://localhost:{get_worker_port()}"
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "MockU"
 TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_worker_environment(tmp_path_factory):
+    """
+    Setup worker-specific E2E environment for parallel execution.
+
+    For each pytest-xdist worker:
+    - Creates isolated database copy
+    - Uses worker-specific port
+    - Isolated test accounts (worker-specific credentials)
+
+    Note: This fixture prepares the environment but doesn't start servers.
+    Servers are managed by run_uat.sh for simplicity.
+    """
+    worker_id = get_worker_id()
+
+    if worker_id is not None:
+        # Parallel execution - create worker-specific database
+        base_db = "course_records_e2e.db"
+        worker_db = f"course_records_e2e_worker{worker_id}.db"
+
+        # Copy base E2E database to worker-specific copy
+        if os.path.exists(base_db):
+            import shutil
+
+            shutil.copy2(base_db, worker_db)
+
+            # Set DATABASE_URL for this worker
+            os.environ["DATABASE_URL"] = f"sqlite:///{worker_db}"
+            os.environ["DATABASE_TYPE"] = "sqlite"
+
+    yield
+
+    # Cleanup worker-specific databases
+    if worker_id is not None:
+        worker_db = f"course_records_e2e_worker{worker_id}.db"
+        if os.path.exists(worker_db):
+            try:
+                os.remove(worker_db)
+            except:
+                pass
 
 
 @pytest.fixture(scope="session")
