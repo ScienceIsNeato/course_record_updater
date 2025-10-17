@@ -133,8 +133,8 @@ class EtherealProvider(EmailProvider):
             msg.attach(part1)
             msg.attach(part2)
 
-            # Connect to SMTP server and send
-            with smtplib.SMTP(self._smtp_host, self._smtp_port) as server:
+            # Connect to SMTP server and send (with 10s timeout to prevent hanging)
+            with smtplib.SMTP(self._smtp_host, self._smtp_port, timeout=10) as server:
                 server.starttls()  # Upgrade to TLS
                 server.login(self._username, self._password)
                 server.send_message(msg)
