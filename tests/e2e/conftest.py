@@ -67,37 +67,88 @@ def setup_worker_environment(tmp_path_factory):
 
     For each pytest-xdist worker:
     - Creates isolated database copy
-    - Uses worker-specific port
-    - Isolated test accounts (worker-specific credentials)
-
-    Note: This fixture prepares the environment but doesn't start servers.
-    Servers are managed by run_uat.sh for simplicity.
+    - Starts worker-specific Flask server on unique port
+    - Uses worker-specific credentials
     """
     worker_id = get_worker_id()
+    server_process = None
 
     if worker_id is not None:
-        # Parallel execution - create worker-specific database
+        # Parallel execution - setup worker-specific environment
         base_db = "course_records_e2e.db"
         worker_db = f"course_records_e2e_worker{worker_id}.db"
+        worker_port = get_worker_port()
+
+        print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
 
         # Copy base E2E database to worker-specific copy
         if os.path.exists(base_db):
             import shutil
 
             shutil.copy2(base_db, worker_db)
+            print(f"   ✓ Database copied: {worker_db}")
 
-            # Set DATABASE_URL for this worker
-            os.environ["DATABASE_URL"] = f"sqlite:///{worker_db}"
-            os.environ["DATABASE_TYPE"] = "sqlite"
+            # Start worker-specific Flask server
+            import socket
+
+            env = os.environ.copy()
+            env["DATABASE_URL"] = f"sqlite:///{worker_db}"
+            env["DATABASE_TYPE"] = "sqlite"
+            env["PORT"] = str(worker_port)
+            env["ENV"] = "test"
+            # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
+            env.pop("EMAIL_PROVIDER", None)
+
+            # Start server in background
+            server_process = subprocess.Popen(
+                ["python", "app.py"],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                cwd=os.getcwd(),
+            )
+
+            # Wait for server to be ready
+            max_attempts = 30
+            for attempt in range(max_attempts):
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1)
+                    result = sock.connect_ex(("localhost", worker_port))
+                    sock.close()
+                    if result == 0:
+                        print(
+                            f"   ✓ Server started on port {worker_port} (PID: {server_process.pid})"
+                        )
+                        break
+                except:
+                    pass
+                time.sleep(0.5)
+            else:
+                print(f"   ⚠️  Server may not be ready on port {worker_port}")
 
     yield
 
-    # Cleanup worker-specific databases
+    # Cleanup: Stop server and remove worker-specific databases
     if worker_id is not None:
+        print(f"\n🧹 Worker {worker_id}: Cleaning up...")
+
+        # Stop server
+        if server_process:
+            server_process.terminate()
+            try:
+                server_process.wait(timeout=5)
+                print(f"   ✓ Server stopped (PID: {server_process.pid})")
+            except:
+                server_process.kill()
+                print(f"   ⚠️  Server force-killed")
+
+        # Remove worker database
         worker_db = f"course_records_e2e_worker{worker_id}.db"
         if os.path.exists(worker_db):
             try:
                 os.remove(worker_db)
+                print(f"   ✓ Database cleaned: {worker_db}")
             except:
                 pass
 
