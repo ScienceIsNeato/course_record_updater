@@ -37,8 +37,9 @@ from password_service import hash_password
 class DatabaseSeeder:
     """Handles database seeding operations"""
 
-    def __init__(self, verbose: bool = True):
+    def __init__(self, verbose: bool = True, num_workers: int = 4):
         self.verbose = verbose
+        self.num_workers = num_workers  # Number of parallel test workers to support
         self.created_entities: Dict[str, List[str]] = {
             "institutions": [],
             "users": [],
@@ -889,8 +890,10 @@ class DatabaseSeeder:
 
                 term_id = terms[0]["term_id"]  # Use first available term
 
-                # Create 1-2 sections per course
-                sections_to_create = 1 if len(course_ids) > 10 else 2
+                # Create enough sections to support parallel E2E testing
+                # Each of 16 workers needs 3 sections = 48 sections total
+                # With 6 courses, that's 8 sections per course
+                sections_to_create = 10  # 6 courses × 10 sections = 60 (enough for 20 workers!)
 
                 for section_num in range(1, sections_to_create + 1):
                     section_number = f"{section_num:03d}"  # 001, 002, etc.
@@ -1356,6 +1359,24 @@ Examples:
             print(
                 "\n🎯 Ready for UAT testing! Use the accounts above to test different user roles."
             )
+            
+            # Validate seeded data meets E2E test contract
+            print("\n🔍 Validating seeded data against E2E test contract...")
+            try:
+                from tests.e2e.e2e_test_data_contract import validate_seeded_data
+                
+                errors = validate_seeded_data(db)
+                if errors:
+                    print("⚠️  Contract validation warnings:")
+                    for error in errors:
+                        print(f"   - {error}")
+                    print("\n   Note: You may need to run seed_worker_accounts.py for full E2E support")
+                else:
+                    print("✅ Seeded data meets E2E test contract!")
+            except ImportError:
+                print("⚠️  Could not validate E2E test contract (tests/e2e/e2e_test_data_contract.py not found)")
+            except Exception as e:
+                print(f"⚠️  Contract validation error: {e}")
         else:
             print("❌ Database seeding failed. Check the logs above for details.")
             sys.exit(1)

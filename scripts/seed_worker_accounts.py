@@ -6,14 +6,17 @@ This script creates duplicate test accounts with worker-specific suffixes
 to support parallel pytest-xdist execution. Each worker gets its own set of
 accounts to prevent login conflicts and account lockouts.
 
+This script follows the E2E Test Data Contract (tests/e2e/e2e_test_data_contract.py)
+which defines how many workers to provision and what data they need.
+
 Usage:
-    python scripts/seed_worker_accounts.py --workers 4
+    python scripts/seed_worker_accounts.py --workers 16
     
 Creates accounts like:
     - siteadmin_worker0@system.local
-    - sarah.admin_worker0@mocku.test
-    - lisa.prog_worker0@mocku.test
-    - john.instructor_worker0@mocku.test
+    - sarah.admin_worker0@mocku.test  
+    - lisa.prog_worker0@mocku.test (with 2 programs)
+    - john.instructor_worker0@mocku.test (with 3 sections)
 """
 
 import argparse
@@ -29,11 +32,48 @@ from constants import SITE_ADMIN_INSTITUTION_ID
 from models import User
 from password_service import hash_password
 
+# Import E2E test data contract
+from tests.e2e.e2e_test_data_contract import (
+    BASE_ACCOUNTS,
+    MAX_PARALLEL_WORKERS,
+    PROGRAMS_PER_ADMIN_WORKER,
+    SECTIONS_PER_INSTRUCTOR_WORKER,
+    get_worker_email,
+    validate_seeded_data,
+)
+
 
 def create_worker_accounts(num_workers: int = 4):
     """Create worker-specific accounts for parallel test execution"""
     
     print(f"🔧 Creating worker-specific accounts for {num_workers} workers...")
+    print(f"📋 Using E2E Test Data Contract:")
+    print(f"   - {SECTIONS_PER_INSTRUCTOR_WORKER} sections per instructor")
+    print(f"   - {PROGRAMS_PER_ADMIN_WORKER} programs per admin")
+    
+    # Validate base data meets contract
+    print(f"\n🔍 Validating base data meets contract requirements...")
+    errors = validate_seeded_data(db)
+    if errors:
+        print("❌ Base data does not meet E2E test contract:")
+        for error in errors:
+            print(f"   - {error}")
+        print("\n💡 Tip: Run seed_db.py first to create base data")
+        raise ValueError("Base data validation failed - cannot create worker accounts")
+    print("✅ Base data validation passed!")
+    
+    # Reset section assignments so workers get fresh sections
+    # (Base seed_db.py assigns sections to base instructor, we need them unassigned)
+    print(f"\n🔄 Resetting section assignments for worker allocation...")
+    try:
+        mocku = db.get_institution_by_short_name("MockU")
+        if mocku:
+            sections = db.get_all_sections(mocku["institution_id"])
+            for section in sections:
+                db.update_course_section(section["section_id"], {"instructor_id": None, "status": "unassigned"})
+            print(f"   ✓ Reset {len(sections)} sections to unassigned")
+    except Exception as e:
+        print(f"   ⚠️  Failed to reset sections: {e}")
     
     # Base accounts to duplicate (email, password, role, institution)
     base_accounts = [
@@ -125,12 +165,19 @@ def create_worker_accounts(num_workers: int = 4):
             schema["email_verified"] = True
             schema["registration_completed_at"] = datetime.now(timezone.utc)
             
+            # For program admins, assign programs during creation
+            if account["role"] == "program_admin":
+                programs = db.get_programs_by_institution(institution_id)
+                if programs and len(programs) >= 2:
+                    schema["program_ids"] = [programs[0]["program_id"], programs[1]["program_id"]]
+                    print(f"      📋 Will assign {len(schema['program_ids'])} programs during creation")
+            
             user_id = db.create_user(schema)
             if user_id:
                 print(f"   ✅ Created: {worker_email} / {account['password']}")
                 created_count += 1
                 
-                # Assign sections to instructor accounts
+                # Assign sections to instructor accounts (post-creation)
                 if account["role"] == "instructor":
                     assign_sections_to_instructor(user_id, institution_id, worker_id)
             else:
@@ -143,32 +190,45 @@ def create_worker_accounts(num_workers: int = 4):
 def assign_sections_to_instructor(instructor_id: str, institution_id: str, worker_id: int):
     """
     Assign sections to worker-specific instructor.
-    This mirrors what seed_db.py does for base instructors.
+    Fetches fresh section list to see what's already assigned by previous workers.
     """
     try:
-        # Get all sections from this institution
+        # Get FRESH section list (important: previous workers may have assigned sections)
         sections = db.get_all_sections(institution_id)
         
         if not sections:
             print(f"      ⚠️  No sections found for institution")
             return
         
-        # Try to find unassigned sections first
-        unassigned = [s for s in sections if not s.get("instructor_id")][:3]
+        # Find unassigned sections (sections without an instructor)
+        # This prevents workers from overwriting each other's assignments
+        unassigned_sections = [s for s in sections if not s.get("instructor_id") or not s.get("instructor_id").strip()]
         
-        if not unassigned:
-            # If no unassigned sections, take first 3 and reassign them
-            # This is fine for test data - multiple workers can share sections
-            unassigned = sections[:3]
+        # If no unassigned sections, create duplicates by reassigning existing ones
+        # (This is acceptable for test data - multiple instructors can "teach" the same section in parallel tests)
+        if not unassigned_sections:
+            # No unassigned sections left - workers will share sections
+            # This is fine for parallel E2E tests where each worker uses isolated data
+            print(f"      ⚠️  Worker {worker_id}: No unassigned sections, will share existing assignments")
+            unassigned_sections = sections[:3]
+        
+        worker_sections = unassigned_sections[:3]  # Assign up to 3 sections
+        
+        print(f"      🔍 Worker {worker_id}: Assigning {len(worker_sections)} sections")
         
         assigned_count = 0
-        for section in unassigned:
+        for i, section in enumerate(worker_sections):
             try:
-                db.update_course_section(
-                    section["section_id"],
+                section_id = section["section_id"]
+                result = db.update_course_section(
+                    section_id,
                     {"instructor_id": instructor_id, "status": "assigned"}
                 )
-                assigned_count += 1
+                if result:
+                    assigned_count += 1
+                    print(f"         [{i}] Section {section_id[:8]}... → instructor")
+                else:
+                    print(f"         [{i}] Section {section_id[:8]}... FAILED (returned False)")
             except Exception as e:
                 print(f"      ⚠️  Failed to assign section {section.get('section_id')}: {e}")
         
@@ -185,8 +245,8 @@ def main():
     parser.add_argument(
         "--workers",
         type=int,
-        default=16,
-        help="Max parallel workers to provision (default: 16, system auto-scales to available cores)",
+        default=MAX_PARALLEL_WORKERS,
+        help=f"Max parallel workers to provision (default: {MAX_PARALLEL_WORKERS} from contract, system auto-scales to available cores)",
     )
     
     args = parser.parse_args()
