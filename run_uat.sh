@@ -29,6 +29,7 @@ MODE="headless"
 TEST_FILTER=""
 SAVE_VIDEOS="0"
 DEBUG_MODE="0"
+PARALLEL_WORKERS="auto"  # Always run in parallel, auto-scale to CPU cores
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -68,11 +69,14 @@ while [[ $# -gt 0 ]]; do
             echo "  --help               Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                       # Run all tests (headless, fast)"
-            echo "  $0 --watch               # Watch tests run (visible, slow-mo 350ms)"
-            echo "  $0 --debug               # Debug mode (visible, 1s steps, DevTools)"
-            echo "  $0 --test TC-IE-001      # Run specific test case"
+            echo "  $0                       # Run all tests (parallel auto-scaling, headless)"
+            echo "  $0 --watch               # Watch tests run (parallel, visible, slow-mo)"
+            echo "  $0 --debug               # Debug mode (parallel, visible, 1s steps, DevTools)"
+            echo "  $0 --test TC-IE-001      # Run specific test case (parallel)"
             echo "  $0 --save-videos         # Record videos for debugging"
+            echo ""
+            echo "Note: Tests ALWAYS run in parallel with auto-scaling to available CPU cores."
+            echo "      This provides ~3x speedup and is the production-ready configuration."
             echo ""
             echo "Modes Explained:"
             echo "  Headless (default)   -> CI/fast execution, no browser window"
@@ -182,6 +186,11 @@ export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"
 
+# Add parallel execution if specified
+if [ -n "$PARALLEL_WORKERS" ]; then
+    PYTEST_CMD="$PYTEST_CMD -n $PARALLEL_WORKERS"
+fi
+
 # Add test filter if specified
 if [ -n "$TEST_FILTER" ]; then
     PYTEST_CMD="$PYTEST_CMD -k $TEST_FILTER"
@@ -204,6 +213,7 @@ elif [ "$MODE" = "headed" ]; then
 else
     echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
 fi
+echo -e "  Execution: ${GREEN}Parallel (auto-scaling to CPU cores)${NC}"
 if [ -n "$TEST_FILTER" ]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else
