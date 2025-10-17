@@ -129,11 +129,53 @@ def create_worker_accounts(num_workers: int = 4):
             if user_id:
                 print(f"   ✅ Created: {worker_email} / {account['password']}")
                 created_count += 1
+                
+                # Assign sections to instructor accounts
+                if account["role"] == "instructor":
+                    assign_sections_to_instructor(user_id, institution_id, worker_id)
             else:
                 print(f"   ❌ Failed to create: {worker_email}")
     
     print(f"\n✅ Created {created_count} worker-specific accounts")
     print(f"🎯 Ready for parallel test execution with {num_workers} workers")
+
+
+def assign_sections_to_instructor(instructor_id: str, institution_id: str, worker_id: int):
+    """
+    Assign sections to worker-specific instructor.
+    This mirrors what seed_db.py does for base instructors.
+    """
+    try:
+        # Get all sections from this institution
+        sections = db.get_all_sections(institution_id)
+        
+        if not sections:
+            print(f"      ⚠️  No sections found for institution")
+            return
+        
+        # Try to find unassigned sections first
+        unassigned = [s for s in sections if not s.get("instructor_id")][:3]
+        
+        if not unassigned:
+            # If no unassigned sections, take first 3 and reassign them
+            # This is fine for test data - multiple workers can share sections
+            unassigned = sections[:3]
+        
+        assigned_count = 0
+        for section in unassigned:
+            try:
+                db.update_course_section(
+                    section["section_id"],
+                    {"instructor_id": instructor_id, "status": "assigned"}
+                )
+                assigned_count += 1
+            except Exception as e:
+                print(f"      ⚠️  Failed to assign section {section.get('section_id')}: {e}")
+        
+        if assigned_count > 0:
+            print(f"      → Assigned {assigned_count} sections to instructor")
+    except Exception as e:
+        print(f"      ⚠️  Failed to assign sections: {e}")
 
 
 def main():
