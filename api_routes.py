@@ -73,6 +73,9 @@ from database_service import (
     create_new_institution,
     create_program,
     create_term,
+)
+from database_service import create_user as create_user_db
+from database_service import (
     deactivate_user,
     delete_course,
     delete_course_offering,
@@ -842,9 +845,33 @@ def create_user():
                 400,
             )
 
-        # NOTE: create_user implementation will be added when user management API is implemented
-        # user_id = create_user(data)
-        user_id = "stub-user-id"  # Stub for now
+        # Create user via database service
+        from models import User
+        from password_service import hash_password
+
+        # Hash password if provided (otherwise user must complete registration)
+        password_hash = None
+        if data.get("password"):
+            password_hash = hash_password(data["password"])
+
+        # Build user schema
+        user_schema = User.create_schema(
+            email=data["email"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            role=data["role"],
+            institution_id=data.get("institution_id"),
+            password_hash=password_hash,
+            account_status=data.get("account_status", "active"),
+            program_ids=data.get("program_ids", []),
+            display_name=data.get("display_name"),
+        )
+
+        # Allow admins to skip email verification for testing/support scenarios
+        if data.get("email_verified", False):
+            user_schema["email_verified"] = True
+
+        user_id = create_user_db(user_schema)
 
         if user_id:
             return (

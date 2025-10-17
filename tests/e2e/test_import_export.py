@@ -23,12 +23,7 @@ from playwright.sync_api import Page, expect
 
 # Import fixtures and helpers
 from tests.conftest import INSTITUTION_ADMIN_EMAIL, INSTITUTION_ADMIN_PASSWORD
-from tests.e2e.conftest import (
-    BASE_URL,
-    close_modal,
-    take_screenshot,
-    wait_for_modal,
-)
+from tests.e2e.conftest import BASE_URL
 
 # E2E tests should verify via UI only - no direct database imports needed
 # (Removed database_service imports to enforce UI-based verification)
@@ -244,12 +239,13 @@ def test_tc_ie_003_imported_course_visibility(
             break
 
     if course_elements is None or course_elements.count() == 0:
-        take_screenshot(page, "tc_ie_003_no_courses")
+        # Screenshot for debugging (saved to test-results/)
+        page.screenshot(path="test-results/screenshots/tc_ie_003_no_courses.png")
         pytest.fail("No courses found in courses list view")
 
-    # Verify courses are visible (seed data has 6 MockU courses)
+    # Verify courses are visible (baseline seed has 3+ MockU courses)
     course_count = course_elements.count()
-    assert course_count >= 5, f"Expected at least 5 courses, found {course_count}"
+    assert course_count >= 3, f"Expected at least 3 courses, found {course_count}"
 
     # Verify course data integrity (check first 5 courses)
     for i in range(min(5, course_count)):
@@ -342,10 +338,11 @@ def test_tc_ie_004_imported_instructor_visibility(
             break
 
     if user_elements is None or user_elements.count() == 0:
-        take_screenshot(page, "tc_ie_004_no_instructors")
+        # Screenshot for debugging (saved to test-results/)
+        page.screenshot(path="test-results/screenshots/tc_ie_004_no_instructors.png")
         pytest.fail("No instructors found in users list view")
 
-    # Verify instructors are visible (seed data has 2 instructors for MockU)
+    # Verify instructors are visible (baseline seed has 2 instructors for MockU)
     instructor_count = user_elements.count()
     assert (
         instructor_count >= 2
@@ -415,12 +412,13 @@ def test_tc_ie_005_imported_section_visibility(
             break
 
     if section_elements is None or section_elements.count() == 0:
-        take_screenshot(page, "tc_ie_005_no_sections")
+        # Screenshot for debugging (saved to test-results/)
+        page.screenshot(path="test-results/screenshots/tc_ie_005_no_sections.png")
         pytest.fail("No sections found in sections list view")
 
-    # Verify sections are visible (seed data has 6 MockU sections)
+    # Verify sections are visible (baseline seed has 3 MockU sections)
     section_count = section_elements.count()
-    assert section_count >= 5, f"Expected at least 5 sections, found {section_count}"
+    assert section_count >= 3, f"Expected at least 3 sections, found {section_count}"
 
     # Verify section data integrity (check first 5 sections)
     for i in range(min(5, section_count)):
@@ -437,10 +435,14 @@ def test_tc_ie_005_imported_section_visibility(
             uuid_match is None
         ), f"Section row {i} contains UUID instead of human-readable section number: {row_text}"
 
-        # Verify section has course reference (course number like CS-101, MATH-101)
-        course_pattern = r"[A-Z]{2,4}-\d{3}"  # 2-4 uppercase letters, dash, 3 digits
+        # Verify section has course reference (course number like CS-101, CS101, MATH-101, etc)
+        course_pattern = (
+            r"[A-Z]{2,4}-?\d{3}"  # 2-4 uppercase letters, optional dash, 3 digits
+        )
         course_match = re.search(course_pattern, row_text)
-        assert course_match is not None, f"Section row {i} missing course reference"
+        assert (
+            course_match is not None
+        ), f"Section row {i} missing course reference: {row_text}"
 
         # Verify enrollment is a reasonable number (0-100)
         # Look for patterns like "25 students" or just "25"

@@ -1228,17 +1228,21 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
-        response = self.client.post(
-            "/api/users", json=user_data, content_type="application/json"
-        )
-        # API currently returns 201 due to stub implementation
-        assert response.status_code == 201
+        # Mock database failure
+        with patch("api_routes.create_user_db", return_value=None):
+            response = self.client.post(
+                "/api/users", json=user_data, content_type="application/json"
+            )
+            # Real API returns 500 on database failure
+            assert response.status_code == 500
 
-        data = json.loads(response.data)
-        assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+            data = json.loads(response.data)
+            assert data["success"] is False
+            assert "error" in data
 
     def test_create_user_exception_handling(self):
         """Test POST /api/users with exception"""
@@ -1258,17 +1262,20 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
-        response = self.client.post(
-            "/api/users", json=user_data, content_type="application/json"
-        )
-        # API currently returns 201 due to stub implementation
-        assert response.status_code == 201
+        # Mock database exception
+        with patch("api_routes.create_user_db", side_effect=Exception("DB Error")):
+            response = self.client.post(
+                "/api/users", json=user_data, content_type="application/json"
+            )
+            # Real API returns 500 on exception
+            assert response.status_code == 500
 
-        data = json.loads(response.data)
-        assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+            data = json.loads(response.data)
+            assert data["success"] is False
 
     @patch("api_routes.get_all_users", return_value=[])
     def test_get_users_without_permission_stub_mode(self, mock_get_all_users):
@@ -1324,6 +1331,8 @@ class TestUserEndpoints(CommonAuthMixin):
             "role": "instructor",
             "first_name": "New",
             "last_name": "User",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",  # Provide password for immediate activation
         }
 
         response = self.client.post(
@@ -1334,6 +1343,7 @@ class TestUserEndpoints(CommonAuthMixin):
         data = json.loads(response.data)
         assert "message" in data
         assert "created" in data["message"].lower()
+        assert "user_id" in data  # Real API returns actual user_id
 
     def test_create_user_missing_required_fields(self):
         """Test POST /api/users with missing required fields."""
@@ -2825,7 +2835,7 @@ class TestAPIRoutesErrorHandling:
     def test_create_user_stub_success_coverage(
         self, mock_has_permission, mock_get_current_user, mock_get_mocku_id
     ):
-        """Test create_user endpoint stub implementation."""
+        """Test create_user endpoint with real implementation."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
@@ -2839,6 +2849,8 @@ class TestAPIRoutesErrorHandling:
             "first_name": "New",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "riverside-tech-institute",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
         response = self.client.post("/api/users", json=user_data)
@@ -2846,7 +2858,7 @@ class TestAPIRoutesErrorHandling:
         assert response.status_code == 201
         data = response.get_json()
         assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+        assert "user_id" in data  # Real API returns actual user_id
 
     def test_import_excel_empty_filename_coverage(self):
         """Test import_excel endpoint with empty filename."""

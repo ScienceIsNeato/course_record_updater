@@ -143,15 +143,11 @@ rm -f "$E2E_DB_FILE" "${E2E_DB_FILE}-"* 2>/dev/null || true
 export DATABASE_URL="$E2E_DB"
 export DATABASE_TYPE="sqlite"
 
-# Seed E2E database with test data
-echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
+# Seed E2E database with baseline shared infrastructure
+echo -e "${YELLOW}🌱 Seeding E2E database with baseline data...${NC}"
 python scripts/seed_db.py
 echo ""
-
-# Create worker-specific accounts for parallel test execution
-# Creates accounts for up to 16 workers - system will auto-scale to available cores
-echo -e "${YELLOW}🔧 Creating worker-specific test accounts...${NC}"
-python scripts/seed_worker_accounts.py
+echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""
 
 # Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
@@ -201,8 +197,14 @@ if [ "$MODE" = "headed" ]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
 fi
 
-# Add verbose output
-PYTEST_CMD="$PYTEST_CMD -v"
+# Add verbose output with progress indicator
+PYTEST_CMD="$PYTEST_CMD -v --tb=short"
+
+# Add live output for parallel execution (shows test names as they complete)
+if [ -n "$PARALLEL_WORKERS" ] || echo "$PYTEST_CMD" | grep -q "\-n"; then
+    # For parallel: show which tests are running
+    PYTEST_CMD="$PYTEST_CMD --dist=loadscope"
+fi
 
 # Display test configuration
 echo -e "${BLUE}📋 Test Configuration:${NC}"
