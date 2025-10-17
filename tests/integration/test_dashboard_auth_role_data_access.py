@@ -60,7 +60,7 @@ class TestDashboardAuthRoleDataAccess:
             (
                 inst
                 for inst in institutions
-                if "California Engineering Institute" in inst.get("name", "")
+                if "Mock University" in inst.get("name", "")
             ),
             None,
         )
@@ -85,7 +85,7 @@ class TestDashboardAuthRoleDataAccess:
                     (
                         inst
                         for inst in institutions
-                        if "California Engineering Institute" in inst.get("name", "")
+                        if "Mock University" in inst.get("name", "")
                     ),
                     None,
                 )
@@ -114,15 +114,15 @@ class TestDashboardAuthRoleDataAccess:
         )
         assert self.sarah_admin, "Sarah (institution admin) not found in MockU users"
 
-        self.lisa_program_admin = next(
+        self.bob_program_admin = next(
             (
                 user
                 for user in mocku_users
-                if user.get("email") == "lisa.prog@mocku.test"
+                if user.get("email") == "bob.programadmin@mocku.test"
             ),
             None,
         )
-        assert self.lisa_program_admin, "Lisa (program admin) not found in MockU users"
+        assert self.bob_program_admin, "Bob (program admin) not found in MockU users"
 
         self.john_instructor = next(
             (
@@ -204,7 +204,7 @@ class TestDashboardAuthRoleDataAccess:
         # Check that institutions have expected names
         institution_names = {inst.get("name") for inst in institutions}
         expected_institutions = {
-            "California Engineering Institute",
+            "Mock University",
             "Riverside Community College",
             "Pacific Technical University",
         }
@@ -278,13 +278,13 @@ class TestDashboardAuthRoleDataAccess:
 
         This test verifies the bug fix for course ID field consistency.
         """
-        # Login as Lisa - Program Admin for CS and EE programs (use dynamic seeded data)
+        # Login as Bob - Program Admin for CS program (use dynamic seeded data)
         program_admin_user = {
-            "user_id": self.lisa_program_admin["user_id"],
-            "email": self.lisa_program_admin["email"],
-            "role": self.lisa_program_admin["role"],
-            "institution_id": self.lisa_program_admin["institution_id"],
-            "program_ids": self.lisa_program_admin.get("program_ids", []),
+            "user_id": self.bob_program_admin["user_id"],
+            "email": self.bob_program_admin["email"],
+            "role": self.bob_program_admin["role"],
+            "institution_id": self.bob_program_admin["institution_id"],
+            "program_ids": self.bob_program_admin.get("program_ids", []),
         }
         self._login_user(program_admin_user)
 
@@ -398,11 +398,11 @@ class TestDashboardAuthRoleDataAccess:
         """
         # Test that program admin doesn't see other institution's data
         program_admin_user = {
-            "user_id": self.lisa_program_admin["user_id"],
-            "email": self.lisa_program_admin["email"],
-            "role": self.lisa_program_admin["role"],
-            "institution_id": self.lisa_program_admin["institution_id"],
-            "program_ids": self.lisa_program_admin.get("program_ids", []),
+            "user_id": self.bob_program_admin["user_id"],
+            "email": self.bob_program_admin["email"],
+            "role": self.bob_program_admin["role"],
+            "institution_id": self.bob_program_admin["institution_id"],
+            "program_ids": self.bob_program_admin.get("program_ids", []),
         }
         self._login_user(program_admin_user)
 

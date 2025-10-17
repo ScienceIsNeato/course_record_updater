@@ -445,14 +445,18 @@ def test_tc_ie_005_imported_section_visibility(
         ), f"Section row {i} missing course reference: {row_text}"
 
         # Verify enrollment is a reasonable number (0-100)
-        # Look for patterns like "25 students" or just "25"
-        enrollment_pattern = r"(\d{1,3})\s*(students?)?"
-        enrollment_match = re.search(enrollment_pattern, row_text)
-        if enrollment_match:
-            enrollment = int(enrollment_match.group(1))
-            assert (
-                0 <= enrollment <= 100
-            ), f"Section row {i} has unreasonable enrollment: {enrollment}"
+        # Use proper DOM selector to get the enrollment cell specifically (5th column)
+        enrollment_cells = section_row.locator("td")
+        if enrollment_cells.count() >= 5:
+            enrollment_text = enrollment_cells.nth(4).text_content().strip()
+            try:
+                enrollment = int(enrollment_text)
+                assert (
+                    0 <= enrollment <= 100
+                ), f"Section row {i} has unreasonable enrollment: {enrollment}"
+            except ValueError:
+                # Skip if enrollment cell doesn't contain a valid number
+                pass
 
     # Try filtering by term if filter exists
     term_filter = page.locator('select[name="term"], select[id*="term"]')
