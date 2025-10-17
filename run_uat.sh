@@ -135,6 +135,10 @@ E2E_DB_FILE="${E2E_DB#sqlite:///}"
 echo -e "${BLUE}🗑️  Clearing E2E database: $E2E_DB_FILE${NC}"
 rm -f "$E2E_DB_FILE" "${E2E_DB_FILE}-"* 2>/dev/null || true
 
+# Export DATABASE_URL so seed scripts use the E2E database
+export DATABASE_URL="$E2E_DB"
+export DATABASE_TYPE="sqlite"
+
 # Seed E2E database with test data
 echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
 python scripts/seed_db.py
