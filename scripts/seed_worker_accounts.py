@@ -143,20 +143,23 @@ def main():
     parser.add_argument(
         "--workers",
         type=int,
-        default=4,
-        help="Number of parallel workers (default: 4)",
+        default=16,
+        help="Max parallel workers to provision (default: 16, system auto-scales to available cores)",
     )
     
     args = parser.parse_args()
     
     print("\n" + "=" * 70)
     print("  Worker-Specific Test Account Generator")
+    print("  Creating accounts for up to {} workers".format(args.workers))
+    print("  (pytest-xdist will auto-scale to available CPU cores)")
     print("=" * 70)
     
     create_worker_accounts(args.workers)
     
     print("\n" + "=" * 70)
     print("  ✅ Worker account creation complete!")
+    print("  🎯 System can now scale to {} parallel workers".format(args.workers))
     print("=" * 70 + "\n")
 
 

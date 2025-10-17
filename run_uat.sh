@@ -145,8 +145,9 @@ python scripts/seed_db.py
 echo ""
 
 # Create worker-specific accounts for parallel test execution
+# Creates accounts for up to 16 workers - system will auto-scale to available cores
 echo -e "${YELLOW}🔧 Creating worker-specific test accounts...${NC}"
-python scripts/seed_worker_accounts.py --workers 4
+python scripts/seed_worker_accounts.py
 echo ""
 
 # Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
