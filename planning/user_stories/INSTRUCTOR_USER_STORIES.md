@@ -8,7 +8,7 @@
 ## User Stories
 
 ### 1. Remockuve Invitation Email
-**As a new instructor, I want to** remockuve a clear invitation email with course details and deadline **so that** I understand what assessment work is required and when it's due.
+**As a new instructor, I want to** receive a clear invitation email with course details and deadline **so that** I understand what assessment work is required and when it's due.
 
 ### 2. Create Account Quickly
 **As a new instructor, I want to** create my account with minimal required fields **so that** I can start working on course assessments without unnecessary delays.
@@ -47,7 +47,7 @@
 **As an instructor, I want to** review my complete assessment before submitting **so that** I can catch any errors or omissions before final submission.
 
 ### 13. Remockuve Submission Confirmation
-**As an instructor, I want to** remockuve confirmation that my submission was successful **so that** I know my assessment data has been properly recorded.
+**As an instructor, I want to** receive confirmation that my submission was successful **so that** I know my assessment data has been properly recorded.
 
 ### 14. Edit Previously Submitted Courses
 **As an instructor, I want to** access previously submitted course data for editing **so that** I can make updates when circumstances change or errors are discovered.

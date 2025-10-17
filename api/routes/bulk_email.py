@@ -25,6 +25,9 @@ def lazy_permission_required(permission_name: str):
     The standard @permission_required decorator captures the function at import time,
     making it impossible to mock in tests.
     
+    The actual permission decorator is applied ONCE (on first request), not on every request,
+    to avoid performance overhead of re-wrapping.
+    
     Args:
         permission_name: The permission required (e.g., "manage_programs")
     
@@ -32,18 +35,28 @@ def lazy_permission_required(permission_name: str):
         Decorator function
     """
     def decorator(f):
+        # Cache the wrapped function to avoid re-wrapping on every request
+        _wrapped_function = None
+        
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Import auth_service at RUNTIME, not import time
-            # This allows tests to mock it before routes are called
-            from auth_service import permission_required as runtime_permission_required
-
-            # Get the actual permission_required decorator at runtime
-            actual_decorator = runtime_permission_required(permission_name)
+            nonlocal _wrapped_function
             
-            # Apply it and call the function
-            wrapped = actual_decorator(f)
-            return wrapped(*args, **kwargs)
+            # Only wrap once (on first request)
+            if _wrapped_function is None:
+                # Import auth_service at RUNTIME, not import time
+                from auth_service import (
+                    permission_required as runtime_permission_required,
+                )
+
+                # Get the actual permission_required decorator
+                actual_decorator = runtime_permission_required(permission_name)
+                
+                # Apply it ONCE and cache the result
+                _wrapped_function = actual_decorator(f)
+            
+            # Call the cached wrapped function
+            return _wrapped_function(*args, **kwargs)
         
         return decorated_function
     return decorator

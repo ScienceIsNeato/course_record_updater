@@ -3934,7 +3934,8 @@ def login_api():
         return jsonify({"success": False, "error": "Account is locked"}), 423
     except LoginError as e:
         logger.error(f"User login failed: {e}")
-        return jsonify({"success": False, "error": str(e)}), 401
+        # Generic error message to prevent username enumeration
+        return jsonify({"success": False, "error": "Invalid email or password"}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
         return handle_api_error(e, "User login", "An unexpected error occurred")
@@ -4392,7 +4393,7 @@ def excel_import_api():
 def _validate_excel_import_request():
     """Validate the Excel import request and extract parameters."""
     # Debug: Log request information
-    logger.info("Excel import request remockuved")
+    logger.info("Excel import request received")
     logger.info("Request files: %s", list(request.files.keys()))
     logger.info("Request form: %s", dict(request.form))
 
@@ -4407,7 +4408,7 @@ def _validate_excel_import_request():
         raise ValueError("No file selected")
 
     logger.info(
-        f"File remockuved: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
     )
 
     # Get form parameters (need adapter_id for validation)
@@ -4485,7 +4486,7 @@ def _determine_target_institution(user_role, user_institution_id, adapter_id):
     if user_role == UserRole.SITE_ADMIN.value:
         # Site admins can import for any institution - let adapter determine it
         if adapter_id == "cei_excel_format_v1":
-            # MockU adapter always imports for MockU institution
+            # CEI Excel adapter always imports for MockU institution (default test institution)
             from database_service import create_default_mocku_institution
 
             institution_id = create_default_mocku_institution()
@@ -4496,7 +4497,7 @@ def _determine_target_institution(user_role, user_institution_id, adapter_id):
             # For other adapters, site admin needs to specify institution
             # TODO: Add institution selection UI for site admins
             raise ValueError(
-                "Site admin must specify target institution for non-MockU adapters"
+                "Site admin must specify target institution for non-CEI adapters"
             )
     else:
         # Institution/program admins use their own institution

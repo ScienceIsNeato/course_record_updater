@@ -137,6 +137,11 @@ class BulkEmailService:
                 logger.error(f"[BulkEmailService] Job {job_id} not found")
                 return
 
+            # Get BASE_URL from config
+            from constants import DEFAULT_BASE_URL
+
+            base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+
             # Create email manager with conservative rate limiting
             email_manager = EmailManager(
                 rate=0.1,  # 1 email every 10 seconds
@@ -151,10 +156,10 @@ class BulkEmailService:
                     to_email=recipient["email"],
                     subject=f"Reminder: Please submit your course data{f' for {term}' if term else ''}",
                     html_body=BulkEmailService._render_reminder_html(
-                        recipient["name"], personal_message, term, deadline
+                        recipient["name"], personal_message, term, deadline, base_url
                     ),
                     text_body=BulkEmailService._render_reminder_text(
-                        recipient["name"], personal_message, term, deadline
+                        recipient["name"], personal_message, term, deadline, base_url
                     ),
                     metadata={"user_id": recipient.get("user_id")},
                 )
@@ -224,6 +229,7 @@ class BulkEmailService:
         personal_message: Optional[str],
         term: Optional[str],
         deadline: Optional[str],
+        base_url: str,
     ) -> str:
         """Render HTML email template for instructor reminder"""
         html = f"""
@@ -288,10 +294,14 @@ class BulkEmailService:
         """
 
         if personal_message:
+            # Escape HTML to prevent XSS attacks
+            from html import escape
+
+            escaped_message = escape(personal_message)
             html += f"""
         <div class="personal-message">
             <strong>Message from your program administrator:</strong>
-            <p>{personal_message}</p>
+            <p>{escaped_message}</p>
         </div>
         """
 
@@ -300,10 +310,10 @@ class BulkEmailService:
         <p><strong>Deadline:</strong> {deadline}</p>
         """
 
-        html += """
+        html += f"""
         <p>Please click the button below to submit your course information:</p>
         
-        <a href="{{BASE_URL}}/courses/submit" class="button">Submit Course Data</a>
+        <a href="{base_url}/courses/submit" class="button">Submit Course Data</a>
         
         <p>If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.</p>
         
@@ -323,6 +333,7 @@ class BulkEmailService:
         personal_message: Optional[str],
         term: Optional[str],
         deadline: Optional[str],
+        base_url: str,
     ) -> str:
         """Render plain text email template for instructor reminder"""
         text = f"Hello {instructor_name},\n\n"
@@ -340,7 +351,7 @@ class BulkEmailService:
             text += f"Deadline: {deadline}\n\n"
 
         text += "Please visit the following link to submit your course information:\n"
-        text += "{{BASE_URL}}/courses/submit\n\n"
+        text += f"{base_url}/courses/submit\n\n"
         text += "If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.\n\n"
         text += "Thank you for your cooperation!\n\n"
         text += "---\n"

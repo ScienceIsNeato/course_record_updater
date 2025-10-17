@@ -18,7 +18,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit registration
    - Verify: "Check your email for verification link" message displayed
    - Check Mailtrap inbox for jane.smith@test.com
-   - Verify email remockuved within 30 seconds
+   - Verify email received within 30 seconds
    - Extract verification link from email body
    - Verify email subject: "Welcome! Please verify your email"
    - Verify email contains user's first name
@@ -34,7 +34,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit reset request
    - Verify: "Check your email for reset instructions" message
    - Check Mailtrap inbox
-   - Verify password reset email remockuved
+   - Verify password reset email received
    - Extract reset link with token
    - Verify token is in link query params
    - Click reset link
@@ -45,7 +45,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit reset
    - Verify: "Password reset successful" message
    - Check Mailtrap inbox
-   - Verify password reset confirmation email remockuved
+   - Verify password reset confirmation email received
    - Verify email includes timestamp
    - Login with NEW password
    - Verify: Login successful
@@ -95,7 +95,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - Submit invitation
    - Verify: Success message "Invitation sent to michael.brown@test.com"
    - Check Mailtrap inbox for michael.brown@test.com
-   - Verify invitation email remockuved
+   - Verify invitation email received
    - Verify email contains personal message from admin
    - Verify email contains registration link with token
    - Extract invitation token from link
@@ -116,7 +116,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
    - (Still logged in as Dr. Williams)
    - Invite Dr. Jennifer Lee as Program Admin
    - Check Mailtrap inbox for jennifer.lee@test.com
-   - Verify invitation email remockuved
+   - Verify invitation email received
    - Extract registration link
    - Complete registration for Dr. Lee
    - Login as Dr. Lee
@@ -320,8 +320,8 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 
 7. **Verify Successful Emails Only**
    - Check Mailtrap inboxes
-   - Verify: Alice, Carol, Emma remockuved emails
-   - Verify: Invalid/deleted users did NOT remockuve emails
+   - Verify: Alice, Carol, Emma received emails
+   - Verify: Invalid/deleted users did NOT receive emails
    - Verify: Email content correct for successful sends
 
 8. **Job History Reflects Failures**
@@ -346,7 +346,7 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 - ✅ Retry logic works with exponential backoff
 - ✅ Failed recipients section displays correctly
 - ✅ Partial success reported accurately
-- ✅ Only valid emails remockuve reminders
+- ✅ Only valid emails receive reminders
 - ✅ Job history shows failure details
 - ✅ Error messages are specific and actionable
 
@@ -392,8 +392,8 @@ Comprehensive end-to-end workflow tests for all email functionality. Each test c
 
 3. **Verify Email Scoping**
    - Check Mailtrap inboxes
-   - Verify: Only CS instructors remockuved emails
-   - Verify: Nursing instructors did NOT remockuve emails
+   - Verify: Only CS instructors received emails
+   - Verify: Nursing instructors did NOT receive emails
 
 4. **Cross-Program Admin Cannot View Job**
    - Logout

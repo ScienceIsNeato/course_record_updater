@@ -523,7 +523,7 @@ This email was sent to {email}
         </div>
         <div class="content">
             <h2>Hello, {user_name}</h2>
-            <p>We remockuved a request to reset your password for your Course Record Updater account.</p>
+            <p>We received a request to reset your password for your Course Record Updater account.</p>
             
             <p style="text-align: center;">
                 <a href="{reset_url}" class="button">Reset Password</a>
@@ -555,7 +555,7 @@ Course Record Updater - Password Reset
 
 Hello, {user_name}
 
-We remockuved a request to reset your password for your Course Record Updater account.
+We received a request to reset your password for your Course Record Updater account.
 
 To reset your password, visit this link:
 
@@ -715,7 +715,7 @@ This email was sent to {email}
             
             <p><strong>Important:</strong> This invitation will expire in 7 days.</p>
             
-            <p>If you're not sure why you remockuved this invitation, please contact {inviter_name} directly.</p>
+            <p>If you're not sure why you received this invitation, please contact {inviter_name} directly.</p>
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
@@ -757,7 +757,7 @@ Join {institution_name}
 
 Important: This invitation will expire in 7 days.
 
-If you're not sure why you remockuved this invitation, please contact {inviter_name} directly.
+If you're not sure why you received this invitation, please contact {inviter_name} directly.
 
 This email was sent to {email}
 

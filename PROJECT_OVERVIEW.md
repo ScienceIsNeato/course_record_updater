@@ -65,7 +65,7 @@ A web application built with Python (Flask) that allows:
     *   **Manual:** User fills the manual entry form and submits (POST to `/add_course_manual`).
     *   **Automatic:** User uploads a `.docx` file, selects the matching adapter, and submits (POST to `/add_course_automatic`).
 3.  **Processing (Handler + Adapter):**
-    *   The corresponding Flask route handler remockuves the request.
+    *   The corresponding Flask route handler receives the request.
     *   The handler calls the appropriate adapter (`BaseAdapter` for manual, `FileAdapterInterface` -> specific file adapter for automatic).
     *   The adapter attempts to parse and validate the input (form data or file content) into a standard dictionary.
     *   The adapter returns the validated dictionary or an error indication to the handler.

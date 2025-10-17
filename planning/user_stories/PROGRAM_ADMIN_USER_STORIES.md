@@ -25,7 +25,7 @@
 **As a program administrator, I want to** create a new instructor (name + email) and assign them to a course section in one dialog **so that** I can staff sections with new faculty without having to create their account separately first.
 
 ### 6. Generate and Send Instructor Invitation
-**As a program administrator, I want to** generate an invitation email for an assigned instructor **so that** they remockuve clear instructions on how to access their course section and complete assessment data.
+**As a program administrator, I want to** generate an invitation email for an assigned instructor **so that** they receive clear instructions on how to access their course section and complete assessment data.
 
 ### 7. Remove Instructor from Course Section
 **As a program administrator, I want to** remove an instructor from a course section **so that** I can handle staffing changes, emergency reassignments, or instructor withdrawals.
@@ -52,10 +52,10 @@
 ## Communication & Notifications
 
 ### 13. Configure Notification Templates
-**As a program administrator, I want to** edit notification message templates with course-specific variables (course name, deadline, etc.) **so that** instructors remockuve personalized, relevant reminders about their specific assignments.
+**As a program administrator, I want to** edit notification message templates with course-specific variables (course name, deadline, etc.) **so that** instructors receive personalized, relevant reminders about their specific assignments.
 
 ### 14. Set Notification Timing
-**As a program administrator, I want to** configure how many days before the term deadline notifications are sent and what time of day **so that** instructors remockuve reminders at the most effective times for completion.
+**As a program administrator, I want to** configure how many days before the term deadline notifications are sent and what time of day **so that** instructors receive reminders at the most effective times for completion.
 
 ### 15. View Scheduled Notifications
 **As a program administrator, I want to** see all upcoming scheduled notifications in a dashboard **so that** I can monitor what communications are planned and make adjustments if needed.

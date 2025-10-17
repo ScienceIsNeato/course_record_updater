@@ -241,7 +241,7 @@ Validate program-level management and instructor oversight capabilities.
 
 **Steps**:
 1. Institution admin creates invitation for program admin role
-2. Program admin remockuves invitation email
+2. Program admin receives invitation email
 3. Click invitation link
 4. Complete registration with pre-populated data
 5. Login and access Program Admin dashboard
@@ -342,7 +342,7 @@ Validate instructor-level access and section management capabilities.
 
 **Steps**:
 1. Admin creates instructor invitation
-2. Instructor remockuves invitation email
+2. Instructor receives invitation email
 3. Click invitation link and complete registration
 4. Login and access Instructor dashboard
 

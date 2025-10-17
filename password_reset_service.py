@@ -9,7 +9,7 @@ Handles password reset functionality including:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import database_service as db
@@ -79,7 +79,7 @@ class PasswordResetService:
                 )
                 return {
                     "request_success": True,
-                    "message": "If an account with this email exists, you will remockuve a password reset link.",
+                    "message": "If an account with this email exists, you will receive a password reset link.",
                 }
 
             # Check if account is active
@@ -95,7 +95,7 @@ class PasswordResetService:
             reset_data = {
                 "password_reset_token": reset_token,
                 "password_reset_token_data": token_data,
-                "password_reset_requested_at": datetime.now(),
+                "password_reset_requested_at": datetime.now(timezone.utc),
             }
 
             success = db.update_user(user["user_id"], reset_data)
@@ -119,7 +119,7 @@ class PasswordResetService:
 
             return {
                 "request_success": True,
-                "message": "If an account with this email exists, you will remockuve a password reset link.",
+                "message": "If an account with this email exists, you will receive a password reset link.",
             }
 
         except EmailServiceError as e:
@@ -184,8 +184,8 @@ class PasswordResetService:
                 "password_hash": password_hash,
                 "password_reset_token": None,
                 "password_reset_token_data": None,
-                "password_reset_completed_at": datetime.now(),
-                "password_changed_at": datetime.now(),
+                "password_reset_completed_at": datetime.now(timezone.utc),
+                "password_changed_at": datetime.now(timezone.utc),
             }
 
             success = db.update_user(user["user_id"], update_data)

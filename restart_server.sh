@@ -135,7 +135,10 @@ start_flask_app() {
 
     # Export environment variables for Flask app
     # Note: Must re-export with value assignment for subprocess inheritance
-    export LASSIE_DEFAULT_PORT_DEV="$PORT"
+    # Only export DEV default port if we're actually in DEV environment
+    if [ "$ENV" = "dev" ] || [ "$APP_ENV" = "development" ]; then
+        export LASSIE_DEFAULT_PORT_DEV="$PORT"
+    fi
     export PYTHONUNBUFFERED=1
     export DATABASE_URL="$DATABASE_URL"
     export BASE_URL="$BASE_URL"

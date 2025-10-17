@@ -20,7 +20,7 @@
 ### Security: Whitelist Protection
 **New feature:** `EMAIL_WHITELIST` environment variable
 
-- **Non-production**: Only whitelisted emails can remockuve emails
+- **Non-production**: Only whitelisted emails can receive emails
 - **Production**: No whitelist, send to anyone
 - **Supports wildcards**: `*@ethereal.email` allows all Ethereal addresses
 

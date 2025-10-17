@@ -111,7 +111,7 @@ class SQLiteDatabase(DatabaseInterface):
             return existing["institution_id"]
 
         mocku_payload = {
-            "name": "College of Eastern Idaho",
+            "name": "Mock University",
             "short_name": "MockU",
             "domain": "mocku.test",
             "timezone": DEFAULT_INSTITUTION_TIMEZONE,

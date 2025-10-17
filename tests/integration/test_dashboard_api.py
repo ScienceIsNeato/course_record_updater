@@ -39,7 +39,7 @@ class TestDashboardAPI:
         except requests.exceptions.Timeout:
             pytest.skip("Dashboard server timed out while fetching data")
 
-        # Without authentication we should remockuve a 401 JSON response
+        # Without authentication we should receive a 401 JSON response
         if response.status_code == 401:
             payload = response.json()
             assert payload.get("error_code") == "AUTH_REQUIRED"
