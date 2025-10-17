@@ -418,6 +418,23 @@ class BaselineSeeder:
         self.log("      jane.instructor@mocku.test / Instructor123!")
 
 
+class DatabaseSeeder:
+    """
+    Compatibility wrapper for integration tests.
+    
+    Integration tests expect DatabaseSeeder.seed_full_dataset() but we refactored
+    to BaselineSeeder.seed_baseline() for E2E tests. This provides backward compatibility.
+    """
+
+    def __init__(self, verbose=True):
+        self.seeder = BaselineSeeder()
+        self.verbose = verbose
+
+    def seed_full_dataset(self):
+        """Seed the full baseline dataset (compatibility method)"""
+        return self.seeder.seed_baseline()
+
+
 def main():
     """Main seeding entry point"""
     parser = argparse.ArgumentParser(description="Seed baseline E2E test data")
