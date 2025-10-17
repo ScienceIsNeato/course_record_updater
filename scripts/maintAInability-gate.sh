@@ -471,13 +471,42 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Clean up old coverage data files to prevent race conditions
   rm -f .coverage .coverage.*
   
-  # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
+  # Run pytest with coverage AND capture exit code to detect test failures
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  TEST_FAILED=false
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_FAILED=true
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
+  
+  # Check for test failures FIRST before checking coverage
+  if [[ "$TEST_FAILED" == "true" ]] || echo "$COVERAGE_OUTPUT" | grep -q "FAILED "; then
+    echo "❌ Coverage: FAILED (tests failed)"
+    echo ""
+    echo "📋 Test Failure Details:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Show failing tests
+    FAILING_TESTS=$(echo "$COVERAGE_OUTPUT" | grep "FAILED " | head -10)
+    if [[ -n "$FAILING_TESTS" ]]; then
+      echo "🔴 Failing Tests:"
+      echo "$FAILING_TESTS" | sed 's/^/  /'
+      echo ""
+    fi
+    
+    # Show test summary
+    TEST_SUMMARY=$(echo "$COVERAGE_OUTPUT" | grep -E "failed|passed|error" | tail -3)
+    if [[ -n "$TEST_SUMMARY" ]]; then
+      echo "$TEST_SUMMARY" | sed 's/^/  /'
+    fi
+    
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    FAILED_TESTS=$(echo "$COVERAGE_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    add_failure "Test Coverage" "Test failures: $FAILED_TESTS" "Fix failing tests before checking coverage. Run 'python -m pytest tests/unit/ -v' for details"
+  else
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
@@ -570,6 +599,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
     add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
+  fi  # Close the "else" block from test failure check
   echo ""
 fi
 

@@ -274,7 +274,6 @@ class TestBulkEmailService:
 
         assert results == []
 
-    @patch("bulk_email_service.current_app")
     @patch("database_factory.get_database_service")
     @patch("bulk_email_service.EmailManager")
     @patch("bulk_email_service.EmailService")
@@ -285,7 +284,6 @@ class TestBulkEmailService:
         mock_email_service,
         mock_email_manager,
         mock_get_db,
-        mock_app,
     ):
         """Test background email sending."""
         # Setup mocks
@@ -294,8 +292,11 @@ class TestBulkEmailService:
         mock_db_service.sqlite.get_session.return_value = mock_db
         mock_get_db.return_value = mock_db_service
 
-        # Mock Flask app config
-        mock_app.config.get.return_value = "http://localhost:5000"
+        # Create Flask app context for current_app access
+        from flask import Flask
+
+        app = Flask(__name__)
+        app.config["BASE_URL"] = "http://localhost:5000"
 
         mock_job = Mock()
         mock_job.id = "job-123"
@@ -320,14 +321,15 @@ class TestBulkEmailService:
             {"user_id": "user-2", "email": "user2@test.edu", "name": "User 2"},
         ]
 
-        # Execute
-        BulkEmailService._send_emails_background(
-            job_id="job-123",
-            recipients=recipients,
-            personal_message="Test message",
-            term="FA2024",
-            deadline="2024-12-31",
-        )
+        # Execute within Flask app context
+        with app.app_context():
+            BulkEmailService._send_emails_background(
+                job_id="job-123",
+                recipients=recipients,
+                personal_message="Test message",
+                term="FA2024",
+                deadline="2024-12-31",
+            )
 
         # Verify
         mock_manager_instance.add_email.assert_called()
