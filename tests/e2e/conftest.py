@@ -108,24 +108,31 @@ def setup_worker_environment(tmp_path_factory):
                 cwd=os.getcwd(),
             )
 
-            # Wait for server to be ready
+            # Wait for server to be ready - use health check endpoint
+            # This ensures Flask is fully initialized, not just that the port is open
             max_attempts = 30
+            import urllib.error
+            import urllib.request
+
             for attempt in range(max_attempts):
                 try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(1)
-                    result = sock.connect_ex(("localhost", worker_port))
-                    sock.close()
-                    if result == 0:
-                        print(
-                            f"   ✓ Server started on port {worker_port} (PID: {server_process.pid})"
-                        )
-                        break
-                except:
+                    # Try to hit the health check endpoint
+                    health_url = f"http://localhost:{worker_port}/health"
+                    req = urllib.request.Request(health_url)
+                    with urllib.request.urlopen(req, timeout=1) as response:
+                        if response.status == 200:
+                            print(
+                                f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
+                            )
+                            break
+                except (urllib.error.URLError, ConnectionRefusedError, TimeoutError):
+                    # Server not ready yet, keep waiting
                     pass
                 time.sleep(0.5)
             else:
-                print(f"   ⚠️  Server may not be ready on port {worker_port}")
+                print(
+                    f"   ⚠️  Server health check failed on port {worker_port} after 15s"
+                )
 
     yield
 

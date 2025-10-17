@@ -265,6 +265,18 @@ def sections_list():
     return render_template("sections_list.html", user=user)
 
 
+# Health check endpoint for parallel E2E testing
+# This endpoint is registered AFTER all other initialization, so when it responds
+# we know Flask is fully ready to serve requests (not just that the port is open)
+@app.route("/health")
+def health_check():
+    """
+    Health check endpoint for E2E test infrastructure.
+    Returns 200 OK when Flask is fully initialized and ready to serve requests.
+    """
+    return {"status": "ok", "ready": True}, 200
+
+
 if __name__ == "__main__":
     # Port selection priority (for CI/multi-environment compatibility):
     # 1. PORT (standard env var, used by CI)
