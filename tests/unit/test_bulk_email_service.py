@@ -145,6 +145,7 @@ class TestBulkEmailService:
             personal_message="Please review the new guidelines.",
             term="Spring 2024",
             deadline="March 15, 2024",
+            base_url="http://localhost:5000",
         )
 
         assert "Dr. Smith" in html
@@ -160,6 +161,7 @@ class TestBulkEmailService:
             personal_message=None,
             term=None,
             deadline=None,
+            base_url="http://localhost:5000",
         )
 
         assert "Dr. Smith" in html
@@ -172,6 +174,7 @@ class TestBulkEmailService:
             personal_message="Please review the new guidelines.",
             term="Spring 2024",
             deadline="March 15, 2024",
+            base_url="http://localhost:5000",
         )
 
         assert "Dr. Smith" in text
@@ -186,6 +189,7 @@ class TestBulkEmailService:
             personal_message=None,
             term=None,
             deadline=None,
+            base_url="http://localhost:5000",
         )
 
         assert "Dr. Smith" in text
@@ -270,12 +274,18 @@ class TestBulkEmailService:
 
         assert results == []
 
+    @patch("bulk_email_service.current_app")
     @patch("database_factory.get_database_service")
     @patch("bulk_email_service.EmailManager")
     @patch("bulk_email_service.EmailService")
     @patch("bulk_email_service.BulkEmailJob")
     def test_send_emails_background_success(
-        self, mock_bulk_email_job, mock_email_service, mock_email_manager, mock_get_db
+        self,
+        mock_bulk_email_job,
+        mock_email_service,
+        mock_email_manager,
+        mock_get_db,
+        mock_app,
     ):
         """Test background email sending."""
         # Setup mocks
@@ -283,6 +293,9 @@ class TestBulkEmailService:
         mock_db_service = Mock()
         mock_db_service.sqlite.get_session.return_value = mock_db
         mock_get_db.return_value = mock_db_service
+
+        # Mock Flask app config
+        mock_app.config.get.return_value = "http://localhost:5000"
 
         mock_job = Mock()
         mock_job.id = "job-123"
