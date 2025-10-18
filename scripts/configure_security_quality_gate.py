@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 
 
 class SonarCloudQualityGateConfigurator:
-    def __init__(self, project_key: str, organization: str = "scienmockusneato"):
+    def __init__(self, project_key: str, organization: str = "scienceisneat"):
         self.project_key = project_key
         self.organization = organization
         self.base_url = "https://sonarcloud.io/api"

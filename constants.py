@@ -43,7 +43,7 @@ COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
 MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
 
 # SonarLint configuration constants
-SONAR_CLOUD_ORGANIZATION = "scienmockusneato"
+SONAR_CLOUD_ORGANIZATION = "scienceisneat"
 SONAR_PROJECT_KEY = "course-record-updater"
 SONAR_REGION = "US"
 
