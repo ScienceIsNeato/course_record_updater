@@ -148,8 +148,8 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("=" * 70)
 
         # Navigate to user management
-        admin_page.goto(f"{BASE_URL}/users")
-        expect(admin_page).to_have_url(f"{BASE_URL}/users")
+        admin_page.goto(f"{BASE_URL}/admin/users")
+        expect(admin_page).to_have_url(f"{BASE_URL}/admin/users")
 
         # Click "Invite User" button
         admin_page.click('button:has-text("Invite User")')
