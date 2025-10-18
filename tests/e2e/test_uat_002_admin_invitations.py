@@ -222,7 +222,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("STEP 3: Invited user completes registration")
         print("=" * 70)
 
-        # Open invitation link in new context
+        # Clear cookies to simulate unauthenticated user
+        page.context.clear_cookies()
+
+        # Open invitation link as unauthenticated user
         page.goto(invitation_link)
         expect(page).to_have_url(re.compile(r"/register/accept/"))
 
@@ -345,6 +348,9 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("\n" + "=" * 70)
         print("STEP 7: Program admin completes registration")
         print("=" * 70)
+
+        # Clear cookies to simulate unauthenticated user
+        page.context.clear_cookies()
 
         page.goto(pa_invitation_link)
         expect(page).to_have_url(re.compile(r"/register/accept/"))
