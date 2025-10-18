@@ -155,8 +155,8 @@ start_flask_app() {
     echo -e "   ETHEREAL_USER=${ETHEREAL_USER}"
     
     # Start Flask app
-    # Explicitly pass DATABASE_URL in the command to ensure subprocess gets it
-    DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$log_file" 2>&1 &
+    # Explicitly pass environment variables in the command to ensure subprocess gets them
+    PORT="$port" DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$log_file" 2>&1 &
     local flask_pid=$!
     sleep 2
 
