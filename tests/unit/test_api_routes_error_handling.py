@@ -40,21 +40,23 @@ class TestAPIErrorHandling(CommonAuthMixin):
         self._login_site_admin()
 
         # Test database failure path
-        with patch("api_routes.create_user", return_value=None):
+        with patch("api_routes.create_user_db", return_value=None):
             user_data = {
                 "email": "test@example.com",
                 "first_name": "Test",
                 "last_name": "User",
                 "role": "instructor",
+                "institution_id": "inst-123",  # Required for non-site_admin roles
+                "password": "TestPass123!",
             }
 
             response = self.client.post("/api/users", json=user_data)
 
-            # API gracefully handles database failures
-            assert response.status_code == 201
+            # Real API returns 500 on database failure
+            assert response.status_code == 500
             data = response.get_json()
-            # API gracefully handles database failures and returns success
-            assert data["success"] is True
+            assert data["success"] is False
+            assert "error" in data
 
     def test_get_users_exception_handling(self):
         """Test get users with exception."""

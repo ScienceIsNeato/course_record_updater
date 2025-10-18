@@ -24,25 +24,30 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
+# Constants
+readonly MODE_HEADED="headed"
+readonly MODE_HEADLESS="headless"
+
 # Default values
-MODE="headless"
+MODE="$MODE_HEADLESS"
 TEST_FILTER=""
 SAVE_VIDEOS="0"
 DEBUG_MODE="0"
+PARALLEL_WORKERS="auto"  # Always run in parallel, auto-scale to CPU cores
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --watch|-w)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             shift
             ;;
         --headed|-h)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             shift
             ;;
         --debug|-d)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             DEBUG_MODE="1"
             shift
             ;;
@@ -68,11 +73,14 @@ while [[ $# -gt 0 ]]; do
             echo "  --help               Show this help message"
             echo ""
             echo "Examples:"
-            echo "  $0                       # Run all tests (headless, fast)"
-            echo "  $0 --watch               # Watch tests run (visible, slow-mo 350ms)"
-            echo "  $0 --debug               # Debug mode (visible, 1s steps, DevTools)"
-            echo "  $0 --test TC-IE-001      # Run specific test case"
+            echo "  $0                       # Run all tests (parallel auto-scaling, headless)"
+            echo "  $0 --watch               # Watch tests run (parallel, visible, slow-mo)"
+            echo "  $0 --debug               # Debug mode (parallel, visible, 1s steps, DevTools)"
+            echo "  $0 --test TC-IE-001      # Run specific test case (parallel)"
             echo "  $0 --save-videos         # Record videos for debugging"
+            echo ""
+            echo "Note: Tests ALWAYS run in parallel with auto-scaling to available CPU cores."
+            echo "      This provides ~3x speedup and is the production-ready configuration."
             echo ""
             echo "Modes Explained:"
             echo "  Headless (default)   -> CI/fast execution, no browser window"
@@ -96,59 +104,75 @@ echo -e "${BLUE}============================================${NC}"
 echo ""
 
 # Check if virtual environment is activated (skip in CI where it's already set up)
-if [ -z "$VIRTUAL_ENV" ] && [ "${CI:-false}" != "true" ]; then
+if [[ -z "$VIRTUAL_ENV" ]] && [[ "${CI:-false}" != "true" ]]; then
     echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-    if [ -f "venv/bin/activate" ]; then
+    if [[ -f "venv/bin/activate" ]]; then
         source venv/bin/activate
     else
         echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
         echo -e "${YELLOW}💡 Run: python -m venv venv && source venv/bin/activate && pip install -r requirements-dev.txt${NC}"
         exit 1
     fi
-elif [ "${CI:-false}" = "true" ]; then
+elif [[ "${CI:-false}" = "true" ]]; then
     echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
 fi
+
+# Load environment variables from .envrc (skip in CI if credentials already set)
+if [[ -f ".envrc" ]]; then
+    source .envrc
+elif [[ -f ".envrc.template" ]] && [[ -z "$ETHEREAL_USER" ]]; then
+    # Only source template if Ethereal credentials not already set (i.e., not in CI with secrets)
+    source .envrc.template
+elif [[ "${CI:-false}" = "true" ]]; then
+    echo -e "${BLUE}🔵 CI detected with credentials already set, skipping .envrc.template${NC}"
+fi
+
+# Set ENV to "test" so email factory automatically selects Ethereal
+export ENV="test"
+
+# Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
+# This overrides any EMAIL_PROVIDER=brevo from .envrc.template
+unset EMAIL_PROVIDER
 
 # Restart server to ensure fresh database with test credentials
 echo -e "${BLUE}🔄 Restarting server for fresh E2E test environment...${NC}"
 
-# Clear E2E database to ensure fresh state
-rm -f course_records_e2e.db course_records_e2e.db-* 2>/dev/null || true
+# Clear E2E database to ensure fresh state (restart_server.sh will select correct DB)
+E2E_DB="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+E2E_DB_FILE="${E2E_DB#sqlite:///}"
+echo -e "${BLUE}🗑️  Clearing E2E database: $E2E_DB_FILE${NC}"
+rm -f "$E2E_DB_FILE" "${E2E_DB_FILE}-"* 2>/dev/null || true
 
-# Set E2E environment for database seeding
-export APP_ENV="e2e"
-if [ -f ".envrc" ]; then
-    source .envrc
-elif [ -f ".envrc.template" ]; then
-    source .envrc.template
-fi
+# Export DATABASE_URL so seed scripts use the E2E database
+export DATABASE_URL="$E2E_DB"
+export DATABASE_TYPE="sqlite"
 
-# Seed E2E database with test data
-echo -e "${YELLOW}🌱 Seeding E2E database with test data...${NC}"
+# Seed E2E database with baseline shared infrastructure
+echo -e "${YELLOW}🌱 Seeding E2E database with baseline data...${NC}"
 python scripts/seed_db.py
 echo ""
+echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
+echo ""
 
-# Start server in E2E mode (explicit environment argument)
-echo -e "${YELLOW}🚀 Starting E2E server on port $COURSE_RECORD_UPDATER_PORT...${NC}"
+# Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
+E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
 if ! ./restart_server.sh e2e; then
     echo -e "${RED}❌ E2E server failed to start${NC}"
-    echo -e "${YELLOW}Check logs/server.log for details${NC}"
+    echo -e "${YELLOW}Check logs/test_server.log for details${NC}"
     exit 1
 fi
 echo ""
-
-# Set E2E base URL from environment (port 3002)
-export E2E_BASE_URL="http://localhost:${COURSE_RECORD_UPDATER_PORT}"
 
 # Set video recording flag
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
 # Set debug/headless flags for Playwright
-if [ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]]; then
     export PYTEST_DEBUG="1"
     export HEADLESS="0"
 else
-    if [ "$MODE" = "headed" ]; then
+    if [[ "$MODE" = "$MODE_HEADED" ]]; then
         export HEADLESS="0"
     else
         # Enforce true headless when not in watch/debug
@@ -156,37 +180,52 @@ else
     fi
 fi
 
+# Set DATABASE_URL for pytest so it doesn't create a temp database
+export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
+
 # Build pytest command
 PYTEST_CMD="pytest tests/e2e/"
 
+# Add parallel execution if specified
+if [[ -n "$PARALLEL_WORKERS" ]]; then
+    PYTEST_CMD="$PYTEST_CMD -n $PARALLEL_WORKERS"
+fi
+
 # Add test filter if specified
-if [ -n "$TEST_FILTER" ]; then
+if [[ -n "$TEST_FILTER" ]]; then
     PYTEST_CMD="$PYTEST_CMD -k $TEST_FILTER"
 fi
 
 # Add mode flags
-if [ "$MODE" = "headed" ]; then
+if [[ "$MODE" = "$MODE_HEADED" ]]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
 fi
 
-# Add verbose output
-PYTEST_CMD="$PYTEST_CMD -v"
+# Add verbose output with progress indicator
+PYTEST_CMD="$PYTEST_CMD -v --tb=short"
+
+# Add live output for parallel execution (shows test names as they complete)
+if [[ -n "$PARALLEL_WORKERS" ]] || echo "$PYTEST_CMD" | grep -q "\-n"; then
+    # For parallel: show which tests are running
+    PYTEST_CMD="$PYTEST_CMD --dist=loadscope"
+fi
 
 # Display test configuration
 echo -e "${BLUE}📋 Test Configuration:${NC}"
-if [ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]]; then
     echo -e "  Mode: ${GREEN}Debug (visible, 1s slow-mo, DevTools)${NC}"
-elif [ "$MODE" = "headed" ]; then
+elif [[ "$MODE" = "$MODE_HEADED" ]]; then
     echo -e "  Mode: ${GREEN}Watch (visible, 350ms slow-mo)${NC}"
 else
     echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
 fi
-if [ -n "$TEST_FILTER" ]; then
+echo -e "  Execution: ${GREEN}Parallel (auto-scaling to CPU cores)${NC}"
+if [[ -n "$TEST_FILTER" ]]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else
     echo -e "  Filter: ${GREEN}All E2E tests${NC}"
 fi
-if [ "$SAVE_VIDEOS" = "1" ]; then
+if [[ "$SAVE_VIDEOS" = "1" ]]; then
     echo -e "  Video Recording: ${GREEN}enabled${NC}"
 else
     echo -e "  Video Recording: ${GREEN}disabled${NC}"
@@ -202,17 +241,20 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
-    # Kill server on E2E port (3002) specifically
-    local PIDS=$(lsof -ti:3002 2>/dev/null || true)
-    if [ -n "$PIDS" ]; then
-        for PID in $PIDS; do
-            echo -e "${BLUE}  Stopping E2E server (PID: $PID)${NC}"
-            kill $PID 2>/dev/null || kill -9 $PID 2>/dev/null || true
+    # Kill server on E2E port (from LASSIE_DEFAULT_PORT_E2E env var)
+    local e2e_port="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+    local pids
+    pids=$(lsof -ti:$e2e_port 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+        for pid in $pids; do
+            echo -e "${BLUE}  Stopping E2E server (PID: $pid)${NC}"
+            kill $pid 2>/dev/null || kill -9 $pid 2>/dev/null || true
         done
         sleep 1
     fi
     
     echo -e "${GREEN}✅ Cleanup complete${NC}"
+    return 0
 }
 
 # Register cleanup on script exit
@@ -227,7 +269,7 @@ if $PYTEST_CMD; then
     
     # Show results location
     echo -e "${BLUE}📊 Test Results:${NC}"
-    if [ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]]; then
         echo -e "  Videos: ${GREEN}test-results/videos/${NC}"
     fi
     echo ""
@@ -243,7 +285,7 @@ else
     
     # Show failure diagnostics
     echo -e "${YELLOW}📸 Check screenshots in test-results/screenshots/${NC}"
-    if [ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]]; then
         echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
     fi
     echo -e "${YELLOW}📋 Server logs: ${GREEN}logs/test_server.log${NC}"

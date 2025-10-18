@@ -23,8 +23,8 @@ Refactored export system to be adapter-driven (commit 61caf91).
 **Test**: `test_site_admin_full_import_export_workflow`
 - **What it tests**:
   1. Creates test Excel file
-  2. Imports via CEI adapter
-  3. **Exports via CEI adapter** (exercises new architecture)
+  2. Imports via MockU adapter
+  3. **Exports via MockU adapter** (exercises new architecture)
   4. Validates exported file structure
   
 - **Why it's critical**: This test actually exercises the full export path through the adapter registry, proving that:
@@ -50,7 +50,7 @@ Refactored export system to be adapter-driven (commit 61caf91).
 **Reasons**:
 1. **Unit layer** - All edge cases covered (auth, errors, parameters, security)
 2. **Integration layer** - Full adapter workflow tested end-to-end
-3. **Real adapter interaction** - Integration test uses actual CEI adapter, not mocks
+3. **Real adapter interaction** - Integration test uses actual MockU adapter, not mocks
 4. **Format detection** - Integration test proves adapter's `supported_formats` is queried correctly
 
 ### What We Have

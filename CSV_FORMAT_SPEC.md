@@ -48,7 +48,7 @@ Metadata about the export.
 {
   "format_version": "1.0",
   "export_timestamp": "2024-10-05T22:00:00Z",
-  "institution_id": "cei-uuid",
+  "institution_id": "mocku-uuid",
   "institution_name": "Example University",
   "adapter_id": "generic_csv_v1",
   "entity_counts": {
@@ -92,7 +92,7 @@ id,name,short_name,website_url,created_by,admin_email,allow_self_registration,re
 **Example**:
 ```csv
 id,name,short_name,website_url,created_by,admin_email,allow_self_registration,require_email_verification,is_active,created_at,updated_at
-cei-123,Example University,CEI,https://example.edu,admin-001,admin@example.edu,false,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+mocku-123,Example University,MockU,https://example.edu,admin-001,admin@example.edu,false,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 ### 3. programs.csv
@@ -110,8 +110,8 @@ id,name,short_name,description,institution_id,created_by,is_default,is_active,cr
 **Example**:
 ```csv
 id,name,short_name,description,institution_id,created_by,is_default,is_active,created_at,updated_at
-prog-1,Computer Science Program,CS,Undergraduate CS Program,cei-123,admin-001,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
-prog-2,Nursing Program,RN,Registered Nurse Program,cei-123,admin-001,false,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+prog-1,Computer Science Program,CS,Undergraduate CS Program,mocku-123,admin-001,true,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+prog-2,Nursing Program,RN,Registered Nurse Program,mocku-123,admin-001,false,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 ### 4. users.csv
@@ -142,7 +142,7 @@ id,email,first_name,last_name,display_name,role,institution_id,invited_by,invite
 **Example**:
 ```csv
 id,email,first_name,last_name,display_name,role,institution_id,invited_by,invited_at,registration_completed_at,oauth_provider,created_at,updated_at
-user-1,john.doe@example.edu,John,Doe,,instructor,cei-123,,,2024-08-01T00:00:00Z,,2024-08-01T00:00:00Z,2024-10-01T00:00:00Z
+user-1,john.doe@example.edu,John,Doe,,instructor,mocku-123,,,2024-08-01T00:00:00Z,,2024-08-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 **Security Note**: This adapter prioritizes security over immediate usability. Imported users must complete the invitation/registration workflow.
@@ -183,8 +183,8 @@ id,course_number,course_title,department,credit_hours,institution_id,active,crea
 **Example**:
 ```csv
 id,course_number,course_title,department,credit_hours,institution_id,active,created_at,updated_at
-course-1,CS101,Introduction to Programming,Computer Science,3,cei-123,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
-course-2,NUR201,Fundamentals of Nursing,Nursing,4,cei-123,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+course-1,CS101,Introduction to Programming,Computer Science,3,mocku-123,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+course-2,NUR201,Fundamentals of Nursing,Nursing,4,mocku-123,true,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 ### 7. course_programs.csv
@@ -224,8 +224,8 @@ id,term_name,name,start_date,end_date,assessment_due_date,active,institution_id,
 **Example**:
 ```csv
 id,term_name,name,start_date,end_date,assessment_due_date,active,institution_id,created_at,updated_at
-term-1,FA2024,Fall 2024,2024-08-26,2024-12-15,2024-12-20,true,cei-123,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
-term-2,SP2025,Spring 2025,2025-01-13,2025-05-10,2025-05-15,true,cei-123,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+term-1,FA2024,Fall 2024,2024-08-26,2024-12-15,2024-12-20,true,mocku-123,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
+term-2,SP2025,Spring 2025,2025-01-13,2025-05-10,2025-05-15,true,mocku-123,2024-01-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 ### 9. course_offerings.csv
@@ -245,8 +245,8 @@ id,course_id,term_id,institution_id,status,capacity,total_enrollment,section_cou
 **Example**:
 ```csv
 id,course_id,term_id,institution_id,status,capacity,total_enrollment,section_count,created_at,updated_at
-off-1,course-1,term-1,cei-123,active,75,50,2,2024-08-01T00:00:00Z,2024-09-01T00:00:00Z
-off-2,course-2,term-1,cei-123,active,60,45,2,2024-08-01T00:00:00Z,2024-09-01T00:00:00Z
+off-1,course-1,term-1,mocku-123,active,75,50,2,2024-08-01T00:00:00Z,2024-09-01T00:00:00Z
+off-2,course-2,term-1,mocku-123,active,60,45,2,2024-08-01T00:00:00Z,2024-09-01T00:00:00Z
 ```
 
 ### 10. course_sections.csv
@@ -317,7 +317,7 @@ id,email,role,institution_id,invited_by,invited_at,status,accepted_at,personal_m
 **Example**:
 ```csv
 id,email,role,institution_id,invited_by,invited_at,status,accepted_at,personal_message,created_at,updated_at
-inv-1,new.instructor@example.edu,instructor,cei-123,user-1,2024-10-01T00:00:00Z,pending,,Welcome to our institution!,2024-10-01T00:00:00Z,2024-10-01T00:00:00Z
+inv-1,new.instructor@example.edu,instructor,mocku-123,user-1,2024-10-01T00:00:00Z,pending,,Welcome to our institution!,2024-10-01T00:00:00Z,2024-10-01T00:00:00Z
 ```
 
 **Security Note**: Invitation tokens are regenerated on import to prevent token reuse attacks.

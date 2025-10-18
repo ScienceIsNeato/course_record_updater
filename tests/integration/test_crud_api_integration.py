@@ -301,15 +301,15 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
             {
                 "term_id": "term-123",
                 "term_name": "FA2024",
-                "institution_id": "cei-institution-id",
+                "institution_id": "mocku-institution-id",
             },
             {
                 "term_id": "term-123",
                 "term_name": "SP2025",
-                "institution_id": "cei-institution-id",
+                "institution_id": "mocku-institution-id",
             },
         ]
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_update.return_value = True
 
         term_data = {"term_name": "SP2025"}
@@ -334,9 +334,9 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         mock_get_term.return_value = {
             "term_id": "term-123",
             "term_name": "FA2024",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_archive.return_value = True
 
         response = self.client.post(
@@ -360,9 +360,9 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
             "term_id": "term-123",
             "term_name": "FA2024",
             "name": "Fall 2024",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_delete.return_value = True
 
         response = self.client.delete(
@@ -492,10 +492,10 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
                 "offering_id": "offering-123",
             },
         ]
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_get_offering.return_value = {
             "offering_id": "offering-123",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
         mock_update.return_value = True
 
@@ -524,10 +524,10 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
             "capacity": 25,
             "offering_id": "offering-123",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_get_offering.return_value = {
             "offering_id": "offering-123",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
         mock_assign.return_value = True
 
@@ -557,10 +557,10 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
             "capacity": 25,
             "offering_id": "offering-123",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_get_offering.return_value = {
             "offering_id": "offering-123",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
         mock_delete.return_value = True
 
@@ -623,10 +623,10 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
             "description": "Old",
             "course_id": "course-123",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_get_course.return_value = {
             "course_id": "course-123",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
         mock_update.return_value = True
 
@@ -683,10 +683,10 @@ class TestOutcomesCRUDIntegration(CommonAuthMixin):
             "description": "Old",
             "course_id": "course-123",
         }
-        mock_get_inst_id.return_value = "cei-institution-id"
+        mock_get_inst_id.return_value = "mocku-institution-id"
         mock_get_course.return_value = {
             "course_id": "course-123",
-            "institution_id": "cei-institution-id",
+            "institution_id": "mocku-institution-id",
         }
         mock_delete.return_value = True
 

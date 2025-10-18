@@ -7,7 +7,7 @@
 
 ## User Stories
 
-### 1. Receive Invitation Email
+### 1. Remockuve Invitation Email
 **As a new instructor, I want to** receive a clear invitation email with course details and deadline **so that** I understand what assessment work is required and when it's due.
 
 ### 2. Create Account Quickly
@@ -16,7 +16,7 @@
 ### 3. Access Course Form After Signup
 **As a new instructor, I want to** go directly to the course data entry form after account creation **so that** I can immediately begin the assessment work I was invited to complete.
 
-### 4. Receive Course Assignment Notification
+### 4. Remockuve Course Assignment Notification
 **As an existing instructor, I want to** get notified when assigned to new courses **so that** I'm aware of additional assessment responsibilities and deadlines.
 
 ### 5. Access Course via Email Link
@@ -46,7 +46,7 @@
 ### 12. Review Assessment Before Submission
 **As an instructor, I want to** review my complete assessment before submitting **so that** I can catch any errors or omissions before final submission.
 
-### 13. Receive Submission Confirmation
+### 13. Remockuve Submission Confirmation
 **As an instructor, I want to** receive confirmation that my submission was successful **so that** I know my assessment data has been properly recorded.
 
 ### 14. Edit Previously Submitted Courses

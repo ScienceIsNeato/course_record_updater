@@ -32,7 +32,7 @@ E2E tests automate real user interactions in a browser, replacing manual UAT. Th
 
 ## Test Data
 
-**Current**: Uses `research/CEI/2024FA_test_data.xlsx`  
+**Current**: Uses `research/MockU/2024FA_test_data.xlsx`  
 **TODO**: Create generic adapter test data file (not institution-specific) - see [Issue #TBD]
 
 The test file contains 6 course records used to validate import/export functionality.
@@ -85,7 +85,7 @@ sqlite3 course_records_e2e.db "SELECT email FROM users WHERE email LIKE '%admin%
 ```
 
 **Import failures**:
-- Verify test file exists: `ls -la research/CEI/2024FA_test_data.xlsx`
+- Verify test file exists: `ls -la research/MockU/2024FA_test_data.xlsx`
 - Check file format matches adapter expectations
 - Review import results in UI screenshots: `test-results/screenshots/`
 
@@ -139,7 +139,6 @@ E2E tests use isolated environment to prevent interference with development:
 |-------------|------|----------|---------|
 | dev | 3001 | `course_records_dev.db` | Local development |
 | e2e | 3002 | `course_records_e2e.db` | E2E tests (local & CI) |
-| ci | 3003 | `course_records_ci.db` | CI pipeline |
 
 Environment managed via `APP_ENV` variable and `.envrc` file.
 

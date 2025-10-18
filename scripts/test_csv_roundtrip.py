@@ -126,7 +126,7 @@ def main():
     
     db = get_database_service()
     
-    # Use CEI institution (from seed_db)
+    # Use MockU institution (from seed_db)
     institution_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"
     institution_name = "California Engineering Institute"
     

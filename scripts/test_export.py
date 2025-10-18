@@ -26,21 +26,21 @@ def test_export():
     print("🧪 Testing Export Service")
     print("=" * 50)
 
-    # Use a simple approach - use an existing institution or create CEI
+    # Use a simple approach - use an existing institution or create MockU
     from database_service import (
-        create_default_cei_institution,
+        create_default_mocku_institution,
         get_institution_by_short_name,
     )
 
-    # Try to get CEI institution first
-    cei_institution = get_institution_by_short_name("CEI")
-    if cei_institution:
-        institution_id = cei_institution["institution_id"]
-        print(f"✅ Using existing CEI institution: {institution_id}")
+    # Try to get MockU institution first
+    mocku_institution = get_institution_by_short_name("MockU")
+    if mocku_institution:
+        institution_id = mocku_institution["institution_id"]
+        print(f"✅ Using existing MockU institution: {institution_id}")
     else:
-        # Create CEI institution
-        institution_id = create_default_cei_institution()
-        print(f"✅ Created CEI institution: {institution_id}")
+        # Create MockU institution
+        institution_id = create_default_mocku_institution()
+        print(f"✅ Created MockU institution: {institution_id}")
 
     try:
         # Create some test data

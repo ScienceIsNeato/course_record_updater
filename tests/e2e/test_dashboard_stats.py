@@ -47,28 +47,24 @@ def test_tc_dashboard_001_institution_admin_summary_stats_display(
     print(f"  Sections: {section_count}")
 
     # Assert that all counts are greater than zero
-    # The seeded CEI institution should have:
-    # - 2 programs (CS, EE)
-    # - 5+ courses
-    # - 2+ faculty (john.instructor, jane.instructor)
-    # - 6+ sections
+    # The baseline seed MockU institution should have:
+    # - 3+ programs (CS, EE, Business)
+    # - 3+ courses (sample courses from baseline seed)
+    # - 2 faculty (john.instructor, jane.instructor)
+    # - 3 sections
 
-    assert (
-        program_count != "0"
-    ), "Program count should not be zero (CEI has CS and EE programs)"
-    assert (
-        course_count != "0"
-    ), "Course count should not be zero (CEI has multiple courses)"
+    assert program_count != "0", "Program count should not be zero (MockU has programs)"
+    assert course_count != "0", "Course count should not be zero (MockU has courses)"
     assert (
         faculty_count != "0"
-    ), "Faculty count should not be zero (CEI has instructors)"
-    assert section_count != "0", "Section count should not be zero (CEI has sections)"
+    ), "Faculty count should not be zero (MockU has instructors)"
+    assert section_count != "0", "Section count should not be zero (MockU has sections)"
 
     # Verify the counts are reasonable numbers
-    assert int(program_count) >= 2, f"Expected at least 2 programs, got {program_count}"
-    assert int(course_count) >= 5, f"Expected at least 5 courses, got {course_count}"
+    assert int(program_count) >= 3, f"Expected at least 3 programs, got {program_count}"
+    assert int(course_count) >= 3, f"Expected at least 3 courses, got {course_count}"
     assert int(faculty_count) >= 2, f"Expected at least 2 faculty, got {faculty_count}"
-    assert int(section_count) >= 6, f"Expected at least 6 sections, got {section_count}"
+    assert int(section_count) >= 3, f"Expected at least 3 sections, got {section_count}"
 
 
 @pytest.mark.e2e
@@ -138,4 +134,4 @@ def test_tc_dashboard_002_program_management_table_metrics(
     assert (
         programs_with_courses > 0
     ), "At least one program should have courses assigned"
-    assert programs_with_sections > 0, "At least one program should have sections"
+    assert programs_with_sections >= 1, "At least one program should have sections"

@@ -105,15 +105,15 @@ class SQLiteDatabase(DatabaseInterface):
             )
             return [to_dict(record) for record in records]
 
-    def create_default_cei_institution(self) -> Optional[str]:
-        existing = self.get_institution_by_short_name("CEI")
+    def create_default_mocku_institution(self) -> Optional[str]:
+        existing = self.get_institution_by_short_name("MockU")
         if existing:
             return existing["institution_id"]
 
-        cei_payload = {
-            "name": "College of Eastern Idaho",
-            "short_name": "CEI",
-            "domain": "cei.edu",
+        mocku_payload = {
+            "name": "Mock University",
+            "short_name": "MockU",
+            "domain": "mocku.test",
             "timezone": DEFAULT_INSTITUTION_TIMEZONE,
             "is_active": True,
             "billing_settings": {
@@ -128,7 +128,7 @@ class SQLiteDatabase(DatabaseInterface):
             },
             "created_at": datetime.now(timezone.utc),
         }
-        return self.create_institution(cei_payload)
+        return self.create_institution(mocku_payload)
 
     def create_new_institution(
         self, institution_data: Dict[str, Any], admin_user_data: Dict[str, Any]
@@ -226,7 +226,8 @@ class SQLiteDatabase(DatabaseInterface):
     # ------------------------------------------------------------------
     def create_user(self, user_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(user_data)
-        user_id = _ensure_uuid(payload.pop("user_id", None))
+        # Accept both "id" and "user_id" for backward compatibility
+        user_id = _ensure_uuid(payload.pop("id", None) or payload.pop("user_id", None))
         email = payload.get("email")
         if not email:
             logger.error("[SQLiteDatabase] User requires email")
@@ -326,7 +327,11 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             user = session.get(User, user_id)
             if not user:
+                logger.warning(f"[UPDATE_USER] User {user_id} not found in database")
                 return False
+            logger.info(
+                f"[UPDATE_USER] Updating user {user_id}: {list(user_data.keys())}"
+            )
             for key, value in user_data.items():
                 if key == "program_ids":
                     programs = (

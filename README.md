@@ -98,8 +98,8 @@ python scripts/seed_db.py --clear
 │   │   └── regular_user/             # Faculty/instructor user stories
 │   └── meetings/           # Meeting notes and decisions
 ├── research/             # 🔍 STAKEHOLDER RESEARCH & ANALYSIS
-│   └── CEI/                # College of Eastern Idaho pilot research
-│       ├── README.md                 # CEI contact info and materials
+│   └── MockU/                # College of Eastern Idaho pilot research
+│       ├── README.md                 # MockU contact info and materials
 │       ├── VIDEO_ANALYSIS.md         # Analysis of stakeholder video
 │       ├── SPREADSHEET_ANALYSIS.md   # Analysis of current data structure
 │       ├── BRIDGE_STRATEGY.md        # Migration approach and Access export

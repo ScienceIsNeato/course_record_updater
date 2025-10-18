@@ -176,7 +176,7 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
         # Mock target user (institution admin - higher role)
         mock_get_user.return_value = {
             "user_id": "inst-admin-1",
-            "email": "admin@inst.edu",
+            "email": "admin@inst.test",
             "role": "institution_admin",
             "institution_id": "inst-1",
         }
@@ -223,7 +223,7 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
         # Mock target user (another program admin - equal role)
         mock_get_user.return_value = {
             "user_id": "prog-admin-2",
-            "email": "other@inst.edu",
+            "email": "other@inst.test",
             "role": "program_admin",
             "institution_id": "inst-1",
             "program_ids": ["prog-2"],
@@ -282,7 +282,7 @@ class TestInvitationAPI(CommonAuthMixin):
 
         timestamp = int(time.time() * 1000)
         invitation_data = {
-            "email": f"newinstructor{timestamp}@inst.edu",
+            "email": f"newinstructor{timestamp}@inst.test",
             "first_name": "New",
             "last_name": "Instructor",
             "role": "instructor",
@@ -306,7 +306,7 @@ class TestInvitationAPI(CommonAuthMixin):
         """
         # Create first invitation
         invitation_data = {
-            "email": "duplicate@inst.edu",
+            "email": "duplicate@inst.test",
             "first_name": "First",
             "last_name": "User",
             "role": "instructor",

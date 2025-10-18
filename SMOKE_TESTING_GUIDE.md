@@ -16,7 +16,7 @@ Smoke testing ensures that your current feature works end-to-end without running
 ### 🔥 Import System
 ```bash
 # Test CLI import (fastest)
-python import_cli.py --file test_data/cei_sample.xlsx --dry-run --verbose
+python import_cli.py --file test_data/mocku_sample.xlsx --dry-run --verbose
 
 # Test web import (comprehensive)
 ./restart_server.sh

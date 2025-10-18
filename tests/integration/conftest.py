@@ -5,6 +5,8 @@ This module provides common fixtures for integration tests,
 including database setup and institution creation.
 """
 
+import os
+
 import pytest
 
 
@@ -24,10 +26,10 @@ def client():
 @pytest.fixture(scope="class", autouse=True)
 def setup_integration_test_data():
     """
-    Set up integration test data including default CEI institution.
+    Set up integration test data including default MockU institution.
 
     This fixture runs once per test class and ensures that:
-    1. A baseline CEI institution exists for historical test data
+    1. A baseline MockU institution exists for historical test data
     2. Basic test data is available for integration tests
     3. Database connection is properly established
     """
@@ -46,12 +48,12 @@ def setup_integration_test_data():
 
         # Check if data already exists to avoid duplicate seeding
         institutions = db.get_all_institutions() or []
-        cei_exists = any(
+        mocku_exists = any(
             "California Engineering Institute" in inst.get("name", "")
             for inst in institutions
         )
 
-        if not cei_exists:
+        if not mocku_exists:
             # Create full seeded dataset for integration tests
             seeder = DatabaseSeeder(verbose=False)  # Reduce noise in test output
             seeder.seed_full_dataset()
@@ -62,3 +64,52 @@ def setup_integration_test_data():
     except Exception as e:
         print(f"⚠️  Warning: Could not seed database for integration tests: {e}")
         # Don't fail the tests if this setup fails - let individual tests handle it
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_integration_test_database(tmp_path_factory):
+    """
+    Set up integration test database with email whitelist configuration.
+
+    This runs once per test session and:
+    1. Creates a temporary database for integration tests
+    2. Configures email whitelist to allow test emails
+    3. Sets up environment variables for integration testing
+    """
+    # Set up email whitelist for integration tests to allow test emails
+    # Use wildcard to allow all test emails
+    os.environ["EMAIL_WHITELIST"] = (
+        "*@inst.test,*@example.com,*@testu.edu,*@eu.edu,*@mocku.test,*@ethereal.email"
+    )
+
+    # Create temporary database for integration tests
+    db_path = tmp_path_factory.mktemp("data") / "integration_test.db"
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    os.environ["DATABASE_TYPE"] = "sqlite"
+
+    # Initialize database - must call refresh_connection() to update module-level singleton
+    import database_service
+
+    database_service.refresh_connection()
+    database_service.reset_database()
+
+    yield db_path
+
+    # Cleanup email whitelist after tests
+    if "EMAIL_WHITELIST" in os.environ:
+        del os.environ["EMAIL_WHITELIST"]
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clean_database_between_tests():
+    """
+    Clean database between integration tests to prevent pollution.
+
+    This ensures each test starts with a fresh database state.
+    """
+    import database_service
+
+    # Reset database to clean state
+    database_service.reset_database()
+
+    yield

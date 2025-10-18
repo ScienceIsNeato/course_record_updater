@@ -36,6 +36,7 @@ def sample_user_data():
         "institution_id": "inst-123",
         "display_name": "Test User",
         "login_count": 5,
+        "email_verified": True,  # Required for login to succeed
     }
 
 
@@ -146,12 +147,12 @@ class TestLoginAPI:
         response = client.post("/api/auth/login")
 
         # Verify
-        assert response.status_code == 500  # Flask returns 500 for UnsupportedMediaType
+        assert (
+            response.status_code == 400
+        )  # Returns 400 with silent=True for missing JSON
         data = json.loads(response.data)
         assert data["success"] is False
-        assert (
-            "An unexpected error occurred" in data["error"]
-        )  # Generic error message from handle_api_error
+        assert "No JSON data provided" in data["error"]
 
     @patch("login_service.SessionService")
     @patch("login_service.PasswordService")

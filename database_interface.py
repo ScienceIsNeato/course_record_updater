@@ -35,7 +35,7 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def create_default_cei_institution(self) -> Optional[str]:
+    def create_default_mocku_institution(self) -> Optional[str]:
         raise NotImplementedError
 
     @abstractmethod

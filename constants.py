@@ -1,5 +1,8 @@
 """Application constants and configuration values."""
 
+# Server port constants
+E2E_TEST_PORT = 3002  # Hardcoded port for E2E tests (separate from dev server on 3001)
+
 # Institution ID constants
 SITE_ADMIN_INSTITUTION_ID = (
     "*"  # Wildcard institution ID for site admins (grants access to all institutions)
@@ -40,7 +43,7 @@ COURSE_OFFERING_NOT_FOUND_MSG = "Course offering not found"
 MISSING_REQUIRED_FIELD_EMAIL_MSG = "Missing required field: email"
 
 # SonarLint configuration constants
-SONAR_CLOUD_ORGANIZATION = "scienceisneato"
+SONAR_CLOUD_ORGANIZATION = "scienceisneat"
 SONAR_PROJECT_KEY = "course-record-updater"
 SONAR_REGION = "US"
 

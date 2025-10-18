@@ -1,5 +1,36 @@
 # Next Backlog
 
+## 🚨 IMMEDIATE PRIORITY
+
+### E2E UI Testing for Email Suite (9 User Stories Remaining)
+**Status**: Blocked for next PR - CRITICAL NEXT TASK  
+**Context**: Part 2 of email service refactoring PR series  
+**What's Done**: Completed 1 E2E test for instructor invitation use case  
+**What's Left**: 9 user stories for comprehensive email suite UI validation
+
+**🔴 THIS MUST BE THE NEXT PR AFTER CURRENT EMAIL SERVICE PR MERGES**
+
+**Remaining User Stories**:
+1. Password reset email flow (UI + verification)
+2. Bulk reminder email flow (UI + progress tracking)
+3. Course assignment notification flow
+4. Program invitation flow
+5. Institution admin invitation flow
+6. Email template customization (if applicable)
+7. Email delivery status monitoring
+8. Failed email retry mechanism
+9. Email whitelist configuration UI
+
+**Success Criteria**:
+- All 9 user stories have E2E tests via Playwright
+- Email verification via Ethereal IMAP for each flow
+- Full coverage of email-triggered UI workflows
+- Documentation of E2E test patterns for future features
+
+**Note**: Current PR (1 of 2) focuses on email service architecture. Next PR (2 of 2) will complete E2E test coverage.
+
+---
+
 ## High Priority
 
 ### API Refactoring (Incremental Extraction)

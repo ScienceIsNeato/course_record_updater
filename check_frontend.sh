@@ -45,7 +45,7 @@ for element in "${REQUIRED_ELEMENTS[@]}"; do
     fi
 done
 
-if [ ${#MISSING_ELEMENTS[@]} -gt 0 ]; then
+if [[ ${#MISSING_ELEMENTS[@]} -gt 0 ]]; then
     echo -e "${RED}❌ Missing HTML elements:${NC}"
     for element in "${MISSING_ELEMENTS[@]}"; do
         echo -e "${RED}   - $element${NC}"
@@ -60,7 +60,7 @@ echo -e "${BLUE}🔍 Checking static assets...${NC}"
 STATIC_ASSETS=(
     "/static/script.js"
     "/static/style.css"
-    "/static/images/cei_logo.jpg"
+    "/static/images/mocku_logo.jpg"
 )
 
 for asset in "${STATIC_ASSETS[@]}"; do

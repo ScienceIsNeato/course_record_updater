@@ -135,7 +135,7 @@ def test_login_form_submission(page: Page, server_running: bool):
     page.wait_for_load_state("networkidle")
     
     # Fill form with KNOWN GOOD credentials
-    page.fill('input[name="email"]', "sarah.admin@cei.edu")
+    page.fill('input[name="email"]', "sarah.admin@mocku.test")
     page.fill('input[name="password"]', "InstitutionAdmin123!")
     
     # Submit and wait for response

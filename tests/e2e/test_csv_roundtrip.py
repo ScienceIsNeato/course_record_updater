@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Page
 
-from tests.e2e.conftest import BASE_URL, wait_for_modal
+from tests.e2e.conftest import BASE_URL
 
 
 @pytest.mark.e2e

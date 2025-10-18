@@ -42,14 +42,14 @@ This UAT guide covers the complete Course Record Updater system including:
 3. **Test accounts created by seeding**:
    - **Site Admin**: `siteadmin@system.local` / `SiteAdmin123!`
    - **Institution Admins**: 
-     - CEI: `sarah.admin@cei.edu` / `InstitutionAdmin123!`
+     - MockU: `sarah.admin@mocku.test` / `InstitutionAdmin123!`
      - RCC: `mike.admin@riverside.edu` / `InstitutionAdmin123!`
      - PTU: `admin@pactech.edu` / `InstitutionAdmin123!`
    - **Program Admins**: 
-     - CEI: `lisa.prog@cei.edu` / `TestUser123!`
+     - MockU: `lisa.prog@mocku.test` / `TestUser123!`
      - RCC: `robert.prog@riverside.edu` / `TestUser123!`
    - **Instructors**: 
-     - CEI: `john.instructor@cei.edu` / `TestUser123!`
+     - MockU: `john.instructor@mocku.test` / `TestUser123!`
      - RCC: `susan.instructor@riverside.edu` / `TestUser123!`
      - PTU: `david.instructor@pactech.edu` / `TestUser123!`
 
@@ -158,16 +158,16 @@ Validate institution-level management capabilities and user onboarding flow.
 
 **Steps**:
 1. Navigate to application login page
-2. Login with CEI admin credentials: `sarah.admin@cei.edu` / `InstitutionAdmin123!`
+2. Login with MockU admin credentials: `sarah.admin@mocku.test` / `InstitutionAdmin123!`
 3. Verify redirect to Institution Administrator Dashboard
-4. Check that dashboard shows only CEI institution data
+4. Check that dashboard shows only MockU institution data
 5. Verify institution name and context displayed correctly
 
 **Expected Results**:
 - ✅ **SHOULD WORK**: Login authentication and session creation
 - ✅ **SHOULD WORK**: Dashboard displays with institution-specific statistics
-- ✅ **SHOULD WORK**: Shows CEI programs (Computer Science, Electrical Engineering, Unclassified)
-- ✅ **SHOULD WORK**: Statistics filtered to CEI institution only
+- ✅ **SHOULD WORK**: Shows MockU programs (Computer Science, Electrical Engineering, Unclassified)
+- ✅ **SHOULD WORK**: Statistics filtered to MockU institution only
 - ✅ **SHOULD WORK**: Institution context clearly displayed
 
 #### **TC-IA-002: Program Management**
@@ -601,7 +601,7 @@ Validate that users can only access data within their institutional/program scop
 - **Authentication System**: ___________
 - **User Experience**: ___________
 - **Security Features**: ___________
-- **Readiness for CEI Demo**: ___________
+- **Readiness for MockU Demo**: ___________
 
 ### Recommendations
 1. ___________

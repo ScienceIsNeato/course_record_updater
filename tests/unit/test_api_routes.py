@@ -198,7 +198,7 @@ class TestHealthEndpoint:
             data = json.loads(response.data)
             assert data["status"] == "healthy"
             assert data["success"] is True
-            assert data["message"] == "CEI Course Management API is running"
+            assert data["message"] == "MockU Course Management API is running"
             assert data["version"] == "2.0.0"
 
     def test_health_endpoint_no_auth_required(self):
@@ -682,12 +682,11 @@ class TestAcceptInvitationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/accept-invitation")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
+            # Should return 400 Bad Request (after fix for silent=True)
+            assert response.status_code == 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "Failed to accept invitation" in data["error"]
+            assert "No JSON data provided" in data["error"]
 
     def test_accept_invitation_missing_token(self):
         """Test invitation acceptance with missing token."""
@@ -1229,17 +1228,21 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
-        response = self.client.post(
-            "/api/users", json=user_data, content_type="application/json"
-        )
-        # API currently returns 201 due to stub implementation
-        assert response.status_code == 201
+        # Mock database failure
+        with patch("api_routes.create_user_db", return_value=None):
+            response = self.client.post(
+                "/api/users", json=user_data, content_type="application/json"
+            )
+            # Real API returns 500 on database failure
+            assert response.status_code == 500
 
-        data = json.loads(response.data)
-        assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+            data = json.loads(response.data)
+            assert data["success"] is False
+            assert "error" in data
 
     def test_create_user_exception_handling(self):
         """Test POST /api/users with exception"""
@@ -1259,17 +1262,20 @@ class TestUserEndpoints(CommonAuthMixin):
             "first_name": "Test",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
-        response = self.client.post(
-            "/api/users", json=user_data, content_type="application/json"
-        )
-        # API currently returns 201 due to stub implementation
-        assert response.status_code == 201
+        # Mock database exception
+        with patch("api_routes.create_user_db", side_effect=Exception("DB Error")):
+            response = self.client.post(
+                "/api/users", json=user_data, content_type="application/json"
+            )
+            # Real API returns 500 on exception
+            assert response.status_code == 500
 
-        data = json.loads(response.data)
-        assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+            data = json.loads(response.data)
+            assert data["success"] is False
 
     @patch("api_routes.get_all_users", return_value=[])
     def test_get_users_without_permission_stub_mode(self, mock_get_all_users):
@@ -1325,6 +1331,8 @@ class TestUserEndpoints(CommonAuthMixin):
             "role": "instructor",
             "first_name": "New",
             "last_name": "User",
+            "institution_id": "inst-123",  # Required for non-site_admin roles
+            "password": "TestPass123!",  # Provide password for immediate activation
         }
 
         response = self.client.post(
@@ -1335,6 +1343,7 @@ class TestUserEndpoints(CommonAuthMixin):
         data = json.loads(response.data)
         assert "message" in data
         assert "created" in data["message"].lower()
+        assert "user_id" in data  # Real API returns actual user_id
 
     def test_create_user_missing_required_fields(self):
         """Test POST /api/users with missing required fields."""
@@ -1901,11 +1910,11 @@ class TestInstitutionEndpoints:
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_all_instructors")
-    def test_list_instructors_success(self, mock_get_instructors, mock_get_cei):
+    def test_list_instructors_success(self, mock_get_instructors, mock_get_mocku):
         """Test GET /api/instructors endpoint success."""
         self._login_site_admin()
 
-        mock_get_cei.return_value = "cei-institution-id"
+        mock_get_mocku.return_value = "mocku-institution-id"
         mock_get_instructors.return_value = [
             {"user_id": "inst1", "first_name": "John", "last_name": "Doe"},
             {"user_id": "inst2", "first_name": "Jane", "last_name": "Smith"},
@@ -2269,13 +2278,13 @@ class TestUserManagementAPI:
         mock_get_users.return_value = [
             {
                 "user_id": "1",
-                "email": "instructor1@cei.edu",
+                "email": "instructor1@mocku.test",
                 "role": "instructor",
                 "institution_id": "test-institution",
             },
             {
                 "user_id": "2",
-                "email": "instructor2@cei.edu",
+                "email": "instructor2@mocku.test",
                 "role": "instructor",
                 "institution_id": "test-institution",
             },
@@ -2312,14 +2321,14 @@ class TestUserManagementAPI:
         mock_get_users.return_value = [
             {
                 "user_id": "1",
-                "email": "math1@cei.edu",
+                "email": "math1@mocku.test",
                 "role": "instructor",
                 "department": "MATH",
                 "institution_id": "test-institution",
             },
             {
                 "user_id": "2",
-                "email": "eng1@cei.edu",
+                "email": "eng1@mocku.test",
                 "role": "instructor",
                 "department": "ENG",
                 "institution_id": "test-institution",
@@ -2346,7 +2355,7 @@ class TestUserManagementAPI:
         assert response.status_code in [400, 500]
 
         # Test missing required fields
-        response = self.client.post("/api/users", json={"email": "test@cei.edu"})
+        response = self.client.post("/api/users", json={"email": "test@mocku.test"})
         assert response.status_code == 400
         data = response.get_json()
         assert "Missing required fields" in data["error"]
@@ -2774,7 +2783,7 @@ class TestAPIRoutesErrorHandling:
         self,
         mock_has_permission,
         mock_get_current_user,
-        mock_get_cei_id,
+        mock_get_mocku_id,
         mock_get_all_users,
     ):
         """Test list_users endpoint without role filter."""
@@ -2784,7 +2793,7 @@ class TestAPIRoutesErrorHandling:
             "user_id": "test-user",
             "role": "site_admin",
         }
-        mock_get_cei_id.return_value = "riverside-tech-institute"
+        mock_get_mocku_id.return_value = "riverside-tech-institute"
 
         response = self.client.get("/api/users")
 
@@ -2801,7 +2810,7 @@ class TestAPIRoutesErrorHandling:
         self,
         mock_has_permission,
         mock_get_current_user,
-        mock_get_cei_id,
+        mock_get_mocku_id,
         mock_get_user,
     ):
         """Test get_user endpoint when user not found."""
@@ -2811,7 +2820,7 @@ class TestAPIRoutesErrorHandling:
             "role": "site_admin",
         }
         mock_has_permission.return_value = True
-        mock_get_cei_id.return_value = "riverside-tech-institute"
+        mock_get_mocku_id.return_value = "riverside-tech-institute"
 
         response = self.client.get("/api/users/nonexistent-user")
 
@@ -2824,22 +2833,24 @@ class TestAPIRoutesErrorHandling:
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")
     def test_create_user_stub_success_coverage(
-        self, mock_has_permission, mock_get_current_user, mock_get_cei_id
+        self, mock_has_permission, mock_get_current_user, mock_get_mocku_id
     ):
-        """Test create_user endpoint stub implementation."""
+        """Test create_user endpoint with real implementation."""
         self._login_site_admin({"institution_id": "riverside-tech-institute"})
         mock_has_permission.return_value = True
         mock_get_current_user.return_value = {
             "user_id": "admin-user",
             "role": "site_admin",
         }
-        mock_get_cei_id.return_value = "riverside-tech-institute"
+        mock_get_mocku_id.return_value = "riverside-tech-institute"
 
         user_data = {
             "email": "newuser@example.com",
             "first_name": "New",
             "last_name": "User",
             "role": "instructor",
+            "institution_id": "riverside-tech-institute",  # Required for non-site_admin roles
+            "password": "TestPass123!",
         }
 
         response = self.client.post("/api/users", json=user_data)
@@ -2847,7 +2858,7 @@ class TestAPIRoutesErrorHandling:
         assert response.status_code == 201
         data = response.get_json()
         assert data["success"] is True
-        assert data["user_id"] == "stub-user-id"
+        assert "user_id" in data  # Real API returns actual user_id
 
     def test_import_excel_empty_filename_coverage(self):
         """Test import_excel endpoint with empty filename."""
@@ -3189,11 +3200,11 @@ class TestAPIRoutesExtended:
     @patch("api_routes.get_all_institutions")
     @patch("api_routes.get_current_institution_id")
     def test_list_courses_global_scope(
-        self, mock_get_cei_id, mock_get_institutions, mock_get_all_courses
+        self, mock_get_mocku_id, mock_get_institutions, mock_get_all_courses
     ):
         """Site admin without institution context should see system-wide courses."""
         self._login_site_admin()
-        mock_get_cei_id.return_value = None
+        mock_get_mocku_id.return_value = None
         mock_get_institutions.return_value = [
             {"institution_id": "inst-1"},
             {"institution_id": "inst-2"},
@@ -3214,10 +3225,10 @@ class TestAPIRoutesExtended:
 
     @patch("api_routes.get_current_institution_id")
     @patch("api_routes.get_courses_by_department")
-    def test_list_courses_with_department(self, mock_get_courses, mock_get_cei_id):
+    def test_list_courses_with_department(self, mock_get_courses, mock_get_mocku_id):
         """Test list_courses with department filter."""
         self._login_site_admin()
-        mock_get_cei_id.return_value = "institution123"
+        mock_get_mocku_id.return_value = "institution123"
         mock_get_courses.return_value = [{"course_id": "1", "department": "MATH"}]
 
         response = self.client.get("/api/courses?department=MATH")
@@ -4000,7 +4011,7 @@ class TestExcelImportHelpers:
         with patch("api_routes.get_current_user") as mock_get_user:
             mock_get_user.return_value = mock_user
 
-            # Site admin with CEI adapter - should succeed
+            # Site admin with MockU adapter - should succeed
             user, inst_id = _check_excel_import_permissions(
                 "cei_excel_format_v1", "courses"
             )
@@ -4022,27 +4033,27 @@ class TestExcelImportHelpers:
             with pytest.raises(PermissionError, match="Authentication required"):
                 _check_excel_import_permissions("cei_excel_format_v1", "courses")
 
-    def test_determine_target_institution_site_admin_cei(self):
-        """Test _determine_target_institution for site admin with CEI adapter."""
+    def test_determine_target_institution_site_admin_mocku(self):
+        """Test _determine_target_institution for site admin with MockU adapter."""
         from unittest.mock import patch
 
         from api_routes import _determine_target_institution
 
         # Function is imported inside _determine_target_institution
         with patch(
-            "database_service.create_default_cei_institution"
-        ) as mock_create_cei:
-            mock_create_cei.return_value = "cei_inst_id"
+            "database_service.create_default_mocku_institution"
+        ) as mock_create_mocku:
+            mock_create_mocku.return_value = "mocku_inst_id"
 
             result = _determine_target_institution(
                 "site_admin", None, "cei_excel_format_v1"
             )
 
-            assert result == "cei_inst_id"
-            mock_create_cei.assert_called_once()
+            assert result == "mocku_inst_id"
+            mock_create_mocku.assert_called_once()
 
-    def test_determine_target_institution_site_admin_cei_fails(self):
-        """Test _determine_target_institution when CEI creation fails."""
+    def test_determine_target_institution_site_admin_mocku_fails(self):
+        """Test _determine_target_institution when MockU creation fails."""
         from unittest.mock import patch
 
         import pytest
@@ -4051,17 +4062,17 @@ class TestExcelImportHelpers:
 
         # Function is imported inside _determine_target_institution
         with patch(
-            "database_service.create_default_cei_institution"
-        ) as mock_create_cei:
-            mock_create_cei.return_value = None
+            "database_service.create_default_mocku_institution"
+        ) as mock_create_mocku:
+            mock_create_mocku.return_value = None
 
             with pytest.raises(
-                ValueError, match="Failed to create/find CEI institution"
+                ValueError, match="Failed to create/find MockU institution"
             ):
                 _determine_target_institution("site_admin", None, "cei_excel_format_v1")
 
-    def test_determine_target_institution_site_admin_non_cei(self):
-        """Test _determine_target_institution for site admin with non-CEI adapter."""
+    def test_determine_target_institution_site_admin_non_mocku(self):
+        """Test _determine_target_institution for site admin with non-MockU adapter."""
         import pytest
 
         from api_routes import _determine_target_institution

@@ -69,11 +69,11 @@ class TestPasswordResetAPI:
         # Execute
         response = client.post("/api/auth/forgot-password")
 
-        # Verify - Flask returns 500 for unsupported media type, not 400
-        assert response.status_code == 500
+        # Verify - Returns 400 with silent=True for missing JSON
+        assert response.status_code == 400
         data = json.loads(response.data)
         assert data["success"] is False
-        assert "Password reset request failed" in data["error"]
+        assert "No JSON data provided" in data["error"]
 
     @patch("password_reset_service.PasswordResetService")
     def test_forgot_password_rate_limit(self, mock_service, client):
@@ -105,7 +105,7 @@ class TestPasswordResetAPI:
         # Execute
         response = client.post(
             "/api/auth/forgot-password",
-            data=json.dumps({"email": "test@cei.edu"}),
+            data=json.dumps({"email": "test@mocku.test"}),
             content_type="application/json",
         )
 

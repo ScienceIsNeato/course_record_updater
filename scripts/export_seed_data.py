@@ -38,11 +38,11 @@ def main():
     
     # Export each institution then combine (for now, just export first institution)
     # TODO: Site admin export should combine all institutions
-    cei = institutions[0]  # California Engineering Institute
+    mocku = institutions[0]  # California Engineering Institute
     
     try:
         config = ExportConfig(
-            institution_id=cei["institution_id"],
+            institution_id=mocku["institution_id"],
             adapter_id="generic_csv_v1",
             include_metadata=True,
         )

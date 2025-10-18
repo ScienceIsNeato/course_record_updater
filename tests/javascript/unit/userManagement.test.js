@@ -440,7 +440,7 @@ describe('User Management - Edit User Modal', () => {
         expect(mockModal.show).toHaveBeenCalled();
     });
 
-    test('should PUT updated user data to /api/users/<id> on form submit', async () => {
+    test('should PATCH updated user data to /api/users/<id>/profile on form submit', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
             json: async () => ({ success: true, message: 'User updated' })
@@ -457,9 +457,9 @@ describe('User Management - Edit User Modal', () => {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         expect(mockFetch).toHaveBeenCalledWith(
-            '/api/users/user-123',
+            '/api/users/user-123/profile',
             expect.objectContaining({
-                method: 'PUT',
+                method: 'PATCH',
                 headers: expect.objectContaining({
                     'Content-Type': 'application/json',
                     'X-CSRFToken': 'test-csrf-token'

@@ -3,7 +3,7 @@
 **Purpose:** Internal reference document for stakeholder meetings. Generic questions with feedback notes.
 **Note:** For client-specific versions, see `research/[client_name]/[CLIENT]_STAKEHOLDER_QUESTIONS.md`
 
-**Feedback Integration:** This document has been updated based on CEI feedback to show what works/doesn't work.
+**Feedback Integration:** This document has been updated based on MockU feedback to show what works/doesn't work.
 
 ## Data Requirements
 

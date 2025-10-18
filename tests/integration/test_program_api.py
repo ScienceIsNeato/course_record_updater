@@ -206,8 +206,8 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         with patch("api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post("/api/programs")
 
-        # Flask returns 500 when no Content-Type is provided
-        assert response.status_code == 500
+        # Returns 400 with silent=True for missing JSON
+        assert response.status_code == 400
         # The error is handled by the exception handler, so we get a generic error response
 
     @patch("api_routes.get_current_institution_id")

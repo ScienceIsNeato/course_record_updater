@@ -42,7 +42,7 @@ A web application built with Python (Flask) that allows:
 *   **Database Service/Handler:**
     *   Separate component/module responsible for all interactions with SQLite via SQLAlchemy.
     *   Provides functions like `save_course`, `get_all_courses`, `update_course`, `delete_course`.
-    *   Called by the Flask endpoint handlers *after* receiving validated data from an adapter.
+    *   Called by the Flask endpoint handlers *after* remockuving validated data from an adapter.
 *   **Database:**
     *   SQLite (SQLAlchemy ORM).
     *   Flexible schema, free tier, GCP integration.

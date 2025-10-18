@@ -115,7 +115,7 @@ class TestPasswordResetServiceRequest:
         mock_password_service.check_rate_limit.return_value = None
         mock_db.get_user_by_email.return_value = {
             "user_id": "user-123",
-            "email": "test@cei.edu",
+            "email": "test@mocku.test",
             "account_status": "active",
         }
         mock_password_service.generate_reset_token.return_value = "secure-token"
@@ -129,7 +129,7 @@ class TestPasswordResetServiceRequest:
 
         # Execute & Verify
         with pytest.raises(PasswordResetError, match="Email sending is restricted"):
-            PasswordResetService.request_password_reset("test@cei.edu")
+            PasswordResetService.request_password_reset("test@mocku.test")
 
     @patch("password_reset_service.EmailService")
     @patch("password_reset_service.PasswordService")

@@ -57,7 +57,7 @@ curl http://localhost:3001/api/health
    - Institution-agnostic
    - **Use this for UAT testing**
 
-2. **CEI Excel Adapter** (`cei_excel_format_v1`):
+2. **MockU Excel Adapter** (`cei_excel_format_v1`):
    - Import-only (no export)
    - Customer-specific format
    - `.xlsx` files only
@@ -71,7 +71,7 @@ curl http://localhost:3001/api/health
 
 ### Test Accounts
 Login as **Institution Admin** for these tests:
-- **Email**: `sarah.admin@cei.edu`
+- **Email**: `sarah.admin@mocku.test`
 - **Password**: `InstitutionAdmin123!`
 - **Why**: Institution admins have import/export permissions
 
@@ -90,7 +90,7 @@ Validate that imported Generic CSV data (ZIP format) correctly populates ALL ent
 **Test File**: Create controlled `test_import.zip` with known CSV data
 
 **Steps**:
-1. Login as `sarah.admin@cei.edu`
+1. Login as `sarah.admin@mocku.test`
 2. Navigate to dashboard
 3. Locate "Data Management" panel (should be Panel 4 or 5)
 4. Click **"Import"** button (opens file picker)
@@ -218,7 +218,7 @@ else:
   - Course Title: Exact match from Excel
   - Department: Derived from course prefix or explicit column
   - Credits: Integer value (3 or 4 typically)
-  - Institution: "CEI" or institution name
+  - Institution: "MockU" or institution name
 - ✅ **Related Entities**:
   - **Sections**: List of sections for this course (1+ sections)
   - **Instructors**: List of assigned instructors (may be via sections)
@@ -252,7 +252,7 @@ else:
 1. From dashboard, navigate to **"Users"** menu item
 2. Filter by role: **"Instructor"**
 3. Verify instructor list loads
-4. Search for specific instructor email from test file (e.g., "john.instructor@cei.edu")
+4. Search for specific instructor email from test file (e.g., "john.instructor@mocku.test")
 5. Click on instructor row to view profile/details
 
 **Expected Results - Users List View**:
@@ -271,7 +271,7 @@ else:
   - Email: Valid email format
   - Full Name: First + Last not empty
   - Role: "instructor" (lowercase in database)
-  - Institution: CEI institution ID
+  - Institution: MockU institution ID
   - Account Status: "imported" (may need activation)
 - ✅ **Related Data**:
   - **Sections Taught**: List of assigned sections (if any)
@@ -372,7 +372,7 @@ for section in sections[:3]:
 
 **Expected Results**:
 - ✅ **Term Dropdown Populates**: Shows at least 1 term
-- ✅ **Term Format**: Should be "FA2024", "SP2025", etc. (NOT "2024FA" CEI format)
+- ✅ **Term Format**: Should be "FA2024", "SP2025", etc. (NOT "2024FA" MockU format)
 - ✅ **Terms Match Import**: Term count matches validation summary
 - ✅ **Chronological Order**: Terms sorted newest first (FA2024 before FA2023)
 
@@ -403,7 +403,7 @@ for term in terms:
 **Steps**:
 1. Navigate back to "Data Management" panel
 2. Upload **THE SAME FILE** again: `2024FA_test_data.xlsx`
-3. Adapter: "CEI Excel Format"
+3. Adapter: "MockU Excel Format"
 4. Conflict Strategy: **"Use theirs (overwrite)"**
 5. **Disable "Dry Run"**
 6. Click **"Import"**
@@ -446,7 +446,7 @@ print(f'Sections: {len(get_all_sections() or [])} (should be unchanged)')
 **Steps**:
 1. Navigate to "Data Management" panel
 2. Upload malformed file
-3. Adapter: "CEI Excel Format"
+3. Adapter: "MockU Excel Format"
 4. Click **"Validate"** or **"Import"**
 
 **Expected Results - Error Handling**:
@@ -661,7 +661,7 @@ Future export formats (Excel, JSON, individual CSVs) deferred until customer dem
 - [ ] Database backup created
 - [ ] Server running and healthy (`/api/health` returns 200)
 - [ ] Browser console clear (no pre-existing errors)
-- [ ] Test data file accessible: `research/CEI/2024FA_test_data.xlsx`
+- [ ] Test data file accessible: `research/MockU/2024FA_test_data.xlsx`
 
 ### During Testing
 - [ ] Browser console open (F12) to catch JavaScript errors
@@ -682,7 +682,7 @@ Future export formats (Excel, JSON, individual CSVs) deferred until customer dem
 ### Current Limitations
 - **Adapters**: Two adapters available
   - **Generic CSV** (`generic_csv_v1`): Bidirectional ZIP format, institution-agnostic, **primary adapter for UAT**
-  - **CEI Excel** (`cei_excel_format_v1`): Customer-specific, import-only, not covered in UAT
+  - **MockU Excel** (`cei_excel_format_v1`): Customer-specific, import-only, not covered in UAT
 - **Single Institution Import**: Multi-institution imports not yet supported
 - **No Partial Updates**: Cannot update individual fields without full record  
 - **Section Numbers**: Auto-generated as sequential (001, 002) - not preserved from import

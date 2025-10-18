@@ -14,6 +14,7 @@ from auth_service import get_current_user, is_authenticated, login_required
 # Import constants
 from constants import DASHBOARD_ENDPOINT
 from database_service import check_db_connection
+from email_service import EmailService
 from logging_config import get_app_logger
 
 # Unused imports removed
@@ -74,6 +75,9 @@ setup_logging()
 app.register_blueprint(api)  # Legacy monolithic API (being refactored)
 register_blueprints(app)  # New modular API structure
 
+# Configure email service (sets BASE_URL and other email settings)
+EmailService.configure_app(app)
+
 # Secret key configuration
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
 
@@ -121,6 +125,41 @@ def forgot_password():
         return redirect(url_for(DASHBOARD_ENDPOINT))
 
     return render_template("auth/forgot_password.html")
+
+
+@app.route("/reset-password/<token>")
+def reset_password_form(token):
+    """
+    Password reset form page - handles reset link from email
+
+    Validates token and displays password reset form.
+    The form will POST to /api/auth/reset-password when submitted.
+    """
+    from logging_config import get_logger
+    from password_reset_service import PasswordResetService
+
+    logger = get_logger(__name__)
+
+    try:
+        # Validate the reset token
+        validation_result = PasswordResetService.validate_reset_token(token)
+
+        if validation_result.get("valid"):
+            # Token is valid - show reset form with token and email
+            return render_template(
+                "auth/reset_password.html",
+                token=token,
+                email=validation_result.get("email"),
+            )
+
+        # Token invalid or expired
+        flash("This password reset link is invalid or has expired.", "danger")
+        return redirect(url_for("forgot_password"))
+
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error(f"Password reset token validation error: {e}")
+        flash("An error occurred. Please request a new password reset link.", "danger")
+        return redirect(url_for("forgot_password"))
 
 
 @app.route("/profile")
@@ -226,11 +265,31 @@ def sections_list():
     return render_template("sections_list.html", user=user)
 
 
+# Health check endpoint for parallel E2E testing
+# This endpoint is registered AFTER all other initialization, so when it responds
+# we know Flask is fully ready to serve requests (not just that the port is open)
+@app.route("/health")
+def health_check():
+    """
+    Health check endpoint for E2E test infrastructure.
+    Returns 200 OK when Flask is fully initialized and ready to serve requests.
+    """
+    return {"status": "ok", "ready": True}, 200
+
+
 if __name__ == "__main__":
-    # Use PORT environment variable if available (common in deployment),
-    # otherwise use COURSE_RECORD_UPDATER_PORT from .envrc, or default to 3001
+    # Port selection priority (for CI/multi-environment compatibility):
+    # 1. PORT (standard env var, used by CI)
+    # 2. DEFAULT_PORT (CI fallback)
+    # 3. LASSIE_DEFAULT_PORT_DEV (local dev default from .envrc)
+    # 4. 3001 (hardcoded fallback)
     port = int(
-        os.environ.get("PORT", os.environ.get("COURSE_RECORD_UPDATER_PORT", 3001))
+        os.environ.get(
+            "PORT",
+            os.environ.get(
+                "DEFAULT_PORT", os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001)
+            ),
+        )
     )
     # Debug mode should be controlled by FLASK_DEBUG environment variable
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"

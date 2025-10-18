@@ -32,14 +32,19 @@ if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
 else
   echo "🔍 Checking environment variables..."
 
+  # KISS: Just hardcode test database if not set
+  if [ -z "$DATABASE_URL" ]; then
+    export DATABASE_URL="sqlite:///course_records_dev.db"
+  fi
+
   REQUIRED_VARS=(
     "AGENT_HOME"
     "DATABASE_TYPE"
     "DATABASE_URL"
-    "COURSE_RECORD_UPDATER_PORT"
+    "LASSIE_DEFAULT_PORT_DEV"
+    "LASSIE_DEFAULT_PORT_E2E"
     "SONAR_TOKEN"
     "SAFETY_API_KEY"
-    "DEFAULT_PORT"
     "GITHUB_PERSONAL_ACCESS_TOKEN"
   )
 
@@ -466,13 +471,42 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Clean up old coverage data files to prevent race conditions
   rm -f .coverage .coverage.*
   
-  # Run pytest with coverage but ignore test failures (--continue-on-collection-errors allows partial coverage)
-  # Use pytest-xdist for parallel execution (35% faster)
-  # pytest-cov automatically combines parallel coverage data with .coveragerc parallel=True setting
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ -n auto --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || true
+  # Run pytest with coverage AND capture exit code to detect test failures
+  # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
+  # conftest.py handles DATABASE_URL setup automatically
+  TEST_FAILED=false
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_FAILED=true
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
+  
+  # Check for test failures FIRST before checking coverage
+  if [[ "$TEST_FAILED" == "true" ]] || echo "$COVERAGE_OUTPUT" | grep -q "FAILED "; then
+    echo "❌ Coverage: FAILED (tests failed)"
+    echo ""
+    echo "📋 Test Failure Details:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Show failing tests
+    FAILING_TESTS=$(echo "$COVERAGE_OUTPUT" | grep "FAILED " | head -10)
+    if [[ -n "$FAILING_TESTS" ]]; then
+      echo "🔴 Failing Tests:"
+      echo "$FAILING_TESTS" | sed 's/^/  /'
+      echo ""
+    fi
+    
+    # Show test summary
+    TEST_SUMMARY=$(echo "$COVERAGE_OUTPUT" | grep -E "failed|passed|error" | tail -3)
+    if [[ -n "$TEST_SUMMARY" ]]; then
+      echo "$TEST_SUMMARY" | sed 's/^/  /'
+    fi
+    
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    FAILED_TESTS=$(echo "$COVERAGE_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    add_failure "Test Coverage" "Test failures: $FAILED_TESTS" "Fix failing tests before checking coverage. Run 'python -m pytest tests/unit/ -v' for details"
+  else
   
   # Extract coverage percentage from output
   COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
@@ -565,6 +599,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     echo "$COVERAGE_OUTPUT" | head -20 | sed 's/^/  /'
     add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
+  fi  # Close the "else" block from test failure check
   echo ""
 fi
 
@@ -793,15 +828,24 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
       # Use pytest-xdist for parallel execution (35% faster)
       # pytest-cov automatically combines parallel coverage data with .coveragerc parallel=True setting
-      if python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+      # CRITICAL: Explicitly set DATABASE_URL for pytest subprocess and xdist workers
+      if DATABASE_URL="$DATABASE_URL" python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
         echo "✅ Python coverage data generated successfully"
         
         # Run JavaScript tests with coverage to generate lcov.info
         echo "🔧 Generating JavaScript coverage data..."
-        if npm test -- --coverage --coverageReporters=lcov --silent; then
-          echo "✅ JavaScript coverage data generated successfully"
+        JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
+        
+        if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
+          echo "❌ JavaScript coverage generation FAILED"
+          echo ""
+          echo "📊 Jest Output:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "$JS_COVERAGE_OUTPUT" | tail -50
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "⚠️  Continuing with Python coverage only (SonarCloud coverage will be incomplete)"
         else
-          echo "⚠️  JavaScript coverage generation had issues, continuing with Python coverage only"
+          echo "✅ JavaScript coverage data generated successfully"
         fi
         
         # Run SonarCloud scanner with fresh data
@@ -809,7 +853,7 @@ if [[ "$RUN_SONAR" == "true" ]]; then
         if sonar-scanner \
           -Dsonar.python.coverage.reportPaths=coverage.xml \
           -Dsonar.python.xunit.reportPath=test-results.xml \
-          -Dsonar.qualitygate.wait=false; then
+          -Dsonar.qualitygate.wait=true; then
           echo "✅ SonarCloud scanner completed successfully"
           
           # Now check the quality gate status
@@ -1234,8 +1278,8 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   NC='\033[0m' # No Color
   
   # Test configuration
-  DEFAULT_PORT=${DEFAULT_PORT:-3001}
-  TEST_URL="http://localhost:$DEFAULT_PORT"
+  TEST_PORT=${LASSIE_DEFAULT_PORT_DEV:-3001}
+  TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   
   # Function to check if Chrome/Chromium is available
@@ -1272,7 +1316,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   
   # Function to start test server
   start_test_server() {
-    echo -e "${BLUE}🚀 Starting test server on port $DEFAULT_PORT...${NC}"
+    echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
     
     # Load environment variables
     if [ -f ".envrc" ]; then
@@ -1285,7 +1329,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
     fi
     
     # Start server on test port in background
-    PORT=$DEFAULT_PORT python app.py > logs/test_server.log 2>&1 &
+    PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
     SERVER_PID=$!
     
     # Wait for server to start
@@ -1379,7 +1423,7 @@ except Exception as e:
 
   # Start test server
   if ! start_test_server; then
-    add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $DEFAULT_PORT is available"
+    add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"
     echo ""
     return
   fi

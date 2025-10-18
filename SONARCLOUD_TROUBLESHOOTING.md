@@ -6,7 +6,7 @@
 
 **Current Configuration**:
 - Project Key: `ScienceIsNeato_course_record_updater`
-- Organization: `scienceisneato`
+- Organization: `scienceisneat`
 - Token: ✅ Confirmed correct
 
 ## 🚨 Most Likely Causes
@@ -29,7 +29,7 @@ The token must be a "Global Analysis Token", not a regular user token.
 SonarCloud is case-sensitive for organization names.
 
 **Check**: Verify exact organization name in SonarCloud UI
-- Current: `scienceisneato`
+- Current: `scienceisneat`
 - Must match exactly (lowercase)
 
 ## 🔧 Step-by-Step Troubleshooting
@@ -52,7 +52,7 @@ SonarCloud is case-sensitive for organization names.
 
 ### Step 3: Check Organization Name
 1. In SonarCloud, check the exact organization name
-2. Verify it matches `scienceisneato` (lowercase)
+2. Verify it matches `scienceisneat` (lowercase)
 3. If different, update `sonar-project.properties`
 
 ### Step 4: Test Configuration Locally
@@ -64,7 +64,7 @@ source .envrc
 
 # Test with debug logging
 sonar-scanner -Dsonar.projectKey=ScienceIsNeato_course_record_updater \
-              -Dsonar.organization=scienceisneato \
+              -Dsonar.organization=scienceisneat \
               -Dsonar.host.url=https://sonarcloud.io \
               -X
 ```
@@ -86,7 +86,7 @@ If token type is wrong:
 
 ### Fix 3: Verify Organization
 Check exact organization name in SonarCloud:
-- Should be `scienceisneato` (lowercase)
+- Should be `scienceisneat` (lowercase)
 - If different, update `sonar-project.properties`
 
 ## 🔍 Debug Commands
@@ -95,7 +95,7 @@ Check exact organization name in SonarCloud:
 ```bash
 # Test with debug logging
 sonar-scanner -Dsonar.projectKey=ScienceIsNeato_course_record_updater \
-              -Dsonar.organization=scienceisneato \
+              -Dsonar.organization=scienceisneat \
               -Dsonar.host.url=https://sonarcloud.io \
               -X
 ```

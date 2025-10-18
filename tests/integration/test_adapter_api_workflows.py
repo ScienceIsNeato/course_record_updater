@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from database_service import create_default_cei_institution
+from database_service import create_default_mocku_institution
 
 
 @pytest.mark.integration
@@ -20,15 +20,15 @@ class TestAdapterAPIWorkflows:
 
     def setup_method(self):
         """Set up test environment."""
-        # Ensure CEI institution exists
-        self.institution_id = create_default_cei_institution()
+        # Ensure MockU institution exists
+        self.institution_id = create_default_mocku_institution()
 
     def test_site_admin_adapter_discovery_workflow(self, client):
         """Test site admin can discover all available adapters via API."""
         # Mock site admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site-admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -44,7 +44,7 @@ class TestAdapterAPIWorkflows:
         assert "adapters" in data
         assert len(data["adapters"]) >= 1
 
-        # Should find CEI adapter
+        # Should find CEI adapter (real customer adapter)
         cei_adapter = next(
             (a for a in data["adapters"] if a["id"] == "cei_excel_format_v1"), None
         )
@@ -58,7 +58,7 @@ class TestAdapterAPIWorkflows:
         # Mock institution admin user session (compatible with new SessionService)
         with client.session_transaction() as sess:
             sess["user_id"] = "test-institution-admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "institution_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -85,7 +85,7 @@ class TestAdapterAPIWorkflows:
         # Mock instructor user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-instructor-123"
-            sess["email"] = "instructor@cei.edu"
+            sess["email"] = "instructor@mocku.test"
             sess["role"] = "instructor"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -118,7 +118,7 @@ class TestAdapterAPIWorkflows:
         workbook = Workbook()
         worksheet = workbook.active
 
-        # CEI format headers
+        # MockU format headers
         headers = [
             "course",
             "section",
@@ -136,7 +136,7 @@ class TestAdapterAPIWorkflows:
         worksheet.cell(row=2, column=3, value="FA2024")
         worksheet.cell(row=2, column=4, value="10")
         worksheet.cell(row=2, column=5, value="Test Instructor")
-        worksheet.cell(row=2, column=6, value="test@cei.edu")
+        worksheet.cell(row=2, column=6, value="test@mocku.test")
 
         workbook.save(file_path)
 
@@ -145,7 +145,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -179,7 +179,7 @@ class TestAdapterAPIWorkflows:
         # Mock instructor user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-instructor-123"
-            sess["email"] = "instructor@cei.edu"
+            sess["email"] = "instructor@mocku.test"
             sess["role"] = "instructor"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -213,7 +213,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -230,13 +230,12 @@ class TestAdapterAPIWorkflows:
         )
         assert cei_adapter is not None
 
-        # Verify required metadata fields
+        # Verify required metadata fields (note: institution_id may be None for global adapters like CEI)
         required_fields = [
             "id",
             "name",
             "description",
             "supported_formats",
-            "institution_id",
             "data_types",
         ]
         for field in required_fields:
@@ -256,7 +255,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -313,7 +312,7 @@ class TestAdapterAPIWorkflows:
         # Mock site admin user session
         with client.session_transaction() as sess:
             sess["user_id"] = "test-site_admin-123"
-            sess["email"] = "admin@cei.edu"
+            sess["email"] = "admin@mocku.test"
             sess["role"] = "site_admin"
             sess["institution_id"] = self.institution_id
             sess["program_ids"] = []
@@ -354,7 +353,7 @@ class TestAdapterAPIWorkflows:
         for role, should_have_access, description in roles_and_expected_access:
             with client.session_transaction() as sess:
                 sess["user_id"] = f"test-{role}-123"
-                sess["email"] = f"{role}@cei.edu"
+                sess["email"] = f"{role}@mocku.test"
                 sess["role"] = role
                 sess["institution_id"] = self.institution_id
                 sess["program_ids"] = []

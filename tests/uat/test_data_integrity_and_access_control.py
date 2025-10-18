@@ -481,8 +481,8 @@ class TestSiteAdminAccess:
                 len(institution_dirs) >= 3
             ), f"Should have 3+ institution directories, found: {institution_dirs}"
 
-            # Verify expected institutions are present (CEI, RCC, PTU)
-            expected_inst_names = {"CEI", "RCC", "PTU"}
+            # Verify expected institutions are present (MockU, RCC, PTU)
+            expected_inst_names = {"MockU", "RCC", "PTU"}
             assert expected_inst_names.issubset(
                 institution_dirs
             ), f"Expected institutions {expected_inst_names}, found {institution_dirs}"
@@ -515,13 +515,13 @@ class TestInstitutionAdminAccess:
         seeder = DatabaseSeeder(verbose=False)
         seeder.seed_full_dataset()
 
-    def test_tc_dac_101_institution_admin_dashboard_cei_only(self):
+    def test_tc_dac_101_institution_admin_dashboard_mocku_only(self):
         """
-        TC-DAC-101: Institution Admin Dashboard API - CEI Only
+        TC-DAC-101: Institution Admin Dashboard API - MockU Only
 
-        Validates that CEI admin sees only CEI data, not RCC or PTU.
+        Validates that MockU admin sees only MockU data, not RCC or PTU.
         """
-        # Login as CEI institution admin
+        # Login as MockU institution admin
         login_response = self.client.post(
             "/api/auth/login",
             json={
@@ -531,7 +531,7 @@ class TestInstitutionAdminAccess:
         )
         assert (
             login_response.status_code == 200
-        ), f"CEI admin login should succeed: {login_response.get_json()}"
+        ), f"MockU admin login should succeed: {login_response.get_json()}"
 
         # Get dashboard data
         response = self.client.get("/api/dashboard/data")
@@ -543,10 +543,10 @@ class TestInstitutionAdminAccess:
         dashboard = data["data"]
         summary = dashboard["summary"]
 
-        # Validate CEI-only counts (should NOT see RCC or PTU)
-        assert summary["institutions"] == 1, "Should see exactly 1 institution (CEI)"
+        # Validate MockU-only counts (should NOT see RCC or PTU)
+        assert summary["institutions"] == 1, "Should see exactly 1 institution (MockU)"
 
-        # Validate institution array contains ONLY CEI
+        # Validate institution array contains ONLY MockU
         institutions = dashboard["institutions"]
         assert (
             len(institutions) == 1
@@ -560,21 +560,21 @@ class TestInstitutionAdminAccess:
         db_all_institutions = get_all_institutions() or []
         assert len(db_all_institutions) >= 3, "Database should have 3+ institutions"
 
-        # Verify CEI admin can't see RCC or PTU
+        # Verify MockU admin can't see RCC or PTU
         all_inst_ids = {inst["institution_id"] for inst in db_all_institutions}
         hidden_insts = all_inst_ids - institution_ids
         assert (
             len(hidden_insts) >= 2
-        ), f"Should hide 2+ institutions from CEI admin, hiding {len(hidden_insts)}"
+        ), f"Should hide 2+ institutions from MockU admin, hiding {len(hidden_insts)}"
 
-    def test_tc_dac_102_institution_admin_csv_export_cei_only(self):
+    def test_tc_dac_102_institution_admin_csv_export_mocku_only(self):
         """
-        TC-DAC-102: Institution Admin CSV Export - CEI Only
+        TC-DAC-102: Institution Admin CSV Export - MockU Only
 
-        Validates that CEI admin export contains only CEI data.
+        Validates that MockU admin export contains only MockU data.
         Includes row count validation and referential integrity checks.
         """
-        # Login as CEI institution admin
+        # Login as MockU institution admin
         self.client.post(
             "/api/auth/login",
             json={
@@ -626,7 +626,7 @@ class TestInstitutionAdminAccess:
                     # If institutions CSV has data rows (beyond header), validate count
                     # Some adapters may only include header, which is acceptable
                     if len(inst_lines) > 1:
-                        # Should have exactly 1 institution data row (CEI only)
+                        # Should have exactly 1 institution data row (MockU only)
                         assert (
                             len(inst_lines) == 2
                         ), f"Expected 1 institution data row + header, got {len(inst_lines)-1} data rows"
@@ -653,53 +653,53 @@ class TestInstitutionAdminAccess:
                 pattern in all_csv_content for pattern in ["$2b$", "bcrypt", "argon2"]
             ), "Export should not contain hashed passwords"
 
-    def test_tc_dac_103_cross_institution_isolation_cei_vs_rcc(self):
+    def test_tc_dac_103_cross_institution_isolation_mocku_vs_rcc(self):
         """
-        TC-DAC-103: Cross-Institution Isolation - RCC vs CEI
+        TC-DAC-103: Cross-Institution Isolation - RCC vs MockU
 
         Validates complete data isolation between institutions:
-        - CEI admin sees CEI data only (not RCC)
-        - RCC admin sees RCC data only (not CEI)
+        - MockU admin sees MockU data only (not RCC)
+        - RCC admin sees RCC data only (not MockU)
         - Zero overlap between institution datasets
         """
-        # PART 1: Get CEI admin's data
-        cei_login = self.client.post(
+        # PART 1: Get MockU admin's data
+        mocku_login = self.client.post(
             "/api/auth/login",
             json={
                 "email": INSTITUTION_ADMIN_EMAIL,
                 "password": INSTITUTION_ADMIN_PASSWORD,
             },
         )
-        assert cei_login.status_code == 200, "CEI admin login should succeed"
+        assert mocku_login.status_code == 200, "MockU admin login should succeed"
 
-        cei_response = self.client.get("/api/dashboard/data")
-        cei_data = cei_response.get_json()["data"]
+        mocku_response = self.client.get("/api/dashboard/data")
+        mocku_data = mocku_response.get_json()["data"]
 
-        cei_programs = {p["name"] for p in cei_data.get("programs", [])}
-        cei_courses = {
+        mocku_programs = {p["name"] for p in mocku_data.get("programs", [])}
+        mocku_courses = {
             c.get("course_number")
-            for c in cei_data.get("courses", [])
+            for c in mocku_data.get("courses", [])
             if c.get("course_number")
         }
-        cei_users = {u["email"] for u in cei_data.get("users", [])}
+        mocku_users = {u["email"] for u in mocku_data.get("users", [])}
 
-        # Verify CEI admin sees CEI data
-        assert len(cei_programs) > 0, "CEI admin should see CEI programs"
+        # Verify MockU admin sees MockU data
+        assert len(mocku_programs) > 0, "MockU admin should see MockU programs"
         assert (
-            "Computer Science" in cei_programs
-            or "Electrical Engineering" in cei_programs
-        ), "CEI admin should see CEI-specific programs"
+            "Computer Science" in mocku_programs
+            or "Electrical Engineering" in mocku_programs
+        ), "MockU admin should see MockU-specific programs"
 
-        # Verify CEI admin does NOT see RCC data
+        # Verify MockU admin does NOT see RCC data
         assert (
-            "Liberal Arts" not in cei_programs
-        ), "CEI admin should NOT see RCC programs"
+            "Liberal Arts" not in mocku_programs
+        ), "MockU admin should NOT see RCC programs"
         assert (
-            "Business Administration" not in cei_programs
-        ), "CEI admin should NOT see RCC programs"
+            "Business Administration" not in mocku_programs
+        ), "MockU admin should NOT see RCC programs"
         assert not any(
-            "riverside.edu" in email for email in cei_users
-        ), "CEI admin should NOT see RCC users"
+            "riverside.edu" in email for email in mocku_users
+        ), "MockU admin should NOT see RCC users"
 
         # PART 2: Logout and login as RCC admin
         self.client.post("/api/auth/logout")
@@ -727,32 +727,32 @@ class TestInstitutionAdminAccess:
         # Verify RCC admin sees RCC data
         assert len(rcc_programs) > 0, "RCC admin should see RCC programs"
 
-        # Verify RCC admin does NOT see CEI data
+        # Verify RCC admin does NOT see MockU data
         assert (
             "Computer Science" not in rcc_programs
-        ), "RCC admin should NOT see CEI programs"
+        ), "RCC admin should NOT see MockU programs"
         assert (
             "Electrical Engineering" not in rcc_programs
-        ), "RCC admin should NOT see CEI programs"
+        ), "RCC admin should NOT see MockU programs"
         assert not any(
-            "cei.edu" in email for email in rcc_users
-        ), "RCC admin should NOT see CEI users"
+            "mocku.test" in email for email in rcc_users
+        ), "RCC admin should NOT see MockU users"
 
         # PART 3: Verify ZERO overlap between datasets
-        program_overlap = cei_programs & rcc_programs
+        program_overlap = mocku_programs & rcc_programs
         assert (
             len(program_overlap) == 0
-        ), f"Data leakage! CEI and RCC programs overlap: {program_overlap}"
+        ), f"Data leakage! MockU and RCC programs overlap: {program_overlap}"
 
-        course_overlap = cei_courses & rcc_courses
+        course_overlap = mocku_courses & rcc_courses
         assert (
             len(course_overlap) == 0
-        ), f"Data leakage! CEI and RCC courses overlap: {course_overlap}"
+        ), f"Data leakage! MockU and RCC courses overlap: {course_overlap}"
 
-        user_overlap = cei_users & rcc_users
+        user_overlap = mocku_users & rcc_users
         assert (
             len(user_overlap) == 0
-        ), f"Data leakage! CEI and RCC users overlap: {user_overlap}"
+        ), f"Data leakage! MockU and RCC users overlap: {user_overlap}"
 
 
 @pytest.mark.uat
@@ -781,11 +781,11 @@ class TestProgramAdminAccess:
 
         Validates that Program Admin sees only their assigned program data.
         """
-        # Login as CEI CS/EE program admin
+        # Login as MockU CS/EE program admin
         login_response = self.client.post(
             "/api/auth/login",
             json={
-                "email": "lisa.prog@cei.edu",
+                "email": "lisa.prog@mocku.test",
                 "password": "TestUser123!",
             },
         )
@@ -803,21 +803,21 @@ class TestProgramAdminAccess:
         dashboard = data["data"]
         summary = dashboard["summary"]
 
-        # Validate program-scoped access (should see CEI institution but limited programs)
-        assert summary["institutions"] == 1, "Should see exactly 1 institution (CEI)"
+        # Validate program-scoped access (should see MockU institution but limited programs)
+        assert summary["institutions"] == 1, "Should see exactly 1 institution (MockU)"
 
         # Validate programs are scoped to assigned programs only
         programs = dashboard.get("programs", [])
         program_names = {p["name"] for p in programs}
 
         # Program admin should see their assigned programs
-        # (exact programs depend on seed data - verify they're from CEI only)
+        # (exact programs depend on seed data - verify they're from MockU only)
         for program in programs:
             assert (
                 "California Engineering Institute"
                 in program.get("institution_name", "")
                 or program.get("institution_id") is not None
-            ), f"Program admin should only see CEI programs: {program}"
+            ), f"Program admin should only see MockU programs: {program}"
 
     def test_tc_dac_202_program_admin_export_program_scope(self):
         """
@@ -829,7 +829,7 @@ class TestProgramAdminAccess:
         self.client.post(
             "/api/auth/login",
             json={
-                "email": "lisa.prog@cei.edu",
+                "email": "lisa.prog@mocku.test",
                 "password": "TestUser123!",
             },
         )
@@ -882,11 +882,11 @@ class TestInstructorAccess:
         Validates that Instructor sees only their assigned section data.
         Includes specific count assertions and database verification.
         """
-        # Login as CEI instructor
+        # Login as MockU instructor
         login_response = self.client.post(
             "/api/auth/login",
             json={
-                "email": "john.instructor@cei.edu",
+                "email": "john.instructor@mocku.test",
                 "password": "TestUser123!",
             },
         )
@@ -905,13 +905,13 @@ class TestInstructorAccess:
         summary = dashboard["summary"]
 
         # PART 1: Validate section-scoped access
-        assert summary["institutions"] == 1, "Should see exactly 1 institution (CEI)"
+        assert summary["institutions"] == 1, "Should see exactly 1 institution (MockU)"
 
         # Instructor should see their assigned sections only
         sections = dashboard.get("sections", [])
 
         # PART 2: Specific count assertions (based on seeded data)
-        # John instructor at CEI has 6 assigned sections with total enrollment of 120
+        # John instructor at MockU has 6 assigned sections with total enrollment of 120
         assert len(sections) >= 1, "Instructor should have at least 1 assigned section"
 
         # Verify sections are valid
@@ -927,7 +927,7 @@ class TestInstructorAccess:
         # Get instructor user record
         from database_service import get_user_by_email
 
-        instructor = get_user_by_email("john.instructor@cei.edu")
+        instructor = get_user_by_email("john.instructor@mocku.test")
         assert instructor is not None, "Instructor should exist in database"
 
         # The summary counts should match what the instructor can access
@@ -946,7 +946,7 @@ class TestInstructorAccess:
         self.client.post(
             "/api/auth/login",
             json={
-                "email": "john.instructor@cei.edu",
+                "email": "john.instructor@mocku.test",
                 "password": "TestUser123!",
             },
         )
@@ -996,16 +996,16 @@ class TestInstructorAccess:
                 "pactech.edu" not in all_csv_content.lower()
             ), "Should not have PTU emails"
 
-            # PART 4: Verify only CEI data present (instructor's institution)
-            # At least one CEI reference should be present
-            has_cei_data = (
+            # PART 4: Verify only MockU data present (instructor's institution)
+            # At least one MockU reference should be present
+            has_mocku_data = (
                 "California Engineering Institute" in all_csv_content
-                or "cei.edu" in all_csv_content.lower()
-                or "CEI" in all_csv_content
+                or "mocku.test" in all_csv_content.lower()
+                or "MockU" in all_csv_content
             )
             assert (
-                has_cei_data
-            ), "Export should contain CEI data (instructor's institution)"
+                has_mocku_data
+            ), "Export should contain MockU data (instructor's institution)"
 
             # PART 5: Verify no sensitive data in exports
             assert not any(
@@ -1080,7 +1080,7 @@ class TestNegativeAccess:
         login_response = self.client.post(
             "/api/auth/login",
             json={
-                "email": "john.instructor@cei.edu",
+                "email": "john.instructor@mocku.test",
                 "password": "TestUser123!",
             },
         )

@@ -200,7 +200,11 @@ class ExportService:
         try:
             LOGGER.info(f"Fetching export data for institution: {institution_id}")
 
+            # Import database service functions
+            from database_service import get_institution_by_id
+
             # Fetch all data types
+            institution = get_institution_by_id(institution_id)
             programs = get_programs_by_institution(institution_id)
             courses = get_all_courses(institution_id)
             users = get_all_users(institution_id)
@@ -209,6 +213,7 @@ class ExportService:
             offerings = get_all_course_offerings(institution_id)
 
             # Convert to list of dicts if needed
+            institutions_list = [dict(institution)] if institution else []
             programs_list = [dict(program) for program in programs] if programs else []
             courses_list = [dict(course) for course in courses] if courses else []
             users_list = [dict(user) for user in users] if users else []
@@ -218,18 +223,24 @@ class ExportService:
                 [dict(offering) for offering in offerings] if offerings else []
             )
 
-            # Organize data for export
+            # Organize data for export using standardized keys
+            # Keys must match generic CSV adapter expectations
             export_data = {
+                "institutions": institutions_list,  # Was missing
                 "programs": programs_list,
                 "courses": courses_list,
                 "users": users_list,
                 "terms": terms_list,
-                "offerings": offerings_list,
-                "sections": sections_list,
+                "course_offerings": offerings_list,  # Was "offerings"
+                "course_sections": sections_list,  # Was "sections"
+                # Note: user_programs, course_programs, course_outcomes, user_invitations
+                # would need separate queries if needed for generic CSV export
             }
 
             LOGGER.info(
-                f"Fetched {len(courses_list)} courses, {len(users_list)} users, {len(terms_list)} terms"
+                f"Fetched {len(institutions_list)} institutions, {len(programs_list)} programs, "
+                f"{len(courses_list)} courses, {len(users_list)} users, {len(terms_list)} terms, "
+                f"{len(offerings_list)} offerings, {len(sections_list)} sections"
             )
             return export_data
 

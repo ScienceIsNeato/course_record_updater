@@ -155,9 +155,9 @@ function initializeEditUserModal() {
       // Get CSRF token
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-      // Make API request
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
+      // Make API request - Use profile endpoint for self-service updates
+      const response = await fetch(`/api/users/${userId}/profile`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(csrfToken && { 'X-CSRFToken': csrfToken })

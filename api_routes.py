@@ -1,7 +1,7 @@
 """
 API Routes Module
 
-This module defines the new REST API endpoints for the CEI Course Management System.
+This module defines the new REST API endpoints for the MockU Course Management System.
 These routes provide a proper REST API structure while maintaining backward compatibility
 with the existing single-page application.
 """
@@ -73,6 +73,9 @@ from database_service import (
     create_new_institution,
     create_program,
     create_term,
+)
+from database_service import create_user as create_user_db
+from database_service import (
     deactivate_user,
     delete_course,
     delete_course_offering,
@@ -330,7 +333,7 @@ def list_institutions():
 def create_institution_admin():
     """Site admin creates a new institution (without initial user)"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -384,7 +387,7 @@ def create_institution_admin():
 def create_institution_public():
     """Create a new institution with its first admin user (public endpoint for registration)"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate required fields
         required_institution_fields = ["name", "short_name", "domain"]
@@ -488,7 +491,7 @@ def update_institution_endpoint(institution_id: str):
         ):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -822,7 +825,7 @@ def create_user():
     - department: User's department (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -842,9 +845,33 @@ def create_user():
                 400,
             )
 
-        # NOTE: create_user implementation will be added when user management API is implemented
-        # user_id = create_user(data)
-        user_id = "stub-user-id"  # Stub for now
+        # Create user via database service
+        from models import User
+        from password_service import hash_password
+
+        # Hash password if provided (otherwise user must complete registration)
+        password_hash = None
+        if data.get("password"):
+            password_hash = hash_password(data["password"])
+
+        # Build user schema
+        user_schema = User.create_schema(
+            email=data["email"],
+            first_name=data["first_name"],
+            last_name=data["last_name"],
+            role=data["role"],
+            institution_id=data.get("institution_id"),
+            password_hash=password_hash,
+            account_status=data.get("account_status", "active"),
+            program_ids=data.get("program_ids", []),
+            display_name=data.get("display_name"),
+        )
+
+        # Allow admins to skip email verification for testing/support scenarios
+        if data.get("email_verified", False):
+            user_schema["email_verified"] = True
+
+        user_id = create_user_db(user_schema)
 
         if user_id:
             return (
@@ -903,7 +930,7 @@ def update_user_api(user_id: str):
     - account_status: User's account status
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -949,7 +976,7 @@ def update_user_profile_endpoint(user_id: str):
         if current_user["user_id"] != user_id and not has_permission("manage_users"):
             return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1208,7 +1235,7 @@ def create_course_api():
     - credit_hours: Number of credit hours (optional, default 3)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1390,7 +1417,7 @@ def update_course_endpoint(course_id: str):
     Allows updating course_title, department, credit_hours, description, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1552,7 +1579,7 @@ def create_term_api():
     - assessment_due_date: Assessment due date (YYYY-MM-DD)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -1637,7 +1664,7 @@ def update_term_endpoint(term_id: str):
     Allows updating name, dates, active status, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -1783,7 +1810,7 @@ def list_programs():
 def create_program_api():
     """Create a new program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -1873,7 +1900,7 @@ def get_program(program_id: str):
 def update_program_api(program_id: str):
     """Update an existing program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2026,7 +2053,7 @@ def get_program_courses(program_id: str):
 def add_course_to_program_api(program_id: str):
     """Add a course to a program"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2166,7 +2193,7 @@ def bulk_manage_program_courses(program_id: str):
         if validation_response:
             return validation_response
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         action = data.get("action")
         course_ids = data.get("course_ids", [])
 
@@ -2191,7 +2218,7 @@ def bulk_manage_program_courses(program_id: str):
 
 def _validate_bulk_manage_request():
     """Validate bulk manage request data."""
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
@@ -2296,7 +2323,7 @@ def create_course_offering_endpoint():
     - capacity: Maximum enrollment
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2421,7 +2448,7 @@ def update_course_offering_endpoint(offering_id: str):
     Allows updating capacity, total_enrollment, status, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2597,7 +2624,7 @@ def create_section():
     - status: Section status (optional, default "open")
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         if not data:
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
@@ -2687,7 +2714,7 @@ def update_section_endpoint(section_id: str):
     Allows updating section_number, enrollment, capacity, instructor_id, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2735,7 +2762,7 @@ def assign_instructor_to_section_endpoint(section_id: str):
     - instructor_id: Instructor user ID
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "instructor_id" not in data:
             return (
                 jsonify({"success": False, "error": "instructor_id is required"}),
@@ -2859,7 +2886,7 @@ def create_course_outcome_endpoint(course_id: str):
     - target_percentage: Target achievement percentage (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "description" not in data:
             return jsonify({"success": False, "error": "description is required"}), 400
 
@@ -2928,7 +2955,7 @@ def update_course_outcome_endpoint(outcome_id: str):
     Allows updating description, target_percentage, etc.
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -2975,7 +3002,7 @@ def update_outcome_assessment_endpoint(outcome_id: str):
     - narrative: Assessment narrative text (optional)
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "assessment_data" not in data:
             return (
                 jsonify({"success": False, "error": "assessment_data is required"}),
@@ -3208,7 +3235,7 @@ def health_check():
         {
             "success": True,
             "status": "healthy",
-            "message": "CEI Course Management API is running",
+            "message": "MockU Course Management API is running",
             "version": "2.0.0",
         }
     )
@@ -3261,7 +3288,7 @@ def register_institution_admin_api():
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate required fields
         required_fields = [
@@ -3411,7 +3438,7 @@ def resend_verification_email_api():
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
 
         # Validate email
         email = data.get("email", "").strip().lower()
@@ -3529,8 +3556,8 @@ def create_invitation_api():
         from auth_service import get_current_institution_id, get_current_user
         from invitation_service import InvitationService
 
-        # Get request data
-        data = request.get_json()
+        # Get request data (silent=True prevents 415 exception, returns None instead)
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3621,7 +3648,7 @@ def accept_invitation_api():
         from invitation_service import InvitationService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3873,7 +3900,7 @@ def login_api():
         from password_service import AccountLockedError
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -3907,6 +3934,7 @@ def login_api():
         return jsonify({"success": False, "error": "Account is locked"}), 423
     except LoginError as e:
         logger.error(f"User login failed: {e}")
+        # Generic error message to prevent username enumeration
         return jsonify({"success": False, "error": "Invalid email or password"}), 401
     except Exception as e:
         logger.error(f"Login error: {e}")
@@ -4031,7 +4059,7 @@ def create_invitation_public_api():
         from auth_service import get_current_institution_id, get_current_user
         from invitation_service import InvitationError, InvitationService
 
-        payload = request.get_json()
+        payload = request.get_json(silent=True)
         if not payload:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4119,7 +4147,7 @@ def unlock_account_api():
         from login_service import LoginService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4170,7 +4198,7 @@ def forgot_password_api():
         from password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4218,7 +4246,7 @@ def reset_password_api():
         from password_reset_service import PasswordResetService
 
         # Get request data
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
 
@@ -4458,12 +4486,12 @@ def _determine_target_institution(user_role, user_institution_id, adapter_id):
     if user_role == UserRole.SITE_ADMIN.value:
         # Site admins can import for any institution - let adapter determine it
         if adapter_id == "cei_excel_format_v1":
-            # CEI adapter always imports for CEI institution
-            from database_service import create_default_cei_institution
+            # CEI Excel adapter always imports for MockU institution (default test institution)
+            from database_service import create_default_mocku_institution
 
-            institution_id = create_default_cei_institution()
+            institution_id = create_default_mocku_institution()
             if not institution_id:
-                raise ValueError("Failed to create/find CEI institution")
+                raise ValueError("Failed to create/find MockU institution")
             return institution_id
         else:
             # For other adapters, site admin needs to specify institution
@@ -4645,7 +4673,7 @@ def export_data():
         - Exports ALL institutions as a zip containing subdirectories per institution
         - Structure: system_export_TIMESTAMP.zip
                        ├── system_manifest.json
-                       ├── cei/
+                       ├── mocku/
                        │   └── [institution export files]
                        ├── rcc/
                        │   └── [institution export files]
@@ -4870,6 +4898,42 @@ def _export_institution(
     }
 
 
+def _create_system_export_zip(system_export_dir, temp_base, timestamp, unique_id):
+    """Create ZIP file from system export directory, excluding system files."""
+    import zipfile
+
+    system_zip_path = temp_base / f"system_export_{timestamp}_{unique_id}.zip"
+    excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}
+
+    with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in system_export_dir.rglob("*"):
+            if any(pattern in file_path.parts for pattern in excluded_patterns):
+                continue
+            if file_path.is_file():
+                arcname = file_path.relative_to(system_export_dir)
+                zipf.write(file_path, arcname)
+
+    return system_zip_path
+
+
+def _create_system_manifest(
+    current_user, timestamp, adapter_id, data_type, institutions, institution_results
+):
+    """Create system-level export manifest with export metadata."""
+    return {
+        "format_version": "1.0",
+        "export_type": "system_wide",
+        "export_timestamp": timestamp,
+        "exported_by": current_user.get("email"),
+        "adapter_id": adapter_id,
+        "data_type": data_type,
+        "total_institutions": len(institutions),
+        "successful_exports": sum(1 for r in institution_results if r["success"]),
+        "failed_exports": sum(1 for r in institution_results if not r["success"]),
+        "institutions": institution_results,
+    }
+
+
 def _export_all_institutions(current_user: Dict[str, Any]):
     """
     Export all institutions for Site Admin as a zip of folders.
@@ -4889,39 +4953,28 @@ def _export_all_institutions(current_user: Dict[str, Any]):
     """
     import json
     import shutil
-    import zipfile
+    import uuid
 
-    # Initialize temp directory variable for cleanup in except block
     system_export_dir = None
 
     try:
-        # Get and sanitize parameters
         data_type, adapter_id, include_metadata = _sanitize_export_params()
-
         logger.info(
             f"[EXPORT] Site Admin system-wide export: adapter={adapter_id}, data_type={data_type}"
         )
 
-        # Get all institutions
         institutions = get_all_institutions()
         if not institutions:
             return jsonify({"success": False, "error": "No institutions found"}), 404
 
-        # Create temp directory for building system export
-        # Use UUID for uniqueness to prevent race conditions in parallel test execution
+        # Setup export directory with UUID for uniqueness
         temp_base = Path(tempfile.gettempdir())
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        import uuid
-
-        unique_id = uuid.uuid4().hex[:8]  # Short UUID for readability
+        unique_id = uuid.uuid4().hex[:8]
         system_export_dir = temp_base / f"system_export_{timestamp}_{unique_id}"
-
-        # Create directory - should not exist due to UUID, but use exist_ok as safety net
         system_export_dir.mkdir(parents=True, exist_ok=True)
 
         export_service = create_export_service()
-
-        # Validate adapter exists
         adapter = export_service.registry.get_adapter_by_id(adapter_id)
         if not adapter:
             return (
@@ -4931,7 +4984,6 @@ def _export_all_institutions(current_user: Dict[str, Any]):
                 400,
             )
 
-        # Get adapter file extension
         file_extension = _get_adapter_file_extension(export_service, adapter_id)
         output_format = (
             file_extension.lstrip(".")
@@ -4939,7 +4991,7 @@ def _export_all_institutions(current_user: Dict[str, Any]):
             else file_extension
         )
 
-        # Export each institution to its own subdirectory
+        # Export institutions
         institution_results = [
             _export_institution(
                 export_service,
@@ -4955,47 +5007,29 @@ def _export_all_institutions(current_user: Dict[str, Any]):
             for inst in institutions
         ]
 
-        # Create system-level manifest
-        system_manifest = {
-            "format_version": "1.0",
-            "export_type": "system_wide",
-            "export_timestamp": timestamp,
-            "exported_by": current_user.get("email"),
-            "adapter_id": adapter_id,
-            "data_type": data_type,
-            "total_institutions": len(institutions),
-            "successful_exports": sum(1 for r in institution_results if r["success"]),
-            "failed_exports": sum(1 for r in institution_results if not r["success"]),
-            "institutions": institution_results,
-        }
-
+        # Create manifest
+        system_manifest = _create_system_manifest(
+            current_user,
+            timestamp,
+            adapter_id,
+            data_type,
+            institutions,
+            institution_results,
+        )
         manifest_path = system_export_dir / "system_manifest.json"
         with open(manifest_path, "w") as f:
             json.dump(system_manifest, f, indent=2)
 
-        # Create final ZIP file with unique ID to prevent collisions
-        system_zip_path = temp_base / f"system_export_{timestamp}_{unique_id}.zip"
-
-        # Exclude system files and directories
-        excluded_patterns = {".DS_Store", "__MACOSX", ".git", "Thumbs.db"}
-
-        with zipfile.ZipFile(system_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for file_path in system_export_dir.rglob("*"):
-                # Skip excluded files and directories
-                if any(pattern in file_path.parts for pattern in excluded_patterns):
-                    continue
-                if file_path.is_file():
-                    arcname = file_path.relative_to(system_export_dir)
-                    zipf.write(file_path, arcname)
-
-        # Clean up temp directory
+        # Create ZIP
+        system_zip_path = _create_system_export_zip(
+            system_export_dir, temp_base, timestamp, unique_id
+        )
         shutil.rmtree(system_export_dir)
 
         logger.info(
             f"[EXPORT] System export complete: {system_manifest['successful_exports']}/{system_manifest['total_institutions']} institutions"
         )
 
-        # Send file
         return send_file(
             str(system_zip_path),
             as_attachment=True,
@@ -5005,7 +5039,6 @@ def _export_all_institutions(current_user: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"[EXPORT] System export failed: {str(e)}", exc_info=True)
-        # Clean up temp directory on error (system_export_dir initialized to None above)
         if system_export_dir is not None and system_export_dir.exists():
             try:
                 shutil.rmtree(system_export_dir)

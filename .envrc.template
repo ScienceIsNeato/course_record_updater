@@ -1,33 +1,159 @@
-# .envrc.template - Environment configuration logic (version controlled)
-# Copy to .envrc and add your secrets
+#!/bin/bash
+# =============================================================================
+# Course Record Updater - Environment Configuration Template
+# =============================================================================
+# 
+# This template provides default configuration values for the application.
+# 
+# USAGE:
+# 1. Copy this file: cp .envrc.template .envrc
+# 2. Update values in .envrc with your local settings
+# 3. Load variables: source .envrc (or use direnv)
+# 
+# NOTE: .envrc is git-ignored for security. Never commit sensitive data!
+#
+# =============================================================================
+# ENVIRONMENT VARIABLE PATTERN (IMPORTANT!)
+# =============================================================================
+#
+# This template follows a strict pattern to prevent credential override issues:
+#
+# ✅ DO: Export variables with valid default values
+#    export DATABASE_URL="sqlite:///course_records.db"
+#    export LOG_LEVEL="INFO"
+#
+# ✅ DO: Comment out variables that require user-specific values
+#    # export BREVO_API_KEY="your-api-key-here"
+#    # export ETHEREAL_USER="your-username@ethereal.email"
+#
+# ❌ DON'T: Export placeholder values that would break if used
+#    export ETHEREAL_USER="your-username@ethereal.email"  # BAD!
+#
+# WHY THIS MATTERS:
+# - When bash sources this file, every `export` statement overwrites that variable
+# - If CI sets ETHEREAL_USER from secrets, then sources this template with a
+#   placeholder export, the placeholder overwrites the real credential
+# - Solution: Only export valid defaults, comment out user-specific values
+#
+# =============================================================================
+# HOW TO SET SENSITIVE/USER-SPECIFIC VALUES
+# =============================================================================
+#
+# 1. LOCAL DEVELOPMENT (.envrc - not committed):
+#    Copy this template and uncomment/set real values in .envrc:
+#    
+#    cp .envrc.template .envrc
+#    # Then edit .envrc:
+#    export ETHEREAL_USER="real-user@ethereal.email"
+#    export ETHEREAL_PASS="real-password"
+#    export BREVO_API_KEY="real-brevo-api-key"
+#
+# 2. CI/CD (GitHub Secrets):
+#    Add secrets via: GitHub repo → Settings → Secrets and variables → Actions
+#    Then reference in workflow YAML:
+#    
+#    env:
+#      ETHEREAL_USER: ${{ secrets.ETHEREAL_USER }}
+#      ETHEREAL_PASS: ${{ secrets.ETHEREAL_PASS }}
+#    
+#    CI exports these BEFORE sourcing .envrc.template (order matters!)
+#
+# 3. PRODUCTION (Environment variables):
+#    Set directly in hosting environment:
+#    - Heroku: heroku config:set BREVO_API_KEY=xxx
+#    - AWS: Environment variables in ECS/Lambda/EB
+#    - Never commit production credentials to any file
+#
+# =============================================================================
 
-# Path Management
-export AGENT_HOME="${AGENT_HOME:-$(pwd)}"
+# =============================================================================
+# ENVIRONMENT
+# =============================================================================
+export ENV="development"  # development, staging, or production
+export PRODUCTION="false"  # Set to "true" only in production
 
-# Environment Configuration (dev, e2e, or ci)
-export APP_ENV="${APP_ENV:-dev}"  # Defaults to dev
-
-# Environment-specific configuration
-# Note: Set explicitly based on APP_ENV (override any existing values)
-case "$APP_ENV" in
-  dev)
-    export DATABASE_URL="sqlite:///course_records_dev.db"
-    export COURSE_RECORD_UPDATER_PORT="3001"
-    ;;
-  e2e)
-    export DATABASE_URL="sqlite:///course_records_e2e.db"
-    export COURSE_RECORD_UPDATER_PORT="3002"
-    ;;
-  ci)
-    export DATABASE_URL="sqlite:///course_records_ci.db"
-    export COURSE_RECORD_UPDATER_PORT="3003"
-    ;;
-esac
-
-# Shared configuration (all environments)
+# =============================================================================
+# DATABASE (environment-specific)
+# =============================================================================
 export DATABASE_TYPE="sqlite"
-export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"  # Always DEBUG for troubleshooting
+export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
+export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
 
-# Environment info (helpful for debugging)
-echo "🌍 Environment: $APP_ENV | Port: $COURSE_RECORD_UPDATER_PORT | DB: $DATABASE_URL"
+# =============================================================================
+# FLASK CONFIGURATION
+# =============================================================================
+# export SECRET_KEY="your-secret-key-here-change-in-production"
 
+# Base URL configuration (environment-specific)
+export BASE_URL_DEV="http://localhost:3001"
+export BASE_URL_E2E="http://localhost:3002"
+
+# Port configuration
+export LASSIE_DEFAULT_PORT_DEV="3001"
+export LASSIE_DEFAULT_PORT_E2E="3002"
+
+# =============================================================================
+# EMAIL PROVIDER SELECTION
+# =============================================================================
+export EMAIL_PROVIDER="brevo"  # Options: "brevo" (production), "ethereal" (testing)
+
+# Email Whitelist (REQUIRED for non-production environments)
+# Comma-separated list of allowed recipient addresses
+# Supports wildcards: *@ethereal.email allows all ethereal addresses
+# Default allows common test domains, ethereal, and seeded test accounts
+export EMAIL_WHITELIST="*@ethereal.email,*@example.com,*@test.com,*@test.edu,*@system.local,*@mocku.test,*@inst.test,*@riverside.edu,*@pactech.edu"
+
+# =============================================================================
+# BREVO EMAIL CONFIGURATION (Production Email Provider)
+# =============================================================================
+# Create account and get API key from: https://app.brevo.com/settings/keys/api
+# LOCAL: Uncomment and set in .envrc (not committed):
+#   export BREVO_API_KEY="your-brevo-api-key"
+#   export BREVO_SENDER_EMAIL="noreply@yourdomain.com"
+#   export BREVO_SENDER_NAME="Your App Name"
+#
+# CI: Add as GitHub secrets (BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME)
+#
+# export BREVO_API_KEY="<set-in-.envrc-or-ci-secrets>"
+# export BREVO_SENDER_EMAIL="<set-in-.envrc-or-ci-secrets>"
+# export BREVO_SENDER_NAME="<set-in-.envrc-or-ci-secrets>"
+
+# -----------------------------------------------------------------------------
+# Ethereal Email Configuration (E2E Testing Only - Fake SMTP with IMAP)
+# -----------------------------------------------------------------------------
+# Create free account at: https://ethereal.email/
+# Only used in automated tests for email verification
+#
+# LOCAL: Uncomment and set in .envrc (not committed):
+#   export ETHEREAL_USER="your-ethereal-username@ethereal.email"
+#   export ETHEREAL_PASS="your-ethereal-password"
+#
+# CI: Add as GitHub secrets (ETHEREAL_USER, ETHEREAL_PASS)
+#   GitHub workflow exports these BEFORE sourcing this template
+#
+# export ETHEREAL_USER="<set-in-.envrc-or-ci-secrets>"
+# export ETHEREAL_PASS="<set-in-.envrc-or-ci-secrets>"
+export ETHEREAL_SMTP_HOST="smtp.ethereal.email"
+export ETHEREAL_SMTP_PORT="587"
+export ETHEREAL_IMAP_HOST="imap.ethereal.email"
+export ETHEREAL_IMAP_PORT="993"
+
+# =============================================================================
+# AUTHENTICATION
+# =============================================================================
+export SESSION_COOKIE_SECURE="false"  # Set to "true" in production (HTTPS only)
+export SESSION_COOKIE_HTTPONLY="true"
+export SESSION_COOKIE_SAMESITE="Lax"
+export PERMANENT_SESSION_LIFETIME="3600"  # 1 hour in seconds
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+export LOG_LEVEL="INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+export LOG_FILE="logs/application.log"
+
+# =============================================================================
+# PATH MANAGEMENT (for Cursor AI)
+# =============================================================================
+# Uncomment and set to your workspace root for Cursor AI agent
+# export AGENT_HOME="/absolute/path/to/your/project"

@@ -20,7 +20,7 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ```
 
 **Interactive Header Stats**: Click any bracketed number to see inline preview:
-- **[3 Institutions]** → Shows mini-table: CEI, RCC, PTU with user counts
+- **[3 Institutions]** → Shows mini-table: MockU, RCC, PTU with user counts
 - **[8 Programs]** → Shows mini-table: All programs across institutions
 - **[12 Courses]** → Shows mini-table: All courses with enrollment
 - **[15 Users]** → Shows mini-table: Recent users with roles
@@ -44,10 +44,10 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ```
 ┌─ 📊 Recent System Activity ──────────────────────────── [▼] ─┐
 │ Timestamp ↕ │ Institution ↕ │ User ↕        │ Action ↕         │ Details ↕ │
-│ 2:34 PM     │ CEI           │ Sarah Johnson │ CLO Assessment   │ CS-101    │
+│ 2:34 PM     │ MockU           │ Sarah Johnson │ CLO Assessment   │ CS-101    │
 │ 1:15 PM     │ RCC           │ Mike Admin    │ User Created     │ New Instr │
 │ 11:30 AM    │ PTU           │ System        │ Term Created     │ Spr 2025  │
-│ 10:45 AM    │ CEI           │ John Smith    │ CLO Completed    │ EE-101.2  │
+│ 10:45 AM    │ MockU           │ John Smith    │ CLO Completed    │ EE-101.2  │
 │                                        │ [View All] [Filter]          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -58,10 +58,10 @@ Current Term: Fall 2024 | [3 Institutions] | [8 Programs] | [12 Courses] | [15 U
 ```
 ┌─ 👥 User Management ─────────────────────────────────── [▼] ─┐
 │ Name ↕        │ Email ↕            │ Role ↕      │ Institution ↕ │ Status ↕ │
-│ Sarah Johnson │ sarah.admin@cei.edu│ Inst Admin  │ CEI          │ Active   │
-│ Lisa Wang     │ lisa.prog@cei.edu  │ Prog Admin  │ CEI          │ Active   │
+│ Sarah Johnson │ sarah.admin@mocku.test│ Inst Admin  │ MockU          │ Active   │
+│ Lisa Wang     │ lisa.prog@mocku.test  │ Prog Admin  │ MockU          │ Active   │
 │ Mike Admin    │ mike.admin@rcc.edu │ Inst Admin  │ RCC          │ Active   │
-│ John Smith    │ john.instructor... │ Instructor  │ CEI          │ Active   │
+│ John Smith    │ john.instructor... │ Instructor  │ MockU          │ Active   │
 │                              │ [Add User] [Bulk Import]       │
 └─────────────────────────────────────────────────────────────────┘
 ```

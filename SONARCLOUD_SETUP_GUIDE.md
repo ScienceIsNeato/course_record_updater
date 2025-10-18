@@ -98,7 +98,7 @@ python scripts/analyze_pr_coverage.py
 2. Sign in with your GitHub account
 3. Check if project `ScienceIsNeato_course_record_updater` exists
 4. If not, create it:
-   - Organization: `scienceisneato`
+   - Organization: `scienceisneat`
    - Project Key: `ScienceIsNeato_course_record_updater`
    - Repository: Connect to `ScienceIsNeato/course_record_updater`
 
@@ -180,6 +180,6 @@ ls -la coverage.xml test-results.xml
 
 **Properties**: `sonar-project.properties`
 - ✅ Project key: `ScienceIsNeato_course_record_updater`
-- ✅ Organization: `scienceisneato`
+- ✅ Organization: `scienceisneat`
 - ✅ Branch name: Overridden by workflow args
 - ✅ Coverage/test paths: Aligned with workflow

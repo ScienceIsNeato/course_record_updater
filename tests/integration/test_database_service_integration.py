@@ -9,14 +9,11 @@ import database_service
 pytestmark = pytest.mark.integration
 
 
-def test_database_file_created(sqlite_test_database):
+def test_database_file_created(setup_integration_test_database):
     """Ensure the configured SQLite database file exists on disk."""
-    db_url = os.environ.get("DATABASE_URL")
-    assert db_url and db_url.startswith(
-        "sqlite:///"
-    ), "DATABASE_URL must point to SQLite"
-    path = db_url.replace("sqlite:///", "")
-    assert os.path.exists(path)
+    # setup_integration_test_database fixture returns the database path
+    db_path = setup_integration_test_database
+    assert os.path.exists(db_path)
 
 
 def test_full_institution_user_flow():

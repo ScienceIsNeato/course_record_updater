@@ -326,7 +326,7 @@ class TestFrontendSmoke:
         static_assets = [
             "/static/style.css",
             "/static/script.js",
-            "/static/images/cei_logo.jpg",
+            "/static/images/logo_placeholder.png",  # Generic placeholder logo
         ]
 
         for asset in static_assets:

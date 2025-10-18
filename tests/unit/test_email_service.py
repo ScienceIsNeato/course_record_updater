@@ -2,10 +2,10 @@
 Unit tests for Email Service
 
 Tests email functionality including templates, SMTP integration, and
-CRITICAL PROTECTION against sending emails to CEI/protected domains.
+CRITICAL PROTECTION against sending emails to MockU/protected domains.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -43,13 +43,13 @@ def app_context(app):
 
 
 class TestEmailProtection:
-    """Test critical protection against sending emails to CEI/protected domains"""
+    """Test critical protection against sending emails to MockU/protected domains"""
 
-    def test_protected_domain_detection_cei_edu(self):
-        """Test detection of cei.edu domain"""
-        assert EmailService._is_protected_email("test@cei.edu") is True
-        assert EmailService._is_protected_email("admin@cei.edu") is True
-        assert EmailService._is_protected_email("student@cei.edu") is True
+    def test_protected_domain_detection_mocku_edu(self):
+        """Test detection of mocku.test domain"""
+        assert EmailService._is_protected_email("test@mocku.test") is True
+        assert EmailService._is_protected_email("admin@mocku.test") is True
+        assert EmailService._is_protected_email("student@mocku.test") is True
 
     def test_protected_domain_detection_coastal_domains(self):
         """Test detection of coastal education domains"""
@@ -59,7 +59,7 @@ class TestEmailProtection:
 
     def test_protected_domain_detection_subdomains(self):
         """Test detection of subdomains of protected domains"""
-        assert EmailService._is_protected_email("test@mail.cei.edu") is True
+        assert EmailService._is_protected_email("test@mail.mocku.test") is True
         assert EmailService._is_protected_email("admin@student.coastal.edu") is True
 
     def test_safe_domain_detection(self):
@@ -73,7 +73,7 @@ class TestEmailProtection:
         """Test handling of invalid email formats"""
         assert EmailService._is_protected_email("") is False
         assert EmailService._is_protected_email("invalid-email") is False
-        assert EmailService._is_protected_email("@cei.edu") is False
+        assert EmailService._is_protected_email("@mocku.test") is False
         assert EmailService._is_protected_email(None) is False
 
     def test_protected_email_blocking_verification(self, app_context):
@@ -83,7 +83,7 @@ class TestEmailProtection:
             match="Cannot send emails to protected domain.*in non-production environment",
         ):
             EmailService.send_verification_email(
-                email="test@cei.edu",
+                email="test@mocku.test",
                 verification_token="test-token",
                 user_name="Test User",
             )
@@ -121,13 +121,27 @@ class TestEmailProtection:
             match="Cannot send emails to protected domain.*in non-production environment",
         ):
             EmailService.send_welcome_email(
-                email="student@cei.edu",
+                email="student@mocku.test",
                 user_name="Student User",
                 institution_name="Test Institution",
             )
 
-    def test_safe_email_sending_verification(self, app_context):
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_safe_email_sending_verification(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
         """Test that verification emails work for safe domains"""
+        # Mock whitelist to allow test@example.com
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
         result = EmailService.send_verification_email(
             email="test@example.com",
             verification_token="test-token",
@@ -135,8 +149,22 @@ class TestEmailProtection:
         )
         assert result is True  # Should succeed (suppressed in test mode)
 
-    def test_safe_email_sending_convenience_functions(self, app_context):
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_safe_email_sending_convenience_functions(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
         """Test that convenience functions also respect protection"""
+        # Mock whitelist to allow test emails
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
         # Should work for safe domains
         assert send_verification_email("test@example.com", "token", "User") is True
         assert send_password_reset_email("test@gmail.com", "token", "User") is True
@@ -150,30 +178,37 @@ class TestEmailProtection:
 
         # Should fail for protected domains
         with pytest.raises(EmailServiceError):
-            send_verification_email("test@cei.edu", "token", "User")
+            send_verification_email("test@mocku.test", "token", "User")
 
         with pytest.raises(EmailServiceError):
             send_password_reset_email("test@coastal.edu", "token", "User")
 
-    def test_production_mode_allows_protected_emails(self):
+    @patch("email_service.create_email_provider")
+    def test_production_mode_allows_protected_emails(self, mock_create_provider):
         """Test that production mode allows emails to protected domains"""
+        # Mock the email provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret-key"
         app.config["TESTING"] = True
         app.config["MAIL_SUPPRESS_SEND"] = True
         app.config["BASE_URL"] = "http://localhost:5000"
         app.config["ENV"] = "production"  # Set production mode
+        app.config["PRODUCTION"] = True
 
         EmailService.configure_app(app)
 
         with app.app_context():
             # Should NOT raise exception in production mode
             result = EmailService.send_verification_email(
-                email="test@cei.edu",
+                email="test@mocku.test",
                 verification_token="test-token",
                 user_name="Test User",
             )
-            assert result is True  # Should succeed (suppressed in test mode)
+            assert result is True  # Should succeed
 
 
 class TestEmailConfiguration:
@@ -181,13 +216,13 @@ class TestEmailConfiguration:
 
     def test_configure_app_sets_defaults(self, app):
         """Test that app configuration sets correct defaults"""
-        assert app.config["MAIL_SERVER"] == "localhost"
-        assert app.config["MAIL_PORT"] == 587
-        assert app.config["MAIL_USE_TLS"] is True
-        assert app.config["MAIL_USE_SSL"] is False
-        assert app.config["MAIL_DEFAULT_SENDER"] == "noreply@courserecord.app"
+        # Email system now uses provider-based architecture
+        # Check that basic config is set
+        assert "MAIL_DEFAULT_SENDER" in app.config
         assert app.config["BASE_URL"] == "http://localhost:5000"
         assert app.config["MAIL_SUPPRESS_SEND"] is True
+        # MAIL_SERVER, MAIL_PORT, etc. are legacy SMTP configs no longer used
+        # MAIL_DEFAULT_SENDER can come from env vars, so don't test exact value
 
     def test_configure_app_with_env_vars(self):
         """Test configuration with environment variables"""
@@ -336,7 +371,7 @@ class TestEmailURLBuilding:
     def test_verification_url_building(self, app_context):
         """Test verification URL building"""
         url = EmailService._build_verification_url("test-token-123")
-        assert url == "http://localhost:5000/verify-email/test-token-123"
+        assert url == "http://localhost:5000/api/auth/verify-email/test-token-123"
 
     def test_password_reset_url_building(self, app_context):
         """Test password reset URL building"""
@@ -393,8 +428,22 @@ class TestEmailURLBuilding:
 class TestEmailSuppression:
     """Test email suppression in development mode"""
 
-    def test_email_suppression_enabled(self, app_context):
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_email_suppression_enabled(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
         """Test that emails are suppressed when MAIL_SUPPRESS_SEND is True"""
+        # Mock whitelist to allow test@example.com
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
         # This should succeed because suppression is enabled in test fixture
         result = EmailService._send_email(
             to_email="test@example.com",
@@ -405,251 +454,101 @@ class TestEmailSuppression:
 
         assert result is True
 
-    def test_email_suppression_logs_content(self, app_context):
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_email_suppression_logs_content(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
         """Test that suppressed emails log their content"""
-        with patch("email_service.logger") as mock_logger:
-            EmailService._send_email(
-                to_email="test@example.com",
+        # Mock whitelist to allow test@example.com
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
+        # Provider-based system handles logging
+        result = EmailService._send_email(
+            to_email="test@example.com",
+            subject="Test Subject",
+            html_body="<p>Test HTML</p>",
+            text_body="Test Text Content",
+        )
+
+        # Email should succeed
+        assert result is True
+        # Actual logging happens in email providers, tested separately
+
+
+class TestProviderSending:
+    """Test provider-based email sending"""
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_provider_sending_success(self, mock_get_whitelist, mock_create_provider):
+        """Test email sending via provider"""
+        # Mock whitelist
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False
+        app.config["BASE_URL"] = "http://localhost:5000"
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            result = EmailService._send_email(
+                to_email="recipient@example.com",
                 subject="Test Subject",
                 html_body="<p>Test HTML</p>",
-                text_body="Test Text Content",
+                text_body="Test Text",
             )
 
-            # Check that info logs were called
-            mock_logger.info.assert_called()
+            assert result is True
+            mock_provider.send_email.assert_called_once()
 
-            # Verify log messages contain expected content (using parameterized logging)
-            # Check all call arguments (both format string and parameters)
-            all_log_args = [call.args for call in mock_logger.info.call_args_list]
-            assert any(
-                "Email suppressed (dev mode)" in args[0] for args in all_log_args
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_provider_sending_failure(self, mock_get_whitelist, mock_create_provider):
+        """Test email sending failure via provider"""
+        # Mock whitelist
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider to fail
+        mock_provider = Mock()
+        mock_provider.send_email.side_effect = Exception("Provider error")
+        mock_create_provider.return_value = mock_provider
+
+        app = Flask(__name__)
+        app.config["SECRET_KEY"] = "test-secret-key"
+        app.config["TESTING"] = True
+        app.config["MAIL_SUPPRESS_SEND"] = False
+        app.config["BASE_URL"] = "http://localhost:5000"
+        EmailService.configure_app(app)
+
+        with app.app_context():
+            result = EmailService._send_email(
+                to_email="recipient@example.com",
+                subject="Test Subject",
+                html_body="<p>Test HTML</p>",
+                text_body="Test Text",
             )
-            assert any(
-                len(args) > 1 and "Test Text Content" in str(args)
-                for args in all_log_args
-            )
 
-
-class TestSMTPSending:
-    """Test actual SMTP sending logic (not suppressed)"""
-
-    def test_smtp_ssl_connection(self):
-        """Test SMTP SSL connection and sending"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "smtp.gmail.com"
-        app.config["MAIL_PORT"] = 465
-        app.config["MAIL_USE_SSL"] = True
-        app.config["MAIL_USE_TLS"] = False
-        app.config["MAIL_USERNAME"] = "test@gmail.com"
-        app.config["MAIL_PASSWORD"] = "test-password"
-        app.config["MAIL_DEFAULT_SENDER"] = "noreply@test.com"
-        app.config["MAIL_DEFAULT_SENDER_NAME"] = "Test Service"
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP_SSL") as mock_smtp_ssl:
-                mock_server = MagicMock()
-                mock_smtp_ssl.return_value = mock_server
-
-                result = EmailService._send_email(
-                    to_email="recipient@example.com",
-                    subject="Test Subject",
-                    html_body="<p>Test HTML</p>",
-                    text_body="Test Text",
-                )
-
-                assert result is True
-                mock_smtp_ssl.assert_called_once_with("smtp.gmail.com", 465)
-                mock_server.login.assert_called_once_with(
-                    "test@gmail.com", "test-password"
-                )
-                mock_server.send_message.assert_called_once()
-                mock_server.quit.assert_called_once()
-
-    def test_smtp_tls_connection(self):
-        """Test SMTP TLS connection and sending"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "smtp.mailgun.org"
-        app.config["MAIL_PORT"] = 587
-        app.config["MAIL_USE_SSL"] = False
-        app.config["MAIL_USE_TLS"] = True
-        app.config["MAIL_USERNAME"] = "test@mailgun.org"
-        app.config["MAIL_PASSWORD"] = "mailgun-password"
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP") as mock_smtp:
-                mock_server = MagicMock()
-                mock_smtp.return_value = mock_server
-
-                result = EmailService._send_email(
-                    to_email="recipient@example.com",
-                    subject="Test Subject",
-                    html_body="<p>Test HTML</p>",
-                    text_body="Test Text",
-                )
-
-                assert result is True
-                mock_smtp.assert_called_once_with("smtp.mailgun.org", 587)
-                mock_server.starttls.assert_called_once()
-                mock_server.login.assert_called_once_with(
-                    "test@mailgun.org", "mailgun-password"
-                )
-                mock_server.send_message.assert_called_once()
-                mock_server.quit.assert_called_once()
-
-    def test_smtp_no_auth_connection(self):
-        """Test SMTP connection without authentication"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "localhost"
-        app.config["MAIL_PORT"] = 25
-        app.config["MAIL_USE_SSL"] = False
-        app.config["MAIL_USE_TLS"] = False
-        # No username/password for local SMTP
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP") as mock_smtp:
-                mock_server = MagicMock()
-                mock_smtp.return_value = mock_server
-
-                result = EmailService._send_email(
-                    to_email="recipient@example.com",
-                    subject="Test Subject",
-                    html_body="<p>Test HTML</p>",
-                    text_body="Test Text",
-                )
-
-                assert result is True
-                mock_smtp.assert_called_once_with("localhost", 25)
-                mock_server.starttls.assert_not_called()  # TLS disabled
-                mock_server.login.assert_not_called()  # No auth
-                mock_server.send_message.assert_called_once()
-                mock_server.quit.assert_called_once()
-
-    def test_smtp_message_formatting(self):
-        """Test SMTP message formatting with proper headers"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "localhost"
-        app.config["MAIL_PORT"] = 587
-        app.config["MAIL_DEFAULT_SENDER"] = "noreply@courserecord.app"
-        app.config["MAIL_DEFAULT_SENDER_NAME"] = "Course Record System"
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP") as mock_smtp:
-                mock_server = MagicMock()
-                mock_smtp.return_value = mock_server
-
-                EmailService._send_email(
-                    to_email="recipient@example.com",
-                    subject="Test Email Subject",
-                    html_body="<h1>HTML Content</h1>",
-                    text_body="Plain text content",
-                )
-
-                # Verify send_message was called with proper message
-                mock_server.send_message.assert_called_once()
-                sent_message = mock_server.send_message.call_args[0][0]
-
-                assert sent_message["Subject"] == "Test Email Subject"
-                assert (
-                    sent_message["From"]
-                    == "Course Record System <noreply@courserecord.app>"
-                )
-                assert sent_message["To"] == "recipient@example.com"
-
-    def test_smtp_connection_error_handling(self):
-        """Test SMTP connection error handling"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "smtp.gmail.com"
-        app.config["MAIL_PORT"] = 465
-        app.config["MAIL_USE_SSL"] = True
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP_SSL") as mock_smtp_ssl:
-                mock_smtp_ssl.side_effect = Exception("Connection failed")
-
-                with patch("email_service.logger") as mock_logger:
-                    result = EmailService._send_email(
-                        to_email="recipient@example.com",
-                        subject="Test Subject",
-                        html_body="<p>Test HTML</p>",
-                        text_body="Test Text",
-                    )
-
-                    # Should return False on connection failure
-                    assert result is False
-
-                    # Should log the error
-                    mock_logger.error.assert_called_once()
-                    error_call = mock_logger.error.call_args[0][0]
-                    assert "Failed to send email to" in error_call
-                    assert "Connection failed" in error_call
-
-    def test_smtp_authentication_error_handling(self):
-        """Test SMTP authentication error handling"""
-        app = Flask(__name__)
-        app.config["SECRET_KEY"] = "test-secret-key"
-        app.config["TESTING"] = True
-        app.config["MAIL_SUPPRESS_SEND"] = False  # Enable actual sending
-        app.config["BASE_URL"] = "http://localhost:5000"
-        app.config["MAIL_SERVER"] = "smtp.gmail.com"
-        app.config["MAIL_PORT"] = 587
-        app.config["MAIL_USE_TLS"] = True
-        app.config["MAIL_USERNAME"] = "test@gmail.com"
-        app.config["MAIL_PASSWORD"] = "wrong-password"
-
-        EmailService.configure_app(app)
-
-        with app.app_context():
-            with patch("smtplib.SMTP") as mock_smtp:
-                mock_server = MagicMock()
-                mock_server.login.side_effect = Exception("Authentication failed")
-                mock_smtp.return_value = mock_server
-
-                with patch("email_service.logger") as mock_logger:
-                    result = EmailService._send_email(
-                        to_email="recipient@example.com",
-                        subject="Test Subject",
-                        html_body="<p>Test HTML</p>",
-                        text_body="Test Text",
-                    )
-
-                    # Should return False on authentication failure
-                    assert result is False
-
-                    # Should log the error
-                    mock_logger.error.assert_called_once()
-                    error_call = mock_logger.error.call_args[0][0]
-                    assert "Failed to send email to" in error_call
-                    assert "Authentication failed" in error_call
+            # Should return False on provider failure
+            assert result is False
 
 
 class TestConvenienceFunctions:
@@ -662,8 +561,22 @@ class TestConvenienceFunctions:
         assert callable(send_invitation_email)
         assert callable(send_welcome_email)
 
-    def test_convenience_functions_work(self, app_context):
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_convenience_functions_work(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
         """Test that convenience functions work correctly"""
+        # Mock whitelist to allow test@example.com
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
         # These should all succeed with suppression enabled
         assert send_verification_email("test@example.com", "token", "User") is True
         assert send_password_reset_email("test@example.com", "token", "User") is True

@@ -1,13 +1,13 @@
 # Multi-Tenancy Implementation Plan
 **Project**: Course Record Updater
 **Date**: September 13, 2025
-**Objective**: Transform single-tenant CEI system into multi-tenant architecture
+**Objective**: Transform single-tenant MockU system into multi-tenant architecture
 
 ---
 
 ## Executive Summary
 
-The current system is designed exclusively for CEI (College of Eastern Idaho) with all data belonging to a single institution. We need to implement multi-tenancy to support multiple institutions while maintaining backward compatibility and data isolation.
+The current system is designed exclusively for MockU (College of Eastern Idaho) with all data belonging to a single institution. We need to implement multi-tenancy to support multiple institutions while maintaining backward compatibility and data isolation.
 
 ### Key Changes Required:
 1. **Data Model**: Add `institution_id` to all entity collections
@@ -29,7 +29,7 @@ The current system is designed exclusively for CEI (College of Eastern Idaho) wi
 - `course_outcomes` - No institution association
 
 ### Authentication (Current):
-- Stub implementation returning mock CEI admin user
+- Stub implementation returning mock MockU admin user
 - No institution context in user sessions
 - No institution-based permission checking
 
@@ -73,10 +73,10 @@ The current system is designed exclusively for CEI (College of Eastern Idaho) wi
 ```javascript
 // New Firestore collection: institutions
 {
-  institution_id: "cei-12345",
+  institution_id: "mocku-12345",
   name: "College of Eastern Idaho", 
-  short_name: "CEI",
-  domain: "cei.edu",
+  short_name: "MockU",
+  domain: "mocku.test",
   timezone: "America/Denver",
   created_at: timestamp,
   is_active: true,
@@ -100,8 +100,8 @@ Add `institution_id` field to every collection:
 ```javascript
 {
   user_id: "uuid",
-  institution_id: "cei-12345",  // NEW REQUIRED FIELD - exactly one institution
-  email: "john@cei.edu",
+  institution_id: "mocku-12345",  // NEW REQUIRED FIELD - exactly one institution
+  email: "john@mocku.test",
   role: "instructor",  // instructor, admin, site_admin
   is_institution_admin: false,  // can manage this institution
   created_by: "admin_user_id",  // who invited this user
@@ -114,7 +114,7 @@ Add `institution_id` field to every collection:
 ```javascript
 {
   course_id: "uuid", 
-  institution_id: "cei-12345",  // NEW REQUIRED FIELD
+  institution_id: "mocku-12345",  // NEW REQUIRED FIELD
   course_number: "MATH-101",
   // ... existing fields
 }
@@ -206,11 +206,11 @@ def require_institution_access(institution_id: str) -> bool:
 def get_current_user(self) -> Optional[Dict[str, Any]]:
     return {
         "user_id": "dev-admin-123",
-        "email": "admin@cei.edu", 
+        "email": "admin@mocku.test", 
         "role": "site_admin",
-        "primary_institution_id": "cei-12345",        # NEW
-        "current_institution_id": "cei-12345",        # NEW  
-        "accessible_institutions": ["cei-12345"],     # NEW
+        "primary_institution_id": "mocku-12345",        # NEW
+        "current_institution_id": "mocku-12345",        # NEW  
+        "accessible_institutions": ["mocku-12345"],     # NEW
         # ... existing fields
     }
 ```
@@ -331,39 +331,39 @@ def import_excel_api():
 **Duration**: 1 day
 **Risk**: Very High - Data integrity critical
 
-#### 6.1 Create CEI Institution Record
+#### 6.1 Create MockU Institution Record
 ```python
-def create_default_cei_institution():
-    """Create the default CEI institution record"""
-    cei_data = {
-        "institution_id": "cei-12345",
+def create_default_mocku_institution():
+    """Create the default MockU institution record"""
+    mocku_data = {
+        "institution_id": "mocku-12345",
         "name": "College of Eastern Idaho",
-        "short_name": "CEI", 
-        "domain": "cei.edu",
+        "short_name": "MockU", 
+        "domain": "mocku.test",
         "timezone": "America/Denver",
         "created_at": datetime.utcnow(),
         "is_active": True
     }
-    return create_institution(cei_data)
+    return create_institution(mocku_data)
 ```
 
 #### 6.2 Migrate Existing Data
 ```python
-def migrate_existing_data_to_cei():
+def migrate_existing_data_to_mocku():
     """Add institution_id to all existing records"""
-    cei_institution_id = "cei-12345"
+    mocku_institution_id = "mocku-12345"
     
     # Update all courses
     courses_ref = db.collection("courses")
     for doc in courses_ref.stream():
-        doc.reference.update({"institution_id": cei_institution_id})
+        doc.reference.update({"institution_id": mocku_institution_id})
     
     # Update all users  
     users_ref = db.collection("users")
     for doc in users_ref.stream():
         doc.reference.update({
-            "institution_id": cei_institution_id,
-            "primary_institution_id": cei_institution_id
+            "institution_id": mocku_institution_id,
+            "primary_institution_id": mocku_institution_id
         })
         
     # Repeat for all collections...
@@ -396,7 +396,7 @@ async function loadDashboardData() {
 ### Week 1: Foundation (Critical Path)
 1. **Day 1-2**: Phase 1 - Data Model Foundation
 2. **Day 3-4**: Phase 2 - Database Service Layer  
-3. **Day 5**: Phase 6 - Data Migration (CEI data)
+3. **Day 5**: Phase 6 - Data Migration (MockU data)
 
 ### Week 2: API & Security (Critical Path)
 1. **Day 1-2**: Phase 3 - Authentication & Authorization
@@ -431,7 +431,7 @@ async function loadDashboardData() {
 ## Success Criteria
 
 ### Functional Requirements
-✅ All existing CEI data remains accessible
+✅ All existing MockU data remains accessible
 ✅ New institutions can be created and managed  
 ✅ Users can only access their authorized institutions
 ✅ Import system associates data with correct institution
@@ -470,4 +470,4 @@ async function loadDashboardData() {
 
 ---
 
-This plan transforms the single-tenant CEI system into a robust multi-tenant architecture while maintaining data integrity and backward compatibility.
+This plan transforms the single-tenant MockU system into a robust multi-tenant architecture while maintaining data integrity and backward compatibility.

@@ -96,7 +96,7 @@ async function loadInstitutionsForDropdown() {
   }
 
   // Use user's institution from the page context (set in template)
-  if (window.userContext && window.userContext.institutionId) {
+  if (window.userContext?.institutionId) {
     select.innerHTML = '<option value="">Select Institution</option>';
 
     const option = document.createElement('option');

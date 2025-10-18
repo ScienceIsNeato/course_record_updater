@@ -23,9 +23,10 @@ from typing import Dict, List, Optional, Tuple
 
 
 class SonarCloudScraper:
-    def __init__(self, project_key: str, organization: str = "scienceisneato"):
+    def __init__(self, project_key: str, organization: str = "scienceisneat", pull_request: str = None):
         self.project_key = project_key
         self.organization = organization
+        self.pull_request = pull_request
         self.base_url = "https://sonarcloud.io/api"
         self.token = os.getenv("SONAR_TOKEN")
 
@@ -69,6 +70,10 @@ class SonarCloudScraper:
     def get_quality_gate_status(self) -> Tuple[str, List[Dict]]:
         """Get quality gate status and failed conditions"""
         params = {"projectKey": self.project_key}
+        
+        # If checking a PR, add pullRequest parameter
+        if self.pull_request:
+            params["pullRequest"] = self.pull_request
 
         response = self._make_api_request("qualitygates/project_status", params)
 
@@ -396,7 +401,11 @@ def main():
         description="Scrape SonarCloud issues for actionable feedback"
     )
     parser.add_argument(
-        "--project-key", default="scienceisneato_courserecordupdater", help="SonarCloud project key"
+        "--project-key", default="scienceisneat_courserecordupdater", help="SonarCloud project key"
+    )
+    parser.add_argument(
+        "--pull-request",
+        help="Pull request number (auto-detected from GitHub Actions if not provided)",
     )
     parser.add_argument(
         "--severity",
@@ -426,8 +435,17 @@ def main():
     )
 
     args = parser.parse_args()
-
-    scraper = SonarCloudScraper(args.project_key)
+    
+    # Auto-detect PR number from GitHub Actions if not provided
+    pull_request = args.pull_request
+    if not pull_request:
+        github_ref = os.getenv("GITHUB_REF", "")
+        if github_ref.startswith("refs/pull/"):
+            # Extract PR number from refs/pull/19/merge
+            pull_request = github_ref.split("/")[2]
+            print(f"🔍 Auto-detected PR #{pull_request} from GITHUB_REF")
+    
+    scraper = SonarCloudScraper(args.project_key, pull_request=pull_request)
 
     # Print comprehensive analysis
     quality_gate_passed = scraper.print_quality_gate_summary()

@@ -953,27 +953,27 @@ For development environments, we'll also create default data:
 def create_development_data():
     """Create default data for development environment"""
     
-    # Create default CEI institution with default program
-    cei_institution_id = create_default_cei_institution()
+    # Create default MockU institution with default program
+    mocku_institution_id = create_default_mocku_institution()
     
-    # Create default "Unclassified" program for CEI
+    # Create default "Unclassified" program for MockU
     default_program = Program(
         name="Unclassified",
         short_name="UNCL",
         description="Default program for courses without specific program assignment",
-        institution_id=cei_institution_id,
+        institution_id=mocku_institution_id,
         created_by="system",
         is_default=True
     )
     
     # Create development admin user
     dev_admin = User(
-        email="admin@cei.edu",
+        email="admin@mocku.test",
         password_hash=bcrypt.hashpw("devpassword".encode('utf-8'), bcrypt.gensalt()),
         first_name="Dev",
         last_name="Admin",
         role="institution_admin",
-        institution_id=cei_institution_id,
+        institution_id=mocku_institution_id,
         account_status="active",
         email_verified=True
     )

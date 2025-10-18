@@ -102,15 +102,20 @@
                     }
                 });
                 
+                // Wait for the response to complete
+                const data = await response.json();
+                
                 if (response.ok) {
+                    // Redirect to home page after successful logout
                     window.location.href = '/';
                 } else {
-                    console.error('Logout failed');
+                    console.error('Logout failed:', data);
                     alert('Logout failed. Please try again.');
                 }
             } catch (error) {
                 console.error('Logout error:', error);
-                alert('Logout failed. Please try again.');
+                // Still redirect on error - session is likely cleared anyway
+                window.location.href = '/';
             }
         }
 

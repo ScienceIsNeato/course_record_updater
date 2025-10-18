@@ -88,12 +88,12 @@ class TestHelperFunctions:
 
     def test_extract_name_from_email(self):
         """Test name extraction from email."""
-        assert _extract_name_from_email("john.doe@cei.edu") == ("John", "Doe")
-        assert _extract_name_from_email("mary.jane.smith@cei.edu") == (
+        assert _extract_name_from_email("john.doe@cei.test") == ("John", "Doe")
+        assert _extract_name_from_email("mary.jane.smith@cei.test") == (
             "Mary",
             "Jane.Smith",
         )
-        assert _extract_name_from_email("singlename@cei.edu") == (
+        assert _extract_name_from_email("singlename@cei.test") == (
             "Unknown",
             "Singlename",
         )
@@ -143,7 +143,7 @@ class TestParseCeiExcelRow:
         row = pd.Series(
             {
                 "course": "MATH-101",
-                "email": "matthew.taylor@cei.edu",
+                "email": "matthew.taylor@cei.test",
                 "Term": "2024 Fall",
             }
         )
@@ -159,7 +159,7 @@ class TestParseCeiExcelRow:
         # Check user data - email format should preserve real email
         assert result["user"] is not None
         assert (
-            result["user"]["email"] == "matthew.taylor@cei.edu"
+            result["user"]["email"] == "matthew.taylor@cei.test"
         )  # Real email preserved!
         assert result["user"]["first_name"] == "Matthew"
         assert result["user"]["last_name"] == "Taylor"

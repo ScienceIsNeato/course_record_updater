@@ -19,7 +19,7 @@
 - Clean separation of planning from implementation
 
 ### `/research/` - Market & Stakeholder Research
-- **`CEI/`** - College of Eastern Idaho research data
+- **`MockU/`** - College of Eastern Idaho research data
   - Real stakeholder data and requirements
   - Video walkthroughs of current processes
   - Actual data files for analysis
@@ -33,14 +33,14 @@
 
 ## 🎯 Current Phase: Requirements Validation
 
-### Priority 1: CEI Stakeholder Research
-1. **Analyze CEI video** - understand current workflow
-2. **Review CEI data files** - map to our data model
+### Priority 1: MockU Stakeholder Research
+1. **Analyze MockU video** - understand current workflow
+2. **Review MockU data files** - map to our data model
 3. **Prepare stakeholder meeting** - use planning docs
 4. **Validate assumptions** - test our planning against reality
 
 ### Priority 2: Documentation Updates
-- Update planning docs based on CEI insights
+- Update planning docs based on MockU insights
 - Refine data model with real-world requirements
 - Adjust pricing strategy based on stakeholder feedback
 
@@ -63,7 +63,7 @@
 
 ## 📋 Next Actions
 
-1. **Review CEI materials** in `/research/CEI/`
+1. **Review MockU materials** in `/research/MockU/`
 2. **Prepare meeting** using `/planning/documentation/`
 3. **Update planning docs** based on stakeholder feedback
 4. **Begin development** in `/src/` when ready

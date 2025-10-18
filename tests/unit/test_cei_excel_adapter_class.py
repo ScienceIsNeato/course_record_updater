@@ -78,7 +78,7 @@ class TestCEIExcelAdapterClass:
         # Create test file with test format columns
         data = {
             "course": ["MATH-101", "ENG-201"],
-            "email": ["prof.smith@cei.edu", "jane.doe@cei.edu"],
+            "email": ["prof.smith@cei.test", "jane.doe@cei.test"],
             "Term": ["2024 Fall", "2025 Spring"],
             "students": [25, 30],
         }
@@ -220,7 +220,7 @@ class TestCEIExcelAdapterClass:
         # Create test file with test format
         data = {
             "course": ["MATH-101", "ENG-201"],
-            "email": ["prof.smith@cei.edu", "jane.doe@cei.edu"],
+            "email": ["prof.smith@cei.test", "jane.doe@cei.test"],
             "Term": ["2024 Fall", "2025 Spring"],
             "students": [25, 30],
         }
@@ -313,7 +313,7 @@ class TestCEIExcelAdapterClass:
         # Create test file with test format
         data = {
             "course": ["MATH-101", "ENG-201"],
-            "email": ["prof.smith@cei.edu", "jane.doe@cei.edu"],
+            "email": ["prof.smith@cei.test", "jane.doe@cei.test"],
             "Term": ["2024 Fall", "2025 Spring"],
             "students": [25, 30],
         }
@@ -327,7 +327,7 @@ class TestCEIExcelAdapterClass:
             # Check that users have emails in test format
             assert len(result["users"]) > 0
             first_user = result["users"][0]
-            assert first_user["email"] == "prof.smith@cei.edu"
+            assert first_user["email"] == "prof.smith@cei.test"
             assert first_user["account_status"] == "imported"  # Has email
 
         finally:

@@ -44,7 +44,7 @@ class TestAuthService:
 
             assert user is not None
             assert user["user_id"] == "dev-admin-123"
-            assert user["email"] == "admin@cei.edu"
+            assert user["email"] == "admin@mocku.test"
             assert user["role"] == "site_admin"
             assert user["first_name"] == "Dev"
             assert user["last_name"] == "Admin"
@@ -87,7 +87,7 @@ class TestGlobalAuthServiceInstance:
         """Test that global auth_service instance methods work."""
         with self.app.app_context():
             user = auth_service.get_current_user()
-            assert user["email"] == "admin@cei.edu"
+            assert user["email"] == "admin@mocku.test"
 
             assert auth_service.has_permission("manage_institutions") is True
             assert auth_service.is_authenticated() is True
@@ -185,7 +185,7 @@ class TestUtilityFunctions:
         """Test get_current_user utility function."""
         user = get_current_user()
         assert user is not None
-        assert user["email"] == "admin@cei.edu"
+        assert user["email"] == "admin@mocku.test"
         assert user["role"] == "site_admin"
 
     def test_has_permission_function(self):

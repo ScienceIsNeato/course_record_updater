@@ -2,7 +2,7 @@
 Generic CSV Adapter - Institution-Agnostic Import/Export
 
 This adapter provides a generic, normalized CSV format for importing and exporting
-course management data. Unlike institution-specific adapters (CEI, etc.), this adapter
+course management data. Unlike institution-specific adapters (MockU, etc.), this adapter
 uses a standard database export format that works for any institution.
 
 Format: ZIP file containing multiple normalized CSV files (one per entity type)
