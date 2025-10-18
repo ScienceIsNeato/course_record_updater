@@ -3,6 +3,7 @@ Unit tests for BulkEmailJob model
 """
 
 from datetime import datetime, timezone
+from unittest.mock import MagicMock, Mock
 
 from bulk_email_models.bulk_email_job import BulkEmailJob
 
@@ -225,3 +226,131 @@ class TestBulkEmailJob:
 
         assert job.status == "cancelled"
         assert job.completed_at is not None
+
+    def test_create_job(self):
+        """Test create_job static method"""
+        mock_db = Mock()
+        mock_db.add = Mock()
+        mock_db.commit = Mock()
+        mock_db.refresh = Mock()
+
+        recipients = [
+            {"email": "user1@example.com", "name": "User 1"},
+            {"email": "user2@example.com", "name": "User 2"},
+        ]
+
+        job = BulkEmailJob.create_job(
+            db=mock_db,
+            job_type="instructor_reminder",
+            created_by_user_id="admin-123",
+            recipients=recipients,
+            template_data={"term": "Fall 2024"},
+            personal_message="Please submit by Friday",
+        )
+
+        # Verify job was created correctly
+        assert job.job_type == "instructor_reminder"
+        assert job.created_by_user_id == "admin-123"
+        assert job.recipient_count == 2
+        assert job.recipients == recipients
+        assert job.template_data == {"term": "Fall 2024"}
+        assert job.personal_message == "Please submit by Friday"
+        assert job.emails_pending == 2
+        # Note: status/id defaults are set by SQLAlchemy at DB level, not in Python
+
+        # Verify database operations
+        mock_db.add.assert_called_once_with(job)
+        mock_db.commit.assert_called_once()
+        mock_db.refresh.assert_called_once_with(job)
+
+    def test_get_job(self):
+        """Test get_job static method"""
+        mock_db = Mock()
+        mock_query = Mock()
+        mock_filter = Mock()
+
+        expected_job = BulkEmailJob(
+            id="job-123",
+            job_type="test",
+            created_by_user_id="user-456",
+            recipient_count=10,
+            status="completed",
+        )
+
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.first.return_value = expected_job
+
+        result = BulkEmailJob.get_job(mock_db, "job-123")
+
+        assert result == expected_job
+        mock_db.query.assert_called_once_with(BulkEmailJob)
+
+    def test_get_recent_jobs_with_user_filter(self):
+        """Test get_recent_jobs with user_id filter"""
+        mock_db = Mock()
+        mock_query = Mock()
+        mock_filter = Mock()
+        mock_order = Mock()
+        mock_limit = Mock()
+
+        expected_jobs = [
+            BulkEmailJob(
+                id="job-1",
+                job_type="test",
+                created_by_user_id="user-123",
+                recipient_count=5,
+            ),
+            BulkEmailJob(
+                id="job-2",
+                job_type="test",
+                created_by_user_id="user-123",
+                recipient_count=3,
+            ),
+        ]
+
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_filter
+        mock_filter.order_by.return_value = mock_order
+        mock_order.limit.return_value = mock_limit
+        mock_limit.all.return_value = expected_jobs
+
+        result = BulkEmailJob.get_recent_jobs(mock_db, user_id="user-123", limit=10)
+
+        assert result == expected_jobs
+        mock_db.query.assert_called_once_with(BulkEmailJob)
+        mock_query.filter.assert_called_once()
+
+    def test_get_recent_jobs_without_user_filter(self):
+        """Test get_recent_jobs without user_id filter"""
+        mock_db = Mock()
+        mock_query = Mock()
+        mock_order = Mock()
+        mock_limit = Mock()
+
+        expected_jobs = [
+            BulkEmailJob(
+                id="job-1",
+                job_type="test",
+                created_by_user_id="user-123",
+                recipient_count=5,
+            ),
+            BulkEmailJob(
+                id="job-2",
+                job_type="test",
+                created_by_user_id="user-456",
+                recipient_count=3,
+            ),
+        ]
+
+        mock_db.query.return_value = mock_query
+        mock_query.order_by.return_value = mock_order
+        mock_order.limit.return_value = mock_limit
+        mock_limit.all.return_value = expected_jobs
+
+        result = BulkEmailJob.get_recent_jobs(mock_db, user_id=None, limit=50)
+
+        assert result == expected_jobs
+        mock_db.query.assert_called_once_with(BulkEmailJob)
+        # Should NOT call filter when user_id is None
+        mock_query.filter.assert_not_called()
