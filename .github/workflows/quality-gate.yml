@@ -542,6 +542,10 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
     - name: Cache pip dependencies
       uses: actions/cache@v3
       with:
@@ -549,11 +553,13 @@ jobs:
         key: ${{ needs.setup.outputs.cache-key }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: Install dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+    - name: Install JavaScript dependencies
+      run: npm install
     - name: Install sonar-scanner
       run: |
         # Install sonar-scanner CLI
