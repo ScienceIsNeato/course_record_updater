@@ -446,12 +446,21 @@ def wait_for_email_via_imap(
                             ):
                                 continue
 
+                        # Check recipient email if specified
+                        if recipient_email:
+                            to_field = email_message.get("To", "")
+                            # Handle both single email and comma-separated list
+                            to_emails = [e.strip() for e in to_field.split(",")]
+                            if recipient_email not in to_emails:
+                                continue
+
                         # Found a match!
                         mail.close()
                         mail.logout()
 
                         print(f"✅ Email found on attempt {attempt}!")
                         print(f"   Subject: {subject}")
+                        print(f"   To: {email_message.get('To', '')}")
 
                         return {
                             "subject": subject,
