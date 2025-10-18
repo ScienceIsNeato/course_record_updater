@@ -161,6 +161,110 @@ class EtherealProvider(EmailProvider):
             logger.error(f"[Ethereal Provider] Failed to send email: {e}")
             raise
 
+    def _connect_to_imap(self) -> Optional[imaplib.IMAP4_SSL]:
+        """Connect to IMAP server and select INBOX"""
+        try:
+            mail = imaplib.IMAP4_SSL(self._imap_host, self._imap_port)
+            mail.login(self._username, self._password)
+            mail.select("INBOX")
+            return mail
+        except Exception as e:
+            logger.error(f"[Ethereal Provider] IMAP connection failed: {e}")
+            return None
+    
+    def _extract_email_body(self, email_message: email.message.Message) -> tuple[str, str]:
+        """Extract text and HTML body from email message"""
+        body_text = ""
+        body_html = ""
+        
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                content_type = part.get_content_type()
+                payload = part.get_payload(decode=True)
+                if content_type == "text/plain" and isinstance(payload, bytes):
+                    body_text = payload.decode("utf-8", errors="ignore")
+                elif content_type == "text/html" and isinstance(payload, bytes):
+                    body_html = payload.decode("utf-8", errors="ignore")
+        else:
+            payload = email_message.get_payload(decode=True)
+            if isinstance(payload, bytes):
+                body_text = payload.decode("utf-8", errors="ignore")
+        
+        return body_text, body_html
+    
+    def _matches_search_criteria(
+        self,
+        subject: str,
+        body_text: str,
+        body_html: str,
+        subject_substring: Optional[str],
+        unique_identifier: Optional[str],
+    ) -> bool:
+        """Check if email matches search criteria"""
+        if subject_substring and subject_substring.lower() not in subject.lower():
+            return False
+        
+        if unique_identifier and (unique_identifier not in subject and 
+                                   unique_identifier not in body_text and 
+                                   unique_identifier not in body_html):
+            return False
+        
+        return True
+    
+    def _try_parse_email(
+        self,
+        num: bytes,
+        mail: imaplib.IMAP4_SSL,
+        subject_substring: Optional[str],
+        unique_identifier: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Try to parse and check a single email"""
+        try:
+            # Convert bytes to str for IMAP fetch
+            num_str = num.decode('utf-8') if isinstance(num, bytes) else str(num)
+            fetch_result = mail.fetch(num_str, "(RFC822)")
+            # Type guard: ensure fetch_result is indexable tuple
+            if not fetch_result or not isinstance(fetch_result, tuple) or len(fetch_result) < 2:
+                return None
+            _, msg_data = fetch_result
+            # Type guard: ensure msg_data is indexable
+            if not msg_data or not isinstance(msg_data, (list, tuple)) or len(msg_data) == 0:
+                return None
+            first_item = msg_data[0]
+            # Type guard: ensure first_item is indexable tuple
+            if not isinstance(first_item, tuple) or len(first_item) < 2:
+                return None
+            email_body = first_item[1]
+            # Type guard: ensure we have bytes
+            if not isinstance(email_body, bytes):
+                return None
+            email_message = email.message_from_bytes(email_body)
+            
+            # Extract email details
+            subject = email_message.get("Subject", "")
+            from_addr = email_message.get("From", "")
+            to_addr = email_message.get("To", "")
+            
+            # Extract body content
+            body_text, body_html = self._extract_email_body(email_message)
+            
+            # Check if this email matches criteria
+            if not self._matches_search_criteria(subject, body_text, body_html, subject_substring, unique_identifier):
+                return None
+            
+            # Found a match!
+            logger.info(f"[Ethereal Provider] Found matching email: {subject}")
+            return {
+                "subject": subject,
+                "from": from_addr,
+                "to": to_addr,
+                "body": body_text,
+                "html_body": body_html,
+            }
+        except Exception as e:
+            logger.debug(f"[Ethereal Provider] Error parsing email: {e}")
+            return None
+    
     def read_email(
         self,
         recipient_email: str,
@@ -210,78 +314,21 @@ class EtherealProvider(EmailProvider):
         
         while time.time() - start_time < timeout:
             try:
-                # Connect to IMAP server
-                mail = imaplib.IMAP4_SSL(self._imap_host, self._imap_port)
-                mail.login(self._username, self._password)
-                mail.select("INBOX")
+                mail = self._connect_to_imap()
+                if not mail:
+                    time.sleep(poll_interval)
+                    continue
                 
                 # Search for all emails
                 _, message_numbers = mail.search(None, "ALL")
                 
                 # Process emails in reverse order (newest first)
                 for num in reversed(message_numbers[0].split()):
-                    fetch_result = mail.fetch(num, "(RFC822)")
-                    # Type guard: ensure fetch_result is indexable tuple
-                    if not fetch_result or not isinstance(fetch_result, tuple) or len(fetch_result) < 2:
-                        continue
-                    _, msg_data = fetch_result
-                    # Type guard: ensure msg_data is indexable
-                    if not msg_data or not isinstance(msg_data, (list, tuple)) or len(msg_data) == 0:
-                        continue
-                    first_item = msg_data[0]
-                    # Type guard: ensure first_item is indexable tuple
-                    if not isinstance(first_item, tuple) or len(first_item) < 2:
-                        continue
-                    email_body = first_item[1]
-                    # Type guard: ensure we have bytes
-                    if not isinstance(email_body, bytes):
-                        continue
-                    email_message = email.message_from_bytes(email_body)
-                    
-                    # Extract email details
-                    subject = email_message.get("Subject", "")
-                    from_addr = email_message.get("From", "")
-                    to_addr = email_message.get("To", "")
-                    
-                    # Extract body content
-                    body_text = ""
-                    body_html = ""
-                    
-                    if email_message.is_multipart():
-                        for part in email_message.walk():
-                            content_type = part.get_content_type()
-                            payload = part.get_payload(decode=True)
-                            if content_type == "text/plain" and isinstance(payload, bytes):
-                                body_text = payload.decode("utf-8", errors="ignore")
-                            elif content_type == "text/html" and isinstance(payload, bytes):
-                                body_html = payload.decode("utf-8", errors="ignore")
-                    else:
-                        payload = email_message.get_payload(decode=True)
-                        if isinstance(payload, bytes):
-                            body_text = payload.decode("utf-8", errors="ignore")
-                    
-                    # Check if this email matches criteria
-                    if subject_substring and subject_substring.lower() not in subject.lower():
-                        continue
-                    
-                    if unique_identifier:
-                        if (unique_identifier not in subject and 
-                            unique_identifier not in body_text and 
-                            unique_identifier not in body_html):
-                            continue
-                    
-                    # Found a match!
-                    mail.close()
-                    mail.logout()
-                    
-                    logger.info(f"[Ethereal Provider] Found matching email: {subject}")
-                    return {
-                        "subject": subject,
-                        "from": from_addr,
-                        "to": to_addr,
-                        "body": body_text,
-                        "html_body": body_html,
-                    }
+                    result = self._try_parse_email(num, mail, subject_substring, unique_identifier)
+                    if result:
+                        mail.close()
+                        mail.logout()
+                        return result
                 
                 # No match found, close and wait
                 mail.close()
