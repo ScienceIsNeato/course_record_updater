@@ -136,7 +136,6 @@ start_flask_app() {
 
     # Export environment variables for Flask app
     # Note: Must re-export with value assignment for subprocess inheritance
-    export PORT="$port"
     export DATABASE_URL="$DATABASE_URL"
     export BASE_URL="$BASE_URL"
     export ENV="$ENV"

@@ -1,7 +1,7 @@
 {
-  "name": "cei-course-admin",
+  "name": "lassie",
   "version": "1.0.0",
-  "description": "CEI Course Administration Tool",
+  "description": "LASSIE Learning Assessment Solutions",
   "main": "static/script.js",
   "scripts": {
     "lint": "eslint static/**/*.js",
