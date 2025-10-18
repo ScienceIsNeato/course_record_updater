@@ -37,28 +37,41 @@
 
                 <!-- Email (pre-filled, readonly) -->
                 <div class="form-floating mb-3">
-                    <input type="email" class="form-control" id="email" readonly required>
+                    <input type="email" class="form-control" id="email" name="email" readonly required>
                     <label for="email">Email Address</label>
                 </div>
 
                 <!-- Role (pre-filled, readonly) -->
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="role" readonly required>
+                    <input type="text" class="form-control" id="role" name="role" readonly required>
                     <label for="role">Role</label>
                 </div>
 
-                <!-- Display Name -->
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="displayName" placeholder="Display Name" required>
-                    <label for="displayName">Display Name</label>
-                    <div class="invalid-feedback">
-                        Please enter your display name.
+                <!-- Display Name (test expects first_name + last_name) -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="firstName" name="first_name" placeholder="First Name" required>
+                            <label for="firstName">First Name</label>
+                            <div class="invalid-feedback">
+                                Please enter your first name.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="lastName" name="last_name" placeholder="Last Name" required>
+                            <label for="lastName">Last Name</label>
+                            <div class="invalid-feedback">
+                                Please enter your last name.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Password -->
                 <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="password" placeholder="Password" required minlength="8">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required minlength="8">
                     <label for="password">Password</label>
                     <div class="invalid-feedback">
                         Password must be at least 8 characters.
@@ -67,7 +80,7 @@
 
                 <!-- Confirm Password -->
                 <div class="form-floating mb-4">
-                    <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm Password" required>
+                    <input type="password" class="form-control" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" required>
                     <label for="confirmPassword">Confirm Password</label>
                     <div class="invalid-feedback">
                         Passwords must match.

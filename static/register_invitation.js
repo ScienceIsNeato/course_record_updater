@@ -71,11 +71,15 @@ async function validateInvitation(token) {
  */
 async function acceptInvitation() {
   const token = document.getElementById('invitationToken').value;
-  const displayName = document.getElementById('displayName').value;
+  const firstName = document.getElementById('firstName').value;
+  const lastName = document.getElementById('lastName').value;
   const password = document.getElementById('password').value;
   const submitBtn = document.getElementById('submitBtn');
   const btnText = submitBtn.querySelector('.btn-text');
   const btnSpinner = submitBtn.querySelector('.btn-spinner');
+
+  // Construct display name from first + last
+  const displayName = `${firstName} ${lastName}`.trim();
 
   // Show loading state
   btnText.classList.add('d-none');
