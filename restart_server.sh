@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Require environment argument
-if [[ -z "${1:-}" ]; then
+if [[ -z "${1:-}" ]]; then
     echo -e "${RED}❌ Error: Environment argument required${NC}" >&2
     echo -e "${YELLOW}Usage: $0 <env>${NC}" >&2
     echo -e "${YELLOW}  <env> = dev | e2e${NC}" >&2
@@ -46,12 +46,12 @@ echo -e "${BLUE}=====================================================${NC}"
 SAVED_ENV="${ENV:-}"
 
 # Load environment configuration
-if [[ -f ".envrc" ]; then
+if [[ -f ".envrc" ]]; then
     # Local development: source .envrc (which sources .envrc.template)
     # shellcheck disable=SC1091
     source .envrc
     echo -e "${GREEN}✅ Loaded $APP_ENV environment from .envrc${NC}"
-elif [[ -f ".envrc.template" ]; then
+elif [[ -f ".envrc.template" ]]; then
     # CI environment: source template directly (secrets from GitHub Secrets)
     # shellcheck disable=SC1091
     source .envrc.template
@@ -62,13 +62,13 @@ else
 fi
 
 # Restore pre-set ENV (e.g., ENV="test" from run_uat.sh)
-if [[ -n "$SAVED_ENV" ]; then
+if [[ -n "$SAVED_ENV" ]]; then
     export ENV="$SAVED_ENV"
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
 fi
 
 # For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
-if [[ "$APP_ENV" = "e2e" ]] || [[ "$APP_ENV" = "uat" ]; then
+if [[ "$APP_ENV" = "e2e" ]] || [[ "$APP_ENV" = "uat" ]]; then
     unset EMAIL_PROVIDER
     echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for E2E (will auto-select Ethereal)${NC}"
 fi
