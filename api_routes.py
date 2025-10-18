@@ -46,6 +46,8 @@ from constants import (
     INSTITUTION_CONTEXT_REQUIRED_MSG,
     INSTITUTION_NOT_FOUND_MSG,
     INVALID_EMAIL_FORMAT_MSG,
+    INVITATION_CREATED_AND_SENT_MSG,
+    INVITATION_CREATED_EMAIL_FAILED_MSG,
     INVITATION_NOT_FOUND_MSG,
     MISSING_REQUIRED_FIELD_EMAIL_MSG,
     NO_DATA_PROVIDED_MSG,
@@ -3604,9 +3606,9 @@ def create_invitation_api():
                     "success": True,
                     "invitation_id": invitation["id"],
                     "message": (
-                        "Invitation created and sent successfully"
+                        INVITATION_CREATED_AND_SENT_MSG
                         if email_sent
-                        else "Invitation created but email failed to send"
+                        else INVITATION_CREATED_EMAIL_FAILED_MSG
                     ),
                 }
             ),
@@ -4110,9 +4112,9 @@ def create_invitation_public_api():
                     "success": True,
                     "invitation_id": invitation["id"],
                     "message": (
-                        "Invitation created and sent successfully"
+                        INVITATION_CREATED_AND_SENT_MSG
                         if email_sent
-                        else "Invitation created but email failed to send"
+                        else INVITATION_CREATED_EMAIL_FAILED_MSG
                     ),
                 }
             ),

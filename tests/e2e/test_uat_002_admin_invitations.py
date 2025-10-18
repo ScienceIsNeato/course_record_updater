@@ -19,6 +19,7 @@ from typing import Optional
 import pytest
 from playwright.sync_api import Page, expect
 
+from constants import INVITATION_CREATED_AND_SENT_MSG
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,
@@ -168,7 +169,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_be_visible(timeout=5000)
         expect(admin_page.locator(".alert-success")).to_contain_text(
-            "Invitation created and sent successfully"
+            INVITATION_CREATED_AND_SENT_MSG
         )
 
         print(f"✅ Invitation sent to {self.INSTRUCTOR_EMAIL}")
@@ -302,7 +303,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_contain_text(
-            "Invitation created and sent successfully"
+            INVITATION_CREATED_AND_SENT_MSG
         )
 
         print(f"✅ Program admin invitation sent to {self.PROGRAM_ADMIN_EMAIL}")
