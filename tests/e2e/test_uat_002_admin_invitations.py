@@ -224,7 +224,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         # Open invitation link in new context
         page.goto(invitation_link)
-        expect(page).to_have_url(re.compile(r"/register\?token="))
+        expect(page).to_have_url(re.compile(r"/register/accept/"))
 
         # Verify registration form displayed
         expect(page.locator('h2:has-text("Complete Registration")')).to_be_visible()
@@ -347,7 +347,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("=" * 70)
 
         page.goto(pa_invitation_link)
-        expect(page).to_have_url(re.compile(r"/register\?token="))
+        expect(page).to_have_url(re.compile(r"/register/accept/"))
 
         # Verify role displays as "Program Admin"
         expect(page.locator("text=/Role.*Program Admin/i")).to_be_visible()
