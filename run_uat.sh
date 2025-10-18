@@ -24,8 +24,12 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
+# Constants
+readonly MODE_HEADED="headed"
+readonly MODE_HEADLESS="headless"
+
 # Default values
-MODE="headless"
+MODE="$MODE_HEADLESS"
 TEST_FILTER=""
 SAVE_VIDEOS="0"
 DEBUG_MODE="0"
@@ -35,15 +39,15 @@ PARALLEL_WORKERS="auto"  # Always run in parallel, auto-scale to CPU cores
 while [[ $# -gt 0 ]]; do
     case $1 in
         --watch|-w)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             shift
             ;;
         --headed|-h)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             shift
             ;;
         --debug|-d)
-            MODE="headed"
+            MODE="$MODE_HEADED"
             DEBUG_MODE="1"
             shift
             ;;
@@ -100,9 +104,9 @@ echo -e "${BLUE}============================================${NC}"
 echo ""
 
 # Check if virtual environment is activated (skip in CI where it's already set up)
-if [ -z "$VIRTUAL_ENV" ] && [ "${CI:-false}" != "true" ]; then
+if [[ -z "$VIRTUAL_ENV" ]] ] && [ ] && [  [[ "${CI:-false}" != "true" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-    if [ -f "venv/bin/activate" ]; then
+    if [[ -f "venv/bin/activate" ]; then
         source venv/bin/activate
     else
         echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
@@ -114,9 +118,9 @@ elif [ "${CI:-false}" = "true" ]; then
 fi
 
 # Load environment variables from .envrc (skip in CI if credentials already set)
-if [ -f ".envrc" ]; then
+if [[ -f ".envrc" ]; then
     source .envrc
-elif [ -f ".envrc.template" ] && [ -z "$ETHEREAL_USER" ]; then
+elif [[ -f ".envrc.template" ]] ] && [ ] && [  [[ -z "$ETHEREAL_USER" ]; then
     # Only source template if Ethereal credentials not already set (i.e., not in CI with secrets)
     source .envrc.template
 elif [ "${CI:-false}" = "true" ]; then
@@ -164,11 +168,11 @@ echo ""
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
 # Set debug/headless flags for Playwright
-if [ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]; then
     export PYTEST_DEBUG="1"
     export HEADLESS="0"
 else
-    if [ "$MODE" = "headed" ]; then
+    if [[ "$MODE" = "headed" ]; then
         export HEADLESS="0"
     else
         # Enforce true headless when not in watch/debug
@@ -183,17 +187,17 @@ export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
 PYTEST_CMD="pytest tests/e2e/"
 
 # Add parallel execution if specified
-if [ -n "$PARALLEL_WORKERS" ]; then
+if [[ -n "$PARALLEL_WORKERS" ]; then
     PYTEST_CMD="$PYTEST_CMD -n $PARALLEL_WORKERS"
 fi
 
 # Add test filter if specified
-if [ -n "$TEST_FILTER" ]; then
+if [[ -n "$TEST_FILTER" ]; then
     PYTEST_CMD="$PYTEST_CMD -k $TEST_FILTER"
 fi
 
 # Add mode flags
-if [ "$MODE" = "headed" ]; then
+if [[ "$MODE" = "headed" ]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
 fi
 
@@ -201,27 +205,27 @@ fi
 PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
 # Add live output for parallel execution (shows test names as they complete)
-if [ -n "$PARALLEL_WORKERS" ] || echo "$PYTEST_CMD" | grep -q "\-n"; then
+if [[ -n "$PARALLEL_WORKERS" ] || echo "$PYTEST_CMD" | grep -q "\-n"; then
     # For parallel: show which tests are running
     PYTEST_CMD="$PYTEST_CMD --dist=loadscope"
 fi
 
 # Display test configuration
 echo -e "${BLUE}📋 Test Configuration:${NC}"
-if [ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]; then
     echo -e "  Mode: ${GREEN}Debug (visible, 1s slow-mo, DevTools)${NC}"
-elif [ "$MODE" = "headed" ]; then
+elif [[ "$MODE" = "headed" ]; then
     echo -e "  Mode: ${GREEN}Watch (visible, 350ms slow-mo)${NC}"
 else
     echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
 fi
 echo -e "  Execution: ${GREEN}Parallel (auto-scaling to CPU cores)${NC}"
-if [ -n "$TEST_FILTER" ]; then
+if [[ -n "$TEST_FILTER" ]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else
     echo -e "  Filter: ${GREEN}All E2E tests${NC}"
 fi
-if [ "$SAVE_VIDEOS" = "1" ]; then
+if [[ "$SAVE_VIDEOS" = "1" ]; then
     echo -e "  Video Recording: ${GREEN}enabled${NC}"
 else
     echo -e "  Video Recording: ${GREEN}disabled${NC}"
@@ -238,17 +242,19 @@ cleanup() {
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
     # Kill server on E2E port (from LASSIE_DEFAULT_PORT_E2E env var)
-    local E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
-    local PIDS=$(lsof -ti:$E2E_PORT 2>/dev/null || true)
-    if [ -n "$PIDS" ]; then
-        for PID in $PIDS; do
-            echo -e "${BLUE}  Stopping E2E server (PID: $PID)${NC}"
-            kill $PID 2>/dev/null || kill -9 $PID 2>/dev/null || true
+    local e2e_port="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+    local pids
+    pids=$(lsof -ti:$e2e_port 2>/dev/null || true)
+    if [[ -n "$pids" ]]; then
+        for pid in $pids; do
+            echo -e "${BLUE}  Stopping E2E server (PID: $pid)${NC}"
+            kill $pid 2>/dev/null || kill -9 $pid 2>/dev/null || true
         done
         sleep 1
     fi
     
     echo -e "${GREEN}✅ Cleanup complete${NC}"
+    return 0
 }
 
 # Register cleanup on script exit
@@ -263,7 +269,7 @@ if $PYTEST_CMD; then
     
     # Show results location
     echo -e "${BLUE}📊 Test Results:${NC}"
-    if [ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]; then
         echo -e "  Videos: ${GREEN}test-results/videos/${NC}"
     fi
     echo ""
@@ -279,7 +285,7 @@ else
     
     # Show failure diagnostics
     echo -e "${YELLOW}📸 Check screenshots in test-results/screenshots/${NC}"
-    if [ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]; then
         echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
     fi
     echo -e "${YELLOW}📋 Server logs: ${GREEN}logs/test_server.log${NC}"

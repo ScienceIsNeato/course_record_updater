@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Require environment argument
-if [ -z "${1:-}" ]; then
+if [[ -z "${1:-}" ]; then
     echo -e "${RED}❌ Error: Environment argument required${NC}" >&2
     echo -e "${YELLOW}Usage: $0 <env>${NC}" >&2
     echo -e "${YELLOW}  <env> = dev | e2e${NC}" >&2
@@ -46,12 +46,12 @@ echo -e "${BLUE}=====================================================${NC}"
 SAVED_ENV="${ENV:-}"
 
 # Load environment configuration
-if [ -f ".envrc" ]; then
+if [[ -f ".envrc" ]; then
     # Local development: source .envrc (which sources .envrc.template)
     # shellcheck disable=SC1091
     source .envrc
     echo -e "${GREEN}✅ Loaded $APP_ENV environment from .envrc${NC}"
-elif [ -f ".envrc.template" ]; then
+elif [[ -f ".envrc.template" ]; then
     # CI environment: source template directly (secrets from GitHub Secrets)
     # shellcheck disable=SC1091
     source .envrc.template
@@ -62,13 +62,13 @@ else
 fi
 
 # Restore pre-set ENV (e.g., ENV="test" from run_uat.sh)
-if [ -n "$SAVED_ENV" ]; then
+if [[ -n "$SAVED_ENV" ]; then
     export ENV="$SAVED_ENV"
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
 fi
 
 # For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
-if [ "$APP_ENV" = "e2e" ] || [ "$APP_ENV" = "uat" ]; then
+if [[ "$APP_ENV" = "e2e" ]] || [[ "$APP_ENV" = "uat" ]; then
     unset EMAIL_PROVIDER
     echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for E2E (will auto-select Ethereal)${NC}"
 fi
@@ -97,37 +97,38 @@ echo -e "${BLUE}🔧 Using database: ${DB_PATH}${NC}"
 echo "SQLite database located at: ${DB_PATH}" > logs/database_location.txt
 
 claim_port() {
-    local PORT=$1
-    if lsof -i :$PORT > /dev/null 2>&1; then
-        echo -e "${YELLOW}⚠️  Port $PORT occupied; reclaiming...${NC}"
-        local PIDS
-        PIDS=$(lsof -ti :$PORT || true)
-        for PID in $PIDS; do
-            echo -e "${BLUE}🔄 Terminating process on port $PORT (PID: $PID)${NC}"
-            kill "$PID" 2>/dev/null || kill -9 "$PID" 2>/dev/null || true
+    local port=$1
+    if lsof -i :$port > /dev/null 2>&1; then
+        echo -e "${YELLOW}⚠️  Port $port occupied; reclaiming...${NC}"
+        local pids
+        pids=$(lsof -ti :$port || true)
+        for pid in $pids; do
+            echo -e "${BLUE}🔄 Terminating process on port $port (PID: $pid)${NC}"
+            kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || true
         done
         sleep 1
     fi
+    return 0
 }
 
 start_flask_app() {
-    local PORT=$1
+    local port=$1
     
     # Determine log file based on environment
-    local LOG_FILE="logs/server.log"
+    local log_file="logs/server.log"
     case "$APP_ENV" in
         e2e|uat)
-            LOG_FILE="logs/test_server.log"
+            log_file="logs/test_server.log"
             ;;
         dev|*)
-            LOG_FILE="logs/server.log"
+            log_file="logs/server.log"
             ;;
     esac
 
-    echo -e "${BLUE}🌐 Starting Flask app on port $PORT...${NC}"
-    echo -e "${BLUE}📋 Server logs: ${LOG_FILE}${NC}"
+    echo -e "${BLUE}🌐 Starting Flask app on port $port...${NC}"
+    echo -e "${BLUE}📋 Server logs: ${log_file}${NC}"
 
-    if [ -d "venv" ]; then
+    if [[ -d "venv" ]]; then
         echo -e "${BLUE}📦 Activating virtual environment...${NC}"
         # shellcheck disable=SC1091
         source venv/bin/activate
@@ -135,13 +136,7 @@ start_flask_app() {
 
     # Export environment variables for Flask app
     # Note: Must re-export with value assignment for subprocess inheritance
-    # Export PORT so Flask app.py uses the correct port regardless of environment
-    export PORT="$PORT"
-    # Only export DEV default port if we're actually in DEV environment
-    if [ "$ENV" = "dev" ] || [ "$APP_ENV" = "development" ]; then
-        export LASSIE_DEFAULT_PORT_DEV="$PORT"
-    fi
-    export PYTHONUNBUFFERED=1
+    export PORT="$port"
     export DATABASE_URL="$DATABASE_URL"
     export BASE_URL="$BASE_URL"
     export ENV="$ENV"
@@ -162,52 +157,53 @@ start_flask_app() {
     
     # Start Flask app
     # Explicitly pass DATABASE_URL in the command to ensure subprocess gets it
-    DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$LOG_FILE" 2>&1 &
-    FLASK_PID=$!
+    DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$log_file" 2>&1 &
+    local flask_pid=$!
     sleep 2
 
-    if ! kill -0 $FLASK_PID 2>/dev/null; then
+    if ! kill -0 $flask_pid 2>/dev/null; then
         echo -e "${RED}❌ Flask app failed to start${NC}" >&2
-        echo -e "${RED}❌ Check ${LOG_FILE} for details${NC}" >&2
+        echo -e "${RED}❌ Check ${log_file} for details${NC}" >&2
         return 1
     fi
 
     for _ in {1..10}; do
-        if curl -s "http://localhost:$PORT" > /dev/null 2>&1; then
-            echo -e "${GREEN}✅ Flask app started successfully on port $PORT${NC}"
-            echo -e "${GREEN}📱 Access at http://localhost:$PORT${NC}"
+        if curl -s "http://localhost:$port" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ Flask app started successfully on port $port${NC}"
+            echo -e "${GREEN}📱 Access at http://localhost:$port${NC}"
             echo -e "${GREEN}🗄️  SQLite database at ${DB_PATH}${NC}"
-            echo -e "${BLUE}📋 Server logs: ${LOG_FILE}${NC}"
+            echo -e "${BLUE}📋 Server logs: ${log_file}${NC}"
             echo -e "${BLUE}📋 Use './scripts/monitor_logs.sh' to monitor server output${NC}"
             return 0
         fi
         sleep 1
     done
 
-    echo -e "${RED}❌ Flask app started but is not responding on port $PORT${NC}" >&2
-    echo -e "${RED}❌ Check ${LOG_FILE} for details${NC}" >&2
+    echo -e "${RED}❌ Flask app started but is not responding on port $port${NC}" >&2
+    echo -e "${RED}❌ Check ${log_file} for details${NC}" >&2
     return 1
 }
 
 main() {
     # Determine port based on environment
-    local PORT
+    local port
     case "$APP_ENV" in
         dev)
-            PORT="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            port="${LASSIE_DEFAULT_PORT_DEV:-3001}"
             ;;
         e2e|uat)
-            PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+            port="${LASSIE_DEFAULT_PORT_E2E:-3002}"
             ;;
         *)
             # Default to dev port
-            PORT="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            port="${LASSIE_DEFAULT_PORT_DEV:-3001}"
             ;;
     esac
     
-    echo -e "${BLUE}🌐 Starting Flask app on port $PORT...${NC}"
-    claim_port "$PORT"
-    start_flask_app "$PORT"
+    echo -e "${BLUE}🌐 Starting Flask app on port $port...${NC}"
+    claim_port "$port"
+    start_flask_app "$port"
+    return $?
 }
 
 main "$@"
