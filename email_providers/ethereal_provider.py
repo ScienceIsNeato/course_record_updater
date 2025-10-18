@@ -265,6 +265,56 @@ class EtherealProvider(EmailProvider):
             logger.debug(f"[Ethereal Provider] Error parsing email: {e}")
             return None
     
+    def _validate_imap_read_request(self, recipient_email: str) -> bool:
+        """Validate IMAP read request and log errors if invalid"""
+        if not self.validate_configuration():
+            logger.error("[Ethereal Provider] Provider not properly configured for IMAP")
+            return False
+        
+        if not (self._imap_host and self._imap_port and self._username and self._password):
+            logger.error("[Ethereal Provider] Missing IMAP configuration")
+            return False
+        
+        if recipient_email.lower() != self._username.lower():
+            logger.warning(
+                f"[Ethereal Provider] Can only read emails for configured account "
+                f"({self._username}), not {recipient_email}"
+            )
+            return False
+        
+        return True
+    
+    def _search_emails_once(
+        self, 
+        subject_substring: Optional[str], 
+        unique_identifier: Optional[str]
+    ) -> Optional[Dict[str, Any]]:
+        """Perform a single IMAP search iteration"""
+        try:
+            mail = self._connect_to_imap()
+            if not mail:
+                return None
+            
+            # Search for all emails
+            _, message_numbers = mail.search(None, "ALL")
+            
+            # Process emails in reverse order (newest first)
+            for num in reversed(message_numbers[0].split()):
+                result = self._try_parse_email(num, mail, subject_substring, unique_identifier)
+                if result:
+                    mail.close()
+                    mail.logout()
+                    return result
+            
+            # No match found, close connection
+            mail.close()
+            mail.logout()
+            
+        except Exception as e:
+            logger.debug(f"[Ethereal Provider] IMAP search iteration error: {e}")
+        
+        return None
+    
     def read_email(
         self,
         recipient_email: str,
@@ -288,20 +338,7 @@ class EtherealProvider(EmailProvider):
             Email dictionary if found, None otherwise
             Keys: subject, from, to, body, html_body
         """
-        if not self.validate_configuration():
-            logger.error("[Ethereal Provider] Provider not properly configured for IMAP")
-            return None
-        
-        # Type guards for configuration
-        if not (self._imap_host and self._imap_port and self._username and self._password):
-            logger.error("[Ethereal Provider] Missing IMAP configuration")
-            return None
-        
-        if recipient_email.lower() != self._username.lower():
-            logger.warning(
-                f"[Ethereal Provider] Can only read emails for configured account "
-                f"({self._username}), not {recipient_email}"
-            )
+        if not self._validate_imap_read_request(recipient_email):
             return None
         
         logger.info(
@@ -313,29 +350,9 @@ class EtherealProvider(EmailProvider):
         poll_interval = 2
         
         while time.time() - start_time < timeout:
-            try:
-                mail = self._connect_to_imap()
-                if not mail:
-                    time.sleep(poll_interval)
-                    continue
-                
-                # Search for all emails
-                _, message_numbers = mail.search(None, "ALL")
-                
-                # Process emails in reverse order (newest first)
-                for num in reversed(message_numbers[0].split()):
-                    result = self._try_parse_email(num, mail, subject_substring, unique_identifier)
-                    if result:
-                        mail.close()
-                        mail.logout()
-                        return result
-                
-                # No match found, close and wait
-                mail.close()
-                mail.logout()
-                
-            except Exception as e:
-                logger.debug(f"[Ethereal Provider] IMAP search iteration error: {e}")
+            result = self._search_emails_once(subject_substring, unique_identifier)
+            if result:
+                return result
             
             # Wait before next poll
             elapsed = time.time() - start_time

@@ -36,10 +36,10 @@ describe('BulkReminderManager', () => {
                 </div>
                 <div id="reminderStep2" style="display: none;">
                     <div class="progress">
-                        <div id="reminderProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" aria-valuenow="0" style="width: 0%">
+                        <progress id="reminderProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             value="0" max="100">
                             <span id="reminderProgressText">0%</span>
-                        </div>
+                        </progress>
                     </div>
                     <div id="reminderStatusMessages"></div>
                     <div>
@@ -446,7 +446,7 @@ describe('BulkReminderManager', () => {
 
             manager.updateProgress(job);
 
-            expect(document.getElementById('reminderProgressBar').style.width).toBe('75%');
+            expect(document.getElementById('reminderProgressBar').value).toBe(75);
             expect(document.getElementById('reminderProgressText').textContent).toBe('75%');
             expect(document.getElementById('reminderSentCount').textContent).toBe('15');
             expect(document.getElementById('reminderFailedCount').textContent).toBe('2');
@@ -608,7 +608,7 @@ describe('BulkReminderManager', () => {
         test('should reset progress view', () => {
             manager.resetModal();
 
-            expect(document.getElementById('reminderProgressBar').style.width).toBe('0%');
+            expect(document.getElementById('reminderProgressBar').value).toBe(0);
             expect(document.getElementById('reminderSentCount').textContent).toBe('0');
             expect(document.getElementById('reminderStatusMessages').innerHTML).toBe('');
             expect(document.getElementById('reminderComplete').style.display).toBe('none');

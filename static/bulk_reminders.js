@@ -416,8 +416,7 @@ class BulkReminderManager {
     const progressText = document.getElementById('reminderProgressText');
 
     if (progressBar && progressText) {
-      progressBar.style.width = `${percentage}%`;
-      progressBar.setAttribute('aria-valuenow', percentage);
+      progressBar.value = percentage;
       progressText.textContent = `${percentage}%`;
     }
 
@@ -580,7 +579,7 @@ class BulkReminderManager {
     document.getElementById('messageCharCount').textContent = '0';
 
     // Reset progress view
-    document.getElementById('reminderProgressBar').style.width = '0%';
+    document.getElementById('reminderProgressBar').value = 0;
     document.getElementById('reminderProgressText').textContent = '0%';
     document.getElementById('reminderSentCount').textContent = '0';
     document.getElementById('reminderFailedCount').textContent = '0';
