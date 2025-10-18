@@ -853,7 +853,7 @@ if [[ "$RUN_SONAR" == "true" ]]; then
         if sonar-scanner \
           -Dsonar.python.coverage.reportPaths=coverage.xml \
           -Dsonar.python.xunit.reportPath=test-results.xml \
-          -Dsonar.qualitygate.wait=false; then
+          -Dsonar.qualitygate.wait=true; then
           echo "✅ SonarCloud scanner completed successfully"
           
           # Now check the quality gate status
