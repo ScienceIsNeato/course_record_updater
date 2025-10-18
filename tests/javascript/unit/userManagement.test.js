@@ -148,7 +148,7 @@ describe('User Management - Invite User Modal', () => {
     });
 
     describe('Form Submission - API Call', () => {
-        test('should POST invitation data to /api/invitations on successful form submit', async () => {
+        test('should POST invitation data to /api/auth/invite on successful form submit', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ success: true, message: 'Invitation sent' })
@@ -173,7 +173,7 @@ describe('User Management - Invite User Modal', () => {
 
             // Verify fetch was called
             expect(mockFetch).toHaveBeenCalledWith(
-                '/api/invitations',
+                '/api/auth/invite',
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({

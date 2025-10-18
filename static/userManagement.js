@@ -70,7 +70,7 @@ function initializeInviteUserModal() {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
       // Make API request
-      const response = await fetch('/api/invitations', {
+      const response = await fetch('/api/auth/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

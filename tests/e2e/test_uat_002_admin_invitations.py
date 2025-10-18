@@ -155,20 +155,15 @@ class TestUAT002AdminInvitationsAndMultiRole:
         admin_page.click('button:has-text("Invite User")')
 
         # Wait for invite modal to appear
-        admin_page.wait_for_selector("#inviteModal", state="visible", timeout=5000)
+        admin_page.wait_for_selector("#inviteUserModal", state="visible", timeout=5000)
 
         # Fill invitation form
-        admin_page.fill('input[name="email"]', self.INSTRUCTOR_EMAIL)
-        admin_page.select_option('select[name="role"]', "instructor")
-        admin_page.fill('textarea[name="personal_message"]', self.PERSONAL_MESSAGE)
+        admin_page.fill("#inviteEmail", self.INSTRUCTOR_EMAIL)
+        admin_page.select_option("#inviteRole", "instructor")
+        admin_page.fill("#inviteMessage", self.PERSONAL_MESSAGE)
 
-        # Select institution and program (assume first options)
-        admin_page.select_option('select[name="institution_id"]', index=0)
-        admin_page.wait_for_timeout(500)  # Wait for program dropdown to populate
-        admin_page.select_option('select[name="program_id"]', index=0)
-
-        # Submit invitation
-        admin_page.click('#inviteModal button[type="submit"]')
+        # Submit invitation (form ID: inviteUserForm)
+        admin_page.click('#inviteUserForm button[type="submit"]')
 
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_be_visible(timeout=5000)
@@ -291,24 +286,19 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("=" * 70)
 
         # Switch back to admin page
-        admin_page.goto(f"{BASE_URL}/users")
+        admin_page.goto(f"{BASE_URL}/admin/users")
 
         # Click "Invite User" button
         admin_page.click('button:has-text("Invite User")')
-        admin_page.wait_for_selector("#inviteModal", state="visible")
+        admin_page.wait_for_selector("#inviteUserModal", state="visible")
 
         # Fill invitation form for program admin
-        admin_page.fill('input[name="email"]', self.PROGRAM_ADMIN_EMAIL)
-        admin_page.select_option('select[name="role"]', "program_admin")
-        admin_page.fill('textarea[name="personal_message"]', self.PERSONAL_MESSAGE)
-
-        # Select institution and program
-        admin_page.select_option('select[name="institution_id"]', index=0)
-        admin_page.wait_for_timeout(500)
-        admin_page.select_option('select[name="program_id"]', index=0)
+        admin_page.fill("#inviteEmail", self.PROGRAM_ADMIN_EMAIL)
+        admin_page.select_option("#inviteRole", "program_admin")
+        admin_page.fill("#inviteMessage", self.PERSONAL_MESSAGE)
 
         # Submit invitation
-        admin_page.click('#inviteModal button[type="submit"]')
+        admin_page.click('#inviteUserForm button[type="submit"]')
 
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_contain_text(
@@ -406,7 +396,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("=" * 70)
 
         # Navigate to user management (program admin should have limited access)
-        page.goto(f"{BASE_URL}/users")
+        page.goto(f"{BASE_URL}/admin/users")
 
         # If program admin tries to invite to other program, should be restricted
         # This will be tested more thoroughly in UAT-005
