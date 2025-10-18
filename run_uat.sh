@@ -104,26 +104,26 @@ echo -e "${BLUE}============================================${NC}"
 echo ""
 
 # Check if virtual environment is activated (skip in CI where it's already set up)
-if [[ -z "$VIRTUAL_ENV" ]] ] && [ ] && [  [[ "${CI:-false}" != "true" ]; then
+if [[ -z "$VIRTUAL_ENV" ]] && [[ "${CI:-false}" != "true" ]]; then
     echo -e "${YELLOW}⚠️  Virtual environment not active, activating...${NC}"
-    if [[ -f "venv/bin/activate" ]; then
+    if [[ -f "venv/bin/activate" ]]; then
         source venv/bin/activate
     else
         echo -e "${RED}❌ Virtual environment not found at venv/bin/activate${NC}"
         echo -e "${YELLOW}💡 Run: python -m venv venv && source venv/bin/activate && pip install -r requirements-dev.txt${NC}"
         exit 1
     fi
-elif [ "${CI:-false}" = "true" ]; then
+elif [[ "${CI:-false}" = "true" ]]; then
     echo -e "${BLUE}🔵 CI environment detected, using pre-configured Python environment${NC}"
 fi
 
 # Load environment variables from .envrc (skip in CI if credentials already set)
-if [[ -f ".envrc" ]; then
+if [[ -f ".envrc" ]]; then
     source .envrc
-elif [[ -f ".envrc.template" ]] ] && [ ] && [  [[ -z "$ETHEREAL_USER" ]; then
+elif [[ -f ".envrc.template" ]] && [[ -z "$ETHEREAL_USER" ]]; then
     # Only source template if Ethereal credentials not already set (i.e., not in CI with secrets)
     source .envrc.template
-elif [ "${CI:-false}" = "true" ]; then
+elif [[ "${CI:-false}" = "true" ]]; then
     echo -e "${BLUE}🔵 CI detected with credentials already set, skipping .envrc.template${NC}"
 fi
 
@@ -168,11 +168,11 @@ echo ""
 export SAVE_VIDEOS="${SAVE_VIDEOS}"
 
 # Set debug/headless flags for Playwright
-if [[ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]]; then
     export PYTEST_DEBUG="1"
     export HEADLESS="0"
 else
-    if [[ "$MODE" = "headed" ]; then
+    if [[ "$MODE" = "$MODE_HEADED" ]]; then
         export HEADLESS="0"
     else
         # Enforce true headless when not in watch/debug
@@ -187,17 +187,17 @@ export DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
 PYTEST_CMD="pytest tests/e2e/"
 
 # Add parallel execution if specified
-if [[ -n "$PARALLEL_WORKERS" ]; then
+if [[ -n "$PARALLEL_WORKERS" ]]; then
     PYTEST_CMD="$PYTEST_CMD -n $PARALLEL_WORKERS"
 fi
 
 # Add test filter if specified
-if [[ -n "$TEST_FILTER" ]; then
+if [[ -n "$TEST_FILTER" ]]; then
     PYTEST_CMD="$PYTEST_CMD -k $TEST_FILTER"
 fi
 
 # Add mode flags
-if [[ "$MODE" = "headed" ]; then
+if [[ "$MODE" = "$MODE_HEADED" ]]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
 fi
 
@@ -205,27 +205,27 @@ fi
 PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
 # Add live output for parallel execution (shows test names as they complete)
-if [[ -n "$PARALLEL_WORKERS" ] || echo "$PYTEST_CMD" | grep -q "\-n"; then
+if [[ -n "$PARALLEL_WORKERS" ]] || echo "$PYTEST_CMD" | grep -q "\-n"; then
     # For parallel: show which tests are running
     PYTEST_CMD="$PYTEST_CMD --dist=loadscope"
 fi
 
 # Display test configuration
 echo -e "${BLUE}📋 Test Configuration:${NC}"
-if [[ "$DEBUG_MODE" = "1" ]; then
+if [[ "$DEBUG_MODE" = "1" ]]; then
     echo -e "  Mode: ${GREEN}Debug (visible, 1s slow-mo, DevTools)${NC}"
-elif [[ "$MODE" = "headed" ]; then
+elif [[ "$MODE" = "$MODE_HEADED" ]]; then
     echo -e "  Mode: ${GREEN}Watch (visible, 350ms slow-mo)${NC}"
 else
     echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
 fi
 echo -e "  Execution: ${GREEN}Parallel (auto-scaling to CPU cores)${NC}"
-if [[ -n "$TEST_FILTER" ]; then
+if [[ -n "$TEST_FILTER" ]]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else
     echo -e "  Filter: ${GREEN}All E2E tests${NC}"
 fi
-if [[ "$SAVE_VIDEOS" = "1" ]; then
+if [[ "$SAVE_VIDEOS" = "1" ]]; then
     echo -e "  Video Recording: ${GREEN}enabled${NC}"
 else
     echo -e "  Video Recording: ${GREEN}disabled${NC}"
@@ -269,7 +269,7 @@ if $PYTEST_CMD; then
     
     # Show results location
     echo -e "${BLUE}📊 Test Results:${NC}"
-    if [[ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]]; then
         echo -e "  Videos: ${GREEN}test-results/videos/${NC}"
     fi
     echo ""
@@ -285,7 +285,7 @@ else
     
     # Show failure diagnostics
     echo -e "${YELLOW}📸 Check screenshots in test-results/screenshots/${NC}"
-    if [[ "$SAVE_VIDEOS" = "1" ]; then
+    if [[ "$SAVE_VIDEOS" = "1" ]]; then
         echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
     fi
     echo -e "${YELLOW}📋 Server logs: ${GREEN}logs/test_server.log${NC}"
