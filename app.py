@@ -117,6 +117,17 @@ def register():
     return render_template("auth/register.html")
 
 
+@app.route("/register/accept/<token>")
+def register_accept_invitation(token):
+    """Accept invitation and complete registration"""
+    # Redirect to dashboard if already authenticated
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    # Token will be validated by frontend via API call to /api/auth/invitation-status/<token>
+    return render_template("auth/register_invitation.html", invitation_token=token)
+
+
 @app.route("/forgot-password")
 def forgot_password():
     """Forgot password page"""
