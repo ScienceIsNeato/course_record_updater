@@ -84,9 +84,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
         html_body = email_content.get("html_body", "")
         if html_body:
             # Look for registration link with token
-            # Pattern: http://localhost:PORT/register?token=XXXXX
+            # Pattern: http://localhost:PORT/register/accept/TOKEN (path param)
+            # or http://localhost:PORT/register?token=TOKEN (query param)
             match = re.search(
-                r'href=["\']([^"\']*\/register\?token=[^"\']+)["\']',
+                r'href=["\']([^"\']*\/register(?:/accept/[^"\']+|\?token=[^"\']+))["\']',
                 html_body,
                 re.IGNORECASE,
             )
@@ -97,7 +98,9 @@ class TestUAT002AdminInvitationsAndMultiRole:
         body = email_content.get("body", "")
         if body:
             match = re.search(
-                r"(https?://[^\s]+/register\?token=[^\s]+)", body, re.IGNORECASE
+                r"(https?://[^\s]+/register(?:/accept/[^\s]+|\?token=[^\s]+))",
+                body,
+                re.IGNORECASE,
             )
             if match:
                 return match.group(1)
