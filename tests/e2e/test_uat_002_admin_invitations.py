@@ -183,7 +183,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         invitation_email = wait_for_email_via_imap(
             recipient_email=self.INSTRUCTOR_EMAIL,
-            subject_substring="invitation",
+            subject_substring="invit",  # Matches both "invited" and "invitation"
             unique_identifier=None,
             timeout=30,
         )
@@ -317,7 +317,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         pa_invitation_email = wait_for_email_via_imap(
             recipient_email=self.PROGRAM_ADMIN_EMAIL,
-            subject_substring="invitation",
+            subject_substring="invit",  # Matches both "invited" and "invitation"
             timeout=30,
         )
 
