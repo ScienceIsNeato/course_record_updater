@@ -8,6 +8,52 @@
  * - API communication with CSRF protection
  */
 
+/**
+ * Show Bootstrap alert banner at the top of the page
+ * @param {string} type - 'success', 'danger', 'warning', or 'info'
+ * @param {string} message - Message to display
+ */
+function showAlert(type, message) {
+  // Allow test mocking by checking global first
+  // eslint-disable-next-line no-undef
+  if (typeof global !== 'undefined' && global.showAlert && global.showAlert !== showAlert) {
+    // eslint-disable-next-line no-undef
+    global.showAlert(type, message);
+    return;
+  }
+
+  // Find or create alert container
+  let container = document.querySelector('.alert-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'alert-container';
+    const main = document.querySelector('main') || document.querySelector('.container');
+    if (main) {
+      main.insertBefore(container, main.firstChild);
+    } else {
+      document.body.insertBefore(container, document.body.firstChild);
+    }
+  }
+
+  // Create alert element
+  const alert = document.createElement('div');
+  alert.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+  alert.setAttribute('role', 'alert');
+  alert.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+
+  // Add to container
+  container.appendChild(alert);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    alert.classList.remove('show');
+    setTimeout(() => alert.remove(), 150);
+  }, 5000);
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   initializeInviteUserModal();
@@ -92,8 +138,8 @@ function initializeInviteUserModal() {
         form.reset();
         programSelection.style.display = 'none';
 
-        // Show success message (optional - could use a toast notification)
-        alert(result.message || 'Invitation sent successfully!');
+        // Show success message using Bootstrap alert
+        showAlert('success', result.message || 'Invitation sent successfully!');
 
         // Reload user list if function exists
         if (typeof window.loadUsers === 'function') {
@@ -102,11 +148,11 @@ function initializeInviteUserModal() {
       } else {
         // Handle API error
         const error = await response.json();
-        alert(`Failed to send invitation: ${error.error || 'Unknown error'}`);
+        showAlert('danger', `Failed to send invitation: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error sending invitation:', error); // eslint-disable-line no-console
-      alert('Failed to send invitation. Please check your connection and try again.');
+      showAlert('danger', 'Failed to send invitation. Please check your connection and try again.');
     } finally {
       // Restore button state
       btnText.classList.remove('d-none');
@@ -175,7 +221,7 @@ function initializeEditUserModal() {
         }
 
         // Show success message
-        alert(result.message || 'User updated successfully!');
+        showAlert('success', result.message || 'User updated successfully!');
 
         // Reload user list
         if (typeof window.loadUsers === 'function') {
@@ -183,11 +229,11 @@ function initializeEditUserModal() {
         }
       } else {
         const error = await response.json();
-        alert(`Failed to update user: ${error.error || 'Unknown error'}`);
+        showAlert('danger', `Failed to update user: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating user:', error); // eslint-disable-line no-console
-      alert('Failed to update user. Please check your connection and try again.');
+      showAlert('danger', 'Failed to update user. Please check your connection and try again.');
     } finally {
       // Restore button state
       btnText.classList.remove('d-none');
