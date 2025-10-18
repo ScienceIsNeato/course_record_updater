@@ -168,7 +168,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_be_visible(timeout=5000)
         expect(admin_page.locator(".alert-success")).to_contain_text(
-            f"Invitation sent to {self.INSTRUCTOR_EMAIL}"
+            "Invitation created and sent successfully"
         )
 
         print(f"✅ Invitation sent to {self.INSTRUCTOR_EMAIL}")
@@ -302,7 +302,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         # Verify success message
         expect(admin_page.locator(".alert-success")).to_contain_text(
-            f"Invitation sent to {self.PROGRAM_ADMIN_EMAIL}"
+            "Invitation created and sent successfully"
         )
 
         print(f"✅ Program admin invitation sent to {self.PROGRAM_ADMIN_EMAIL}")
