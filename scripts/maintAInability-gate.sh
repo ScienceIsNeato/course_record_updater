@@ -834,10 +834,11 @@ if [[ "$RUN_SONAR" == "true" ]]; then
         
         # Run JavaScript tests with coverage to generate lcov.info
         echo "🔧 Generating JavaScript coverage data..."
-        if npm run test:coverage -- --silent; then
+        if npm run test:coverage; then
           echo "✅ JavaScript coverage data generated successfully"
         else
-          echo "⚠️  JavaScript coverage generation had issues, continuing with Python coverage only"
+          echo "❌ JavaScript coverage generation FAILED"
+          echo "⚠️  Continuing with Python coverage only (SonarCloud coverage will be incomplete)"
         fi
         
         # Run SonarCloud scanner with fresh data
