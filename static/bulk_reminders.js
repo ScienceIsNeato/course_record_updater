@@ -616,10 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Global function to open the modal (called from dashboard buttons)
 // eslint-disable-next-line no-unused-vars
 function openBulkReminderModal() {
-  if (bulkReminderManager) {
-    bulkReminderManager.show();
+  // In test environment, check global first
+  const manager =
+    // eslint-disable-next-line no-undef
+    (typeof global !== 'undefined' && global.bulkReminderManager) || bulkReminderManager;
+  if (manager) {
+    manager.show();
   } else {
     // eslint-disable-next-line no-console
     console.error('[BulkReminders] Manager not initialized');
   }
+}
+
+// Export for testing (Node.js environment)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { BulkReminderManager, openBulkReminderModal };
 }
