@@ -73,7 +73,7 @@
 ### Billing & Subscription
 - [ ] View current subscription details
 - [ ] Update payment methods
-- [ ] Download invoices and remockupts
+- [ ] Download invoices and receipts
 - [ ] Upgrade/downgrade subscription plans
 - [ ] Pause service temporarily
 - [ ] View usage statistics and billing history
