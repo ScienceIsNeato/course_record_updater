@@ -53,8 +53,8 @@ async function validateInvitation(token) {
     }
 
     // Populate form with invitation details
-    emailInput.value = data.email || '';
-    roleInput.value = formatRole(data.role || '');
+    emailInput.value = data.invitee_email || '';
+    roleInput.value = formatRole(data.invitee_role || '');
 
     // Show form, hide loading
     loadingDiv.classList.add('d-none');
