@@ -39,6 +39,17 @@ if (document.readyState === 'loading') {
 function initializePage() {
   const currentPath = window.location.pathname;
 
+  // Check for URL parameter messages (e.g., ?message=Account+created+successfully)
+  const urlParams = new URLSearchParams(window.location.search);
+  const messageParam = urlParams.get('message');
+  if (messageParam) {
+    showMessage(decodeURIComponent(messageParam), 'success');
+    // Clean up URL without reloading
+    const url = new URL(window.location);
+    url.searchParams.delete('message');
+    window.history.replaceState({}, '', url);
+  }
+
   if (currentPath.includes('/login')) {
     initializeLoginForm();
   } else if (currentPath.includes('/register')) {

@@ -36,6 +36,33 @@ app.config["WTF_CSRF_ENABLED"] = csrf_enabled
 csrf = CSRFProtect(app)
 
 
+# CSRF error handler - return JSON for API routes, HTML for others
+from flask_wtf.csrf import CSRFError
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    """Handle CSRF validation errors"""
+    from flask import jsonify, request
+
+    # Check if this is an API request
+    if request.path.startswith("/api/"):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "CSRF validation failed. Please refresh the page and try again.",
+                }
+            ),
+            400,
+        )
+    # For non-API routes, return simple HTML error
+    return (
+        "<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
+        400,
+    )
+
+
 # Make CSRF token available in templates
 @app.context_processor
 def inject_csrf_token():

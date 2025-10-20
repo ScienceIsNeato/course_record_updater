@@ -20,6 +20,17 @@
                 <p class="auth-subtitle">Set up your account</p>
             </div>
 
+            <!-- Invitation Details (populated after validation) -->
+            <div id="invitationDetails" class="alert alert-info d-none" role="status">
+                <h6 class="alert-heading"><i class="fas fa-envelope-open-text me-2"></i>Invitation Details</h6>
+                <p class="mb-1"><strong>From:</strong> <span id="inviterName"></span></p>
+                <p class="mb-1"><strong>Institution:</strong> <span id="institutionName"></span></p>
+                <div id="personalMessageSection" class="d-none mt-2 pt-2 border-top">
+                    <p class="mb-1"><strong>Personal Message:</strong></p>
+                    <p class="mb-0 fst-italic" id="personalMessage"></p>
+                </div>
+            </div>
+
             <!-- Status Messages -->
             <div id="statusMessage" class="alert d-none" role="alert"></div>
 

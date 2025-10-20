@@ -129,7 +129,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
     def test_complete_admin_invitation_workflow(
         self,
         authenticated_institution_admin_page: Page,
-        page: Page,
+        browser,
     ):
         """
         UAT-002: Complete admin invitation and multi-role user management workflow.
@@ -143,6 +143,11 @@ class TestUAT002AdminInvitationsAndMultiRole:
         6. Program admin can log in and see program admin features
         """
         admin_page = authenticated_institution_admin_page
+
+        # Create a completely separate browser context for the invited user to avoid session conflicts
+        # This ensures cookies and storage are isolated between admin and invited user
+        invited_user_context = browser.new_context()
+        page = invited_user_context.new_page()
 
         # ==================================================================
         # STEP 1: Admin Invites Instructor
@@ -169,11 +174,11 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Submit invitation (form ID: inviteUserForm)
         admin_page.click('#inviteUserForm button[type="submit"]')
 
-        # Verify success message
-        expect(admin_page.locator(".alert-success")).to_be_visible(timeout=5000)
-        expect(admin_page.locator(".alert-success")).to_contain_text(
-            INVITATION_CREATED_AND_SENT_MSG
-        )
+        # Verify success message (use first to avoid strict mode violation with multiple alerts)
+        success_alert = admin_page.locator(
+            f".alert-success:has-text('{INVITATION_CREATED_AND_SENT_MSG}')"
+        ).first
+        expect(success_alert).to_be_visible(timeout=5000)
 
         print(f"✅ Invitation sent to {self.INSTRUCTOR_EMAIL}")
 
@@ -232,13 +237,15 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Verify registration form displayed
         expect(page.locator('h2:has-text("Complete Registration")')).to_be_visible()
 
-        # Verify email field pre-filled and disabled
+        # Verify email field pre-filled and readonly (not disabled, for accessibility)
         email_input = page.locator('input[name="email"]')
         expect(email_input).to_have_value(self.INSTRUCTOR_EMAIL)
-        expect(email_input).to_be_disabled()
+        expect(email_input).to_have_attribute("readonly", "")
 
-        # Verify role displays as "Instructor"
-        expect(page.locator("text=/Role.*Instructor/i")).to_be_visible()
+        # Verify role field pre-filled with "Instructor" (formatted from "instructor")
+        role_input = page.locator('input[name="role"]')
+        expect(role_input).to_have_value("Instructor")
+        expect(role_input).to_have_attribute("readonly", "")
 
         # Complete registration form
         page.fill('input[name="first_name"]', self.INSTRUCTOR_FIRST_NAME)
@@ -249,11 +256,12 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Submit registration
         page.click('button[type="submit"]')
 
-        # Verify account created successfully
-        expect(page).to_have_url(f"{BASE_URL}/login", timeout=10000)
-        expect(page.locator(".alert-success")).to_contain_text(
-            "Account created successfully"
-        )
+        # Verify account created successfully and redirected to login
+        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=10000)
+        success_alert = page.locator(
+            ".alert-success:has-text('Account created successfully')"
+        ).first
+        expect(success_alert).to_be_visible(timeout=5000)
 
         print(
             f"✅ Registration completed for {self.INSTRUCTOR_FIRST_NAME} {self.INSTRUCTOR_LAST_NAME}"
@@ -278,12 +286,13 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("✅ Instructor logged in successfully")
         print("   Dashboard: Instructor view confirmed")
 
-        # Verify can see assigned courses section
-        expect(page.locator("text=/My Courses|Assigned Courses/i")).to_be_visible()
+        # Verify can see courses count (instructor-specific element)
+        expect(page.locator("#instructorCourseCount")).to_be_visible()
 
-        # Logout
-        page.click('a:has-text("Logout")')
-        expect(page).to_have_url(f"{BASE_URL}/login")
+        # Logout (open user dropdown menu first)
+        page.click("#userDropdown")
+        page.click('button:has-text("Logout")')
+        expect(page).to_have_url(f"{BASE_URL}/")
 
         # ==================================================================
         # STEP 5: Admin Invites Program Admin
@@ -292,25 +301,56 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("STEP 5: Admin invites program admin")
         print("=" * 70)
 
-        # Switch back to admin page
-        admin_page.goto(f"{BASE_URL}/admin/users")
+        # Verify admin page is still authenticated before navigating
+        # Check current page - might have been redirected or timed out
+        current_url = admin_page.url
+        print(f"   Admin page current URL before navigation: {current_url}")
 
-        # Click "Invite User" button
-        admin_page.click('button:has-text("Invite User")')
+        # Navigate to admin users page
+        admin_page.goto(f"{BASE_URL}/admin/users", wait_until="networkidle")
+
+        # Check if redirected to login (session expired)
+        if "login" in admin_page.url.lower():
+            raise AssertionError(
+                f"Admin session expired! Admin page was redirected to login page: {admin_page.url}"
+            )
+
+        # Verify admin is still logged in (check for user management heading)
+        expect(admin_page.locator("h1, h2")).to_contain_text(
+            "User Management", timeout=10000
+        )
+
+        # Wait for page to load and click "Invite User" button
+        invite_button = admin_page.locator('button:has-text("Invite User")').first
+        expect(invite_button).to_be_visible(timeout=10000)
+        invite_button.click()
         admin_page.wait_for_selector("#inviteUserModal", state="visible")
 
         # Fill invitation form for program admin
         admin_page.fill("#inviteEmail", self.PROGRAM_ADMIN_EMAIL)
         admin_page.select_option("#inviteRole", "program_admin")
+
+        # Wait for program selection to appear (shown when role is program_admin)
+        admin_page.wait_for_selector("#programSelection", state="visible", timeout=2000)
+
+        # Select at least one program (required for program_admin role)
+        # Get the first available program option
+        admin_page.locator("#invitePrograms option").first.wait_for(state="attached")
+        first_program_value = admin_page.locator(
+            "#invitePrograms option"
+        ).first.get_attribute("value")
+        admin_page.select_option("#invitePrograms", first_program_value)
+
         admin_page.fill("#inviteMessage", self.PERSONAL_MESSAGE)
 
         # Submit invitation
         admin_page.click('#inviteUserForm button[type="submit"]')
 
-        # Verify success message
-        expect(admin_page.locator(".alert-success")).to_contain_text(
-            INVITATION_CREATED_AND_SENT_MSG
-        )
+        # Verify success message (use first to avoid strict mode violation with multiple alerts)
+        success_alert = admin_page.locator(
+            f".alert-success:has-text('{INVITATION_CREATED_AND_SENT_MSG}')"
+        ).first
+        expect(success_alert).to_be_visible(timeout=5000)
 
         print(f"✅ Program admin invitation sent to {self.PROGRAM_ADMIN_EMAIL}")
 
@@ -355,8 +395,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
         page.goto(pa_invitation_link)
         expect(page).to_have_url(re.compile(r"/register/accept/"))
 
-        # Verify role displays as "Program Admin"
-        expect(page.locator("text=/Role.*Program Admin/i")).to_be_visible()
+        # Verify role displays as "Program Admin" in readonly input field
+        role_input = page.locator('input[name="role"]')
+        expect(role_input).to_have_value("Program Admin")
+        expect(role_input).to_have_attribute("readonly", "")
 
         # Complete registration
         page.fill('input[name="first_name"]', self.PROGRAM_ADMIN_FIRST_NAME)
@@ -367,10 +409,11 @@ class TestUAT002AdminInvitationsAndMultiRole:
         page.click('button[type="submit"]')
 
         # Verify account created
-        expect(page).to_have_url(f"{BASE_URL}/login", timeout=10000)
-        expect(page.locator(".alert-success")).to_contain_text(
-            "Account created successfully"
-        )
+        expect(page).to_have_url(re.compile(r"/login(\?.*)?$"), timeout=10000)
+        success_alert = page.locator(
+            ".alert-success:has-text('Account created successfully')"
+        ).first
+        expect(success_alert).to_be_visible(timeout=5000)
 
         print("✅ Program admin registration completed")
 
@@ -388,13 +431,14 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         # Verify redirected to program admin dashboard
         expect(page).to_have_url(f"{BASE_URL}/dashboard", timeout=10000)
-        expect(page.locator("h1, h2")).to_contain_text("Program Admin Dashboard")
+        expect(page.locator("h1, h2")).to_contain_text("Program Administration")
 
         print("✅ Program admin logged in successfully")
         print("   Dashboard: Program admin view confirmed")
 
-        # Verify can see "Send Reminders" button (admin privilege)
-        expect(page.locator('button:has-text("Send Reminders")')).to_be_visible()
+        # Verify can see "Send Reminders" button (program admin privilege)
+        # Program admins can send bulk reminders to their assigned programs
+        expect(page.locator('button:has-text("Send Reminders")').first).to_be_visible()
 
         print("✅ Program admin privileges confirmed (Send Reminders button visible)")
 
@@ -421,3 +465,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("✅ Role assignments: VERIFIED")
         print("✅ Dashboard views: VERIFIED")
         print("=" * 70)
+
+        # Cleanup: Close the separate browser context we created
+        page.close()
+        invited_user_context.close()

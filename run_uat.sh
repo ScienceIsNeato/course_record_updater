@@ -76,11 +76,12 @@ while [[ $# -gt 0 ]]; do
             echo "  $0                       # Run all tests (parallel auto-scaling, headless)"
             echo "  $0 --watch               # Watch tests run (parallel, visible, slow-mo)"
             echo "  $0 --debug               # Debug mode (parallel, visible, 1s steps, DevTools)"
-            echo "  $0 --test TC-IE-001      # Run specific test case (parallel)"
+            echo "  $0 --test TC-IE-001      # Run specific test case (serial, clearer output)"
             echo "  $0 --save-videos         # Record videos for debugging"
             echo ""
-            echo "Note: Tests ALWAYS run in parallel with auto-scaling to available CPU cores."
-            echo "      This provides ~3x speedup and is the production-ready configuration."
+            echo "Note: Smart execution mode based on test count:"
+            echo "      - Full test suite: parallel with auto-scaling to all CPU cores (~3x speedup)"
+            echo "      - Filtered tests: serial execution (1 worker, clearer output)"
             echo ""
             echo "Modes Explained:"
             echo "  Headless (default)   -> CI/fast execution, no browser window"
@@ -95,6 +96,14 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Smart worker allocation: disable parallel for filtered tests
+# When running a specific test filter, serial execution is clearer and faster
+if [[ -n "$TEST_FILTER" ]]; then
+    # For single/filtered tests: disable parallel execution
+    # This makes output clearer and is faster for small test counts
+    PARALLEL_WORKERS=""
+fi
 
 # Header
 echo ""
@@ -219,7 +228,13 @@ elif [[ "$MODE" = "$MODE_HEADED" ]]; then
 else
     echo -e "  Mode: ${GREEN}Headless (fast, no browser window)${NC}"
 fi
-echo -e "  Execution: ${GREEN}Parallel (auto-scaling to CPU cores)${NC}"
+if [[ -z "$PARALLEL_WORKERS" ]]; then
+    echo -e "  Execution: ${GREEN}Serial (single worker, clearer output)${NC}"
+elif [[ "$PARALLEL_WORKERS" = "auto" ]]; then
+    echo -e "  Execution: ${GREEN}Parallel (auto-scaling to all CPU cores)${NC}"
+else
+    echo -e "  Execution: ${GREEN}Parallel (max $PARALLEL_WORKERS workers)${NC}"
+fi
 if [[ -n "$TEST_FILTER" ]]; then
     echo -e "  Filter: ${GREEN}$TEST_FILTER${NC}"
 else
@@ -283,17 +298,24 @@ else
     echo -e "${RED}============================================${NC}"
     echo ""
     
-    # Show failure diagnostics
-    echo -e "${YELLOW}📸 Check screenshots in test-results/screenshots/${NC}"
+    # Show failure diagnostics with prominent paths
+    echo -e "${CYAN}📁 DEBUG ARTIFACTS:${NC}"
+    echo -e "   ${GREEN}Server logs:${NC}     logs/test_server.log"
+    echo -e "   ${GREEN}Screenshots:${NC}     test-results/screenshots/"
+    echo -e "   ${GREEN}Test output:${NC}     test-results/"
     if [[ "$SAVE_VIDEOS" = "1" ]]; then
-        echo -e "${YELLOW}🎥 Check videos in test-results/videos/${NC}"
+        echo -e "   ${GREEN}Videos:${NC}          test-results/videos/"
     fi
-    echo -e "${YELLOW}📋 Server logs: ${GREEN}logs/test_server.log${NC}"
     echo ""
-    echo -e "${YELLOW}Tip: Run with --watch to see failures in real-time:${NC}"
-    echo -e "  $0 --watch"
-    echo -e "${YELLOW}     Or with --save-videos to record execution for debugging:${NC}"
-    echo -e "  $0 --save-videos"
+    
+    # Show helpful commands
+    echo -e "${CYAN}🔍 HELPFUL COMMANDS:${NC}"
+    echo -e "   ${GREEN}View server log:${NC}  tail -100 logs/test_server.log"
+    echo -e "   ${GREEN}List screenshots:${NC} ls -lh test-results/screenshots/"
+    echo -e "   ${GREEN}Watch mode:${NC}       $0 --watch"
+    if [[ "$SAVE_VIDEOS" != "1" ]]; then
+        echo -e "   ${GREEN}Record videos:${NC}    $0 --save-videos"
+    fi
     echo ""
     
     exit $EXIT_CODE

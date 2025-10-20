@@ -56,6 +56,26 @@ async function validateInvitation(token) {
     emailInput.value = data.invitee_email || '';
     roleInput.value = formatRole(data.invitee_role || '');
 
+    // Populate invitation metadata
+    const invitationDetails = document.getElementById('invitationDetails');
+    const inviterNameEl = document.getElementById('inviterName');
+    const institutionNameEl = document.getElementById('institutionName');
+    const personalMessageEl = document.getElementById('personalMessage');
+    const personalMessageSection = document.getElementById('personalMessageSection');
+
+    // Display inviter and institution
+    inviterNameEl.textContent = data.inviter_name || data.inviter_email || 'A colleague';
+    institutionNameEl.textContent = data.institution_name || 'your institution';
+
+    // Display personal message if present
+    if (data.personal_message) {
+      personalMessageEl.textContent = data.personal_message;
+      personalMessageSection.classList.remove('d-none');
+    }
+
+    // Show invitation details
+    invitationDetails.classList.remove('d-none');
+
     // Show form, hide loading
     loadingDiv.classList.add('d-none');
     form.classList.remove('d-none');
@@ -106,10 +126,10 @@ async function acceptInvitation() {
     const data = await response.json();
 
     if (response.ok) {
-      showMessage('Account created successfully! Redirecting...', 'success');
-      // Redirect to dashboard after 1.5 seconds
+      showMessage('Account created successfully! Redirecting to login...', 'success');
+      // Redirect to login page with success message after 1.5 seconds
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        window.location.href = '/login?message=Account+created+successfully';
       }, 1500);
     } else {
       showMessage(data.error || 'Failed to create account', 'danger');

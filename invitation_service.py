@@ -89,6 +89,20 @@ class InvitationService:
                     f"Pending invitation already exists for {invitee_email}"
                 )
 
+            # Get inviter's full name for display
+            inviter = db.get_user_by_id(inviter_user_id)
+            inviter_name = (
+                f"{inviter['first_name']} {inviter['last_name']}"
+                if inviter and inviter.get("first_name")
+                else inviter_email
+            )
+
+            # Get institution name for display
+            institution = db.get_institution_by_id(institution_id)
+            institution_name = (
+                institution["name"] if institution else "Unknown Institution"
+            )
+
             # Generate secure invitation token
             invitation_token = secrets.token_urlsafe(32)
 
@@ -104,9 +118,12 @@ class InvitationService:
             )
 
             # Add additional fields needed by invitation service
+            # These are stored in the 'extras' JSON field for easy access
             invitation_data.update(
                 {
                     "inviter_email": inviter_email,
+                    "inviter_name": inviter_name,
+                    "institution_name": institution_name,
                     "program_ids": program_ids or [],
                     "token": invitation_token,  # Override the auto-generated token
                 }
@@ -145,19 +162,16 @@ class InvitationService:
             InvitationError: If email sending fails
         """
         try:
-            # Get institution details for email
-            institution = db.get_institution_by_id(invitation_data["institution_id"])
-            if not institution:
-                raise InvitationError("Institution not found")
-
-            # Send invitation email
+            # Send invitation email with inviter and institution information
             success = EmailService.send_invitation_email(
                 email=invitation_data["email"],
                 invitation_token=invitation_data["token"],
-                inviter_name=invitation_data[
-                    "inviter_email"
-                ],  # Use email as name for now
-                institution_name=institution["name"],
+                inviter_name=invitation_data.get(
+                    "inviter_name", invitation_data.get("inviter_email", "A colleague")
+                ),
+                institution_name=invitation_data.get(
+                    "institution_name", "your institution"
+                ),
                 role=invitation_data["role"],
                 personal_message=invitation_data.get("personal_message"),
             )
@@ -345,9 +359,9 @@ class InvitationService:
             invitation["id"],
             {
                 "status": "accepted",
-                "accepted_at": datetime.now(timezone.utc).isoformat(),
+                "accepted_at": datetime.now(timezone.utc),
                 "accepted_by_user_id": user_id,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc),
             },
         )
 
@@ -470,6 +484,12 @@ class InvitationService:
                 "created_at": invitation.get(
                     "invited_at", invitation.get("created_at")
                 ),
+                # Include invitation metadata for display
+                "inviter_name": invitation.get("inviter_name"),
+                "inviter_email": invitation.get("inviter_email"),
+                "institution_name": invitation.get("institution_name"),
+                "personal_message": invitation.get("personal_message"),
+                "program_ids": invitation.get("program_ids", []),
             }
 
         except Exception as e:

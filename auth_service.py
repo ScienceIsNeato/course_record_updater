@@ -414,8 +414,8 @@ def login_required(f):
                     401,
                 )
             else:
-                # Redirect to login page for browser requests (including /api/ URLs)
-                return redirect(url_for("api.login_api"))
+                # Redirect to login page for browser requests
+                return redirect(url_for("login"))
 
         return f(*args, **kwargs)
 
