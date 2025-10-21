@@ -82,6 +82,9 @@ def setup_worker_environment(tmp_path_factory):
             env["ENV"] = "test"
             # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
             env.pop("EMAIL_PROVIDER", None)
+            # Ensure EMAIL_WHITELIST is set for E2E tests (allow ethereal.email addresses)
+            if "EMAIL_WHITELIST" not in env:
+                env["EMAIL_WHITELIST"] = "*@ethereal.email"
 
             # Start server in background
             server_process = subprocess.Popen(
