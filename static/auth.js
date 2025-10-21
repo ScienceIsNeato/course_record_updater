@@ -607,7 +607,7 @@ function showMessage(message, type) {
   const closeButton = document.createElement('button');
   closeButton.type = 'button';
   closeButton.className = 'btn-close';
-  closeButton.setAttribute('data-bs-dismiss', 'alert');
+  closeButton.dataset.bsDismiss = 'alert';
   closeButton.setAttribute('aria-label', 'Close');
   messageDiv.appendChild(closeButton);
 
