@@ -154,13 +154,26 @@ class BulkEmailService:
                 from constants import DEFAULT_BASE_URL
 
                 base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+                env = current_app.config.get("ENV", "production")
 
-                # Create email manager with conservative rate limiting
+                # Create email manager with environment-appropriate rate limiting
+                # E2E tests use faster rates; production uses conservative rates
+                if env == "test":
+                    rate = 1.0  # 1 email per second (E2E tests)
+                    max_retries = 2
+                    base_delay = 1.0
+                    max_delay = 10.0
+                else:
+                    rate = 0.1  # 1 email every 10 seconds (production)
+                    max_retries = 3
+                    base_delay = 5.0
+                    max_delay = 60.0
+
                 email_manager = EmailManager(
-                    rate=0.1,  # 1 email every 10 seconds
-                    max_retries=3,
-                    base_delay=5.0,
-                    max_delay=60.0,
+                    rate=rate,
+                    max_retries=max_retries,
+                    base_delay=base_delay,
+                    max_delay=max_delay,
                 )
 
                 # Queue all emails

@@ -6,7 +6,7 @@ error reporting, and partial success handling.
 
 User Personas:
 - Dr. Sarah Williams, Program Admin
-- 5 Instructors (2 with invalid emails)
+- 3 Instructors (currently all valid; failure scenarios to be added)
 """
 
 from playwright.sync_api import Page, expect
@@ -30,13 +30,6 @@ class TestUAT004BulkRemindersFailureHandling:
 
     VALID_INSTRUCTOR_2_EMAIL = "carol.davis@ethereal.email"
     VALID_INSTRUCTOR_2_NAME = "Carol Davis"
-
-    # This instructor will be created but then "soft deleted" by marking as inactive
-    DELETED_INSTRUCTOR_EMAIL = "deleted.user@ethereal.email"
-    DELETED_INSTRUCTOR_NAME = "Deleted User"
-
-    VALID_INSTRUCTOR_3_EMAIL = "emma.thompson@ethereal.email"
-    VALID_INSTRUCTOR_3_NAME = "Emma Thompson"
 
     PERSONAL_MESSAGE = "Please submit your course data ASAP."
 
@@ -106,20 +99,7 @@ class TestUAT004BulkRemindersFailureHandling:
         )
         print(f"   ✅ Created instructor: {self.VALID_INSTRUCTOR_2_EMAIL}")
 
-        create_test_user_via_api(
-            admin_page=admin_page,
-            base_url=BASE_URL,
-            email=self.VALID_INSTRUCTOR_3_EMAIL,
-            first_name="Emma",
-            last_name="Thompson",
-            role="instructor",
-            institution_id=institution_id,
-            password="Instructor123!",
-            program_ids=program_ids,  # Associate with CS program
-        )
-        print(f"   ✅ Created instructor: {self.VALID_INSTRUCTOR_3_EMAIL}")
-
-        print("✅ Test instructors ready (3 created via API with program association)")
+        print("✅ Test instructors ready (2 created via API with program association)")
         print("📝 NOTE: Failure scenarios (invalid emails, soft-deleted users) will be")
         print("   added once we have infrastructure to create those conditions")
 
@@ -161,10 +141,10 @@ class TestUAT004BulkRemindersFailureHandling:
         select_all_btn = admin_page.locator("#selectAllInstructors")
         select_all_btn.click()
 
-        # Verify selected count (4 = 1 seeded instructor + 3 created)
+        # Verify selected count (3 = 1 seeded instructor + 2 created)
         selected_count = admin_page.locator("#selectedInstructorCount")
-        expect(selected_count).to_have_text("4")
-        print("✅ Selected 4 instructors")
+        expect(selected_count).to_have_text("3")
+        print("✅ Selected 3 instructors")
 
         # Enter personal message
         admin_page.fill("#reminderMessage", self.PERSONAL_MESSAGE)
