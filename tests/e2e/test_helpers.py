@@ -19,6 +19,7 @@ def create_test_user_via_api(
     role: str,
     institution_id: str,
     password: str = "TestUser123!",
+    program_ids: list = None,
 ) -> dict:
     """
     Create a test user via admin API.
@@ -34,6 +35,7 @@ def create_test_user_via_api(
         role: User role (instructor, program_admin, institution_admin)
         institution_id: Institution ID
         password: User password (default: TestUser123!)
+        program_ids: List of program IDs to associate with user (optional)
 
     Returns:
         dict: Created user data including user_id
@@ -46,13 +48,30 @@ def create_test_user_via_api(
             first_name="John",
             last_name="Smith",
             role="instructor",
-            institution_id="mock-inst-id"
+            institution_id="mock-inst-id",
+            program_ids=["cs-program-id"]
         )
     """
     # Get CSRF token
     csrf_token = admin_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
+
+    # Build user data
+    user_data = {
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "role": role,
+        "institution_id": institution_id,
+        "password": password,
+        "account_status": "active",
+        "email_verified": True,  # Skip email verification for tests
+    }
+
+    # Add program_ids if provided
+    if program_ids:
+        user_data["program_ids"] = program_ids
 
     # Create user via API
     response = admin_page.request.post(
@@ -61,18 +80,7 @@ def create_test_user_via_api(
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
         },
-        data=json.dumps(
-            {
-                "email": email,
-                "first_name": first_name,
-                "last_name": last_name,
-                "role": role,
-                "institution_id": institution_id,
-                "password": password,
-                "account_status": "active",
-                "email_verified": True,  # Skip email verification for tests
-            }
-        ),
+        data=json.dumps(user_data),
     )
 
     assert response.ok, f"Failed to create user: {response.status} {response.text()}"
@@ -131,12 +139,15 @@ def get_institution_id_from_user(user_page: Page) -> str:
         inst_id = get_institution_id_from_user(authenticated_institution_admin_page)
     """
     # Get user's institution ID from session/profile
-    response = user_page.request.get(
-        user_page.url.split("/dashboard")[0] + "/api/users/me"
+    base_url = (
+        user_page.url.split("/dashboard")[0]
+        if "/dashboard" in user_page.url
+        else user_page.url.split("?")[0].rstrip("/")
     )
+    response = user_page.request.get(f"{base_url}/api/me")
     if response.ok:
         user_data = response.json()
-        return user_data.get("user", {}).get("institution_id")
+        return user_data.get("institution_id")
 
     # Fallback: MockU for tests (most tests use MockU)
     # This is safe since we control the test data

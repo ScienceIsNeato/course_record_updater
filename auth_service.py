@@ -116,6 +116,8 @@ ROLE_PERMISSIONS = {
     ],
     UserRole.PROGRAM_ADMIN.value: [
         Permission.MANAGE_PROGRAM_USERS.value,
+        Permission.MANAGE_USERS.value,  # Can manage instructors at their institution (scoped)
+        Permission.MANAGE_PROGRAMS.value,  # Can send bulk reminders to instructors in their programs
         Permission.MANAGE_COURSES.value,
         Permission.VIEW_PROGRAM_DATA.value,
         Permission.VIEW_INSTITUTION_DATA.value,  # Can view users/instructors at their institution

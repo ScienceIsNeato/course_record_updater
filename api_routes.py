@@ -813,6 +813,62 @@ def _get_institution_users(institution_id: str, role_filter: str):
         return get_all_users(institution_id)
 
 
+def _validate_user_creation_permissions(current_user, data):
+    """
+    Validate that current user can create target user role.
+
+    Returns (is_valid, error_response) tuple where error_response is None if valid.
+    """
+    current_role = current_user.get("role")
+    target_role = data.get("role")
+    target_institution_id = data.get("institution_id")
+
+    # Program admins can only create instructors
+    if current_role == "program_admin" and target_role != "instructor":
+        return False, (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Program admins can only create instructor accounts",
+                }
+            ),
+            403,
+        )
+
+        # Program admins must create users in their own institution
+        if current_role == "program_admin":
+            if not target_institution_id:
+                return False, (
+                    jsonify({"success": False, "error": "institution_id is required"}),
+                    400,
+                )
+            current_institution_id = current_user.get("institution_id")
+            if target_institution_id != current_institution_id:
+                return False, (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Program admins can only create users at their own institution",
+                        }
+                    ),
+                    403,
+                )
+
+    # Institution admins cannot create site admins
+    if current_role == "institution_admin" and target_role == "site_admin":
+        return False, (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Institution admins cannot create site admin accounts",
+                }
+            ),
+            403,
+        )
+
+    return True, None
+
+
 @api.route("/users", methods=["POST"])
 @permission_required("manage_users")
 def create_user():
@@ -825,6 +881,11 @@ def create_user():
     - last_name: User's last name
     - role: User's role (instructor, program_admin, site_admin)
     - department: User's department (optional)
+
+    Authorization:
+    - Site admin: Can create any user at any institution
+    - Institution admin: Can create users at their institution (except site_admin)
+    - Program admin: Can only create instructors at their institution
     """
     try:
         data = request.get_json(silent=True)
@@ -846,6 +907,14 @@ def create_user():
                 ),
                 400,
             )
+
+        # Role-based validation
+        current_user = get_current_user()
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+        if not is_valid:
+            return error_response
 
         # Create user via database service
         from models import User
@@ -1512,7 +1581,12 @@ def delete_course_endpoint(course_id: str):
 @api.route("/instructors", methods=["GET"])
 @permission_required("view_program_data")
 def list_instructors():
-    """Get list of all instructors"""
+    """
+    Get list of all instructors.
+
+    For program admins, only returns instructors associated with their programs.
+    For institution/site admins, returns all instructors at the institution(s).
+    """
     try:
         try:
             _, institution_ids, is_global = _resolve_institution_scope()
@@ -1528,6 +1602,21 @@ def list_instructors():
                 instructors.extend(get_all_instructors(inst_id))
         else:
             instructors = get_all_instructors(institution_ids[0])
+
+        # Filter instructors by program for program admins
+        current_user = get_current_user()
+        if current_user and current_user.get("role") == UserRole.PROGRAM_ADMIN.value:
+            user_program_ids = current_user.get("program_ids", [])
+            if user_program_ids:
+                # Only show instructors associated with programs the admin manages
+                instructors = [
+                    instructor
+                    for instructor in instructors
+                    if any(
+                        program_id in user_program_ids
+                        for program_id in instructor.get("program_ids", [])
+                    )
+                ]
 
         return jsonify(
             {"success": True, "instructors": instructors, "count": len(instructors)}
