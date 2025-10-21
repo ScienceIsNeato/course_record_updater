@@ -21,7 +21,7 @@
             </div>
 
             <!-- Invitation Details (populated after validation) -->
-            <div id="invitationDetails" class="alert alert-info d-none" role="status">
+            <output id="invitationDetails" class="alert alert-info d-none">
                 <h6 class="alert-heading"><i class="fas fa-envelope-open-text me-2"></i>Invitation Details</h6>
                 <p class="mb-1"><strong>From:</strong> <span id="inviterName"></span></p>
                 <p class="mb-1"><strong>Institution:</strong> <span id="institutionName"></span></p>
@@ -29,14 +29,14 @@
                     <p class="mb-1"><strong>Personal Message:</strong></p>
                     <p class="mb-0 fst-italic" id="personalMessage"></p>
                 </div>
-            </div>
+            </output>
 
             <!-- Status Messages -->
             <div id="statusMessage" class="alert d-none" role="alert"></div>
 
             <!-- Loading State -->
             <div id="loadingInvitation" class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
+                <div class="spinner-border text-primary" aria-label="Loading">
                     <span class="visually-hidden">Loading...</span>
                 </div>
                 <p class="text-muted mt-2">Validating invitation...</p>
@@ -101,7 +101,7 @@
                 <button type="submit" class="btn btn-primary w-100" id="submitBtn">
                     <span class="btn-text">Complete Registration</span>
                     <span class="btn-spinner d-none">
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                         Creating account...
                     </span>
                 </button>

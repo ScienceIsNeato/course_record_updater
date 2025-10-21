@@ -821,7 +821,6 @@ def _validate_user_creation_permissions(current_user, data):
     """
     current_role = current_user.get("role")
     target_role = data.get("role")
-    target_institution_id = data.get("institution_id")
 
     # Program admins can only create instructors
     if current_role == "program_admin" and target_role != "instructor":
@@ -835,24 +834,25 @@ def _validate_user_creation_permissions(current_user, data):
             403,
         )
 
-        # Program admins must create users in their own institution
-        if current_role == "program_admin":
-            if not target_institution_id:
-                return False, (
-                    jsonify({"success": False, "error": "institution_id is required"}),
-                    400,
-                )
-            current_institution_id = current_user.get("institution_id")
-            if target_institution_id != current_institution_id:
-                return False, (
-                    jsonify(
-                        {
-                            "success": False,
-                            "error": "Program admins can only create users at their own institution",
-                        }
-                    ),
-                    403,
-                )
+    # Program admins must create users in their own institution
+    if current_role == "program_admin":
+        target_institution_id = data.get("institution_id")
+        if not target_institution_id:
+            return False, (
+                jsonify({"success": False, "error": "institution_id is required"}),
+                400,
+            )
+        current_institution_id = current_user.get("institution_id")
+        if target_institution_id != current_institution_id:
+            return False, (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Program admins can only create users at their own institution",
+                    }
+                ),
+                403,
+            )
 
     # Institution admins cannot create site admins
     if current_role == "institution_admin" and target_role == "site_admin":
