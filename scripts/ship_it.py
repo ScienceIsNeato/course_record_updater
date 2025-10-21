@@ -157,12 +157,15 @@ class QualityGateExecutor:
         actual_flag = flag_mapping.get(check_flag, check_flag)
 
         try:
+            # Configure timeout per check type (E2E tests need more time due to IMAP verification)
+            timeout_seconds = 600 if check_flag == "e2e" else 300
+            
             # Run the individual check
             result = subprocess.run(
                 [self.script_path, f"--{actual_flag}"],
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout per check
+                timeout=timeout_seconds,
                 check=False,  # Don't raise exception on non-zero exit code
             )
 
