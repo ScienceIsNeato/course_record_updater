@@ -4150,3 +4150,223 @@ class TestExcelImportEdgeCases:
         # Should have generated fallback filename
         assert safe_filename.startswith("upload_")
         assert len(safe_filename) > 7  # "upload_" + digits
+
+
+class TestUserCreationPermissionValidation:
+    """Test _validate_user_creation_permissions function."""
+
+    def test_program_admin_cannot_create_site_admin(self):
+        """Test that program admin cannot create site admin accounts."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {"role": "site_admin", "institution_id": "mock_university"}
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 403
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert (
+                "Program admins can only create instructor accounts"
+                in json_data["error"]
+            )
+
+    def test_program_admin_cannot_create_institution_admin(self):
+        """Test that program admin cannot create institution admin accounts."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {"role": "institution_admin", "institution_id": "mock_university"}
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 403
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert (
+                "Program admins can only create instructor accounts"
+                in json_data["error"]
+            )
+
+    def test_program_admin_cannot_create_program_admin(self):
+        """Test that program admin cannot create other program admin accounts."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {"role": "program_admin", "institution_id": "mock_university"}
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 403
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert (
+                "Program admins can only create instructor accounts"
+                in json_data["error"]
+            )
+
+    def test_program_admin_requires_institution_id(self):
+        """Test that program admin must provide institution_id when creating instructors."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {
+            "role": "instructor"
+            # Missing institution_id
+        }
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 400
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert "institution_id is required" in json_data["error"]
+
+    def test_program_admin_cannot_create_at_different_institution(self):
+        """Test that program admin can only create users at their own institution."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {"role": "instructor", "institution_id": "different_institution"}
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 403
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert (
+                "Program admins can only create users at their own institution"
+                in json_data["error"]
+            )
+
+    def test_program_admin_can_create_instructor_at_own_institution(self):
+        """Test that program admin can create instructors at their own institution."""
+        from api_routes import _validate_user_creation_permissions
+
+        current_user = {"role": "program_admin", "institution_id": "mock_university"}
+        data = {"role": "instructor", "institution_id": "mock_university"}
+
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+
+        assert is_valid is True
+        assert error_response is None
+
+    def test_institution_admin_cannot_create_site_admin(self):
+        """Test that institution admin cannot create site admin accounts."""
+        from api_routes import _validate_user_creation_permissions
+        from app import app
+
+        current_user = {
+            "role": "institution_admin",
+            "institution_id": "mock_university",
+        }
+        data = {"role": "site_admin", "institution_id": "mock_university"}
+
+        with app.app_context():
+            is_valid, error_response = _validate_user_creation_permissions(
+                current_user, data
+            )
+
+            assert is_valid is False
+            assert error_response is not None
+            response_data, status_code = error_response
+            assert status_code == 403
+            json_data = response_data.get_json()
+            assert json_data["success"] is False
+            assert (
+                "Institution admins cannot create site admin accounts"
+                in json_data["error"]
+            )
+
+    def test_institution_admin_can_create_institution_admin(self):
+        """Test that institution admin can create other institution admins."""
+        from api_routes import _validate_user_creation_permissions
+
+        current_user = {
+            "role": "institution_admin",
+            "institution_id": "mock_university",
+        }
+        data = {"role": "institution_admin", "institution_id": "mock_university"}
+
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+
+        assert is_valid is True
+        assert error_response is None
+
+    def test_site_admin_can_create_any_role(self):
+        """Test that site admin can create users of any role."""
+        from api_routes import _validate_user_creation_permissions
+
+        current_user = {"role": "site_admin", "institution_id": None}
+
+        # Test creating site_admin
+        data = {"role": "site_admin", "institution_id": "mock_university"}
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+        assert is_valid is True
+        assert error_response is None
+
+        # Test creating institution_admin
+        data = {"role": "institution_admin", "institution_id": "mock_university"}
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+        assert is_valid is True
+        assert error_response is None
+
+        # Test creating program_admin
+        data = {"role": "program_admin", "institution_id": "mock_university"}
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+        assert is_valid is True
+        assert error_response is None
+
+        # Test creating instructor
+        data = {"role": "instructor", "institution_id": "mock_university"}
+        is_valid, error_response = _validate_user_creation_permissions(
+            current_user, data
+        )
+        assert is_valid is True
+        assert error_response is None
