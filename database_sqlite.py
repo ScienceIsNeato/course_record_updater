@@ -1302,6 +1302,10 @@ class SQLiteDatabase(DatabaseInterface):
                 if hasattr(UserInvitation, key):
                     setattr(invitation, key, value)
                 else:
+                    logger.warning(
+                        "[SQLiteDatabase] Unknown attribute '%s' for UserInvitation; storing in extras.",
+                        key,
+                    )
                     invitation.extras[key] = value
             invitation.updated_at = datetime.now(timezone.utc)
             return True

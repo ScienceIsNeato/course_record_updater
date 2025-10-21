@@ -155,10 +155,11 @@ class BulkEmailService:
 
                 base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
 
-                # Create email manager - send as fast as possible, rely on retry logic
-                # EmailManager has exponential backoff to handle any provider rate limits
+                # Create email manager with reasonable rate limit
+                # EmailManager has exponential backoff to handle provider rate limit errors
+                # Rate of 2/second balances speed with provider limits (e.g., Brevo 300/day free tier)
                 email_manager = EmailManager(
-                    rate=float("inf"),  # No artificial rate limiting
+                    rate=2.0,  # Limit to 2 emails per second to avoid provider blocks
                     max_retries=3,
                     base_delay=1.0,  # Start with 1s backoff on errors
                     max_delay=30.0,  # Cap backoff at 30s
