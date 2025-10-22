@@ -157,10 +157,10 @@ class BulkEmailService:
 
                 # Create email manager with minimal rate limit
                 # EmailManager has exponential backoff to handle provider-specific rate limit errors
-                # Default rate is very fast (0.01s = 100 emails/sec); provider-specific limits
-                # should be enforced only if documented by the provider
+                # Rate is in emails/second (100 = 100 emails per second)
+                # Provider-specific limits should be enforced only if documented
                 email_manager = EmailManager(
-                    rate=0.01,  # Minimal delay (100 emails/sec); rely on provider-specific limits
+                    rate=100,  # 100 emails/sec (minimal delay); rely on provider-specific limits
                     max_retries=3,
                     base_delay=1.0,  # Start with 1s backoff on errors
                     max_delay=30.0,  # Cap backoff at 30s
