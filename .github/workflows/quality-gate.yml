@@ -345,8 +345,8 @@ jobs:
         export ETHEREAL_IMAP_HOST="imap.ethereal.email"
         export ETHEREAL_IMAP_PORT="993"
         
-        # Email whitelist for E2E tests (allow all @ethereal.email addresses)
-        export EMAIL_WHITELIST="*@ethereal.email"
+        # Email whitelist for E2E tests (allow test emails + seeded instructors)
+        export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test"
         
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
         python scripts/ship_it.py --checks e2e
