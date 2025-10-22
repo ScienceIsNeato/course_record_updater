@@ -155,12 +155,12 @@ class BulkEmailService:
 
                 base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
 
-                # Create email manager with minimal rate limit
+                # Create email manager with reasonable rate limit
                 # EmailManager has exponential backoff to handle provider-specific rate limit errors
-                # Rate is in emails/second (100 = 100 emails per second)
-                # Provider-specific limits should be enforced only if documented
+                # Rate is in emails/second (2.0 = 2 emails per second)
+                # Conservative rate to avoid overwhelming providers while maintaining reasonable speed
                 email_manager = EmailManager(
-                    rate=100,  # 100 emails/sec (minimal delay); rely on provider-specific limits
+                    rate=2.0,  # 2 emails/sec (0.5s between emails); conservative limit
                     max_retries=3,
                     base_delay=1.0,  # Start with 1s backoff on errors
                     max_delay=30.0,  # Cap backoff at 30s
