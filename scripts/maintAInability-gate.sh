@@ -615,6 +615,9 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   # Only fail on HIGH severity issues, ignore LOW/MEDIUM for now
   echo "🔧 Running bandit security scan..."
   BANDIT_OUTPUT=$(timeout 30s bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests -lll --format json 2>&1) || BANDIT_FAILED=true
+  
+  # Save bandit report to file for GitHub Actions artifact upload
+  echo "$BANDIT_OUTPUT" > bandit-report.json
 
   if [[ "$BANDIT_FAILED" == "true" ]]; then
     SECURITY_PASSED=false
@@ -661,6 +664,7 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   echo "$SAFETY_OUTPUT" > /tmp/safety_output.txt
   mkdir -p logs
   echo "$SAFETY_OUTPUT" > logs/safety_detailed_output.txt  # For artifact upload
+  echo "$SAFETY_OUTPUT" > safety-report.txt  # For GitHub Actions artifact upload
   
   # Create comprehensive diagnostic file
   {
