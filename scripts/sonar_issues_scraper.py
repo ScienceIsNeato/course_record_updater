@@ -397,13 +397,17 @@ class SonarCloudScraper:
 
 
 def main():
+    import os
+
+    from constants import SONARCLOUD_PROJECT_KEY_DEFAULT
+
     parser = argparse.ArgumentParser(
         description="Scrape SonarCloud issues for actionable feedback"
     )
     parser.add_argument(
         "--project-key",
-        default="ScienceIsNeato_course_record_updater",
-        help="SonarCloud project key",
+        default=os.getenv("SONARCLOUD_PROJECT_KEY", SONARCLOUD_PROJECT_KEY_DEFAULT),
+        help="SonarCloud project key (default from SONARCLOUD_PROJECT_KEY env var or constant)",
     )
     parser.add_argument(
         "--pull-request",

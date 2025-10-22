@@ -73,6 +73,15 @@ DEFAULT_BASE_URL = "http://localhost:5000"
 TIMEZONE_UTC_SUFFIX = "+00:00"
 SYSTEM_USER_NAME = "System Administrator"
 
+# CSRF error messages
+CSRF_ERROR_MESSAGE = "CSRF validation failed. Please refresh the page and try again."
+
+# Email subject templates
+EMAIL_SUBJECT_REMINDER_PREFIX = "Reminder: Please submit your course data"
+
+# SonarCloud configuration
+SONARCLOUD_PROJECT_KEY_DEFAULT = "ScienceIsNeato_course_record_updater"
+
 # Seed data constants
 PROGRAM_COMPUTER_SCIENCE = "Computer Science"
 PROGRAM_ELECTRICAL_ENGINEERING = "Electrical Engineering"

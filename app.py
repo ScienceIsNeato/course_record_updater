@@ -45,20 +45,22 @@ def handle_csrf_error(e):
     """Handle CSRF validation errors"""
     from flask import jsonify, request
 
+    from constants import CSRF_ERROR_MESSAGE
+
     # Check if this is an API request
     if request.path.startswith("/api/"):
         return (
             jsonify(
                 {
                     "success": False,
-                    "error": "CSRF validation failed. Please refresh the page and try again.",
+                    "error": CSRF_ERROR_MESSAGE,
                 }
             ),
             400,
         )
     # For non-API routes, return simple HTML error
     return (
-        "<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
+        f"<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
         400,
     )
 

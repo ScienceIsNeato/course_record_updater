@@ -155,21 +155,25 @@ class BulkEmailService:
 
                 base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
 
-                # Create email manager with reasonable rate limit
-                # EmailManager has exponential backoff to handle provider rate limit errors
-                # Rate of 2/second balances speed with provider limits (e.g., Brevo 300/day free tier)
+                # Create email manager with minimal rate limit
+                # EmailManager has exponential backoff to handle provider-specific rate limit errors
+                # Default rate is very fast (0.01s = 100 emails/sec); provider-specific limits
+                # should be enforced only if documented by the provider
                 email_manager = EmailManager(
-                    rate=2.0,  # Limit to 2 emails per second to avoid provider blocks
+                    rate=0.01,  # Minimal delay (100 emails/sec); rely on provider-specific limits
                     max_retries=3,
                     base_delay=1.0,  # Start with 1s backoff on errors
                     max_delay=30.0,  # Cap backoff at 30s
                 )
 
                 # Queue all emails
+                from constants import EMAIL_SUBJECT_REMINDER_PREFIX
+
                 for recipient in recipients:
+                    subject_suffix = f" for {term}" if term else ""
                     email_manager.add_email(
                         to_email=recipient["email"],
-                        subject=f"Reminder: Please submit your course data{f' for {term}' if term else ''}",
+                        subject=f"{EMAIL_SUBJECT_REMINDER_PREFIX}{subject_suffix}",
                         html_body=BulkEmailService._render_reminder_html(
                             recipient["name"],
                             personal_message,
