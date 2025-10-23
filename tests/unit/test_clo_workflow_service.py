@@ -374,7 +374,9 @@ class TestGetOutcomeWithDetails:
 
         mock_db.get_user.return_value = {
             "id": "instructor-111",
-            "full_name": "Jane Doe",
+            "display_name": "Jane Doe",
+            "first_name": "Jane",
+            "last_name": "Doe",
             "email": "jane@example.com",
         }
 

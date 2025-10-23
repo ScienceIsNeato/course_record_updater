@@ -287,9 +287,11 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     instructor_page.goto(f"{BASE_URL}/assessments")
     expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
-    # Select section
-    instructor_page.select_option("#sectionSelect", value=section_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
+    # Select course
+    instructor_page.select_option("#courseSelect", value=course_id)
+    instructor_page.wait_for_selector(
+        f"button[data-outcome-id='{clo_id}']", timeout=5000
+    )
 
     # Verify status badge shows "Needs Rework"
     status_badge = instructor_page.locator(f"#clo-status-{clo_id}")

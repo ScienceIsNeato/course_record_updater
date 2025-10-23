@@ -658,9 +658,13 @@ class SQLiteDatabase(DatabaseInterface):
                 )
             )
 
-            # Add program filter if specified
+            # Add program filter if specified (Course has many-to-many relationship with Program)
             if program_id:
-                query = query.where(Course.program_id == program_id)
+                from models_sql import course_program_table
+
+                query = query.join(
+                    course_program_table, Course.id == course_program_table.c.course_id
+                ).where(course_program_table.c.program_id == program_id)
 
             outcomes = session.execute(query).scalars().all()
             return [to_dict(outcome) for outcome in outcomes]

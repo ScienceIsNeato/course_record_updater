@@ -400,13 +400,20 @@ Course Record System
                         )
 
             # Build enriched result
+            instructor_name = None
+            if instructor:
+                # User model has display_name, first_name, last_name (not full_name)
+                instructor_name = instructor.get("display_name")
+                if not instructor_name:
+                    first = instructor.get("first_name", "")
+                    last = instructor.get("last_name", "")
+                    instructor_name = f"{first} {last}".strip() or None
+
             result = {
                 **outcome,
                 "course_number": course.get("course_number") if course else None,
                 "course_title": course.get("course_title") if course else None,
-                "instructor_name": (
-                    instructor.get("full_name") if instructor else None
-                ),
+                "instructor_name": instructor_name,
                 "instructor_email": instructor_email,
             }
 

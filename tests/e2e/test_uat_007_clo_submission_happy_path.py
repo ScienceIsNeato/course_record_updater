@@ -173,11 +173,13 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
-    # Find the course section in the dropdown
-    instructor_page.select_option("#sectionSelect", value=section_id)
+    # Find the course in the dropdown
+    instructor_page.select_option("#courseSelect", value=course_id)
 
     # Wait for CLO data to load
-    instructor_page.wait_for_selector(f"#outcome-{clo1_id}", timeout=5000)
+    instructor_page.wait_for_selector(
+        f"button[data-outcome-id='{clo1_id}']", timeout=5000
+    )
 
     # Verify CLO status is ASSIGNED initially
     status_badge = instructor_page.locator(f"#clo-status-{clo1_id}")
