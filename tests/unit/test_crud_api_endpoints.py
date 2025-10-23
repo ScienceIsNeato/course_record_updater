@@ -863,6 +863,46 @@ class TestOutcomesCRUD:
         assert data["success"] is True
         assert "assessment updated successfully" in data["message"]
 
+    @patch("clo_workflow_service.CLOWorkflowService.auto_mark_in_progress")
+    @patch("api_routes.get_current_user")
+    @patch("api_routes.update_outcome_assessment")
+    @patch("api_routes.get_course_outcomes")
+    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_current_institution_id")
+    def test_update_outcome_assessment_auto_mark(
+        self,
+        mock_get_inst_id,
+        mock_get_courses,
+        mock_get_outcomes,
+        mock_update_assessment,
+        mock_get_user,
+        mock_auto_mark,
+        client,
+    ):
+        """Test PUT /api/outcomes/<id>/assessment - auto-marks as in_progress"""
+        create_site_admin_session(client)
+        mock_get_inst_id.return_value = "inst-1"
+        mock_get_courses.return_value = [{"course_id": "course-123"}]
+        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+        mock_update_assessment.return_value = True
+        mock_get_user.return_value = {"user_id": "user-456"}
+
+        response = client.put(
+            "/api/outcomes/outcome-123/assessment",
+            json={
+                "assessment_data": {
+                    "students_assessed": 30,
+                    "students_meeting_target": 25,
+                },
+                "narrative": "Students performed well",
+            },
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
+
+        assert response.status_code == 200
+        # Verify auto_mark_in_progress was called
+        mock_auto_mark.assert_called_once_with("outcome-123", "user-456")
+
     @patch("api_routes.delete_course_outcome")
     @patch("api_routes.get_course_by_id")
     @patch("api_routes.get_current_institution_id")

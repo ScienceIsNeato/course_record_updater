@@ -3121,6 +3121,12 @@ def update_outcome_assessment_endpoint(outcome_id: str):
         success = update_outcome_assessment(outcome_id, assessment_data, narrative)
 
         if success:
+            # Auto-mark CLO as in_progress when instructor starts editing
+            from clo_workflow_service import CLOWorkflowService
+
+            user = get_current_user()
+            CLOWorkflowService.auto_mark_in_progress(outcome_id, user.get("user_id"))
+
             return (
                 jsonify(
                     {

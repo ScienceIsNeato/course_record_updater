@@ -39,7 +39,7 @@ class CLOWorkflowService:
             # Update status and submission metadata
             update_data = {
                 "status": CLOStatus.AWAITING_APPROVAL,
-                "submitted_at": datetime.utcnow().isoformat(),
+                "submitted_at": datetime.utcnow(),
                 "submitted_by_user_id": user_id,
                 "approval_status": CLOApprovalStatus.PENDING,
             }
@@ -91,7 +91,7 @@ class CLOWorkflowService:
             update_data = {
                 "status": CLOStatus.APPROVED,
                 "approval_status": CLOApprovalStatus.APPROVED,
-                "reviewed_at": datetime.utcnow().isoformat(),
+                "reviewed_at": datetime.utcnow(),
                 "reviewed_by_user_id": reviewer_id,
                 "feedback_comments": None,  # Clear any previous feedback
                 "feedback_provided_at": None,
@@ -146,10 +146,10 @@ class CLOWorkflowService:
             update_data = {
                 "status": CLOStatus.APPROVAL_PENDING,
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
-                "reviewed_at": datetime.utcnow().isoformat(),
+                "reviewed_at": datetime.utcnow(),
                 "reviewed_by_user_id": reviewer_id,
                 "feedback_comments": comments,
-                "feedback_provided_at": datetime.utcnow().isoformat(),
+                "feedback_provided_at": datetime.utcnow(),
             }
 
             success = db.update_course_outcome(outcome_id, update_data)
