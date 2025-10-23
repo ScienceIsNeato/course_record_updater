@@ -1,0 +1,262 @@
+"""
+UAT-008: CLO Approval Workflow
+
+Test the admin workflow for approving CLOs.
+
+Workflow:
+1. Seed test data: CLOs in AWAITING_APPROVAL status
+2. Admin logs in
+3. Navigate to audit dashboard panel
+4. Open audit interface
+5. Select CLO from list
+6. Click "Approve"
+7. Verify status = APPROVED, reviewed_at set
+"""
+
+import json
+
+import pytest
+from playwright.sync_api import Page, expect
+
+from tests.e2e.conftest import BASE_URL
+from tests.e2e.test_helpers import (
+    create_test_user_via_api,
+    get_institution_id_from_user,
+    login_as_user,
+)
+
+
+@pytest.mark.e2e
+@pytest.mark.uat
+def test_clo_approval_workflow(
+    authenticated_institution_admin_page: Page, base_url: str
+):
+    """
+    Test admin approval workflow for submitted CLOs.
+
+    Steps:
+    1. Create test CLO in AWAITING_APPROVAL status
+    2. Admin logs in and navigates to audit interface
+    3. Admin selects CLO and approves it
+    4. Verify CLO status is APPROVED with review timestamp
+    """
+    admin_page = authenticated_institution_admin_page
+
+    # Get institution ID from admin user
+    institution_id = get_institution_id_from_user(admin_page, base_url)
+
+    # === STEP 1: Create test data via API ===
+
+    # Get CSRF token
+    csrf_token = admin_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+
+    # Create program
+    program_response = admin_page.request.post(
+        f"{base_url}/api/programs",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "program_name": "UAT-008 Business Administration",
+                "program_code": "UAT008-BA",
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert program_response.ok, f"Failed to create program: {program_response.text()}"
+    program_data = program_response.json()
+    program_id = program_data["program_id"]
+
+    # Create course
+    course_response = admin_page.request.post(
+        f"{base_url}/api/courses",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "course_name": "UAT-008 Marketing Fundamentals",
+                "course_code": "UAT008-MKT101",
+                "institution_id": institution_id,
+                "program_id": program_id,
+            }
+        ),
+    )
+    assert course_response.ok, f"Failed to create course: {course_response.text()}"
+    course_data = course_response.json()
+    course_id = course_data["course_id"]
+
+    # Create instructor
+    instructor = create_test_user_via_api(
+        admin_page=admin_page,
+        base_url=base_url,
+        email="uat008.instructor@test.com",
+        first_name="UAT008",
+        last_name="Instructor",
+        role="instructor",
+        institution_id=institution_id,
+        program_ids=[program_id],
+    )
+    instructor_id = instructor["user_id"]
+
+    # Create course section with instructor
+    section_response = admin_page.request.post(
+        f"{base_url}/api/course_offerings",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "course_id": course_id,
+                "term": "FA2024",
+                "year": 2024,
+                "instructor_id": instructor_id,
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert section_response.ok, f"Failed to create section: {section_response.text()}"
+    section_data = section_response.json()
+    section_id = section_data["offering_id"]
+
+    # Create CLO in ASSIGNED status, then submit it via API
+    clo_response = admin_page.request.post(
+        f"{base_url}/api/outcomes",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "course_id": course_id,
+                "outcome_number": 1,
+                "description": "Understand marketing segmentation strategies",
+                "status": "assigned",
+                "students_assessed": 25,
+                "students_meeting_target": 22,
+                "narrative": "Students showed good understanding of segmentation.",
+            }
+        ),
+    )
+    assert clo_response.ok, f"Failed to create CLO: {clo_response.text()}"
+    clo_data = clo_response.json()
+    clo_id = clo_data["outcome_id"]
+
+    # Submit CLO via API to set it to AWAITING_APPROVAL
+    # Use instructor page context to simulate instructor submission
+    instructor_page = admin_page.context.new_page()
+    login_as_user(
+        instructor_page, base_url, "uat008.instructor@test.com", "TestUser123!"
+    )
+
+    # Get CSRF token for instructor
+    instructor_csrf = instructor_page.evaluate(
+        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    )
+
+    submit_response = instructor_page.request.post(
+        f"{base_url}/api/outcomes/{clo_id}/submit",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": instructor_csrf if instructor_csrf else "",
+        },
+        data=json.dumps({}),
+    )
+    assert submit_response.ok, f"Failed to submit CLO: {submit_response.text()}"
+
+    instructor_page.close()
+
+    # === STEP 2: Admin navigates to audit interface ===
+    admin_page.goto(f"{base_url}/dashboard")
+    expect(admin_page).to_have_url(f"{base_url}/dashboard")
+
+    # === STEP 3: Click on CLO Audit & Approval panel's Review Submissions button ===
+    review_button = admin_page.locator('button:has-text("Review Submissions")')
+    expect(review_button).to_be_visible()
+    review_button.click()
+
+    # Verify we're on the audit page
+    expect(admin_page).to_have_url(f"{base_url}/audit-clo")
+
+    # Wait for CLO list to load
+    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+
+    # === STEP 4: Verify CLO appears in the list ===
+    # Check that our CLO is visible
+    clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
+    expect(clo_row).to_be_visible()
+
+    # Verify it shows as "Awaiting Approval"
+    status_cell = clo_row.locator("td").nth(4)  # Status column
+    expect(status_cell).to_contain_text("Awaiting Approval")
+
+    # === STEP 5: Click CLO row to open detail modal ===
+    clo_row.click()
+
+    # Wait for modal to open
+    modal = admin_page.locator("#cloDetailModal")
+    expect(modal).to_be_visible()
+
+    # Verify CLO details in modal
+    expect(modal.locator("#detailCourseCode")).to_contain_text("UAT008-MKT101")
+    expect(modal.locator("#detailOutcomeNumber")).to_contain_text("1")
+    expect(modal.locator("#detailDescription")).to_contain_text(
+        "marketing segmentation"
+    )
+
+    # === STEP 6: Click "Approve" button ===
+    approve_button = modal.locator('button:has-text("Approve")')
+    expect(approve_button).to_be_visible()
+
+    # Handle confirmation dialog
+    admin_page.once("dialog", lambda dialog: dialog.accept())
+    approve_button.click()
+
+    # Wait for success alert
+    admin_page.wait_for_selector(".alert", timeout=5000)
+    alert = admin_page.locator(".alert")
+    expect(alert).to_contain_text("approved successfully")
+
+    # Modal should close after approval
+    expect(modal).not_to_be_visible()
+
+    # === STEP 7: Verify CLO status is APPROVED ===
+    # Reload the audit page
+    admin_page.goto(f"{base_url}/audit-clo")
+    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+
+    # Change filter to show approved CLOs
+    filter_select = admin_page.locator("#statusFilter")
+    filter_select.select_option("approved")
+
+    # Wait for list to update
+    admin_page.wait_for_timeout(1000)
+
+    # Find our CLO in the approved list
+    clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
+    expect(clo_row).to_be_visible()
+
+    # Verify status shows "Approved"
+    status_cell = clo_row.locator("td").nth(4)
+    expect(status_cell).to_contain_text("Approved")
+
+    # === STEP 8: Verify via API that review timestamp is set ===
+    outcome_response = admin_page.request.get(
+        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        headers={
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+    )
+    assert outcome_response.ok, f"Failed to get outcome: {outcome_response.text()}"
+    outcome_data = outcome_response.json()
+
+    assert outcome_data["status"] == "approved"
+    assert outcome_data["reviewed_at"] is not None
+    assert outcome_data["reviewed_by_user_id"] is not None
+    assert outcome_data["approval_status"] == "approved"
