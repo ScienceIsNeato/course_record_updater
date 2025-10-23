@@ -1,5 +1,33 @@
 # Current Status
 
+## 🔄 IN PROGRESS: Addressing SonarCloud Coverage Issues
+
+**Goal:** Improve "Coverage on New Code" from 52.8% to ≥80% to pass SonarCloud Quality Gate
+
+**Current Progress:**
+- ✅ Fixed SonarCloud code smell: Changed `setAttribute('aria-label')` to `.ariaLabel` in static/auth.js
+- ✅ Added 4 error handling tests for bulk email routes (ValueError + generic exceptions)
+- ✅ Global coverage: 81.74% (above 80% threshold)
+- 🔄 **PR Coverage**: Still need to cover ~138 uncovered lines in modified code
+
+**Remaining Gaps:**
+1. api_routes.py: 88 uncovered lines (CLO audit API endpoints lines 3208-3463)
+2. clo_workflow_service.py: 30 uncovered lines (CLO workflow methods)
+3. database_sqlite.py: 11 uncovered lines  
+4. app.py: 7 uncovered lines
+5. database_service.py: 2 uncovered lines
+
+**Strategy:**
+- CLO audit API endpoints have complex session/permission requirements making unit tests difficult
+- E2E tests already provide functional coverage of these endpoints (UAT_007-010)
+- May need to accept SonarCloud coverage gap or refactor endpoints for better testability
+
+**Commits:**
+- 6b9792a: fix: use modern DOM property instead of setAttribute for aria-label
+- 71ba7c0: test: add error handling tests for bulk email routes
+
+---
+
 ## ✅ COMPLETE: CLO Submission & Audit Workflow
 
 **Feature:** Complete submission-to-approval pipeline for Course Learning Outcomes
