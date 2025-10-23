@@ -197,13 +197,17 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     instructor_page.select_option("#courseSelect", value=course_id)
 
     # Wait for CLO data to load
-    instructor_page.wait_for_selector(
-        f"button[data-outcome-id='{clo1_id}']", timeout=5000
-    )
+    clo_button = instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
+    clo_button.wait_for(timeout=5000)
 
-    # Verify CLO status is ASSIGNED initially
-    status_badge = instructor_page.locator(f"#clo-status-{clo1_id}")
-    expect(status_badge).to_have_text("Assigned")
+    # Verify CLO is visible with ASSIGNED status badge
+    # Status is shown as a badge in the list item, check for the text
+    expect(
+        instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
+    ).to_be_visible()
+    expect(
+        instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
+    ).to_have_attribute("data-status", "assigned")
 
     # === STEP 4: Edit CLO fields (auto-marks IN_PROGRESS) ===
     # Fill in assessment data
