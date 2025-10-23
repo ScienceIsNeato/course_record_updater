@@ -166,16 +166,25 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     )
     instructor_id = instructor["user_id"]
 
-    # Update course section to assign instructor
-    update_response = admin_page.request.put(
-        f"{BASE_URL}/api/offerings/{section_id}",
+    # Create a course section with the instructor assigned
+    create_section_response = admin_page.request.post(
+        f"{BASE_URL}/api/sections",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
         },
-        data=json.dumps({"instructor_id": instructor_id}),
+        data=json.dumps(
+            {
+                "offering_id": section_id,
+                "section_number": "001",
+                "instructor_id": instructor_id,
+                "status": "open",
+            }
+        ),
     )
-    assert update_response.ok
+    assert (
+        create_section_response.ok
+    ), f"Failed to create section: {create_section_response.text()}"
 
     # Update CLO status to ASSIGNED
     update_clo = admin_page.request.put(
@@ -204,7 +213,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     )
 
     instructor_page.goto(f"{BASE_URL}/assessments")
-    instructor_page.select_option("#sectionSelect", value=section_id)
+    instructor_page.wait_for_selector("#courseSelect", timeout=5000)
+    instructor_page.select_option("#courseSelect", value=course_id)
     instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
 
     # Edit assessment data
@@ -299,7 +309,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # === STEP 6: Instructor addresses and resubmits (→ AWAITING_APPROVAL) ===
 
     instructor_page.goto(f"{BASE_URL}/assessments")
-    instructor_page.select_option("#sectionSelect", value=section_id)
+    instructor_page.wait_for_selector("#courseSelect", timeout=5000)
+    instructor_page.select_option("#courseSelect", value=course_id)
     instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
 
     # Verify feedback is visible
