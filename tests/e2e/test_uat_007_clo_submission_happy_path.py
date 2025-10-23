@@ -27,9 +27,7 @@ from tests.e2e.test_helpers import (
 
 @pytest.mark.e2e
 @pytest.mark.uat
-def test_clo_submission_happy_path(
-    authenticated_institution_admin_page: Page, base_url: str
-):
+def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     """
     Test full CLO submission workflow for instructor.
 
@@ -43,7 +41,7 @@ def test_clo_submission_happy_path(
     admin_page = authenticated_institution_admin_page
 
     # Get institution ID from admin user
-    institution_id = get_institution_id_from_user(admin_page, base_url)
+    institution_id = get_institution_id_from_user(admin_page)
 
     # === STEP 1: Create test data via API ===
 
@@ -54,7 +52,7 @@ def test_clo_submission_happy_path(
 
     # Create program
     program_response = admin_page.request.post(
-        f"{base_url}/api/programs",
+        f"{BASE_URL}/api/programs",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -73,7 +71,7 @@ def test_clo_submission_happy_path(
 
     # Create course
     course_response = admin_page.request.post(
-        f"{base_url}/api/courses",
+        f"{BASE_URL}/api/courses",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -94,7 +92,7 @@ def test_clo_submission_happy_path(
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        base_url=base_url,
+        BASE_URL=BASE_URL,
         email="uat007.instructor@test.com",
         first_name="UAT007",
         last_name="Instructor",
@@ -106,7 +104,7 @@ def test_clo_submission_happy_path(
 
     # Create course section with instructor
     section_response = admin_page.request.post(
-        f"{base_url}/api/course_offerings",
+        f"{BASE_URL}/api/course_offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -127,7 +125,7 @@ def test_clo_submission_happy_path(
 
     # Create CLOs for the course in ASSIGNED status
     clo1_response = admin_page.request.post(
-        f"{base_url}/api/outcomes",
+        f"{BASE_URL}/api/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -148,12 +146,12 @@ def test_clo_submission_happy_path(
     # === STEP 2: Instructor logs in ===
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, base_url, "uat007.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat007.instructor@test.com", "TestUser123!"
     )
 
     # === STEP 3: Navigate to assessments page ===
-    instructor_page.goto(f"{base_url}/assessments")
-    expect(instructor_page).to_have_url(f"{base_url}/assessments")
+    instructor_page.goto(f"{BASE_URL}/assessments")
+    expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
     # Find the course section in the dropdown
     instructor_page.select_option("#sectionSelect", value=section_id)
@@ -218,7 +216,7 @@ def test_clo_submission_happy_path(
     # === STEP 7: Verify via API that submission timestamp is set ===
     # Use admin page to check API
     outcome_response = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo1_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo1_id}/audit-details",
         headers={
             "X-CSRFToken": csrf_token if csrf_token else "",
         },

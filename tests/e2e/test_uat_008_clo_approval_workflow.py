@@ -28,9 +28,7 @@ from tests.e2e.test_helpers import (
 
 @pytest.mark.e2e
 @pytest.mark.uat
-def test_clo_approval_workflow(
-    authenticated_institution_admin_page: Page, base_url: str
-):
+def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     """
     Test admin approval workflow for submitted CLOs.
 
@@ -43,7 +41,7 @@ def test_clo_approval_workflow(
     admin_page = authenticated_institution_admin_page
 
     # Get institution ID from admin user
-    institution_id = get_institution_id_from_user(admin_page, base_url)
+    institution_id = get_institution_id_from_user(admin_page)
 
     # === STEP 1: Create test data via API ===
 
@@ -54,7 +52,7 @@ def test_clo_approval_workflow(
 
     # Create program
     program_response = admin_page.request.post(
-        f"{base_url}/api/programs",
+        f"{BASE_URL}/api/programs",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -73,7 +71,7 @@ def test_clo_approval_workflow(
 
     # Create course
     course_response = admin_page.request.post(
-        f"{base_url}/api/courses",
+        f"{BASE_URL}/api/courses",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -94,7 +92,7 @@ def test_clo_approval_workflow(
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        base_url=base_url,
+        BASE_URL=BASE_URL,
         email="uat008.instructor@test.com",
         first_name="UAT008",
         last_name="Instructor",
@@ -106,7 +104,7 @@ def test_clo_approval_workflow(
 
     # Create course section with instructor
     section_response = admin_page.request.post(
-        f"{base_url}/api/course_offerings",
+        f"{BASE_URL}/api/course_offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -127,7 +125,7 @@ def test_clo_approval_workflow(
 
     # Create CLO in ASSIGNED status, then submit it via API
     clo_response = admin_page.request.post(
-        f"{base_url}/api/outcomes",
+        f"{BASE_URL}/api/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -152,7 +150,7 @@ def test_clo_approval_workflow(
     # Use instructor page context to simulate instructor submission
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, base_url, "uat008.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat008.instructor@test.com", "TestUser123!"
     )
 
     # Get CSRF token for instructor
@@ -161,7 +159,7 @@ def test_clo_approval_workflow(
     )
 
     submit_response = instructor_page.request.post(
-        f"{base_url}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -173,8 +171,8 @@ def test_clo_approval_workflow(
     instructor_page.close()
 
     # === STEP 2: Admin navigates to audit interface ===
-    admin_page.goto(f"{base_url}/dashboard")
-    expect(admin_page).to_have_url(f"{base_url}/dashboard")
+    admin_page.goto(f"{BASE_URL}/dashboard")
+    expect(admin_page).to_have_url(f"{BASE_URL}/dashboard")
 
     # === STEP 3: Click on CLO Audit & Approval panel's Review Submissions button ===
     review_button = admin_page.locator('button:has-text("Review Submissions")')
@@ -182,7 +180,7 @@ def test_clo_approval_workflow(
     review_button.click()
 
     # Verify we're on the audit page
-    expect(admin_page).to_have_url(f"{base_url}/audit-clo")
+    expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
     # Wait for CLO list to load
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
@@ -228,7 +226,7 @@ def test_clo_approval_workflow(
 
     # === STEP 7: Verify CLO status is APPROVED ===
     # Reload the audit page
-    admin_page.goto(f"{base_url}/audit-clo")
+    admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
 
     # Change filter to show approved CLOs
@@ -248,7 +246,7 @@ def test_clo_approval_workflow(
 
     # === STEP 8: Verify via API that review timestamp is set ===
     outcome_response = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={
             "X-CSRFToken": csrf_token if csrf_token else "",
         },

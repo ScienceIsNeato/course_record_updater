@@ -29,9 +29,7 @@ from tests.e2e.test_helpers import (
 
 @pytest.mark.e2e
 @pytest.mark.uat
-def test_clo_pipeline_end_to_end(
-    authenticated_institution_admin_page: Page, base_url: str
-):
+def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     """
     Test complete CLO lifecycle through all states.
 
@@ -40,7 +38,7 @@ def test_clo_pipeline_end_to_end(
     admin_page = authenticated_institution_admin_page
 
     # Get institution ID
-    institution_id = get_institution_id_from_user(admin_page, base_url)
+    institution_id = get_institution_id_from_user(admin_page)
 
     # Get CSRF token
     csrf_token = admin_page.evaluate(
@@ -51,7 +49,7 @@ def test_clo_pipeline_end_to_end(
 
     # Create program
     program_response = admin_page.request.post(
-        f"{base_url}/api/programs",
+        f"{BASE_URL}/api/programs",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -69,7 +67,7 @@ def test_clo_pipeline_end_to_end(
 
     # Create course
     course_response = admin_page.request.post(
-        f"{base_url}/api/courses",
+        f"{BASE_URL}/api/courses",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -88,7 +86,7 @@ def test_clo_pipeline_end_to_end(
 
     # Create course section WITHOUT instructor (UNASSIGNED state)
     section_response = admin_page.request.post(
-        f"{base_url}/api/course_offerings",
+        f"{BASE_URL}/api/course_offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -108,7 +106,7 @@ def test_clo_pipeline_end_to_end(
 
     # Create CLO for the course (will be UNASSIGNED initially)
     clo_response = admin_page.request.post(
-        f"{base_url}/api/outcomes",
+        f"{BASE_URL}/api/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -127,7 +125,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify CLO is UNASSIGNED via API
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -138,7 +136,7 @@ def test_clo_pipeline_end_to_end(
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        base_url=base_url,
+        BASE_URL=BASE_URL,
         email="uat010.instructor@test.com",
         first_name="UAT010",
         last_name="Instructor",
@@ -150,7 +148,7 @@ def test_clo_pipeline_end_to_end(
 
     # Update course section to assign instructor
     update_response = admin_page.request.put(
-        f"{base_url}/api/course_offerings/{section_id}",
+        f"{BASE_URL}/api/course_offerings/{section_id}",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -161,7 +159,7 @@ def test_clo_pipeline_end_to_end(
 
     # Update CLO status to ASSIGNED
     update_clo = admin_page.request.put(
-        f"{base_url}/api/outcomes/{clo_id}",
+        f"{BASE_URL}/api/outcomes/{clo_id}",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -172,7 +170,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify CLO is ASSIGNED
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -182,10 +180,10 @@ def test_clo_pipeline_end_to_end(
 
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, base_url, "uat010.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat010.instructor@test.com", "TestUser123!"
     )
 
-    instructor_page.goto(f"{base_url}/assessments")
+    instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.select_option("#sectionSelect", value=section_id)
     instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
 
@@ -203,7 +201,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify status is IN_PROGRESS
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -216,7 +214,7 @@ def test_clo_pipeline_end_to_end(
     )
 
     submit_response = instructor_page.request.post(
-        f"{base_url}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -227,7 +225,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify status is AWAITING_APPROVAL
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -238,7 +236,7 @@ def test_clo_pipeline_end_to_end(
 
     # === STEP 5: Admin requests rework (→ APPROVAL_PENDING) ===
 
-    admin_page.goto(f"{base_url}/audit-clo")
+    admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
 
     # Find CLO and open detail modal
@@ -268,7 +266,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify status is APPROVAL_PENDING
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -280,7 +278,7 @@ def test_clo_pipeline_end_to_end(
 
     # === STEP 6: Instructor addresses and resubmits (→ AWAITING_APPROVAL) ===
 
-    instructor_page.goto(f"{base_url}/assessments")
+    instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.select_option("#sectionSelect", value=section_id)
     instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
 
@@ -308,7 +306,7 @@ def test_clo_pipeline_end_to_end(
     )
 
     resubmit_response = instructor_page.request.post(
-        f"{base_url}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -319,7 +317,7 @@ def test_clo_pipeline_end_to_end(
 
     # Verify status is AWAITING_APPROVAL again
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
@@ -327,7 +325,7 @@ def test_clo_pipeline_end_to_end(
 
     # === STEP 7: Admin approves (→ APPROVED) ===
 
-    admin_page.goto(f"{base_url}/audit-clo")
+    admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
 
     # Find and open CLO
@@ -348,7 +346,7 @@ def test_clo_pipeline_end_to_end(
     # === STEP 8: Verify audit trail in database ===
 
     outcome = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok

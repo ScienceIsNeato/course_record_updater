@@ -34,9 +34,7 @@ from tests.e2e.test_helpers import (
 
 @pytest.mark.e2e
 @pytest.mark.uat
-def test_clo_rework_feedback_workflow(
-    authenticated_institution_admin_page: Page, base_url: str
-):
+def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page):
     """
     Test admin rework request workflow with feedback and email notification.
 
@@ -51,7 +49,7 @@ def test_clo_rework_feedback_workflow(
     admin_page = authenticated_institution_admin_page
 
     # Get institution ID from admin user
-    institution_id = get_institution_id_from_user(admin_page, base_url)
+    institution_id = get_institution_id_from_user(admin_page)
 
     # === STEP 1: Create test data via API ===
 
@@ -62,7 +60,7 @@ def test_clo_rework_feedback_workflow(
 
     # Create program
     program_response = admin_page.request.post(
-        f"{base_url}/api/programs",
+        f"{BASE_URL}/api/programs",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -81,7 +79,7 @@ def test_clo_rework_feedback_workflow(
 
     # Create course
     course_response = admin_page.request.post(
-        f"{base_url}/api/courses",
+        f"{BASE_URL}/api/courses",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -102,7 +100,7 @@ def test_clo_rework_feedback_workflow(
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        base_url=base_url,
+        BASE_URL=BASE_URL,
         email="uat009.instructor@test.com",
         first_name="UAT009",
         last_name="Instructor",
@@ -114,7 +112,7 @@ def test_clo_rework_feedback_workflow(
 
     # Create course section with instructor
     section_response = admin_page.request.post(
-        f"{base_url}/api/course_offerings",
+        f"{BASE_URL}/api/course_offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -135,7 +133,7 @@ def test_clo_rework_feedback_workflow(
 
     # Create CLO and submit it
     clo_response = admin_page.request.post(
-        f"{base_url}/api/outcomes",
+        f"{BASE_URL}/api/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -159,7 +157,7 @@ def test_clo_rework_feedback_workflow(
     # Submit CLO via instructor
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, base_url, "uat009.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat009.instructor@test.com", "TestUser123!"
     )
 
     instructor_csrf = instructor_page.evaluate(
@@ -167,7 +165,7 @@ def test_clo_rework_feedback_workflow(
     )
 
     submit_response = instructor_page.request.post(
-        f"{base_url}/api/outcomes/{clo_id}/submit",
+        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": instructor_csrf if instructor_csrf else "",
@@ -180,8 +178,8 @@ def test_clo_rework_feedback_workflow(
     instructor_page.close()
 
     # === STEP 2: Admin navigates to audit interface ===
-    admin_page.goto(f"{base_url}/audit-clo")
-    expect(admin_page).to_have_url(f"{base_url}/audit-clo")
+    admin_page.goto(f"{BASE_URL}/audit-clo")
+    expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
     # Wait for CLO list to load
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
@@ -246,7 +244,7 @@ def test_clo_rework_feedback_workflow(
 
     # === STEP 9: Verify feedback is stored via API ===
     outcome_response = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={
             "X-CSRFToken": csrf_token if csrf_token else "",
         },
@@ -263,11 +261,11 @@ def test_clo_rework_feedback_workflow(
     # === STEP 10: Instructor logs in and sees feedback ===
     instructor_page = admin_page.context.new_page()
     login_as_user(
-        instructor_page, base_url, "uat009.instructor@test.com", "TestUser123!"
+        instructor_page, BASE_URL, "uat009.instructor@test.com", "TestUser123!"
     )
 
-    instructor_page.goto(f"{base_url}/assessments")
-    expect(instructor_page).to_have_url(f"{base_url}/assessments")
+    instructor_page.goto(f"{BASE_URL}/assessments")
+    expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
     # Select section
     instructor_page.select_option("#sectionSelect", value=section_id)
@@ -321,7 +319,7 @@ def test_clo_rework_feedback_workflow(
 
     # Verify via API
     outcome_response = admin_page.request.get(
-        f"{base_url}/api/outcomes/{clo_id}/audit-details",
+        f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
         headers={
             "X-CSRFToken": csrf_token if csrf_token else "",
         },
