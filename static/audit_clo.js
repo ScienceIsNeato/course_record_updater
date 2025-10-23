@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const submittedDate = clo.submitted_at ? formatDate(clo.submitted_at) : 'N/A';
 
       html += `
-                <tr style="cursor: pointer;" onclick="window.showCLODetails('${clo.id}')">
+                <tr data-outcome-id="${clo.outcome_id || clo.id}" style="cursor: pointer;" onclick="window.showCLODetails('${clo.outcome_id || clo.id}')">
                     <td>${statusBadge}</td>
                     <td><strong>${escapeHtml(clo.course_number || 'N/A')}</strong></td>
                     <td>${escapeHtml(clo.clo_number || 'N/A')}</td>
@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><small>${submittedDate}</small></td>
                     <td onclick="event.stopPropagation();">
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="window.showCLODetails('${clo.id}')">
+                            <button class="btn btn-outline-primary" onclick="window.showCLODetails('${clo.outcome_id || clo.id}')">
                                 <i class="fas fa-eye"></i> View
                             </button>
                         </div>
