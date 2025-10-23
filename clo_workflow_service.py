@@ -310,7 +310,9 @@ Course Record System
             # Enrich with course and instructor details
             enriched_outcomes = []
             for outcome in outcomes:
-                details = CLOWorkflowService.get_outcome_with_details(outcome["id"])
+                details = CLOWorkflowService.get_outcome_with_details(
+                    outcome["outcome_id"]
+                )
                 if details:
                     enriched_outcomes.append(details)
 
@@ -347,7 +349,9 @@ Course Record System
             # Enrich with course and instructor details
             enriched_outcomes = []
             for outcome in outcomes:
-                details = CLOWorkflowService.get_outcome_with_details(outcome["id"])
+                details = CLOWorkflowService.get_outcome_with_details(
+                    outcome["outcome_id"]
+                )
                 if details:
                     enriched_outcomes.append(details)
 

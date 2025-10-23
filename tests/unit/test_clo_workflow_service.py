@@ -289,8 +289,8 @@ class TestGetCLOsByStatus:
         status = CLOStatus.AWAITING_APPROVAL
 
         mock_db.get_outcomes_by_status.return_value = [
-            {"id": "outcome-1"},
-            {"id": "outcome-2"},
+            {"outcome_id": "outcome-1"},
+            {"outcome_id": "outcome-2"},
         ]
         mock_get_details.side_effect = [
             {"id": "outcome-1", "course_number": "CS-101"},
