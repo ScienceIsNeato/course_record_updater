@@ -215,19 +215,29 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.wait_for_selector("#courseSelect", timeout=5000)
     instructor_page.select_option("#courseSelect", value=course_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
+    instructor_page.wait_for_selector(
+        f'button[data-outcome-id="{clo_id}"]', timeout=5000
+    )
 
-    # Edit assessment data
-    instructor_page.fill(f"#students_assessed_{clo_id}", "35")
-    instructor_page.fill(f"#students_meeting_target_{clo_id}", "30")
+    # Click "Update Assessment" button to open modal
+    instructor_page.click(f'button.update-assessment-btn[data-outcome-id="{clo_id}"]')
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="visible", timeout=5000
+    )
+
+    # Fill assessment data in modal
+    instructor_page.fill("#studentsAssessed", "35")
+    instructor_page.fill("#studentsMeetingTarget", "30")
     instructor_page.fill(
-        f"#narrative_{clo_id}",
+        "#assessmentNarrative",
         "Initial narrative: Students completed data structure implementations.",
     )
 
     # Save changes (triggers auto-mark IN_PROGRESS)
-    instructor_page.click("button:has-text('Save Changes')")
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
+    instructor_page.click("#updateAssessmentModal button:has-text('Save Assessment')")
+    instructor_page.wait_for_timeout(
+        1000
+    )  # Wait for modal to close and alert to appear
 
     # Verify status is IN_PROGRESS
     outcome = admin_page.request.get(
@@ -311,15 +321,25 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     instructor_page.wait_for_selector("#courseSelect", timeout=5000)
     instructor_page.select_option("#courseSelect", value=course_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
+    instructor_page.wait_for_selector(
+        f'button[data-outcome-id="{clo_id}"]', timeout=5000
+    )
 
-    # Verify feedback is visible
-    feedback_alert = instructor_page.locator(f"#feedback-alert-{clo_id}")
+    # Verify feedback is visible (it's in an alert div within the list-group-item)
+    feedback_alert = instructor_page.locator(
+        ".alert-warning:has-text('Feedback Requested')"
+    )
     expect(feedback_alert).to_be_visible()
+
+    # Click "Update Assessment" button to open modal and address feedback
+    instructor_page.click(f'button.update-assessment-btn[data-outcome-id="{clo_id}"]')
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="visible", timeout=5000
+    )
 
     # Address feedback with improved narrative
     instructor_page.fill(
-        f"#narrative_{clo_id}",
+        "#assessmentNarrative",
         "Students implemented arrays, linked lists, stacks, queues, trees, and hash tables. "
         "They analyzed time complexity (O(1), O(n), O(log n)) and space complexity for each "
         "data structure. Performance comparisons were conducted using empirical testing with "
@@ -328,8 +348,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     )
 
     # Save changes
-    instructor_page.click("button:has-text('Save Changes')")
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
+    instructor_page.click("#updateAssessmentModal button:has-text('Save Assessment')")
+    instructor_page.wait_for_timeout(1000)  # Wait for modal to close
 
     # Resubmit
     instructor_csrf = instructor_page.evaluate(
