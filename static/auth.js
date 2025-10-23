@@ -608,7 +608,7 @@ function showMessage(message, type) {
   closeButton.type = 'button';
   closeButton.className = 'btn-close';
   closeButton.dataset.bsDismiss = 'alert';
-  closeButton.setAttribute('aria-label', 'Close');
+  closeButton.ariaLabel = 'Close';
   messageDiv.appendChild(closeButton);
 
   // Insert at top of form
