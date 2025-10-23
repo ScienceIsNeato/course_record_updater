@@ -207,7 +207,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
 
     # === STEP 3: Instructor edits (→ IN_PROGRESS) ===
 
-    instructor_page = admin_page.context.new_page()
+    # Create separate browser context for instructor to avoid session conflicts
+    instructor_context = admin_page.context.browser.new_context()
+    instructor_page = instructor_context.new_page()
     login_as_user(
         instructor_page, BASE_URL, "uat010.instructor@test.com", "TestUser123!"
     )
