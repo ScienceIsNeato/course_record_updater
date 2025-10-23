@@ -59,8 +59,8 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "program_name": "UAT-008 Business Administration",
-                "program_code": "UAT008-BA",
+                "name": "UAT-008 Business Administration",
+                "short_name": "UAT008-BA",
                 "institution_id": institution_id,
             }
         ),
@@ -78,8 +78,9 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "course_name": "UAT-008 Marketing Fundamentals",
-                "course_code": "UAT008-MKT101",
+                "course_number": "UAT008-MKT101",
+                "course_title": "UAT-008 Marketing Fundamentals",
+                "department": "Business",
                 "institution_id": institution_id,
                 "program_id": program_id,
             }

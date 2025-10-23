@@ -67,8 +67,8 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         },
         data=json.dumps(
             {
-                "program_name": "UAT-009 Engineering",
-                "program_code": "UAT009-ENG",
+                "name": "UAT-009 Engineering",
+                "short_name": "UAT009-ENG",
                 "institution_id": institution_id,
             }
         ),
@@ -86,8 +86,9 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         },
         data=json.dumps(
             {
-                "course_name": "UAT-009 Thermodynamics",
-                "course_code": "UAT009-THERMO101",
+                "course_number": "UAT009-THERMO101",
+                "course_title": "UAT-009 Thermodynamics",
+                "department": "Engineering",
                 "institution_id": institution_id,
                 "program_id": program_id,
             }

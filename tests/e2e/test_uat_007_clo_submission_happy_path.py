@@ -59,8 +59,8 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "program_name": "UAT-007 Computer Science",
-                "program_code": "UAT007-CS",
+                "name": "UAT-007 Computer Science",
+                "short_name": "UAT007-CS",
                 "institution_id": institution_id,
             }
         ),
@@ -78,8 +78,9 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "course_name": "UAT-007 Software Engineering",
-                "course_code": "UAT007-SE101",
+                "course_number": "UAT007-SE101",
+                "course_title": "UAT-007 Software Engineering",
+                "department": "Computer Science",
                 "institution_id": institution_id,
                 "program_id": program_id,
             }

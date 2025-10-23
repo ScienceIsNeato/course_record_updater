@@ -56,8 +56,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "program_name": "UAT-010 Computer Science",
-                "program_code": "UAT010-CS",
+                "name": "UAT-010 Computer Science",
+                "short_name": "UAT010-CS",
                 "institution_id": institution_id,
             }
         ),
@@ -74,8 +74,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "course_name": "UAT-010 Data Structures",
-                "course_code": "UAT010-DS101",
+                "course_number": "UAT010-DS101",
+                "course_title": "UAT-010 Data Structures",
+                "department": "Computer Science",
                 "institution_id": institution_id,
                 "program_id": program_id,
             }
