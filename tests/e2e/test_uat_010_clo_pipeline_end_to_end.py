@@ -292,15 +292,19 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     rework_button = modal.locator('button:has-text("Request Rework")')
     rework_button.click()
 
+    # Wait for rework modal to open
+    rework_modal = admin_page.locator("#requestReworkModal")
+    expect(rework_modal).to_be_visible()
+
     # Fill feedback
-    feedback_textarea = modal.locator("#feedbackComments")
+    feedback_textarea = rework_modal.locator("#feedbackComments")
     feedback_textarea.fill(
         "Please provide more detail about which specific data structures were "
         "implemented and how students analyzed their time/space complexity."
     )
 
     # Submit rework
-    submit_button = modal.locator('button:has-text("Send for Rework")')
+    submit_button = rework_modal.locator('button:has-text("Send for Rework")')
     submit_button.click()
 
     # Wait for success
