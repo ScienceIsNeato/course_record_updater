@@ -526,19 +526,20 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
 def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:
     """Convert UserInvitation model to dictionary."""
     return {
-        "invitation_id": model.id,
+        "id": model.id,  # Primary key for update operations
+        "invitation_id": model.id,  # Legacy compatibility
         "email": model.email,
         "role": model.role,
         "institution_id": model.institution_id,
         "token": model.token,
         "invited_by": model.invited_by,
-        "invited_at": model.invited_at,
-        "expires_at": model.expires_at,
+        "invited_at": model.invited_at.isoformat() if model.invited_at else None,
+        "expires_at": model.expires_at.isoformat() if model.expires_at else None,
         "status": model.status,
-        "accepted_at": model.accepted_at,
+        "accepted_at": model.accepted_at.isoformat() if model.accepted_at else None,
         "personal_message": model.personal_message,
-        "created_at": model.created_at,
-        "updated_at": model.updated_at,
+        "created_at": model.created_at.isoformat() if model.created_at else None,
+        "updated_at": model.updated_at.isoformat() if model.updated_at else None,
     }
 
 

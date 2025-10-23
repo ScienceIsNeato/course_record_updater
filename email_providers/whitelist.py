@@ -55,6 +55,12 @@ class EmailWhitelist:
             f"[EmailWhitelist] Initialized for {self.env} environment "
             f"({len(self.whitelist)} whitelisted emails)"
         )
+        logger.info(
+            f"[EmailWhitelist] Whitelist contents: {sorted(self.whitelist)}"
+        )
+        logger.info(
+            f"[EmailWhitelist] EMAIL_WHITELIST env var: {os.getenv('EMAIL_WHITELIST', 'NOT SET')}"
+        )
         
         if not self.is_production and not self.whitelist:
             logger.warning(

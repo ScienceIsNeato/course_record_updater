@@ -528,3 +528,89 @@ class TestAppErrorHandling:
 
         # Test debug mode setting
         assert isinstance(app.debug, bool)
+
+
+class TestCSRFErrorHandler:
+    """Test CSRF error handling functionality."""
+
+    def test_csrf_error_returns_json_for_api_routes(self):
+        """Test that CSRF errors on API routes return JSON responses."""
+        from flask_wtf.csrf import CSRFError
+
+        from app import app
+
+        with app.test_request_context("/api/users", method="POST"):
+            from app import handle_csrf_error
+
+            response = handle_csrf_error(CSRFError("Invalid token"))
+            json_data, status_code = response
+
+            assert status_code == 400
+            data = json_data.get_json()
+            assert data["success"] is False
+            assert "CSRF validation failed" in data["error"]
+
+    def test_csrf_error_returns_html_for_web_routes(self):
+        """Test that CSRF errors on web routes return HTML responses."""
+        from flask_wtf.csrf import CSRFError
+
+        from app import app
+
+        with app.test_request_context("/login", method="POST"):
+            from app import handle_csrf_error
+
+            response = handle_csrf_error(CSRFError("Invalid token"))
+            html_content, status_code = response
+
+            assert status_code == 400
+            assert "400 Bad Request" in html_content
+            assert "Invalid CSRF token" in html_content
+
+
+class TestInvitationAcceptanceRoute:
+    """Test invitation acceptance route functionality."""
+
+    @patch("app.is_authenticated")
+    def test_register_accept_invitation_redirects_authenticated_user(
+        self, mock_is_authenticated
+    ):
+        """Test that authenticated users are redirected to dashboard."""
+        from app import app
+
+        mock_is_authenticated.return_value = True
+
+        with app.test_client() as client:
+            response = client.get("/register/accept/test-token-123")
+            assert response.status_code == 302
+            assert "/dashboard" in response.location
+
+    @patch("app.is_authenticated")
+    def test_register_accept_invitation_renders_template_for_unauthenticated(
+        self, mock_is_authenticated
+    ):
+        """Test that unauthenticated users see the invitation registration page."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+
+        with app.test_client() as client:
+            response = client.get("/register/accept/test-token-456")
+            assert response.status_code == 200
+            # Check that template is rendered with the token
+            assert b"test-token-456" in response.data
+
+    @patch("app.is_authenticated")
+    def test_register_accept_invitation_passes_token_to_template(
+        self, mock_is_authenticated
+    ):
+        """Test that the invitation token is passed to the template."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+
+        with app.test_client() as client:
+            test_token = "abc-def-ghi-123"
+            response = client.get(f"/register/accept/{test_token}")
+            assert response.status_code == 200
+            # Verify token is present in the rendered HTML
+            assert test_token.encode() in response.data

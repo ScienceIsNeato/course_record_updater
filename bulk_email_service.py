@@ -97,9 +97,18 @@ class BulkEmailService:
         )
 
         # Start background thread to send emails
+        # Pass Flask app for application context in background thread
+        # pylint: disable=protected-access
         thread = threading.Thread(
             target=BulkEmailService._send_emails_background,
-            args=(job.id, recipients, personal_message, term, deadline),
+            args=(
+                current_app._get_current_object(),  # type: ignore[attr-defined]
+                job.id,
+                recipients,
+                personal_message,
+                term,
+                deadline,
+            ),
             daemon=True,
         )
         thread.start()
@@ -113,6 +122,7 @@ class BulkEmailService:
 
     @staticmethod
     def _send_emails_background(
+        app,
         job_id: str,
         recipients: List[Dict],
         personal_message: Optional[str],
@@ -123,105 +133,124 @@ class BulkEmailService:
         Background worker to send emails.
 
         Runs in separate thread to avoid blocking API requests.
+        Requires Flask app for application context.
         """
-        # Import here to avoid circular dependencies
-        from database_factory import get_database_service
+        # Wrap entire execution in Flask application context
+        with app.app_context():
+            # Import here to avoid circular dependencies
+            from database_factory import get_database_service
 
-        db_service = get_database_service()
-        db = db_service.sqlite.get_session()  # type: ignore[attr-defined]
+            db_service = get_database_service()
+            db = db_service.sqlite.get_session()  # type: ignore[attr-defined]
 
-        try:
-            # Get job
-            job = BulkEmailJob.get_job(db, job_id)
-            if not job:
-                logger.error(f"[BulkEmailService] Job {job_id} not found")
-                return
+            try:
+                # Get job
+                job = BulkEmailJob.get_job(db, job_id)
+                if not job:
+                    logger.error(f"[BulkEmailService] Job {job_id} not found")
+                    return
 
-            # Get BASE_URL from config
-            from constants import DEFAULT_BASE_URL
+                # Get BASE_URL from config
+                from constants import DEFAULT_BASE_URL
 
-            base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
+                base_url = current_app.config.get("BASE_URL", DEFAULT_BASE_URL)
 
-            # Create email manager with conservative rate limiting
-            email_manager = EmailManager(
-                rate=0.1,  # 1 email every 10 seconds
-                max_retries=3,
-                base_delay=5.0,
-                max_delay=60.0,
-            )
-
-            # Queue all emails
-            for recipient in recipients:
-                email_manager.add_email(
-                    to_email=recipient["email"],
-                    subject=f"Reminder: Please submit your course data{f' for {term}' if term else ''}",
-                    html_body=BulkEmailService._render_reminder_html(
-                        recipient["name"], personal_message, term, deadline, base_url
-                    ),
-                    text_body=BulkEmailService._render_reminder_text(
-                        recipient["name"], personal_message, term, deadline, base_url
-                    ),
-                    metadata={"user_id": recipient.get("user_id")},
+                # Create email manager with reasonable rate limit
+                # EmailManager has exponential backoff to handle provider-specific rate limit errors
+                # Rate is in emails/second (2.0 = 2 emails per second)
+                # Conservative rate to avoid overwhelming providers while maintaining reasonable speed
+                email_manager = EmailManager(
+                    rate=2.0,  # 2 emails/sec (0.5s between emails); conservative limit
+                    max_retries=3,
+                    base_delay=1.0,  # Start with 1s backoff on errors
+                    max_delay=30.0,  # Cap backoff at 30s
                 )
 
-            # Get email service instance
-            email_service = EmailService()
+                # Queue all emails
+                from constants import EMAIL_SUBJECT_REMINDER_PREFIX
 
-            # Define send function that uses EmailService
-            def send_email(
-                to_email: str, subject: str, html_body: str, text_body: str
-            ) -> bool:
-                """Send email via EmailService"""
-                # pylint: disable=protected-access
-                return email_service._send_email(
-                    to_email, subject, html_body, text_body
+                for recipient in recipients:
+                    subject_suffix = f" for {term}" if term else ""
+                    email_manager.add_email(
+                        to_email=recipient["email"],
+                        subject=f"{EMAIL_SUBJECT_REMINDER_PREFIX}{subject_suffix}",
+                        html_body=BulkEmailService._render_reminder_html(
+                            recipient["name"],
+                            personal_message,
+                            term,
+                            deadline,
+                            base_url,
+                        ),
+                        text_body=BulkEmailService._render_reminder_text(
+                            recipient["name"],
+                            personal_message,
+                            term,
+                            deadline,
+                            base_url,
+                        ),
+                        metadata={"user_id": recipient.get("user_id")},
+                    )
+
+                # Get email service instance
+                email_service = EmailService()
+
+                # Define send function that uses EmailService
+                def send_email(
+                    to_email: str, subject: str, html_body: str, text_body: str
+                ) -> bool:
+                    """Send email via EmailService"""
+                    # pylint: disable=protected-access
+                    return email_service._send_email(
+                        to_email, subject, html_body, text_body
+                    )
+
+                # Send all emails with progress updates
+                def update_progress():
+                    """Update job progress in database"""
+                    status = email_manager.get_status()
+
+                    failed_jobs = email_manager.get_failed_jobs()
+                    failed_recipients = [
+                        {
+                            "email": job.to_email,
+                            "error": job.last_error,
+                            "attempts": job.attempts,
+                        }
+                        for job in failed_jobs
+                    ]
+
+                    job.update_progress(
+                        emails_sent=status["sent"],
+                        emails_failed=status["failed"],
+                        emails_pending=status["pending"],
+                        failed_recipients=failed_recipients,
+                    )
+                    db.commit()
+
+                # Send emails and update progress periodically
+                stats = email_manager.send_all(send_email, timeout=60)
+
+                # Final progress update
+                update_progress()
+
+                logger.info(
+                    f"[BulkEmailService] Job {job_id} completed: "
+                    f"{stats['sent']} sent, {stats['failed']} failed"
                 )
 
-            # Send all emails with progress updates
-            def update_progress():
-                """Update job progress in database"""
-                status = email_manager.get_status()
-
-                failed_jobs = email_manager.get_failed_jobs()
-                failed_recipients = [
-                    {
-                        "email": job.to_email,
-                        "error": job.last_error,
-                        "attempts": job.attempts,
-                    }
-                    for job in failed_jobs
-                ]
-
-                job.update_progress(
-                    emails_sent=status["sent"],
-                    emails_failed=status["failed"],
-                    emails_pending=status["pending"],
-                    failed_recipients=failed_recipients,
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error(
+                    f"[BulkEmailService] Job {job_id} failed: {e}", exc_info=True
                 )
-                db.commit()
 
-            # Send emails and update progress periodically
-            stats = email_manager.send_all(send_email, timeout=60)
+                # Mark job as failed
+                job = BulkEmailJob.get_job(db, job_id)
+                if job:
+                    job.mark_failed(str(e))
+                    db.commit()
 
-            # Final progress update
-            update_progress()
-
-            logger.info(
-                f"[BulkEmailService] Job {job_id} completed: "
-                f"{stats['sent']} sent, {stats['failed']} failed"
-            )
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error(f"[BulkEmailService] Job {job_id} failed: {e}", exc_info=True)
-
-            # Mark job as failed
-            job = BulkEmailJob.get_job(db, job_id)
-            if job:
-                job.mark_failed(str(e))
-                db.commit()
-
-        finally:
-            db.close()
+            finally:
+                db.close()
 
     @staticmethod
     def _render_reminder_html(

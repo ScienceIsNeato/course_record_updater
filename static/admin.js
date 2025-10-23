@@ -561,10 +561,14 @@ async function handleInviteUser(event) {
       }
     }
 
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
     const response = await fetch('/api/auth/invite', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRFToken': csrfToken })
       },
       body: JSON.stringify(data)
     });
@@ -572,7 +576,7 @@ async function handleInviteUser(event) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      showSuccess('Invitation sent successfully!');
+      showSuccess(result.message || 'Invitation sent successfully!');
       bootstrap.Modal.getInstance(document.getElementById('inviteUserModal')).hide();
       loadInvitations();
     } else {

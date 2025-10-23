@@ -300,11 +300,15 @@ class BulkReminderManager {
       // Switch to progress view
       this.showProgressView();
 
+      // Get CSRF token
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
       // Send request to API
       const response = await fetch('/api/bulk-email/send-instructor-reminders', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(csrfToken && { 'X-CSRFToken': csrfToken })
         },
         body: JSON.stringify(requestData)
       });

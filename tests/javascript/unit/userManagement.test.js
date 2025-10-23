@@ -148,7 +148,7 @@ describe('User Management - Invite User Modal', () => {
     });
 
     describe('Form Submission - API Call', () => {
-        test('should POST invitation data to /api/invitations on successful form submit', async () => {
+        test('should POST invitation data to /api/auth/invite on successful form submit', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ success: true, message: 'Invitation sent' })
@@ -173,7 +173,7 @@ describe('User Management - Invite User Modal', () => {
 
             // Verify fetch was called
             expect(mockFetch).toHaveBeenCalledWith(
-                '/api/invitations',
+                '/api/auth/invite',
                 expect.objectContaining({
                     method: 'POST',
                     headers: expect.objectContaining({
@@ -285,8 +285,8 @@ describe('User Management - Invite User Modal', () => {
                 json: async () => ({ error: 'Email already exists' })
             });
 
-            // Mock alert
-            global.alert = jest.fn();
+            // Mock showAlert
+            global.showAlert = jest.fn();
 
             const form = document.getElementById('inviteUserForm');
             const emailInput = document.getElementById('inviteEmail');
@@ -301,7 +301,8 @@ describe('User Management - Invite User Modal', () => {
             await new Promise(resolve => setTimeout(resolve, 100));
 
             // Should show error
-            expect(global.alert).toHaveBeenCalledWith(
+            expect(global.showAlert).toHaveBeenCalledWith(
+                'danger',
                 expect.stringContaining('Email already exists')
             );
 
@@ -312,7 +313,7 @@ describe('User Management - Invite User Modal', () => {
         test('should handle network errors gracefully', async () => {
             mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-            global.alert = jest.fn();
+            global.showAlert = jest.fn();
 
             const form = document.getElementById('inviteUserForm');
             const emailInput = document.getElementById('inviteEmail');
@@ -327,7 +328,8 @@ describe('User Management - Invite User Modal', () => {
             await new Promise(resolve => setTimeout(resolve, 100));
 
             // Should show generic error
-            expect(global.alert).toHaveBeenCalledWith(
+            expect(global.showAlert).toHaveBeenCalledWith(
+                'danger',
                 expect.stringContaining('Failed to send invitation')
             );
 

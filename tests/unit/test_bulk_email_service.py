@@ -1,9 +1,11 @@
 """Unit tests for BulkEmailService."""
 
+import sys
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+import bulk_email_service
 from bulk_email_service import BulkEmailService
 
 
@@ -11,9 +13,9 @@ from bulk_email_service import BulkEmailService
 class TestBulkEmailService:
     """Test suite for BulkEmailService."""
 
-    @patch("bulk_email_service.BulkEmailJob")
     @patch("bulk_email_service.threading.Thread")
-    def test_send_instructor_reminders_success(self, mock_thread, mock_bulk_email_job):
+    @patch("bulk_email_service.BulkEmailJob")
+    def test_send_instructor_reminders_success(self, mock_bulk_email_job, mock_thread):
         """Test sending reminders to instructors successfully."""
         # Setup mock database session
         mock_db = Mock()
@@ -42,15 +44,20 @@ class TestBulkEmailService:
         mock_job.id = "job-123"
         mock_bulk_email_job.create_job.return_value = mock_job
 
-        # Execute
-        job_id = BulkEmailService.send_instructor_reminders(
-            db=mock_db,
-            instructor_ids=["user-1", "user-2"],
-            created_by_user_id="admin-1",
-            personal_message="Please submit your data",
-            term="FA2024",
-            deadline="2024-12-31",
-        )
+        # Create Flask app and run within app context
+        from flask import Flask
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            job_id = BulkEmailService.send_instructor_reminders(
+                db=mock_db,
+                instructor_ids=["user-1", "user-2"],
+                created_by_user_id="admin-1",
+                personal_message="Please submit your data",
+                term="FA2024",
+                deadline="2024-12-31",
+            )
 
         # Verify
         assert job_id == "job-123"
@@ -68,12 +75,18 @@ class TestBulkEmailService:
         mock_job.id = "job-123"
         mock_bulk_email_job.create_job.return_value = mock_job
 
-        # Should still create job even with no valid recipients
-        job_id = BulkEmailService.send_instructor_reminders(
-            db=mock_db,
-            instructor_ids=["invalid-id"],
-            created_by_user_id="admin-1",
-        )
+        # Create Flask app and run within app context
+        from flask import Flask
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            # Should still create job even with no valid recipients
+            job_id = BulkEmailService.send_instructor_reminders(
+                db=mock_db,
+                instructor_ids=["invalid-id"],
+                created_by_user_id="admin-1",
+            )
 
         assert job_id == "job-123"
         # Job should be created with empty recipients list
@@ -97,11 +110,17 @@ class TestBulkEmailService:
         mock_job.id = "job-123"
         mock_bulk_email_job.create_job.return_value = mock_job
 
-        job_id = BulkEmailService.send_instructor_reminders(
-            db=mock_db,
-            instructor_ids=["user-1"],
-            created_by_user_id="admin-1",
-        )
+        # Create Flask app and run within app context
+        from flask import Flask
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            job_id = BulkEmailService.send_instructor_reminders(
+                db=mock_db,
+                instructor_ids=["user-1"],
+                created_by_user_id="admin-1",
+            )
 
         assert job_id == "job-123"
         # Should skip user with no email
@@ -125,11 +144,17 @@ class TestBulkEmailService:
         mock_job.id = "job-123"
         mock_bulk_email_job.create_job.return_value = mock_job
 
-        job_id = BulkEmailService.send_instructor_reminders(
-            db=mock_db,
-            instructor_ids=["user-1"],
-            created_by_user_id="admin-1",
-        )
+        # Create Flask app and run within app context
+        from flask import Flask
+
+        app = Flask(__name__)
+
+        with app.app_context():
+            job_id = BulkEmailService.send_instructor_reminders(
+                db=mock_db,
+                instructor_ids=["user-1"],
+                created_by_user_id="admin-1",
+            )
 
         assert job_id == "job-123"
         # Should use email as name
@@ -324,6 +349,7 @@ class TestBulkEmailService:
         # Execute within Flask app context
         with app.app_context():
             BulkEmailService._send_emails_background(
+                app=app,
                 job_id="job-123",
                 recipients=recipients,
                 personal_message="Test message",
@@ -352,7 +378,12 @@ class TestBulkEmailService:
         mock_bulk_email_job.get_job.return_value = None
 
         # Should handle gracefully
+        from flask import Flask
+
+        app = Flask(__name__)
+
         BulkEmailService._send_emails_background(
+            app=app,
             job_id="invalid-job",
             recipients=[],
             personal_message=None,
@@ -382,7 +413,12 @@ class TestBulkEmailService:
         ]
 
         # Should handle exception and mark job as failed
+        from flask import Flask
+
+        app = Flask(__name__)
+
         BulkEmailService._send_emails_background(
+            app=app,
             job_id="job-123",
             recipients=[],
             personal_message=None,

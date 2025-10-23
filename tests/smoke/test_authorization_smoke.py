@@ -119,10 +119,13 @@ class TestAuthorizationSmoke:
             assert service.has_permission("manage_program_users") is True
             assert service.has_permission("manage_courses") is True
             assert service.has_permission("view_program_data") is True
+            # Program admins CAN manage programs (e.g., send bulk reminders to instructors)
+            assert service.has_permission("manage_programs") is True
+            # Program admins CAN manage users (e.g., create instructors at their institution)
+            assert service.has_permission("manage_users") is True
 
             # Should NOT have full institution-level permissions
             assert service.has_permission("manage_institution_users") is False
-            assert service.has_permission("manage_programs") is False
             # Program admins CAN view institution data (needed to see/assign instructors)
             assert service.has_permission("view_institution_data") is True
 
@@ -236,6 +239,11 @@ class TestAPIEndpointSecuritySmoke:
             return "login page"
 
         app.register_blueprint(api)
+
+        # Add the non-API login route that @login_required redirects to
+        @app.route("/login", methods=["GET", "POST"])
+        def login():
+            return "login page"
 
         with app.test_request_context():
             from auth_service import login_required, permission_required

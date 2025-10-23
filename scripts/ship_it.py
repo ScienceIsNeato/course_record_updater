@@ -157,12 +157,21 @@ class QualityGateExecutor:
         actual_flag = flag_mapping.get(check_flag, check_flag)
 
         try:
+            # Configure timeout per check type
+            # E2E: 600s (IMAP verification is slow in CI)
+            # Sonar: 600s (SonarCloud server-side processing can be slow)
+            # Others: 300s (default)
+            if check_flag in ["e2e", "sonar"]:
+                timeout_seconds = 600
+            else:
+                timeout_seconds = 300
+            
             # Run the individual check
             result = subprocess.run(
                 [self.script_path, f"--{actual_flag}"],
                 capture_output=True,
                 text=True,
-                timeout=300,  # 5 minute timeout per check
+                timeout=timeout_seconds,
                 check=False,  # Don't raise exception on non-zero exit code
             )
 

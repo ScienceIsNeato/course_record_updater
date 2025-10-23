@@ -49,12 +49,12 @@ class EmailService:
 
     Handles template-based emails with secure token embedding
 
-    CRITICAL SECURITY: Protects MockU email addresses from being used in testing
+    CRITICAL SECURITY: Protects real institution email domains from being used in testing
     """
 
     # Protected email domains - NEVER send emails to these in testing/development
     PROTECTED_DOMAINS = [
-        "mocku.test",
+        "cei.test",
         "coastaledu.org",
         "coastal.edu",
         "coastalcarolina.edu",

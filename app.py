@@ -36,6 +36,35 @@ app.config["WTF_CSRF_ENABLED"] = csrf_enabled
 csrf = CSRFProtect(app)
 
 
+# CSRF error handler - return JSON for API routes, HTML for others
+from flask_wtf.csrf import CSRFError
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    """Handle CSRF validation errors"""
+    from flask import jsonify, request
+
+    from constants import CSRF_ERROR_MESSAGE
+
+    # Check if this is an API request
+    if request.path.startswith("/api/"):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": CSRF_ERROR_MESSAGE,
+                }
+            ),
+            400,
+        )
+    # For non-API routes, return simple HTML error
+    return (
+        f"<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
+        400,
+    )
+
+
 # Make CSRF token available in templates
 @app.context_processor
 def inject_csrf_token():
@@ -115,6 +144,17 @@ def register():
         return redirect(url_for(DASHBOARD_ENDPOINT))
 
     return render_template("auth/register.html")
+
+
+@app.route("/register/accept/<token>")
+def register_accept_invitation(token):
+    """Accept invitation and complete registration"""
+    # Redirect to dashboard if already authenticated
+    if is_authenticated():
+        return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    # Token will be validated by frontend via API call to /api/auth/invitation-status/<token>
+    return render_template("auth/register_invitation.html", invitation_token=token)
 
 
 @app.route("/forgot-password")

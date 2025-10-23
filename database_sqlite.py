@@ -1292,13 +1292,21 @@ class SQLiteDatabase(DatabaseInterface):
 
     def update_invitation(self, invitation_id: str, updates: Dict[str, Any]) -> bool:
         with self.sqlite.session_scope() as session:
-            invitation = session.get(UserInvitation, invitation_id)
+            # Use query for string UUID primary key instead of session.get()
+            invitation = session.execute(
+                select(UserInvitation).where(UserInvitation.id == invitation_id)
+            ).scalar_one_or_none()
             if not invitation:
                 return False
             for key, value in updates.items():
                 if hasattr(UserInvitation, key):
                     setattr(invitation, key, value)
-                invitation.extras[key] = value
+                else:
+                    logger.warning(
+                        "[SQLiteDatabase] Unknown attribute '%s' for UserInvitation; storing in extras.",
+                        key,
+                    )
+                    invitation.extras[key] = value
             invitation.updated_at = datetime.now(timezone.utc)
             return True
 

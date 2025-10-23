@@ -446,12 +446,27 @@ def wait_for_email_via_imap(
                             ):
                                 continue
 
+                        # Check recipient email if specified
+                        if recipient_email:
+                            from email.utils import parseaddr
+
+                            to_field = email_message.get("To", "")
+                            # Handle both single email and comma-separated list with display names
+                            # parseaddr handles formats like "John Doe <john@example.com>"
+                            to_emails = [
+                                parseaddr(e.strip())[1].lower()
+                                for e in to_field.split(",")
+                            ]
+                            if recipient_email.lower() not in to_emails:
+                                continue
+
                         # Found a match!
                         mail.close()
                         mail.logout()
 
                         print(f"✅ Email found on attempt {attempt}!")
                         print(f"   Subject: {subject}")
+                        print(f"   To: {email_message.get('To', '')}")
 
                         return {
                             "subject": subject,

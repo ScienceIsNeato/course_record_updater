@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 class SonarCloudScraper:
-    def __init__(self, project_key: str, organization: str = "scienceisneat", pull_request: str = None):
+    def __init__(self, project_key: str, organization: str = "scienceisneato", pull_request: str = None):
         self.project_key = project_key
         self.organization = organization
         self.pull_request = pull_request
@@ -397,14 +397,22 @@ class SonarCloudScraper:
 
 
 def main():
+    import os
+
+    from constants import SONARCLOUD_PROJECT_KEY_DEFAULT
+
     parser = argparse.ArgumentParser(
         description="Scrape SonarCloud issues for actionable feedback"
     )
     parser.add_argument(
-        "--project-key", default="scienceisneat_courserecordupdater", help="SonarCloud project key"
+        "--project-key",
+        default=os.getenv("SONARCLOUD_PROJECT_KEY", SONARCLOUD_PROJECT_KEY_DEFAULT),
+        help="SonarCloud project key (default from SONARCLOUD_PROJECT_KEY env var or constant)",
     )
     parser.add_argument(
         "--pull-request",
+        "--pr",
+        dest="pull_request",
         help="Pull request number (auto-detected from GitHub Actions if not provided)",
     )
     parser.add_argument(

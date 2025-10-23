@@ -39,6 +39,17 @@ if (document.readyState === 'loading') {
 function initializePage() {
   const currentPath = window.location.pathname;
 
+  // Check for URL parameter messages (e.g., ?message=Account+created+successfully)
+  const urlParams = new URLSearchParams(window.location.search);
+  const messageParam = urlParams.get('message');
+  if (messageParam) {
+    showMessage(decodeURIComponent(messageParam), 'success');
+    // Clean up URL without reloading
+    const url = new URL(window.location);
+    url.searchParams.delete('message');
+    window.history.replaceState({}, '', url);
+  }
+
   if (currentPath.includes('/login')) {
     initializeLoginForm();
   } else if (currentPath.includes('/register')) {
@@ -587,10 +598,18 @@ function showMessage(message, type) {
   // Create new message
   const messageDiv = document.createElement('div');
   messageDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show auth-message-dynamic`;
-  messageDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
+
+  // Use textContent to prevent XSS attacks
+  const messageText = document.createTextNode(message);
+  messageDiv.appendChild(messageText);
+
+  // Add close button safely
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'btn-close';
+  closeButton.dataset.bsDismiss = 'alert';
+  closeButton.setAttribute('aria-label', 'Close');
+  messageDiv.appendChild(closeButton);
 
   // Insert at top of form
   const form = document.querySelector('.auth-form');

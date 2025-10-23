@@ -29,6 +29,8 @@ INVALID_EMAIL_FORMAT_MSG = "Invalid email format"
 NO_JSON_DATA_PROVIDED_MSG = "No JSON data provided"
 NOT_FOUND_MSG = "not found"
 INVITATION_NOT_FOUND_MSG = "Invitation not found"
+INVITATION_CREATED_AND_SENT_MSG = "Invitation created and sent successfully"
+INVITATION_CREATED_EMAIL_FAILED_MSG = "Invitation created but email failed to send"
 INVALID_CREDENTIALS_MSG = "Invalid email or password"
 DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
 PERMISSION_DENIED_MSG = "Permission denied"
@@ -70,6 +72,15 @@ DB_CLIENT_NOT_AVAILABLE_MSG = "[DB Service] Database client not available."
 DEFAULT_BASE_URL = "http://localhost:5000"
 TIMEZONE_UTC_SUFFIX = "+00:00"
 SYSTEM_USER_NAME = "System Administrator"
+
+# CSRF error messages
+CSRF_ERROR_MESSAGE = "CSRF validation failed. Please refresh the page and try again."
+
+# Email subject templates
+EMAIL_SUBJECT_REMINDER_PREFIX = "Reminder: Please submit your course data"
+
+# SonarCloud configuration
+SONARCLOUD_PROJECT_KEY_DEFAULT = "ScienceIsNeato_course_record_updater"
 
 # Seed data constants
 PROGRAM_COMPUTER_SCIENCE = "Computer Science"
