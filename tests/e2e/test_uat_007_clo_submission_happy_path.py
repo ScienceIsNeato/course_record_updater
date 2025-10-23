@@ -93,7 +93,7 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        BASE_URL=BASE_URL,
+        base_url=BASE_URL,
         email="uat007.instructor@test.com",
         first_name="UAT007",
         last_name="Instructor",

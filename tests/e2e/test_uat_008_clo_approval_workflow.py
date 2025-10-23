@@ -93,7 +93,7 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        BASE_URL=BASE_URL,
+        base_url=BASE_URL,
         email="uat008.instructor@test.com",
         first_name="UAT008",
         last_name="Instructor",
