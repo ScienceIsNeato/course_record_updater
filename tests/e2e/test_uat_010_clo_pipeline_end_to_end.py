@@ -149,14 +149,14 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    assert outcome.json()["status"] == "unassigned"
+    assert outcome.json()["outcome"]["status"] == "unassigned"
 
     # === STEP 2: Assign instructor (→ ASSIGNED) ===
 
     # Create instructor
     instructor = create_test_user_via_api(
         admin_page=admin_page,
-        BASE_URL=BASE_URL,
+        base_url=BASE_URL,
         email="uat010.instructor@test.com",
         first_name="UAT010",
         last_name="Instructor",
@@ -194,7 +194,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    assert outcome.json()["status"] == "assigned"
+    assert outcome.json()["outcome"]["status"] == "assigned"
 
     # === STEP 3: Instructor edits (→ IN_PROGRESS) ===
 
@@ -225,7 +225,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    assert outcome.json()["status"] == "in_progress"
+    assert outcome.json()["outcome"]["status"] == "in_progress"
 
     # === STEP 4: Instructor submits (→ AWAITING_APPROVAL) ===
 
@@ -249,7 +249,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    outcome_data = outcome.json()
+    outcome_data = outcome.json()["outcome"]
     assert outcome_data["status"] == "awaiting_approval"
     assert outcome_data["submitted_at"] is not None
     assert outcome_data["submitted_by_user_id"] == instructor_id
@@ -290,7 +290,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    outcome_data = outcome.json()
+    outcome_data = outcome.json()["outcome"]
     assert outcome_data["status"] == "approval_pending"
     assert outcome_data["approval_status"] == "needs_rework"
     assert outcome_data["feedback_comments"] is not None
@@ -341,7 +341,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    assert outcome.json()["status"] == "awaiting_approval"
+    assert outcome.json()["outcome"]["status"] == "awaiting_approval"
 
     # === STEP 7: Admin approves (→ APPROVED) ===
 
@@ -370,7 +370,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
     assert outcome.ok
-    outcome_data = outcome.json()
+    outcome_data = outcome.json()["outcome"]
 
     # Verify final state
     assert outcome_data["status"] == "approved"
