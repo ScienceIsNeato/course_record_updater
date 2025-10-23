@@ -131,7 +131,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     assert term_response.ok, f"Failed to create term: {term_response.text()}"
     term_id = term_response.json()["term_id"]
 
-    # Create course section with instructor
+    # Create course offering
     section_response = admin_page.request.post(
         f"{BASE_URL}/api/offerings",
         headers={
@@ -147,9 +147,29 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
             }
         ),
     )
-    assert section_response.ok, f"Failed to create section: {section_response.text()}"
+    assert section_response.ok, f"Failed to create offering: {section_response.text()}"
     section_data = section_response.json()
     section_id = section_data["offering_id"]
+
+    # Create explicit section linked to offering and instructor
+    create_section_response = admin_page.request.post(
+        f"{BASE_URL}/api/sections",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "offering_id": section_id,
+                "section_number": "001",
+                "instructor_id": instructor_id,
+                "status": "open",
+            }
+        ),
+    )
+    assert (
+        create_section_response.ok
+    ), f"Failed to create section: {create_section_response.text()}"
 
     # Create CLO and submit it
     clo_response = admin_page.request.post(
