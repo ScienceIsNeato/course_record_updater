@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-      const response = await fetch(`/api/outcomes/${currentCLO.id}/request-rework`, {
+      const response = await fetch(`/api/outcomes/${currentCLO.outcome_id}/request-rework`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-      const response = await fetch(`/api/outcomes/${currentCLO.id}/approve`, {
+      const response = await fetch(`/api/outcomes/${currentCLO.outcome_id}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
