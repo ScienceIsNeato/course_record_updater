@@ -537,6 +537,15 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "active": model.active,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
+        # CLO workflow fields
+        "status": model.status,
+        "submitted_at": model.submitted_at,
+        "submitted_by_user_id": model.submitted_by_user_id,
+        "reviewed_at": model.reviewed_at,
+        "reviewed_by_user_id": model.reviewed_by_user_id,
+        "approval_status": model.approval_status,
+        "feedback_comments": model.feedback_comments,
+        "feedback_provided_at": model.feedback_provided_at,
     }
 
 
