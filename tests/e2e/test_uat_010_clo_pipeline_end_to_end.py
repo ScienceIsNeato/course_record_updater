@@ -85,9 +85,29 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert course_response.ok
     course_id = course_response.json()["course_id"]
 
+    # Create term for the offering
+    term_response = admin_page.request.post(
+        f"{BASE_URL}/api/terms",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "name": "Fall 2024",
+                "start_date": "2024-08-15",
+                "end_date": "2024-12-15",
+                "assessment_due_date": "2024-12-20",
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert term_response.ok
+    term_id = term_response.json()["term_id"]
+
     # Create course section WITHOUT instructor (UNASSIGNED state)
     section_response = admin_page.request.post(
-        f"{BASE_URL}/api/course_offerings",
+        f"{BASE_URL}/api/offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -95,8 +115,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         data=json.dumps(
             {
                 "course_id": course_id,
-                "term": "FA2024",
-                "year": 2024,
+                "term_id": term_id,
                 "institution_id": institution_id,
                 # Note: No instructor_id - CLOs will be UNASSIGNED
             }
@@ -107,7 +126,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
 
     # Create CLO for the course (will be UNASSIGNED initially)
     clo_response = admin_page.request.post(
-        f"{BASE_URL}/api/outcomes",
+        f"{BASE_URL}/api/courses/{course_id}/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -115,7 +134,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         data=json.dumps(
             {
                 "course_id": course_id,
-                "outcome_number": 1,
+                "clo_number": 1,
                 "description": "Implement and analyze various data structures",
                 "status": "unassigned",  # Explicitly UNASSIGNED
             }
@@ -149,7 +168,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
 
     # Update course section to assign instructor
     update_response = admin_page.request.put(
-        f"{BASE_URL}/api/course_offerings/{section_id}",
+        f"{BASE_URL}/api/offerings/{section_id}",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",

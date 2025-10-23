@@ -111,9 +111,29 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     )
     instructor_id = instructor["user_id"]
 
+    # Create term for the offering
+    term_response = admin_page.request.post(
+        f"{BASE_URL}/api/terms",
+        headers={
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token if csrf_token else "",
+        },
+        data=json.dumps(
+            {
+                "name": "Fall 2024",
+                "start_date": "2024-08-15",
+                "end_date": "2024-12-15",
+                "assessment_due_date": "2024-12-20",
+                "institution_id": institution_id,
+            }
+        ),
+    )
+    assert term_response.ok, f"Failed to create term: {term_response.text()}"
+    term_id = term_response.json()["term_id"]
+
     # Create course section with instructor
     section_response = admin_page.request.post(
-        f"{BASE_URL}/api/course_offerings",
+        f"{BASE_URL}/api/offerings",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -121,8 +141,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         data=json.dumps(
             {
                 "course_id": course_id,
-                "term": "FA2024",
-                "year": 2024,
+                "term_id": term_id,
                 "instructor_id": instructor_id,
                 "institution_id": institution_id,
             }
@@ -134,7 +153,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
 
     # Create CLO and submit it
     clo_response = admin_page.request.post(
-        f"{BASE_URL}/api/outcomes",
+        f"{BASE_URL}/api/courses/{course_id}/outcomes",
         headers={
             "Content-Type": "application/json",
             "X-CSRFToken": csrf_token if csrf_token else "",
@@ -142,7 +161,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         data=json.dumps(
             {
                 "course_id": course_id,
-                "outcome_number": 1,
+                "clo_number": 1,
                 "description": "Apply thermodynamic laws to real-world systems",
                 "status": "assigned",
                 "students_assessed": 30,
