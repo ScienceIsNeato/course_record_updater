@@ -88,13 +88,12 @@ class CLOWorkflowService:
                 return False
 
             # Update status and review metadata
+            # Note: Preserve feedback_comments and feedback_provided_at for audit trail
             update_data = {
                 "status": CLOStatus.APPROVED,
                 "approval_status": CLOApprovalStatus.APPROVED,
                 "reviewed_at": datetime.utcnow(),
                 "reviewed_by_user_id": reviewer_id,
-                "feedback_comments": None,  # Clear any previous feedback
-                "feedback_provided_at": None,
             }
 
             success = db.update_course_outcome(outcome_id, update_data)

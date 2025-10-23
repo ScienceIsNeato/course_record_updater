@@ -89,7 +89,7 @@ class TestApproveCLO:
         assert update_data["approval_status"] == CLOApprovalStatus.APPROVED
         assert update_data["reviewed_by_user_id"] == reviewer_id
         assert "reviewed_at" in update_data
-        assert update_data["feedback_comments"] is None
+        # Note: feedback_comments preserved for audit trail (not cleared)
 
     @patch("clo_workflow_service.db")
     def test_approve_clo_from_approval_pending(self, mock_db):
@@ -109,7 +109,7 @@ class TestApproveCLO:
         update_call = mock_db.update_course_outcome.call_args[0]
         update_data = update_call[1]
         assert update_data["status"] == CLOStatus.APPROVED
-        assert update_data["feedback_comments"] is None  # Cleared
+        # Note: feedback_comments preserved for audit trail (not cleared)
 
     @patch("clo_workflow_service.db")
     def test_approve_clo_wrong_status(self, mock_db):
