@@ -344,6 +344,62 @@ class TestAdminRoutes:
             assert response.status_code == 302
             assert "/dashboard" in response.location
 
+    def test_audit_clo_route_requires_authentication(self):
+        """Test that audit-clo route requires authentication."""
+        with app_module.app.test_client() as client:
+            response = client.get("/audit-clo")
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_audit_clo_route_with_admin_permission(self):
+        """Test that audit-clo route works for users with admin roles."""
+        from tests.test_utils import create_test_session
+
+        # Test program_admin
+        user_data = {
+            "user_id": "admin-123",
+            "email": "admin@example.com",
+            "role": "program_admin",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+        # Test institution_admin
+        user_data["role"] = "institution_admin"
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+        # Test site_admin
+        user_data["role"] = "site_admin"
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+    def test_audit_clo_route_without_admin_permission(self):
+        """Test that audit-clo route denies access for users without admin roles."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "user-123",
+            "email": "user@example.com",
+            "role": "instructor",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            # User is authenticated but lacks admin role, so permission_required returns 403
+            assert response.status_code == 403
+
 
 class TestDatabaseConnection:
     """Test database connection handling."""
