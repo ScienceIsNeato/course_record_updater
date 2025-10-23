@@ -323,6 +323,10 @@ class SQLiteDatabase(DatabaseInterface):
             user = session.get(User, user_id)
             return to_dict(user) if user else None
 
+    def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_user_by_id"""
+        return self.get_user_by_id(user_id)
+
     def update_user(self, user_id: str, user_data: Dict[str, Any]) -> bool:
         with self.sqlite.session_scope() as session:
             user = session.get(User, user_id)
@@ -634,10 +638,58 @@ class SQLiteDatabase(DatabaseInterface):
             outcome = session.get(CourseOutcome, outcome_id)
             return to_dict(outcome) if outcome else None
 
+    def get_outcomes_by_status(
+        self,
+        institution_id: str,
+        status: str,
+        program_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get course outcomes filtered by status."""
+        with self.sqlite.session_scope() as session:
+            # Build query with joins to get institution filtering
+            query = (
+                select(CourseOutcome)
+                .join(Course, CourseOutcome.course_id == Course.id)
+                .where(
+                    and_(
+                        Course.institution_id == institution_id,
+                        CourseOutcome.status == status,
+                    )
+                )
+            )
+
+            # Add program filter if specified
+            if program_id:
+                query = query.where(Course.program_id == program_id)
+
+            outcomes = session.execute(query).scalars().all()
+            return [to_dict(outcome) for outcome in outcomes]
+
+    def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all course sections for a given course."""
+        with self.sqlite.session_scope() as session:
+            # Get sections through course offering
+            sections = (
+                session.execute(
+                    select(CourseSection)
+                    .join(
+                        CourseOffering, CourseSection.offering_id == CourseOffering.id
+                    )
+                    .where(CourseOffering.course_id == course_id)
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(section) for section in sections]
+
     def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             course = session.get(Course, course_id)
             return to_dict(course) if course else None
+
+    def get_course(self, course_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_course_by_id"""
+        return self.get_course_by_id(course_id)
 
     def get_all_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:

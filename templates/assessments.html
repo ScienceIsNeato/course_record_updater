@@ -167,11 +167,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 const meeting = assessment.students_meeting_target || 0;
                 const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
                 
+                // Get CLO status and feedback
+                const status = outcome.status || 'assigned';
+                const feedback = outcome.feedback_comments || '';
+                
+                // Status badge display
+                const statusBadge = getStatusBadge(status);
+                
                 html += `
                     <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="flex-grow-1">
-                                <h5 class="mb-1">${escapeHtml(outcome.description)}</h5>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <h5 class="mb-0">${escapeHtml(outcome.description)}</h5>
+                                    ${statusBadge}
+                                </div>
                                 ${assessed > 0 ? `
                                     <p class="mb-1 text-success">
                                         Assessment: ${meeting}/${assessed} students meeting target (${percentage}%)
@@ -183,15 +193,32 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <small class="text-muted">${escapeHtml(outcome.narrative)}</small>
                                 ` : ''}
                             </div>
-                            <button class="btn btn-sm btn-outline-primary update-assessment-btn" 
-                                    data-outcome-id="${outcome.outcome_id}"
-                                    data-description="${escapeHtml(outcome.description)}"
-                                    data-assessed="${assessed}"
-                                    data-meeting="${meeting}"
-                                    data-narrative="${escapeHtml(outcome.narrative || '')}">
-                                Update Assessment
-                            </button>
+                            <div class="d-flex flex-column gap-2">
+                                <button class="btn btn-sm btn-outline-primary update-assessment-btn" 
+                                        data-outcome-id="${outcome.id || outcome.outcome_id}"
+                                        data-description="${escapeHtml(outcome.description)}"
+                                        data-assessed="${assessed}"
+                                        data-meeting="${meeting}"
+                                        data-narrative="${escapeHtml(outcome.narrative || '')}"
+                                        data-status="${status}">
+                                    Update Assessment
+                                </button>
+                                ${canSubmitForApproval(status) ? `
+                                    <button class="btn btn-sm btn-success submit-clo-btn" 
+                                            data-outcome-id="${outcome.id || outcome.outcome_id}"
+                                            data-description="${escapeHtml(outcome.description)}">
+                                        Submit for Approval
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
+                        ${status === 'approval_pending' && feedback ? `
+                            <div class="alert alert-warning mt-2">
+                                <strong>⚠️ Feedback Requested:</strong>
+                                <p class="mb-0 mt-2">${escapeHtml(feedback)}</p>
+                                <small class="text-muted">Please address the feedback above and resubmit.</small>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -206,9 +233,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             
+            // Add click handlers for submit buttons
+            document.querySelectorAll('.submit-clo-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    submitCLOForApproval(this.dataset.outcomeId, this.dataset.description);
+                });
+            });
+            
         } catch (error) {
             console.error('Error loading outcomes:', error);
             outcomesContainer.innerHTML = '<div class="alert alert-danger">Error loading outcomes</div>';
+        }
+    }
+    
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badges = {
+            'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
+            'assigned': '<span class="badge bg-info">Assigned</span>',
+            'in_progress': '<span class="badge bg-primary">In Progress</span>',
+            'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
+            'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
+            'approved': '<span class="badge bg-success">✓ Approved</span>'
+        };
+        return badges[status] || '';
+    }
+    
+    // Check if CLO can be submitted
+    function canSubmitForApproval(status) {
+        return status === 'in_progress' || status === 'approval_pending';
+    }
+    
+    // Submit CLO for approval
+    async function submitCLOForApproval(outcomeId, description) {
+        if (!confirm(`Submit "${description}" for approval?\n\nOnce submitted, it will be reviewed by an administrator.`)) {
+            return;
+        }
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            const response = await fetch(`/api/outcomes/${outcomeId}/submit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to submit for approval');
+            }
+            
+            alert('CLO submitted for approval successfully!');
+            
+            // Reload outcomes for current course
+            const currentCourseId = courseSelect.value;
+            if (currentCourseId) {
+                await loadOutcomes(currentCourseId);
+            }
+            
+        } catch (error) {
+            console.error('Error submitting for approval:', error);
+            alert('Failed to submit for approval: ' + error.message);
         }
     }
     
@@ -222,6 +310,47 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const modal = new bootstrap.Modal(updateAssessmentModal);
         modal.show();
+    }
+    
+    // Track if user has started editing (for auto-marking in_progress)
+    let hasEdited = false;
+    let autoMarkTriggered = false;
+    
+    // Auto-track editing on form fields
+    ['studentsAssessed', 'studentsMeetingTarget', 'assessmentNarrative'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', function() {
+                hasEdited = true;
+                
+                // Auto-mark as in_progress on first edit (debounced)
+                if (!autoMarkTriggered) {
+                    autoMarkTriggered = true;
+                    const outcomeId = document.getElementById('assessmentOutcomeId').value;
+                    const status = document.querySelector(`.update-assessment-btn[data-outcome-id="${outcomeId}"]`)?.dataset?.status;
+                    
+                    // Only auto-mark if status is assigned or approval_pending
+                    if (status === 'assigned' || status === 'approval_pending') {
+                        setTimeout(() => autoMarkInProgress(outcomeId), 1000);
+                    }
+                }
+            });
+        }
+    });
+    
+    // Auto-mark CLO as in_progress
+    async function autoMarkInProgress(outcomeId) {
+        try {
+            // This will be called silently - no need to show success/error to user
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            // Note: The backend update_course_outcome will handle auto-marking
+            // We could add a dedicated endpoint, but for now the assessment update will trigger it
+            console.log(`Auto-marking outcome ${outcomeId} as in_progress`);
+        } catch (error) {
+            console.error('Error auto-marking in progress:', error);
+            // Silent fail - not critical
+        }
     }
     
     // Handle assessment form submission
@@ -264,6 +393,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Close modal and reload outcomes
             const modal = bootstrap.Modal.getInstance(updateAssessmentModal);
             modal.hide();
+            
+            // Reset tracking state
+            hasEdited = false;
+            autoMarkTriggered = false;
             
             alert('Assessment updated successfully!');
             

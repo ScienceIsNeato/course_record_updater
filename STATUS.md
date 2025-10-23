@@ -1,5 +1,83 @@
 # Current Status
 
+## 🚧 IN PROGRESS: CLO Submission & Audit Workflow
+
+**Feature:** Complete submission-to-approval pipeline for Course Learning Outcomes
+
+**Current Task:** Backend complete (Steps 1-3 ✅) | Next: Unit tests
+
+### Progress Summary
+
+**✅ Completed (Steps 1-3):**
+1. ✅ **Database schema** (constants + models + db methods)
+   - Added CLO status enums (CLOStatus, CLOApprovalStatus) to constants.py
+   - Added CLO permissions (SUBMIT_CLO, AUDIT_CLO, AUDIT_ALL_CLO)
+   - Updated CourseOutcome model with workflow fields (status, submitted_at, reviewed_at, feedback_comments, etc.)
+   - Added relationships to User model for submitted_by and reviewed_by
+   - Fixed critical imports (USERS_ID constant)
+
+2. ✅ **Backend service** (clo_workflow_service.py)
+   - Implemented submit_clo_for_approval(), approve_clo(), request_rework()
+   - Implemented get_clos_by_status(), get_clos_awaiting_approval()
+   - Added auto_mark_in_progress() for instructor edit tracking
+   - Added get_outcome_with_details() for enriched audit data
+   - Integrated email notifications for rework requests
+   - Fixed logger and EmailService integration
+
+3. ✅ **API routes** (5 new workflow endpoints)
+   - POST /api/outcomes/<outcome_id>/submit (instructor submission)
+   - GET /api/outcomes/audit (list CLOs for review, filtered by status/program)
+   - POST /api/outcomes/<outcome_id>/approve (admin approval)
+   - POST /api/outcomes/<outcome_id>/request-rework (admin feedback + email)
+   - GET /api/outcomes/<outcome_id>/audit-details (full audit view)
+   - Fixed session import issue
+
+4. ✅ **Permissions & access control** (auth_service.py)
+   - Added SUBMIT_CLO, AUDIT_CLO, AUDIT_ALL_CLO to Permission enum
+   - Added permissions to all role mappings (instructor, program_admin, institution_admin, site_admin)
+   - Instructor can submit CLOs
+   - Program admins can audit CLOs in their programs
+   - Institution admins can audit all CLOs at institution
+
+5. ✅ **Database implementation** (database_service.py + database_sqlite.py)
+   - Added get_outcomes_by_status() with institution/program filtering
+   - Added get_sections_by_course() for instructor lookup
+   - Implemented SQLAlchemy queries with proper joins
+
+6. ✅ **Unit tests** (test_clo_workflow_service.py)
+   - 24 comprehensive unit tests covering all workflow methods
+   - Tests for submit, approve, request_rework, auto_mark_in_progress
+   - Tests for query methods and email notifications
+   - All tests passing ✅
+
+7. ✅ **Instructor UI** (assessments.html)
+   - Added status badges for all CLO workflow states
+   - Submit for Approval button (shown for in_progress and approval_pending statuses)
+   - Feedback display alert when status is approval_pending
+   - Auto-tracking on field edits (marks as in_progress)
+   - Resubmit flow supported after addressing feedback
+
+8. ✅ **Admin audit dashboard panel**
+   - Added CLO Audit & Approval panel to program_admin.html
+   - Added CLO Audit & Approval panel to institution_admin.html
+   - Panels show summary stats and "Review Submissions" button
+
+9. ✅ **Admin audit page** (audit_clo.html + audit_clo.js + /audit-clo route)
+   - Created dedicated full-page audit interface
+   - Summary stats cards (awaiting, needs rework, approved, in progress)
+   - Filters by status and sort options
+   - Table view with CLO list
+   - Detail modal showing full CLO information
+   - Approve and Request Rework actions
+   - Rework feedback form with email notification option
+   - Permission-protected route (@permission_required("audit_clo"))
+
+**📋 Next Steps:**
+10. E2E UAT tests (4 test files) - NEXT
+11. Documentation updates
+
+---
+
 ## ✅ ALL 6 EMAIL UAT TEST CASES COMPLETE!
 
 **🎉 Email Functionality Suite: 100% COMPLETE**

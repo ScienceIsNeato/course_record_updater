@@ -99,6 +99,27 @@ class UserRole:
     INSTRUCTOR = "instructor"
 
 
+# CLO Status constants
+class CLOStatus:
+    """Course Learning Outcome status constants."""
+
+    UNASSIGNED = "unassigned"  # CLO exists but course section has no instructor
+    ASSIGNED = "assigned"  # CLO exists, instructor assigned (ready to work)
+    IN_PROGRESS = "in_progress"  # Instructor has started editing
+    AWAITING_APPROVAL = "awaiting_approval"  # Instructor submitted for review
+    APPROVAL_PENDING = "approval_pending"  # Sent back for rework with feedback
+    APPROVED = "approved"  # Final approval granted
+
+
+# CLO Approval Status constants
+class CLOApprovalStatus:
+    """CLO approval decision constants."""
+
+    PENDING = "pending"  # Not yet reviewed
+    APPROVED = "approved"  # Approved by admin
+    NEEDS_REWORK = "needs_rework"  # Requires changes
+
+
 # Permission constants
 class Permission:
     """Permission constants."""
@@ -124,6 +145,11 @@ class Permission:
     # Data import/export
     IMPORT_DATA = "import_data"
     EXPORT_DATA = "export_data"
+
+    # CLO workflow permissions
+    SUBMIT_CLO = "submit_clo"
+    AUDIT_CLO = "audit_clo"
+    AUDIT_ALL_CLO = "audit_all_clo"
 
 
 # Seed data constants

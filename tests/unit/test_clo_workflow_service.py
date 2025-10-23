@@ -1,0 +1,467 @@
+"""
+Unit tests for clo_workflow_service.py
+
+Tests the CLO submission and approval workflow service methods.
+"""
+
+from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from clo_workflow_service import CLOWorkflowService
+from constants import CLOApprovalStatus, CLOStatus
+
+
+class TestSubmitCLOForApproval:
+    """Test CLOWorkflowService.submit_clo_for_approval method"""
+
+    @patch("clo_workflow_service.db")
+    def test_submit_clo_success(self, mock_db):
+        """Test successful CLO submission"""
+        # Setup
+        outcome_id = "outcome-123"
+        user_id = "user-456"
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.IN_PROGRESS,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        # Execute
+        result = CLOWorkflowService.submit_clo_for_approval(outcome_id, user_id)
+
+        # Verify
+        assert result is True
+        mock_db.get_course_outcome.assert_called_once_with(outcome_id)
+        mock_db.update_course_outcome.assert_called_once()
+
+        # Check update data
+        update_call = mock_db.update_course_outcome.call_args[0]
+        assert update_call[0] == outcome_id
+        update_data = update_call[1]
+        assert update_data["status"] == CLOStatus.AWAITING_APPROVAL
+        assert update_data["submitted_by_user_id"] == user_id
+        assert update_data["approval_status"] == CLOApprovalStatus.PENDING
+        assert "submitted_at" in update_data
+
+    @patch("clo_workflow_service.db")
+    def test_submit_clo_not_found(self, mock_db):
+        """Test submission when CLO doesn't exist"""
+        mock_db.get_course_outcome.return_value = None
+
+        result = CLOWorkflowService.submit_clo_for_approval("nonexistent", "user-123")
+
+        assert result is False
+        mock_db.update_course_outcome.assert_not_called()
+
+    @patch("clo_workflow_service.db")
+    def test_submit_clo_database_error(self, mock_db):
+        """Test submission with database error"""
+        mock_db.get_course_outcome.return_value = {"id": "outcome-123"}
+        mock_db.update_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.submit_clo_for_approval("outcome-123", "user-456")
+
+        assert result is False
+
+
+class TestApproveCLO:
+    """Test CLOWorkflowService.approve_clo method"""
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_from_awaiting_approval(self, mock_db):
+        """Test approving CLO from awaiting_approval status"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.approve_clo(outcome_id, reviewer_id)
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["status"] == CLOStatus.APPROVED
+        assert update_data["approval_status"] == CLOApprovalStatus.APPROVED
+        assert update_data["reviewed_by_user_id"] == reviewer_id
+        assert "reviewed_at" in update_data
+        assert update_data["feedback_comments"] is None
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_from_approval_pending(self, mock_db):
+        """Test approving CLO from approval_pending status (after rework)"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.APPROVAL_PENDING,
+            "feedback_comments": "Previous feedback",
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.approve_clo(outcome_id, reviewer_id)
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["status"] == CLOStatus.APPROVED
+        assert update_data["feedback_comments"] is None  # Cleared
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_wrong_status(self, mock_db):
+        """Test approval fails for CLO not ready for approval"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.IN_PROGRESS,
+        }
+
+        result = CLOWorkflowService.approve_clo("outcome-123", "admin-456")
+
+        assert result is False
+        mock_db.update_course_outcome.assert_not_called()
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_not_found(self, mock_db):
+        """Test approval when CLO doesn't exist"""
+        mock_db.get_course_outcome.return_value = None
+
+        result = CLOWorkflowService.approve_clo("nonexistent", "admin-123")
+
+        assert result is False
+
+
+class TestRequestRework:
+    """Test CLOWorkflowService.request_rework method"""
+
+    @patch("clo_workflow_service.CLOWorkflowService._send_rework_notification")
+    @patch("clo_workflow_service.db")
+    def test_request_rework_without_email(self, mock_db, mock_send_email):
+        """Test requesting rework without sending email"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+        comments = "Please revise the assessment method"
+
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.request_rework(
+            outcome_id, reviewer_id, comments, send_email=False
+        )
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["status"] == CLOStatus.APPROVAL_PENDING
+        assert update_data["approval_status"] == CLOApprovalStatus.NEEDS_REWORK
+        assert update_data["feedback_comments"] == comments
+        assert update_data["reviewed_by_user_id"] == reviewer_id
+        assert "reviewed_at" in update_data
+        assert "feedback_provided_at" in update_data
+        mock_send_email.assert_not_called()
+
+    @patch("clo_workflow_service.CLOWorkflowService._send_rework_notification")
+    @patch("clo_workflow_service.db")
+    def test_request_rework_with_email(self, mock_db, mock_send_email):
+        """Test requesting rework with email notification"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+        comments = "Please add more detail"
+
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = True
+        mock_send_email.return_value = True
+
+        result = CLOWorkflowService.request_rework(
+            outcome_id, reviewer_id, comments, send_email=True
+        )
+
+        assert result is True
+        mock_send_email.assert_called_once_with(outcome_id, comments)
+
+    @patch("clo_workflow_service.db")
+    def test_request_rework_wrong_status(self, mock_db):
+        """Test rework request fails for wrong status"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.APPROVED,
+        }
+
+        result = CLOWorkflowService.request_rework(
+            "outcome-123", "admin-456", "Comments"
+        )
+
+        assert result is False
+        mock_db.update_course_outcome.assert_not_called()
+
+    @patch("clo_workflow_service.db")
+    def test_request_rework_not_found(self, mock_db):
+        """Test rework request when CLO doesn't exist"""
+        mock_db.get_course_outcome.return_value = None
+
+        result = CLOWorkflowService.request_rework(
+            "nonexistent", "admin-123", "Comments"
+        )
+
+        assert result is False
+
+
+class TestAutoMarkInProgress:
+    """Test CLOWorkflowService.auto_mark_in_progress method"""
+
+    @patch("clo_workflow_service.db")
+    def test_auto_mark_from_assigned(self, mock_db):
+        """Test auto-marking from assigned status"""
+        outcome_id = "outcome-123"
+        user_id = "user-456"
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.ASSIGNED,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.auto_mark_in_progress(outcome_id, user_id)
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["status"] == CLOStatus.IN_PROGRESS
+
+    @patch("clo_workflow_service.db")
+    def test_auto_mark_from_approval_pending(self, mock_db):
+        """Test auto-marking from approval_pending (after rework feedback)"""
+        outcome_id = "outcome-123"
+        user_id = "user-456"
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.APPROVAL_PENDING,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.auto_mark_in_progress(outcome_id, user_id)
+
+        assert result is True
+
+    @patch("clo_workflow_service.db")
+    def test_auto_mark_already_in_progress(self, mock_db):
+        """Test auto-marking when already in progress (no-op)"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.IN_PROGRESS,
+        }
+
+        result = CLOWorkflowService.auto_mark_in_progress("outcome-123", "user-456")
+
+        assert result is True
+        mock_db.update_course_outcome.assert_not_called()
+
+    @patch("clo_workflow_service.db")
+    def test_auto_mark_already_submitted(self, mock_db):
+        """Test auto-marking when already submitted (no-op)"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+
+        result = CLOWorkflowService.auto_mark_in_progress("outcome-123", "user-456")
+
+        assert result is True
+        mock_db.update_course_outcome.assert_not_called()
+
+
+class TestGetCLOsByStatus:
+    """Test CLOWorkflowService.get_clos_by_status method"""
+
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    @patch("clo_workflow_service.db")
+    def test_get_clos_by_status_success(self, mock_db, mock_get_details):
+        """Test getting CLOs by status"""
+        institution_id = "inst-123"
+        status = CLOStatus.AWAITING_APPROVAL
+
+        mock_db.get_outcomes_by_status.return_value = [
+            {"id": "outcome-1"},
+            {"id": "outcome-2"},
+        ]
+        mock_get_details.side_effect = [
+            {"id": "outcome-1", "course_number": "CS-101"},
+            {"id": "outcome-2", "course_number": "CS-102"},
+        ]
+
+        result = CLOWorkflowService.get_clos_by_status(
+            status=status,
+            institution_id=institution_id,
+        )
+
+        assert len(result) == 2
+        assert result[0]["course_number"] == "CS-101"
+        assert result[1]["course_number"] == "CS-102"
+        mock_db.get_outcomes_by_status.assert_called_once_with(
+            institution_id=institution_id,
+            status=status,
+            program_id=None,
+        )
+
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    @patch("clo_workflow_service.db")
+    def test_get_clos_by_status_with_program_filter(self, mock_db, mock_get_details):
+        """Test getting CLOs by status with program filter"""
+        institution_id = "inst-123"
+        program_id = "prog-456"
+        status = CLOStatus.AWAITING_APPROVAL
+
+        mock_db.get_outcomes_by_status.return_value = [{"id": "outcome-1"}]
+        mock_get_details.return_value = {"id": "outcome-1"}
+
+        CLOWorkflowService.get_clos_by_status(
+            status=status,
+            institution_id=institution_id,
+            program_id=program_id,
+        )
+
+        mock_db.get_outcomes_by_status.assert_called_once_with(
+            institution_id=institution_id,
+            status=status,
+            program_id=program_id,
+        )
+
+    @patch("clo_workflow_service.db")
+    def test_get_clos_by_status_empty_result(self, mock_db):
+        """Test getting CLOs when none match"""
+        mock_db.get_outcomes_by_status.return_value = []
+
+        result = CLOWorkflowService.get_clos_by_status(
+            status=CLOStatus.AWAITING_APPROVAL,
+            institution_id="inst-123",
+        )
+
+        assert result == []
+
+
+class TestGetOutcomeWithDetails:
+    """Test CLOWorkflowService.get_outcome_with_details method"""
+
+    @patch("clo_workflow_service.db")
+    def test_get_outcome_with_details_success(self, mock_db):
+        """Test getting outcome with enriched details"""
+        outcome_id = "outcome-123"
+
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "course_id": "course-456",
+            "clo_number": "1",
+            "description": "Test CLO",
+        }
+
+        mock_db.get_course.return_value = {
+            "id": "course-456",
+            "course_number": "CS-101",
+            "course_title": "Intro to CS",
+        }
+
+        mock_db.get_sections_by_course.return_value = [
+            {"id": "section-789", "instructor_id": "instructor-111"}
+        ]
+
+        mock_db.get_user.return_value = {
+            "id": "instructor-111",
+            "full_name": "Jane Doe",
+            "email": "jane@example.com",
+        }
+
+        result = CLOWorkflowService.get_outcome_with_details(outcome_id)
+
+        assert result is not None
+        assert result["id"] == outcome_id
+        assert result["course_number"] == "CS-101"
+        assert result["course_title"] == "Intro to CS"
+        assert result["instructor_name"] == "Jane Doe"
+        assert result["instructor_email"] == "jane@example.com"
+
+    @patch("clo_workflow_service.db")
+    def test_get_outcome_with_details_not_found(self, mock_db):
+        """Test getting details when outcome doesn't exist"""
+        mock_db.get_course_outcome.return_value = None
+
+        result = CLOWorkflowService.get_outcome_with_details("nonexistent")
+
+        assert result is None
+
+    @patch("clo_workflow_service.db")
+    def test_get_outcome_with_details_no_instructor(self, mock_db):
+        """Test getting details when course has no instructor"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "course_id": "course-456",
+        }
+        mock_db.get_course.return_value = {
+            "id": "course-456",
+            "course_number": "CS-101",
+        }
+        mock_db.get_sections_by_course.return_value = []
+
+        result = CLOWorkflowService.get_outcome_with_details("outcome-123")
+
+        assert result is not None
+        assert result["instructor_name"] is None
+        assert result["instructor_email"] is None
+
+
+class TestSendReworkNotification:
+    """Test CLOWorkflowService._send_rework_notification method"""
+
+    @patch("clo_workflow_service.EmailService")
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    def test_send_rework_notification_success(
+        self, mock_get_details, mock_email_service
+    ):
+        """Test sending rework notification email"""
+        outcome_id = "outcome-123"
+        feedback = "Please improve the assessment description"
+
+        mock_get_details.return_value = {
+            "id": outcome_id,
+            "course_number": "CS-101",
+            "clo_number": "1",
+            "instructor_email": "instructor@example.com",
+        }
+        mock_email_service._send_email.return_value = True
+
+        result = CLOWorkflowService._send_rework_notification(outcome_id, feedback)
+
+        assert result is True
+        mock_email_service._send_email.assert_called_once()
+        call_args = mock_email_service._send_email.call_args
+        assert call_args[1]["to_email"] == "instructor@example.com"
+        assert "CS-101" in call_args[1]["subject"]
+        assert feedback in call_args[1]["text_body"]
+
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    def test_send_rework_notification_no_outcome(self, mock_get_details):
+        """Test notification fails when outcome not found"""
+        mock_get_details.return_value = None
+
+        result = CLOWorkflowService._send_rework_notification("nonexistent", "Feedback")
+
+        assert result is False
+
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    def test_send_rework_notification_no_email(self, mock_get_details):
+        """Test notification fails when no instructor email"""
+        mock_get_details.return_value = {
+            "id": "outcome-123",
+            "instructor_email": None,
+        }
+
+        result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
+
+        assert result is False

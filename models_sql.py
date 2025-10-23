@@ -25,6 +25,7 @@ Base = declarative_base()  # type: ignore[valid-type,misc]
 # Constants for foreign key references
 COURSES_ID = "courses.id"
 INSTITUTIONS_ID = "institutions.id"
+USERS_ID = "users.id"
 CASCADE_OPTIONS = "all, delete-orphan"
 
 
@@ -292,7 +293,23 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     narrative = Column(Text)
     extras = Column(JSON, default=dict)
 
+    # Workflow status fields
+    status = Column(String, default="unassigned")  # CLOStatus enum
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by_user_id = Column(String, ForeignKey(USERS_ID), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by_user_id = Column(String, ForeignKey(USERS_ID), nullable=True)
+    approval_status = Column(String, default="pending")  # CLOApprovalStatus enum
+    feedback_comments = Column(Text, nullable=True)
+    feedback_provided_at = Column(DateTime, nullable=True)
+
     course = relationship("Course", back_populates="outcomes")
+    submitted_by = relationship(
+        "User", foreign_keys=[submitted_by_user_id], backref="submitted_outcomes"
+    )
+    reviewed_by = relationship(
+        "User", foreign_keys=[reviewed_by_user_id], backref="reviewed_outcomes"
+    )
 
 
 class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]

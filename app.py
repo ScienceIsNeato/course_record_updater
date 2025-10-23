@@ -9,7 +9,12 @@ from api import register_blueprints  # New modular API structure
 
 # Import new API routes and services
 from api_routes import api
-from auth_service import get_current_user, is_authenticated, login_required
+from auth_service import (
+    get_current_user,
+    is_authenticated,
+    login_required,
+    permission_required,
+)
 
 # Import constants
 from constants import DASHBOARD_ENDPOINT
@@ -292,6 +297,27 @@ def assessments_page():
     if not user:
         return redirect(url_for("login"))
     return render_template("assessments.html", user=user)
+
+
+@app.route("/audit-clo")
+@login_required
+@permission_required("audit_clo")
+def audit_clo_page():
+    """
+    Display CLO audit and approval page for admins.
+
+    Allows program admins and institution admins to review and approve CLOs.
+    """
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    # Verify user has admin role
+    if user.get("role") not in ["program_admin", "institution_admin", "site_admin"]:
+        flash("Access denied. Admin role required.", "error")
+        return redirect(url_for("dashboard"))
+
+    return render_template("audit_clo.html", user=user)
 
 
 @app.route("/sections")

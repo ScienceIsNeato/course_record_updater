@@ -144,7 +144,31 @@
     </div>
 </div>
 
-<!-- Panel 5: Data Management (Import/Export) -->
+<!-- Panel 5: CLO Audit & Approval -->
+<div class="dashboard-panel" id="program-clo-audit-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">✓</span>
+            CLO Audit & Approval
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary" onclick="window.location.href='/audit-clo'">
+                <i class="fas fa-clipboard-check"></i> Review Submissions
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programCloAuditContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading audit data...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 6: Data Management (Import/Export) -->
 {% include 'components/data_management_panel.html' %}
 
 <!-- Course Creation Modal -->

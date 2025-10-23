@@ -87,6 +87,11 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_user_by_id"""
+        raise NotImplementedError
+
+    @abstractmethod
     def update_user(self, user_id: str, user_data: Dict[str, Any]) -> bool:
         raise NotImplementedError
 
@@ -194,7 +199,19 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_outcomes_by_status(
+        self, institution_id: str, status: str, program_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Get course outcomes filtered by status"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_course_by_id(self, course_id: str) -> Optional[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_course(self, course_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_course_by_id"""
         raise NotImplementedError
 
     @abstractmethod
@@ -212,6 +229,11 @@ class DatabaseInterface(ABC):
     @abstractmethod
     def get_section_by_id(self, section_id: str) -> Optional[Dict[str, Any]]:
         """Get single section by ID"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all sections for a specific course"""
         raise NotImplementedError
 
     @abstractmethod
