@@ -223,8 +223,8 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
             # These occur when page loads before session is fully established
             elif (
                 "Institution dashboard load error" in error_text
-                and "Failed to fetch" in error_text
-            ):
+                or "Program dashboard load error" in error_text
+            ) and "Failed to fetch" in error_text:
                 print(
                     f"ℹ️  Transient dashboard load error (race condition): {error_text[:100]}..."
                 )

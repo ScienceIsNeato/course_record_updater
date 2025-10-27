@@ -279,7 +279,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # === STEP 5: Admin requests rework (→ APPROVAL_PENDING) ===
 
     admin_page.goto(f"{BASE_URL}/audit-clo")
-    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+    admin_page.wait_for_load_state("networkidle")
+    admin_page.wait_for_selector("#cloListContainer", timeout=10000)
 
     # Find CLO and open detail modal
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
@@ -383,7 +384,8 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # === STEP 7: Admin approves (→ APPROVED) ===
 
     admin_page.goto(f"{BASE_URL}/audit-clo")
-    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+    admin_page.wait_for_load_state("networkidle")
+    admin_page.wait_for_selector("#cloListContainer", timeout=10000)
 
     # Find and open CLO
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')

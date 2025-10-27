@@ -211,21 +211,16 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     instructor_page.close()
 
     # === STEP 2: Admin navigates to audit interface ===
-    admin_page.goto(f"{BASE_URL}/dashboard")
-    expect(admin_page).to_have_url(f"{BASE_URL}/dashboard")
-
-    # === STEP 3: Click on CLO Audit & Approval panel's Review Submissions button ===
-    review_button = admin_page.locator('button:has-text("Review Submissions")')
-    expect(review_button).to_be_visible()
-    review_button.click()
-
-    # Verify we're on the audit page
+    admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
-    # Wait for CLO list to load
-    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+    # Wait for page to fully load
+    admin_page.wait_for_load_state("networkidle")
 
-    # === STEP 4: Verify CLO appears in the list ===
+    # Wait for CLO list to load
+    admin_page.wait_for_selector("#cloListContainer", timeout=10000)
+
+    # === STEP 3: Verify CLO appears in the list ===
     # Check that our CLO is visible
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()

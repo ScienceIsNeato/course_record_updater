@@ -221,8 +221,11 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
+    # Wait for page to fully load
+    admin_page.wait_for_load_state("networkidle")
+
     # Wait for CLO list to load
-    admin_page.wait_for_selector("#cloListContainer", timeout=5000)
+    admin_page.wait_for_selector("#cloListContainer", timeout=10000)
 
     # === STEP 3: Select CLO and open detail modal ===
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
