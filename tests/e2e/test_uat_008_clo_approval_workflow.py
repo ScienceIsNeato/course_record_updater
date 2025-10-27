@@ -193,6 +193,10 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         instructor_page, BASE_URL, "uat008.instructor@test.com", "TestUser123!"
     )
 
+    # Navigate to dashboard to establish session context for API calls
+    instructor_page.goto(f"{BASE_URL}/dashboard")
+    instructor_page.wait_for_load_state("networkidle")
+
     # Get CSRF token for instructor
     instructor_csrf = instructor_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"

@@ -200,6 +200,10 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         instructor_page, BASE_URL, "uat009.instructor@test.com", "TestUser123!"
     )
 
+    # Navigate to dashboard to establish session context for API calls
+    instructor_page.goto(f"{BASE_URL}/dashboard")
+    instructor_page.wait_for_load_state("networkidle")
+
     instructor_csrf = instructor_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
