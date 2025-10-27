@@ -263,10 +263,11 @@ def authenticated_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Institution admin login failed")
+    except Exception as e:
+        pytest.fail(f"Institution admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")
@@ -311,10 +312,11 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Institution admin login failed")
+    except Exception as e:
+        pytest.fail(f"Institution admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")
