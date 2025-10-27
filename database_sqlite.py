@@ -546,6 +546,7 @@ class SQLiteDatabase(DatabaseInterface):
             "description",
             "assessment_method",
             "active",
+            "status",
             "assessment_data",
             "narrative",
             "created_at",
@@ -562,6 +563,7 @@ class SQLiteDatabase(DatabaseInterface):
             description=payload.get("description", ""),
             assessment_method=payload.get("assessment_method"),
             active=payload.get("active", True),
+            status=payload.get("status", "unassigned"),
             assessment_data=payload.get("assessment_data")
             or {
                 "students_assessed": None,
