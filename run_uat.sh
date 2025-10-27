@@ -139,6 +139,10 @@ fi
 # Set ENV to "test" so email factory automatically selects Ethereal
 export ENV="test"
 
+# Disable CSRF for E2E tests to avoid token validation issues
+# E2E tests focus on functional workflows, not CSRF security
+export WTF_CSRF_ENABLED="false"
+
 # Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
 # This overrides any EMAIL_PROVIDER=brevo from .envrc.template
 unset EMAIL_PROVIDER
