@@ -127,6 +127,7 @@ def send_instructor_reminders():
         personal_message = data.get("personal_message")
         term = data.get("term")
         deadline = data.get("deadline")
+        course_id = data.get("course_id")  # Optional course ID for deep-linking to assessments
 
         # Get current user
         current_user = get_current_user()
@@ -149,6 +150,7 @@ def send_instructor_reminders():
                 personal_message=personal_message,
                 term=term,
                 deadline=deadline,
+                course_id=course_id,
             )
 
             logger.info(

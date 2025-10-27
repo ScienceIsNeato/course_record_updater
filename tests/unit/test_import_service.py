@@ -973,3 +973,46 @@ class TestImportServiceErrorHandling:
 
         # Should log dry run message (line 580)
         assert service.stats["conflicts_resolved"] == 1
+
+
+class TestImportServiceRolePreservation:
+    """Test role preservation logic added for demo."""
+
+    def test_should_preserve_role_site_admin_over_instructor(self):
+        """Test that site_admin role is preserved over instructor."""
+        service = ImportService("inst-123")
+        assert service._should_preserve_role("site_admin", "instructor") is True
+
+    def test_should_preserve_role_institution_admin_over_instructor(self):
+        """Test that institution_admin role is preserved over instructor."""
+        service = ImportService("inst-123")
+        assert service._should_preserve_role("institution_admin", "instructor") is True
+
+    def test_should_preserve_role_program_admin_over_instructor(self):
+        """Test that program_admin role is preserved over instructor."""
+        service = ImportService("inst-123")
+        assert service._should_preserve_role("program_admin", "instructor") is True
+
+    def test_should_preserve_role_same_roles(self):
+        """Test that same roles don't trigger preservation."""
+        service = ImportService("inst-123")
+        assert service._should_preserve_role("instructor", "instructor") is False
+
+    def test_should_preserve_role_lower_to_higher(self):
+        """Test that lower roles don't override higher roles."""
+        service = ImportService("inst-123")
+        assert service._should_preserve_role("instructor", "site_admin") is False
+
+    def test_should_preserve_role_institution_admin_over_program_admin(self):
+        """Test role hierarchy between admin types."""
+        service = ImportService("inst-123")
+        assert (
+            service._should_preserve_role("institution_admin", "program_admin") is True
+        )
+
+    def test_should_preserve_role_unknown_roles(self):
+        """Test handling of unknown roles."""
+        service = ImportService("inst-123")
+        # Unknown roles get level 0, so neither is preserved
+        assert service._should_preserve_role("unknown", "instructor") is False
+        assert service._should_preserve_role("instructor", "unknown") is True

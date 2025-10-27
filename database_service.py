@@ -267,8 +267,10 @@ def delete_course(course_id: str) -> bool:
     return _db_service.delete_course(course_id)
 
 
-def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
-    return _db_service.get_course_by_number(course_number)
+def get_course_by_number(
+    course_number: str, institution_id: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    return _db_service.get_course_by_number(course_number, institution_id)
 
 
 def get_courses_by_department(

@@ -474,14 +474,18 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # Run pytest with coverage AND capture exit code to detect test failures
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
-  TEST_FAILED=false
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_FAILED=true
+  TEST_EXIT_CODE=0
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
   
-  # Check for test failures FIRST before checking coverage
-  if [[ "$TEST_FAILED" == "true" ]] || echo "$COVERAGE_OUTPUT" | grep -q "FAILED "; then
+  # Check for ACTUAL test failures (not just coverage threshold failures)
+  # pytest exits with code 1 for both test failures AND coverage threshold failures
+  # Distinguish by checking for "FAILED" in output (actual test failures)
+  HAS_TEST_FAILURES=$(echo "$COVERAGE_OUTPUT" | grep -q "FAILED " && echo "true" || echo "false")
+  
+  if [[ "$HAS_TEST_FAILURES" == "true" ]]; then
     echo "❌ Coverage: FAILED (tests failed)"
     echo ""
     echo "📋 Test Failure Details:"

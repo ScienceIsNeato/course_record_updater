@@ -360,7 +360,8 @@ describe('BulkReminderManager', () => {
                     instructor_ids: ['1', '2'],
                     personal_message: 'Please submit',
                     term: 'Fall 2024',
-                    deadline: '2024-12-31'
+                    deadline: '2024-12-31',
+                    course_id: null
                 })
             });
         });

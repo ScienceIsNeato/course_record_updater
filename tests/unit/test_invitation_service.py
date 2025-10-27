@@ -84,7 +84,7 @@ class TestInvitationServiceCreation:
         mock_db.get_invitation_by_email.return_value = {"status": "pending"}
 
         # Execute & Verify
-        with pytest.raises(InvitationError, match="Pending invitation already exists"):
+        with pytest.raises(InvitationError, match="Active invitation already exists"):
             InvitationService.create_invitation(
                 inviter_user_id="user-123",
                 inviter_email="admin@mocku.test",

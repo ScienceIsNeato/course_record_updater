@@ -48,6 +48,10 @@ class InvitationService:
         institution_id: str,
         program_ids: Optional[List[str]] = None,
         personal_message: Optional[str] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        section_id: Optional[str] = None,
+        replace_existing: bool = False,
     ) -> Dict[str, Any]:
         """
         Create a new user invitation
@@ -60,6 +64,10 @@ class InvitationService:
             institution_id: Institution the invitee will belong to
             program_ids: Optional list of program IDs for program_admin role
             personal_message: Optional personal message from inviter
+            first_name: Optional first name of invitee (for pre-filling registration)
+            last_name: Optional last name of invitee (for pre-filling registration)
+            section_id: Optional section ID to auto-assign instructor upon acceptance
+            replace_existing: Whether to replace existing instructor if section is already assigned
 
         Returns:
             Dictionary containing invitation details
@@ -80,14 +88,17 @@ class InvitationService:
             if existing_user:
                 raise InvitationError(f"User with email {invitee_email} already exists")
 
-            # Check for existing pending invitation
+            # Check for existing pending or sent invitation
             existing_invitation = db.get_invitation_by_email(
                 invitee_email, institution_id
             )
-            if existing_invitation and existing_invitation.get("status") == "pending":
-                raise InvitationError(
-                    f"Pending invitation already exists for {invitee_email}"
-                )
+            if existing_invitation:
+                status = existing_invitation.get("status")
+                # Prevent duplicate invitations that are pending or already sent
+                if status in ["pending", "sent"]:
+                    raise InvitationError(
+                        f"Active invitation already exists for {invitee_email}"
+                    )
 
             # Get inviter's full name for display
             inviter = db.get_user_by_id(inviter_user_id)
@@ -126,6 +137,10 @@ class InvitationService:
                     "institution_name": institution_name,
                     "program_ids": program_ids or [],
                     "token": invitation_token,  # Override the auto-generated token
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "section_id": section_id,
+                    "replace_existing": replace_existing,
                 }
             )
 
@@ -239,6 +254,14 @@ class InvitationService:
                 invitation, user_data
             )
             user_data["id"] = user_id
+
+            # Auto-assign to section if specified in invitation
+            if invitation.get("section_id"):
+                InvitationService._assign_instructor_to_section(
+                    user_id=user_id,
+                    section_id=invitation["section_id"],
+                    replace_existing=invitation.get("replace_existing", False),
+                )
 
             # Send welcome email
             InvitationService._send_welcome_email(invitation, display_name)
@@ -368,6 +391,53 @@ class InvitationService:
         return user_id
 
     @staticmethod
+    def _assign_instructor_to_section(
+        user_id: str, section_id: str, replace_existing: bool = False
+    ) -> None:
+        """
+        Assign instructor to course section.
+
+        Args:
+            user_id: ID of the instructor to assign
+            section_id: ID of the section to assign instructor to
+            replace_existing: Whether to replace existing instructor if one is assigned
+
+        Raises:
+            InvitationError: If section assignment fails
+        """
+        try:
+            # Get the section
+            section = db.get_section_by_id(section_id)
+            if not section:
+                logger.warning(
+                    f"[Invitation Service] Section {section_id} not found for instructor assignment"
+                )
+                return
+
+            # Check if section already has an instructor
+            if section.get("instructor_id") and not replace_existing:
+                logger.warning(
+                    f"[Invitation Service] Section {section_id} already has instructor "
+                    f"{section['instructor_id']}, skipping assignment (replace_existing=False)"
+                )
+                return
+
+            # Update section with new instructor
+            db.update_course_section(section_id, {"instructor_id": user_id})
+
+            logger.info(
+                f"[Invitation Service] Assigned instructor {user_id} to section {section_id}"
+            )
+
+        except Exception as e:
+            logger.error(
+                f"[Invitation Service] Failed to assign instructor to section: {str(e)}",
+                exc_info=True,
+            )
+            # Don't raise - we don't want to fail the invitation acceptance
+            # just because section assignment failed
+
+    @staticmethod
     def _send_welcome_email(
         invitation: Dict[str, Any], display_name: Optional[str]
     ) -> None:
@@ -479,6 +549,8 @@ class InvitationService:
                 "status": invitation["status"],
                 "invitee_email": invitation["email"],
                 "invitee_role": invitation["role"],
+                "first_name": invitation.get("first_name"),
+                "last_name": invitation.get("last_name"),
                 "expires_at": invitation["expires_at"],
                 "is_expired": is_expired,
                 "created_at": invitation.get(

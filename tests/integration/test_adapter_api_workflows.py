@@ -133,7 +133,7 @@ class TestAdapterAPIWorkflows:
         # Sample data
         worksheet.cell(row=2, column=1, value="TEST-101")
         worksheet.cell(row=2, column=2, value="01")
-        worksheet.cell(row=2, column=3, value="FA2024")
+        worksheet.cell(row=2, column=3, value="2024FA")
         worksheet.cell(row=2, column=4, value="10")
         worksheet.cell(row=2, column=5, value="Test Instructor")
         worksheet.cell(row=2, column=6, value="test@mocku.test")

@@ -130,6 +130,7 @@
         data: assignments.map(assignment => {
           const sectionCount = Number(assignment.section_count ?? 0);
           const enrollment = Number(assignment.enrollment ?? 0);
+          const courseId = assignment.course_id || '';
           return {
             course:
               `${assignment.course_number || assignment.course_id || 'Course'} — ${assignment.course_title || ''}`.trim(),
@@ -137,8 +138,7 @@
             sections_sort: sectionCount.toString(),
             students: enrollment.toString(),
             students_sort: enrollment.toString(),
-            actions:
-              '<button class="btn btn-sm btn-outline-primary" onclick="return false;">Gradebook</button>'
+            actions: `<a href="/assessments?course=${courseId}" class="btn btn-sm btn-outline-primary">Enter</a>`
           };
         })
       });

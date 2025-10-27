@@ -154,7 +154,9 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_course_by_number(self, course_number: str) -> Optional[Dict[str, Any]]:
+    def get_course_by_number(
+        self, course_number: str, institution_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod

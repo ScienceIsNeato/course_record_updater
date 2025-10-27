@@ -20,15 +20,18 @@ UTC_OFFSET = "+00:00"
 from database_service import (
     create_course,
     create_course_offering,
+    create_course_outcome,
     create_course_section,
     create_default_mocku_institution,
     create_term,
     create_user,
     get_course_by_number,
     get_course_offering_by_course_and_term,
+    get_course_outcomes,
     get_institution_by_short_name,
     get_term_by_name,
     get_user_by_email,
+    update_course_offering,
     update_user,
 )
 
@@ -242,6 +245,10 @@ class ImportService:
             # Process all parsed data
             self._process_parsed_data(parsed_data, conflict_strategy, dry_run)
 
+            # Link courses to programs after successful import (not during dry run)
+            if not dry_run and len(self.stats["errors"]) == 0:
+                self._link_courses_to_programs()
+
         except Exception as e:
             error_msg = f"Unexpected error during import: {str(e)}"
             self.stats["errors"].append(error_msg)
@@ -342,7 +349,14 @@ class ImportService:
         self.logger.info(f"[Import] Processing {total_records} total records")
 
         # Process each data type in dependency order
-        processing_order = ["users", "courses", "terms", "offerings", "sections"]
+        processing_order = [
+            "users",
+            "courses",
+            "terms",
+            "offerings",
+            "sections",
+            "clos",
+        ]
 
         for data_type in processing_order:
             records = parsed_data.get(data_type, [])
@@ -442,6 +456,9 @@ class ImportService:
             return []
         elif data_type == "sections":
             self._process_section_import(record, conflict_strategy, dry_run)
+            return []
+        elif data_type == "clos":
+            self._process_clo_import(record, conflict_strategy, dry_run)
             return []
         else:
             return []
@@ -724,6 +741,35 @@ class ImportService:
                     conflict.resolution = strategy.value
 
             if not dry_run:
+                # Preserve higher-privilege roles (don't downgrade admins to instructors)
+                existing_role = existing_user.get("role", "instructor")
+                import_role = user_data.get("role", "instructor")
+
+                user_data = user_data.copy()  # Don't modify original
+
+                if self._should_preserve_role(existing_role, import_role):
+                    user_data["role"] = existing_role
+                    self._log(
+                        f"Preserved {existing_role} role for {email} (import had {import_role})"
+                    )
+
+                # Preserve active status and account_status for admin accounts
+                if existing_role in [
+                    "site_admin",
+                    "institution_admin",
+                    "program_admin",
+                ]:
+                    existing_active = existing_user.get("active", True)
+                    existing_status = existing_user.get("account_status", "active")
+
+                    # Don't let import downgrade admin accounts to inactive or "imported" status
+                    if existing_active:
+                        user_data["active"] = True
+                    if existing_status == "active":
+                        user_data["account_status"] = "active"
+
+                    self._log(f"Preserved admin account status for {email}")
+
                 # Update existing user - convert datetime fields for SQLite compatibility
                 converted_user_data = _convert_datetime_fields(user_data)
                 update_user(
@@ -736,6 +782,29 @@ class ImportService:
                 self._log(f"DRY RUN: Would update user: {email}")
 
         return conflicts
+
+    def _should_preserve_role(self, existing_role: str, import_role: str) -> bool:
+        """
+        Determine if existing role should be preserved over import role.
+        Preserves higher-privilege roles to prevent accidental downgrades.
+
+        Role hierarchy (highest to lowest):
+        - site_admin
+        - institution_admin
+        - program_admin
+        - instructor
+        """
+        role_hierarchy = {
+            "site_admin": 4,
+            "institution_admin": 3,
+            "program_admin": 2,
+            "instructor": 1,
+        }
+
+        existing_level = role_hierarchy.get(existing_role, 0)
+        import_level = role_hierarchy.get(import_role, 0)
+
+        return existing_level > import_level
 
     def _handle_new_user(
         self,
@@ -786,23 +855,86 @@ class ImportService:
         strategy: ConflictStrategy,
         dry_run: bool = False,
     ):
-        """Process course offering import (placeholder implementation)"""
+        """Process course offering import"""
         try:
-            # Simplified offering processing
-            # TODO: Implement proper offering creation using offering_data and strategy
-            if not dry_run:
-                # This would need proper offering creation logic
-                self.stats["records_created"] += 1
-                self._log(
-                    f"Created offering for {offering_data.get('course_id', 'unknown course')}"
+            # Extract required data
+            course_number = offering_data.get("course_number")
+            term_name = offering_data.get("term_name")
+            institution_id = offering_data.get("institution_id") or self.institution_id
+
+            if not course_number or not term_name:
+                self.stats["errors"].append(
+                    f"Missing course_number or term_name in offering data: {offering_data}"
                 )
-            else:
+                return
+
+            # Get course and term IDs
+            course = get_course_by_number(course_number, institution_id)
+            term = get_term_by_name(term_name, institution_id)
+
+            if not course:
+                self.stats["errors"].append(
+                    f"Course {course_number} not found for offering"
+                )
+                return
+
+            if not term:
+                self.stats["errors"].append(f"Term {term_name} not found for offering")
+                return
+
+            course_id = course["course_id"]
+            term_id = term["term_id"]
+
+            if dry_run:
                 self._log(
-                    f"DRY RUN: Would create offering for {offering_data.get('course_id', 'unknown course')}"
+                    f"DRY RUN: Would create offering for {course_number} in {term_name}"
+                )
+                return
+
+            # Check if offering already exists
+            existing_offering = get_course_offering_by_course_and_term(
+                course_id, term_id
+            )
+
+            if existing_offering:
+                if strategy == ConflictStrategy.USE_MINE:
+                    self.stats["records_skipped"] += 1
+                    self._log(
+                        f"Skipped existing offering: {course_number} - {term_name}"
+                    )
+                    return
+                elif strategy == ConflictStrategy.USE_THEIRS:
+                    self.stats["records_updated"] += 1
+                    self._log(f"Updated offering: {course_number} - {term_name}")
+                    return
+
+            # Create new offering
+            from models import CourseOffering
+
+            offering_schema = CourseOffering.create_schema(
+                course_id=course_id,
+                term_id=term_id,
+                institution_id=institution_id,
+                status="active",
+            )
+
+            offering_id = create_course_offering(offering_schema)
+
+            if offering_id:
+                self.stats["records_created"] += 1
+                self._log(f"Created offering: {course_number} - {term_name}")
+            else:
+                self.stats["errors"].append(
+                    f"Failed to create offering for {course_number} - {term_name}"
                 )
 
         except Exception as e:
-            self.stats["errors"].append(f"Error processing offering: {str(e)}")
+            error_msg = f"Error processing offering: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            self._log(error_msg, "error")
+            import traceback
+
+            self._log(f"Traceback: {traceback.format_exc()}", "error")
 
     def _process_section_import(
         self,
@@ -810,23 +942,268 @@ class ImportService:
         strategy: ConflictStrategy,
         dry_run: bool = False,
     ):
-        """Process course section import (placeholder implementation)"""
+        """Process course section import"""
         try:
-            # Simplified section processing
-            # TODO: Implement proper section creation using section_data and strategy
-            if not dry_run:
-                # This would need proper section creation logic
+            # Extract required data
+            course_number = section_data.get("course_number")
+            term_name = section_data.get("term_name")
+            section_number = section_data.get("section_number", "001")
+            institution_id = section_data.get("institution_id") or self.institution_id
+            student_count = section_data.get("student_count", 0)
+            instructor_email = section_data.get("instructor_email")
+
+            if not course_number or not term_name:
+                self.stats["errors"].append(
+                    f"Missing course_number or term_name in section data: {section_data}"
+                )
+                return
+
+            # Get course and term IDs
+            course = get_course_by_number(course_number, institution_id)
+            term = get_term_by_name(term_name, institution_id)
+
+            if not course:
+                self.stats["errors"].append(
+                    f"Course {course_number} not found for section"
+                )
+                return
+
+            if not term:
+                self.stats["errors"].append(f"Term {term_name} not found for section")
+                return
+
+            course_id = course["course_id"]
+            term_id = term["term_id"]
+
+            # Get or create the offering for this course/term
+            existing_offering = get_course_offering_by_course_and_term(
+                course_id, term_id
+            )
+
+            if existing_offering:
+                offering_id = existing_offering["offering_id"]
+            else:
+                # Create offering if it doesn't exist
+                from models import CourseOffering
+
+                offering_schema = CourseOffering.create_schema(
+                    course_id=course_id,
+                    term_id=term_id,
+                    institution_id=institution_id,
+                    status="active",
+                )
+                offering_id = create_course_offering(offering_schema)
+
+                if not offering_id:
+                    self.stats["errors"].append(
+                        f"Failed to create offering for section {course_number}-{section_number}"
+                    )
+                    return
+
+            if dry_run:
+                self._log(
+                    f"DRY RUN: Would create section {section_number} for {course_number} in {term_name}"
+                )
+                return
+
+            # Get instructor ID if email provided
+            instructor_id = None
+            if instructor_email:
+                instructor = get_user_by_email(instructor_email)
+                if instructor:
+                    instructor_id = instructor["user_id"]
+
+            # Create section
+            from models import CourseSection
+
+            section_schema = CourseSection.create_schema(
+                offering_id=offering_id,
+                section_number=section_number,
+                instructor_id=instructor_id,
+                enrollment=student_count,
+                status="assigned",  # Default status for new sections
+            )
+
+            section_id = create_course_section(section_schema)
+
+            if section_id:
                 self.stats["records_created"] += 1
                 self._log(
-                    f"Created section {section_data.get('section_number', 'unknown')} for {section_data.get('course_id', 'unknown course')}"
+                    f"Created section {section_number} for {course_number} in {term_name}"
                 )
+
+                # Update offering counts
+                offering = get_course_offering_by_course_and_term(course_id, term_id)
+                if offering:
+                    current_section_count = offering.get("section_count", 0)
+                    current_enrollment = offering.get("total_enrollment", 0)
+
+                    update_course_offering(
+                        offering_id,
+                        {
+                            "section_count": current_section_count + 1,
+                            "total_enrollment": current_enrollment + student_count,
+                        },
+                    )
             else:
-                self._log(
-                    f"DRY RUN: Would create section {section_data.get('section_number', 'unknown')} for {section_data.get('course_id', 'unknown course')}"
+                self.stats["errors"].append(
+                    f"Failed to create section {section_number} for {course_number}"
                 )
 
         except Exception as e:
-            self.stats["errors"].append(f"Error processing section: {str(e)}")
+            error_msg = f"Error processing section: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            self._log(error_msg, "error")
+            import traceback
+
+            self._log(f"Traceback: {traceback.format_exc()}", "error")
+
+    def _process_clo_import(
+        self,
+        clo_data: Dict[str, Any],
+        strategy: ConflictStrategy,
+        dry_run: bool = False,
+    ):
+        """Process course learning outcome (CLO) import"""
+        try:
+            # Extract required data
+            course_number = clo_data.get("course_number")
+            clo_number = clo_data.get("clo_number")
+            description = clo_data.get("description")
+            assessment_method = clo_data.get("assessment_method")
+
+            if not course_number or not clo_number or not description:
+                self.stats["errors"].append(
+                    f"Missing required fields in CLO data: {clo_data}"
+                )
+                return
+
+            # Get course ID
+            course = get_course_by_number(course_number, self.institution_id)
+
+            if not course:
+                self.stats["errors"].append(
+                    f"Course {course_number} not found for CLO {clo_number}"
+                )
+                return
+
+            course_id = course["course_id"]
+
+            if dry_run:
+                self._log(f"DRY RUN: Would create CLO {clo_number} for {course_number}")
+                return
+
+            # Check if CLO already exists for this course
+            existing_clos = get_course_outcomes(course_id)
+            existing_clo = None
+            for clo in existing_clos:
+                if clo.get("clo_number") == clo_number:
+                    existing_clo = clo
+                    break
+
+            if existing_clo:
+                if strategy == ConflictStrategy.USE_MINE:
+                    self.stats["records_skipped"] += 1
+                    self._log(f"Skipped existing CLO: {course_number}.{clo_number}")
+                    return
+                elif strategy == ConflictStrategy.USE_THEIRS:
+                    self.stats["records_updated"] += 1
+                    self._log(f"Updated CLO: {course_number}.{clo_number}")
+                    # Could update here if needed
+                    return
+
+            # Create new CLO
+            from models import CourseOutcome
+
+            clo_schema = CourseOutcome.create_schema(
+                course_id=course_id,
+                clo_number=clo_number,
+                description=description,
+                assessment_method=assessment_method,
+                active=True,
+            )
+
+            outcome_id = create_course_outcome(clo_schema)
+
+            if outcome_id:
+                self.stats["records_created"] += 1
+                self._log(f"Created CLO {clo_number} for {course_number}")
+            else:
+                self.stats["errors"].append(
+                    f"Failed to create CLO {clo_number} for {course_number}"
+                )
+
+        except Exception as e:
+            error_msg = f"Error processing CLO: {str(e)}"
+            self.stats["errors"].append(error_msg)
+            self._log(error_msg, "error")
+            import traceback
+
+            self._log(f"Traceback: {traceback.format_exc()}", "error")
+
+    def _link_courses_to_programs(self):
+        """
+        Automatically link imported courses to programs based on course number prefixes.
+
+        Maps:
+        - BIOL-xxx → Biological Sciences
+        - BSN-xxx → Biological Sciences
+        - ZOOL-xxx → Zoology
+        - CEI-xxx → CEI Default Program
+        """
+        try:
+            from database_service import (
+                add_course_to_program,
+                get_all_courses,
+                get_programs_by_institution,
+            )
+
+            self.logger.info("[Import] Linking courses to programs...")
+
+            # Get all courses and programs for this institution
+            courses = get_all_courses(self.institution_id)
+            programs = get_programs_by_institution(self.institution_id)
+
+            if not courses or not programs:
+                self.logger.info("[Import] No courses or programs to link")
+                return
+
+            # Build program lookup by name
+            program_lookup = {p["name"]: p["id"] for p in programs}
+
+            # Course prefix to program mapping
+            course_mappings = {
+                "BIOL": "Biological Sciences",
+                "BSN": "Biological Sciences",
+                "ZOOL": "Zoology",
+                "CEI": "CEI Default Program",
+            }
+
+            linked_count = 0
+            for course in courses:
+                course_number = course["course_number"]
+                prefix = course_number.split("-")[0] if "-" in course_number else None
+
+                if prefix and prefix in course_mappings:
+                    program_name = course_mappings[prefix]
+                    program_id = program_lookup.get(program_name)
+
+                    if program_id:
+                        try:
+                            add_course_to_program(course["id"], program_id)
+                            linked_count += 1
+                        except Exception:
+                            # Already linked, that's fine
+                            pass
+
+            if linked_count > 0:
+                self.logger.info(f"[Import] Linked {linked_count} courses to programs")
+            else:
+                self.logger.info("[Import] All courses already linked to programs")
+
+        except Exception as e:
+            # Don't fail the import if linking fails
+            self.logger.warning(f"[Import] Failed to link courses to programs: {e}")
 
     def _create_import_result(
         self, start_time: datetime, dry_run: bool

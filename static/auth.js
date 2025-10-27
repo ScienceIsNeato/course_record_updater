@@ -50,7 +50,8 @@ function initializePage() {
     window.history.replaceState({}, '', url);
   }
 
-  if (currentPath.includes('/login')) {
+  // Check for login page (including /reminder-login)
+  if (currentPath.includes('/login') || currentPath.includes('/reminder-login')) {
     initializeLoginForm();
   } else if (currentPath.includes('/register')) {
     initializeRegisterForm();
@@ -70,7 +71,12 @@ function initializeLoginForm() {
   const form = document.getElementById('loginForm');
   if (!form) return;
 
-  form.addEventListener('submit', handleLogin);
+  // Prevent form from submitting normally (critical!)
+  form.addEventListener('submit', handleLogin, { capture: true });
+
+  // Also add a safety net to prevent any GET submissions
+  form.setAttribute('method', 'post');
+  form.setAttribute('action', '#');
 
   // Real-time validation
   const emailInput = document.getElementById('email');
@@ -407,27 +413,44 @@ async function submitAuthForm(config) {
   setLoadingState(submitBtn, true);
 
   try {
+    const csrfToken = getCSRFToken();
+    if (!csrfToken) {
+      showError('Security token missing. Please refresh the page and try again.');
+      setLoadingState(submitBtn, false);
+      return;
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
+        'X-CSRFToken': csrfToken
       },
       body: JSON.stringify(requestData)
     });
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (parseError) {
+      console.error('Failed to parse response:', parseError); // eslint-disable-line no-console
+      showError('Server returned an invalid response. Please try again.');
+      setLoadingState(submitBtn, false);
+      return;
+    }
 
     if (response.ok && result.success) {
       onSuccess(result);
     } else if (onError) {
       onError(response, result);
     } else {
-      showError(result.error || 'Request failed. Please try again.');
+      const errorMsg =
+        result.error || result.message || `Request failed with status ${response.status}`;
+      showError(errorMsg);
     }
   } catch (error) {
     console.error(`${endpoint} error:`, error); // eslint-disable-line no-console
-    showError('Network error. Please try again.');
+    showError(`Network error: ${error.message || 'Please check your connection and try again.'}`);
   } finally {
     setLoadingState(submitBtn, false);
   }
@@ -436,6 +459,7 @@ async function submitAuthForm(config) {
 // Form Submission Handlers
 async function handleLogin(e) {
   e.preventDefault();
+  e.stopPropagation();
 
   const form = e.target;
   const submitBtn = document.getElementById('loginBtn');
@@ -450,17 +474,25 @@ async function handleLogin(e) {
       password: formData.get('password'),
       remember_me: formData.get('rememberMe') === 'on'
     },
-    onSuccess: () => {
+    onSuccess: result => {
       showSuccess('Login successful! Redirecting...');
       setTimeout(() => {
-        window.location.href = '/dashboard';
+        // Use next_url if provided (from reminder emails), otherwise go to dashboard
+        const redirectUrl = result.next_url || '/dashboard';
+        window.location.href = redirectUrl;
       }, 1000);
     },
     onError: (response, result) => {
       if (response.status === 423) {
         showAccountLockout();
       } else {
-        showError(result.error || 'Login failed. Please try again.');
+        // More detailed error messages
+        const errorMsg =
+          result.error ||
+          result.message ||
+          'Login failed. Please check your credentials and try again.';
+        console.error('Login error:', response.status, result); // eslint-disable-line no-console
+        showError(errorMsg);
       }
     }
   });

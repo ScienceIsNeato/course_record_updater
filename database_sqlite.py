@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.orm import selectinload
 
 from constants import DEFAULT_INSTITUTION_TIMEZONE
 from database_interface import DatabaseInterface
@@ -501,17 +502,17 @@ class SQLiteDatabase(DatabaseInterface):
             logger.error(f"Failed to delete course: {e}")
             return False
 
-    def get_course_by_number(self, course_number: str) -> Optional[Dict[str, Any]]:
+    def get_course_by_number(
+        self, course_number: str, institution_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
-            record = (
-                session.execute(
-                    select(Course).where(
-                        func.upper(Course.course_number) == course_number.upper()
-                    )
-                )
-                .scalars()
-                .first()
+            query = select(Course).where(
+                func.upper(Course.course_number) == course_number.upper()
             )
+            if institution_id:
+                query = query.where(Course.institution_id == institution_id)
+
+            record = session.execute(query).scalars().first()
             return to_dict(record) if record else None
 
     def get_courses_by_department(
@@ -699,7 +700,9 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             courses = (
                 session.execute(
-                    select(Course).where(Course.institution_id == institution_id)
+                    select(Course)
+                    .where(Course.institution_id == institution_id)
+                    .options(selectinload(Course.programs))
                 )
                 .scalars()
                 .all()
@@ -1122,6 +1125,39 @@ class SQLiteDatabase(DatabaseInterface):
             program = session.get(Program, program_id)
             return to_dict(program) if program else None
 
+    def link_course_to_program(self, course_id: str, program_id: str) -> bool:
+        """
+        Link a course to a program.
+
+        Args:
+            course_id: Course ID
+            program_id: Program ID
+
+        Returns:
+            True if linked successfully (or already linked), False otherwise
+        """
+        from models_sql import course_program_table
+
+        with self.sqlite.session_scope() as session:
+            # Check if link already exists
+            existing = session.execute(
+                select(course_program_table).where(
+                    course_program_table.c.course_id == course_id,
+                    course_program_table.c.program_id == program_id,
+                )
+            ).first()
+
+            if existing:
+                return True  # Already linked
+
+            # Create link
+            session.execute(
+                course_program_table.insert().values(
+                    course_id=course_id, program_id=program_id
+                )
+            )
+            return True
+
     def get_program_by_name_and_institution(
         self, program_name: str, institution_id: str
     ) -> Optional[Dict[str, Any]]:
@@ -1306,6 +1342,7 @@ class SQLiteDatabase(DatabaseInterface):
         )
         with self.sqlite.session_scope() as session:
             session.add(invitation)
+            session.flush()  # Ensure invitation is immediately visible to subsequent queries
             return invitation_id
 
     def get_invitation_by_id(self, invitation_id: str) -> Optional[Dict[str, Any]]:
@@ -1334,12 +1371,14 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             invitation = (
                 session.execute(
-                    select(UserInvitation).where(
+                    select(UserInvitation)
+                    .where(
                         and_(
                             UserInvitation.email == email.lower(),
                             UserInvitation.institution_id == institution_id,
                         )
                     )
+                    .order_by(UserInvitation.created_at.desc())
                 )
                 .scalars()
                 .first()

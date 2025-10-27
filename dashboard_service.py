@@ -173,12 +173,23 @@ class DashboardService:
         programs = get_programs_by_institution(institution_id) or []
         courses = get_all_courses(institution_id) or []
         # Enrich courses with CLO data
-        courses = self._enrich_courses_with_clo_data(courses, load_clos=False)
+        courses = self._enrich_courses_with_clo_data(courses, load_clos=True)
         users = get_all_users(institution_id) or []
         instructors = get_all_instructors(institution_id) or []
         sections = get_all_sections(institution_id) or []
         offerings = get_all_course_offerings(institution_id) or []
         terms = get_active_terms(institution_id) or []
+
+        # Collect all CLOs from courses
+        all_clos = []
+        for course in courses:
+            course_clos = course.get("clos", [])
+            for clo in course_clos:
+                # Add course_number for frontend display
+                clo_copy = dict(clo)
+                clo_copy["course_number"] = course.get("course_number", "")
+                clo_copy["course_title"] = course.get("course_title", "")
+                all_clos.append(clo_copy)
 
         course_index = self._index_by_keys(courses, ["course_id", "id"])
         program_index = {self._get_program_id(program): program for program in programs}
@@ -193,10 +204,14 @@ class DashboardService:
             if offering_id and course_id:
                 offering_to_course[offering_id] = course_id
 
-        # Enrich sections with course data
+        # Enrich sections with course data and instructor info
         sections = self._enrich_sections_with_course_data(
             sections, course_index, offering_to_course
         )
+        sections = self._enrich_sections_with_instructor_data(sections, users)
+
+        # Enrich terms with offering counts
+        terms = self._enrich_terms_with_offering_counts(terms, offerings)
 
         program_metrics = self._build_program_metrics(
             programs,
@@ -238,7 +253,11 @@ class DashboardService:
             "sections": self._with_institution(
                 sections, institution_id, institution_name
             ),
+            "offerings": self._with_institution(
+                offerings, institution_id, institution_name
+            ),
             "terms": self._with_institution(terms, institution_id, institution_name),
+            "clos": self._with_institution(all_clos, institution_id, institution_name),
             "faculty": faculty,
             "faculty_assignments": faculty_assignments,
             "program_overview": program_metrics,
@@ -704,6 +723,9 @@ class DashboardService:
             faculty_lookup[fid] for fid in faculty_ids if fid in faculty_lookup
         ]
 
+        # Calculate CLO-based assessment progress
+        clo_progress = self._calculate_clo_progress(program_courses)
+
         return {
             "program_id": program_id,
             "program_name": program.get("name") or program_id,
@@ -713,7 +735,7 @@ class DashboardService:
             "section_count": len(program_sections),
             "faculty_count": len(faculty_ids),
             "student_count": self._total_enrollment(program_sections),
-            "assessment_progress": self._calculate_progress(program_sections),
+            "assessment_progress": clo_progress,
             "courses": course_summaries,
             "faculty": faculty_details,
         }
@@ -956,7 +978,35 @@ class DashboardService:
             )
         return tasks
 
+    def _calculate_clo_progress(
+        self, courses: Sequence[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Calculate assessment progress based on CLO completion."""
+        total_clos = 0
+        completed_clos = 0
+
+        for course in courses:
+            clos = course.get("clos", [])
+            for clo in clos:
+                total_clos += 1
+                # A CLO is considered "completed" if it has assessment data
+                assessment_data = clo.get("assessment_data", {})
+                if assessment_data and isinstance(assessment_data, dict):
+                    # Check if any meaningful data exists (not just an empty dict)
+                    if assessment_data.get("students_assessed") or assessment_data.get(
+                        "meeting_target"
+                    ):
+                        completed_clos += 1
+
+        percent = round((completed_clos / total_clos) * 100, 1) if total_clos else 0
+        return {
+            "completed": completed_clos,
+            "total": total_clos,
+            "percent_complete": percent,
+        }
+
     def _calculate_progress(self, sections: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+        """Legacy method for section-based progress (deprecated)."""
         if not sections:
             return {"completed": 0, "total": 0, "percent_complete": 0}
 
@@ -1138,6 +1188,79 @@ class DashboardService:
             self._enrich_single_section(i, section, course_index, offering_to_course)
             for i, section in enumerate(sections)
         ]
+
+    def _enrich_sections_with_instructor_data(
+        self,
+        sections: List[Dict[str, Any]],
+        users: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich sections with instructor name and email.
+
+        Args:
+            sections: List of section dictionaries
+            users: List of all users (to lookup instructor details)
+
+        Returns:
+            List of sections enriched with instructor_name and instructor_email
+        """
+        # Build instructor lookup by user_id
+        instructor_lookup = {}
+        for user in users:
+            user_id = user.get("user_id") or user.get("id")
+            if user_id:
+                instructor_lookup[user_id] = {
+                    "name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+                    or user.get("email", ""),
+                    "email": user.get("email", ""),
+                }
+
+        # Enrich sections
+        enriched_sections = []
+        for section in sections:
+            section_copy = section.copy()
+            instructor_id = section.get("instructor_id")
+
+            if instructor_id and instructor_id in instructor_lookup:
+                instructor = instructor_lookup[instructor_id]
+                section_copy["instructor_name"] = instructor["name"]
+                section_copy["instructor_email"] = instructor["email"]
+
+            enriched_sections.append(section_copy)
+
+        return enriched_sections
+
+    def _enrich_terms_with_offering_counts(
+        self,
+        terms: List[Dict[str, Any]],
+        offerings: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich terms with the count of offerings for each term.
+
+        Args:
+            terms: List of term dictionaries
+            offerings: List of offering dictionaries
+
+        Returns:
+            List of terms enriched with offering_count
+        """
+        # Build a count of offerings per term
+        offering_counts: Dict[str, int] = {}
+        for offering in offerings:
+            term_id = offering.get("term_id")
+            if term_id:
+                offering_counts[term_id] = offering_counts.get(term_id, 0) + 1
+
+        # Add counts to terms
+        enriched_terms = []
+        for term in terms:
+            term_id = term.get("term_id") or term.get("id")
+            enriched_term = dict(term)
+            enriched_term["offering_count"] = offering_counts.get(term_id, 0)
+            enriched_terms.append(enriched_term)
+
+        return enriched_terms
 
     def _enrich_single_section(
         self,

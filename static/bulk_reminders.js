@@ -288,12 +288,24 @@ class BulkReminderManager {
     const deadline = document.getElementById('reminderDeadline').value;
     const personalMessage = document.getElementById('reminderMessage').value.trim();
 
+    // Get course_id if one instructor is selected and they have a single course
+    let courseId = null;
+    if (this.selectedInstructors.size === 1 && window.dashboardDataCache) {
+      const instructorId = Array.from(this.selectedInstructors)[0];
+      const sections = window.dashboardDataCache.sections || [];
+      const instructorSections = sections.filter(s => s.instructor_id === instructorId);
+      if (instructorSections.length === 1) {
+        courseId = instructorSections[0].course_id;
+      }
+    }
+
     // Build request
     const requestData = {
       instructor_ids: Array.from(this.selectedInstructors),
       personal_message: personalMessage || null,
       term: term || null,
-      deadline: deadline || null
+      deadline: deadline || null,
+      course_id: courseId || null
     };
 
     try {

@@ -37,9 +37,9 @@ def validate_cei_term_name(term_name: str) -> bool:
         season = parts[1].lower()
         return season in ["fall", "spring", "summer", "winter"]
 
-    # Handle CEI abbreviated format: "FA2024", "SP2025", "SU2023", "WI2026"
-    if len(term_name) == 6 and term_name[2:].isdigit():
-        season = term_name[:2].upper()
+    # Handle CEI abbreviated format: "2024FA", "2024SP", "2024SU", "2024WI" (YEAR+SEASON)
+    if len(term_name) == 6 and term_name[:4].isdigit():
+        season = term_name[4:].upper()
         return season in ["FA", "SP", "SU", "WI"]  # Fall, Spring, Summer, Winter
 
     return False
@@ -47,27 +47,30 @@ def validate_cei_term_name(term_name: str) -> bool:
 
 def parse_cei_term(effterm_c: str) -> Tuple[str, str]:
     """
-    Parse CEI's effterm_c format into year and season.
+    Parse CEI's term format into year and season.
 
     Args:
-        effterm_c: Term code like 'FA2024', 'SP2025', etc.
+        effterm_c: Term code like '2024FA', '2024SP', etc. (YEAR+SEASON)
 
     Returns:
         Tuple of (year, season) where season is the full name
 
     Example:
-        parse_cei_term('FA2024') -> ('2024', 'Fall')
+        parse_cei_term('2024FA') -> ('2024', 'Fall')
     """
     if not effterm_c or len(effterm_c) != 6:
         raise ValueError(f"Invalid effterm_c format: {effterm_c}")
 
-    season_code = effterm_c[:2].upper()
-    year = effterm_c[2:]
+    year = effterm_c[:4]
+    season_code = effterm_c[4:].upper()
 
     season_map = {"FA": "Fall", "SP": "Spring", "SU": "Summer", "WI": "Winter"}
 
     if season_code not in season_map:
         raise ValueError(f"Invalid season code: {season_code}")
+
+    if not year.isdigit():
+        raise ValueError(f"Invalid year: {year}")
 
     return year, season_map[season_code]
 
@@ -90,6 +93,56 @@ def _extract_course_data(
         "credit_hours": 3,  # Default, CEI file doesn't have credit hours
         "institution_id": institution_id,
     }
+
+
+def _extract_clo_data(
+    row: pd.Series, course_data: Optional[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
+    """
+    Extract CLO (Course Learning Outcome) information from row.
+
+    Format: "BIOL-228.1: Description text"
+    """
+    if not course_data:
+        return None
+
+    if "cllo_text" not in row or pd.isna(row["cllo_text"]):
+        return None
+
+    cllo_text = str(row["cllo_text"]).strip()
+    if not cllo_text:
+        return None
+
+    # Parse format: "COURSE-NUM.CLO_NUM: Description"
+    if ":" not in cllo_text:
+        return None
+
+    try:
+        # Split on first colon
+        code_part, description = cllo_text.split(":", 1)
+        code_part = code_part.strip()
+        description = description.strip()
+
+        # Extract CLO number from code (e.g., "BIOL-228.1" -> "1")
+        if "." not in code_part:
+            return None
+
+        course_part, clo_number = code_part.rsplit(".", 1)
+
+        # Validate this CLO belongs to the current course
+        course_number = course_data.get("course_number", "")
+        if not course_part.upper() == course_number.upper():
+            return None
+
+        return {
+            "course_number": course_number,
+            "clo_number": clo_number.strip(),
+            "description": description,
+            "assessment_method": None,  # Could extract from "assessment tool" column if needed
+            "active": True,
+        }
+    except (ValueError, AttributeError):
+        return None
 
 
 def _extract_user_data(
@@ -171,13 +224,32 @@ def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str
             return None
 
     elif "Term" in row and not pd.isna(row["Term"]):
-        # Format 2: Standard format like "2024 Fall"
+        # Format 2: Can be either standard "2024 Fall" or CEI abbreviated "2024FA"
         term_name = str(row["Term"]).strip()
         if not term_name:
             return None
 
         try:
-            # Parse standard format "YYYY Season"
+            # Check if it's the abbreviated format (no spaces, 6 chars)
+            if (
+                len(term_name) == 6
+                and term_name[:4].isdigit()
+                and validate_cei_term_name(term_name)
+            ):
+                # CEI abbreviated format: "2024FA"
+                year, season = parse_cei_term(term_name)
+                return {
+                    "name": f"{season} {year}",
+                    "term_name": f"{season} {year}",
+                    "year": int(year),
+                    "season": season,
+                    "institution_id": institution_id,
+                    "is_active": True,
+                    "start_date": f"{year}-01-01",
+                    "end_date": f"{year}-12-31",
+                }
+
+            # Try standard format "YYYY Season"
             parts = term_name.split()
             if len(parts) >= 2 and parts[0].isdigit():
                 parsed_year = int(parts[0])
@@ -281,6 +353,7 @@ def parse_cei_excel_row(
         section_data = _extract_section_data(
             row, course_data, term_data, user_data, institution_id
         )
+        clo_data = _extract_clo_data(row, course_data)
 
         return {
             "course": course_data,
@@ -288,6 +361,7 @@ def parse_cei_excel_row(
             "term": term_data,
             "offering": offering_data,
             "section": section_data,
+            "clo": clo_data,
         }
 
     except Exception as e:
@@ -299,6 +373,7 @@ def parse_cei_excel_row(
             "term": None,
             "offering": None,
             "section": None,
+            "clo": None,
         }
 
 
@@ -607,7 +682,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             term for term in sample_terms if not validate_cei_term_name(str(term))
         ]
         if len(invalid_terms) == len(sample_terms) and len(sample_terms) > 0:
-            return "No valid term codes found (expected format: FA2024, SP2025)"
+            return "No valid term codes found (expected format: 2024FA, 2025SP)"
         return None
 
     def _validate_student_count_column(self, df) -> Optional[str]:
@@ -639,6 +714,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         - faculty: Instructor information
         - terms: Academic term data
         - sections: Course section details
+        - clos: Course Learning Outcomes
         """
         try:
             df = pd.read_excel(file_path, nrows=50)  # Sample for analysis
@@ -660,6 +736,10 @@ class CEIExcelAdapter(FileBaseAdapter):
                 "Term" in df.columns and not df["Term"].isna().all()
             ):
                 detected_types.append("terms")
+
+            # Check for CLO data
+            if "cllo_text" in df.columns and not df["cllo_text"].isna().all():
+                detected_types.append("clos")
 
             # Check for section data (student counts indicate sections)
             if (
@@ -778,6 +858,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             "terms": [],
             "offerings": [],
             "sections": [],
+            "clos": [],
         }
 
         # Process each row using existing parsing logic
@@ -809,6 +890,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             ("term", "terms"),
             ("offering", "offerings"),
             ("section", "sections"),
+            ("clo", "clos"),
         ]
 
         for entity_key, result_key in entity_mappings:
@@ -846,6 +928,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                 "section_number",
                 "institution_id",
             ],
+            "clos": ["course_number", "clo_number"],
         }
 
         for data_type, records in result.items():
@@ -1089,7 +1172,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         return records
 
     def _format_term_for_cei_export(self, term: Dict[str, Any]) -> str:
-        """Format term data for CEI export (e.g., SP2024)."""
+        """Format term data for CEI export (e.g., 2024SP - YEAR+SEASON)."""
         if not term:
             return ""
 
@@ -1097,10 +1180,10 @@ class CEIExcelAdapter(FileBaseAdapter):
         season = term.get("season", "")
 
         if year and season:
-            # Convert season to CEI format (SP2024, not 2024SP)
+            # Convert season to CEI format (2024SP, YEAR+SEASON)
             season_map = {"Spring": "SP", "Summer": "SU", "Fall": "FA", "Winter": "WI"}
             season_code = season_map.get(season, season[:2].upper())
-            return f"{season_code}{year}"
+            return f"{year}{season_code}"
 
         # Fall back to parsing the term name if structured fields aren't available
         term_name = term.get("name", "")
@@ -1121,7 +1204,7 @@ class CEIExcelAdapter(FileBaseAdapter):
                     }
                     season_code = season_map.get(season_name, season_name[:2].upper())
 
-                    return f"{season_code}{year_str}"
+                    return f"{year_str}{season_code}"
             except (ValueError, IndexError):
                 pass
 

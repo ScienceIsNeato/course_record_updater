@@ -587,3 +587,111 @@ class TestConvenienceFunctions:
             is True
         )
         assert send_welcome_email("test@example.com", "User", "Institution") is True
+
+
+class TestCourseReminderEmail:
+    """Test course assessment reminder email functionality."""
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_send_course_assessment_reminder(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
+        """Test sending course assessment reminder email."""
+        # Mock whitelist
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        # Mock provider
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
+        # Send reminder
+        result = EmailService.send_course_assessment_reminder(
+            to_email="instructor@example.com",
+            instructor_name="Dr. Smith",
+            course_display="CS101 - Intro to Programming",
+            admin_name="Dr. Admin",
+            institution_name="Example University",
+            assessment_url="http://localhost:3001/assessments?course=123",
+        )
+
+        assert result is True
+        mock_provider.send_email.assert_called_once()
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_send_course_assessment_reminder_failure(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
+        """Test course reminder handles send failure."""
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = False
+        mock_create_provider.return_value = mock_provider
+
+        result = EmailService.send_course_assessment_reminder(
+            to_email="fail@example.com",
+            instructor_name="Dr. Test",
+            course_display="TEST101",
+            admin_name="Admin",
+            institution_name="Test U",
+            assessment_url="http://localhost:3001/test",
+        )
+
+        assert result is False
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_send_course_assessment_reminder_with_empty_names(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
+        """Test course reminder with minimal data."""
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
+        result = EmailService.send_course_assessment_reminder(
+            to_email="test@example.com",
+            instructor_name="",
+            course_display="",
+            admin_name="",
+            institution_name="",
+            assessment_url="http://localhost:3001/test",
+        )
+
+        assert result is True
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_send_course_assessment_reminder_exception(
+        self, mock_get_whitelist, mock_create_provider, app_context
+    ):
+        """Test course reminder handles exceptions."""
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        mock_provider = Mock()
+        mock_provider.send_email.side_effect = Exception("Test error")
+        mock_create_provider.return_value = mock_provider
+
+        result = EmailService.send_course_assessment_reminder(
+            to_email="test@example.com",
+            instructor_name="Test",
+            course_display="TEST",
+            admin_name="Admin",
+            institution_name="Univ",
+            assessment_url="http://localhost:3001/test",
+        )
+
+        assert result is False

@@ -258,8 +258,8 @@ class TestValidationFunctions:
         formatted = format_term_name(2024, "Fall")
         assert isinstance(formatted, str)
 
-        # Test parse function
-        result = parse_cei_term("FA2024")
+        # Test parse function (YEAR+SEASON format)
+        result = parse_cei_term("2024FA")
         assert isinstance(result, tuple) and len(result) == 2
 
     def test_validate_course_number_edge_cases(self):
@@ -428,8 +428,8 @@ class TestModelValidationEdgeCases:
         """Test parse_cei_term comprehensive functionality."""
         from adapters.cei_excel_adapter import parse_cei_term
 
-        # Test valid MockU term formats
-        valid_terms = ["FA2024", "SP2025", "SU2023", "WI2026"]
+        # Test valid CEI term formats (YEAR+SEASON)
+        valid_terms = ["2024FA", "2025SP", "2023SU", "2026WI"]
 
         expected_results = [
             ("2024", "Fall"),
@@ -438,8 +438,8 @@ class TestModelValidationEdgeCases:
             ("2026", "Winter"),
         ]
 
-        for mocku_term, expected in zip(valid_terms, expected_results):
-            result = parse_cei_term(mocku_term)
+        for cei_term, expected in zip(valid_terms, expected_results):
+            result = parse_cei_term(cei_term)
             assert result == expected, f"Expected {expected}, got {result}"
 
     def test_user_model_comprehensive_functionality(self):
