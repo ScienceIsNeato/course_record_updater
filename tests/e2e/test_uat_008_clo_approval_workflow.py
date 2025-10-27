@@ -187,8 +187,9 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     clo_id = clo_data["outcome_id"]
 
     # Submit CLO via API to set it to AWAITING_APPROVAL
-    # Use instructor page context to simulate instructor submission
-    instructor_page = admin_page.context.new_page()
+    # Use separate browser context for instructor to avoid overwriting admin session
+    instructor_context = admin_page.context.browser.new_context()
+    instructor_page = instructor_context.new_page()
     login_as_user(
         instructor_page, BASE_URL, "uat008.instructor@test.com", "TestUser123!"
     )
@@ -212,14 +213,26 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     )
     assert submit_response.ok, f"Failed to submit CLO: {submit_response.text()}"
 
-    instructor_page.close()
+    instructor_context.close()
 
     # === STEP 2: Admin navigates to audit interface ===
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
-    # Wait for page to fully load
+    # Sanity check: ensure the audit API returns our submitted CLO before relying on UI
+    api_check = admin_page.request.get(
+        f"{BASE_URL}/api/outcomes/audit?status=awaiting_approval",
+        headers={"X-CSRFToken": csrf_token if csrf_token else ""},
+    )
+    assert api_check.ok, f"Audit API failed: {api_check.text()}"
+    api_outcomes = api_check.json().get("outcomes", [])
+    assert any(
+        o.get("outcome_id") == clo_id or o.get("id") == clo_id for o in api_outcomes
+    ), f"Submitted CLO not present in audit list. Outcomes: {api_outcomes}"
+
+    # Wait for page to fully load, then give JS time to render list
     admin_page.wait_for_load_state("networkidle")
+    admin_page.wait_for_timeout(500)
 
     # Wait for CLO list to load
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
@@ -229,8 +242,8 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()
 
-    # Verify it shows as "Awaiting Approval"
-    status_cell = clo_row.locator("td").nth(4)  # Status column
+    # Verify it shows as "Awaiting Approval" (Status is first column)
+    status_cell = clo_row.locator("td").nth(0)
     expect(status_cell).to_contain_text("Awaiting Approval")
 
     # === STEP 5: Click CLO row to open detail modal ===
@@ -240,12 +253,10 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     modal = admin_page.locator("#cloDetailModal")
     expect(modal).to_be_visible()
 
-    # Verify CLO details in modal
-    expect(modal.locator("#detailCourseCode")).to_contain_text("UAT008-MKT101")
-    expect(modal.locator("#detailOutcomeNumber")).to_contain_text("1")
-    expect(modal.locator("#detailDescription")).to_contain_text(
-        "marketing segmentation"
-    )
+    # Verify CLO details in modal using visible content
+    expect(modal).to_contain_text("UAT008-MKT101")
+    expect(modal).to_contain_text("CLO Number: 1")
+    expect(modal).to_contain_text("marketing segmentation")
 
     # === STEP 6: Click "Approve" button ===
     approve_button = modal.locator('button:has-text("Approve")')

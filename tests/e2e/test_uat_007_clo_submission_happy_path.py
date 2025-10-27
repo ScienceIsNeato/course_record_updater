@@ -193,71 +193,83 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
-    # Find the course in the dropdown
+    # Select course
     instructor_page.select_option("#courseSelect", value=course_id)
 
-    # Wait for CLO data to load
+    # Wait for CLO tile/button to appear, allow rendering time
+    instructor_page.wait_for_timeout(500)
     clo_button = instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
     clo_button.wait_for(timeout=5000)
-
-    # Verify CLO is visible with ASSIGNED status badge
-    # Status is shown as a badge in the list item, check for the text
-    expect(
-        instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
-    ).to_be_visible()
-    expect(
-        instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
-    ).to_have_attribute("data-status", "assigned")
+    # Ensure the update button is bound and rendered with dataset
+    instructor_page.wait_for_selector(
+        f".update-assessment-btn[data-outcome-id='{clo1_id}']", timeout=5000
+    )
+    expect(clo_button).to_be_visible()
+    expect(clo_button).to_have_attribute("data-status", "assigned")
 
     # === STEP 4: Edit CLO fields (auto-marks IN_PROGRESS) ===
-    # Fill in assessment data
-    instructor_page.fill(f"#students_assessed_{clo1_id}", "30")
-    instructor_page.fill(f"#students_meeting_target_{clo1_id}", "27")
+    # Open assessment modal (Update Assessment modal)
+    clo_button.click()
+    try:
+        instructor_page.wait_for_selector(
+            "#updateAssessmentModal", state="visible", timeout=5000
+        )
+    except Exception:
+        # Dump container HTML for debugging and retry explicit button
+        try:
+            html_dump = instructor_page.evaluate(
+                "document.getElementById('outcomesContainer')?.innerHTML || ''"
+            )
+            print(
+                "\n=== DEBUG outcomesContainer HTML (first 2000 chars) ===\n"
+                + html_dump[:2000]
+            )
+        except Exception:
+            pass
+        instructor_page.locator(
+            f".update-assessment-btn[data-outcome-id='{clo1_id}']"
+        ).click()
+        instructor_page.wait_for_selector(
+            "#updateAssessmentModal", state="visible", timeout=5000
+        )
+
+    # Fill in assessment data in modal
+    instructor_page.fill("#studentsAssessed", "30")
+    instructor_page.fill("#studentsMeetingTarget", "27")
     instructor_page.fill(
-        f"#narrative_{clo1_id}",
+        "#assessmentNarrative",
         "Students demonstrated strong understanding of design patterns.",
     )
 
-    # Click save (triggers auto-mark as in_progress)
-    instructor_page.click("button:has-text('Save Changes')")
+    # Save (auto-marks IN_PROGRESS) - submit the form
+    instructor_page.click("#updateAssessmentForm button[type='submit']")
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="hidden", timeout=5000
+    )
 
-    # Wait for success message
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
-
-    # Reload page to see updated status
-    instructor_page.reload()
-    instructor_page.select_option("#sectionSelect", value=section_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo1_id}", timeout=5000)
-
-    # Verify status changed to IN_PROGRESS
-    status_badge = instructor_page.locator(f"#clo-status-{clo1_id}")
-    expect(status_badge).to_have_text("In Progress")
+    # Verify status changed to IN_PROGRESS via button attribute
+    expect(clo_button).to_have_attribute("data-status", "in_progress")
 
     # === STEP 5: Submit CLO for approval ===
     # Click submit button
-    submit_button = instructor_page.locator(f"#submit-clo-{clo1_id}")
+    submit_button = instructor_page.locator(
+        f".submit-clo-btn[data-outcome-id='{clo1_id}']"
+    )
     expect(submit_button).to_be_visible()
+    instructor_page.once("dialog", lambda dialog: dialog.accept())
     submit_button.click()
 
-    # Confirm submission
-    instructor_page.once("dialog", lambda dialog: dialog.accept())
-
-    # Wait for success message
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
+    # Wait briefly for state to update
+    instructor_page.wait_for_timeout(500)
 
     # === STEP 6: Verify status is AWAITING_APPROVAL ===
-    # Reload page to see updated status
-    instructor_page.reload()
-    instructor_page.select_option("#sectionSelect", value=section_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo1_id}", timeout=5000)
+    # Verify status is now AWAITING_APPROVAL via button attribute
+    expect(clo_button).to_have_attribute("data-status", "awaiting_approval")
 
-    # Verify status is now AWAITING_APPROVAL
-    status_badge = instructor_page.locator(f"#clo-status-{clo1_id}")
-    expect(status_badge).to_have_text("Awaiting Approval")
-
-    # Verify submit button is no longer visible (can't submit twice)
-    submit_button = instructor_page.locator(f"#submit-clo-{clo1_id}")
-    expect(submit_button).not_to_be_visible()
+    # Verify submit button is no longer visible
+    expect(
+        instructor_page.locator(f".submit-clo-btn[data-outcome-id='{clo1_id}']")
+    ).not_to_be_visible()
 
     # === STEP 7: Verify via API that submission timestamp is set ===
     # Use admin page to check API

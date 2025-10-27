@@ -308,8 +308,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     submit_button = rework_modal.locator('button:has-text("Send for Rework")')
     submit_button.click()
 
-    # Wait for success
-    admin_page.wait_for_selector(".alert", timeout=5000)
+    # Wait for modal to close and list to refresh
+    admin_page.wait_for_selector("#cloDetailModal", state="hidden", timeout=5000)
+    admin_page.wait_for_timeout(500)
 
     # Verify status is APPROVAL_PENDING
     outcome = admin_page.request.get(
@@ -332,9 +333,9 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         f'button[data-outcome-id="{clo_id}"]', timeout=5000
     )
 
-    # Verify feedback is visible (it's in an alert div within the list-group-item)
+    # Verify feedback is visible (it's in an alert div with "Revision Requested" heading)
     feedback_alert = instructor_page.locator(
-        ".alert-warning:has-text('Feedback Requested')"
+        ".alert-warning:has-text('Revision Requested')"
     )
     expect(feedback_alert).to_be_visible()
 
@@ -354,9 +355,11 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         "trade-offs in their final projects.",
     )
 
-    # Save changes
-    instructor_page.click("#updateAssessmentModal button:has-text('Save Assessment')")
-    instructor_page.wait_for_timeout(1000)  # Wait for modal to close
+    # Save changes (submit the form)
+    instructor_page.click("#updateAssessmentForm button[type='submit']")
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="hidden", timeout=5000
+    )
 
     # Resubmit
     instructor_csrf = instructor_page.evaluate(

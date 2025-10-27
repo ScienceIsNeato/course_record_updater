@@ -195,7 +195,8 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     clo_id = clo_data["outcome_id"]
 
     # Submit CLO via instructor
-    instructor_page = admin_page.context.new_page()
+    instructor_context = admin_page.context.browser.new_context()
+    instructor_page = instructor_context.new_page()
     login_as_user(
         instructor_page, BASE_URL, "uat009.instructor@test.com", "TestUser123!"
     )
@@ -218,15 +219,27 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     )
     assert submit_response.ok, f"Failed to submit CLO: {submit_response.text()}"
 
-    # Close instructor page for now
-    instructor_page.close()
+    # Close instructor context to ensure admin session remains active
+    instructor_context.close()
 
     # === STEP 2: Admin navigates to audit interface ===
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
-    # Wait for page to fully load
+    # Sanity-check the audit API first to ensure data is present
+    api_check = admin_page.request.get(
+        f"{BASE_URL}/api/outcomes/audit?status=awaiting_approval",
+        headers={"X-CSRFToken": csrf_token if csrf_token else ""},
+    )
+    assert api_check.ok, f"Audit API failed: {api_check.text()}"
+    api_outcomes = api_check.json().get("outcomes", [])
+    assert any(
+        o.get("outcome_id") == clo_id or o.get("id") == clo_id for o in api_outcomes
+    ), f"Submitted CLO not present in audit list. Outcomes: {api_outcomes}"
+
+    # Wait for page to fully load, then allow time for JS render
     admin_page.wait_for_load_state("networkidle")
+    admin_page.wait_for_timeout(500)
 
     # Wait for CLO list to load
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
@@ -236,21 +249,21 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     expect(clo_row).to_be_visible()
     clo_row.click()
 
-    # Wait for modal
-    modal = admin_page.locator("#cloDetailModal")
-    expect(modal).to_be_visible()
+    # Wait for detail modal to be visible
+    detail_modal = admin_page.locator("#cloDetailModal")
+    expect(detail_modal).to_be_visible()
 
     # === STEP 4: Click "Request Rework" button ===
-    rework_button = modal.locator('button:has-text("Request Rework")')
+    rework_button = detail_modal.locator('button:has-text("Request Rework")')
     expect(rework_button).to_be_visible()
     rework_button.click()
 
-    # Wait for rework feedback form to appear
-    feedback_form = modal.locator("#reworkFeedbackForm")
-    expect(feedback_form).to_be_visible()
+    # Wait for rework modal to appear
+    rework_modal = admin_page.locator("#requestReworkModal")
+    expect(rework_modal).to_be_visible()
 
     # === STEP 5: Enter feedback comments ===
-    feedback_textarea = modal.locator("#feedbackComments")
+    feedback_textarea = rework_modal.locator("#feedbackComments")
     feedback_textarea.fill(
         "The narrative needs more detail. Please explain how students applied "
         "the second law of thermodynamics to solve practical problems. "
@@ -258,20 +271,18 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     )
 
     # === STEP 6: Check "Send email notification" ===
-    email_checkbox = modal.locator("#sendEmailNotification")
-    email_checkbox.check()
+    email_checkbox = rework_modal.locator("#sendEmailCheckbox")
+    email_checkbox.set_checked(True)
 
     # === STEP 7: Submit rework request ===
-    submit_button = modal.locator('button:has-text("Send for Rework")')
+    submit_button = rework_modal.locator('button:has-text("Send for Rework")')
     submit_button.click()
 
-    # Wait for success alert
-    admin_page.wait_for_selector(".alert", timeout=5000)
-    alert = admin_page.locator(".alert")
-    expect(alert).to_contain_text("Rework request sent")
+    # Rework modal should close
+    expect(rework_modal).not_to_be_visible()
 
-    # Modal should close
-    expect(modal).not_to_be_visible()
+    # Detail modal should be hidden as well
+    expect(detail_modal).not_to_be_visible()
 
     # === STEP 8: Verify CLO status is APPROVAL_PENDING ===
     # Change filter to show approval_pending CLOs
@@ -281,12 +292,10 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     # Wait for list to update
     admin_page.wait_for_timeout(1000)
 
-    # Find our CLO
+    # Find our CLO and verify status shows "Needs Rework" (status is first column)
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()
-
-    # Verify status shows "Needs Rework"
-    status_cell = clo_row.locator("td").nth(4)
+    status_cell = clo_row.locator("td").nth(0)
     expect(status_cell).to_contain_text("Needs Rework")
 
     # === STEP 9: Verify feedback is stored via API ===
@@ -297,13 +306,14 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         },
     )
     assert outcome_response.ok, f"Failed to get outcome: {outcome_response.text()}"
-    outcome_data = outcome_response.json()
+    outcome_json = outcome_response.json()
+    outcome_data = outcome_json.get("outcome", outcome_json)
 
-    assert outcome_data["status"] == "approval_pending"
-    assert outcome_data["approval_status"] == "needs_rework"
-    assert outcome_data["feedback_comments"] is not None
-    assert "second law" in outcome_data["feedback_comments"]
-    assert outcome_data["feedback_provided_at"] is not None
+    assert outcome_data.get("status") == "approval_pending"
+    assert outcome_data.get("approval_status") == "needs_rework"
+    assert outcome_data.get("feedback_comments") is not None
+    assert "second law" in (outcome_data.get("feedback_comments") or "")
+    assert outcome_data.get("feedback_provided_at") is not None
 
     # === STEP 10: Instructor logs in and sees feedback ===
     instructor_page = admin_page.context.new_page()
@@ -320,18 +330,31 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         f"button[data-outcome-id='{clo_id}']", timeout=5000
     )
 
-    # Verify status badge shows "Needs Rework"
-    status_badge = instructor_page.locator(f"#clo-status-{clo_id}")
-    expect(status_badge).to_have_text("Needs Rework")
+    # Verify status badge shows "Needs Revision" (the badge is generated inline without an ID)
+    clo_card = instructor_page.locator(f'button[data-outcome-id="{clo_id}"]').locator(
+        ".."
+    )
+    status_badge = clo_card.locator('.badge:has-text("Needs Revision")')
+    expect(status_badge).to_be_visible()
 
-    # Verify feedback is displayed
-    feedback_alert = instructor_page.locator(f"#feedback-alert-{clo_id}")
+    # Verify feedback is displayed in the warning alert
+    feedback_alert = clo_card.locator('.alert-warning:has-text("Revision Requested")')
     expect(feedback_alert).to_be_visible()
     expect(feedback_alert).to_contain_text("second law")
 
     # === STEP 11: Instructor addresses feedback and updates narrative ===
+    # Click "Update Assessment" button to open modal
+    update_button = instructor_page.locator(
+        f'button.update-assessment-btn[data-outcome-id="{clo_id}"]'
+    )
+    update_button.click()
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="visible", timeout=5000
+    )
+
+    # Update narrative with feedback addressed
     instructor_page.fill(
-        f"#narrative_{clo_id}",
+        "#assessmentNarrative",
         "Students applied the second law of thermodynamics to analyze heat engine "
         "efficiency in practical scenarios. They calculated Carnot efficiency for "
         "various temperature differentials. The 60% target achievement is due to "
@@ -339,32 +362,28 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         "problem sets next semester.",
     )
 
-    # Save changes
-    instructor_page.click("button:has-text('Save Changes')")
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
-
-    # === STEP 12: Instructor resubmits CLO ===
-    # Get new CSRF token
-    instructor_csrf = instructor_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
+    # Save changes (submit the form)
+    instructor_page.click("#updateAssessmentForm button[type='submit']")
+    instructor_page.wait_for_selector(
+        "#updateAssessmentModal", state="hidden", timeout=5000
     )
 
+    # === STEP 12: Instructor resubmits CLO ===
     # Click submit button
-    submit_button = instructor_page.locator(f"#submit-clo-{clo_id}")
+    submit_button = instructor_page.locator(
+        f'.submit-clo-btn[data-outcome-id="{clo_id}"]'
+    )
     expect(submit_button).to_be_visible()
     instructor_page.once("dialog", lambda dialog: dialog.accept())
     submit_button.click()
 
-    # Wait for success
-    instructor_page.wait_for_selector(".alert-success", timeout=5000)
+    # Wait briefly for status to update
+    instructor_page.wait_for_timeout(500)
 
     # === STEP 13: Verify status is back to AWAITING_APPROVAL ===
-    instructor_page.reload()
-    instructor_page.select_option("#sectionSelect", value=section_id)
-    instructor_page.wait_for_selector(f"#outcome-{clo_id}", timeout=5000)
-
-    status_badge = instructor_page.locator(f"#clo-status-{clo_id}")
-    expect(status_badge).to_have_text("Awaiting Approval")
+    # Verify the badge changed back to "Pending Review"
+    status_badge = clo_card.locator('.badge:has-text("Pending Review")')
+    expect(status_badge).to_be_visible()
 
     # Verify via API
     outcome_response = admin_page.request.get(
