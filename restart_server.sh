@@ -44,6 +44,8 @@ echo -e "${BLUE}=====================================================${NC}"
 
 # Save any pre-set environment variables that should not be overridden
 SAVED_ENV="${ENV:-}"
+SAVED_EMAIL_WHITELIST="${EMAIL_WHITELIST:-}"
+SAVED_WTF_CSRF_ENABLED="${WTF_CSRF_ENABLED:-}"
 
 # Load environment configuration
 if [[ -f ".envrc" ]]; then
@@ -65,6 +67,18 @@ fi
 if [[ -n "$SAVED_ENV" ]]; then
     export ENV="$SAVED_ENV"
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
+fi
+
+# Restore pre-set EMAIL_WHITELIST (e.g., from run_uat.sh for E2E tests)
+if [[ -n "$SAVED_EMAIL_WHITELIST" ]]; then
+    export EMAIL_WHITELIST="$SAVED_EMAIL_WHITELIST"
+    echo -e "${BLUE}🔧 Using pre-configured EMAIL_WHITELIST for E2E tests${NC}"
+fi
+
+# Restore pre-set WTF_CSRF_ENABLED (e.g., from run_uat.sh for E2E tests)
+if [[ -n "$SAVED_WTF_CSRF_ENABLED" ]]; then
+    export WTF_CSRF_ENABLED="$SAVED_WTF_CSRF_ENABLED"
+    echo -e "${BLUE}🔧 CSRF validation disabled for E2E tests${NC}"
 fi
 
 # For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
