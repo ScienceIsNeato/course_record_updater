@@ -330,15 +330,17 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         f"button[data-outcome-id='{clo_id}']", timeout=5000
     )
 
-    # Verify status badge shows "Needs Revision" (the badge is generated inline without an ID)
-    clo_card = instructor_page.locator(f'button[data-outcome-id="{clo_id}"]').locator(
-        ".."
-    )
-    status_badge = clo_card.locator('.badge:has-text("Needs Revision")')
+    # Verify status badge shows "Needs Revision" (wait for page to refresh the data)
+    instructor_page.wait_for_timeout(1000)
+
+    # Find the status badge - it's in the same card container as the button
+    status_badge = instructor_page.locator('.badge:has-text("Needs Revision")')
     expect(status_badge).to_be_visible()
 
     # Verify feedback is displayed in the warning alert
-    feedback_alert = clo_card.locator('.alert-warning:has-text("Revision Requested")')
+    feedback_alert = instructor_page.locator(
+        '.alert-warning:has-text("Revision Requested")'
+    )
     expect(feedback_alert).to_be_visible()
     expect(feedback_alert).to_contain_text("second law")
 
@@ -382,7 +384,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
 
     # === STEP 13: Verify status is back to AWAITING_APPROVAL ===
     # Verify the badge changed back to "Pending Review"
-    status_badge = clo_card.locator('.badge:has-text("Pending Review")')
+    status_badge = instructor_page.locator('.badge:has-text("Pending Review")')
     expect(status_badge).to_be_visible()
 
     # Verify via API

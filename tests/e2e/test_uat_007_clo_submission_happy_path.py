@@ -198,12 +198,11 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
 
     # Wait for CLO tile/button to appear, allow rendering time
     instructor_page.wait_for_timeout(500)
-    clo_button = instructor_page.locator(f"button[data-outcome-id='{clo1_id}']")
-    clo_button.wait_for(timeout=5000)
-    # Ensure the update button is bound and rendered with dataset
-    instructor_page.wait_for_selector(
-        f".update-assessment-btn[data-outcome-id='{clo1_id}']", timeout=5000
+    # Use specific selector for update button to avoid ambiguity with submit button
+    clo_button = instructor_page.locator(
+        f".update-assessment-btn[data-outcome-id='{clo1_id}']"
     )
+    clo_button.wait_for(timeout=5000)
     expect(clo_button).to_be_visible()
     expect(clo_button).to_have_attribute("data-status", "assigned")
 

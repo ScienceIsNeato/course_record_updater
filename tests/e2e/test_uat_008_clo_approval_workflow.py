@@ -262,14 +262,25 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     approve_button = modal.locator('button:has-text("Approve")')
     expect(approve_button).to_be_visible()
 
-    # Handle confirmation dialog
-    admin_page.once("dialog", lambda dialog: dialog.accept())
+    # Set up dialog handlers for both confirmation and success alert
+    dialog_messages = []
+
+    def handle_dialog(dialog):
+        dialog_messages.append(dialog.message)
+        dialog.accept()
+
+    admin_page.on("dialog", handle_dialog)
     approve_button.click()
 
-    # Wait for success alert
-    admin_page.wait_for_selector(".alert", timeout=5000)
-    alert = admin_page.locator(".alert")
-    expect(alert).to_contain_text("approved successfully")
+    # Wait briefly for the dialogs to appear and be handled
+    admin_page.wait_for_timeout(1000)
+
+    # Verify we got both dialogs (confirmation + success)
+    assert (
+        len(dialog_messages) >= 2
+    ), f"Expected 2 dialogs, got {len(dialog_messages)}: {dialog_messages}"
+    assert "Approve this CLO" in dialog_messages[0]
+    assert "approved successfully" in dialog_messages[1]
 
     # Modal should close after approval
     expect(modal).not_to_be_visible()
