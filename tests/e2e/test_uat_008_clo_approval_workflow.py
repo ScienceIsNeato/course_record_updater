@@ -301,8 +301,8 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()
 
-    # Verify status shows "Approved"
-    status_cell = clo_row.locator("td").nth(4)
+    # Verify status shows "Approved" (status is column 0)
+    status_cell = clo_row.locator("td").nth(0)
     expect(status_cell).to_contain_text("Approved")
 
     # === STEP 8: Verify via API that review timestamp is set ===
@@ -313,7 +313,8 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         },
     )
     assert outcome_response.ok, f"Failed to get outcome: {outcome_response.text()}"
-    outcome_data = outcome_response.json()
+    response_data = outcome_response.json()
+    outcome_data = response_data["outcome"]  # API nests data under "outcome" key
 
     assert outcome_data["status"] == "approved"
     assert outcome_data["reviewed_at"] is not None
