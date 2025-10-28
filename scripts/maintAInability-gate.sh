@@ -86,7 +86,6 @@ RUN_INTEGRATION_TESTS=false
 RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
-RUN_SONAR=false
 RUN_SONAR_ANALYZE=false
 RUN_SONAR_STATUS=false
 RUN_DUPLICATION=false
@@ -113,7 +112,6 @@ else
       --e2e) RUN_E2E_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
-      --sonar) RUN_SONAR=true ;;
       --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
       --sonar-status) RUN_SONAR_STATUS=true ;;
       --duplication) RUN_DUPLICATION=true ;;
@@ -137,7 +135,6 @@ else
         echo "  ./scripts/maintAInability-gate.sh --tests   # Run test suite only"
         echo "  ./scripts/maintAInability-gate.sh --coverage # Run coverage analysis only"
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
-        echo "  ./scripts/maintAInability-gate.sh --sonar   # Run SonarQube quality analysis (legacy: runs both analyze + status)"
         echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
         echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
         echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
@@ -170,7 +167,7 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
-  RUN_SONAR=true  # Enabled - SonarCloud project is configured
+  RUN_SONAR_ANALYZE=true  # Enabled - SonarCloud project is configured
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
   RUN_JS_LINT=true
@@ -803,7 +800,7 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SONARCLOUD QUALITY ANALYSIS - ANALYZE MODE (Trigger New Analysis)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_SONAR_ANALYZE" == "true" ]] || [[ "$RUN_SONAR" == "true" ]]; then
+if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
   echo "🔍 SonarCloud Analysis - Triggering New Scan"
 
   SONAR_PASSED=true
@@ -876,11 +873,7 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]] || [[ "$RUN_SONAR" == "true" ]]; then
 }
 EOF
           echo "📝 Analysis metadata saved to $METADATA_FILE"
-          
-          # If legacy --sonar flag was used, also run status check
-          if [[ "$RUN_SONAR" == "true" ]]; then
-            RUN_SONAR_STATUS=true
-          fi
+          echo "💡 Run --sonar-status to fetch results"
         else
           echo "❌ SonarCloud scanner failed"
           add_failure "SonarCloud Analyze" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
@@ -894,7 +887,7 @@ EOF
     fi
   fi
   
-  if [[ "$SONAR_PASSED" == "true" ]] && [[ "$RUN_SONAR_STATUS" != "true" ]]; then
+  if [[ "$SONAR_PASSED" == "true" ]]; then
     add_success "SonarCloud Analyze" "Analysis triggered successfully - use --sonar-status to fetch results"
   fi
   

@@ -19,9 +19,10 @@ This wrapper dispatches individual check commands to the existing bash script
 in parallel threads, then collects and formats the results. Fail-fast behavior
 is always enabled for rapid development cycles.
 
-IMPORTANT: SonarCloud (--checks sonar) only analyzes 'main' branch on free tier.
-It will FAIL on feature branches even with fixes. See SONAR_ANALYSIS_RESULTS.md
-for the proper workflow when working with SonarCloud issues.
+IMPORTANT: SonarCloud analysis workflow:
+  --checks sonar-analyze: Trigger new analysis (slow ~60s)
+  --checks sonar-status: Fetch latest results (fast <5s)
+See SONAR_ANALYSIS_RESULTS.md for the proper workflow.
 """
 
 import argparse
@@ -90,7 +91,6 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
-            ("sonar", "🔍 SonarCloud Quality Analysis (legacy: analyze + status)"),
             ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),
             ("sonar-status", "📊 SonarCloud - Fetch Latest Results"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
@@ -115,7 +115,7 @@ class QualityGateExecutor:
             ("imports", "📦 Import Analysis & Organization"),
             # Duplication check moved to PR validation (non-critical, saves 2.2s)
             # ("duplication", "🔄 Code Duplication Check"),  # Moved to PR checks
-            # ("sonar", "🔍 SonarCloud Quality Analysis"),  # Excluded from commit checks to avoid chicken-and-egg problem
+            # ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),  # Excluded from commit checks (too slow)
         ]
 
         # Full checks for PR validation (all checks)
@@ -797,10 +797,10 @@ Examples:
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
 Validation Types:
-  commit - Fast checks for development cycle (excludes security & sonar, ~30s savings)
-  PR     - Full validation for pull requests (all checks including security & sonar)
+  commit - Fast checks for development cycle (excludes security & sonar-analyze, ~30s savings)
+  PR     - Full validation for pull requests (all checks including security & sonar-analyze)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -817,7 +817,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
     )
 
     parser.add_argument(
