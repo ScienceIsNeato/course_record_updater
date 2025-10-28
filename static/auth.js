@@ -75,8 +75,8 @@ function initializeLoginForm() {
   form.addEventListener('submit', handleLogin, { capture: true });
 
   // Also add a safety net to prevent any GET submissions
-  form.setAttribute('method', 'post');
-  form.setAttribute('action', '#');
+  form.method = 'post';
+  form.action = '#';
 
   // Real-time validation
   const emailInput = document.getElementById('email');
