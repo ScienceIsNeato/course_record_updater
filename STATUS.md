@@ -1,5 +1,24 @@
 # Current Status
 
+## ✅ Sonar Check Refactored: Analyze + Status Modes (Commit 2b58910)
+
+**Change**: Split sonar quality gate into separate `--sonar-analyze` and `--sonar-status` modes
+
+**Motivation**: 
+- Slow combined check made iterative development painful
+- Couldn't quickly check status without re-running full analysis
+- Timeouts and long waits hindered productivity
+
+**New Workflow**:
+1. **--sonar-analyze**: Trigger new analysis (slow ~60s, saves metadata)
+2. **--sonar-status**: Fetch latest results (fast <5s, warns if stale)
+3. **--sonar** (legacy): Runs both for backward compatibility
+
+**Benefits**:
+- Faster iteration: check status multiple times without re-analyzing
+- Stale data warnings: alerts when analysis is >5 minutes old
+- Metadata tracking: .sonar_run_metadata.json tracks last run details
+
 ## 🔧 E2E Tests: CI Failure Fixed (65/66 passing → Fix Committed)
 
 **Issue**: UAT-003 bulk reminders test failing in CI with 6/9 emails rejected
