@@ -17,7 +17,15 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+)
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import (
+    Page,
+    Playwright,
+)
 
 # Import shared test utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -169,6 +177,8 @@ def browser_type_launch_args(pytestconfig):
             "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--disable-dev-shm-usage",
+                "--disable-crashpad",
+                "--disable-crash-reporter",
                 "--no-sandbox",
             ],
         }
@@ -197,9 +207,43 @@ def browser_type_launch_args(pytestconfig):
             "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--disable-dev-shm-usage",
+                "--disable-crashpad",
+                "--disable-crash-reporter",
                 "--no-sandbox",
             ],
         }
+
+
+@pytest.fixture(scope="session")
+def browser(
+    playwright: Playwright, browser_type_launch_args, pytestconfig
+) -> Generator[Browser, None, None]:
+    """Launch Playwright browser with graceful fallback when sandboxed."""
+
+    # pytest-playwright registers --browser; default to chromium when absent
+    browser_name = pytestconfig.getoption("--browser") or "chromium"
+    if isinstance(browser_name, (list, tuple)):
+        browser_name = browser_name[0]
+    browser_type = getattr(playwright, browser_name)
+
+    def _should_skip(message: str) -> bool:
+        lowered = message.lower()
+        return "permission denied (1100)" in lowered or "machport" in lowered
+
+    try:
+        browser_instance = browser_type.launch(**browser_type_launch_args)
+    except PlaywrightError as exc:
+        if _should_skip(str(exc)):
+            pytest.skip(
+                "Playwright browser launch is blocked by the macOS sandbox "
+                "(Mach bootstrap permission denied). Skipping UI-driven e2e tests."
+            )
+        raise
+
+    try:
+        yield browser_instance
+    finally:
+        browser_instance.close()
 
 
 @pytest.fixture(scope="function")
