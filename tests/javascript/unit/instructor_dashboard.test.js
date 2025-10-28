@@ -1,3 +1,9 @@
+// Load dashboard utilities globally (simulates browser <script> tag)
+const { setLoadingState, setErrorState, setEmptyState } = require('../../../static/dashboard_utils');
+global.setLoadingState = setLoadingState;
+global.setErrorState = setErrorState;
+global.setEmptyState = setEmptyState;
+
 const InstructorDashboard = require('../../../static/instructor_dashboard');
 const { setBody } = require('../helpers/dom');
 

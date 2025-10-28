@@ -1,3 +1,4 @@
+/* global setLoadingState, setErrorState */
 (function () {
   const API_ENDPOINT = '/api/dashboard/data';
   const SELECTORS = {
@@ -337,24 +338,11 @@
     },
 
     setLoading(containerId, message) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = `
-        <div class="panel-loading">
-          <div class="spinner-border spinner-border-sm"></div>
-          ${message}
-        </div>
-      `;
+      setLoadingState(containerId, message);
     },
 
     showError(containerId, message) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = `
-        <div class="alert alert-danger mb-0">
-          <i class="fas fa-exclamation-triangle me-1"></i>${message}
-        </div>
-      `;
+      setErrorState(containerId, message);
     },
 
     renderEmptyState(message, actionLabel) {
