@@ -850,15 +850,14 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
           echo "✅ JavaScript coverage data generated successfully"
         fi
         
-        # Run SonarCloud scanner with fresh data
-        echo "🔧 Running SonarCloud analysis with fresh coverage data..."
+        # Run SonarCloud scanner with fresh data (just upload, don't wait for results)
+        echo "🔧 Uploading analysis to SonarCloud..."
         SCAN_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         
         if sonar-scanner \
           -Dsonar.python.coverage.reportPaths=coverage.xml \
-          -Dsonar.python.xunit.reportPath=test-results.xml \
-          -Dsonar.qualitygate.wait=true; then
-          echo "✅ SonarCloud scanner completed successfully"
+          -Dsonar.python.xunit.reportPath=test-results.xml; then
+          echo "✅ SonarCloud analysis uploaded successfully"
           
           # Save analysis metadata for later queries
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
@@ -873,7 +872,9 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
 }
 EOF
           echo "📝 Analysis metadata saved to $METADATA_FILE"
-          echo "💡 Run --sonar-status to fetch results"
+          echo ""
+          echo "⏳ SonarCloud is processing the analysis (typically 10-30 seconds)"
+          echo "💡 Wait a moment, then run: python scripts/ship_it.py --checks sonar-status"
         else
           echo "❌ SonarCloud scanner failed"
           add_failure "SonarCloud Analyze" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
@@ -915,7 +916,11 @@ if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
     LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
     TIME_DIFF=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
     
-    if [[ $TIME_DIFF -gt 300 ]]; then
+    if [[ $TIME_DIFF -lt 30 ]]; then
+      # Less than 30 seconds - analysis might still be processing
+      echo "⏳ Analysis was triggered $TIME_DIFF seconds ago - SonarCloud might still be processing"
+      echo "💡 If results look incomplete, wait a moment and try again"
+    elif [[ $TIME_DIFF -gt 300 ]]; then
       # More than 5 minutes old
       MINUTES_AGO=$((TIME_DIFF / 60))
       echo "⚠️  WARNING: Analysis is $MINUTES_AGO minutes old - results may be stale"
