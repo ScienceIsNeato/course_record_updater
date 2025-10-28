@@ -1,8 +1,14 @@
 # Current Status
 
-## ✅ E2E Tests: ALL PASSING (66/66 tests - 100%)
+## 🔧 E2E Tests: CI Failure Fixed (65/66 passing → Fix Committed)
 
-All 4 CLO workflow tests fixed and passing.
+**Issue**: UAT-003 bulk reminders test failing in CI with 6/9 emails rejected
+
+**Root Cause**: EMAIL_WHITELIST missing test domains (@test.com, @test.local, @example.com)
+
+**Fix Applied**: Expanded EMAIL_WHITELIST in conftest.py, run_uat.sh, restart_server.sh
+
+**Status**: Fix committed and pushed (commit 4e68697) - waiting for CI validation
 
 ## ⚠️ SonarCloud Quality Check
 
