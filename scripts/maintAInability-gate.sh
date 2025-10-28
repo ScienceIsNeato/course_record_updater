@@ -87,6 +87,8 @@ RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
 RUN_SONAR=false
+RUN_SONAR_ANALYZE=false
+RUN_SONAR_STATUS=false
 RUN_DUPLICATION=false
 RUN_IMPORTS=false
 RUN_COMPLEXITY=false
@@ -112,6 +114,8 @@ else
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
       --sonar) RUN_SONAR=true ;;
+      --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
+      --sonar-status) RUN_SONAR_STATUS=true ;;
       --duplication) RUN_DUPLICATION=true ;;
       --imports) RUN_IMPORTS=true ;;
       --complexity) RUN_COMPLEXITY=true ;;
@@ -133,7 +137,9 @@ else
         echo "  ./scripts/maintAInability-gate.sh --tests   # Run test suite only"
         echo "  ./scripts/maintAInability-gate.sh --coverage # Run coverage analysis only"
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
-        echo "  ./scripts/maintAInability-gate.sh --sonar   # Run SonarQube quality analysis"
+        echo "  ./scripts/maintAInability-gate.sh --sonar   # Run SonarQube quality analysis (legacy: runs both analyze + status)"
+        echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
+        echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
         echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
         echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
@@ -795,12 +801,13 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SONARQUBE QUALITY ANALYSIS
+# SONARCLOUD QUALITY ANALYSIS - ANALYZE MODE (Trigger New Analysis)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_SONAR" == "true" ]]; then
-  echo "🔍 SonarCloud Quality Analysis"
+if [[ "$RUN_SONAR_ANALYZE" == "true" ]] || [[ "$RUN_SONAR" == "true" ]]; then
+  echo "🔍 SonarCloud Analysis - Triggering New Scan"
 
   SONAR_PASSED=true
+  METADATA_FILE=".sonar_run_metadata.json"
 
   # Check if sonar-scanner is available
   if ! command -v sonar-scanner &> /dev/null; then
@@ -811,10 +818,10 @@ if [[ "$RUN_SONAR" == "true" ]]; then
     echo "  2. Or install via Homebrew: brew install sonar-scanner"
     echo "  3. Configure SONAR_TOKEN environment variable for SonarCloud"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    add_failure "SonarCloud Analysis" "SonarCloud Scanner not installed" "Install sonar-scanner and configure environment variables"
+    add_failure "SonarCloud Analyze" "SonarCloud Scanner not installed" "Install sonar-scanner and configure environment variables"
     SONAR_PASSED=false
   else
-    # Check if SONAR_TOKEN is set (SonarCloud doesn't need SONAR_HOST_URL)
+    # Check if SONAR_TOKEN is set
     if [[ -z "$SONAR_TOKEN" ]]; then
       echo "⚠️  SonarCloud environment variables not configured"
       echo "📋 Required Environment Variables:"
@@ -823,85 +830,136 @@ if [[ "$RUN_SONAR" == "true" ]]; then
       echo ""
       echo "  Get your token from: https://sonarcloud.io/account/security"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      add_failure "SonarCloud Analysis" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
+      add_failure "SonarCloud Analyze" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
       SONAR_PASSED=false
     else
-      # Generate fresh coverage data and run SonarCloud analysis
+      # Generate fresh coverage data
       echo "🔧 Generating fresh coverage data for SonarCloud..."
       
       # Clean up old coverage data files to prevent race conditions
       rm -f .coverage .coverage.*
       
-      # Run Python tests with coverage to generate fresh coverage.xml and test-results.xml in root directory
-      # CRITICAL: Use --cov-config to ensure .coveragerc omit patterns are respected
-      # Use pytest-xdist for parallel execution (35% faster)
-      # pytest-cov automatically combines parallel coverage data with .coveragerc parallel=True setting
-      # CRITICAL: Explicitly set DATABASE_URL for pytest subprocess and xdist workers
+      # Run Python tests with coverage
       if DATABASE_URL="$DATABASE_URL" python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
         echo "✅ Python coverage data generated successfully"
         
-        # Run JavaScript tests with coverage to generate lcov.info
+        # Run JavaScript tests with coverage
         echo "🔧 Generating JavaScript coverage data..."
         JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
         
         if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
-          echo "❌ JavaScript coverage generation FAILED"
-          echo ""
-          echo "📊 Jest Output:"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "$JS_COVERAGE_OUTPUT" | tail -50
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "⚠️  Continuing with Python coverage only (SonarCloud coverage will be incomplete)"
+          echo "⚠️  JavaScript coverage generation failed - continuing with Python coverage only"
         else
           echo "✅ JavaScript coverage data generated successfully"
         fi
         
         # Run SonarCloud scanner with fresh data
         echo "🔧 Running SonarCloud analysis with fresh coverage data..."
+        SCAN_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
         if sonar-scanner \
           -Dsonar.python.coverage.reportPaths=coverage.xml \
           -Dsonar.python.xunit.reportPath=test-results.xml \
           -Dsonar.qualitygate.wait=true; then
           echo "✅ SonarCloud scanner completed successfully"
           
-          # Now check the quality gate status
-          echo "🔧 Checking SonarCloud quality gate status..."
-          if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
-            echo "✅ SonarCloud Analysis: PASSED"
-            add_success "SonarCloud Analysis" "All quality gate conditions met"
-          else
-            echo "❌ SonarCloud Analysis: FAILED"
-            echo "📋 See detailed issues above for specific fixes needed"
-            
-            # Run PR coverage analysis to identify specific uncovered lines in modified code
-            echo ""
-            echo "🔬 Analyzing coverage gaps in modified code..."
-            if python scripts/analyze_pr_coverage.py; then
-              echo "✅ All modified lines are covered"
-            else
-              echo "📄 Full PR coverage analysis: logs/pr_coverage_gaps.txt"
-              echo "📄 Python coverage details: logs/coverage_report.txt"
-              echo "📄 JavaScript coverage report: coverage/lcov-report/index.html"
-            fi
-            
-            add_failure "SonarCloud Analysis" "Quality gate failed with specific issues" "Fix the issues listed above and re-run analysis"
-            SONAR_PASSED=false
+          # Save analysis metadata for later queries
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+          CURRENT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+          
+          cat > "$METADATA_FILE" <<EOF
+{
+  "timestamp": "$SCAN_START_TIME",
+  "branch": "$CURRENT_BRANCH",
+  "commit": "$CURRENT_COMMIT",
+  "status": "completed"
+}
+EOF
+          echo "📝 Analysis metadata saved to $METADATA_FILE"
+          
+          # If legacy --sonar flag was used, also run status check
+          if [[ "$RUN_SONAR" == "true" ]]; then
+            RUN_SONAR_STATUS=true
           fi
         else
           echo "❌ SonarCloud scanner failed"
-          add_failure "SonarCloud Analysis" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
+          add_failure "SonarCloud Analyze" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
           SONAR_PASSED=false
         fi
       else
         echo "❌ Failed to generate coverage data"
-        add_failure "SonarCloud Analysis" "Coverage data generation failed" "Fix failing tests before running SonarCloud analysis"
+        add_failure "SonarCloud Analyze" "Coverage data generation failed" "Fix failing tests before running SonarCloud analysis"
         SONAR_PASSED=false
       fi
     fi
   fi
+  
+  if [[ "$SONAR_PASSED" == "true" ]] && [[ "$RUN_SONAR_STATUS" != "true" ]]; then
+    add_success "SonarCloud Analyze" "Analysis triggered successfully - use --sonar-status to fetch results"
+  fi
+  
+  echo ""
+fi
 
-  if [[ "$SONAR_PASSED" != "true" ]]; then
-    echo "💡 SonarQube provides comprehensive code quality analysis including:"
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SONARCLOUD QUALITY ANALYSIS - STATUS MODE (Fetch Results)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
+  echo "🔍 SonarCloud Analysis - Fetching Latest Results"
+
+  SONAR_STATUS_PASSED=true
+  METADATA_FILE=".sonar_run_metadata.json"
+
+  # Check if we have analysis metadata
+  if [[ -f "$METADATA_FILE" ]]; then
+    LAST_RUN_TIME=$(grep -o '"timestamp": "[^"]*"' "$METADATA_FILE" | cut -d'"' -f4)
+    LAST_RUN_BRANCH=$(grep -o '"branch": "[^"]*"' "$METADATA_FILE" | cut -d'"' -f4)
+    
+    echo "📊 Last analysis: $LAST_RUN_TIME (branch: $LAST_RUN_BRANCH)"
+    
+    # Calculate time since last run (rough estimate)
+    CURRENT_TIME=$(date +%s)
+    LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    TIME_DIFF=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
+    
+    if [[ $TIME_DIFF -gt 300 ]]; then
+      # More than 5 minutes old
+      MINUTES_AGO=$((TIME_DIFF / 60))
+      echo "⚠️  WARNING: Analysis is $MINUTES_AGO minutes old - results may be stale"
+      echo "💡 Run --sonar-analyze to trigger a fresh analysis"
+    fi
+  else
+    echo "⚠️  No analysis metadata found"
+    echo "💡 Run --sonar-analyze first to trigger an analysis"
+  fi
+  
+  # Fetch quality gate status from SonarCloud
+  echo "🔧 Fetching SonarCloud quality gate status..."
+  if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
+    echo "✅ SonarCloud Status: PASSED"
+    add_success "SonarCloud Status" "All quality gate conditions met"
+  else
+    echo "❌ SonarCloud Status: FAILED"
+    echo "📋 See detailed issues above for specific fixes needed"
+    
+    # Run PR coverage analysis to identify specific uncovered lines
+    echo ""
+    echo "🔬 Analyzing coverage gaps in modified code..."
+    if python scripts/analyze_pr_coverage.py; then
+      echo "✅ All modified lines are covered"
+    else
+      echo "📄 Full PR coverage analysis: logs/pr_coverage_gaps.txt"
+      echo "📄 Python coverage details: logs/coverage_report.txt"
+      echo "📄 JavaScript coverage report: coverage/lcov-report/index.html"
+    fi
+    
+    add_failure "SonarCloud Status" "Quality gate failed with specific issues" "Fix the issues listed above and re-run --sonar-analyze"
+    SONAR_STATUS_PASSED=false
+  fi
+
+  if [[ "$SONAR_STATUS_PASSED" != "true" ]]; then
+    echo ""
+    echo "💡 SonarCloud Quality Gate Information:"
     echo "   • Code smells and maintainability issues"
     echo "   • Security vulnerabilities"
     echo "   • Code coverage analysis"
@@ -923,6 +981,7 @@ if [[ "$RUN_SONAR" == "true" ]]; then
     echo "🔍 To identify which files need coverage:"
     echo "   1. Check SonarCloud UI → Measures → Coverage → Coverage on New Code"
     echo "   2. Focus testing on files with low coverage in your branch"
+    echo "   3. Re-run --sonar-analyze after adding tests"
   fi
   echo ""
 fi

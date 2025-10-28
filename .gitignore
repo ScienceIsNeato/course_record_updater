@@ -38,6 +38,7 @@ course_records_ci.db
 
 # SonarCloud analysis artifacts
 .scannerwork/
+.sonar_run_metadata.json
 
 .DS_Store
 
