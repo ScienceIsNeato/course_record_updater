@@ -9,6 +9,17 @@
  */
 
 /**
+ * Escape HTML to prevent XSS attacks
+ * @param {string} str - String to escape
+ * @returns {string} - Escaped string safe for HTML
+ */
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/**
  * Standard loading state setter for dashboard containers
  *
  * @param {string} containerId - ID of the container element
@@ -22,7 +33,7 @@ function setLoadingState(containerId, message) {
         <div class="spinner-border spinner-border-sm me-2" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
-        ${message}
+        ${escapeHtml(message)}
       </div>
     `;
   }
@@ -40,7 +51,7 @@ function setErrorState(containerId, message) {
     container.innerHTML = `
       <div class="alert alert-danger" role="alert">
         <i class="fas fa-exclamation-triangle me-2"></i>
-        ${message}
+        ${escapeHtml(message)}
       </div>
     `;
   }
@@ -58,7 +69,7 @@ function setEmptyState(containerId, message) {
     container.innerHTML = `
       <div class="text-center text-muted py-4">
         <i class="fas fa-inbox fa-2x mb-3"></i>
-        <p>${message}</p>
+        <p>${escapeHtml(message)}</p>
       </div>
     `;
   }
