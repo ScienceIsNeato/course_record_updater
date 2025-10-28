@@ -159,7 +159,7 @@ start_flask_app() {
     export ETHEREAL_SMTP_PORT="${ETHEREAL_SMTP_PORT:-587}"
     export ETHEREAL_IMAP_HOST="${ETHEREAL_IMAP_HOST:-imap.ethereal.email}"
     export ETHEREAL_IMAP_PORT="${ETHEREAL_IMAP_PORT:-993}"
-    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@example.com}"
+    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io}"
     
     # Debug: Check if env vars are set
     echo -e "${BLUE}📧 Email configuration:${NC}"

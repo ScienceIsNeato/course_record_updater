@@ -145,7 +145,7 @@ export WTF_CSRF_ENABLED="false"
 
 # Set EMAIL_WHITELIST for E2E tests
 # Allow test domains used by E2E test suite
-export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@test.edu,*@lassietests.mailtrap.io"
+export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io"
 
 # Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
 # This overrides any EMAIL_PROVIDER=brevo from .envrc.template

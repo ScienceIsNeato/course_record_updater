@@ -94,10 +94,10 @@ def setup_worker_environment(tmp_path_factory):
             # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
             env.pop("EMAIL_PROVIDER", None)
             # Ensure EMAIL_WHITELIST is set for E2E tests
-            # Allow test domains: @ethereal.email, @mocku.test, @test.edu, @lassietests.mailtrap.io
+            # Allow test domains: @ethereal.email, @mocku.test, @test.edu, @test.com, @test.local, @example.com, @lassietests.mailtrap.io
             if "EMAIL_WHITELIST" not in env:
                 env["EMAIL_WHITELIST"] = (
-                    "*@ethereal.email,*@mocku.test,*@test.edu,*@lassietests.mailtrap.io"
+                    "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io"
                 )
 
             # Start server in background
