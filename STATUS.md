@@ -42,7 +42,7 @@ Now we should:
 - ✅ Align with SonarCloud's "Coverage on New Code" metric
 - ✅ Add tests for functionality we're introducing, not refactoring
 
-### Coverage Gap Breakdown (488 NEW Lines)
+### Coverage Gap Breakdown (473 NEW Lines) ⬇️ 15 lines covered!
 
 **Top Priority Files:**
 1. `import_service.py` [PY] - 166 uncovered NEW lines
@@ -56,15 +56,18 @@ Now we should:
 - `invitation_service.py` [PY] - 13 lines
 - `dashboard_service.py` [PY] - 12 lines
 - `database_sqlite.py` [PY] - 10 lines
-- `static/auth.js` [JS] - 5 lines
-- `static/bulk_reminders.js` [JS] - 5 lines
-- `static/sectionManagement.js` [JS] - 5 lines
 - `bulk_email_service.py` [PY] - 4 lines
 - `app.py` [PY] - 1 line
 
+**Recently Covered (100% ✅):**
+- `static/auth.js` [JS] - ~~5 lines~~ → **0 lines** ✅
+- `static/bulk_reminders.js` [JS] - ~~5 lines~~ → **0 lines** ✅
+- `static/sectionManagement.js` [JS] - ~~5 lines~~ → **0 lines** ✅
+
 **Parity with SonarCloud:** ✅ Strong match
-- JavaScript files now detected (was 0%, now ~78% match)
-- Minor differences due to branch condition counting vs line counting
+- JavaScript coverage: 80.01% line coverage
+- 3 of 4 small JavaScript files now 100% covered
+- Only institution_dashboard.js remains (64 lines, complex)
 
 ### Next Steps
 
