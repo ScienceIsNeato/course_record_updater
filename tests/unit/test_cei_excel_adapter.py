@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from adapters.cei_excel_adapter import (
+    _extract_clo_data,
     _extract_department_from_course,
     _extract_name_from_email,
     _parse_name,
@@ -65,6 +66,11 @@ class TestParseCeiTerm:
         """Test parse_cei_term with invalid season code."""
         with pytest.raises(ValueError, match="Invalid season code"):
             parse_cei_term("2024XX")
+
+    def test_parse_cei_term_invalid_year(self):
+        """Test parse_cei_term with non-numeric year."""
+        with pytest.raises(ValueError, match="Invalid year"):
+            parse_cei_term("ABCDFA")  # Year part should be numeric
 
 
 class TestHelperFunctions:
@@ -553,3 +559,64 @@ class TestCEIExcelAdapterErrorHandling:
             import os
 
             os.unlink(tmp_path)
+
+
+class TestExtractCloData:
+    """Test CLO extraction helper function."""
+
+    def test_extract_clo_empty_text(self):
+        """Test CLO extraction with empty cllo_text."""
+        row = pd.Series({"cllo_text": ""})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_no_colon(self):
+        """Test CLO extraction without colon separator."""
+        row = pd.Series({"cllo_text": "MATH-101.1 Some description"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_no_dot_in_code(self):
+        """Test CLO extraction without dot in code part."""
+        row = pd.Series({"cllo_text": "MATH101: Description"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_course_mismatch(self):
+        """Test CLO extraction with mismatched course number."""
+        row = pd.Series({"cllo_text": "BIOL-228.1: Biology outcome"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_valid_format(self):
+        """Test CLO extraction with valid format."""
+        row = pd.Series({"cllo_text": "MATH-101.1: Students will understand algebra"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is not None
+        assert result["clo_number"] == "1"
+        assert result["description"] == "Students will understand algebra"
+        assert result["course_number"] == "MATH-101"
+
+    def test_extract_clo_exception_handling(self):
+        """Test CLO extraction handles exceptions gracefully."""
+        row = pd.Series({"cllo_text": None})  # Will cause AttributeError
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None

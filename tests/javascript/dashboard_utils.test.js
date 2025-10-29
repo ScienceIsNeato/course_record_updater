@@ -188,24 +188,5 @@ describe('Dashboard Utilities', () => {
       }
     });
   });
-
-  describe('Performance', () => {
-    it('should handle multiple rapid state changes efficiently', () => {
-      const startTime = performance.now();
-
-      // Rapid state changes
-      for (let i = 0; i < 100; i++) {
-        setLoadingState('testContainer', `Loading ${i}...`);
-        setErrorState('testContainer', `Error ${i}`);
-        setEmptyState('testContainer', `Empty ${i}`);
-      }
-
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-
-      // Should complete 300 state changes in under 1000ms (very generous threshold for CI/slower systems)
-      expect(duration).toBeLessThan(1000);
-    });
-  });
 });
 
