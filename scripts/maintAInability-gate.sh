@@ -855,6 +855,7 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
         SCAN_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         
         if sonar-scanner \
+          -Dsonar.qualitygate.wait=false \
           -Dsonar.python.coverage.reportPaths=coverage.xml \
           -Dsonar.python.xunit.reportPath=test-results.xml; then
           echo "✅ SonarCloud analysis uploaded successfully"
