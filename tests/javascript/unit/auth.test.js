@@ -534,4 +534,70 @@ describe('auth module', () => {
       expect(true).toBe(true);
     });
   });
+
+  describe('Error handling edge cases', () => {
+    it('handles login errors without error or message fields', async () => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <form id="loginForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+          <button id="loginBtn" type="submit">Login</button>
+        </form>
+      `);
+
+      document.getElementById('email').value = 'user@example.com';
+      document.getElementById('password').value = 'Str0ng!Pass';
+
+      // Mock response with status 401 but no error/message fields
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ success: false }) // No error or message field
+      });
+
+      const form = document.getElementById('loginForm');
+      await auth.handleLogin({ preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form });
+
+      // Should show generic error message
+      const alert = document.querySelector('.alert-danger');
+      expect(alert).not.toBeNull();
+      expect(alert.textContent).toContain('Login failed');
+    });
+
+    it('handles generic error responses without specific error fields', async () => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <form id="registerForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+          <div><input id="confirmPassword" name="confirmPassword" type="password" required /><div class="invalid-feedback"></div></div>
+          <div><input id="firstName" name="firstName" required /><div class="invalid-feedback"></div></div>
+          <div><input id="lastName" name="lastName" required /><div class="invalid-feedback"></div></div>
+          <button id="registerBtn" type="submit">Register</button>
+        </form>
+      `);
+
+      document.getElementById('email').value = 'user@example.com';
+      document.getElementById('password').value = 'Str0ng!Pass';
+      document.getElementById('confirmPassword').value = 'Str0ng!Pass';
+      document.getElementById('firstName').value = 'John';
+      document.getElementById('lastName').value = 'Doe';
+
+      // Mock response with failure and no error/message fields - hits fallback error (lines 448-449)
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ success: false }) // No error or message field
+      });
+
+      const form = document.getElementById('registerForm');
+      await auth.handleRegister({ preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form });
+
+      // Should show fallback error with status code (lines 448-449)
+      const alert = document.querySelector('.alert-danger');
+      expect(alert).not.toBeNull();
+      expect(alert.textContent).toContain('Request failed with status 400');
+    });
+  });
 });
