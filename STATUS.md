@@ -1,51 +1,50 @@
-# Status: SonarCloud Duplication Issues - Complete!
+# Status: CI/Local Parity Restored for SonarCloud
 
 ## Context
-Working on feature/audit branch. E2E tests all passing. All SonarCloud duplication issues resolved!
+Working on feature/audit branch. Fixed divergence between CI and local SonarCloud workflows.
 
-## ✅ Completed Work Summary
+## ✅ Latest Fix: CI/Local Alignment
 
-### 1. Template Duplication (✅ COMMITTED)
-- Created `_upload_results.html` partial (eliminates 52 lines duplication)
-- Created `_flash_messages.html` partial (eliminates 8 lines duplication)
-- Created `_course_modals.html` partial (eliminates 48 lines duplication)
-- Updated 5 templates to use partials
-- **Total reduction: 108 lines of duplication**
+### Problem
+After refactoring the sonar check into two steps (`sonar-analyze` and `sonar-status`), CI was still using the old unified `--checks sonar` command, causing failures.
 
-### 2. JavaScript Code Smell (✅ COMMITTED)
-- Fixed auth.js code smell by replacing `setAttribute` with direct property assignment
-- Changed `form.setAttribute('method', 'post')` to `form.method = 'post'`
+### Solution
+Updated `.github/workflows/quality-gate.yml` to match local workflow:
+- Split `sonarcloud` job into two sequential jobs:
+  1. `sonarcloud-analyze`: Uploads analysis without waiting (10min timeout)
+  2. `sonarcloud-status`: Waits for and validates results (15min timeout)
+- Metadata artifact passed between jobs for continuity
+- Both CI and local now use identical commands: `sonar-analyze` → `sonar-status`
 
-### 3. Dashboard JavaScript Duplication (✅ COMMITTED - COMPLETE)
+### Principle
+**"We only have one way to do things"** - No divergence between CI and local paths.
 
+## ✅ Previously Completed Work
+
+### 1. Template Duplication
+- Created 3 Jinja2 partials: `_upload_results.html`, `_flash_messages.html`, `_course_modals.html`
+- Eliminated 108 lines of duplication across 5 templates
+
+### 2. JavaScript Code Smell
+- Fixed `auth.js` by replacing `setAttribute` with direct property assignment
+
+### 3. Dashboard JavaScript Duplication
 **Commit 1: Utilities Created & Tested**
-- Created `static/dashboard_utils.js` with:
-  - `setLoadingState(containerId, message)` - XSS-safe loading states
-  - `setErrorState(containerId, message)` - XSS-safe error messages
-  - `setEmptyState(containerId, message)` - XSS-safe empty states
-  - `escapeHtml(str)` - HTML escaping for XSS protection
-- Created comprehensive unit test suite (20 tests, all passing):
-  - Basic functionality, edge cases, accessibility
-  - Security (XSS protection via HTML escaping)
-  - State transitions, performance
+- Created `static/dashboard_utils.js` with XSS-safe utilities
+- Added 20 comprehensive unit tests
 
 **Commit 2: Dashboards Refactored**
-- Updated 3 templates to load dashboard_utils.js before dashboard scripts
-- Refactored 3 dashboard files (program, instructor, institution):
-  - Replaced inline `setLoading()` → calls to global `setLoadingState()`
-  - Replaced inline `showError()` → calls to global `setErrorState()`
-  - Added ESLint global comments for linter
-- Updated 3 test files to load utilities globally
-- **Impact: Eliminated ~40 lines of duplicated code**
-- **All 429 JavaScript tests passing**
+- Refactored 3 dashboard files to use shared utilities
+- Eliminated ~40 lines of duplicated code
+- All 429 JavaScript tests passing
 
 ## Branch Status
 - Branch: feature/audit
-- Commits ahead: 16 (includes dashboard refactoring commits)
+- Commits ahead: 18 (includes CI fix)
 - Quality gates: ✅ All passing
 - E2E tests: ✅ All passing (66/66)
 - JavaScript tests: ✅ All passing (429/429)
-- SonarCloud duplication: ✅ Resolved
+- CI/Local parity: ✅ Restored
 
 ## Remaining Work
 
@@ -53,15 +52,16 @@ Working on feature/audit branch. E2E tests all passing. All SonarCloud duplicati
 Next task is to address any remaining Python coverage gaps identified by SonarCloud.
 
 ## Key Learnings
-- **No work left in flight**: Utilities created, tested, and fully integrated before moving on
-- **Test-driven refactoring**: Tests updated alongside code changes
-- **XSS protection**: Centralized HTML escaping prevents security issues
-- **Global functions**: ESLint globals and test setup ensure clean integration
+- **CI/Local Consistency**: CI must use same commands as local - no special cases
+- **Sequential Jobs**: Use job dependencies (`needs:`) for ordered execution
+- **Artifact Passing**: Share metadata between jobs using upload/download artifacts
+- **Timeout Tuning**: Analyze step is fast (10min), status step waits longer (15min)
 
 ## Commands for Verification
 ```bash
-# Run all JS tests
-npm test
+# Local two-step workflow (same as CI)
+python scripts/ship_it.py --checks sonar-analyze  # Step 1: Upload
+python scripts/ship_it.py --checks sonar-status   # Step 2: Check results
 
 # Run quality gates
 python scripts/ship_it.py
