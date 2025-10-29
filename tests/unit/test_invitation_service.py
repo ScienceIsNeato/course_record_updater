@@ -390,6 +390,52 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="not available for acceptance"):
             InvitationService.accept_invitation("token", "ValidPassword123!")
 
+    @patch("invitation_service.InvitationService._assign_instructor_to_section")
+    @patch("invitation_service.EmailService")
+    @patch("invitation_service.PasswordService")
+    @patch("invitation_service.db")
+    def test_accept_invitation_with_section_assignment(
+        self,
+        mock_db,
+        mock_password_service,
+        mock_email_service,
+        mock_assign_instructor,
+    ):
+        """Test invitation acceptance with auto-assignment to section"""
+        future_date = datetime.now(timezone.utc) + timedelta(days=1)
+        invitation = {
+            "id": "inv-123",
+            "status": "sent",
+            "expires_at": future_date.isoformat(),
+            "email": "instructor@example.com",
+            "role": "instructor",
+            "institution_id": "inst-123",
+            "invited_by": "admin-123",
+            "program_ids": [],
+            "section_id": "section-456",  # Section to auto-assign
+            "replace_existing": True,
+        }
+
+        mock_db.get_invitation_by_token.return_value = invitation
+        mock_password_service.validate_password_strength.return_value = None
+        mock_password_service.hash_password.return_value = "hashed-password"
+        mock_db.create_user.return_value = "user-123"
+        mock_db.update_invitation.return_value = True
+        mock_db.get_institution_by_id.return_value = {"name": "Test Institution"}
+        mock_email_service.send_welcome_email.return_value = True
+
+        result = InvitationService.accept_invitation(
+            invitation_token="secure-token-123",
+            password="ValidPassword123!",
+            display_name="John Doe",
+        )
+
+        assert result["id"] == "user-123"
+        # Verify section assignment was called
+        mock_assign_instructor.assert_called_once_with(
+            user_id="user-123", section_id="section-456", replace_existing=True
+        )
+
 
 class TestInvitationServiceManagement:
     """Test invitation management functionality"""
@@ -672,3 +718,81 @@ class TestInvitationServiceIntegration:
 
             # Line 271 was executed to add timezone
             # No exception means success
+
+
+class TestInvitationServiceAssignInstructor:
+    """Test _assign_instructor_to_section helper method"""
+
+    @patch("invitation_service.db")
+    def test_assign_instructor_success(self, mock_db):
+        """Test successful instructor assignment to section"""
+        mock_db.get_section_by_id.return_value = {
+            "id": "section-123",
+            "course_id": "course-456",
+            "instructor_id": None,
+        }
+
+        InvitationService._assign_instructor_to_section(
+            user_id="user-789", section_id="section-123", replace_existing=False
+        )
+
+        mock_db.update_course_section.assert_called_once_with(
+            "section-123", {"instructor_id": "user-789"}
+        )
+
+    @patch("invitation_service.db")
+    def test_assign_instructor_section_not_found(self, mock_db):
+        """Test assignment when section doesn't exist"""
+        mock_db.get_section_by_id.return_value = None
+
+        # Should return silently without raising error
+        InvitationService._assign_instructor_to_section(
+            user_id="user-789", section_id="nonexistent", replace_existing=False
+        )
+
+        mock_db.update_course_section.assert_not_called()
+
+    @patch("invitation_service.db")
+    def test_assign_instructor_already_assigned_no_replace(self, mock_db):
+        """Test assignment when section already has instructor and replace_existing=False"""
+        mock_db.get_section_by_id.return_value = {
+            "id": "section-123",
+            "course_id": "course-456",
+            "instructor_id": "existing-instructor",
+        }
+
+        InvitationService._assign_instructor_to_section(
+            user_id="new-instructor", section_id="section-123", replace_existing=False
+        )
+
+        mock_db.update_course_section.assert_not_called()
+
+    @patch("invitation_service.db")
+    def test_assign_instructor_already_assigned_with_replace(self, mock_db):
+        """Test assignment when section has instructor but replace_existing=True"""
+        mock_db.get_section_by_id.return_value = {
+            "id": "section-123",
+            "course_id": "course-456",
+            "instructor_id": "existing-instructor",
+        }
+
+        InvitationService._assign_instructor_to_section(
+            user_id="new-instructor", section_id="section-123", replace_existing=True
+        )
+
+        mock_db.update_course_section.assert_called_once_with(
+            "section-123", {"instructor_id": "new-instructor"}
+        )
+
+    @patch("invitation_service.db")
+    def test_assign_instructor_database_error(self, mock_db):
+        """Test assignment with database exception"""
+        mock_db.get_section_by_id.side_effect = Exception("Database error")
+
+        # Should not raise, just log error
+        try:
+            InvitationService._assign_instructor_to_section(
+                user_id="user-789", section_id="section-123", replace_existing=False
+            )
+        except Exception:
+            pytest.fail("Should not raise exception, should handle gracefully")
