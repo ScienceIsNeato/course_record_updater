@@ -353,14 +353,6 @@ def audit_clo_page():
     Allows program admins and institution admins to review and approve CLOs.
     """
     user = get_current_user()
-    if not user:
-        return redirect(url_for("login"))
-
-    # Verify user has admin role
-    if user.get("role") not in ["program_admin", "institution_admin", "site_admin"]:
-        flash("Access denied. Admin role required.", "error")
-        return redirect(url_for("dashboard"))
-
     return render_template("audit_clo.html", user=user)
 
 

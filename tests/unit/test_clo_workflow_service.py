@@ -56,6 +56,19 @@ class TestSubmitCLOForApproval:
         mock_db.update_course_outcome.assert_not_called()
 
     @patch("clo_workflow_service.db")
+    def test_submit_clo_update_fails(self, mock_db):
+        """Test submission when database update returns False"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.IN_PROGRESS,
+        }
+        mock_db.update_course_outcome.return_value = False
+
+        result = CLOWorkflowService.submit_clo_for_approval("outcome-123", "user-456")
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
     def test_submit_clo_database_error(self, mock_db):
         """Test submission with database error"""
         mock_db.get_course_outcome.return_value = {"id": "outcome-123"}
@@ -130,6 +143,32 @@ class TestApproveCLO:
         mock_db.get_course_outcome.return_value = None
 
         result = CLOWorkflowService.approve_clo("nonexistent", "admin-123")
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_update_fails(self, mock_db):
+        """Test approval when database update returns False"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = False
+
+        result = CLOWorkflowService.approve_clo("outcome-123", "admin-456")
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
+    def test_approve_clo_database_error(self, mock_db):
+        """Test approval with database exception"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.approve_clo("outcome-123", "admin-456")
 
         assert result is False
 
@@ -214,6 +253,36 @@ class TestRequestRework:
 
         assert result is False
 
+    @patch("clo_workflow_service.db")
+    def test_request_rework_update_fails(self, mock_db):
+        """Test rework request when database update returns False"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = False
+
+        result = CLOWorkflowService.request_rework(
+            "outcome-123", "admin-456", "Comments"
+        )
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
+    def test_request_rework_database_error(self, mock_db):
+        """Test rework request with database exception"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.request_rework(
+            "outcome-123", "admin-456", "Comments"
+        )
+
+        assert result is False
+
 
 class TestAutoMarkInProgress:
     """Test CLOWorkflowService.auto_mark_in_progress method"""
@@ -276,6 +345,15 @@ class TestAutoMarkInProgress:
 
         assert result is True
         mock_db.update_course_outcome.assert_not_called()
+
+    @patch("clo_workflow_service.db")
+    def test_auto_mark_database_error(self, mock_db):
+        """Test auto-marking with database exception"""
+        mock_db.get_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.auto_mark_in_progress("outcome-123", "user-456")
+
+        assert result is False
 
 
 class TestGetCLOsByStatus:
@@ -417,6 +495,42 @@ class TestGetOutcomeWithDetails:
         assert result["instructor_name"] is None
         assert result["instructor_email"] is None
 
+    @patch("clo_workflow_service.db")
+    def test_get_outcome_with_details_instructor_no_display_name(self, mock_db):
+        """Test getting details when instructor has no display_name"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "course_id": "course-456",
+        }
+        mock_db.get_course.return_value = {
+            "id": "course-456",
+            "course_number": "CS-101",
+        }
+        mock_db.get_sections_by_course.return_value = [
+            {"id": "section-789", "instructor_id": "instructor-111"}
+        ]
+        mock_db.get_user.return_value = {
+            "id": "instructor-111",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane@example.com",
+        }
+
+        result = CLOWorkflowService.get_outcome_with_details("outcome-123")
+
+        assert result is not None
+        assert result["instructor_name"] == "Jane Doe"
+        assert result["instructor_email"] == "jane@example.com"
+
+    @patch("clo_workflow_service.db")
+    def test_get_outcome_with_details_exception(self, mock_db):
+        """Test getting details with database exception"""
+        mock_db.get_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.get_outcome_with_details("outcome-123")
+
+        assert result is None
+
 
 class TestSendReworkNotification:
     """Test CLOWorkflowService._send_rework_notification method"""
@@ -463,6 +577,42 @@ class TestSendReworkNotification:
             "id": "outcome-123",
             "instructor_email": None,
         }
+
+        result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
+
+        assert result is False
+
+    @patch("clo_workflow_service.EmailService")
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    def test_send_rework_notification_email_fails(
+        self, mock_get_details, mock_email_service
+    ):
+        """Test notification when email sending fails"""
+        mock_get_details.return_value = {
+            "id": "outcome-123",
+            "course_number": "CS-101",
+            "clo_number": "1",
+            "instructor_email": "instructor@example.com",
+        }
+        mock_email_service._send_email.return_value = False
+
+        result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
+
+        assert result is False
+
+    @patch("clo_workflow_service.EmailService")
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    def test_send_rework_notification_exception(
+        self, mock_get_details, mock_email_service
+    ):
+        """Test notification when exception occurs"""
+        mock_get_details.return_value = {
+            "id": "outcome-123",
+            "course_number": "CS-101",
+            "clo_number": "1",
+            "instructor_email": "instructor@example.com",
+        }
+        mock_email_service._send_email.side_effect = Exception("SMTP error")
 
         result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
 
