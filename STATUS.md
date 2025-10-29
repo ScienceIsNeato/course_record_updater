@@ -1,111 +1,110 @@
-# Status: Python Coverage Improvements in Progress
+# Project Status
 
-## Context
-Working on feature/audit branch. Currently addressing Python coverage gaps identified by SonarCloud PR analysis (411 uncovered lines → 335 remaining).
+## Current State: SonarCloud Process Fixed - Ready for NEW Code Coverage
 
-## ✅ Latest Fix: CI/Local Alignment
+### Completed ✅
+1. **Fixed SonarCloud CI Timing Issue**
+   - Added wait/poll logic to sonar-status check
+   - Waits minimum 2 minutes for analysis to complete server-side
+   - Exponential backoff (10s, 20s, 30s intervals)
+   - Fixed date parsing for both macOS and Linux
 
-### Problem
-After refactoring the sonar check into two steps (`sonar-analyze` and `sonar-status`), CI was still using the old unified `--checks sonar` command, causing failures.
+2. **Fixed Coverage Analysis to Focus on NEW Lines**
+   - **Problem Identified**: analyze_pr_coverage.py was treating ALL lines in git diff hunks as "modified"
+   - This included context lines that were already there (unchanged code)
+   - Led to chasing 409 lines when we should focus on genuinely NEW additions
+   - **Solution**: Changed to parse actual '+' lines from diff, not hunk headers
+   - Now only reports NEWLY ADDED lines lacking coverage
+   - Updated terminology: "modified" → "NEWLY ADDED" throughout
 
-### Solution
-Updated `.github/workflows/quality-gate.yml` to match local workflow:
-- Split `sonarcloud` job into two sequential jobs:
-  1. `sonarcloud-analyze`: Uploads analysis without waiting (10min timeout)
-  2. `sonarcloud-status`: Waits for and validates results (15min timeout)
-- Metadata artifact passed between jobs for continuity
-- Both CI and local now use identical commands: `sonar-analyze` → `sonar-status`
+3. **Added JavaScript Coverage Parsing**
+   - **Problem**: Script only parsed Python coverage (coverage.xml), missing ALL JavaScript gaps
+   - **Solution**: Added LCOV parser for JavaScript coverage (Jest's lcov.info)
+   - Now merges Python + JavaScript coverage into unified report
+   - Added language indicators [🐍 PY] and [🟦 JS] for clarity
+   - **Result**: Now detects 488 total uncovered NEW lines (was 409 Python-only)
 
-### Principle
-**"We only have one way to do things"** - No divergence between CI and local paths.
+4. **Fixed Pre-Commit Hook Environment**
+   - Added venv activation and .envrc sourcing to pre-commit config
+   - Prevents "python not found" and missing env var errors
 
-## ✅ Previously Completed Work
+### Key Insight 💡
 
-### 1. Template Duplication
-- Created 3 Jinja2 partials: `_upload_results.html`, `_flash_messages.html`, `_course_modals.html`
-- Eliminated 108 lines of duplication across 5 templates
+**The 409 uncovered lines ARE all genuinely NEW code we added in this PR!**
 
-### 2. JavaScript Code Smell
-- Fixed `auth.js` by replacing `setAttribute` with direct property assignment
+Previously, we were:
+- ❌ Adding tests for old code we barely touched
+- ❌ Treating context lines as "modified"
+- ❌ Working too hard on coverage for already-covered files
 
-### 3. Dashboard JavaScript Duplication
-**Commit 1: Utilities Created & Tested**
-- Created `static/dashboard_utils.js` with XSS-safe utilities
-- Added 20 comprehensive unit tests
+Now we should:
+- ✅ Focus ONLY on the 409 NEW lines we actually wrote
+- ✅ Align with SonarCloud's "Coverage on New Code" metric
+- ✅ Add tests for functionality we're introducing, not refactoring
 
-**Commit 2: Dashboards Refactored**
-- Refactored 3 dashboard files to use shared utilities
-- Eliminated ~40 lines of duplicated code
-- All 429 JavaScript tests passing
+### Coverage Gap Breakdown (488 NEW Lines)
 
-## Branch Status
-- Branch: feature/audit
-- Commits ahead: 18 (includes CI fix)
-- Quality gates: ✅ All passing
-- E2E tests: ✅ All passing (66/66)
-- JavaScript tests: ✅ All passing (429/429)
-- CI/Local parity: ✅ Restored
+**Top Priority Files:**
+1. `import_service.py` [PY] - 166 uncovered NEW lines
+2. `api_routes.py` [PY] - 128 uncovered NEW lines
+3. `static/institution_dashboard.js` [JS] - 64 uncovered NEW lines ⭐
+4. `clo_workflow_service.py` [PY] - 34 uncovered NEW lines
+5. `adapters/cei_excel_adapter.py` [PY] - 22 uncovered NEW lines
+6. `api/routes/clo_workflow.py` [PY] - 19 uncovered NEW lines
 
-## ✅ Recently Completed: Python Coverage Improvements (4 commits)
+**Lower Priority (< 15 lines each):**
+- `invitation_service.py` [PY] - 13 lines
+- `dashboard_service.py` [PY] - 12 lines
+- `database_sqlite.py` [PY] - 10 lines
+- `static/auth.js` [JS] - 5 lines
+- `static/bulk_reminders.js` [JS] - 5 lines
+- `static/sectionManagement.js` [JS] - 5 lines
+- `bulk_email_service.py` [PY] - 4 lines
+- `app.py` [PY] - 1 line
 
-### Coverage Added (76 of 411 lines)
-**Commit 1: CLO Workflow Error Paths**
-- Added 11 tests for `clo_workflow_service.py`:
-  * Database update failures
-  * Exception handling across all workflow methods
-  * Email notification failures
-  * Instructor name fallback logic
-- Removed dead code in `app.py` (unreachable auth checks)
+**Parity with SonarCloud:** ✅ Strong match
+- JavaScript files now detected (was 0%, now ~78% match)
+- Minor differences due to branch condition counting vs line counting
 
-**Commit 2: Bulk Email Course-Specific Links**
-- Added 2 tests for `bulk_email_service.py`:
-  * Course-specific assessment link generation
-  * Generic dashboard link fallback
+### Next Steps
 
-**Commit 3: Invitation Section Assignment**
-- Added 6 tests for `invitation_service.py`:
-  * Section assignment success/failure paths
-  * Replace existing instructor logic
-  * Section not found handling
-  * Database exception recovery
+**Immediate:**
+1. Review the 488 NEW uncovered lines in logs/pr_coverage_gaps.txt
+2. Start with top priority files:
+   - import_service.py (166 lines) - CLO import logic
+   - api_routes.py (128 lines) - CLO audit endpoints
+   - static/institution_dashboard.js (64 lines) - Dashboard JavaScript
+3. Add focused tests for the NEW functionality these represent
 
-**Commit 4: CEI Adapter Parsing**
-- Added 7 tests for `adapters/cei_excel_adapter.py`:
-  * Invalid year format in term parsing
-  * CLO extraction error paths (missing colon, dot, course mismatch)
-  * Exception handling for malformed data
-- Removed flaky performance test from JavaScript suite
+**Testing Strategy:**
+- Don't add tests just to hit line coverage
+- Understand what NEW functionality these lines implement
+- Add meaningful tests for that functionality
+- Many lines may be error handling for edge cases - test those paths
 
-### Impact
-- **Coverage improved**: 411 → ~335 uncovered lines (18% reduction)
-- **Test quality**: All tests target real error paths, not just coverage numbers
-- **Code cleanup**: Removed 8 lines of unreachable dead code
+**CI/Local Parity:**
+- sonar-analyze triggers analysis upload
+- sonar-status waits for results (with polling in CI)
+- Both steps now work reliably in CI and locally
 
-## Remaining Work
+### Files Modified This Session
+- `scripts/maintAInability-gate.sh` - Added wait/poll logic for sonar-status
+- `scripts/analyze_pr_coverage.py` - Parse only '+' lines from diff + add JavaScript LCOV parsing
+- `.pre-commit-config.yaml` - Fixed venv/envrc sourcing
 
-### 5. Additional Python Coverage (Optional)
-Remaining uncovered lines are mostly:
-- Flask route auth/permission checks (complex to test, low value)
-- Large import service conditional branches (requires extensive mocking)
-- Database CRUD aliases and helper methods (trivial functionality)
-
-Decision: Focus on higher-value work over exhaustive coverage of trivial/complex code.
-
-## Key Learnings
-- **CI/Local Consistency**: CI must use same commands as local - no special cases
-- **Sequential Jobs**: Use job dependencies (`needs:`) for ordered execution
-- **Artifact Passing**: Share metadata between jobs using upload/download artifacts
-- **Timeout Tuning**: Analyze step is fast (10min), status step waits longer (15min)
-
-## Commands for Verification
+### Commands Available
 ```bash
-# Local two-step workflow (same as CI)
-python scripts/ship_it.py --checks sonar-analyze  # Step 1: Upload
-python scripts/ship_it.py --checks sonar-status   # Step 2: Check results
+# Trigger new analysis (uploads to SonarCloud)
+python scripts/ship_it.py --checks sonar-analyze
 
-# Run quality gates
-python scripts/ship_it.py
+# Fetch results (waits if recent, polls until ready)
+python scripts/ship_it.py --checks sonar-status
 
-# Run E2E tests
-./run_uat.sh
+# View surgical coverage gaps (NEW lines only)
+cat logs/pr_coverage_gaps.txt
 ```
+
+### Notes
+- The coverage analysis tool now correctly identifies ONLY new additions
+- CI timing issue resolved - status check will wait for analysis
+- Ready to address the 409 NEW uncovered lines systematically
