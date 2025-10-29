@@ -1016,3 +1016,313 @@ class TestImportServiceRolePreservation:
         # Unknown roles get level 0, so neither is preserved
         assert service._should_preserve_role("unknown", "instructor") is False
         assert service._should_preserve_role("instructor", "unknown") is True
+
+
+class TestCLOImportFeature:
+    """Test NEW CLO import functionality added in this PR"""
+
+    @patch("import_service.create_course_outcome")
+    @patch("import_service.get_course_outcomes")
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_success(
+        self, mock_get_course, mock_get_outcomes, mock_create_outcome
+    ):
+        """Test successful CLO import for new CLO"""
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+        }
+        mock_get_outcomes.return_value = []  # No existing CLOs
+        mock_create_outcome.return_value = "outcome-456"
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "Understand cellular biology",
+            "assessment_method": "Exam",
+        }
+
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert service.stats["records_created"] == 1
+        mock_create_outcome.assert_called_once()
+        created_schema = mock_create_outcome.call_args[0][0]
+        assert created_schema["course_id"] == "course-123"
+        assert created_schema["clo_number"] == "CLO1"
+        assert created_schema["description"] == "Understand cellular biology"
+
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_missing_fields(self, mock_get_course):
+        """Test CLO import fails gracefully with missing required fields"""
+        service = ImportService("inst-123")
+
+        # Missing clo_number
+        clo_data = {"course_number": "BIO101", "description": "Test"}
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Missing required fields" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_course_not_found(self, mock_get_course):
+        """Test CLO import when course doesn't exist"""
+        mock_get_course.return_value = None
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "NONEXISTENT",
+            "clo_number": "CLO1",
+            "description": "Test",
+        }
+
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert len(service.stats["errors"]) == 1
+        assert "Course NONEXISTENT not found" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_outcomes")
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_conflict_use_mine(
+        self, mock_get_course, mock_get_outcomes
+    ):
+        """Test CLO import skips existing CLO with USE_MINE strategy"""
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+        }
+        mock_get_outcomes.return_value = [
+            {"clo_number": "CLO1", "description": "Existing"}
+        ]
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "New description",
+        }
+
+        service._process_clo_import(clo_data, ConflictStrategy.USE_MINE, dry_run=False)
+
+        assert service.stats["records_skipped"] == 1
+        assert service.stats["records_created"] == 0
+
+    @patch("import_service.get_course_outcomes")
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_conflict_use_theirs(
+        self, mock_get_course, mock_get_outcomes
+    ):
+        """Test CLO import updates existing CLO with USE_THEIRS strategy"""
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+        }
+        mock_get_outcomes.return_value = [
+            {"clo_number": "CLO1", "description": "Existing"}
+        ]
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "Updated description",
+        }
+
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert service.stats["records_updated"] == 1
+
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_dry_run(self, mock_get_course):
+        """Test CLO import in dry run mode doesn't create records"""
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+        }
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "Test",
+        }
+
+        service._process_clo_import(clo_data, ConflictStrategy.USE_THEIRS, dry_run=True)
+
+        # Should not create anything in dry run
+        assert service.stats["records_created"] == 0
+        mock_get_course.assert_called_once()
+
+    @patch("import_service.create_course_outcome")
+    @patch("import_service.get_course_outcomes")
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_create_fails(
+        self, mock_get_course, mock_get_outcomes, mock_create_outcome
+    ):
+        """Test CLO import handles creation failure"""
+        mock_get_course.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIO101",
+        }
+        mock_get_outcomes.return_value = []
+        mock_create_outcome.return_value = None  # Creation failed
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "Test",
+        }
+
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert len(service.stats["errors"]) == 1
+        assert "Failed to create CLO" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_by_number")
+    def test_process_clo_import_exception_handling(self, mock_get_course):
+        """Test CLO import handles unexpected exceptions"""
+        mock_get_course.side_effect = Exception("Database error")
+
+        service = ImportService("inst-123")
+        clo_data = {
+            "course_number": "BIO101",
+            "clo_number": "CLO1",
+            "description": "Test",
+        }
+
+        service._process_clo_import(
+            clo_data, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+
+        assert len(service.stats["errors"]) == 1
+        assert "Error processing CLO" in service.stats["errors"][0]
+
+
+class TestCourseProgramLinkingFeature:
+    """Test NEW course-to-program auto-linking functionality added in this PR"""
+
+    @patch("database_service.add_course_to_program")
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_to_programs_success(
+        self, mock_get_courses, mock_get_programs, mock_add_course
+    ):
+        """Test successful course-program linking based on prefix"""
+        mock_get_courses.return_value = [
+            {"id": "c1", "course_number": "BIOL-101"},
+            {"id": "c2", "course_number": "BSN-202"},
+            {"id": "c3", "course_number": "ZOOL-303"},
+        ]
+        mock_get_programs.return_value = [
+            {"id": "p1", "name": "Biological Sciences"},
+            {"id": "p2", "name": "Zoology"},
+        ]
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()
+
+        # Should link BIOL and BSN to Biological Sciences, ZOOL to Zoology
+        assert mock_add_course.call_count == 3
+        calls = mock_add_course.call_args_list
+        assert calls[0][0] == ("c1", "p1")  # BIOL → Biological Sciences
+        assert calls[1][0] == ("c2", "p1")  # BSN → Biological Sciences
+        assert calls[2][0] == ("c3", "p2")  # ZOOL → Zoology
+
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_no_courses(self, mock_get_courses, mock_get_programs):
+        """Test linking handles no courses gracefully"""
+        mock_get_courses.return_value = []
+        mock_get_programs.return_value = [{"id": "p1", "name": "Test"}]
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()  # Should not crash
+
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_no_programs(self, mock_get_courses, mock_get_programs):
+        """Test linking handles no programs gracefully"""
+        mock_get_courses.return_value = [{"id": "c1", "course_number": "BIOL-101"}]
+        mock_get_programs.return_value = []
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()  # Should not crash
+
+    @patch("database_service.add_course_to_program")
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_unmapped_prefix(
+        self, mock_get_courses, mock_get_programs, mock_add_course
+    ):
+        """Test courses with unmapped prefixes are not linked"""
+        mock_get_courses.return_value = [
+            {"id": "c1", "course_number": "CHEM-101"},  # CHEM not in mappings
+            {"id": "c2", "course_number": "MATH-202"},  # MATH not in mappings
+        ]
+        mock_get_programs.return_value = [
+            {"id": "p1", "name": "Chemistry"},
+        ]
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()
+
+        # Should not link any courses
+        mock_add_course.assert_not_called()
+
+    @patch("database_service.add_course_to_program")
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_program_not_found(
+        self, mock_get_courses, mock_get_programs, mock_add_course
+    ):
+        """Test courses skip linking if target program doesn't exist"""
+        mock_get_courses.return_value = [
+            {"id": "c1", "course_number": "BIOL-101"},
+        ]
+        # Program name doesn't match mapping
+        mock_get_programs.return_value = [
+            {"id": "p1", "name": "Wrong Program Name"},
+        ]
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()
+
+        # Should not link - program name mismatch
+        mock_add_course.assert_not_called()
+
+    @patch("database_service.add_course_to_program")
+    @patch("database_service.get_programs_by_institution")
+    @patch("database_service.get_all_courses")
+    def test_link_courses_already_linked(
+        self, mock_get_courses, mock_get_programs, mock_add_course
+    ):
+        """Test linking handles already-linked courses gracefully"""
+        mock_get_courses.return_value = [
+            {"id": "c1", "course_number": "BIOL-101"},
+        ]
+        mock_get_programs.return_value = [
+            {"id": "p1", "name": "Biological Sciences"},
+        ]
+        # Simulate course already linked
+        mock_add_course.side_effect = Exception("Already linked")
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()  # Should not crash
+
+    @patch("database_service.get_all_courses")
+    def test_link_courses_exception_doesnt_fail_import(self, mock_get_courses):
+        """Test linking failure doesn't break the import"""
+        mock_get_courses.side_effect = Exception("Database error")
+
+        service = ImportService("inst-123")
+        service._link_courses_to_programs()  # Should not crash - just log warning
