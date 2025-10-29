@@ -912,15 +912,56 @@ if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
     
     echo "📊 Last analysis: $LAST_RUN_TIME (branch: $LAST_RUN_BRANCH)"
     
-    # Calculate time since last run (rough estimate)
+    # Calculate time since last run (use portable date command)
     CURRENT_TIME=$(date +%s)
-    LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS date command
+      LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    else
+      # Linux date command
+      LAST_RUN_TIMESTAMP=$(date -d "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    fi
     TIME_DIFF=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
     
-    if [[ $TIME_DIFF -lt 30 ]]; then
-      # Less than 30 seconds - analysis might still be processing
-      echo "⏳ Analysis was triggered $TIME_DIFF seconds ago - SonarCloud might still be processing"
-      echo "💡 If results look incomplete, wait a moment and try again"
+    # Wait for analysis to complete if it's very recent (< 5 minutes)
+    if [[ $TIME_DIFF -lt 300 && $TIME_DIFF -gt 0 ]]; then
+      echo "⏳ Analysis was triggered $TIME_DIFF seconds ago"
+      echo "⏳ Waiting for SonarCloud to process (typical: 2-5 minutes)..."
+      
+      # Poll with exponential backoff: 10s, 20s, 30s, 40s, 50s, 60s intervals
+      MAX_RETRIES=10
+      RETRY_COUNT=0
+      WAIT_TIME=10
+      
+      while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
+        # Check if enough time has passed (at least 2 minutes)
+        CURRENT_TIME=$(date +%s)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+        else
+          LAST_RUN_TIMESTAMP=$(date -d "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+        fi
+        TIME_SINCE_TRIGGER=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
+        
+        if [[ $TIME_SINCE_TRIGGER -ge 120 ]]; then
+          echo "✅ Sufficient time elapsed ($TIME_SINCE_TRIGGER seconds) - proceeding to fetch results"
+          break
+        fi
+        
+        echo "⏳ Waiting ${WAIT_TIME}s before next check (${TIME_SINCE_TRIGGER}s elapsed, ${RETRY_COUNT}/${MAX_RETRIES} attempts)..."
+        sleep $WAIT_TIME
+        
+        # Increase wait time up to 60 seconds max
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        WAIT_TIME=$((WAIT_TIME + 10))
+        if [[ $WAIT_TIME -gt 60 ]]; then
+          WAIT_TIME=60
+        fi
+      done
+      
+      if [[ $RETRY_COUNT -eq $MAX_RETRIES ]]; then
+        echo "⚠️  Reached maximum retry attempts - proceeding anyway"
+      fi
     elif [[ $TIME_DIFF -gt 300 ]]; then
       # More than 5 minutes old
       MINUTES_AGO=$((TIME_DIFF / 60))

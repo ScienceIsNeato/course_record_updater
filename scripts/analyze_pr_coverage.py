@@ -19,47 +19,57 @@ from typing import Dict, Set, Tuple
 
 def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
     """
-    Get lines added or modified in the current branch compared to base_branch.
+    Get ONLY lines ADDED (not modified, not context) in the current branch compared to base_branch.
+    
+    This parses actual '+' lines from the diff, not hunk headers, to avoid counting
+    context lines and unchanged code as "modified".
     
     Returns:
-        Dict mapping file paths to sets of modified line numbers
+        Dict mapping file paths to sets of newly added line numbers
     """
-    print(f"🔍 Analyzing changes vs {base_branch}...")
+    print(f"🔍 Analyzing NEW lines added vs {base_branch}...")
     
     try:
-        # Get unified diff with line numbers
+        # Get full unified diff (not -U0) so we can parse actual + lines
         result = subprocess.run(
-            ["git", "diff", "-U0", base_branch, "HEAD"],
+            ["git", "diff", base_branch, "HEAD"],
             capture_output=True,
             text=True,
             check=True
         )
         
-        modified_lines = defaultdict(set)
+        added_lines = defaultdict(set)
         current_file = None
+        current_line_number = 0
         
         for line in result.stdout.split('\n'):
             # Track current file
             if line.startswith('+++ b/'):
                 current_file = line[6:]  # Remove '+++ b/' prefix
-            # Parse hunk headers: @@ -old_start,old_count +new_start,new_count @@
+                current_line_number = 0
+            # Parse hunk headers to track line numbers: @@ -old_start,old_count +new_start,new_count @@
             elif line.startswith('@@') and current_file:
                 try:
-                    # Extract new file line numbers
+                    # Extract new file starting line number
                     parts = line.split('+')[1].split('@@')[0].strip()
                     if ',' in parts:
-                        start, count = map(int, parts.split(','))
+                        current_line_number = int(parts.split(',')[0])
                     else:
-                        start = int(parts)
-                        count = 1
-                    
-                    # Add all lines in this hunk
-                    for line_num in range(start, start + count):
-                        modified_lines[current_file].add(line_num)
+                        current_line_number = int(parts)
                 except (ValueError, IndexError):
                     continue
+            # Track lines that were ADDED (start with +, but not +++ file markers)
+            elif current_file and line.startswith('+') and not line.startswith('+++'):
+                # This is a newly added line
+                added_lines[current_file].add(current_line_number)
+                current_line_number += 1
+            # Track context/removed lines to keep line numbering accurate
+            elif current_file and not line.startswith('---') and not line.startswith('@@') and current_line_number > 0:
+                # Context line or removed line - advance line counter for context
+                if not line.startswith('-'):
+                    current_line_number += 1
         
-        return dict(modified_lines)
+        return dict(added_lines)
     
     except subprocess.CalledProcessError as e:
         print(f"❌ Error getting git diff: {e}", file=sys.stderr)
@@ -105,22 +115,22 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Dict[st
 
 
 def cross_reference_coverage(
-    modified_lines: Dict[str, Set[int]],
+    added_lines: Dict[str, Set[int]],
     uncovered_lines: Dict[str, Set[int]]
 ) -> Dict[str, Set[int]]:
     """
-    Find uncovered lines that were actually modified in the PR.
+    Find uncovered lines that were NEWLY ADDED in the PR (not just touched/refactored).
     
     Returns:
-        Dict mapping file paths to sets of uncovered modified line numbers
+        Dict mapping file paths to sets of uncovered newly-added line numbers
     """
     pr_coverage_gaps = {}
     
-    for filepath, mod_lines in modified_lines.items():
+    for filepath, new_lines in added_lines.items():
         # Check if we have coverage data for this file
         if filepath in uncovered_lines:
-            # Find intersection: lines that are both modified AND uncovered
-            gap_lines = mod_lines & uncovered_lines[filepath]
+            # Find intersection: lines that are both NEW AND uncovered
+            gap_lines = new_lines & uncovered_lines[filepath]
             if gap_lines:
                 pr_coverage_gaps[filepath] = gap_lines
     
@@ -131,7 +141,7 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     """Print or save a formatted report of coverage gaps."""
     
     if not pr_coverage_gaps:
-        message = "✅ All modified lines in this PR are covered by tests!\n"
+        message = "✅ All NEWLY ADDED lines in this PR are covered by tests!\n"
         print(message)
         if output_file:
             Path(output_file).write_text(message)
@@ -143,10 +153,10 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     
     # Build report
     lines = [
-        "📊 Coverage Gaps in Modified Code (PR vs main)",
+        "📊 Coverage Gaps in NEWLY ADDED Code (PR vs main)",
         "=" * 60,
         "",
-        f"🔴 {total_lines} uncovered lines across {total_files} files need tests",
+        f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests",
         "",
         "Files ranked by uncovered line count:",
         "-" * 60,
@@ -218,7 +228,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Analyze coverage gaps for lines modified in the current PR"
+        description="Analyze coverage gaps for NEWLY ADDED lines (not just modified) in the current PR"
     )
     parser.add_argument(
         "--base-branch",
@@ -238,17 +248,17 @@ def main():
     
     args = parser.parse_args()
     
-    print("🔬 PR Coverage Analysis Tool")
+    print("🔬 PR Coverage Analysis Tool (NEW Lines Only)")
     print("=" * 60)
     
-    # Step 1: Get modified lines from git diff
-    modified_lines = get_git_diff_lines(args.base_branch)
-    if not modified_lines:
-        print("⚠️  No modified lines found in this branch")
+    # Step 1: Get NEWLY ADDED lines from git diff (not context/refactored lines)
+    added_lines = get_git_diff_lines(args.base_branch)
+    if not added_lines:
+        print("⚠️  No newly added lines found in this branch")
         return 0
     
-    total_modified = sum(len(lines) for lines in modified_lines.values())
-    print(f"✅ Found {total_modified} modified lines across {len(modified_lines)} files")
+    total_added = sum(len(lines) for lines in added_lines.values())
+    print(f"✅ Found {total_added} NEWLY ADDED lines across {len(added_lines)} files")
     print()
     
     # Step 2: Get uncovered lines from coverage report
@@ -258,11 +268,11 @@ def main():
         return 0
     
     total_uncovered = sum(len(lines) for lines in uncovered_lines.values())
-    print(f"📊 Found {total_uncovered} uncovered lines across {len(uncovered_lines)} files")
+    print(f"📊 Found {total_uncovered} total uncovered lines across {len(uncovered_lines)} files")
     print()
     
-    # Step 3: Cross-reference
-    pr_coverage_gaps = cross_reference_coverage(modified_lines, uncovered_lines)
+    # Step 3: Cross-reference (find NEW lines that are uncovered)
+    pr_coverage_gaps = cross_reference_coverage(added_lines, uncovered_lines)
     
     # Step 4: Generate report
     print_report(pr_coverage_gaps, args.output)
