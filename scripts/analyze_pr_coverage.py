@@ -78,15 +78,15 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
 
 def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Dict[str, Set[int]]:
     """
-    Parse coverage.xml to find uncovered lines.
+    Parse coverage.xml (Python) to find uncovered lines.
     
     Returns:
         Dict mapping file paths to sets of uncovered line numbers
     """
-    print(f"📊 Parsing coverage report: {coverage_file}...")
+    print(f"📊 Parsing Python coverage: {coverage_file}...")
     
     if not Path(coverage_file).exists():
-        print(f"❌ Coverage file not found: {coverage_file}", file=sys.stderr)
+        print(f"⚠️  Python coverage file not found: {coverage_file}", file=sys.stderr)
         return {}
     
     try:
@@ -110,7 +110,67 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Dict[st
         return dict(uncovered_lines)
     
     except ET.ParseError as e:
-        print(f"❌ Error parsing coverage XML: {e}", file=sys.stderr)
+        print(f"❌ Error parsing Python coverage XML: {e}", file=sys.stderr)
+        return {}
+
+
+def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Dict[str, Set[int]]:
+    """
+    Parse lcov.info (JavaScript) to find uncovered lines.
+    
+    LCOV format:
+        SF:<source file path>
+        DA:<line number>,<hit count>
+        end_of_record
+    
+    Returns:
+        Dict mapping file paths to sets of uncovered line numbers
+    """
+    print(f"📊 Parsing JavaScript coverage: {lcov_file}...")
+    
+    if not Path(lcov_file).exists():
+        print(f"⚠️  JavaScript coverage file not found: {lcov_file}", file=sys.stderr)
+        return {}
+    
+    try:
+        uncovered_lines = defaultdict(set)
+        current_file = None
+        
+        with open(lcov_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                
+                # Track current source file
+                if line.startswith('SF:'):
+                    # Extract relative path from absolute path
+                    abs_path = line[3:]  # Remove 'SF:' prefix
+                    # Convert to relative path (remove workspace prefix if present)
+                    current_file = abs_path.split('/')[-1] if '/' in abs_path else abs_path
+                    # Try to get more context by keeping static/ prefix
+                    if 'static/' in abs_path:
+                        current_file = abs_path.split('static/')[-1]
+                        current_file = f"static/{current_file}"
+                
+                # Parse line coverage: DA:<line>,<hits>
+                elif line.startswith('DA:') and current_file:
+                    try:
+                        parts = line[3:].split(',')  # Remove 'DA:' and split
+                        line_num = int(parts[0])
+                        hits = int(parts[1])
+                        
+                        if hits == 0:
+                            uncovered_lines[current_file].add(line_num)
+                    except (ValueError, IndexError):
+                        continue
+                
+                # Reset on end of record
+                elif line == 'end_of_record':
+                    current_file = None
+        
+        return dict(uncovered_lines)
+    
+    except Exception as e:
+        print(f"❌ Error parsing JavaScript coverage LCOV: {e}", file=sys.stderr)
         return {}
 
 
@@ -171,7 +231,9 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     )
     
     for filepath, line_numbers in sorted_files:
-        lines.append(f"📁 {filepath}")
+        # Add language indicator
+        lang_indicator = "🟦 JS" if filepath.endswith('.js') else "🐍 PY"
+        lines.append(f"📁 {filepath} [{lang_indicator}]")
         lines.append(f"   🔴 {len(line_numbers)} uncovered lines: {format_line_ranges(line_numbers)}")
         lines.append("")
     
@@ -261,15 +323,22 @@ def main():
     print(f"✅ Found {total_added} NEWLY ADDED lines across {len(added_lines)} files")
     print()
     
-    # Step 2: Get uncovered lines from coverage report
-    uncovered_lines = get_uncovered_lines_from_xml(args.coverage_file)
+    # Step 2a: Get Python uncovered lines from coverage.xml
+    python_uncovered = get_uncovered_lines_from_xml(args.coverage_file)
+    python_uncovered_count = sum(len(lines) for lines in python_uncovered.values())
+    print(f"   📊 Python: {python_uncovered_count} total uncovered lines across {len(python_uncovered)} files")
+    
+    # Step 2b: Get JavaScript uncovered lines from lcov.info
+    js_uncovered = get_uncovered_lines_from_lcov("coverage/lcov.info")
+    js_uncovered_count = sum(len(lines) for lines in js_uncovered.values())
+    print(f"   📊 JavaScript: {js_uncovered_count} total uncovered lines across {len(js_uncovered)} files")
+    print()
+    
+    # Step 2c: Merge Python and JavaScript coverage
+    uncovered_lines = {**python_uncovered, **js_uncovered}
     if not uncovered_lines:
         print("⚠️  No coverage data found or all lines covered")
         return 0
-    
-    total_uncovered = sum(len(lines) for lines in uncovered_lines.values())
-    print(f"📊 Found {total_uncovered} total uncovered lines across {len(uncovered_lines)} files")
-    print()
     
     # Step 3: Cross-reference (find NEW lines that are uncovered)
     pr_coverage_gaps = cross_reference_coverage(added_lines, uncovered_lines)
