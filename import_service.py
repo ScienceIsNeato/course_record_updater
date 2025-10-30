@@ -714,6 +714,55 @@ class ImportService:
 
         return detected_conflicts
 
+    def _mark_conflicts_resolved(
+        self, detected_conflicts: List[ConflictRecord], strategy: ConflictStrategy
+    ) -> None:
+        """Mark conflicts as resolved with the given strategy."""
+        if detected_conflicts:
+            self.stats["conflicts_resolved"] += len(detected_conflicts)
+            for conflict in detected_conflicts:
+                conflict.resolution = strategy.value
+
+    def _prepare_user_update_data(
+        self, user_data: Dict[str, Any], existing_user: Dict[str, Any], email: str
+    ) -> Dict[str, Any]:
+        """Prepare user data for update, preserving roles and admin status."""
+        existing_role = existing_user.get("role", "instructor")
+        import_role = user_data.get("role", "instructor")
+
+        updated_data = user_data.copy()  # Don't modify original
+
+        if self._should_preserve_role(existing_role, import_role):
+            updated_data["role"] = existing_role
+            self._log(
+                f"Preserved {existing_role} role for {email} (import had {import_role})"
+            )
+
+        # Preserve admin account status
+        self._preserve_admin_status(updated_data, existing_user, existing_role, email)
+
+        return updated_data
+
+    def _preserve_admin_status(
+        self,
+        user_data: Dict[str, Any],
+        existing_user: Dict[str, Any],
+        existing_role: str,
+        email: str,
+    ) -> None:
+        """Preserve active status and account_status for admin accounts."""
+        if existing_role in ["site_admin", "institution_admin", "program_admin"]:
+            existing_active = existing_user.get("active", True)
+            existing_status = existing_user.get("account_status", "active")
+
+            # Don't let import downgrade admin accounts to inactive or "imported" status
+            if existing_active:
+                user_data["active"] = True
+            if existing_status == "active":
+                user_data["account_status"] = "active"
+
+            self._log(f"Preserved admin account status for {email}")
+
     def _resolve_user_conflicts(
         self,
         strategy: ConflictStrategy,
@@ -728,50 +777,15 @@ class ImportService:
         if strategy == ConflictStrategy.USE_MINE:
             self.stats["records_skipped"] += 1
             self._log(f"Skipping existing user: {email}")
-            # Update conflict resolution status for USE_MINE
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
+            self._mark_conflicts_resolved(detected_conflicts, strategy)
         elif strategy == ConflictStrategy.USE_THEIRS:
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                # Update conflict resolution status
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
+            self._mark_conflicts_resolved(detected_conflicts, strategy)
 
             if not dry_run:
-                # Preserve higher-privilege roles (don't downgrade admins to instructors)
-                existing_role = existing_user.get("role", "instructor")
-                import_role = user_data.get("role", "instructor")
-
-                user_data = user_data.copy()  # Don't modify original
-
-                if self._should_preserve_role(existing_role, import_role):
-                    user_data["role"] = existing_role
-                    self._log(
-                        f"Preserved {existing_role} role for {email} (import had {import_role})"
-                    )
-
-                # Preserve active status and account_status for admin accounts
-                if existing_role in [
-                    "site_admin",
-                    "institution_admin",
-                    "program_admin",
-                ]:
-                    existing_active = existing_user.get("active", True)
-                    existing_status = existing_user.get("account_status", "active")
-
-                    # Don't let import downgrade admin accounts to inactive or "imported" status
-                    if existing_active:
-                        user_data["active"] = True
-                    if existing_status == "active":
-                        user_data["account_status"] = "active"
-
-                    self._log(f"Preserved admin account status for {email}")
-
-                # Update existing user - convert datetime fields for SQLite compatibility
-                converted_user_data = _convert_datetime_fields(user_data)
+                updated_data = self._prepare_user_update_data(
+                    user_data, existing_user, email
+                )
+                converted_user_data = _convert_datetime_fields(updated_data)
                 update_user(
                     existing_user.get("user_id", existing_user.get("id", email)),
                     converted_user_data,
@@ -849,6 +863,43 @@ class ImportService:
                 f"Error processing term {term_data.get('term_name')}: {str(e)}"
             )
 
+    def _validate_and_lookup_course_term(
+        self, course_number: str, term_name: str, institution_id: str, context: str
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Validate and lookup course and term IDs. Returns (course_id, term_id) or (None, None) on error."""
+        course = get_course_by_number(course_number, institution_id)
+        term = get_term_by_name(term_name, institution_id)
+
+        if not course:
+            self.stats["errors"].append(
+                f"Course {course_number} not found for {context}"
+            )
+            return None, None
+
+        if not term:
+            self.stats["errors"].append(f"Term {term_name} not found for {context}")
+            return None, None
+
+        return course["course_id"], term["term_id"]
+
+    def _handle_offering_conflict(
+        self,
+        existing_offering: Dict[str, Any],
+        strategy: ConflictStrategy,
+        course_number: str,
+        term_name: str,
+    ) -> bool:
+        """Handle existing offering conflict. Returns True if should skip creation."""
+        if strategy == ConflictStrategy.USE_MINE:
+            self.stats["records_skipped"] += 1
+            self._log(f"Skipped existing offering: {course_number} - {term_name}")
+            return True
+        elif strategy == ConflictStrategy.USE_THEIRS:
+            self.stats["records_updated"] += 1
+            self._log(f"Updated offering: {course_number} - {term_name}")
+            return True
+        return False
+
     def _process_offering_import(
         self,
         offering_data: Dict[str, Any],
@@ -857,7 +908,7 @@ class ImportService:
     ):
         """Process course offering import"""
         try:
-            # Extract required data
+            # Extract and validate required data
             course_number = offering_data.get("course_number")
             term_name = offering_data.get("term_name")
             institution_id = offering_data.get("institution_id") or self.institution_id
@@ -868,22 +919,12 @@ class ImportService:
                 )
                 return
 
-            # Get course and term IDs
-            course = get_course_by_number(course_number, institution_id)
-            term = get_term_by_name(term_name, institution_id)
-
-            if not course:
-                self.stats["errors"].append(
-                    f"Course {course_number} not found for offering"
-                )
+            # Lookup course and term
+            course_id, term_id = self._validate_and_lookup_course_term(
+                course_number, term_name, institution_id, "offering"
+            )
+            if not course_id or not term_id:
                 return
-
-            if not term:
-                self.stats["errors"].append(f"Term {term_name} not found for offering")
-                return
-
-            course_id = course["course_id"]
-            term_id = term["term_id"]
 
             if dry_run:
                 self._log(
@@ -891,21 +932,14 @@ class ImportService:
                 )
                 return
 
-            # Check if offering already exists
+            # Check for existing offering and handle conflicts
             existing_offering = get_course_offering_by_course_and_term(
                 course_id, term_id
             )
-
             if existing_offering:
-                if strategy == ConflictStrategy.USE_MINE:
-                    self.stats["records_skipped"] += 1
-                    self._log(
-                        f"Skipped existing offering: {course_number} - {term_name}"
-                    )
-                    return
-                elif strategy == ConflictStrategy.USE_THEIRS:
-                    self.stats["records_updated"] += 1
-                    self._log(f"Updated offering: {course_number} - {term_name}")
+                if self._handle_offering_conflict(
+                    existing_offering, strategy, course_number, term_name
+                ):
                     return
 
             # Create new offering
@@ -936,6 +970,56 @@ class ImportService:
 
             self._log(f"Traceback: {traceback.format_exc()}", "error")
 
+    def _get_or_create_offering(
+        self,
+        course_id: str,
+        term_id: str,
+        institution_id: str,
+        course_number: str,
+        section_number: str,
+    ) -> Optional[str]:
+        """Get existing offering or create a new one. Returns offering_id or None on error."""
+        existing_offering = get_course_offering_by_course_and_term(course_id, term_id)
+
+        if existing_offering:
+            return existing_offering["offering_id"]
+
+        # Create offering if it doesn't exist
+        from models import CourseOffering
+
+        offering_schema = CourseOffering.create_schema(
+            course_id=course_id,
+            term_id=term_id,
+            institution_id=institution_id,
+            status="active",
+        )
+        offering_id = create_course_offering(offering_schema)
+
+        if not offering_id:
+            self.stats["errors"].append(
+                f"Failed to create offering for section {course_number}-{section_number}"
+            )
+            return None
+
+        return offering_id
+
+    def _update_offering_counts(
+        self, offering_id: str, course_id: str, term_id: str, student_count: int
+    ) -> None:
+        """Update offering section count and enrollment totals."""
+        offering = get_course_offering_by_course_and_term(course_id, term_id)
+        if offering:
+            current_section_count = offering.get("section_count", 0)
+            current_enrollment = offering.get("total_enrollment", 0)
+
+            update_course_offering(
+                offering_id,
+                {
+                    "section_count": current_section_count + 1,
+                    "total_enrollment": current_enrollment + student_count,
+                },
+            )
+
     def _process_section_import(
         self,
         section_data: Dict[str, Any],
@@ -958,47 +1042,19 @@ class ImportService:
                 )
                 return
 
-            # Get course and term IDs
-            course = get_course_by_number(course_number, institution_id)
-            term = get_term_by_name(term_name, institution_id)
-
-            if not course:
-                self.stats["errors"].append(
-                    f"Course {course_number} not found for section"
-                )
-                return
-
-            if not term:
-                self.stats["errors"].append(f"Term {term_name} not found for section")
-                return
-
-            course_id = course["course_id"]
-            term_id = term["term_id"]
-
-            # Get or create the offering for this course/term
-            existing_offering = get_course_offering_by_course_and_term(
-                course_id, term_id
+            # Lookup course and term
+            course_id, term_id = self._validate_and_lookup_course_term(
+                course_number, term_name, institution_id, "section"
             )
+            if not course_id or not term_id:
+                return
 
-            if existing_offering:
-                offering_id = existing_offering["offering_id"]
-            else:
-                # Create offering if it doesn't exist
-                from models import CourseOffering
-
-                offering_schema = CourseOffering.create_schema(
-                    course_id=course_id,
-                    term_id=term_id,
-                    institution_id=institution_id,
-                    status="active",
-                )
-                offering_id = create_course_offering(offering_schema)
-
-                if not offering_id:
-                    self.stats["errors"].append(
-                        f"Failed to create offering for section {course_number}-{section_number}"
-                    )
-                    return
+            # Get or create offering
+            offering_id = self._get_or_create_offering(
+                course_id, term_id, institution_id, course_number, section_number
+            )
+            if not offering_id:
+                return
 
             if dry_run:
                 self._log(
@@ -1031,20 +1087,9 @@ class ImportService:
                 self._log(
                     f"Created section {section_number} for {course_number} in {term_name}"
                 )
-
-                # Update offering counts
-                offering = get_course_offering_by_course_and_term(course_id, term_id)
-                if offering:
-                    current_section_count = offering.get("section_count", 0)
-                    current_enrollment = offering.get("total_enrollment", 0)
-
-                    update_course_offering(
-                        offering_id,
-                        {
-                            "section_count": current_section_count + 1,
-                            "total_enrollment": current_enrollment + student_count,
-                        },
-                    )
+                self._update_offering_counts(
+                    offering_id, course_id, term_id, student_count
+                )
             else:
                 self.stats["errors"].append(
                     f"Failed to create section {section_number} for {course_number}"
