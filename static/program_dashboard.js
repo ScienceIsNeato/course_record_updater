@@ -83,7 +83,9 @@
       this.renderFaculty(data.faculty_assignments || []);
       this.renderClos(data.courses || [], data.program_overview || []);
       this.renderAssessment(data.program_overview || []);
-      this.updateLastUpdated(data.metadata?.last_updated);
+      const lastUpdated =
+        data.metadata && data.metadata.last_updated ? data.metadata.last_updated : null;
+      this.updateLastUpdated(lastUpdated);
     },
 
     updateHeader(data) {
@@ -148,7 +150,9 @@
         ],
         data: Array.from(courseMap.values()).map(course => {
           const courseId = course.course_id || course.id;
-          const programId = course.program_id || course.program_ids?.[0];
+          const programIdsFirst =
+            course.program_ids && course.program_ids[0] ? course.program_ids[0] : null;
+          const programId = course.program_id || programIdsFirst;
           const programProgress = progressByProgram.get(programId) || {};
           const courseSections = sectionsByCourse.get(courseId) || [];
           const sectionCount = courseSections.length;
@@ -217,7 +221,7 @@
             students_sort: studentCount.toString(),
             programs:
               (record.program_summaries || [])
-                .map(program => program?.program_name)
+                .map(program => (program && program.program_name ? program.program_name : null))
                 .filter(Boolean)
                 .join(', ') ||
               (record.program_ids || []).join(', ') ||
@@ -256,7 +260,9 @@
           { key: 'actions', label: 'Actions', sortable: false }
         ],
         data: courses.map(course => {
-          const programId = course.program_id || course.program_ids?.[0];
+          const programIdsFirst =
+            course.program_ids && course.program_ids[0] ? course.program_ids[0] : null;
+          const programId = course.program_id || programIdsFirst;
           const progress = progressByProgram.get(programId) || {};
           const percent = progress.percent_complete ?? 0;
           const cloCount = (course.clo_count ?? (course.clos ? course.clos.length : 0)) || 0;
@@ -309,7 +315,11 @@
           { key: 'progress', label: 'Progress', sortable: true }
         ],
         data: programOverview.map(item => {
-          const percent = item.assessment_progress?.percent_complete ?? 0;
+          const percentComplete =
+            item.assessment_progress && item.assessment_progress.percent_complete !== undefined
+              ? item.assessment_progress.percent_complete
+              : 0;
+          const percent = percentComplete ?? 0;
           const studentCount = item.student_count ?? 0;
           const sectionCount = item.section_count ?? 0;
           return {
