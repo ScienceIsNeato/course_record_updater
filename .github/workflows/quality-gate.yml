@@ -577,7 +577,18 @@ jobs:
         PYTHONPATH: .
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Verify metadata file exists
+      if: always()
+      run: |
+        if [ -f .sonar_run_metadata.json ]; then
+          echo "✅ Metadata file found"
+          cat .sonar_run_metadata.json
+        else
+          echo "❌ Metadata file not found - creating placeholder"
+          echo '{"timestamp":"unknown","branch":"unknown","commit":"unknown","status":"failed"}' > .sonar_run_metadata.json
+        fi
     - name: Upload analysis metadata
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: sonar-metadata
@@ -586,6 +597,7 @@ jobs:
   sonarcloud-status:
     runs-on: ubuntu-latest
     needs: sonarcloud-analyze
+    if: always()  # Run even if sonarcloud-analyze fails
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
