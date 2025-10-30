@@ -36,25 +36,45 @@ def client(app):
     return app.test_client()
 
 
+@pytest.fixture
+def mock_institution():
+    """Mock institution ID."""
+    with patch("api.routes.clo_workflow.get_current_institution_id") as mock:
+        mock.return_value = "inst-123"
+        yield mock
+
+
+@pytest.fixture
+def mock_session():
+    """Mock Flask session."""
+    with patch("api.routes.clo_workflow.session", {"user_id": "user-123"}):
+        yield
+
+
+def assert_json_response(response, status_code, success_expected):
+    """Helper to verify common JSON response patterns."""
+    assert response.status_code == status_code
+    data = response.get_json()
+    assert data["success"] is success_expected
+    return data
+
+
 class TestCLOAuditEndpoints:
     """Test CLO audit workflow endpoints."""
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
     def test_submit_clo_for_approval_success(
         self,
-        mock_get_inst_id,
         mock_get_outcome,
         mock_get_course,
         mock_workflow,
         client,
+        mock_institution,
+        mock_session,
     ):
         """Test successfully submitting CLO for approval."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
         mock_get_outcome.return_value = {
             "id": "outcome-1",
             "course_id": "course-1",
@@ -63,33 +83,19 @@ class TestCLOAuditEndpoints:
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.submit_clo_for_approval.return_value = True
 
-        # Execute
         response = client.post("/api/outcomes/outcome-1/submit")
 
-        # Verify
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
+        data = assert_json_response(response, 200, True)
         assert "submitted for approval" in data["message"]
 
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
     def test_submit_clo_for_approval_not_found(
-        self, mock_get_inst_id, mock_get_outcome, client
+        self, mock_get_outcome, client, mock_institution, mock_session
     ):
         """Test submitting non-existent CLO returns 404."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
         mock_get_outcome.return_value = None
-
-        # Execute
         response = client.post("/api/outcomes/nonexistent/submit")
-
-        # Verify
-        assert response.status_code == 404
-        data = response.get_json()
-        assert data["success"] is False
+        assert_json_response(response, 404, False)
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_current_user")
@@ -193,19 +199,16 @@ class TestCLOAuditEndpoints:
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
     def test_approve_clo_success(
         self,
-        mock_get_inst_id,
         mock_get_outcome,
         mock_get_course,
         mock_workflow,
         client,
+        mock_institution,
+        mock_session,
     ):
         """Test successfully approving a CLO."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
         mock_get_outcome.return_value = {
             "id": "outcome-1",
             "course_id": "course-1",
@@ -214,31 +217,24 @@ class TestCLOAuditEndpoints:
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.approve_clo.return_value = True
 
-        # Execute
         response = client.post("/api/outcomes/outcome-1/approve")
 
-        # Verify
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
+        data = assert_json_response(response, 200, True)
         assert "approved successfully" in data["message"]
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
     def test_request_clo_rework_success(
         self,
-        mock_get_inst_id,
         mock_get_outcome,
         mock_get_course,
         mock_workflow,
         client,
+        mock_institution,
+        mock_session,
     ):
         """Test successfully requesting CLO rework with feedback."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
         mock_get_outcome.return_value = {
             "id": "outcome-1",
             "course_id": "course-1",
@@ -247,136 +243,78 @@ class TestCLOAuditEndpoints:
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.request_rework.return_value = True
 
-        # Execute
         response = client.post(
             "/api/outcomes/outcome-1/request-rework",
             json={"comments": "Please clarify the assessment method"},
         )
 
-        # Verify
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
+        data = assert_json_response(response, 200, True)
         mock_workflow.request_rework.assert_called_once()
 
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
-    def test_request_clo_rework_missing_comments(self, mock_get_inst_id, client):
-        """Test requesting rework without comments returns 400."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
+    @pytest.mark.parametrize(
+        "comments,expected_error",
+        [
+            ({}, "required"),
+            ({"comments": "   "}, "empty"),
+        ],
+    )
+    def test_request_clo_rework_invalid_comments(
+        self, comments, expected_error, client, mock_institution, mock_session
+    ):
+        """Test requesting rework with missing or empty comments returns 400."""
+        response = client.post("/api/outcomes/outcome-1/request-rework", json=comments)
+        data = assert_json_response(response, 400, False)
+        assert expected_error in data["error"]
 
-        # Execute
-        response = client.post(
-            "/api/outcomes/outcome-1/request-rework",
-            json={},
-        )
-
-        # Verify
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data["success"] is False
-        assert "required" in data["error"]
-
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
-    def test_request_clo_rework_empty_comments(self, mock_get_inst_id, client):
-        """Test requesting rework with empty comments returns 400."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
-
-        # Execute
-        response = client.post(
-            "/api/outcomes/outcome-1/request-rework",
-            json={"comments": "   "},
-        )
-
-        # Verify
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data["success"] is False
-        assert "empty" in data["error"]
-
+    @pytest.mark.parametrize(
+        "endpoint,method_name",
+        [
+            ("/api/outcomes/outcome-1/submit", "submit_clo_for_approval"),
+            ("/api/outcomes/outcome-1/approve", "approve_clo"),
+        ],
+    )
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
-    def test_submit_clo_for_approval_service_failure(
+    def test_workflow_service_failure(
         self,
-        mock_get_inst_id,
         mock_get_outcome,
         mock_get_course,
         mock_workflow,
+        endpoint,
+        method_name,
         client,
+        mock_institution,
+        mock_session,
     ):
-        """Test submit CLO when service returns False."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
-        mock_get_outcome.return_value = {
-            "id": "outcome-1",
-            "course_id": "course-1",
-            "status": "in_progress",
-        }
-        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
-        mock_workflow.submit_clo_for_approval.return_value = False
-
-        # Execute
-        response = client.post("/api/outcomes/outcome-1/submit")
-
-        # Verify
-        assert response.status_code == 500
-        data = response.get_json()
-        assert data["success"] is False
-
-    @patch("api.routes.clo_workflow.CLOWorkflowService")
-    @patch("api.routes.clo_workflow.get_course_by_id")
-    @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
-    def test_approve_clo_service_failure(
-        self,
-        mock_get_inst_id,
-        mock_get_outcome,
-        mock_get_course,
-        mock_workflow,
-        client,
-    ):
-        """Test approve CLO when service returns False."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
+        """Test CLO workflow endpoints when service returns False."""
         mock_get_outcome.return_value = {
             "id": "outcome-1",
             "course_id": "course-1",
             "status": "awaiting_approval",
         }
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
-        mock_workflow.approve_clo.return_value = False
+        getattr(mock_workflow, method_name).return_value = False
 
-        # Execute
-        response = client.post("/api/outcomes/outcome-1/approve")
-
-        # Verify
-        assert response.status_code == 500
-        data = response.get_json()
-        assert data["success"] is False
+        response = client.post(
+            endpoint if "rework" not in endpoint else endpoint,
+            json={"comments": "Fix"} if "rework" in endpoint else None,
+        )
+        assert_json_response(response, 500, False)
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
-    @patch("api.routes.clo_workflow.get_current_institution_id")
-    @patch("api.routes.clo_workflow.session", {"user_id": "user-123"})
     def test_request_clo_rework_service_failure(
         self,
-        mock_get_inst_id,
         mock_get_outcome,
         mock_get_course,
         mock_workflow,
         client,
+        mock_institution,
+        mock_session,
     ):
         """Test request rework when service returns False."""
-        # Setup
-        mock_get_inst_id.return_value = "inst-123"
         mock_get_outcome.return_value = {
             "id": "outcome-1",
             "course_id": "course-1",
@@ -385,13 +323,8 @@ class TestCLOAuditEndpoints:
         mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.request_rework.return_value = False
 
-        # Execute
         response = client.post(
             "/api/outcomes/outcome-1/request-rework",
             json={"comments": "Please fix this"},
         )
-
-        # Verify
-        assert response.status_code == 500
-        data = response.get_json()
-        assert data["success"] is False
+        assert_json_response(response, 500, False)
