@@ -1136,29 +1136,35 @@ class SQLiteDatabase(DatabaseInterface):
             program_id: Program ID
 
         Returns:
-            True if linked successfully (or already linked), False otherwise
+            True if linked successfully (or already linked), False on database error
         """
         from models_sql import course_program_table
 
-        with self.sqlite.session_scope() as session:
-            # Check if link already exists
-            existing = session.execute(
-                select(course_program_table).where(
-                    course_program_table.c.course_id == course_id,
-                    course_program_table.c.program_id == program_id,
-                )
-            ).first()
+        try:
+            with self.sqlite.session_scope() as session:
+                # Check if link already exists
+                existing = session.execute(
+                    select(course_program_table).where(
+                        course_program_table.c.course_id == course_id,
+                        course_program_table.c.program_id == program_id,
+                    )
+                ).first()
 
-            if existing:
-                return True  # Already linked
+                if existing:
+                    return True  # Already linked
 
-            # Create link
-            session.execute(
-                course_program_table.insert().values(
-                    course_id=course_id, program_id=program_id
+                # Create link
+                session.execute(
+                    course_program_table.insert().values(
+                        course_id=course_id, program_id=program_id
+                    )
                 )
+                return True
+        except Exception as e:
+            logger.error(
+                f"[LINK_COURSE_PROGRAM] Failed to link course {course_id} to program {program_id}: {e}"
             )
-            return True
+            return False
 
     def get_program_by_name_and_institution(
         self, program_name: str, institution_id: str
