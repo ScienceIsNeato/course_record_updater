@@ -301,3 +301,38 @@ def request_clo_rework(outcome_id: str):
             e, "Request CLO rework", "Failed to request CLO rework"
         )
 
+
+@clo_workflow_bp.route("/<outcome_id>/audit-details", methods=["GET"])
+@lazy_permission_required("audit_clo")
+def get_clo_audit_details(outcome_id: str):
+    """
+    Get full audit details for a single CLO.
+
+    Includes course info, instructor info, submission history, feedback history.
+    """
+    try:
+        # Verify outcome exists
+        outcome = get_course_outcome(outcome_id)
+        if not outcome:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        # Verify institution access
+        institution_id = get_current_institution_id()
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
+
+        # Get enriched outcome details
+        details = CLOWorkflowService.get_outcome_with_details(outcome_id)
+
+        if details:
+            return jsonify({"success": True, "outcome": details}), 200
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to load outcome details"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Get CLO audit details", "Failed to load CLO audit details")
+
