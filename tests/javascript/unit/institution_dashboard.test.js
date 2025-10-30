@@ -34,6 +34,16 @@ describe('InstitutionDashboard', () => {
     };
   });
 
+  afterEach(() => {
+    // Clean up any intervals
+    if (InstitutionDashboard.intervalId) {
+      clearInterval(InstitutionDashboard.intervalId);
+      InstitutionDashboard.intervalId = null;
+    }
+    jest.clearAllTimers();
+    jest.restoreAllMocks();
+  });
+
   const sampleData = {
     summary: { programs: 2, courses: 5, faculty: 3, sections: 7 },
     institutions: [{ name: 'Example University' }],
@@ -512,6 +522,230 @@ describe('InstitutionDashboard', () => {
 
       const container = document.getElementById('assessmentProgressContainer');
       expect(container.innerHTML).toContain('No assessment data available');
+    });
+  });
+
+  describe('Initialization and Event Handlers', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('init() sets up visibility change listener', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      // Spy on loadData instead of counting fetch calls
+      const loadDataSpy = jest.spyOn(InstitutionDashboard, 'loadData');
+
+      InstitutionDashboard.init();
+      await Promise.resolve(); // Let initial loadData complete
+
+      // Clear interval to avoid interference
+      clearInterval(InstitutionDashboard.intervalId);
+      
+      // Reset the spy after init
+      loadDataSpy.mockClear();
+
+      // Fast-forward past refresh interval
+      InstitutionDashboard.lastFetch = Date.now() - (6 * 60 * 1000);
+      
+      // Simulate document becoming visible (triggers load)
+      Object.defineProperty(document, 'hidden', { value: false, writable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      await Promise.resolve();
+
+      // Verify loadData was called with silent: true
+      expect(loadDataSpy).toHaveBeenCalledWith({ silent: true });
+    });
+
+    it('init() sets up refresh button click listener', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      InstitutionDashboard.init();
+      await Promise.resolve(); // Let initial loadData complete
+
+      const refreshButton = document.getElementById('institutionRefreshButton');
+      refreshButton.click();
+
+      await Promise.resolve();
+
+      // Initial load + button click = 2 calls
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('init() sets up auto-refresh interval', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      InstitutionDashboard.init();
+      await Promise.resolve();
+
+      // Fast-forward past refresh interval (5 minutes)
+      jest.advanceTimersByTime(5 * 60 * 1000);
+      await Promise.resolve();
+
+      // Initial + one interval refresh
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('init() sets up cleanup listeners for beforeunload', () => {
+      const cleanupSpy = jest.spyOn(InstitutionDashboard, 'cleanup');
+
+      InstitutionDashboard.init();
+
+      window.dispatchEvent(new Event('beforeunload'));
+
+      expect(cleanupSpy).toHaveBeenCalled();
+    });
+
+    it('init() sets up cleanup listeners for pagehide', () => {
+      const cleanupSpy = jest.spyOn(InstitutionDashboard, 'cleanup');
+
+      InstitutionDashboard.init();
+
+      window.dispatchEvent(new Event('pagehide'));
+
+      expect(cleanupSpy).toHaveBeenCalled();
+    });
+
+    it('cleanup() clears the interval', () => {
+      InstitutionDashboard.intervalId = setInterval(() => {}, 1000);
+      const intervalId = InstitutionDashboard.intervalId;
+
+      InstitutionDashboard.cleanup();
+
+      expect(InstitutionDashboard.intervalId).toBeNull();
+    });
+  });
+
+  describe('Data Loading', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    it('loadData() makes fetch request to correct endpoint', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      await InstitutionDashboard.loadData();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/dashboard/data',
+        expect.objectContaining({
+          credentials: 'include',
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          })
+        })
+      );
+    });
+
+    it('loadData() updates cache and renders on success', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const renderSpy = jest.spyOn(InstitutionDashboard, 'render');
+
+      await InstitutionDashboard.loadData();
+
+      expect(InstitutionDashboard.cache).toEqual(sampleData);
+      expect(window.dashboardDataCache).toEqual(sampleData);
+      expect(renderSpy).toHaveBeenCalledWith(sampleData);
+    });
+
+    it('loadData() shows loading states when not silent', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const setLoadingSpy = jest.spyOn(InstitutionDashboard, 'setLoading');
+
+      await InstitutionDashboard.loadData({ silent: false });
+
+      expect(setLoadingSpy).toHaveBeenCalledWith('programManagementContainer', 'Loading programs...');
+      expect(setLoadingSpy).toHaveBeenCalledWith('facultyOverviewContainer', 'Loading faculty...');
+    });
+
+    it('loadData() does not show loading states when silent', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const setLoadingSpy = jest.spyOn(InstitutionDashboard, 'setLoading');
+
+      await InstitutionDashboard.loadData({ silent: true });
+
+      expect(setLoadingSpy).not.toHaveBeenCalled();
+    });
+
+    it('loadData() handles fetch errors gracefully', async () => {
+      global.fetch.mockRejectedValue(new Error('Network error'));
+      const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      await InstitutionDashboard.loadData();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Institution dashboard load error:',
+        expect.any(Error)
+      );
+      expect(showErrorSpy).toHaveBeenCalledWith('programManagementContainer', 'Unable to load program data');
+      expect(showErrorSpy).toHaveBeenCalledWith('facultyOverviewContainer', 'Unable to load faculty data');
+    });
+
+    it('loadData() handles non-ok HTTP responses', async () => {
+      const mockResponse = {
+        ok: false,
+        json: jest.fn().mockResolvedValue({ success: false, error: 'Unauthorized' })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
+
+      await InstitutionDashboard.loadData();
+
+      expect(showErrorSpy).toHaveBeenCalled();
+    });
+
+    it('refresh() calls loadData with silent=false', async () => {
+      const mockResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
+      };
+      global.fetch.mockResolvedValue(mockResponse);
+
+      const loadDataSpy = jest.spyOn(InstitutionDashboard, 'loadData');
+
+      await InstitutionDashboard.refresh();
+
+      expect(loadDataSpy).toHaveBeenCalledWith({ silent: false });
     });
   });
 });
