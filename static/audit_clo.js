@@ -4,6 +4,49 @@
  * Handles the admin interface for reviewing and approving CLOs
  */
 
+/**
+ * Get status badge HTML
+ */
+function getStatusBadge(status) {
+  const badges = {
+    unassigned: '<span class="badge bg-secondary">Unassigned</span>',
+    assigned: '<span class="badge bg-info">Assigned</span>',
+    in_progress: '<span class="badge bg-primary">In Progress</span>',
+    awaiting_approval: '<span class="badge bg-warning">Awaiting Approval</span>',
+    approval_pending: '<span class="badge bg-danger">Needs Rework</span>',
+    approved: '<span class="badge bg-success">✓ Approved</span>'
+  };
+  return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+/**
+ * Format date string
+ */
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleString();
+}
+
+/**
+ * Truncate text
+ */
+function truncateText(text, maxLength) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+/**
+ * Escape HTML
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
   const statusFilter = document.getElementById('statusFilter');
@@ -30,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cloListContainer.addEventListener('click', e => {
     const row = e.target.closest('tr[data-outcome-id]');
     if (row && !e.target.closest('.clo-actions')) {
-      const outcomeId = row.getAttribute('data-outcome-id');
+      const outcomeId = row.dataset.outcomeId;
       if (outcomeId) {
         window.showCLODetails(outcomeId);
       }
@@ -41,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewBtn = e.target.closest('button[data-outcome-id]');
     if (viewBtn) {
       e.stopPropagation();
-      const outcomeId = viewBtn.getAttribute('data-outcome-id');
+      const outcomeId = viewBtn.dataset.outcomeId;
       if (outcomeId) {
         window.showCLODetails(outcomeId);
       }
@@ -216,7 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
           return 0;
       }
 
-      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      let comparison;
+      if (aVal < bVal) {
+        comparison = -1;
+      } else if (aVal > bVal) {
+        comparison = 1;
+      } else {
+        comparison = 0;
+      }
       return order === 'asc' ? comparison : -comparison;
     });
 
@@ -487,47 +537,4 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to approve CLO: ' + error.message);
     }
   };
-
-  /**
-   * Get status badge HTML
-   */
-  function getStatusBadge(status) {
-    const badges = {
-      unassigned: '<span class="badge bg-secondary">Unassigned</span>',
-      assigned: '<span class="badge bg-info">Assigned</span>',
-      in_progress: '<span class="badge bg-primary">In Progress</span>',
-      awaiting_approval: '<span class="badge bg-warning">Awaiting Approval</span>',
-      approval_pending: '<span class="badge bg-danger">Needs Rework</span>',
-      approved: '<span class="badge bg-success">✓ Approved</span>'
-    };
-    return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
-  }
-
-  /**
-   * Format date string
-   */
-  function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  }
-
-  /**
-   * Truncate text
-   */
-  function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  }
-
-  /**
-   * Escape HTML
-   */
-  function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
 });
