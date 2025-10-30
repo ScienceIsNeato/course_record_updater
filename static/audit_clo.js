@@ -457,7 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/outcomes/${outcomeId}/request-rework`, {
         method: 'POST',
@@ -509,7 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
         method: 'POST',
