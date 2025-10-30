@@ -216,7 +216,8 @@ function initializeCreateOfferingModal() {
     createBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch('/api/offerings', {
         method: 'POST',
@@ -292,7 +293,8 @@ function initializeEditOfferingModal() {
     saveBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/offerings/${offeringId}`, {
         method: 'PUT',

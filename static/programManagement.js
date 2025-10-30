@@ -96,7 +96,7 @@ async function loadInstitutionsForDropdown() {
   }
 
   // Use user's institution from the page context (set in template)
-  if (window.userContext?.institutionId) {
+  if (window.userContext && window.userContext.institutionId) {
     select.innerHTML = '<option value="">Select Institution</option>';
 
     const option = document.createElement('option');
@@ -138,7 +138,8 @@ function initializeCreateProgramModal() {
     createBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch('/api/programs', {
         method: 'POST',
@@ -212,7 +213,8 @@ function initializeEditProgramModal() {
     saveBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/programs/${programId}`, {
         method: 'PUT',
@@ -297,7 +299,10 @@ async function deleteProgram(programId, programName) {
       alert(`${programName} deleted successfully.`);
 
       // Refresh dashboard data if available
-      if (typeof window.InstitutionDashboard?.refresh === 'function') {
+      if (
+        window.InstitutionDashboard &&
+        typeof window.InstitutionDashboard.refresh === 'function'
+      ) {
         window.InstitutionDashboard.refresh();
       } else if (typeof window.loadPrograms === 'function') {
         window.loadPrograms();

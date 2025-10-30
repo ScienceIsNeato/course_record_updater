@@ -164,7 +164,10 @@ function initializeCreateCourseModal() {
       department: document.getElementById('courseDepartment').value,
       credit_hours: parseInt(document.getElementById('courseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('courseActive')?.checked ?? true // Default to true if checkbox doesn't exist
+      active: (function () {
+        const checkbox = document.getElementById('courseActive');
+        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+      })()
     };
 
     const createBtn = document.getElementById('createCourseBtn');
@@ -177,7 +180,8 @@ function initializeCreateCourseModal() {
     createBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch('/api/courses', {
         method: 'POST',
@@ -247,7 +251,10 @@ function initializeEditCourseModal() {
       department: document.getElementById('editCourseDepartment').value,
       credit_hours: parseInt(document.getElementById('editCourseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('editCourseActive')?.checked ?? true // Default to true if checkbox doesn't exist
+      active: (function () {
+        const checkbox = document.getElementById('editCourseActive');
+        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+      })()
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -260,7 +267,8 @@ function initializeEditCourseModal() {
     saveBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/courses/${courseId}`, {
         method: 'PUT',

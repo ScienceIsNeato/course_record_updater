@@ -118,7 +118,8 @@ async function acceptInvitation() {
 
   try {
     // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
     const response = await fetch('/api/auth/accept-invitation', {
       method: 'POST',

@@ -63,39 +63,57 @@ class BulkReminderManager {
    */
   setupEventListeners() {
     // Select All / Deselect All
-    document.getElementById('selectAllInstructors')?.addEventListener('click', () => {
-      this.selectAll();
-    });
+    const selectAllBtn = document.getElementById('selectAllInstructors');
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', () => {
+        this.selectAll();
+      });
+    }
 
-    document.getElementById('deselectAllInstructors')?.addEventListener('click', () => {
-      this.deselectAll();
-    });
+    const deselectAllBtn = document.getElementById('deselectAllInstructors');
+    if (deselectAllBtn) {
+      deselectAllBtn.addEventListener('click', () => {
+        this.deselectAll();
+      });
+    }
 
     // Send Reminders button
-    document.getElementById('sendRemindersButton')?.addEventListener('click', () => {
-      this.sendReminders();
-    });
+    const sendBtn = document.getElementById('sendRemindersButton');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        this.sendReminders();
+      });
+    }
 
     // Close button after completion
-    document.getElementById('closeProgressButton')?.addEventListener('click', () => {
-      this.closeModal();
-    });
+    const closeBtn = document.getElementById('closeProgressButton');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.closeModal();
+      });
+    }
 
     // Character count for message
-    document.getElementById('reminderMessage')?.addEventListener('input', e => {
-      const count = e.target.value.length;
-      document.getElementById('messageCharCount').textContent = count;
-    });
+    const messageInput = document.getElementById('reminderMessage');
+    if (messageInput) {
+      messageInput.addEventListener('input', e => {
+        const count = e.target.value.length;
+        document.getElementById('messageCharCount').textContent = count;
+      });
+    }
 
     // Modal shown event - load instructors
-    document.getElementById('bulkReminderModal')?.addEventListener('shown.bs.modal', () => {
-      this.loadInstructors();
-    });
+    const bulkModal = document.getElementById('bulkReminderModal');
+    if (bulkModal) {
+      bulkModal.addEventListener('shown.bs.modal', () => {
+        this.loadInstructors();
+      });
 
-    // Modal hidden event - reset state
-    document.getElementById('bulkReminderModal')?.addEventListener('hidden.bs.modal', () => {
-      this.resetModal();
-    });
+      // Modal hidden event - reset state
+      bulkModal.addEventListener('hidden.bs.modal', () => {
+        this.resetModal();
+      });
+    }
   }
 
   /**
@@ -313,7 +331,8 @@ class BulkReminderManager {
       this.showProgressView();
 
       // Get CSRF token
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       // Send request to API
       const response = await fetch('/api/bulk-email/send-instructor-reminders', {
@@ -443,8 +462,9 @@ class BulkReminderManager {
 
     // Add status message
     if (job.emails_sent > 0) {
+      const lastMessageDiv = document.querySelector('#reminderStatusMessages div:last-child');
       const lastMessage =
-        document.querySelector('#reminderStatusMessages div:last-child')?.textContent || '';
+        lastMessageDiv && lastMessageDiv.textContent ? lastMessageDiv.textContent : '';
       const newMessage = `Sent ${job.emails_sent}/${job.recipient_count} reminders...`;
       if (!lastMessage.includes(newMessage)) {
         this.addStatusMessage(newMessage, 'success');
