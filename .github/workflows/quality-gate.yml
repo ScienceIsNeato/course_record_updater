@@ -577,22 +577,6 @@ jobs:
         PYTHONPATH: .
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    - name: Verify metadata file exists
-      if: always()
-      run: |
-        if [ -f .sonar_run_metadata.json ]; then
-          echo "✅ Metadata file found"
-          cat .sonar_run_metadata.json
-        else
-          echo "❌ Metadata file not found - creating placeholder"
-          echo '{"timestamp":"unknown","branch":"unknown","commit":"unknown","status":"failed"}' > .sonar_run_metadata.json
-        fi
-    - name: Upload analysis metadata
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: sonar-metadata
-        path: .sonar_run_metadata.json
 
   sonarcloud-status:
     runs-on: ubuntu-latest
@@ -619,10 +603,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Download analysis metadata
-      uses: actions/download-artifact@v4
-      with:
-        name: sonar-metadata
     - name: Check SonarCloud Quality Gate (Step 2 - Fetch Results)
       run: python scripts/ship_it.py --checks sonar-status
       env:
