@@ -159,72 +159,51 @@ class DashboardService:
             "activity": system_activity[:25],
         }
 
-    def _get_institution_admin_data(
-        self, institution_id: Optional[str]
-    ) -> Dict[str, Any]:
-        if not institution_id:
-            raise DashboardServiceError(
-                "Institution context required for admin dashboard"
-            )
-
+    def _fetch_institution_raw_data(self, institution_id: str) -> Dict[str, Any]:
+        """Fetch all raw data for an institution from database."""
         institution = get_institution_by_id(institution_id) or {}
-        institution_name = institution.get("name")
+        return {
+            "institution": institution,
+            "institution_name": institution.get("name"),
+            "programs": get_programs_by_institution(institution_id) or [],
+            "courses": get_all_courses(institution_id) or [],
+            "users": get_all_users(institution_id) or [],
+            "instructors": get_all_instructors(institution_id) or [],
+            "sections": get_all_sections(institution_id) or [],
+            "offerings": get_all_course_offerings(institution_id) or [],
+            "terms": get_active_terms(institution_id) or [],
+        }
 
-        programs = get_programs_by_institution(institution_id) or []
-        courses = get_all_courses(institution_id) or []
-        # Enrich courses with CLO data
-        courses = self._enrich_courses_with_clo_data(courses, load_clos=True)
-        users = get_all_users(institution_id) or []
-        instructors = get_all_instructors(institution_id) or []
-        sections = get_all_sections(institution_id) or []
-        offerings = get_all_course_offerings(institution_id) or []
-        terms = get_active_terms(institution_id) or []
-
-        # Collect all CLOs from courses
+    def _collect_clos_from_courses(
+        self, courses: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Collect all CLOs from courses, enriching them with course metadata."""
         all_clos = []
         for course in courses:
-            course_clos = course.get("clos", [])
-            for clo in course_clos:
-                # Add course_number for frontend display
+            for clo in course.get("clos", []):
                 clo_copy = dict(clo)
                 clo_copy["course_number"] = course.get("course_number", "")
                 clo_copy["course_title"] = course.get("course_title", "")
                 all_clos.append(clo_copy)
+        return all_clos
 
-        course_index = self._index_by_keys(courses, ["course_id", "id"])
-        program_index = {self._get_program_id(program): program for program in programs}
-        faculty = self._build_faculty_directory(users, instructors)
-
-        # Create offering_id -> course_id mapping
-        # Try both offering_id and id as keys since to_dict might return either
+    def _build_offering_to_course_mapping(
+        self, offerings: List[Dict[str, Any]]
+    ) -> Dict[str, str]:
+        """Create offering_id -> course_id mapping."""
         offering_to_course = {}
         for offering in offerings:
             offering_id = offering.get("offering_id") or offering.get("id")
             course_id = offering.get("course_id")
             if offering_id and course_id:
                 offering_to_course[offering_id] = course_id
+        return offering_to_course
 
-        # Enrich sections with course data and instructor info
-        sections = self._enrich_sections_with_course_data(
-            sections, course_index, offering_to_course
-        )
-        sections = self._enrich_sections_with_instructor_data(sections, users)
-
-        # Enrich terms with offering counts
-        terms = self._enrich_terms_with_offering_counts(terms, offerings)
-
-        program_metrics = self._build_program_metrics(
-            programs,
-            courses,
-            sections,
-            faculty,
-        )
-
-        faculty_assignments = self._build_faculty_assignments(
-            faculty, program_metrics, course_index, sections
-        )
-
-        summary = {
+    def _build_institution_summary(
+        self, programs: List, courses: List, users: List, faculty: List, sections: List
+    ) -> Dict[str, int]:
+        """Build summary statistics for institution."""
+        return {
             "institutions": 1,
             "programs": len(programs),
             "courses": len(courses),
@@ -234,9 +213,49 @@ class DashboardService:
             "students": self._total_enrollment(sections),
         }
 
+    def _get_institution_admin_data(
+        self, institution_id: Optional[str]
+    ) -> Dict[str, Any]:
+        if not institution_id:
+            raise DashboardServiceError(
+                "Institution context required for admin dashboard"
+            )
+
+        # Fetch all raw data
+        raw = self._fetch_institution_raw_data(institution_id)
+        institution_name = raw["institution_name"]
+
+        # Enrich courses with CLO data
+        courses = self._enrich_courses_with_clo_data(raw["courses"], load_clos=True)
+        all_clos = self._collect_clos_from_courses(courses)
+
+        # Build indexes and mappings
+        course_index = self._index_by_keys(courses, ["course_id", "id"])
+        program_index = {self._get_program_id(p): p for p in raw["programs"]}
+        faculty = self._build_faculty_directory(raw["users"], raw["instructors"])
+        offering_to_course = self._build_offering_to_course_mapping(raw["offerings"])
+
+        # Enrich sections and terms
+        sections = self._enrich_sections_with_course_data(
+            raw["sections"], course_index, offering_to_course
+        )
+        sections = self._enrich_sections_with_instructor_data(sections, raw["users"])
+        terms = self._enrich_terms_with_offering_counts(raw["terms"], raw["offerings"])
+
+        # Build metrics and aggregations
+        program_metrics = self._build_program_metrics(
+            raw["programs"], courses, sections, faculty
+        )
+        faculty_assignments = self._build_faculty_assignments(
+            faculty, program_metrics, course_index, sections
+        )
+        summary = self._build_institution_summary(
+            raw["programs"], courses, raw["users"], faculty, sections
+        )
+
+        # Build enriched result
         enriched_programs = [
-            self._annotate_program(program_index, metrics)
-            for metrics in program_metrics
+            self._annotate_program(program_index, m) for m in program_metrics
         ]
 
         enriched: Dict[str, Any] = {
@@ -246,15 +265,17 @@ class DashboardService:
             "courses": self._with_institution(
                 courses, institution_id, institution_name
             ),
-            "users": self._with_institution(users, institution_id, institution_name),
+            "users": self._with_institution(
+                raw["users"], institution_id, institution_name
+            ),
             "instructors": self._with_institution(
-                instructors, institution_id, institution_name
+                raw["instructors"], institution_id, institution_name
             ),
             "sections": self._with_institution(
                 sections, institution_id, institution_name
             ),
             "offerings": self._with_institution(
-                offerings, institution_id, institution_name
+                raw["offerings"], institution_id, institution_name
             ),
             "terms": self._with_institution(terms, institution_id, institution_name),
             "clos": self._with_institution(all_clos, institution_id, institution_name),
@@ -267,8 +288,8 @@ class DashboardService:
             {
                 "institution_id": institution_id,
                 "name": institution_name,
-                "user_count": len(users),
-                "program_count": len(programs),
+                "user_count": len(raw["users"]),
+                "program_count": len(raw["programs"]),
                 "course_count": len(courses),
                 "faculty_count": len(faculty),
                 "section_count": len(sections),
