@@ -322,7 +322,11 @@ class BulkEmailService:
 
         # Build the link with course-specific redirect if available
         if course_id:
-            link = f"{base_url}/reminder-login?next=/assessments?course={course_id}"
+            # URL encode the next parameter to avoid double ? in URL
+            from urllib.parse import quote
+
+            next_url = quote(f"/assessments?course={course_id}")
+            link = f"{base_url}/reminder-login?next={next_url}"
             button_text = "Enter Course Assessments"
         else:
             link = f"{base_url}/reminder-login"

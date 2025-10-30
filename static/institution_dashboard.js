@@ -16,6 +16,16 @@
     assessmentContainer: 'assessmentProgressContainer'
   };
 
+  /**
+   * Escape HTML to prevent XSS
+   */
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   const InstitutionDashboard = {
     cache: null,
     lastFetch: 0,
@@ -33,6 +43,41 @@
       if (refreshButton) {
         refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
       }
+
+      // Event delegation for action buttons
+      document.addEventListener('click', e => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+
+        const action = target.getAttribute('data-action');
+        if (action === 'edit-section') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleEditSection(target);
+        } else if (action === 'send-reminder') {
+          e.preventDefault();
+          e.stopPropagation();
+          const instructorId = target.getAttribute('data-instructor-id');
+          const courseId = target.getAttribute('data-course-id');
+          const instructor = target.getAttribute('data-instructor');
+          const courseNumber = target.getAttribute('data-course-number');
+          if (instructorId && courseId && instructor && courseNumber) {
+            this.sendCourseReminder(instructorId, courseId, instructor, courseNumber);
+          }
+        } else if (action === 'edit-course') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleEditCourse(target);
+        } else if (action === 'delete-program') {
+          e.preventDefault();
+          e.stopPropagation();
+          const programId = target.getAttribute('data-program-id');
+          const programName = target.getAttribute('data-program-name');
+          if (programId && programName && typeof window.deleteProgram === 'function') {
+            window.deleteProgram(programId, programName);
+          }
+        }
+      });
 
       this.loadData();
       this.intervalId = setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
@@ -192,7 +237,9 @@
             actions: `
               <button class="btn btn-sm btn-outline-primary me-1" onclick="return false;">Manage</button>
               <button class="btn btn-sm btn-outline-danger" 
-                      onclick="deleteProgram('${program.program_id}', '${(program.program_name || program.name || 'Unnamed Program').replace(/'/g, '&#39;')}'); return false;">
+                      data-action="delete-program"
+                      data-program-id="${escapeHtml(String(program.program_id))}"
+                      data-program-name="${escapeHtml(program.program_name || program.name || 'Unnamed Program')}">
                 <i class="fas fa-trash"></i>
               </button>
             `
@@ -313,14 +360,24 @@
           const instructorId = section.instructor_id || '';
           const instructorEmail = section.instructor_email || '';
 
-          // Build action buttons
-          let actionsHtml = `<button class="btn btn-sm btn-outline-primary" data-section-id="${sectionId}" data-section-data="${sectionDataJson}" onclick="InstitutionDashboard.handleEditSection(this); return false;">Edit</button>`;
+          // Build action buttons - use data attributes instead of onclick
+          const sectionIdEscaped = escapeHtml(String(sectionId));
+          const courseIdEscaped = escapeHtml(String(courseId));
+          const instructorIdEscaped = escapeHtml(String(instructorId));
+          const instructorEscaped = escapeHtml(String(instructor));
+          const numberEscaped = escapeHtml(String(number));
+
+          let actionsHtml = `<button class="btn btn-sm btn-outline-primary" data-action="edit-section" data-section-id="${sectionIdEscaped}" data-section-data="${sectionDataJson}">Edit</button>`;
 
           // Add reminder button if instructor is assigned
           if (instructorId && instructorEmail) {
             actionsHtml += ` <button class="btn btn-sm btn-outline-secondary" 
-              onclick="InstitutionDashboard.sendCourseReminder('${instructorId}', '${courseId}', '${instructor}', '${number}'); return false;" 
-              title="Send reminder to ${instructor}">
+              data-action="send-reminder" 
+              data-instructor-id="${instructorIdEscaped}" 
+              data-course-id="${courseIdEscaped}" 
+              data-instructor="${instructorEscaped}" 
+              data-course-number="${numberEscaped}"
+              title="Send reminder to ${instructorEscaped}">
               <i class="fas fa-envelope"></i>
             </button>`;
           }
@@ -378,7 +435,7 @@
             credits: (course.credit_hours ?? '-').toString(),
             credits_sort: (course.credit_hours ?? 0).toString(),
             department: course.department || '-',
-            actions: `<button class="btn btn-sm btn-outline-primary" data-course-id="${courseId}" data-course-data="${courseDataJson}" onclick="InstitutionDashboard.handleEditCourse(this); return false;">Edit</button>`
+            actions: `<button class="btn btn-sm btn-outline-primary" data-action="edit-course" data-course-id="${escapeHtml(String(courseId))}" data-course-data="${courseDataJson}">Edit</button>`
           };
         })
       });

@@ -144,12 +144,17 @@ describe('InstitutionDashboard', () => {
       global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
 
       const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       await InstitutionDashboard.refresh();
 
+      expect(consoleErrorSpy).toHaveBeenCalled();
       expect(showErrorSpy).toHaveBeenCalled();
 
       showErrorSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+      // Reset fetch mock for subsequent tests
+      global.fetch = jest.fn();
     });
 
     it('handles different loading states', () => {
@@ -265,10 +270,11 @@ describe('InstitutionDashboard', () => {
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
       expect(callArgs.data).toHaveLength(1);
       
-      // Verify action buttons include reminder button
+      // Verify action buttons include reminder button with data-action attribute
       const sectionData = callArgs.data[0];
       expect(sectionData.actions).toContain('btn-outline-secondary');
-      expect(sectionData.actions).toContain('sendCourseReminder');
+      expect(sectionData.actions).toContain('data-action="send-reminder"');
+      expect(sectionData.actions).toContain('data-instructor-id="inst1"');
       expect(sectionData.actions).toContain('Dr. Smith');
     });
 
@@ -299,9 +305,9 @@ describe('InstitutionDashboard', () => {
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
       const sectionData = callArgs.data[0];
       
-      // Should have Edit button but NOT reminder button
-      expect(sectionData.actions).toContain('handleEditSection');
-      expect(sectionData.actions).not.toContain('sendCourseReminder');
+      // Should have Edit button with data-action attribute (not onclick)
+      expect(sectionData.actions).toContain('data-action="edit-section"');
+      expect(sectionData.actions).not.toContain('send-reminder');
     });
   });
 
@@ -741,11 +747,14 @@ describe('InstitutionDashboard', () => {
       };
       global.fetch.mockResolvedValue(mockResponse);
 
+      // Spy on loadData but don't replace implementation
       const loadDataSpy = jest.spyOn(InstitutionDashboard, 'loadData');
 
       await InstitutionDashboard.refresh();
 
       expect(loadDataSpy).toHaveBeenCalledWith({ silent: false });
+      
+      loadDataSpy.mockRestore();
     });
   });
 });

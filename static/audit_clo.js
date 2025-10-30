@@ -26,6 +26,28 @@ document.addEventListener('DOMContentLoaded', () => {
   sortBy.addEventListener('change', renderCLOList);
   sortOrder.addEventListener('change', renderCLOList);
 
+  // Event delegation for CLO row clicks
+  cloListContainer.addEventListener('click', e => {
+    const row = e.target.closest('tr[data-outcome-id]');
+    if (row && !e.target.closest('.clo-actions')) {
+      const outcomeId = row.getAttribute('data-outcome-id');
+      if (outcomeId) {
+        window.showCLODetails(outcomeId);
+      }
+      return;
+    }
+
+    // Handle View button clicks
+    const viewBtn = e.target.closest('button[data-outcome-id]');
+    if (viewBtn) {
+      e.stopPropagation();
+      const outcomeId = viewBtn.getAttribute('data-outcome-id');
+      if (outcomeId) {
+        window.showCLODetails(outcomeId);
+      }
+    }
+  });
+
   requestReworkForm.addEventListener('submit', async e => {
     e.preventDefault();
     await submitReworkRequest();
@@ -62,7 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Render list
       renderCLOList();
     } catch (error) {
-      // Log error silently
+      // Log error to aid debugging
+      // eslint-disable-next-line no-console
+      console.error('Error loading CLOs:', error);
       cloListContainer.innerHTML = `
                 <div class="alert alert-danger">
                     <strong>Error:</strong> Failed to load CLOs. ${error.message}
@@ -91,7 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('statApproved').textContent = approved;
       document.getElementById('statInProgress').textContent = inProgress;
     } catch (error) {
-      // Silently fail stats update
+      // Log error to aid debugging, but allow graceful degradation
+      // eslint-disable-next-line no-console
+      console.error('Error updating stats:', error);
     }
   }
 
@@ -133,18 +159,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusBadge = getStatusBadge(clo.status);
       const description = truncateText(clo.description, 60);
       const submittedDate = clo.submitted_at ? formatDate(clo.submitted_at) : 'N/A';
+      const outcomeId = escapeHtml(String(clo.outcome_id || clo.id));
 
       html += `
-                <tr data-outcome-id="${clo.outcome_id || clo.id}" style="cursor: pointer;" onclick="window.showCLODetails('${clo.outcome_id || clo.id}')">
+                <tr data-outcome-id="${outcomeId}" style="cursor: pointer;" class="clo-row">
                     <td>${statusBadge}</td>
                     <td><strong>${escapeHtml(clo.course_number || 'N/A')}</strong></td>
                     <td>${escapeHtml(clo.clo_number || 'N/A')}</td>
                     <td>${escapeHtml(description)}</td>
                     <td>${escapeHtml(clo.instructor_name || 'N/A')}</td>
                     <td><small>${submittedDate}</small></td>
-                    <td onclick="event.stopPropagation();">
+                    <td class="clo-actions">
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="window.showCLODetails('${clo.outcome_id || clo.id}')">
+                            <button class="btn btn-outline-primary" data-outcome-id="${outcomeId}">
                                 <i class="fas fa-eye"></i> View
                             </button>
                         </div>
@@ -373,10 +400,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const outcomeId = currentCLO.outcome_id || currentCLO.id;
+    if (!outcomeId) {
+      alert('Error: CLO ID not found');
+      return;
+    }
+
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-      const response = await fetch(`/api/outcomes/${currentCLO.outcome_id}/request-rework`, {
+      const response = await fetch(`/api/outcomes/${outcomeId}/request-rework`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,10 +452,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const outcomeId = currentCLO.outcome_id || currentCLO.id;
+    if (!outcomeId) {
+      alert('Error: CLO ID not found');
+      return;
+    }
+
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-      const response = await fetch(`/api/outcomes/${currentCLO.outcome_id}/approve`, {
+      const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

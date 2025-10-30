@@ -4,7 +4,7 @@ CLO Workflow Service
 Manages the submission, review, and approval workflow for Course Learning Outcomes (CLOs).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from constants import CLOApprovalStatus, CLOStatus
@@ -39,7 +39,7 @@ class CLOWorkflowService:
             # Update status and submission metadata
             update_data = {
                 "status": CLOStatus.AWAITING_APPROVAL,
-                "submitted_at": datetime.utcnow(),
+                "submitted_at": datetime.now(timezone.utc),
                 "submitted_by_user_id": user_id,
                 "approval_status": CLOApprovalStatus.PENDING,
             }
@@ -92,7 +92,7 @@ class CLOWorkflowService:
             update_data = {
                 "status": CLOStatus.APPROVED,
                 "approval_status": CLOApprovalStatus.APPROVED,
-                "reviewed_at": datetime.utcnow(),
+                "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by_user_id": reviewer_id,
             }
 
@@ -145,10 +145,10 @@ class CLOWorkflowService:
             update_data = {
                 "status": CLOStatus.APPROVAL_PENDING,
                 "approval_status": CLOApprovalStatus.NEEDS_REWORK,
-                "reviewed_at": datetime.utcnow(),
+                "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by_user_id": reviewer_id,
                 "feedback_comments": comments,
-                "feedback_provided_at": datetime.utcnow(),
+                "feedback_provided_at": datetime.now(timezone.utc),
             }
 
             success = db.update_course_outcome(outcome_id, update_data)

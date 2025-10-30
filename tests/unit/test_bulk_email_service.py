@@ -205,7 +205,8 @@ class TestBulkEmailService:
 
         assert "Dr. Smith" in html
         assert "course-123" in html
-        assert "/reminder-login?next=/assessments?course=course-123" in html
+        # URL should be properly encoded (old bug had double ?)
+        assert "/reminder-login?next=/assessments%3Fcourse%3Dcourse-123" in html
         assert "Enter Course Assessments" in html
 
     def test_render_reminder_text_with_all_fields(self):
