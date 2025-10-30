@@ -328,3 +328,231 @@ class TestCLOAuditEndpoints:
             json={"comments": "Please fix this"},
         )
         assert_json_response(response, 500, False)
+
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_submit_clo_institution_mismatch(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test submitting CLO from different institution returns 404."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "in_progress",
+        }
+        mock_get_course.return_value = {
+            "id": "course-1",
+            "institution_id": "different-inst",
+        }
+
+        response = client.post("/api/outcomes/outcome-1/submit")
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_current_user")
+    @patch("api.routes.clo_workflow.get_current_institution_id")
+    def test_get_clos_for_audit_exception_handling(
+        self, mock_get_inst_id, mock_get_user, mock_workflow, client
+    ):
+        """Test get_clos_for_audit handles exceptions gracefully."""
+        mock_get_inst_id.return_value = "inst-123"
+        mock_get_user.return_value = {
+            "id": "user-123",
+            "role": "institution_admin",
+        }
+        mock_workflow.get_clos_by_status.side_effect = Exception("Database error")
+
+        response = client.get("/api/outcomes/audit")
+        data = assert_json_response(response, 500, False)
+        assert "error" in data
+
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_approve_clo_not_found(
+        self, mock_get_outcome, client, mock_institution, mock_session
+    ):
+        """Test approving non-existent CLO returns 404."""
+        mock_get_outcome.return_value = None
+        response = client.post("/api/outcomes/nonexistent/approve")
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_approve_clo_institution_mismatch(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test approving CLO from different institution returns 404."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {
+            "id": "course-1",
+            "institution_id": "different-inst",
+        }
+
+        response = client.post("/api/outcomes/outcome-1/approve")
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_request_rework_not_found(
+        self, mock_get_outcome, client, mock_institution, mock_session
+    ):
+        """Test requesting rework on non-existent CLO returns 404."""
+        mock_get_outcome.return_value = None
+        response = client.post(
+            "/api/outcomes/nonexistent/request-rework",
+            json={"comments": "Please fix"},
+        )
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_request_rework_institution_mismatch(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test requesting rework on CLO from different institution returns 404."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {
+            "id": "course-1",
+            "institution_id": "different-inst",
+        }
+
+        response = client.post(
+            "/api/outcomes/outcome-1/request-rework",
+            json={"comments": "Please fix"},
+        )
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_get_clo_audit_details_success(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test successfully getting CLO audit details."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.get_outcome_with_details.return_value = {
+            "id": "outcome-1",
+            "course_number": "CS101",
+            "instructor_name": "Dr. Smith",
+            "submission_history": [],
+        }
+
+        response = client.get("/api/outcomes/outcome-1/audit-details")
+
+        data = assert_json_response(response, 200, True)
+        assert "outcome" in data
+        assert data["outcome"]["id"] == "outcome-1"
+
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_get_clo_audit_details_not_found(
+        self, mock_get_outcome, client, mock_institution, mock_session
+    ):
+        """Test getting audit details for non-existent CLO returns 404."""
+        mock_get_outcome.return_value = None
+        response = client.get("/api/outcomes/nonexistent/audit-details")
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_get_clo_audit_details_institution_mismatch(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test getting audit details for CLO from different institution returns 404."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {
+            "id": "course-1",
+            "institution_id": "different-inst",
+        }
+
+        response = client.get("/api/outcomes/outcome-1/audit-details")
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_get_clo_audit_details_service_returns_none(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test getting audit details when service returns None."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.get_outcome_with_details.return_value = None
+
+        response = client.get("/api/outcomes/outcome-1/audit-details")
+        assert_json_response(response, 500, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_get_clo_audit_details_exception_handling(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test get_clo_audit_details handles exceptions gracefully."""
+        mock_get_outcome.return_value = {
+            "id": "outcome-1",
+            "course_id": "course-1",
+            "status": "awaiting_approval",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.get_outcome_with_details.side_effect = Exception("Database error")
+
+        response = client.get("/api/outcomes/outcome-1/audit-details")
+        data = assert_json_response(response, 500, False)
+        assert "error" in data
