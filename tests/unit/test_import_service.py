@@ -1326,3 +1326,261 @@ class TestCourseProgramLinkingFeature:
 
         service = ImportService("inst-123")
         service._link_courses_to_programs()  # Should not crash - just log warning
+
+
+class TestOfferingImportErrorPaths:
+    """Test error paths and edge cases in _process_offering_import"""
+
+    @patch("import_service.get_course_by_number")
+    @patch("import_service.get_term_by_name")
+    def test_offering_import_missing_course_number(
+        self, mock_get_term, mock_get_course
+    ):
+        """Test offering import fails gracefully when course_number is missing"""
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"term_name": "Fall 2024"}, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Missing course_number or term_name" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_by_number")
+    @patch("import_service.get_term_by_name")
+    def test_offering_import_missing_term_name(self, mock_get_term, mock_get_course):
+        """Test offering import fails gracefully when term_name is missing"""
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "BIO101"}, ConflictStrategy.USE_THEIRS, dry_run=False
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Missing course_number or term_name" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_offering_import_course_not_found(self, mock_get_course, mock_get_term):
+        """Test offering import when course doesn't exist"""
+        mock_get_course.return_value = None
+        mock_get_term.return_value = {"term_id": "term-123"}
+
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "NONEXISTENT", "term_name": "Fall 2024"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Course NONEXISTENT not found" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_offering_import_term_not_found(self, mock_get_course, mock_get_term):
+        """Test offering import when term doesn't exist"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = None
+
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "BIO101", "term_name": "Nonexistent Term"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Term Nonexistent Term not found" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_offering_by_course_and_term")
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_offering_import_dry_run(
+        self, mock_get_course, mock_get_term, mock_get_offering
+    ):
+        """Test offering import in dry run mode"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = {"term_id": "term-123"}
+
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "BIO101", "term_name": "Fall 2024"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=True,
+        )
+        assert service.stats["records_created"] == 0
+        assert len(service.stats["errors"]) == 0
+
+    @patch("import_service.create_course_offering")
+    @patch("import_service.get_course_offering_by_course_and_term")
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_offering_import_creation_fails(
+        self,
+        mock_get_course,
+        mock_get_term,
+        mock_get_offering,
+        mock_create_offering,
+    ):
+        """Test offering import handles creation failure"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = {"term_id": "term-123"}
+        mock_get_offering.return_value = None
+        mock_create_offering.return_value = None
+
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "BIO101", "term_name": "Fall 2024"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Failed to create offering" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_offering_import_exception_handling(self, mock_get_course, mock_get_term):
+        """Test offering import handles unexpected exceptions"""
+        mock_get_course.side_effect = Exception("Database error")
+
+        service = ImportService("inst-123")
+        service._process_offering_import(
+            {"course_number": "BIO101", "term_name": "Fall 2024"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Error processing offering" in service.stats["errors"][0]
+
+
+class TestSectionImportErrorPaths:
+    """Test error paths and edge cases in _process_section_import"""
+
+    @patch("import_service.get_course_by_number")
+    @patch("import_service.get_term_by_name")
+    def test_section_import_missing_course_number(self, mock_get_term, mock_get_course):
+        """Test section import fails gracefully when course_number is missing"""
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {"term_name": "Fall 2024", "section_number": "001"},
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Missing course_number or term_name" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_section_import_course_not_found(self, mock_get_course, mock_get_term):
+        """Test section import when course doesn't exist"""
+        mock_get_course.return_value = None
+        # Term lookup happens after course lookup, so return valid term
+        # But both are called before checking, so ensure term lookup succeeds
+        mock_get_term.return_value = {"term_id": "term-123"}
+
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {
+                "course_number": "NONEXISTENT",
+                "term_name": "Fall 2024",
+                "section_number": "001",
+            },
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        # Course check happens first, so this should be the error
+        assert len(service.stats["errors"]) == 1
+        # Verify course lookup was called
+        assert mock_get_course.called
+        # Error should be about course, not term
+        assert "Course NONEXISTENT not found" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_section_import_term_not_found(self, mock_get_course, mock_get_term):
+        """Test section import when term doesn't exist"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = None
+
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {
+                "course_number": "BIO101",
+                "term_name": "Nonexistent Term",
+                "section_number": "001",
+            },
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Term Nonexistent Term not found" in service.stats["errors"][0]
+
+    @patch("import_service.get_course_offering_by_course_and_term")
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_section_import_dry_run(
+        self, mock_get_course, mock_get_term, mock_get_offering
+    ):
+        """Test section import in dry run mode"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = {"term_id": "term-123"}
+        mock_get_offering.return_value = None
+
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {
+                "course_number": "BIO101",
+                "term_name": "Fall 2024",
+                "section_number": "001",
+            },
+            ConflictStrategy.USE_THEIRS,
+            dry_run=True,
+        )
+        assert service.stats["records_created"] == 0
+        assert len(service.stats["errors"]) == 0
+
+    @patch("import_service.create_course_section")
+    @patch("import_service.get_user_by_email")
+    @patch("import_service.get_course_offering_by_course_and_term")
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_section_import_creation_fails(
+        self,
+        mock_get_course,
+        mock_get_term,
+        mock_get_offering,
+        mock_get_user,
+        mock_create_section,
+    ):
+        """Test section import handles creation failure"""
+        mock_get_course.return_value = {"course_id": "course-123"}
+        mock_get_term.return_value = {"term_id": "term-123"}
+        mock_get_offering.return_value = {"offering_id": "offering-123"}
+        mock_create_section.return_value = None
+
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {
+                "course_number": "BIO101",
+                "term_name": "Fall 2024",
+                "section_number": "001",
+            },
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Failed to create section" in service.stats["errors"][0]
+
+    @patch("import_service.get_term_by_name")
+    @patch("import_service.get_course_by_number")
+    def test_section_import_exception_handling(self, mock_get_course, mock_get_term):
+        """Test section import handles unexpected exceptions"""
+        mock_get_course.side_effect = Exception("Database error")
+
+        service = ImportService("inst-123")
+        service._process_section_import(
+            {
+                "course_number": "BIO101",
+                "term_name": "Fall 2024",
+                "section_number": "001",
+            },
+            ConflictStrategy.USE_THEIRS,
+            dry_run=False,
+        )
+        assert len(service.stats["errors"]) == 1
+        assert "Error processing section" in service.stats["errors"][0]
