@@ -68,7 +68,7 @@ def handle_csrf_error(e):
         )
     # For non-API routes, return simple HTML error
     return (
-        f"<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
+        "<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
         400,
     )
 

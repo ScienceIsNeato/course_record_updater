@@ -316,7 +316,7 @@ class BulkEmailService:
             <p><strong>Deadline:</strong> {deadline}</p>
         """
 
-        html += f"""
+        html += """
             <p>Please click the button below to submit your course information:</p>
             """
 
