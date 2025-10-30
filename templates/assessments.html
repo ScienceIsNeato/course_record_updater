@@ -119,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const sectionsResponse = await fetch('/api/sections');
             console.log(`📢 /api/sections response: ${sectionsResponse.status}`);
             if (!sectionsResponse.ok) throw new Error('Failed to load sections');
-            
             const sectionsData = await sectionsResponse.json();
             const sections = sectionsData.sections || [];
             instructorSections = sections; // Store for later use
@@ -140,7 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const coursesResponse = await fetch('/api/courses');
             console.log(`📢 /api/courses response: ${coursesResponse.status}`);
             if (!coursesResponse.ok) throw new Error('Failed to load courses');
-            
             const coursesData = await coursesResponse.json();
             const allCourses = coursesData.courses || [];
             console.log(`📢 Got ${allCourses.length} total courses`);
