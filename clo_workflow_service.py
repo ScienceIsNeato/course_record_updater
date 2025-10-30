@@ -361,6 +361,31 @@ Course Record System
             return []
 
     @staticmethod
+    def _get_instructor_from_course(course_id: str) -> Optional[Dict[str, Any]]:
+        """Get instructor details from the first section of a course."""
+        sections = db.get_sections_by_course(course_id)
+        if not sections:
+            return None
+
+        section = sections[0]
+        instructor_id = section.get("instructor_id")
+        if not instructor_id:
+            return None
+
+        return db.get_user(instructor_id)
+
+    @staticmethod
+    def _build_instructor_name(instructor: Dict[str, Any]) -> Optional[str]:
+        """Build instructor full name from user data."""
+        instructor_name = instructor.get("display_name")
+        if instructor_name:
+            return instructor_name
+
+        first = instructor.get("first_name", "")
+        last = instructor.get("last_name", "")
+        return f"{first} {last}".strip() or None
+
+    @staticmethod
     def get_outcome_with_details(outcome_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a course outcome with enriched course and instructor details.
@@ -382,33 +407,18 @@ Course Record System
             course = db.get_course(course_id) if course_id else None
 
             # Get instructor from course section
-            # Note: This assumes we can find the section from the course
-            # In practice, we may need to add section_id to CourseOutcome
             instructor = None
+            instructor_name = None
             instructor_email = None
             if course:
-                # Try to find the active section for this course
-                sections = db.get_sections_by_course(course_id)
-                if sections:
-                    # Get the first section's instructor
-                    section = sections[0]
-                    instructor_id = section.get("instructor_id")
-                    if instructor_id:
-                        instructor = db.get_user(instructor_id)
-                        instructor_email = (
-                            instructor.get("email") if instructor else None
-                        )
+                instructor = CLOWorkflowService._get_instructor_from_course(course_id)
+                if instructor:
+                    instructor_name = CLOWorkflowService._build_instructor_name(
+                        instructor
+                    )
+                    instructor_email = instructor.get("email")
 
             # Build enriched result
-            instructor_name = None
-            if instructor:
-                # User model has display_name, first_name, last_name (not full_name)
-                instructor_name = instructor.get("display_name")
-                if not instructor_name:
-                    first = instructor.get("first_name", "")
-                    last = instructor.get("last_name", "")
-                    instructor_name = f"{first} {last}".strip() or None
-
             result = {
                 **outcome,
                 "course_number": course.get("course_number") if course else None,
