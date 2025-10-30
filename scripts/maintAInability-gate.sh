@@ -854,10 +854,35 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
         echo "🔧 Uploading analysis to SonarCloud..."
         SCAN_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         
-        if sonar-scanner \
-          -Dsonar.qualitygate.wait=false \
-          -Dsonar.python.coverage.reportPaths=coverage.xml \
-          -Dsonar.python.xunit.reportPath=test-results.xml; then
+        # Detect PR context from GitHub Actions environment
+        SONAR_ARGS=(
+          -Dsonar.qualitygate.wait=false
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.python.xunit.reportPath=test-results.xml
+        )
+        
+        # Configure PR analysis if running in GitHub Actions PR context
+        if [[ -n "${GITHUB_PULL_REQUEST_NUMBER:-}" ]]; then
+          echo "🔍 Detected PR context: PR #${GITHUB_PULL_REQUEST_NUMBER}"
+          SONAR_ARGS+=(
+            -Dsonar.pullrequest.key="${GITHUB_PULL_REQUEST_NUMBER}"
+            -Dsonar.pullrequest.branch="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
+            -Dsonar.pullrequest.base="${GITHUB_BASE_REF:-main}"
+          )
+        elif [[ -n "${GITHUB_REF}" ]] && [[ "${GITHUB_REF}" =~ ^refs/pull/[0-9]+/merge$ ]]; then
+          # Extract PR number from GITHUB_REF (format: refs/pull/21/merge)
+          PR_NUMBER=$(echo "${GITHUB_REF}" | sed -n 's|refs/pull/\([0-9]*\)/merge|\1|p')
+          if [[ -n "${PR_NUMBER}" ]]; then
+            echo "🔍 Detected PR context: PR #${PR_NUMBER}"
+            SONAR_ARGS+=(
+              -Dsonar.pullrequest.key="${PR_NUMBER}"
+              -Dsonar.pullrequest.branch="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
+              -Dsonar.pullrequest.base="${GITHUB_BASE_REF:-main}"
+            )
+          fi
+        fi
+        
+        if sonar-scanner "${SONAR_ARGS[@]}"; then
           echo "✅ SonarCloud analysis uploaded successfully"
           
           # Save analysis metadata for later queries
