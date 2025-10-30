@@ -150,7 +150,9 @@
       this.renderSections(data.sections || [], data.courses || [], data.terms || []);
       this.renderAssessment(data.program_overview || []);
       this.renderCLOAudit(data.clos || []);
-      this.updateLastUpdated(data.metadata?.last_updated);
+      const lastUpdated =
+        data.metadata && data.metadata.last_updated ? data.metadata.last_updated : null;
+      this.updateLastUpdated(lastUpdated);
     },
 
     updateHeader(data) {
@@ -161,13 +163,14 @@
       document.getElementById(SELECTORS.sectionCount).textContent = summary.sections ?? 0;
 
       const institutionName =
-        data.institutions?.[0]?.name ||
+        (data.institutions && data.institutions[0] && data.institutions[0].name) ||
         document.getElementById(SELECTORS.institutionName).textContent;
       document.getElementById(SELECTORS.institutionName).textContent =
         institutionName || 'Institution Overview';
 
-      const term = (data.terms || []).find(item => item?.active) || (data.terms || [])[0];
-      document.getElementById(SELECTORS.currentTerm).textContent = term?.name || '--';
+      const term = (data.terms || []).find(item => item && item.active) || (data.terms || [])[0];
+      const termName = term && term.name ? term.name : '--';
+      document.getElementById(SELECTORS.currentTerm).textContent = termName;
     },
 
     renderPrograms(programOverview, rawPrograms) {
@@ -212,7 +215,9 @@
             typeof progress.percent_complete === 'number' ? progress.percent_complete : 0;
           const completed = progress.completed ?? 0;
           const total = progress.total ?? 0;
-          const courseCount = Number(program.course_count ?? program.courses?.length ?? 0);
+          const coursesLength =
+            program.courses && program.courses.length ? program.courses.length : 0;
+          const courseCount = Number(program.course_count ?? coursesLength ?? 0);
           const facultyCount = Number(
             program.faculty_count ?? (program.faculty ? program.faculty.length : 0)
           );
@@ -294,7 +299,7 @@
             name: record.full_name || record.name || 'Instructor',
             programs:
               (record.program_summaries || [])
-                .map(program => program?.program_name)
+                .map(program => (program && program.program_name ? program.program_name : null))
                 .filter(Boolean)
                 .join(', ') ||
               (record.program_ids || []).join(', ') ||
@@ -714,7 +719,8 @@
       }
 
       try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
         const response = await fetch('/api/send-course-reminder', {
           method: 'POST',
