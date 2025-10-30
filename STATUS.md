@@ -1,9 +1,23 @@
 # Project Status
 
-## Current State: SonarCloud Process Fixed - Ready for NEW Code Coverage
+## Current State: Two Critical Fixes Complete - Awaiting CI
 
-### Completed ✅
-1. **Fixed SonarCloud CI Timing Issue**
+### Latest Work ✅
+1. **Fixed CI Artifact Failure** 
+   - **Problem**: sonarcloud-status failing with "Artifact not found: sonar-metadata"
+   - **Root Cause**: Unnecessary artifact passing between jobs
+   - **Solution**: Removed artifact dependency - status queries SonarCloud directly
+   - **Impact**: Simpler, more robust workflow
+   - Commit: 35eee40
+
+2. **Fixed 4.4% Duplication on New Code** (Target: ≤ 3%)
+   - **Problem**: tests/unit/api/routes/test_clo_workflow.py had massive duplication
+   - **Solution**: Refactored test suite with shared fixtures and parametrization
+   - **Impact**: 398 → 260 lines (35% reduction, 138 lines removed)
+   - **Expected**: Duplication should now be < 3%
+   - Commit: 8a03b28
+
+2. **Fixed SonarCloud CI Timing Issue**
    - Added wait/poll logic to sonar-status check
    - Waits minimum 2 minutes for analysis to complete server-side
    - Exponential backoff (10s, 20s, 30s intervals)
