@@ -194,6 +194,49 @@ def _extract_user_data(
     return None  # No instructor information available
 
 
+def _build_term_dict(
+    year: int, season: str, name: str, institution_id: str
+) -> Dict[str, Any]:
+    """Build term data dictionary from parsed components."""
+    return {
+        "name": name,
+        "term_name": name,
+        "year": year,
+        "season": season,
+        "institution_id": institution_id,
+        "is_active": True,
+        "start_date": f"{year}-01-01",
+        "end_date": f"{year}-12-31",
+    }
+
+
+def _parse_cei_abbreviated_term(
+    term_str: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """Parse CEI abbreviated term format (e.g., 'FA2024' or '2024FA')."""
+    try:
+        year, season = parse_cei_term(term_str)
+        return _build_term_dict(int(year), season, f"{season} {year}", institution_id)
+    except ValueError as e:
+        print(f"Warning: Could not parse term '{term_str}': {e}")
+        return None
+
+
+def _parse_standard_term(
+    term_str: str, institution_id: str
+) -> Optional[Dict[str, Any]]:
+    """Parse standard term format (e.g., '2024 Fall')."""
+    try:
+        parts = term_str.split()
+        if len(parts) >= 2 and parts[0].isdigit():
+            year = int(parts[0])
+            season = parts[1].title()
+            return _build_term_dict(year, season, term_str, institution_id)
+    except (ValueError, IndexError) as e:
+        print(f"Warning: Could not parse term '{term_str}': {e}")
+    return None
+
+
 def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str, Any]]:
     """Extract term information from row."""
 
@@ -202,72 +245,25 @@ def _extract_term_data(row: pd.Series, institution_id: str) -> Optional[Dict[str
     # 2. Files with Term column (standard format like "2024 Fall")
 
     if "effterm_c" in row and not pd.isna(row["effterm_c"]):
-        # Format 1: CEI abbreviated format
         effterm_c = str(row["effterm_c"]).strip()
-        if not effterm_c:
-            return None
-
-        try:
-            year, season = parse_cei_term(effterm_c)
-            return {
-                "name": f"{season} {year}",
-                "term_name": f"{season} {year}",  # Add term_name for import service
-                "year": int(year),
-                "season": season,
-                "institution_id": institution_id,
-                "is_active": True,
-                "start_date": f"{year}-01-01",  # Default start date
-                "end_date": f"{year}-12-31",  # Default end date
-            }
-        except ValueError as e:
-            print(f"Warning: Could not parse term '{effterm_c}': {e}")
-            return None
+        if effterm_c:
+            return _parse_cei_abbreviated_term(effterm_c, institution_id)
 
     elif "Term" in row and not pd.isna(row["Term"]):
-        # Format 2: Can be either standard "2024 Fall" or CEI abbreviated "2024FA"
         term_name = str(row["Term"]).strip()
         if not term_name:
             return None
 
-        try:
-            # Check if it's the abbreviated format (no spaces, 6 chars)
-            if (
-                len(term_name) == 6
-                and term_name[:4].isdigit()
-                and validate_cei_term_name(term_name)
-            ):
-                # CEI abbreviated format: "2024FA"
-                year, season = parse_cei_term(term_name)
-                return {
-                    "name": f"{season} {year}",
-                    "term_name": f"{season} {year}",
-                    "year": int(year),
-                    "season": season,
-                    "institution_id": institution_id,
-                    "is_active": True,
-                    "start_date": f"{year}-01-01",
-                    "end_date": f"{year}-12-31",
-                }
+        # Check if it's the abbreviated format (no spaces, 6 chars)
+        if (
+            len(term_name) == 6
+            and term_name[:4].isdigit()
+            and validate_cei_term_name(term_name)
+        ):
+            return _parse_cei_abbreviated_term(term_name, institution_id)
 
-            # Try standard format "YYYY Season"
-            parts = term_name.split()
-            if len(parts) >= 2 and parts[0].isdigit():
-                parsed_year = int(parts[0])
-                parsed_season = parts[1].title()  # Fall, Spring, etc.
-
-                return {
-                    "name": term_name,
-                    "term_name": term_name,  # Add term_name for import service
-                    "year": parsed_year,
-                    "season": parsed_season,
-                    "institution_id": institution_id,
-                    "is_active": True,
-                    "start_date": f"{parsed_year}-01-01",  # Default start date
-                    "end_date": f"{parsed_year}-12-31",  # Default end date
-                }
-        except (ValueError, IndexError) as e:
-            print(f"Warning: Could not parse term '{term_name}': {e}")
-            return None
+        # Try standard format "YYYY Season"
+        return _parse_standard_term(term_name, institution_id)
 
     return None
 
@@ -705,6 +701,39 @@ class CEIExcelAdapter(FileBaseAdapter):
             return f"Student count column ({student_col}) contains invalid data"
         return None
 
+    @staticmethod
+    def _has_course_data(df: pd.DataFrame) -> bool:
+        """Check if dataframe contains course data."""
+        return "course" in df.columns and not df["course"].isna().all()
+
+    @staticmethod
+    def _has_faculty_data(df: pd.DataFrame) -> bool:
+        """Check if dataframe contains faculty data."""
+        return (
+            FACULTY_NAME_COLUMN in df.columns
+            and not df[FACULTY_NAME_COLUMN].isna().all()
+        ) or ("email" in df.columns and not df["email"].isna().all())
+
+    @staticmethod
+    def _has_term_data(df: pd.DataFrame) -> bool:
+        """Check if dataframe contains term data."""
+        return ("effterm_c" in df.columns and not df["effterm_c"].isna().all()) or (
+            "Term" in df.columns and not df["Term"].isna().all()
+        )
+
+    @staticmethod
+    def _has_clo_data(df: pd.DataFrame) -> bool:
+        """Check if dataframe contains CLO data."""
+        return "cllo_text" in df.columns and not df["cllo_text"].isna().all()
+
+    @staticmethod
+    def _has_section_data(df: pd.DataFrame) -> bool:
+        """Check if dataframe contains section data (student counts)."""
+        return (
+            ENROLLED_STUDENTS_COLUMN in df.columns
+            and not df[ENROLLED_STUDENTS_COLUMN].isna().all()
+        ) or ("students" in df.columns and not df["students"].isna().all())
+
     def detect_data_types(self, file_path: str) -> List[str]:
         """
         Automatically detect what types of data are present in the file.
@@ -720,32 +749,15 @@ class CEIExcelAdapter(FileBaseAdapter):
             df = pd.read_excel(file_path, nrows=50)  # Sample for analysis
             detected_types = []
 
-            # Check for course data
-            if "course" in df.columns and not df["course"].isna().all():
+            if self._has_course_data(df):
                 detected_types.append("courses")
-
-            # Check for faculty data
-            if (
-                FACULTY_NAME_COLUMN in df.columns
-                and not df[FACULTY_NAME_COLUMN].isna().all()
-            ) or ("email" in df.columns and not df["email"].isna().all()):
+            if self._has_faculty_data(df):
                 detected_types.append("faculty")
-
-            # Check for term data
-            if ("effterm_c" in df.columns and not df["effterm_c"].isna().all()) or (
-                "Term" in df.columns and not df["Term"].isna().all()
-            ):
+            if self._has_term_data(df):
                 detected_types.append("terms")
-
-            # Check for CLO data
-            if "cllo_text" in df.columns and not df["cllo_text"].isna().all():
+            if self._has_clo_data(df):
                 detected_types.append("clos")
-
-            # Check for section data (student counts indicate sections)
-            if (
-                ENROLLED_STUDENTS_COLUMN in df.columns
-                and not df[ENROLLED_STUDENTS_COLUMN].isna().all()
-            ) or ("students" in df.columns and not df["students"].isna().all()):
+            if self._has_section_data(df):
                 detected_types.append("sections")
 
             return detected_types
