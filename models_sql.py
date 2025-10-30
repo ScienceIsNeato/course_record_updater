@@ -145,7 +145,7 @@ class User(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 user_program_table = Table(
     "user_programs",
     Base.metadata,
-    Column("user_id", String, ForeignKey("users.id"), primary_key=True),
+    Column("user_id", String, ForeignKey(USERS_ID), primary_key=True),
     Column("program_id", String, ForeignKey("programs.id"), primary_key=True),
 )
 
@@ -265,7 +265,7 @@ class CourseSection(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     id = Column(String, primary_key=True, default=generate_uuid)
     offering_id = Column(String, ForeignKey("course_offerings.id"), nullable=False)
-    instructor_id = Column(String, ForeignKey("users.id"))
+    instructor_id = Column(String, ForeignKey(USERS_ID))
     section_number = Column(String, default="001")
     enrollment = Column(Integer)
     status = Column(String, default="assigned")
