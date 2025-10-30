@@ -82,7 +82,7 @@ def get_current_user():
 
 
 @clo_workflow_bp.route("/<outcome_id>/submit", methods=["POST"])
-@lazy_permission_required("update_clo")
+@lazy_permission_required("submit_clo")
 def submit_clo_for_approval(outcome_id: str):
     """
     Instructor submits their completed CLO for admin review.
