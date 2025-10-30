@@ -89,7 +89,9 @@
       this.renderAssessmentTasks(data.assessment_tasks || []);
       this.renderRecentActivity(data.assessment_tasks || []);
       this.renderCourseSummary(data.teaching_assignments || [], data.sections || []);
-      this.updateLastUpdated(data.metadata?.last_updated);
+      const lastUpdated =
+        data.metadata && data.metadata.last_updated ? data.metadata.last_updated : null;
+      this.updateLastUpdated(lastUpdated);
     },
 
     updateHeader(data) {
@@ -262,7 +264,7 @@
     },
 
     deriveCourseProgress(courseId, sections) {
-      if (!sections?.length) return 0;
+      if (!sections || !sections.length) return 0;
       const completed = sections.filter(section => this.isTaskComplete(section.status)).length;
       return Math.round((completed / sections.length) * 100);
     },
