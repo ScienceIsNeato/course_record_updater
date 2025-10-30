@@ -16,7 +16,7 @@
 let idCounter = 0;
 
 function generateSecureId(prefix = 'id') {
-  if (window.crypto?.getRandomValues) {
+  if (window.crypto && window.crypto.getRandomValues) {
     const array = new Uint32Array(1);
     window.crypto.getRandomValues(array);
     return `${prefix}-${Date.now()}-${array[0]}`;
@@ -25,12 +25,13 @@ function generateSecureId(prefix = 'id') {
   // Fallback for older browsers - use timestamp, performance counter, and monotonic counter
   // Avoids Math.random() to address SonarCloud security concerns
   const timestamp = Date.now();
-  const performance = globalThis.performance?.now?.() ?? 0;
+  const performanceNow =
+    globalThis.performance && globalThis.performance.now ? globalThis.performance.now() : 0;
   const counter = ++idCounter; // Monotonic counter guarantees uniqueness
 
   // Create unique ID using timestamp, performance counter, and monotonic counter
   // The counter ensures uniqueness even for rapid successive calls
-  const entropy = Math.floor(performance * 1000) + counter;
+  const entropy = Math.floor(performanceNow * 1000) + counter;
   return `${prefix}-${timestamp}-${entropy}`;
 }
 
@@ -124,7 +125,7 @@ class PanelManager {
     // Panel toggle events
     document.addEventListener('click', e => {
       const target = e.target instanceof Element ? e.target : e.target.parentElement;
-      if (target?.closest?.('.panel-header')) {
+      if (target && target.closest && target.closest('.panel-header')) {
         const panel = target.closest('.dashboard-panel');
         if (panel && !target.closest('.panel-actions')) {
           this.togglePanel(panel.id);
@@ -132,7 +133,7 @@ class PanelManager {
       }
 
       // Table sorting events
-      if (target?.closest?.('th.sortable')) {
+      if (target && target.closest && target.closest('th.sortable')) {
         const header = target.closest('th.sortable');
         const table = header.closest('.panel-table');
         const sortKey =
@@ -141,7 +142,7 @@ class PanelManager {
       }
 
       // Panel focus events
-      if (target?.closest?.('.panel-title') && e.detail === 2) {
+      if (target && target.closest && target.closest('.panel-title') && e.detail === 2) {
         // Double click
         const panel = target.closest('.dashboard-panel');
         if (panel) {
@@ -150,7 +151,7 @@ class PanelManager {
       }
 
       // Close stat previews when clicking outside
-      if (!target?.closest?.('.stat-item')) {
+      if (!(target && target.closest && target.closest('.stat-item'))) {
         this.hideAllStatPreviews();
       }
     });
@@ -161,7 +162,7 @@ class PanelManager {
       e => {
         // Ensure we have an Element before calling closest()
         const target = e.target instanceof Element ? e.target : e.target.parentElement;
-        if (target?.closest?.('.stat-item')) {
+        if (target && target.closest && target.closest('.stat-item')) {
           const statItem = target.closest('.stat-item');
           const statId = statItem.dataset.stat;
           if (statId) {
@@ -177,7 +178,7 @@ class PanelManager {
       e => {
         // Ensure we have an Element before calling closest()
         const target = e.target instanceof Element ? e.target : e.target.parentElement;
-        if (target?.closest?.('.stat-item')) {
+        if (target && target.closest && target.closest('.stat-item')) {
           const statItem = target.closest('.stat-item');
           const statId = statItem.dataset.stat;
           if (statId) {
@@ -306,11 +307,13 @@ class PanelManager {
    */
   hideStatPreview(statId) {
     const stat = this.statPreviews.get(statId);
-    if (!stat?.preview) return;
+    if (!stat || !stat.preview) return;
 
     stat.preview.classList.remove('show');
     setTimeout(() => {
-      stat.preview?.remove();
+      if (stat.preview && stat.preview.remove) {
+        stat.preview.remove();
+      }
       stat.preview = null;
     }, 300);
   }
@@ -470,59 +473,71 @@ class PanelManager {
         endpoint: '/api/institutions',
         title: 'Institutions',
         transform: data =>
-          data.institutions?.map(inst => ({
-            label: inst.name,
-            value: `${inst.user_count || 0} users`
-          })) || []
+          (data.institutions &&
+            data.institutions.map(inst => ({
+              label: inst.name,
+              value: `${inst.user_count || 0} users`
+            }))) ||
+          []
       },
       programs: {
         endpoint: '/api/programs',
         title: 'Programs',
         transform: data =>
-          data.programs?.map(prog => ({
-            label: prog.name,
-            value: `${prog.course_count || 0} courses`
-          })) || []
+          (data.programs &&
+            data.programs.map(prog => ({
+              label: prog.name,
+              value: `${prog.course_count || 0} courses`
+            }))) ||
+          []
       },
       courses: {
         endpoint: '/api/courses',
         title: 'Active Courses',
         transform: data =>
-          data.courses?.map(course => ({
-            label: `${course.course_number}`,
-            value: course.title
-          })) || []
+          (data.courses &&
+            data.courses.map(course => ({
+              label: `${course.course_number}`,
+              value: course.title
+            }))) ||
+          []
       },
       faculty: {
         endpoint: '/api/users?role=instructor',
         title: 'Faculty',
         transform: data =>
-          data.users?.map(user => ({
-            label:
-              (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
-              user.email,
-            value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
-          })) || []
+          (data.users &&
+            data.users.map(user => ({
+              label:
+                (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
+                user.email,
+              value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
+            }))) ||
+          []
       },
       sections: {
         endpoint: '/api/sections',
         title: 'Sections',
         transform: data =>
-          data.sections?.map(section => ({
-            label: section.course_number
-              ? `${section.course_number} Section ${section.section_number || section.section_id || ''}`
-              : `Section ${section.section_number || section.section_id || ''}`,
-            value: `${section.enrollment || 0} students`
-          })) || []
+          (data.sections &&
+            data.sections.map(section => ({
+              label: section.course_number
+                ? `${section.course_number} Section ${section.section_number || section.section_id || ''}`
+                : `Section ${section.section_number || section.section_id || ''}`,
+              value: `${section.enrollment || 0} students`
+            }))) ||
+          []
       },
       users: {
         endpoint: '/api/users',
         title: 'Recent Users',
         transform: data =>
-          data.users?.map(user => ({
-            label: `${user.first_name} ${user.last_name}`,
-            value: user.role.replace('_', ' ')
-          })) || []
+          (data.users &&
+            data.users.map(user => ({
+              label: `${user.first_name} ${user.last_name}`,
+              value: user.role.replace('_', ' ')
+            }))) ||
+          []
       }
     };
 
@@ -651,15 +666,17 @@ class PanelManager {
                 </h5>
                 <div class="panel-actions">
                     ${
-                      config.actions
-                        ?.map(
-                          action => `
+                      (config.actions &&
+                        config.actions
+                          .map(
+                            action => `
                         <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
                             ${action.icon} ${action.label}
                         </button>
                     `
-                        )
-                        .join('') || ''
+                          )
+                          .join('')) ||
+                      ''
                     }
                 </div>
                 <button class="panel-toggle">▼</button>
@@ -691,9 +708,10 @@ class PanelManager {
       .join('');
 
     const bodyRows =
-      config.data
-        ?.map(
-          row => `
+      (config.data &&
+        config.data
+          .map(
+            row => `
             <tr>
                 ${config.columns
                   .map(
@@ -706,8 +724,9 @@ class PanelManager {
                   .join('')}
             </tr>
         `
-        )
-        .join('') || '';
+          )
+          .join('')) ||
+      '';
 
     table.innerHTML = `
             <thead>
