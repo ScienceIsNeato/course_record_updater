@@ -280,10 +280,13 @@ if [[ "$RUN_LINT" == "true" ]]; then
   echo "🔍 Python Lint Check (flake8 critical errors)"
 
   # Run flake8 for critical errors only (much faster)
+  # Only check tracked Python files to avoid processing non-Python files
+  # Use xargs to avoid "argument list too long" error
   echo "🔧 Running flake8 critical error check..."
-  FLAKE8_OUTPUT=$(timeout 30s flake8 --max-line-length=88 --select=E9,F63,F7,F82 --exclude=venv,cursor-rules,.venv,logs,build-output *.py adapters/ tests/ 2>/dev/null) || FLAKE8_FAILED=true
+  FLAKE8_OUTPUT=$(git ls-files '*.py' 'adapters/**/*.py' 'tests/**/*.py' 'api/**/*.py' 'session/**/*.py' 'email_providers/**/*.py' 'bulk_email_models/**/*.py' 'scripts/**/*.py' 2>&1 | grep -v 'Dark Forest' | grep -v '__pycache__' | xargs -r flake8 --max-line-length=88 --select=E9,F63,F7,F82 2>&1 | grep -v 'Unable to find qualified name')
+  FLAKE8_EXIT=$?
 
-  if [[ "$FLAKE8_FAILED" == "true" ]]; then
+  if [[ $FLAKE8_EXIT -ne 0 && -n "$FLAKE8_OUTPUT" ]]; then
     echo "❌ Flake8 critical errors found"
     echo "📋 Critical Issues:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

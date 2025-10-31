@@ -4405,12 +4405,8 @@ class TestCourseReminderEndpoint:
 
     @pytest.fixture
     def authenticated_client_and_token(self, client):
-        """Create an authenticated client with CSRF disabled for testing."""
-        from app import app as flask_app
+        """Create an authenticated client with CSRF properly configured."""
         from tests.test_utils import create_test_session
-
-        # Disable CSRF for these tests (we're testing endpoint logic, not CSRF)
-        flask_app.config["WTF_CSRF_ENABLED"] = False
 
         # Create session with program admin user (has manage_programs permission)
         user_data = {
@@ -4423,8 +4419,9 @@ class TestCourseReminderEndpoint:
         }
         create_test_session(client, user_data)
 
-        # Return client with dummy token (not actually used since CSRF is disabled)
-        return client, "dummy-token"
+        # The global conftest.py autouse fixture handles CSRF token injection automatically
+        # No need to return a token - the client's POST method is already wrapped
+        return client
 
     @patch("database_service.get_user_by_id")
     @patch("database_service.get_course_by_id")
@@ -4441,7 +4438,7 @@ class TestCourseReminderEndpoint:
         authenticated_client_and_token,
     ):
         """Test successfully sending course reminder email."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         # Setup mocks
         mock_get_instructor.return_value = {
             "user_id": "instructor-123",
@@ -4474,7 +4471,6 @@ class TestCourseReminderEndpoint:
                 "instructor_id": "instructor-123",
                 "course_id": "course-123",
             },
-            headers={"X-CSRFToken": csrf_token},
         )
 
         # Verify
@@ -4490,10 +4486,9 @@ class TestCourseReminderEndpoint:
         self, mock_get_course, mock_get_instructor, authenticated_client_and_token
     ):
         """Test sending reminder with no JSON data returns 400."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         response = client.post(
             "/api/send-course-reminder",
-            headers={"X-CSRFToken": csrf_token},
         )
 
         assert response.status_code == 400
@@ -4507,11 +4502,10 @@ class TestCourseReminderEndpoint:
         self, mock_get_course, mock_get_instructor, authenticated_client_and_token
     ):
         """Test sending reminder with missing required fields returns 400."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         response = client.post(
             "/api/send-course-reminder",
             json={"instructor_id": "instructor-123"},  # Missing course_id
-            headers={"X-CSRFToken": csrf_token},
         )
 
         assert response.status_code == 400
@@ -4525,7 +4519,7 @@ class TestCourseReminderEndpoint:
         self, mock_get_course, mock_get_instructor, authenticated_client_and_token
     ):
         """Test sending reminder for non-existent instructor returns 404."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         mock_get_instructor.return_value = None
 
         response = client.post(
@@ -4534,7 +4528,6 @@ class TestCourseReminderEndpoint:
                 "instructor_id": "nonexistent",
                 "course_id": "course-123",
             },
-            headers={"X-CSRFToken": csrf_token},
         )
 
         assert response.status_code == 404
@@ -4548,7 +4541,7 @@ class TestCourseReminderEndpoint:
         self, mock_get_course, mock_get_instructor, authenticated_client_and_token
     ):
         """Test sending reminder for non-existent course returns 404."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         mock_get_instructor.return_value = {
             "user_id": "instructor-123",
             "email": "instructor@example.com",
@@ -4561,7 +4554,6 @@ class TestCourseReminderEndpoint:
                 "instructor_id": "instructor-123",
                 "course_id": "nonexistent",
             },
-            headers={"X-CSRFToken": csrf_token},
         )
 
         assert response.status_code == 404
@@ -4584,7 +4576,7 @@ class TestCourseReminderEndpoint:
         authenticated_client_and_token,
     ):
         """Test sending reminder handles email exceptions gracefully."""
-        client, csrf_token = authenticated_client_and_token
+        client = authenticated_client_and_token
         # Setup mocks
         mock_get_instructor.return_value = {
             "user_id": "instructor-123",
@@ -4618,7 +4610,6 @@ class TestCourseReminderEndpoint:
                 "instructor_id": "instructor-123",
                 "course_id": "course-123",
             },
-            headers={"X-CSRFToken": csrf_token},
         )
 
         # Verify
