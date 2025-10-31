@@ -196,10 +196,12 @@ function initializeCreateCourseModal() {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createCourseModal'));
-        if (modal) {
-          modal.hide();
+        const modalElement = document.getElementById('createCourseModal');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+          modal = new bootstrap.Modal(modalElement);
         }
+        modal.hide();
 
         form.reset();
 
@@ -283,10 +285,12 @@ function initializeEditCourseModal() {
         const result = await response.json();
 
         // Success - close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editCourseModal'));
-        if (modal) {
-          modal.hide();
+        const modalElement = document.getElementById('editCourseModal');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+          modal = new bootstrap.Modal(modalElement);
         }
+        modal.hide();
 
         alert(result.message || 'Course updated successfully!');
 

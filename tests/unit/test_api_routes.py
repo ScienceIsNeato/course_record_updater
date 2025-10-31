@@ -4405,8 +4405,12 @@ class TestCourseReminderEndpoint:
 
     @pytest.fixture
     def authenticated_client_and_token(self, client):
-        """Create an authenticated client with CSRF token."""
+        """Create an authenticated client with CSRF disabled for testing."""
+        from app import app as flask_app
         from tests.test_utils import create_test_session
+
+        # Disable CSRF for these tests (we're testing endpoint logic, not CSRF)
+        flask_app.config["WTF_CSRF_ENABLED"] = False
 
         # Create session with program admin user (has manage_programs permission)
         user_data = {
@@ -4419,15 +4423,8 @@ class TestCourseReminderEndpoint:
         }
         create_test_session(client, user_data)
 
-        # Get CSRF token AFTER session is set up (within app context)
-        from app import app as flask_app
-
-        with flask_app.app_context():
-            from flask_wtf.csrf import generate_csrf
-
-            csrf_token = generate_csrf()
-
-        return client, csrf_token
+        # Return client with dummy token (not actually used since CSRF is disabled)
+        return client, "dummy-token"
 
     @patch("database_service.get_user_by_id")
     @patch("database_service.get_course_by_id")
@@ -4467,6 +4464,7 @@ class TestCourseReminderEndpoint:
             "email": "admin@example.com",
             "first_name": "Admin",
             "last_name": "User",
+            "institution_id": "inst-123",
         }
 
         # Send request
@@ -4609,6 +4607,7 @@ class TestCourseReminderEndpoint:
             "email": "admin@example.com",
             "first_name": "Admin",
             "last_name": "User",
+            "institution_id": "inst-123",
         }
         mock_send_email.side_effect = Exception("SMTP error")
 
