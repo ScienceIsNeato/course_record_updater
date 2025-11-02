@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             <div class="d-flex gap-2 mt-3">
                                 <button class="btn btn-primary update-assessment-btn" 
-                                        data-outcome-id="${outcome.id || outcome.outcome_id}"
+                                        data-outcome-id="${outcome.outcome_id}"
                                         data-description="${escapeHtml(outcome.description)}"
                                         data-assessed="${assessed}"
                                         data-meeting="${meeting}"
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </button>
                                 ${canSubmitForApproval(status) && isComplete ? `
                                     <button class="btn btn-success submit-clo-btn" 
-                                            data-outcome-id="${outcome.id || outcome.outcome_id}"
+                                            data-outcome-id="${outcome.outcome_id}"
                                             data-description="${escapeHtml(outcome.description)}">
                                         <i class="fas fa-paper-plane"></i> Submit for Approval
                                     </button>

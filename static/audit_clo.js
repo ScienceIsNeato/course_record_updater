@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const statusBadge = getStatusBadge(clo.status);
       const description = truncateText(clo.description, 60);
       const submittedDate = clo.submitted_at ? formatDate(clo.submitted_at) : 'N/A';
-      const outcomeId = escapeHtml(String(clo.outcome_id || clo.id));
+      const outcomeId = escapeHtml(String(clo.outcome_id));
 
       html += `
                 <tr data-outcome-id="${outcomeId}" style="cursor: pointer;" class="clo-row">
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const outcomeId = currentCLO.outcome_id || currentCLO.id;
+    const outcomeId = currentCLO.outcome_id;
     if (!outcomeId) {
       alert('Error: CLO ID not found');
       return;
@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const outcomeId = currentCLO.outcome_id || currentCLO.id;
+    const outcomeId = currentCLO.outcome_id;
     if (!outcomeId) {
       alert('Error: CLO ID not found');
       return;
