@@ -10,7 +10,8 @@ from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
 
-from api.utils import handle_api_error
+from api.utils import get_current_user, handle_api_error
+from auth_service import get_current_institution_id
 from clo_workflow_service import CLOWorkflowService
 from constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
 from database_service import get_course_by_id, get_course_outcome
@@ -64,21 +65,6 @@ clo_workflow_bp = Blueprint("clo_workflow", __name__, url_prefix="/api/outcomes"
 
 # Initialize logger
 logger = get_logger(__name__)
-
-
-def get_current_institution_id():
-    """Get current institution ID from session."""
-    from auth_service import get_current_user
-
-    user = get_current_user()
-    return user.get("institution_id") if user else None
-
-
-def get_current_user():
-    """Get current user from auth service."""
-    from auth_service import get_current_user as auth_get_current_user
-
-    return auth_get_current_user()
 
 
 @clo_workflow_bp.route("/<outcome_id>/submit", methods=["POST"])
