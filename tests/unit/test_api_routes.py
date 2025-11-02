@@ -4613,6 +4613,9 @@ class TestCourseReminderEndpoint:
         call_args = mock_send_email.call_args[1]
         assert call_args["instructor_name"] == "instructor@example.com"
 
+    @patch("database_service.get_user_by_id")
+    @patch("database_service.get_course_by_id")
+    @patch("database_service.get_institution_by_id")
     @patch("auth_service.get_current_user")
     @patch("email_service.EmailService.send_course_assessment_reminder")
     def test_send_course_reminder_email_exception(
