@@ -98,6 +98,28 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 404, False)
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_submit_clo_for_approval_exception(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test submitting CLO handles unexpected exceptions."""
+        mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.submit_clo_for_approval.side_effect = Exception(
+            "Unexpected error"
+        )
+
+        response = client.post("/api/outcomes/outcome-1/submit")
+        assert_json_response(response, 500, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_current_user")
     @patch("api.routes.clo_workflow.get_current_institution_id")
     def test_get_clos_for_audit_as_institution_admin(
@@ -404,6 +426,26 @@ class TestCLOAuditEndpoints:
         response = client.post("/api/outcomes/outcome-1/approve")
         assert_json_response(response, 404, False)
 
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_approve_clo_exception(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test approving CLO handles unexpected exceptions."""
+        mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.approve_clo.side_effect = Exception("Unexpected error")
+
+        response = client.post("/api/outcomes/outcome-1/approve")
+        assert_json_response(response, 500, False)
+
     @patch("api.routes.clo_workflow.get_course_outcome")
     def test_request_rework_not_found(
         self, mock_get_outcome, client, mock_institution, mock_session
@@ -442,6 +484,29 @@ class TestCLOAuditEndpoints:
             json={"comments": "Please fix"},
         )
         assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
+    def test_request_rework_exception(
+        self,
+        mock_get_outcome,
+        mock_get_course,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test requesting rework handles unexpected exceptions."""
+        mock_get_outcome.return_value = {"id": "outcome-1", "course_id": "course-1"}
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
+        mock_workflow.request_rework.side_effect = Exception("Unexpected error")
+
+        response = client.post(
+            "/api/outcomes/outcome-1/request-rework",
+            json={"comments": "Please fix"},
+        )
+        assert_json_response(response, 500, False)
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
