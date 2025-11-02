@@ -971,6 +971,173 @@ describe('InstitutionDashboard', () => {
     });
   });
 
+  describe('Handler Function Details', () => {
+    beforeEach(() => {
+      setBody('<meta name="csrf-token" content="test-token">');
+    });
+
+    it('handleEditSection calls window.openEditSectionModal', () => {
+      window.openEditSectionModal = jest.fn();
+      
+      const button = {
+        dataset: {
+          sectionId: 'sect-123',
+          sectionData: JSON.stringify({ id: 'sect-123', name: 'Section A' })
+        }
+      };
+
+      InstitutionDashboard.handleEditSection(button);
+
+      expect(window.openEditSectionModal).toHaveBeenCalledWith(
+        'sect-123',
+        { id: 'sect-123', name: 'Section A' }
+      );
+
+      delete window.openEditSectionModal;
+    });
+
+    it('handleEditSection handles missing window function gracefully', () => {
+      delete window.openEditSectionModal;
+      
+      const button = {
+        dataset: {
+          sectionId: 'sect-123',
+          sectionData: JSON.stringify({ id: 'sect-123' })
+        }
+      };
+
+      // Should not throw error
+      expect(() => InstitutionDashboard.handleEditSection(button)).not.toThrow();
+    });
+
+    it('handleEditCourse calls window.openEditCourseModal', () => {
+      window.openEditCourseModal = jest.fn();
+      
+      const button = {
+        dataset: {
+          courseId: 'course-456',
+          courseData: JSON.stringify({ id: 'course-456', title: 'CS101' })
+        }
+      };
+
+      InstitutionDashboard.handleEditCourse(button);
+
+      expect(window.openEditCourseModal).toHaveBeenCalledWith(
+        'course-456',
+        { id: 'course-456', title: 'CS101' }
+      );
+
+      delete window.openEditCourseModal;
+    });
+
+    it('handleEditCourse handles missing window function gracefully', () => {
+      delete window.openEditCourseModal;
+      
+      const button = {
+        dataset: {
+          courseId: 'course-456',
+          courseData: JSON.stringify({ id: 'course-456' })
+        }
+      };
+
+      // Should not throw error
+      expect(() => InstitutionDashboard.handleEditCourse(button)).not.toThrow();
+    });
+
+    it('sendCourseReminder sends POST request on confirmation', async () => {
+      global.confirm = jest.fn().mockReturnValue(true);
+      global.alert = jest.fn();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true })
+      });
+
+      await InstitutionDashboard.sendCourseReminder('inst-1', 'course-1', 'Dr. Smith', 'CS101');
+
+      expect(global.confirm).toHaveBeenCalledWith('Send assessment reminder to Dr. Smith for CS101?');
+      expect(global.fetch).toHaveBeenCalledWith('/api/send-course-reminder', expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'X-CSRFToken': 'test-token'
+        }),
+        body: JSON.stringify({
+          instructor_id: 'inst-1',
+          course_id: 'course-1'
+        })
+      }));
+      expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('✅ Reminder sent'));
+
+      delete global.confirm;
+      delete global.alert;
+    });
+
+    it('sendCourseReminder returns early if user cancels confirmation', async () => {
+      global.confirm = jest.fn().mockReturnValue(false);
+      global.fetch = jest.fn();
+
+      await InstitutionDashboard.sendCourseReminder('inst-1', 'course-1', 'Dr. Smith', 'CS101');
+
+      expect(global.confirm).toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+
+      delete global.confirm;
+    });
+
+    it('sendCourseReminder handles API error response', async () => {
+      global.confirm = jest.fn().mockReturnValue(true);
+      global.alert = jest.fn();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockResolvedValue({ error: 'Instructor not found' })
+      });
+
+      await InstitutionDashboard.sendCourseReminder('inst-1', 'course-1', 'Dr. Smith', 'CS101');
+
+      expect(global.alert).toHaveBeenCalledWith('❌ Failed to send reminder: Instructor not found');
+
+      delete global.confirm;
+      delete global.alert;
+    });
+
+    it('sendCourseReminder handles fetch exception', async () => {
+      global.confirm = jest.fn().mockReturnValue(true);
+      global.alert = jest.fn();
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      await InstitutionDashboard.sendCourseReminder('inst-1', 'course-1', 'Dr. Smith', 'CS101');
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(global.alert).toHaveBeenCalledWith('❌ Failed to send reminder. Please try again.');
+
+      consoleErrorSpy.mockRestore();
+      delete global.confirm;
+      delete global.alert;
+    });
+
+    it('sendCourseReminder handles missing CSRF token', async () => {
+      setBody('<div></div>'); // No CSRF meta tag
+      global.confirm = jest.fn().mockReturnValue(true);
+      global.alert = jest.fn();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ success: true })
+      });
+
+      await InstitutionDashboard.sendCourseReminder('inst-1', 'course-1', 'Dr. Smith', 'CS101');
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/send-course-reminder', expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-CSRFToken': null
+        })
+      }));
+
+      delete global.confirm;
+      delete global.alert;
+    });
+  });
+
   describe('Data Loading', () => {
     beforeEach(() => {
       global.fetch = jest.fn();
