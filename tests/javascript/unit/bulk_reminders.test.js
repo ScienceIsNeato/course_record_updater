@@ -140,5 +140,74 @@ describe('BulkReminderManager', () => {
       expect(requestBody.course_id).toBeNull(); // courseId should be null when cache missing
     });
   });
+
+  describe('Event Listener Setup', () => {
+    beforeEach(() => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <div id="bulkReminderModal">
+          <div id="reminderStep1"></div>
+          <div id="reminderStep2" style="display:none;"></div>
+          <div id="reminderFooter1"></div>
+          <div id="reminderFooter2" style="display:none;"></div>
+          <div id="instructorList"></div>
+          <div id="selectedInstructorsCount">0</div>
+          <input id="reminderTerm" />
+          <input id="reminderDeadline" />
+          <textarea id="reminderMessage"></textarea>
+          <span id="messageCharCount">0</span>
+          <div id="reminderPreview"></div>
+          <button id="sendRemindersButton">Send Reminders</button>
+          <button id="closeProgressButton">Close</button>
+        </div>
+      `);
+    });
+
+    it('sendRemindersButton click triggers sendReminders', () => {
+      const manager = new BulkReminderManager();
+      manager.sendReminders = jest.fn();
+      manager.init();
+
+      const button = document.getElementById('sendRemindersButton');
+      button.click();
+
+      expect(manager.sendReminders).toHaveBeenCalled();
+    });
+
+    it('closeProgressButton click triggers closeModal', () => {
+      const manager = new BulkReminderManager();
+      manager.closeModal = jest.fn();
+      manager.init();
+
+      const button = document.getElementById('closeProgressButton');
+      button.click();
+
+      expect(manager.closeModal).toHaveBeenCalled();
+    });
+
+    it('bulkReminderModal shown.bs.modal triggers loadInstructors', () => {
+      const manager = new BulkReminderManager();
+      manager.loadInstructors = jest.fn();
+      manager.init();
+
+      const modal = document.getElementById('bulkReminderModal');
+      const event = new Event('shown.bs.modal');
+      modal.dispatchEvent(event);
+
+      expect(manager.loadInstructors).toHaveBeenCalled();
+    });
+
+    it('bulkReminderModal hidden.bs.modal triggers resetModal', () => {
+      const manager = new BulkReminderManager();
+      manager.resetModal = jest.fn();
+      manager.init();
+
+      const modal = document.getElementById('bulkReminderModal');
+      const event = new Event('hidden.bs.modal');
+      modal.dispatchEvent(event);
+
+      expect(manager.resetModal).toHaveBeenCalled();
+    });
+  });
 });
 
