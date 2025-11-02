@@ -56,6 +56,9 @@ COMMIT_MSG.txt
 # Scratch files
 pr_comments_scratch.md
 
+# Browser automation artifacts
+cookies.txt
+
 # Security scan reports
 bandit-report.json
 safety-report.txt
