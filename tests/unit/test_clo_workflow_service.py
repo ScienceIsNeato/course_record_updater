@@ -592,6 +592,8 @@ class TestSendReworkNotification:
         self, mock_get_details, mock_email_service
     ):
         """Test notification when email sending fails"""
+        from app import app
+
         mock_get_details.return_value = {
             "id": "outcome-123",
             "course_number": "CS-101",
@@ -600,7 +602,10 @@ class TestSendReworkNotification:
         }
         mock_email_service._send_email.return_value = False
 
-        result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
+        with app.app_context():
+            result = CLOWorkflowService._send_rework_notification(
+                "outcome-123", "Feedback"
+            )
 
         assert result is False
 
