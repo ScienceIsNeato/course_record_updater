@@ -640,6 +640,203 @@ describe('InstitutionDashboard', () => {
     });
   });
 
+  describe('Action Handlers', () => {
+    beforeEach(() => {
+      // Set up a container with event delegation
+      setBody(`
+        <div id="courseSectionContainer"></div>
+        <div id="courseManagementContainer"></div>
+        <div id="programManagementContainer"></div>
+      `);
+    });
+
+    it('handles send-reminder action clicks', () => {
+      // Mock sendCourseReminder method
+      const sendReminderSpy = jest.spyOn(InstitutionDashboard, 'sendCourseReminder').mockImplementation();
+
+      // Initialize to set up event listeners FIRST
+      InstitutionDashboard.init();
+
+      // Create a button with reminder action
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'send-reminder');
+      button.setAttribute('data-instructor-id', 'inst-123');
+      button.setAttribute('data-course-id', 'course-456');
+      button.setAttribute('data-instructor', 'Dr. Smith');
+      button.setAttribute('data-course-number', 'CS101');
+      
+      const container = document.getElementById('courseSectionContainer');
+      container.appendChild(button);
+
+      // Dispatch a click event that bubbles
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      button.dispatchEvent(clickEvent);
+
+      // Verify send reminder was called with correct parameters
+      expect(sendReminderSpy).toHaveBeenCalledWith('inst-123', 'course-456', 'Dr. Smith', 'CS101');
+      
+      sendReminderSpy.mockRestore();
+    });
+
+    it('handles edit-section action clicks', () => {
+      // Mock handleEditSection method
+      const editSectionSpy = jest.spyOn(InstitutionDashboard, 'handleEditSection').mockImplementation();
+
+      // Initialize to set up event listeners FIRST
+      InstitutionDashboard.init();
+
+      // Create a button with edit-section action
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'edit-section');
+      button.setAttribute('data-section-id', 'sect-789');
+      
+      const container = document.getElementById('courseSectionContainer');
+      container.appendChild(button);
+
+      // Dispatch a click event that bubbles
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      button.dispatchEvent(clickEvent);
+
+      // Verify edit section was called
+      expect(editSectionSpy).toHaveBeenCalledWith(button);
+      
+      editSectionSpy.mockRestore();
+    });
+
+    it('handles edit-course action clicks', () => {
+      // Mock handleEditCourse method
+      const editCourseSpy = jest.spyOn(InstitutionDashboard, 'handleEditCourse').mockImplementation();
+
+      // Create a button with edit-course action
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'edit-course');
+      button.setAttribute('data-course-id', 'course-123');
+      
+      const container = document.getElementById('courseManagementContainer');
+      container.appendChild(button);
+
+      // Initialize to set up event listeners
+      InstitutionDashboard.init();
+
+      // Click the button
+      button.click();
+
+      // Verify edit course was called
+      expect(editCourseSpy).toHaveBeenCalledWith(button);
+      
+      editCourseSpy.mockRestore();
+    });
+
+    it('handles delete-program action clicks', () => {
+      // Mock global deleteProgram function
+      window.deleteProgram = jest.fn();
+
+      // Initialize to set up event listeners FIRST
+      InstitutionDashboard.init();
+
+      // Create a button with delete-program action
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'delete-program');
+      button.setAttribute('data-program-id', 'prog-456');
+      button.setAttribute('data-program-name', 'Computer Science');
+      
+      const container = document.getElementById('programManagementContainer');
+      container.appendChild(button);
+
+      // Dispatch a click event that bubbles
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      button.dispatchEvent(clickEvent);
+
+      // Verify delete program was called with correct parameters
+      expect(window.deleteProgram).toHaveBeenCalledWith('prog-456', 'Computer Science');
+      
+      delete window.deleteProgram;
+    });
+
+    it('ignores clicks without action attribute', () => {
+      // Mock all handler methods
+      const sendReminderSpy = jest.spyOn(InstitutionDashboard, 'sendCourseReminder').mockImplementation();
+      const editSectionSpy = jest.spyOn(InstitutionDashboard, 'handleEditSection').mockImplementation();
+
+      // Create a button WITHOUT data-action attribute
+      const button = document.createElement('button');
+      button.setAttribute('data-course-id', 'course-123');
+      
+      const container = document.getElementById('courseSectionContainer');
+      container.appendChild(button);
+
+      // Initialize to set up event listeners
+      InstitutionDashboard.init();
+
+      // Click the button
+      button.click();
+
+      // Verify no handlers were called
+      expect(sendReminderSpy).not.toHaveBeenCalled();
+      expect(editSectionSpy).not.toHaveBeenCalled();
+      
+      sendReminderSpy.mockRestore();
+      editSectionSpy.mockRestore();
+    });
+
+    it('handles send-reminder with missing parameters gracefully', () => {
+      // Mock sendCourseReminder method
+      const sendReminderSpy = jest.spyOn(InstitutionDashboard, 'sendCourseReminder').mockImplementation();
+
+      // Create a button with incomplete data
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'send-reminder');
+      button.setAttribute('data-instructor-id', 'inst-123');
+      // Missing other required attributes
+      
+      const container = document.getElementById('courseSectionContainer');
+      container.appendChild(button);
+
+      // Initialize to set up event listeners
+      InstitutionDashboard.init();
+
+      // Click the button
+      button.click();
+
+      // Verify send reminder was NOT called due to missing parameters
+      expect(sendReminderSpy).not.toHaveBeenCalled();
+      
+      sendReminderSpy.mockRestore();
+    });
+
+    it('handles delete-program with missing function gracefully', () => {
+      // Ensure window.deleteProgram does NOT exist
+      delete window.deleteProgram;
+
+      // Create a button with delete-program action
+      const button = document.createElement('button');
+      button.setAttribute('data-action', 'delete-program');
+      button.setAttribute('data-program-id', 'prog-456');
+      button.setAttribute('data-program-name', 'Computer Science');
+      
+      const container = document.getElementById('programManagementContainer');
+      container.appendChild(button);
+
+      // Initialize to set up event listeners
+      InstitutionDashboard.init();
+
+      // Should not throw error when clicking
+      expect(() => button.click()).not.toThrow();
+    });
+  });
+
   describe('Data Loading', () => {
     beforeEach(() => {
       global.fetch = jest.fn();
