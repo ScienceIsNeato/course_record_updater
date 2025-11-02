@@ -361,8 +361,25 @@ Course Record System
             return []
 
     @staticmethod
-    def _get_instructor_from_course(course_id: str) -> Optional[Dict[str, Any]]:
-        """Get instructor details from the first section of a course."""
+    def _get_instructor_from_outcome(
+        outcome: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get instructor details from the user who submitted the CLO.
+
+        For multi-section courses, use the submitted_by_user_id to identify
+        the correct instructor rather than picking arbitrarily from sections.
+        """
+        instructor_id = outcome.get("submitted_by_user_id")
+        if instructor_id:
+            return db.get_user(instructor_id)
+
+        # Fallback: if not submitted yet, try to get instructor from first section
+        # This is a best-effort attempt for unsubmitted CLOs
+        course_id = outcome.get("course_id")
+        if not course_id:
+            return None
+
         sections = db.get_sections_by_course(course_id)
         if not sections:
             return None
@@ -406,12 +423,12 @@ Course Record System
             course_id = outcome.get("course_id")
             course = db.get_course(course_id) if course_id else None
 
-            # Get instructor from course section
+            # Get instructor from CLO submission (multi-section aware)
             instructor = None
             instructor_name = None
             instructor_email = None
             if course:
-                instructor = CLOWorkflowService._get_instructor_from_course(course_id)
+                instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
                 if instructor:
                     instructor_name = CLOWorkflowService._build_instructor_name(
                         instructor
