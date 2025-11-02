@@ -88,9 +88,8 @@ def setup_worker_environment(tmp_path_factory):
                 f"http://localhost:{worker_port}"  # Fix email verification links
             )
             env["ENV"] = "test"
-            # Disable CSRF for E2E tests to avoid token validation issues
-            # E2E tests focus on functional workflows, not CSRF security
-            env["WTF_CSRF_ENABLED"] = "false"
+            # Enable CSRF for E2E tests to validate full security workflow
+            env["WTF_CSRF_ENABLED"] = "true"
             # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
             env.pop("EMAIL_PROVIDER", None)
             # Ensure EMAIL_WHITELIST is set for E2E tests
