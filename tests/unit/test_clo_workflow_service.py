@@ -424,6 +424,43 @@ class TestGetCLOsByStatus:
 
         assert result == []
 
+    @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
+    @patch("clo_workflow_service.db")
+    def test_get_clos_by_status_filters_none_details(self, mock_db, mock_get_details):
+        """Test that outcomes with None details are filtered out"""
+        mock_db.get_outcomes_by_status.return_value = [
+            {"outcome_id": "outcome-1"},
+            {"outcome_id": "outcome-2"},
+            {"outcome_id": "outcome-3"},
+        ]
+        # Second outcome returns None (missing data)
+        mock_get_details.side_effect = [
+            {"outcome_id": "outcome-1", "clo_number": "1"},
+            None,
+            {"outcome_id": "outcome-3", "clo_number": "3"},
+        ]
+
+        result = CLOWorkflowService.get_clos_by_status(
+            status=CLOStatus.AWAITING_APPROVAL,
+            institution_id="inst-123",
+        )
+
+        assert len(result) == 2
+        assert result[0]["outcome_id"] == "outcome-1"
+        assert result[1]["outcome_id"] == "outcome-3"
+
+    @patch("clo_workflow_service.db")
+    def test_get_clos_by_status_exception_handling(self, mock_db):
+        """Test exception handling in get_clos_by_status"""
+        mock_db.get_outcomes_by_status.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.get_clos_by_status(
+            status=CLOStatus.AWAITING_APPROVAL,
+            institution_id="inst-123",
+        )
+
+        assert result == []
+
 
 class TestGetOutcomeWithDetails:
     """Test CLOWorkflowService.get_outcome_with_details method"""
@@ -626,3 +663,54 @@ class TestSendReworkNotification:
         result = CLOWorkflowService._send_rework_notification("outcome-123", "Feedback")
 
         assert result is False
+
+
+class TestGetInstructorFromOutcome:
+    """Test CLOWorkflowService._get_instructor_from_outcome method"""
+
+    @patch("clo_workflow_service.db")
+    def test_get_instructor_from_submitted_by_user_id(self, mock_db):
+        """Test getting instructor from submitted_by_user_id"""
+        outcome = {
+            "outcome_id": "outcome-123",
+            "course_id": "course-456",
+            "submitted_by_user_id": "user-789",
+        }
+        mock_db.get_user.return_value = {
+            "id": "user-789",
+            "email": "instructor@example.com",
+        }
+
+        result = CLOWorkflowService._get_instructor_from_outcome(outcome)
+
+        assert result["id"] == "user-789"
+        mock_db.get_user.assert_called_once_with("user-789")
+
+    @patch("clo_workflow_service.db")
+    def test_get_instructor_no_course_id(self, mock_db):
+        """Test returns None when outcome has no course_id"""
+        outcome = {
+            "outcome_id": "outcome-123",
+            "submitted_by_user_id": None,
+            "course_id": None,
+        }
+
+        result = CLOWorkflowService._get_instructor_from_outcome(outcome)
+
+        assert result is None
+
+    @patch("clo_workflow_service.db")
+    def test_get_instructor_no_instructor_id_in_section(self, mock_db):
+        """Test returns None when section has no instructor_id"""
+        outcome = {
+            "outcome_id": "outcome-123",
+            "course_id": "course-456",
+            "submitted_by_user_id": None,
+        }
+        mock_db.get_sections_by_course.return_value = [
+            {"section_id": "section-1", "instructor_id": None}
+        ]
+
+        result = CLOWorkflowService._get_instructor_from_outcome(outcome)
+
+        assert result is None
