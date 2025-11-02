@@ -4561,9 +4561,58 @@ class TestCourseReminderEndpoint:
         assert data["success"] is False
         assert "Course not found" in data["error"]
 
-    @patch("database_service.get_user_by_id")
-    @patch("database_service.get_course_by_id")
     @patch("database_service.get_institution_by_id")
+    @patch("database_service.get_course_by_id")
+    @patch("database_service.get_user_by_id")
+    @patch("auth_service.get_current_user")
+    @patch("email_service.EmailService.send_course_assessment_reminder")
+    def test_send_course_reminder_instructor_no_name(
+        self,
+        mock_send_email,
+        mock_get_current_user,
+        mock_get_instructor,
+        mock_get_course,
+        mock_get_institution,
+        authenticated_client_and_token,
+    ):
+        """Test sending reminder when instructor has no first/last name uses email fallback."""
+        client = authenticated_client_and_token
+        # Instructor with no first/last name
+        mock_get_instructor.return_value = {
+            "user_id": "instructor-123",
+            "email": "instructor@example.com",
+            "first_name": "",
+            "last_name": "",
+            "institution_id": "inst-123",
+        }
+        mock_get_course.return_value = {
+            "id": "course-123",
+            "course_number": "CS101",
+            "course_title": "Intro to CS",
+        }
+        mock_get_institution.return_value = {
+            "id": "inst-123",
+            "name": "Test University",
+        }
+        mock_get_current_user.return_value = {
+            "user_id": "admin-123",
+            "email": "admin@example.com",
+            "first_name": "Admin",
+            "last_name": "User",
+            "institution_id": "inst-123",
+        }
+
+        response = client.post(
+            "/api/send-course-reminder",
+            json={"instructor_id": "instructor-123", "course_id": "course-123"},
+        )
+
+        assert response.status_code == 200
+        # Verify email was called with email address as name fallback
+        mock_send_email.assert_called_once()
+        call_args = mock_send_email.call_args[1]
+        assert call_args["instructor_name"] == "instructor@example.com"
+
     @patch("auth_service.get_current_user")
     @patch("email_service.EmailService.send_course_assessment_reminder")
     def test_send_course_reminder_email_exception(
