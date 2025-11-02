@@ -541,6 +541,8 @@ class TestSendReworkNotification:
         self, mock_get_details, mock_email_service
     ):
         """Test sending rework notification email"""
+        from app import app  # Import Flask app for context
+
         outcome_id = "outcome-123"
         feedback = "Please improve the assessment description"
 
@@ -552,7 +554,9 @@ class TestSendReworkNotification:
         }
         mock_email_service._send_email.return_value = True
 
-        result = CLOWorkflowService._send_rework_notification(outcome_id, feedback)
+        # Need app context for render_template()
+        with app.app_context():
+            result = CLOWorkflowService._send_rework_notification(outcome_id, feedback)
 
         assert result is True
         mock_email_service._send_email.assert_called_once()

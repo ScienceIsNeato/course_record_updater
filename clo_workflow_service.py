@@ -197,34 +197,23 @@ class CLOWorkflowService:
             course_number = outcome_details.get("course_number", "Unknown Course")
             clo_number = outcome_details.get("clo_number", "Unknown CLO")
 
-            # Compose email
+            # Compose email using templates
+            from flask import render_template
+
             subject = f"Feedback on CLO {clo_number} for {course_number}"
-            text_body = f"""
-Hello,
 
-Your submission for Course Learning Outcome {clo_number} in {course_number} requires some revisions before it can be approved.
+            template_context = {
+                "clo_number": clo_number,
+                "course_number": course_number,
+                "feedback": feedback,
+            }
 
-Feedback from reviewer:
-{feedback}
-
-Please review the feedback, make the necessary updates, and resubmit when ready.
-
-Thank you,
-Course Record System
-            """.strip()
-
-            html_body = f"""
-<html>
-<body>
-<p>Hello,</p>
-<p>Your submission for Course Learning Outcome <strong>{clo_number}</strong> in <strong>{course_number}</strong> requires some revisions before it can be approved.</p>
-<p><strong>Feedback from reviewer:</strong></p>
-<p>{feedback}</p>
-<p>Please review the feedback, make the necessary updates, and resubmit when ready.</p>
-<p>Thank you,<br>Course Record System</p>
-</body>
-</html>
-            """.strip()
+            text_body = render_template(
+                "emails/clo_rework_notification.txt", **template_context
+            )
+            html_body = render_template(
+                "emails/clo_rework_notification.html", **template_context
+            )
 
             # Send email using existing email service
             success = EmailService._send_email(
