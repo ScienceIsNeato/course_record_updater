@@ -531,6 +531,140 @@ describe('InstitutionDashboard', () => {
     });
   });
 
+  describe('offerings rendering', () => {
+    beforeEach(() => {
+      setBody(`
+        <div id="offeringManagementContainer"></div>
+      `);
+    });
+
+    it('renders offerings table with course and term lookups', () => {
+      const offerings = [
+        {
+          offering_id: 'off1',
+          course_id: 'c1',
+          term_id: 't1',
+          sections: 2,
+          enrollment: 50,
+          status: 'active'
+        },
+        {
+          offering_id: 'off2',
+          course_id: 'c2',
+          term_id: 't2',
+          sections: 1,
+          enrollment: 25,
+          status: 'active'
+        }
+      ];
+
+      const courses = [
+        { course_id: 'c1', course_number: 'CS101', course_title: 'Intro to CS' },
+        { course_id: 'c2', course_number: 'MATH201', course_title: 'Calculus' }
+      ];
+
+      const terms = [
+        { term_id: 't1', name: 'Fall 2024' },
+        { term_id: 't2', name: 'Spring 2025' }
+      ];
+
+      InstitutionDashboard.renderOfferings(offerings, courses, terms);
+
+      expect(window.panelManager.createSortableTable).toHaveBeenCalled();
+      const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
+      
+      expect(callArgs.id).toBe('institution-offerings-table');
+      expect(callArgs.data).toHaveLength(2);
+    });
+
+    it('renders empty state when no offerings', () => {
+      InstitutionDashboard.renderOfferings([], [], []);
+
+      const container = document.getElementById('offeringManagementContainer');
+      expect(container.innerHTML).toContain('No course offerings scheduled');
+      expect(container.innerHTML).toContain('Add Offering');
+    });
+
+    it('handles missing container gracefully', () => {
+      setBody('<div></div>'); // No offeringManagementContainer
+      
+      // Should not throw error
+      expect(() => InstitutionDashboard.renderOfferings([{offering_id: 'o1'}], [], [])).not.toThrow();
+      expect(window.panelManager.createSortableTable).not.toHaveBeenCalled();
+    });
+
+    it('handles offerings with missing course/term data', () => {
+      const offerings = [
+        {
+          offering_id: 'off1',
+          course_id: 'unknown',
+          term_id: 'unknown',
+          sections: 0,
+          enrollment: 0
+        }
+      ];
+
+      InstitutionDashboard.renderOfferings(offerings, [], []);
+
+      expect(window.panelManager.createSortableTable).toHaveBeenCalled();
+      const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
+      expect(callArgs.data).toHaveLength(1);
+    });
+  });
+
+  describe('terms rendering', () => {
+    beforeEach(() => {
+      setBody(`
+        <div id="termManagementContainer"></div>
+      `);
+    });
+
+    it('renders terms table', () => {
+      const terms = [
+        {
+          term_id: 't1',
+          name: 'Fall 2024',
+          start_date: '2024-08-01',
+          end_date: '2024-12-15',
+          active: true,
+          offerings_count: 10
+        },
+        {
+          term_id: 't2',
+          name: 'Spring 2025',
+          start_date: '2025-01-15',
+          end_date: '2025-05-15',
+          active: false,
+          offerings_count: 0
+        }
+      ];
+
+      InstitutionDashboard.renderTerms(terms);
+
+      expect(window.panelManager.createSortableTable).toHaveBeenCalled();
+      const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
+      
+      expect(callArgs.id).toBe('institution-terms-table');
+      expect(callArgs.data).toHaveLength(2);
+    });
+
+    it('renders empty state when no terms', () => {
+      InstitutionDashboard.renderTerms([]);
+
+      const container = document.getElementById('termManagementContainer');
+      expect(container.innerHTML).toContain('No terms defined');
+      expect(container.innerHTML).toContain('Add Term');
+    });
+
+    it('handles missing container gracefully', () => {
+      setBody('<div></div>'); // No termManagementContainer
+      
+      // Should not throw error
+      expect(() => InstitutionDashboard.renderTerms([{term_id: 't1'}])).not.toThrow();
+      expect(window.panelManager.createSortableTable).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Initialization and Event Handlers', () => {
     beforeEach(() => {
       jest.useFakeTimers();
