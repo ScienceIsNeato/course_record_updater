@@ -3191,9 +3191,6 @@ def delete_course_outcome_endpoint(outcome_id: str):
         )
 
 
-# ============================================================================
-# Note: CLO workflow endpoints moved to api/routes/clo_workflow.py blueprint
-
 # ========================================
 # IMPORT API (New Excel Import System)
 # ========================================
@@ -4023,7 +4020,11 @@ def login_api():
             remember_me=data.get("remember_me", False),
         )
 
-        # Check for 'next' URL in session (set by reminder-login route)
+        # Import session locally to avoid circular imports when this module is
+        # loaded early in app initialization. This is necessary because session
+        # depends on app context which may not be fully initialized during imports.
+        # Check for 'next' URL in session (set by reminder-login route for
+        # deep-linking after authentication)
         from flask import session
 
         next_url = session.pop("next_after_login", None)
@@ -5293,3 +5294,33 @@ def send_course_reminder_api():
             jsonify({"success": False, "error": "Failed to send reminder email"}),
             500,
         )
+
+
+# ============================================================================
+# ⚠️  WARNING: DO NOT ADD NEW ENDPOINTS TO THIS FILE ⚠️
+# ============================================================================
+#
+# 🚫 ANTI-PATTERN: Adding new API endpoints to this file
+#
+# This file has grown too large (5200+ lines) and is a maintenance nightmare.
+# Our long-term goal is to break it into ~20 smaller, focused modules.
+#
+# ✅ CORRECT APPROACH: Create new API endpoint modules
+#
+# Follow the pattern established in api/routes/:
+#   - api/routes/clo_workflow.py (CLO workflow endpoints)
+#   - api/routes/audit.py (audit endpoints)
+#   - api/routes/bulk_email.py (bulk email endpoints)
+#   - api/routes/dashboard.py (dashboard endpoints)
+#
+# Steps to add new endpoints:
+#   1. Create api/routes/your_feature.py
+#   2. Define Blueprint: your_feature_bp = Blueprint('your_feature', __name__)
+#   3. Add routes to blueprint: @your_feature_bp.route('/your-endpoint')
+#   4. Register in app.py: app.register_blueprint(your_feature_bp, url_prefix='/api')
+#
+# 🔥 If you're tempted to add endpoints here: STOP and refactor instead!
+#
+# Future agents: If you see new endpoints added after this warning,
+# flag it in code review. This is a documented anti-pattern.
+# ============================================================================
