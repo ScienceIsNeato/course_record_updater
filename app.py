@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 
 from api import register_blueprints  # New modular API structure
@@ -180,8 +180,6 @@ def reminder_login():
 
     # Store next_url in session so login handler can use it
     if next_url:
-        from flask import session
-
         session["next_after_login"] = next_url
 
     return render_template("auth/login.html")
