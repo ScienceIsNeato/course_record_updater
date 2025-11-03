@@ -509,6 +509,108 @@ class TestCLOAuditEndpoints:
         assert_json_response(response, 500, False)
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_current_user")
+    @patch("api.routes.clo_workflow.get_course_outcomes")
+    @patch("api.routes.clo_workflow.get_all_courses")
+    def test_mark_nci_success(
+        self,
+        mock_get_courses,
+        mock_get_outcomes,
+        mock_get_user,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test marking CLO as Never Coming In (CEI demo follow-up)."""
+        mock_get_user.return_value = {"user_id": "user-123"}
+        mock_get_courses.return_value = [{"course_id": "course-1"}]
+        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_workflow.mark_as_nci.return_value = True
+
+        response = client.post(
+            "/api/outcomes/outcome-1/mark-nci",
+            json={"reason": "Instructor left institution"},
+        )
+        assert_json_response(response, 200, True)
+        assert response.json["message"] == "CLO marked as Never Coming In (NCI)"
+
+    @patch("api.routes.clo_workflow.get_current_user")
+    @patch("api.routes.clo_workflow.get_course_outcomes")
+    @patch("api.routes.clo_workflow.get_all_courses")
+    def test_mark_nci_not_found(
+        self,
+        mock_get_courses,
+        mock_get_outcomes,
+        mock_get_user,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test marking NCI when outcome doesn't exist."""
+        mock_get_user.return_value = {"user_id": "user-123"}
+        mock_get_courses.return_value = [{"course_id": "course-1"}]
+        mock_get_outcomes.return_value = []
+
+        response = client.post(
+            "/api/outcomes/fake-id/mark-nci",
+            json={"reason": "Test"},
+        )
+        assert_json_response(response, 404, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_current_user")
+    @patch("api.routes.clo_workflow.get_course_outcomes")
+    @patch("api.routes.clo_workflow.get_all_courses")
+    def test_mark_nci_service_fails(
+        self,
+        mock_get_courses,
+        mock_get_outcomes,
+        mock_get_user,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test marking NCI when service method returns False."""
+        mock_get_user.return_value = {"user_id": "user-123"}
+        mock_get_courses.return_value = [{"course_id": "course-1"}]
+        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_workflow.mark_as_nci.return_value = False
+
+        response = client.post(
+            "/api/outcomes/outcome-1/mark-nci",
+            json={},
+        )
+        assert_json_response(response, 500, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
+    @patch("api.routes.clo_workflow.get_current_user")
+    @patch("api.routes.clo_workflow.get_course_outcomes")
+    @patch("api.routes.clo_workflow.get_all_courses")
+    def test_mark_nci_exception(
+        self,
+        mock_get_courses,
+        mock_get_outcomes,
+        mock_get_user,
+        mock_workflow,
+        client,
+        mock_institution,
+        mock_session,
+    ):
+        """Test marking NCI handles unexpected exceptions."""
+        mock_get_user.return_value = {"user_id": "user-123"}
+        mock_get_courses.return_value = [{"course_id": "course-1"}]
+        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_workflow.mark_as_nci.side_effect = Exception("Unexpected error")
+
+        response = client.post(
+            "/api/outcomes/outcome-1/mark-nci",
+            json={"reason": "Test"},
+        )
+        assert_json_response(response, 500, False)
+
+    @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_course_by_id")
     @patch("api.routes.clo_workflow.get_course_outcome")
     def test_get_clo_audit_details_success(
