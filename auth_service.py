@@ -430,8 +430,8 @@ def login_required(f):
                     401,
                 )
             else:
-                # Redirect to login page for browser requests
-                return redirect(url_for("login"))
+                # Redirect to login page for browser requests (preserve query params for deep links)
+                return redirect(url_for("login", next=request.full_path))
 
         return f(*args, **kwargs)
 

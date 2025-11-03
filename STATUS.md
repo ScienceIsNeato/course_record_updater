@@ -8,15 +8,16 @@
 
 ## 🎉 CEI Demo Follow-ups - IMPLEMENTATION COMPLETE
 
-All CRITICAL and HIGH priority items from October 2025 CEI demo feedback have been implemented across 4 phases. The system now correctly handles:
+All items (CRITICAL, HIGH, and LOW priority) from October 2025 CEI demo feedback have been implemented across 4 phases. The system now correctly handles:
 - ✅ CLO assessment data (students took vs. passed, assessment tool field)
 - ✅ Course-level enrollment tracking and narratives (celebrations, challenges, changes)
 - ✅ "Cannot Reconcile" checkbox for enrollment mismatches
 - ✅ "Never Coming In" (NCI) status for audit workflow
 - ✅ Due date visibility for flexible course deadlines
+- ✅ Email deep link fix (direct navigation to assessment page)
 
 **Implementation:** Phases 1-4 (Database → UI → Audit → Polish)  
-**Commits:** 5 feature commits on `feature/cei_demo_follow_up` branch  
+**Commits:** 7 feature commits on `feature/cei_demo_follow_up` branch  
 **Status:** Ready for UAT handoff (target: End of Winter 2026)  
 **Go-Live:** Mid-April 2026 (Spring 2026 semester)
 
@@ -125,12 +126,17 @@ See `research/CEI/CEI_Demo_Follow_ups.md` for full analysis and requirements.
 ### Phase 4: Polish and Documentation - ✅ COMPLETE
 
 **Completed:**
-- ✅ **Phase 4.1:** Email deep link fix - DEFERRED (LOW priority, workaround exists)
+- ✅ **Phase 4.1:** Email deep link fix - IMPLEMENTED
+  - Updated `@login_required` decorator to preserve `next` parameter with query string
+  - Updated `/login` route to store `next` URL in session for post-login redirect
+  - Flow: Email link → Login (if needed) → Auto-redirect to assessment page with course pre-selected
+  - Fixes Leslie's feedback: "doesn't actually take you directly to the page"
+  
 - ✅ **Phase 4.2:** Documentation and summary completed
 
 **Next Steps:**
 - 🎯 **ALL CEI DEMO FOLLOW-UPS COMPLETE!** Ready for final commit
-- All CRITICAL and HIGH priority items from October 2025 CEI demo implemented
+- All CRITICAL, HIGH, and LOW priority items from October 2025 CEI demo implemented
 - Ready for UAT handoff (target: End of Winter 2026, Go-Live: Mid-April 2026)
 
 **Blockers:** None

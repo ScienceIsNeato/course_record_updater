@@ -136,10 +136,15 @@ def index():
 # Authentication Routes
 @app.route("/login")
 def login():
-    """Login page"""
+    """Login page (supports deep linking via ?next parameter)"""
     # Redirect to dashboard if already authenticated
     if is_authenticated():
         return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    # Store 'next' URL in session for post-login redirect (fixes email deep link)
+    next_url = request.args.get("next")
+    if next_url:
+        session["next_after_login"] = next_url
 
     return render_template("auth/login.html")
 
