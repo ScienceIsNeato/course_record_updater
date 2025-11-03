@@ -1458,7 +1458,6 @@ class TestSectionImportErrorPaths:
         service = ImportService("inst-123")
         service._process_section_import(
             {"term_name": "Fall 2024", "section_number": "001"},
-            ConflictStrategy.USE_THEIRS,
             dry_run=False,
         )
         assert len(service.stats["errors"]) == 1
@@ -1480,7 +1479,6 @@ class TestSectionImportErrorPaths:
                 "term_name": "Fall 2024",
                 "section_number": "001",
             },
-            ConflictStrategy.USE_THEIRS,
             dry_run=False,
         )
         # Course check happens first, so this should be the error
@@ -1504,7 +1502,6 @@ class TestSectionImportErrorPaths:
                 "term_name": "Nonexistent Term",
                 "section_number": "001",
             },
-            ConflictStrategy.USE_THEIRS,
             dry_run=False,
         )
         assert len(service.stats["errors"]) == 1
@@ -1528,7 +1525,6 @@ class TestSectionImportErrorPaths:
                 "term_name": "Fall 2024",
                 "section_number": "001",
             },
-            ConflictStrategy.USE_THEIRS,
             dry_run=True,
         )
         assert service.stats["records_created"] == 0
@@ -1560,7 +1556,6 @@ class TestSectionImportErrorPaths:
                 "term_name": "Fall 2024",
                 "section_number": "001",
             },
-            ConflictStrategy.USE_THEIRS,
             dry_run=False,
         )
         assert len(service.stats["errors"]) == 1
@@ -1579,7 +1574,6 @@ class TestSectionImportErrorPaths:
                 "term_name": "Fall 2024",
                 "section_number": "001",
             },
-            ConflictStrategy.USE_THEIRS,
             dry_run=False,
         )
         assert len(service.stats["errors"]) == 1
