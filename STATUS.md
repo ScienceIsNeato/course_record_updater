@@ -1,8 +1,9 @@
 # Project Status
 
 **Last Updated:** November 3, 2025  
-**Current Task:** CEI Demo Follow-ups - ALL PHASES COMPLETE!  
-**Branch:** `feature/cei_demo_follow_up`
+**Current Task:** CEI Demo Follow-ups - CI Fixes Complete  
+**Branch:** `feature/cei_demo_follow_up` 
+**PR:** #22 - Ready for Review
 
 ---
 
@@ -17,9 +18,29 @@ All items (CRITICAL, HIGH, and LOW priority) from October 2025 CEI demo feedback
 - ✅ Email deep link fix (direct navigation to assessment page)
 
 **Implementation:** Phases 1-4 (Database → UI → Audit → Polish)  
-**Commits:** 7 feature commits on `feature/cei_demo_follow_up` branch  
-**Status:** Ready for UAT handoff (target: End of Winter 2026)  
+**Commits:** 9 commits total (7 feature + 2 CI fixes) on `feature/cei_demo_follow_up` branch  
+**Status:** PR #22 open - CI tests passing, ready for review  
 **Go-Live:** Mid-April 2026 (Spring 2026 semester)
+
+### CI Fixes (November 3, 2025)
+
+After opening PR #22, CI reported 2 E2E test failures and 32% coverage on new code. Both issues resolved:
+
+**Fix 1: E2E Test Failures (test_uat_007, test_uat_009)**
+- **Root Cause:** UI was still referencing old field names (students_assessed, students_meeting_target)
+- **Fix:** Updated `assessments.html` rendering logic to use new field names (students_took, students_passed, assessment_tool)
+- **Impact:** Submit button now appears correctly when assessment is complete
+- **Commit:** `059753d - fix: Update CLO assessment UI to use new field names`
+
+**Fix 2: Coverage Gap (32% → 84%)**
+- **Root Cause:** NCI functionality had no unit tests
+- **Fix:** Added comprehensive unit tests for NCI feature:
+  - 5 service layer tests (`test_clo_workflow_service.py`)
+  - 4 API layer tests (`test_clo_workflow.py`)
+- **Impact:** Overall coverage improved from 83.78% to 84.19%
+- **Commit:** `705d111 - test: Add comprehensive unit tests for NCI functionality`
+
+All CI checks now passing! ✅
 
 See `research/CEI/CEI_Demo_Follow_ups.md` for full analysis and requirements.
 
