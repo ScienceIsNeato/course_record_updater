@@ -21,22 +21,40 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
     """
     Get ONLY lines ADDED (not modified, not context) in the current branch compared to base_branch.
     
-    This parses actual '+' lines from the diff, not hunk headers, to avoid counting
-    context lines and unchanged code as "modified".
+    Uses 'gh pr diff' if in a PR context to match exactly what GitHub/SonarCloud sees,
+    otherwise falls back to git diff.
     
     Returns:
         Dict mapping file paths to sets of newly added line numbers
     """
-    print(f"🔍 Analyzing NEW lines added vs {base_branch}...")
+    print(f"🔍 Analyzing NEW lines added (PR diff)...")
     
     try:
-        # Get full unified diff (not -U0) so we can parse actual + lines
-        result = subprocess.run(
-            ["git", "diff", base_branch, "HEAD"],
+        # Try to get PR number and use gh pr diff (matches GitHub/SonarCloud view)
+        pr_result = subprocess.run(
+            ["gh", "pr", "view", "--json", "number", "-q", ".number"],
             capture_output=True,
             text=True,
-            check=True
         )
+        
+        if pr_result.returncode == 0 and pr_result.stdout.strip():
+            pr_number = pr_result.stdout.strip()
+            print(f"   Using PR #{pr_number} diff (matches SonarCloud)")
+            result = subprocess.run(
+                ["gh", "pr", "diff", pr_number],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+        else:
+            # Fallback to git diff
+            print(f"   Using git diff vs {base_branch}")
+            result = subprocess.run(
+                ["git", "diff", base_branch, "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
         
         added_lines = defaultdict(set)
         current_file = None
@@ -76,29 +94,31 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
         return {}
 
 
-def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Dict[str, Set[int]]:
+def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
     Parse coverage.xml (Python) to find uncovered lines.
     
     Returns:
-        Dict mapping file paths to sets of uncovered line numbers
+        Tuple of (uncovered_lines dict, all_covered_files set)
     """
     print(f"📊 Parsing Python coverage: {coverage_file}...")
     
     if not Path(coverage_file).exists():
         print(f"⚠️  Python coverage file not found: {coverage_file}", file=sys.stderr)
-        return {}
+        return {}, set()
     
     try:
         tree = ET.parse(coverage_file)
         root = tree.getroot()
         
         uncovered_lines = defaultdict(set)
+        all_covered_files = set()
         
         # Parse coverage.xml format
         for package in root.findall('.//package'):
             for cls in package.findall('classes/class'):
                 filename = cls.get('filename')
+                all_covered_files.add(filename)
                 
                 for line in cls.findall('lines/line'):
                     line_num = int(line.get('number'))
@@ -107,14 +127,14 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Dict[st
                     if hits == 0:
                         uncovered_lines[filename].add(line_num)
         
-        return dict(uncovered_lines)
+        return dict(uncovered_lines), all_covered_files
     
     except ET.ParseError as e:
         print(f"❌ Error parsing Python coverage XML: {e}", file=sys.stderr)
-        return {}
+        return {}, set()
 
 
-def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Dict[str, Set[int]]:
+def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
     Parse lcov.info (JavaScript) to find uncovered lines.
     
@@ -124,16 +144,17 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Dict
         end_of_record
     
     Returns:
-        Dict mapping file paths to sets of uncovered line numbers
+        Tuple of (uncovered_lines dict, all_covered_files set)
     """
     print(f"📊 Parsing JavaScript coverage: {lcov_file}...")
     
     if not Path(lcov_file).exists():
         print(f"⚠️  JavaScript coverage file not found: {lcov_file}", file=sys.stderr)
-        return {}
+        return {}, set()
     
     try:
         uncovered_lines = defaultdict(set)
+        all_covered_files = set()
         current_file = None
         
         with open(lcov_file, 'r') as f:
@@ -150,6 +171,8 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Dict
                     if 'static/' in abs_path:
                         current_file = abs_path.split('static/')[-1]
                         current_file = f"static/{current_file}"
+                    
+                    all_covered_files.add(current_file)
                 
                 # Parse line coverage: DA:<line>,<hits>
                 elif line.startswith('DA:') and current_file:
@@ -167,19 +190,22 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Dict
                 elif line == 'end_of_record':
                     current_file = None
         
-        return dict(uncovered_lines)
+        return dict(uncovered_lines), all_covered_files
     
     except Exception as e:
         print(f"❌ Error parsing JavaScript coverage LCOV: {e}", file=sys.stderr)
-        return {}
+        return {}, set()
 
 
 def cross_reference_coverage(
     added_lines: Dict[str, Set[int]],
-    uncovered_lines: Dict[str, Set[int]]
+    uncovered_lines: Dict[str, Set[int]],
+    all_covered_files: Set[str]
 ) -> Dict[str, Set[int]]:
     """
     Find uncovered lines that were NEWLY ADDED in the PR (not just touched/refactored).
+    
+    Also handles files that were modified but have NO coverage data at all (treats as 0% coverage).
     
     Returns:
         Dict mapping file paths to sets of uncovered newly-added line numbers
@@ -187,9 +213,16 @@ def cross_reference_coverage(
     pr_coverage_gaps = {}
     
     for filepath, new_lines in added_lines.items():
-        # Check if we have coverage data for this file
-        if filepath in uncovered_lines:
-            # Find intersection: lines that are both NEW AND uncovered
+        # Skip non-source files
+        if not (filepath.endswith('.py') or filepath.endswith('.js')):
+            continue
+            
+        # Check if we have ANY coverage data for this file
+        if filepath not in all_covered_files:
+            # File was modified but has NO coverage data → all added lines are uncovered
+            pr_coverage_gaps[filepath] = new_lines
+        elif filepath in uncovered_lines:
+            # File has coverage data → find intersection of new + uncovered
             gap_lines = new_lines & uncovered_lines[filepath]
             if gap_lines:
                 pr_coverage_gaps[filepath] = gap_lines
@@ -324,24 +357,22 @@ def main():
     print()
     
     # Step 2a: Get Python uncovered lines from coverage.xml
-    python_uncovered = get_uncovered_lines_from_xml(args.coverage_file)
+    python_uncovered, python_covered_files = get_uncovered_lines_from_xml(args.coverage_file)
     python_uncovered_count = sum(len(lines) for lines in python_uncovered.values())
     print(f"   📊 Python: {python_uncovered_count} total uncovered lines across {len(python_uncovered)} files")
     
     # Step 2b: Get JavaScript uncovered lines from lcov.info
-    js_uncovered = get_uncovered_lines_from_lcov("coverage/lcov.info")
+    js_uncovered, js_covered_files = get_uncovered_lines_from_lcov("coverage/lcov.info")
     js_uncovered_count = sum(len(lines) for lines in js_uncovered.values())
     print(f"   📊 JavaScript: {js_uncovered_count} total uncovered lines across {len(js_uncovered)} files")
     print()
     
     # Step 2c: Merge Python and JavaScript coverage
     uncovered_lines = {**python_uncovered, **js_uncovered}
-    if not uncovered_lines:
-        print("⚠️  No coverage data found or all lines covered")
-        return 0
+    all_covered_files = python_covered_files | js_covered_files
     
     # Step 3: Cross-reference (find NEW lines that are uncovered)
-    pr_coverage_gaps = cross_reference_coverage(added_lines, uncovered_lines)
+    pr_coverage_gaps = cross_reference_coverage(added_lines, uncovered_lines, all_covered_files)
     
     # Step 4: Generate report
     print_report(pr_coverage_gaps, args.output)
