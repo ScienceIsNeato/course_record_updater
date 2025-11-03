@@ -45,6 +45,82 @@
         </select>
     </div>
     
+    <!-- Course-Level Assessment Section (NEW from CEI demo feedback) -->
+    <div id="courseLevelSection" style="display: none;" class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Course-Level Assessment Data</h5>
+        </div>
+        <div class="card-body">
+            <!-- Enrollment Information (Read-Only) -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6 class="text-primary mb-3">Enrollment Information (Pre-Populated)</h6>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Total Enrollment:</label>
+                    <input type="text" class="form-control-plaintext" id="courseEnrollment" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Withdrawals:</label>
+                    <input type="text" class="form-control-plaintext" id="courseWithdrawals" readonly>
+                </div>
+            </div>
+            
+            <!-- Grade Outcomes (Instructor Input) -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <h6 class="text-primary mb-3">Course Grade Outcomes (Instructor Input)</h6>
+                </div>
+                <div class="col-md-6">
+                    <label for="studentsPassed" class="form-label">Students Passed (A/B/C) *</label>
+                    <input type="number" class="form-control" id="courseStudentsPassed" min="0" placeholder="Number of students with A, B, or C">
+                </div>
+                <div class="col-md-6">
+                    <label for="studentsDFIC" class="form-label">Students D/F/Incomplete *</label>
+                    <input type="number" class="form-control" id="courseStudentsDFIC" min="0" placeholder="Number of students with D, F, or I">
+                </div>
+            </div>
+            
+            <!-- Reconciliation -->
+            <div class="mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="cannotReconcile">
+                    <label class="form-check-label" for="cannotReconcile">
+                        <strong>Cannot Reconcile</strong> - Check if enrollment numbers don't add up
+                    </label>
+                </div>
+                <div id="reconciliationNoteContainer" style="display: none;" class="mt-2">
+                    <label for="reconciliationNote" class="form-label">Reconciliation Note:</label>
+                    <textarea class="form-control" id="reconciliationNote" rows="2" placeholder="Explain why the numbers don't reconcile..."></textarea>
+                </div>
+            </div>
+            
+            <!-- Course Narratives (NOT at CLO level - corrected from demo feedback) -->
+            <div class="mb-3">
+                <h6 class="text-primary mb-3">Course Reflections</h6>
+                
+                <div class="mb-3">
+                    <label for="narrativeCelebrations" class="form-label">What Went Well (Celebrations)?</label>
+                    <textarea class="form-control" id="narrativeCelebrations" rows="3" placeholder="Describe what worked well in this course..."></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="narrativeChallenges" class="form-label">What Was Difficult (Challenges)?</label>
+                    <textarea class="form-control" id="narrativeChallenges" rows="3" placeholder="Describe challenges encountered..."></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="narrativeChanges" class="form-label">What to Do Differently (Changes)?</label>
+                    <textarea class="form-control" id="narrativeChanges" rows="3" placeholder="Describe what you would change next time..."></textarea>
+                </div>
+            </div>
+            
+            <div class="text-end">
+                <button type="button" class="btn btn-primary" id="saveCourseData"><i class="fas fa-save"></i> Save Course Data</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Outcomes List -->
     <div id="outcomesContainer">
         <p class="text-muted">Select a course to view its outcomes</p>
@@ -69,18 +145,21 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="studentsAssessed" class="form-label">Students Assessed *</label>
-                        <input type="number" class="form-control" id="studentsAssessed" name="students_assessed" required min="0">
+                        <label for="studentsTook" class="form-label">Students Who Took This Assessment *</label>
+                        <input type="number" class="form-control" id="studentsTook" name="students_took" required min="0">
+                        <small class="text-muted">How many students took THIS specific CLO assessment?</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="studentsMeetingTarget" class="form-label">Students Meeting Target *</label>
-                        <input type="number" class="form-control" id="studentsMeetingTarget" name="students_meeting_target" required min="0">
+                        <label for="studentsPassed" class="form-label">Students Who Passed This Assessment *</label>
+                        <input type="number" class="form-control" id="studentsPassed" name="students_passed" required min="0">
+                        <small class="text-muted">How many students passed THIS specific CLO assessment?</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="assessmentNarrative" class="form-label">Narrative (Optional)</label>
-                        <textarea class="form-control" id="assessmentNarrative" name="narrative" rows="3" placeholder="Optional notes about this assessment"></textarea>
+                        <label for="assessmentTool" class="form-label">Assessment Tool *</label>
+                        <input type="text" class="form-control" id="assessmentTool" name="assessment_tool" required maxlength="50" placeholder="e.g., Test #3, Lab 2, Final Project">
+                        <small class="text-muted">Brief description (50 characters max)</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -286,13 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </div>
                             `}
                             
-                            ${outcome.narrative ? `
-                                <div class="mt-2 p-3 bg-light rounded">
-                                    <small class="text-muted d-block mb-1">Notes:</small>
-                                    <p class="mb-0">${escapeHtml(outcome.narrative)}</p>
-                                </div>
-                            ` : ''}
-                            
                             ${needsWork ? `
                                 <div class="alert alert-warning mt-3">
                                     <strong><i class="fas fa-exclamation-triangle"></i> Revision Requested:</strong>
@@ -304,9 +376,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <button class="btn btn-primary update-assessment-btn" 
                                         data-outcome-id="${outcome.outcome_id}"
                                         data-description="${escapeHtml(outcome.description)}"
-                                        data-assessed="${assessed}"
-                                        data-meeting="${meeting}"
-                                        data-narrative="${escapeHtml(outcome.narrative || '')}"
+                                        data-students-took="${outcome.students_took || ''}"
+                                        data-students-passed="${outcome.students_passed || ''}"
+                                        data-assessment-tool="${escapeHtml(outcome.assessment_tool || '')}"
                                         data-status="${status}">
                                     <i class="fas fa-edit"></i> ${isComplete ? 'Update' : 'Enter'} Assessment
                                 </button>
@@ -409,26 +481,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('assessmentOutcomeId').value = outcomeData.outcomeId;
         document.getElementById('assessmentOutcomeDescription').textContent = outcomeData.description;
         
-        // Calculate default enrollment from instructor's sections for current course
-        const currentCourseId = courseSelect.value;
-        const assessedValue = parseInt(outcomeData.assessed) || 0;
-        let defaultEnrollment = '';
-        
-        // Only use default enrollment if no assessment data exists (value is 0)
-        if (assessedValue === 0 && currentCourseId && instructorSections.length > 0) {
-            // Sum up enrollment from all sections for this course
-            const totalEnrollment = instructorSections
-                .filter(s => s.course_id === currentCourseId)
-                .reduce((sum, s) => sum + (Number(s.enrollment) || 0), 0);
-            if (totalEnrollment > 0) {
-                defaultEnrollment = totalEnrollment.toString();
-            }
-        }
-        
-        // Use existing assessment value if present, otherwise use default enrollment
-        document.getElementById('studentsAssessed').value = assessedValue > 0 ? assessedValue.toString() : defaultEnrollment;
-        document.getElementById('studentsMeetingTarget').value = outcomeData.meeting || '';
-        document.getElementById('assessmentNarrative').value = outcomeData.narrative || '';
+        // Populate with existing values (updated field names from CEI demo feedback)
+        document.getElementById('studentsTook').value = outcomeData.studentsTook || '';
+        document.getElementById('studentsPassed').value = outcomeData.studentsPassed || '';
+        document.getElementById('assessmentTool').value = outcomeData.assessmentTool || '';
         
         const modal = new bootstrap.Modal(updateAssessmentModal);
         modal.show();
@@ -438,8 +494,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let hasEdited = false;
     let autoMarkTriggered = false;
     
-    // Auto-track editing on form fields
-    ['studentsAssessed', 'studentsMeetingTarget', 'assessmentNarrative'].forEach(fieldId => {
+    // Auto-track editing on form fields (updated field names from CEI demo feedback)
+    ['studentsTook', 'studentsPassed', 'assessmentTool'].forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
             field.addEventListener('input', function() {
@@ -480,12 +536,23 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const outcomeId = document.getElementById('assessmentOutcomeId').value;
-        const studentsAssessed = parseInt(document.getElementById('studentsAssessed').value);
-        const studentsMeetingTarget = parseInt(document.getElementById('studentsMeetingTarget').value);
-        const narrative = document.getElementById('assessmentNarrative').value;
+        const studentsTook = parseInt(document.getElementById('studentsTook').value);
+        const studentsPassed = parseInt(document.getElementById('studentsPassed').value);
+        const assessmentTool = document.getElementById('assessmentTool').value.trim();
         
-        if (studentsMeetingTarget > studentsAssessed) {
-            alert('Students meeting target cannot exceed students assessed');
+        // Validation (updated from CEI demo feedback)
+        if (studentsPassed > studentsTook) {
+            alert('Students who passed cannot exceed students who took the assessment');
+            return;
+        }
+        
+        if (!assessmentTool || assessmentTool.length === 0) {
+            alert('Assessment tool is required');
+            return;
+        }
+        
+        if (assessmentTool.length > 50) {
+            alert('Assessment tool must be 50 characters or less');
             return;
         }
         
@@ -499,11 +566,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
-                    assessment_data: {
-                        students_assessed: studentsAssessed,
-                        students_meeting_target: studentsMeetingTarget
-                    },
-                    narrative: narrative
+                    students_took: studentsTook,
+                    students_passed: studentsPassed,
+                    assessment_tool: assessmentTool
                 })
             });
             
@@ -537,6 +602,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Course selection handler
     courseSelect.addEventListener('change', function() {
         loadOutcomes(this.value);
+        loadCourseLevelData(this.value); // NEW: Load course-level assessment data
     });
     
     // Helper function to escape HTML
@@ -578,6 +644,105 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'text-danger';
     }
     
+    // Course-Level Assessment Section Handlers (NEW from CEI demo feedback)
+    const courseLevelSection = document.getElementById('courseLevelSection');
+    const cannotReconcileCheckbox = document.getElementById('cannotReconcile');
+    const reconciliationNoteContainer = document.getElementById('reconciliationNoteContainer');
+    const saveCourseDataBtn = document.getElementById('saveCourseData');
+    
+    // Toggle reconciliation note visibility
+    if (cannotReconcileCheckbox) {
+        cannotReconcileCheckbox.addEventListener('change', function() {
+            reconciliationNoteContainer.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                document.getElementById('reconciliationNote').value = '';
+            }
+        });
+    }
+    
+    // Load course-level data when course is selected
+    async function loadCourseLevelData(courseId) {
+        try {
+            // For now, use section data - in full implementation, this would be course-level
+            const section = instructorSections.find(s => s.course_id === courseId);
+            if (section) {
+                // Populate read-only enrollment fields
+                document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
+                document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
+                
+                // Populate instructor input fields (if they exist)
+                document.getElementById('courseStudentsPassed').value = section.students_passed || '';
+                document.getElementById('courseStudentsDFIC').value = section.students_dfic || '';
+                document.getElementById('cannotReconcile').checked = section.cannot_reconcile || false;
+                document.getElementById('reconciliationNote').value = section.reconciliation_note || '';
+                
+                // Show/hide reconciliation note based on checkbox
+                reconciliationNoteContainer.style.display = section.cannot_reconcile ? 'block' : 'none';
+                
+                // Populate narratives
+                document.getElementById('narrativeCelebrations').value = section.narrative_celebrations || '';
+                document.getElementById('narrativeChallenges').value = section.narrative_challenges || '';
+                document.getElementById('narrativeChanges').value = section.narrative_changes || '';
+                
+                // Show the section
+                courseLevelSection.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error loading course-level data:', error);
+        }
+    }
+    
+    // Save course-level data
+    if (saveCourseDataBtn) {
+        saveCourseDataBtn.addEventListener('click', async function() {
+            const courseId = courseSelect.value;
+            if (!courseId) {
+                alert('Please select a course first');
+                return;
+            }
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const section = instructorSections.find(s => s.course_id === courseId);
+                
+                if (!section) {
+                    alert('No section found for this course');
+                    return;
+                }
+                
+                const data = {
+                    students_passed: parseInt(document.getElementById('courseStudentsPassed').value) || null,
+                    students_dfic: parseInt(document.getElementById('courseStudentsDFIC').value) || null,
+                    cannot_reconcile: document.getElementById('cannotReconcile').checked,
+                    reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
+                    narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
+                    narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
+                    narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
+                };
+                
+                const response = await fetch(`/api/sections/${section.section_id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save course data');
+                }
+                
+                alert('Course data saved successfully!');
+                
+            } catch (error) {
+                console.error('Error saving course data:', error);
+                alert('Failed to save course data: ' + error.message);
+            }
+        });
+    }
+    
     // Initialize - call async function
     loadCourses().then(() => {
         // Auto-select course if provided in URL query parameter
@@ -586,6 +751,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (courseParam && courseSelect) {
             courseSelect.value = courseParam;
             loadOutcomes(courseParam);
+            loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
         }
     }).catch(err => console.error('Failed to load courses:', err));
 });

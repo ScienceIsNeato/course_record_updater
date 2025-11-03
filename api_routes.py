@@ -2801,9 +2801,13 @@ def get_section_by_id_endpoint(section_id: str):
 @permission_required("manage_sections")
 def update_section_endpoint(section_id: str):
     """
-    Update section details
+    Update section details (supports new course-level assessment fields from CEI demo feedback)
 
-    Allows updating section_number, enrollment, capacity, instructor_id, etc.
+    Allows updating:
+    - section_number, enrollment, instructor_id (basic section data)
+    - withdrawals, students_passed, students_dfic (course-level assessment data)
+    - cannot_reconcile, reconciliation_note (enrollment reconciliation)
+    - narrative_celebrations, narrative_challenges, narrative_changes (course reflections)
     """
     try:
         data = request.get_json(silent=True)
@@ -3087,22 +3091,37 @@ def update_course_outcome_endpoint(outcome_id: str):
 @permission_required("submit_assessments")
 def update_outcome_assessment_endpoint(outcome_id: str):
     """
-    Update course outcome assessment data
+    Update course outcome assessment data (corrected field names from CEI demo feedback)
 
     Request body should contain:
-    - assessment_data: Dict with assessment metrics (students_assessed, students_meeting_target, etc.)
-    - narrative: Assessment narrative text (optional)
+    - students_took: Number of students who took this CLO assessment
+    - students_passed: Number of students who passed this CLO assessment
+    - assessment_tool: Brief description (40-50 chars) like "Test #3", "Lab 2"
     """
     try:
         data = request.get_json(silent=True)
-        if not data or "assessment_data" not in data:
+        if not data:
             return (
-                jsonify({"success": False, "error": "assessment_data is required"}),
+                jsonify({"success": False, "error": "Request body is required"}),
                 400,
             )
 
-        assessment_data = data["assessment_data"]
-        narrative = data.get("narrative", "")
+        # Extract new field names (corrected from CEI demo feedback)
+        students_took = data.get("students_took")
+        students_passed = data.get("students_passed")
+        assessment_tool = data.get("assessment_tool", "").strip()
+
+        # Validation
+        if assessment_tool and len(assessment_tool) > 50:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "assessment_tool must be 50 characters or less",
+                    }
+                ),
+                400,
+            )
 
         # Verify the outcome exists
         institution_id = get_current_institution_id()
@@ -3118,7 +3137,12 @@ def update_outcome_assessment_endpoint(outcome_id: str):
         if not found:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
-        success = update_outcome_assessment(outcome_id, assessment_data, narrative)
+        success = update_outcome_assessment(
+            outcome_id,
+            students_took=students_took,
+            students_passed=students_passed,
+            assessment_tool=assessment_tool or None,
+        )
 
         if success:
             # Auto-mark CLO as in_progress when instructor starts editing

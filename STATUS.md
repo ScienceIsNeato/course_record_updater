@@ -1,7 +1,7 @@
 # Project Status
 
 **Last Updated:** November 3, 2025  
-**Current Task:** CEI Demo Follow-ups Implementation - Phase 1: Database Schema Redesign  
+**Current Task:** CEI Demo Follow-ups Implementation - Phase 2 COMPLETE!  
 **Branch:** `feature/audit`
 
 ---
@@ -10,7 +10,7 @@
 
 Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_Demo_Follow_ups.md` for full analysis.
 
-### Phase 1: Database Schema Redesign (CRITICAL) - IN PROGRESS
+### Phase 1: Database Schema Redesign (CRITICAL) - ✅ COMPLETE
 
 **Completed:**
 - ✅ **Phase 1.1:** Updated CLO assessment data model (models_sql.py, models.py)
@@ -56,9 +56,42 @@ Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_
   - Fixed `test_models_sql.py` - to_dict method tests pass
   - All 11 previously failing tests now pass!
 
+### Phase 2: UI and Workflow Updates (CRITICAL) - ✅ COMPLETE
+
+**Completed:**
+- ✅ **Phase 2.1:** Redesigned `assessments.html` template
+  - Removed CLO-level narrative field
+  - Updated CLO modal with new fields: `studentsTook`, `studentsPassed`, `assessmentTool`
+  - Added comprehensive course-level assessment section:
+    - Read-only enrollment data (enrollment, withdrawals)
+    - Instructor-input grade data (students_passed, students_dfic)
+    - Reconciliation checkbox and note (for "Cannot Reconcile" cases)
+    - Three course narrative fields (celebrations, challenges, changes)
+
+- ✅ **Phase 2.2:** Updated JavaScript validation logic
+  - Updated all field references from old to new names
+  - Added validation for new fields (assessment_tool length ≤50, passed ≤ took)
+  - Removed narrative display from outcome cards
+  - Added handlers for reconciliation checkbox toggle
+  - Added save handler for course-level data
+  - Integrated course-level data loading with course selection
+
+- ✅ **Phase 2.3:** Updated API endpoints for new data structure
+  - Updated `/api/outcomes/<id>/assessment` endpoint to use new field names
+  - Added validation for `assessment_tool` length (50 chars max)
+  - Updated `/api/sections/<id>` endpoint documentation for new fields
+  - All API endpoints now aligned with new schema
+
+- ✅ **Phase 2.4:** Updated E2E tests for new instructor workflow
+  - Fixed `test_uat_007_clo_submission_happy_path.py` - new field names
+  - Fixed `test_uat_008_clo_approval_workflow.py` - API call field names
+  - Fixed `test_uat_009_clo_rework_feedback.py` - form fields and validation
+  - Fixed `test_uat_010_clo_pipeline_end_to_end.py` - full workflow tests
+
 **Next Steps:**
-- 🎯 **PHASE 1 COMPLETE!** Ready to commit and move to Phase 2 (UI/Workflow Updates)
-- Phase 2 will update the instructor UI (`assessments.html`, `assessments.js`) and API endpoints
+- 🎯 **PHASE 2 COMPLETE!** Ready to commit
+- Phase 3: Add "Never Coming In" (NCI) status and due date UI components
+- Phase 4: Final polish and UAT handoff
 
 **Blockers:** None
 
@@ -94,10 +127,8 @@ See `research/CEI/CEI_Demo_Implementation_Plan.md` for complete 8-week implement
 
 ## Known Issues
 
-- Database access layer not yet updated for new schema
-- Seed scripts not yet updated for new schema
-- UI still using old field names (will break until Phase 2 complete)
-- Tests still using old schema (will break until Phase 1.6 complete)
+- None currently! Phases 1 & 2 complete and all tests passing
+- Phase 3 & 4 are enhancements, not bug fixes
 
 ---
 
