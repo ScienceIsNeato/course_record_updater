@@ -1,3 +1,4 @@
+/* global setLoadingState, setErrorState */
 (function () {
   const API_ENDPOINT = '/api/dashboard/data';
   const SELECTORS = {
@@ -88,7 +89,9 @@
       this.renderAssessmentTasks(data.assessment_tasks || []);
       this.renderRecentActivity(data.assessment_tasks || []);
       this.renderCourseSummary(data.teaching_assignments || [], data.sections || []);
-      this.updateLastUpdated(data.metadata?.last_updated);
+      const lastUpdated =
+        data.metadata && data.metadata.last_updated ? data.metadata.last_updated : null;
+      this.updateLastUpdated(lastUpdated);
     },
 
     updateHeader(data) {
@@ -130,6 +133,7 @@
         data: assignments.map(assignment => {
           const sectionCount = Number(assignment.section_count ?? 0);
           const enrollment = Number(assignment.enrollment ?? 0);
+          const courseId = assignment.course_id || '';
           return {
             course:
               `${assignment.course_number || assignment.course_id || 'Course'} — ${assignment.course_title || ''}`.trim(),
@@ -137,8 +141,7 @@
             sections_sort: sectionCount.toString(),
             students: enrollment.toString(),
             students_sort: enrollment.toString(),
-            actions:
-              '<button class="btn btn-sm btn-outline-primary" onclick="return false;">Gradebook</button>'
+            actions: `<a href="/assessments?course=${courseId}" class="btn btn-sm btn-outline-primary">Enter</a>`
           };
         })
       });
@@ -261,7 +264,7 @@
     },
 
     deriveCourseProgress(courseId, sections) {
-      if (!sections?.length) return 0;
+      if (!sections || !sections.length) return 0;
       const completed = sections.filter(section => this.isTaskComplete(section.status)).length;
       return Math.round((completed / sections.length) * 100);
     },
@@ -274,24 +277,11 @@
     },
 
     setLoading(containerId, message) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = `
-        <div class="panel-loading">
-          <div class="spinner-border spinner-border-sm"></div>
-          ${message}
-        </div>
-      `;
+      setLoadingState(containerId, message);
     },
 
     showError(containerId, message) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-      container.innerHTML = `
-        <div class="alert alert-danger mb-0">
-          <i class="fas fa-exclamation-triangle me-1"></i>${message}
-        </div>
-      `;
+      setErrorState(containerId, message);
     },
 
     renderEmptyState(message, actionLabel) {

@@ -267,8 +267,10 @@ def delete_course(course_id: str) -> bool:
     return _db_service.delete_course(course_id)
 
 
-def get_course_by_number(course_number: str) -> Optional[Dict[str, Any]]:
-    return _db_service.get_course_by_number(course_number)
+def get_course_by_number(
+    course_number: str, institution_id: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    return _db_service.get_course_by_number(course_number, institution_id)
 
 
 def get_courses_by_department(
@@ -509,6 +511,38 @@ def list_invitations(
     return _db_service.list_invitations(institution_id, status, limit, offset)
 
 
+def get_outcomes_by_status(
+    institution_id: str,
+    status: str,
+    program_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Get course outcomes filtered by status.
+
+    Args:
+        institution_id: Institution ID to filter by
+        status: CLO status to filter by
+        program_id: Optional program ID to further filter results
+
+    Returns:
+        List of course outcome dictionaries
+    """
+    return _db_service.get_outcomes_by_status(institution_id, status, program_id)
+
+
+def get_sections_by_course(course_id: str) -> List[Dict[str, Any]]:
+    """
+    Get all course sections for a given course.
+
+    Args:
+        course_id: The course ID to get sections for
+
+    Returns:
+        List of course section dictionaries
+    """
+    return _db_service.get_sections_by_course(course_id)
+
+
 __all__ = [
     "COURSE_OFFERINGS_COLLECTION",
     "COURSE_OUTCOMES_COLLECTION",
@@ -581,4 +615,6 @@ __all__ = [
     "get_invitation_by_email",
     "update_invitation",
     "list_invitations",
+    "get_outcomes_by_status",
+    "get_sections_by_course",
 ]

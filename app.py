@@ -2,14 +2,19 @@ import logging
 import os
 import sys
 
-from flask import Flask, flash, redirect, render_template, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for
 from flask_wtf.csrf import CSRFProtect
 
 from api import register_blueprints  # New modular API structure
 
 # Import new API routes and services
 from api_routes import api
-from auth_service import get_current_user, is_authenticated, login_required
+from auth_service import (
+    get_current_user,
+    is_authenticated,
+    login_required,
+    permission_required,
+)
 
 # Import constants
 from constants import DASHBOARD_ENDPOINT
@@ -21,6 +26,9 @@ from logging_config import get_app_logger
 
 
 # get_courses_by_department import removed
+
+# Initialize logger
+logger = get_app_logger()
 
 app = Flask(__name__)
 
@@ -60,7 +68,7 @@ def handle_csrf_error(e):
         )
     # For non-API routes, return simple HTML error
     return (
-        f"<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
+        "<h1>400 Bad Request</h1><p>Invalid CSRF token. Please refresh and try again.</p>",
         400,
     )
 
@@ -136,6 +144,44 @@ def login():
     return render_template("auth/login.html")
 
 
+@app.route("/reminder-login")
+def reminder_login():
+    """
+    Special login page for email reminders.
+    Logs out any existing session to prevent wrong-user login.
+    Preserves 'next' parameter for post-login redirect.
+    """
+    # Get the 'next' destination from query params
+    next_url = request.args.get("next", "")
+
+    # If someone is logged in, log them out and redirect to clear session
+    if is_authenticated():
+        from login_service import LoginService
+
+        LoginService.logout_user()
+        # Redirect to same route to get a fresh session with valid CSRF token
+        # Preserve the 'next' parameter
+        redirect_url = url_for("reminder_login") + "?logged_out=true"
+        if next_url:
+            redirect_url += f"&next={next_url}"
+        return redirect(redirect_url)
+
+    # Show flash message if just logged out
+    if request.args.get("logged_out"):
+        flash(
+            "You have been logged out. Please log in with your instructor account.",
+            "info",
+        )
+
+    # Store next_url in session so login handler can use it
+    if next_url:
+        from flask import session
+
+        session["next_after_login"] = next_url
+
+    return render_template("auth/login.html")
+
+
 @app.route("/register")
 def register():
     """Registration page"""
@@ -149,9 +195,12 @@ def register():
 @app.route("/register/accept/<token>")
 def register_accept_invitation(token):
     """Accept invitation and complete registration"""
-    # Redirect to dashboard if already authenticated
+    # If user is logged in, log them out first to accept the new invitation
     if is_authenticated():
-        return redirect(url_for(DASHBOARD_ENDPOINT))
+        from login_service import LoginService
+
+        LoginService.logout_user()
+        logger.info("[App] Logged out existing user to accept invitation")
 
     # Token will be validated by frontend via API call to /api/auth/invitation-status/<token>
     return render_template("auth/register_invitation.html", invitation_token=token)
@@ -292,6 +341,19 @@ def assessments_page():
     if not user:
         return redirect(url_for("login"))
     return render_template("assessments.html", user=user)
+
+
+@app.route("/audit-clo")
+@login_required
+@permission_required("audit_clo")
+def audit_clo_page():
+    """
+    Display CLO audit and approval page for admins.
+
+    Allows program admins and institution admins to review and approve CLOs.
+    """
+    user = get_current_user()
+    return render_template("audit_clo.html", user=user)
 
 
 @app.route("/sections")

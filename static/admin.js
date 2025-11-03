@@ -66,6 +66,36 @@ function initializeEventListeners() {
 
   // Role selection for program assignment
   document.getElementById('inviteRole').addEventListener('change', handleRoleSelectionChange);
+
+  // Event delegation for user action buttons (instead of inline onclick handlers)
+  document.getElementById('usersTableBody').addEventListener('click', event => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const userId = button.dataset.userId;
+
+    if (action === 'edit-user') {
+      editUser(userId);
+    } else if (action === 'toggle-user-status') {
+      toggleUserStatus(userId);
+    }
+  });
+
+  // Event delegation for invitation action buttons
+  document.getElementById('invitationsTableBody').addEventListener('click', event => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const invitationId = button.dataset.invitationId;
+
+    if (action === 'resend-invitation') {
+      resendInvitation(invitationId);
+    } else if (action === 'cancel-invitation') {
+      cancelInvitation(invitationId);
+    }
+  });
 }
 
 // Initialize Filters
@@ -345,10 +375,10 @@ function displayUsers(users) {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="action-btn btn-edit" onclick="editUser('${user.id}')" title="Edit User">
+                    <button class="action-btn btn-edit" data-user-id="${user.id}" data-action="edit-user" title="Edit User">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="action-btn btn-deactivate" onclick="toggleUserStatus('${user.id}')" title="${user.account_status === 'active' ? 'Deactivate' : 'Activate'} User">
+                    <button class="action-btn btn-deactivate" data-user-id="${user.id}" data-action="toggle-user-status" title="${user.account_status === 'active' ? 'Deactivate' : 'Activate'} User">
                         <i class="fas fa-${user.account_status === 'active' ? 'user-slash' : 'user-check'}"></i>
                     </button>
                 </div>
@@ -409,10 +439,10 @@ function displayInvitations(invitations) {
                     ${
                       invitation.status === 'pending'
                         ? `
-                        <button class="action-btn btn-resend" onclick="resendInvitation('${invitation.id}')" title="Resend Invitation">
+                        <button class="action-btn btn-resend" data-invitation-id="${invitation.id}" data-action="resend-invitation" title="Resend Invitation">
                             <i class="fas fa-paper-plane"></i>
                         </button>
-                        <button class="action-btn btn-cancel" onclick="cancelInvitation('${invitation.id}')" title="Cancel Invitation">
+                        <button class="action-btn btn-cancel" data-invitation-id="${invitation.id}" data-action="cancel-invitation" title="Cancel Invitation">
                             <i class="fas fa-times"></i>
                         </button>
                     `
@@ -562,7 +592,8 @@ async function handleInviteUser(event) {
     }
 
     // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
     const response = await fetch('/api/auth/invite', {
       method: 'POST',

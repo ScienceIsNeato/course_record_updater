@@ -34,6 +34,7 @@ class BulkEmailService:
         personal_message: Optional[str] = None,
         term: Optional[str] = None,
         deadline: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> str:
         """
         Send reminder emails to multiple instructors.
@@ -92,7 +93,7 @@ class BulkEmailService:
             job_type="instructor_reminder",
             created_by_user_id=created_by_user_id,
             recipients=recipients,
-            template_data={"term": term, "deadline": deadline},
+            template_data={"term": term, "deadline": deadline, "course_id": course_id},
             personal_message=personal_message,
         )
 
@@ -108,6 +109,7 @@ class BulkEmailService:
                 personal_message,
                 term,
                 deadline,
+                course_id,
             ),
             daemon=True,
         )
@@ -128,6 +130,7 @@ class BulkEmailService:
         personal_message: Optional[str],
         term: Optional[str],
         deadline: Optional[str],
+        course_id: Optional[str] = None,
     ) -> None:
         """
         Background worker to send emails.
@@ -180,6 +183,7 @@ class BulkEmailService:
                             term,
                             deadline,
                             base_url,
+                            course_id,
                         ),
                         text_body=BulkEmailService._render_reminder_text(
                             recipient["name"],
@@ -187,6 +191,7 @@ class BulkEmailService:
                             term,
                             deadline,
                             base_url,
+                            course_id,
                         ),
                         metadata={"user_id": recipient.get("user_id")},
                     )
@@ -259,67 +264,39 @@ class BulkEmailService:
         term: Optional[str],
         deadline: Optional[str],
         base_url: str,
+        course_id: Optional[str] = None,
     ) -> str:
         """Render HTML email template for instructor reminder"""
         html = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
     <title>Course Data Reminder</title>
     <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        .header {{
-            background-color: #0066cc;
-            color: white;
-            padding: 20px;
-            border-radius: 5px 5px 0 0;
-        }}
-        .content {{
-            background-color: #f9f9f9;
-            padding: 30px;
-            border-radius: 0 0 5px 5px;
-        }}
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: #27ae60; color: white; padding: 20px; text-align: center; }}
+        .content {{ padding: 20px; background: #f9f9f9; }}
+        .button {{ display: inline-block; padding: 12px 24px; background: #27ae60; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }}
+        .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #666; }}
         .personal-message {{
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #ecf0f1;
             padding: 15px;
+            border-left: 4px solid #3498db;
             margin: 20px 0;
-        }}
-        .button {{
-            display: inline-block;
-            background-color: #0066cc;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-        }}
-        .footer {{
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            font-size: 12px;
-            color: #666;
         }}
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Course Data Reminder</h1>
-    </div>
-    <div class="content">
-        <p>Hello {instructor_name},</p>
-        
-        <p>This is a friendly reminder to submit your course data{f' for <strong>{term}</strong>' if term else ''}.</p>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0;">Course Data Reminder</h1>
+        </div>
+        <div class="content">
+            <p>Hello {instructor_name},</p>
+            
+            <p>This is a friendly reminder to submit your course data{f' for <strong>{term}</strong>' if term else ''}.</p>
         """
 
         if personal_message:
@@ -328,28 +305,43 @@ class BulkEmailService:
 
             escaped_message = escape(personal_message)
             html += f"""
-        <div class="personal-message">
-            <strong>Message from your program administrator:</strong>
-            <p>{escaped_message}</p>
-        </div>
+            <div class="personal-message">
+                <p><strong>Message from your program administrator:</strong></p>
+                <p style="font-style: italic;">"{escaped_message}"</p>
+            </div>
         """
 
         if deadline:
             html += f"""
-        <p><strong>Deadline:</strong> {deadline}</p>
+            <p><strong>Deadline:</strong> {deadline}</p>
         """
 
+        html += """
+            <p>Please click the button below to submit your course information:</p>
+            """
+
+        # Build the link with course-specific redirect if available
+        if course_id:
+            # URL encode the next parameter to avoid double ? in URL
+            from urllib.parse import quote
+
+            next_url = quote(f"/assessments?course={course_id}")
+            link = f"{base_url}/reminder-login?next={next_url}"
+            button_text = "Enter Course Assessments"
+        else:
+            link = f"{base_url}/reminder-login"
+            button_text = "Go to Dashboard"
+
         html += f"""
-        <p>Please click the button below to submit your course information:</p>
-        
-        <a href="{base_url}/courses/submit" class="button">Submit Course Data</a>
-        
-        <p>If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.</p>
-        
-        <p>Thank you for your cooperation!</p>
-    </div>
-    <div class="footer">
-        <p>This is an automated reminder from the Course Record Updater system.</p>
+            <a href="{link}" class="button">{button_text}</a>
+            
+            <p>If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.</p>
+            
+            <p>Thank you for your cooperation!</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated reminder from the Course Record Updater system.</p>
+        </div>
     </div>
 </body>
 </html>
@@ -363,6 +355,7 @@ class BulkEmailService:
         term: Optional[str],
         deadline: Optional[str],
         base_url: str,
+        course_id: Optional[str] = None,
     ) -> str:
         """Render plain text email template for instructor reminder"""
         text = f"Hello {instructor_name},\n\n"
@@ -379,8 +372,17 @@ class BulkEmailService:
         if deadline:
             text += f"Deadline: {deadline}\n\n"
 
-        text += "Please visit the following link to submit your course information:\n"
-        text += f"{base_url}/courses/submit\n\n"
+        # Build the link with course-specific redirect if available
+        if course_id:
+            link = f"{base_url}/reminder-login?next=/assessments?course={course_id}"
+            text += (
+                "Please visit the following link to enter your course assessments:\n"
+            )
+        else:
+            link = f"{base_url}/reminder-login"
+            text += "Please visit the following link to access your dashboard:\n"
+
+        text += f"{link}\n\n"
         text += "If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.\n\n"
         text += "Thank you for your cooperation!\n\n"
         text += "---\n"

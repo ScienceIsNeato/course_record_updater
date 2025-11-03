@@ -44,6 +44,8 @@ echo -e "${BLUE}=====================================================${NC}"
 
 # Save any pre-set environment variables that should not be overridden
 SAVED_ENV="${ENV:-}"
+SAVED_EMAIL_WHITELIST="${EMAIL_WHITELIST:-}"
+SAVED_WTF_CSRF_ENABLED="${WTF_CSRF_ENABLED:-}"
 
 # Load environment configuration
 if [[ -f ".envrc" ]]; then
@@ -65,6 +67,18 @@ fi
 if [[ -n "$SAVED_ENV" ]]; then
     export ENV="$SAVED_ENV"
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
+fi
+
+# Restore pre-set EMAIL_WHITELIST (e.g., from run_uat.sh for E2E tests)
+if [[ -n "$SAVED_EMAIL_WHITELIST" ]]; then
+    export EMAIL_WHITELIST="$SAVED_EMAIL_WHITELIST"
+    echo -e "${BLUE}🔧 Using pre-configured EMAIL_WHITELIST for E2E tests${NC}"
+fi
+
+# Restore pre-set WTF_CSRF_ENABLED (e.g., from run_uat.sh for E2E tests)
+if [[ -n "$SAVED_WTF_CSRF_ENABLED" ]]; then
+    export WTF_CSRF_ENABLED="$SAVED_WTF_CSRF_ENABLED"
+    echo -e "${BLUE}🔧 CSRF validation disabled for E2E tests${NC}"
 fi
 
 # For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
@@ -145,7 +159,7 @@ start_flask_app() {
     export ETHEREAL_SMTP_PORT="${ETHEREAL_SMTP_PORT:-587}"
     export ETHEREAL_IMAP_HOST="${ETHEREAL_IMAP_HOST:-imap.ethereal.email}"
     export ETHEREAL_IMAP_PORT="${ETHEREAL_IMAP_PORT:-993}"
-    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@example.com}"
+    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io}"
     
     # Debug: Check if env vars are set
     echo -e "${BLUE}📧 Email configuration:${NC}"

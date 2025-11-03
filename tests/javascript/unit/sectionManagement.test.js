@@ -382,11 +382,17 @@ describe('Section Management - Edit Section Modal', () => {
     jest.restoreAllMocks();
   });
 
-  test('openEditSectionModal should populate form and show modal', () => {
+  test('openEditSectionModal should populate form and show modal', async () => {
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    window.openEditSectionModal('section-123', {
+    // Mock the instructor fetch
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [] })
+    });
+
+    await window.openEditSectionModal('section-123', {
       section_number: '002',
       instructor_id: 'instr-1',
       enrollment: 25,
@@ -395,7 +401,6 @@ describe('Section Management - Edit Section Modal', () => {
 
     expect(document.getElementById('editSectionId').value).toBe('section-123');
     expect(document.getElementById('editSectionNumber').value).toBe('002');
-    expect(document.getElementById('editSectionInstructorId').value).toBe('instr-1');
     expect(document.getElementById('editSectionEnrollment').value).toBe('25');
     expect(document.getElementById('editSectionStatus').value).toBe('pending');
     expect(mockModal.show).toHaveBeenCalled();
@@ -505,6 +510,134 @@ describe('Section Management - Delete Section', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('Section has enrolled students')
     );
+  });
+});
+
+describe('Section Management - Edit Modal Instructor Loading', () => {
+  let mockFetch;
+  let consoleErrorSpy;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <form id="editSectionForm">
+        <input type="hidden" id="editSectionId" />
+        <input type="text" id="editSectionNumber" required />
+        <select id="editSectionInstructorId">
+          <option value="">Unassigned</option>
+        </select>
+        <input type="number" id="editSectionEnrollment" min="0" />
+        <select id="editSectionStatus" required>
+          <option value="assigned">Assigned</option>
+        </select>
+        <button type="submit">Update</button>
+      </form>
+      <div class="modal" id="editSectionModal"></div>
+      <meta name="csrf-token" content="test-csrf-token">
+    `;
+
+    mockFetch = jest.fn();
+    global.fetch = mockFetch;
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    global.bootstrap = {
+      Modal: jest.fn(() => ({
+        show: jest.fn()
+      }))
+    };
+
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('should populate instructor dropdown from API response', async () => {
+    // Mock instructors API response (lines 194-197)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            user_id: 'instructor-1',
+            first_name: 'John',
+            last_name: 'Doe',
+            email: 'john@example.com'
+          },
+          {
+            id: 'instructor-2',
+            first_name: 'Jane',
+            last_name: 'Smith',
+            email: 'jane@example.com'
+          }
+        ]
+      })
+    });
+
+    await window.openEditSectionModal('section-123', {
+      section_number: '002',
+      instructor_id: 'instructor-1',
+      enrollment: 25,
+      status: 'assigned'
+    });
+
+    const instructorSelect = document.getElementById('editSectionInstructorId');
+    const options = Array.from(instructorSelect.options);
+
+    // Should have original "Unassigned" option plus 2 instructors
+    expect(options.length).toBe(3);
+
+    // Check instructor options were added (lines 194-197)
+    expect(options[1].value).toBe('instructor-1');
+    expect(options[1].textContent).toBe('John Doe (john@example.com)');
+
+    expect(options[2].value).toBe('instructor-2');
+    expect(options[2].textContent).toBe('Jane Smith (jane@example.com)');
+
+    // Should select the section's current instructor
+    expect(instructorSelect.value).toBe('instructor-1');
+  });
+
+  test('should handle instructor loading errors gracefully (line 206)', async () => {
+    // Mock API error
+    mockFetch.mockRejectedValueOnce(new Error('Network failure'));
+
+    await window.openEditSectionModal('section-123', {
+      section_number: '002',
+      instructor_id: null,
+      enrollment: 25,
+      status: 'assigned'
+    });
+
+    // Should log error (line 206)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error loading instructors:',
+      expect.any(Error)
+    );
+
+    // Modal should still open despite error
+    expect(global.bootstrap.Modal).toHaveBeenCalled();
+  });
+
+  test('should handle instructor API returning non-ok status', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Internal server error' })
+    });
+
+    await window.openEditSectionModal('section-123', {
+      section_number: '002',
+      instructor_id: null,
+      enrollment: 25,
+      status: 'assigned'
+    });
+
+    // Should not crash, modal should still work
+    expect(global.bootstrap.Modal).toHaveBeenCalled();
+    const instructorSelect = document.getElementById('editSectionInstructorId');
+    // Should only have the default "Unassigned" option
+    expect(instructorSelect.options.length).toBe(1);
   });
 });
 

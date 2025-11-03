@@ -1,0 +1,172 @@
+{% extends "dashboard/base_dashboard.html" %}
+
+{% block title %}CLO Audit & Approval{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>CLO Audit & Approval</h1>
+            <p class="text-muted">Review and approve submitted Course Learning Outcomes</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h3 class="mb-0" id="statAwaitingApproval">-</h3>
+                    <p class="text-muted mb-0">Awaiting Approval</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h3 class="mb-0" id="statNeedsRework">-</h3>
+                    <p class="text-muted mb-0">Needs Rework</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h3 class="mb-0" id="statApproved">-</h3>
+                    <p class="text-muted mb-0">Approved This Term</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h3 class="mb-0" id="statInProgress">-</h3>
+                    <p class="text-muted mb-0">In Progress</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="statusFilter" class="form-label">Status Filter:</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="awaiting_approval">Awaiting Approval</option>
+                        <option value="approval_pending">Needs Rework</option>
+                        <option value="approved">Approved</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="all">All Statuses</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="sortBy" class="form-label">Sort By:</label>
+                    <select class="form-select" id="sortBy">
+                        <option value="submitted_at">Submission Date</option>
+                        <option value="course_number">Course Number</option>
+                        <option value="instructor_name">Instructor</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="sortOrder" class="form-label">Sort Order:</label>
+                    <select class="form-select" id="sortOrder">
+                        <option value="desc">Newest First</option>
+                        <option value="asc">Oldest First</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLO List -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Submitted CLOs</h5>
+        </div>
+        <div class="card-body">
+            <div id="cloListContainer">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="text-muted mt-2">Loading CLOs...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CLO Detail Modal -->
+<div class="modal fade" id="cloDetailModal" tabindex="-1" aria-labelledby="cloDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cloDetailModalLabel">CLO Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="cloDetailContent">
+                <!-- Will be populated dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="requestReworkBtn" onclick="openReworkModal()">
+                    Request Rework
+                </button>
+                <button type="button" class="btn btn-success" id="approveBtn" onclick="approveCLO()">
+                    Approve
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Rework Modal -->
+<div class="modal fade" id="requestReworkModal" tabindex="-1" aria-labelledby="requestReworkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="requestReworkModalLabel">Request Rework</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="requestReworkForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Requesting rework for:</strong>
+                        <p class="mb-0" id="reworkCloDescription"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feedbackComments" class="form-label">Feedback Comments *</label>
+                        <textarea class="form-control" id="feedbackComments" name="comments" rows="5" required
+                                  placeholder="Explain what needs to be revised or improved..."></textarea>
+                        <small class="text-muted">Be specific about what needs to be changed.</small>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendEmailCheckbox" name="send_email" checked>
+                        <label class="form-check-label" for="sendEmailCheckbox">
+                            Send email notification to instructor
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">Send for Rework</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='audit_clo.js') }}"></script>
+{% endblock %}
+

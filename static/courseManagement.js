@@ -164,7 +164,10 @@ function initializeCreateCourseModal() {
       department: document.getElementById('courseDepartment').value,
       credit_hours: parseInt(document.getElementById('courseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('courseActive')?.checked ?? true // Default to true if checkbox doesn't exist
+      active: (function () {
+        const checkbox = document.getElementById('courseActive');
+        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+      })()
     };
 
     const createBtn = document.getElementById('createCourseBtn');
@@ -177,7 +180,8 @@ function initializeCreateCourseModal() {
     createBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch('/api/courses', {
         method: 'POST',
@@ -192,10 +196,12 @@ function initializeCreateCourseModal() {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createCourseModal'));
-        if (modal) {
-          modal.hide();
+        const modalElement = document.getElementById('createCourseModal');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+          modal = new bootstrap.Modal(modalElement);
         }
+        modal.hide();
 
         form.reset();
 
@@ -247,7 +253,10 @@ function initializeEditCourseModal() {
       department: document.getElementById('editCourseDepartment').value,
       credit_hours: parseInt(document.getElementById('editCourseCreditHours').value),
       program_ids: selectedPrograms,
-      active: document.getElementById('editCourseActive')?.checked ?? true // Default to true if checkbox doesn't exist
+      active: (function () {
+        const checkbox = document.getElementById('editCourseActive');
+        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+      })()
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -260,7 +269,8 @@ function initializeEditCourseModal() {
     saveBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/courses/${courseId}`, {
         method: 'PUT',
@@ -275,10 +285,12 @@ function initializeEditCourseModal() {
         const result = await response.json();
 
         // Success - close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editCourseModal'));
-        if (modal) {
-          modal.hide();
+        const modalElement = document.getElementById('editCourseModal');
+        let modal = bootstrap.Modal.getInstance(modalElement);
+        if (!modal) {
+          modal = new bootstrap.Modal(modalElement);
         }
+        modal.hide();
 
         alert(result.message || 'Course updated successfully!');
 

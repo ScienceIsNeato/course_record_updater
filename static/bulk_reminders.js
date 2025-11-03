@@ -63,39 +63,57 @@ class BulkReminderManager {
    */
   setupEventListeners() {
     // Select All / Deselect All
-    document.getElementById('selectAllInstructors')?.addEventListener('click', () => {
-      this.selectAll();
-    });
+    const selectAllBtn = document.getElementById('selectAllInstructors');
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', () => {
+        this.selectAll();
+      });
+    }
 
-    document.getElementById('deselectAllInstructors')?.addEventListener('click', () => {
-      this.deselectAll();
-    });
+    const deselectAllBtn = document.getElementById('deselectAllInstructors');
+    if (deselectAllBtn) {
+      deselectAllBtn.addEventListener('click', () => {
+        this.deselectAll();
+      });
+    }
 
     // Send Reminders button
-    document.getElementById('sendRemindersButton')?.addEventListener('click', () => {
-      this.sendReminders();
-    });
+    const sendBtn = document.getElementById('sendRemindersButton');
+    if (sendBtn) {
+      sendBtn.addEventListener('click', () => {
+        this.sendReminders();
+      });
+    }
 
     // Close button after completion
-    document.getElementById('closeProgressButton')?.addEventListener('click', () => {
-      this.closeModal();
-    });
+    const closeBtn = document.getElementById('closeProgressButton');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.closeModal();
+      });
+    }
 
     // Character count for message
-    document.getElementById('reminderMessage')?.addEventListener('input', e => {
-      const count = e.target.value.length;
-      document.getElementById('messageCharCount').textContent = count;
-    });
+    const messageInput = document.getElementById('reminderMessage');
+    if (messageInput) {
+      messageInput.addEventListener('input', e => {
+        const count = e.target.value.length;
+        document.getElementById('messageCharCount').textContent = count;
+      });
+    }
 
     // Modal shown event - load instructors
-    document.getElementById('bulkReminderModal')?.addEventListener('shown.bs.modal', () => {
-      this.loadInstructors();
-    });
+    const bulkModal = document.getElementById('bulkReminderModal');
+    if (bulkModal) {
+      bulkModal.addEventListener('shown.bs.modal', () => {
+        this.loadInstructors();
+      });
 
-    // Modal hidden event - reset state
-    document.getElementById('bulkReminderModal')?.addEventListener('hidden.bs.modal', () => {
-      this.resetModal();
-    });
+      // Modal hidden event - reset state
+      bulkModal.addEventListener('hidden.bs.modal', () => {
+        this.resetModal();
+      });
+    }
   }
 
   /**
@@ -288,12 +306,24 @@ class BulkReminderManager {
     const deadline = document.getElementById('reminderDeadline').value;
     const personalMessage = document.getElementById('reminderMessage').value.trim();
 
+    // Get course_id if one instructor is selected and they have a single course
+    let courseId = null;
+    if (this.selectedInstructors.size === 1 && window.dashboardDataCache) {
+      const instructorId = Array.from(this.selectedInstructors)[0];
+      const sections = window.dashboardDataCache.sections || [];
+      const instructorSections = sections.filter(s => s.instructor_id === instructorId);
+      if (instructorSections.length === 1) {
+        courseId = instructorSections[0].course_id;
+      }
+    }
+
     // Build request
     const requestData = {
       instructor_ids: Array.from(this.selectedInstructors),
       personal_message: personalMessage || null,
       term: term || null,
-      deadline: deadline || null
+      deadline: deadline || null,
+      course_id: courseId || null
     };
 
     try {
@@ -301,7 +331,8 @@ class BulkReminderManager {
       this.showProgressView();
 
       // Get CSRF token
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       // Send request to API
       const response = await fetch('/api/bulk-email/send-instructor-reminders', {
@@ -431,8 +462,9 @@ class BulkReminderManager {
 
     // Add status message
     if (job.emails_sent > 0) {
+      const lastMessageDiv = document.querySelector('#reminderStatusMessages div:last-child');
       const lastMessage =
-        document.querySelector('#reminderStatusMessages div:last-child')?.textContent || '';
+        lastMessageDiv && lastMessageDiv.textContent ? lastMessageDiv.textContent : '';
       const newMessage = `Sent ${job.emails_sent}/${job.recipient_count} reminders...`;
       if (!lastMessage.includes(newMessage)) {
         this.addStatusMessage(newMessage, 'success');

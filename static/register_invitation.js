@@ -56,6 +56,16 @@ async function validateInvitation(token) {
     emailInput.value = data.invitee_email || '';
     roleInput.value = formatRole(data.invitee_role || '');
 
+    // Pre-fill first and last name if provided in invitation
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+    if (firstNameInput && data.first_name) {
+      firstNameInput.value = data.first_name;
+    }
+    if (lastNameInput && data.last_name) {
+      lastNameInput.value = data.last_name;
+    }
+
     // Populate invitation metadata
     const invitationDetails = document.getElementById('invitationDetails');
     const inviterNameEl = document.getElementById('inviterName');
@@ -108,7 +118,8 @@ async function acceptInvitation() {
 
   try {
     // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
     const response = await fetch('/api/auth/accept-invitation', {
       method: 'POST',

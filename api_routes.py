@@ -21,6 +21,7 @@ from flask import (
     render_template,
     request,
     send_file,
+    session,
     url_for,
 )
 
@@ -3120,6 +3121,12 @@ def update_outcome_assessment_endpoint(outcome_id: str):
         success = update_outcome_assessment(outcome_id, assessment_data, narrative)
 
         if success:
+            # Auto-mark CLO as in_progress when instructor starts editing
+            from clo_workflow_service import CLOWorkflowService
+
+            user = get_current_user()
+            CLOWorkflowService.auto_mark_in_progress(outcome_id, user.get("user_id"))
+
             return (
                 jsonify(
                     {
@@ -4013,6 +4020,17 @@ def login_api():
             remember_me=data.get("remember_me", False),
         )
 
+        # Import session locally to avoid circular imports when this module is
+        # loaded early in app initialization. This is necessary because session
+        # depends on app context which may not be fully initialized during imports.
+        # Check for 'next' URL in session (set by reminder-login route for
+        # deep-linking after authentication)
+        from flask import session
+
+        next_url = session.pop("next_after_login", None)
+        if next_url:
+            result["next_url"] = next_url
+
         return (
             jsonify({"success": True, **result}),
             200,
@@ -4159,6 +4177,10 @@ def create_invitation_public_api():
         invitee_role = payload.get("invitee_role") or payload.get("role")
         program_ids = payload.get("program_ids", [])
         personal_message = payload.get("personal_message")
+        first_name = payload.get("first_name")
+        last_name = payload.get("last_name")
+        section_id = payload.get("section_id")
+        replace_existing = payload.get("replace_existing", False)
 
         if not invitee_email:
             return (
@@ -4191,6 +4213,10 @@ def create_invitation_public_api():
             institution_id=institution_id,
             program_ids=program_ids,
             personal_message=personal_message,
+            first_name=first_name,
+            last_name=last_name,
+            section_id=section_id,
+            replace_existing=replace_existing,
         )
 
         email_sent = InvitationService.send_invitation(invitation)
@@ -5141,3 +5167,160 @@ def _export_all_institutions(current_user: Dict[str, Any]):
             jsonify({"success": False, "error": f"System export failed: {str(e)}"}),
             500,
         )
+
+
+@api.route("/send-course-reminder", methods=["POST"])
+@login_required
+@permission_required("manage_programs")
+def send_course_reminder_api():
+    """
+    Send a course-specific assessment reminder to an instructor.
+
+    Request Body:
+        {
+            "instructor_id": "user-uuid",
+            "course_id": "course-uuid"
+        }
+
+    Returns:
+        200: Reminder sent successfully
+        400: Invalid request data
+        404: Instructor or course not found
+        500: Server error
+    """
+    try:
+        from email_service import EmailService
+
+        # Get request data
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"success": False, "error": "No JSON data provided"}), 400
+
+        instructor_id = data.get("instructor_id")
+        course_id = data.get("course_id")
+
+        if not instructor_id or not course_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Missing required fields: instructor_id, course_id",
+                    }
+                ),
+                400,
+            )
+
+        # Get instructor details
+        instructor = database_service.get_user_by_id(instructor_id)
+        if not instructor:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Instructor not found: {instructor_id}",
+                    }
+                ),
+                404,
+            )
+
+        # Get course details
+        course = database_service.get_course_by_id(course_id)
+        if not course:
+            return (
+                jsonify({"success": False, "error": f"Course not found: {course_id}"}),
+                404,
+            )
+
+        # Get current user (admin sending the reminder)
+        current_user = get_current_user()
+        admin_name = f"{current_user.get('first_name', '')} {current_user.get('last_name', '')}".strip()
+        if not admin_name:
+            admin_name = current_user.get("email", "Your program administrator")
+
+        # Get institution name
+        institution_id = instructor.get("institution_id")
+        institution = (
+            database_service.get_institution_by_id(institution_id)
+            if institution_id
+            else None
+        )
+        institution_name = (
+            institution.get("name", "Your institution")
+            if institution
+            else "Your institution"
+        )
+
+        # Build assessment URL with course parameter
+        base_url = request.url_root.rstrip("/")
+        assessment_url = f"{base_url}/assessments?course={course_id}"
+
+        # Send email
+        instructor_name = f"{instructor.get('first_name', '')} {instructor.get('last_name', '')}".strip()
+        if not instructor_name:
+            instructor_name = instructor.get("email", "Instructor")
+
+        course_number = course.get("course_number", "Course")
+        course_title = course.get("course_title", "")
+        course_display = (
+            f"{course_number} - {course_title}" if course_title else course_number
+        )
+
+        EmailService.send_course_assessment_reminder(
+            to_email=instructor["email"],
+            instructor_name=instructor_name,
+            course_display=course_display,
+            admin_name=admin_name,
+            institution_name=institution_name,
+            assessment_url=assessment_url,
+        )
+
+        logger.info(
+            f"[API] Course reminder sent to {instructor['email']} for {course_number} by {current_user.get('email')}"
+        )
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": f"Reminder sent to {instructor_name} for {course_display}",
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.error(f"[API] Error sending course reminder: {str(e)}", exc_info=True)
+        return (
+            jsonify({"success": False, "error": "Failed to send reminder email"}),
+            500,
+        )
+
+
+# ============================================================================
+# ⚠️  WARNING: DO NOT ADD NEW ENDPOINTS TO THIS FILE ⚠️
+# ============================================================================
+#
+# 🚫 ANTI-PATTERN: Adding new API endpoints to this file
+#
+# This file has grown too large (5200+ lines) and is a maintenance nightmare.
+# Our long-term goal is to break it into ~20 smaller, focused modules.
+#
+# ✅ CORRECT APPROACH: Create new API endpoint modules
+#
+# Follow the pattern established in api/routes/:
+#   - api/routes/clo_workflow.py (CLO workflow endpoints)
+#   - api/routes/audit.py (audit endpoints)
+#   - api/routes/bulk_email.py (bulk email endpoints)
+#   - api/routes/dashboard.py (dashboard endpoints)
+#
+# Steps to add new endpoints:
+#   1. Create api/routes/your_feature.py
+#   2. Define Blueprint: your_feature_bp = Blueprint('your_feature', __name__)
+#   3. Add routes to blueprint: @your_feature_bp.route('/your-endpoint')
+#   4. Register in app.py: app.register_blueprint(your_feature_bp, url_prefix='/api')
+#
+# 🔥 If you're tempted to add endpoints here: STOP and refactor instead!
+#
+# Future agents: If you see new endpoints added after this warning,
+# flag it in code review. This is a documented anti-pattern.
+# ============================================================================

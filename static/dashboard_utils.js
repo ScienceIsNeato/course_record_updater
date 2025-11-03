@@ -1,155 +1,85 @@
 /**
- * Dashboard Utilities - Shared functionality for all dashboard types
+ * Shared Dashboard Utilities
  *
- * This module provides common patterns used across all dashboard implementations:
- * - Auto-refresh with visibility change detection
- * - Cache management
- * - Loading state management
- * - Error handling
+ * Common helper functions for all dashboard types to reduce code duplication.
+ * Extracted from program_dashboard.js, instructor_dashboard.js, and institution_dashboard.js
+ *
+ * These utilities provide standard UI patterns for loading states, errors, and empty states
+ * that are consistent across all dashboard implementations.
  */
 
 /**
- * Create a dashboard data manager with auto-refresh capabilities
- *
- * @param {Object} config - Configuration object
- * @param {string} config.refreshButtonId - ID of the refresh button
- * @param {Function} config.loadDataFn - Function to call to load dashboard data
- * @param {number} [config.refreshInterval=300000] - Refresh interval in ms (default 5 minutes)
- * @returns {Object} Dashboard manager with init() and refresh() methods
+ * Escape HTML to prevent XSS attacks
+ * @param {string} str - String to escape
+ * @returns {string} - Escaped string safe for HTML
  */
-function createDashboardManager(config) {
-  const { refreshButtonId, loadDataFn, refreshInterval = 5 * 60 * 1000 } = config;
-
-  return {
-    cache: null,
-    lastFetch: 0,
-    refreshInterval,
-
-    init() {
-      // Refresh when tab becomes visible after interval
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && Date.now() - this.lastFetch > this.refreshInterval) {
-          this.loadData({ silent: true });
-        }
-      });
-
-      // Refresh button handler
-      const refreshButton = document.getElementById(refreshButtonId);
-      if (refreshButton) {
-        refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
-      }
-
-      // Initial load and periodic refresh
-      this.loadData();
-      setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
-    },
-
-    async refresh() {
-      return this.loadData({ silent: false });
-    },
-
-    async loadData(options = {}) {
-      return loadDataFn.call(this, options);
-    }
-  };
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 /**
- * Set loading state for a container
+ * Standard loading state setter for dashboard containers
  *
- * @param {string} selector - CSS selector for the container
+ * @param {string} containerId - ID of the container element
  * @param {string} message - Loading message to display
  */
-function setDashboardLoading(selector, message) {
-  const container = document.querySelector(selector);
+function setLoadingState(containerId, message) {
+  const container = document.getElementById(containerId);
   if (container) {
     container.innerHTML = `
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <p>${message}</p>
+      <div class="text-center text-muted py-4">
+        <div class="spinner-border spinner-border-sm me-2" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        ${escapeHtml(message)}
       </div>
     `;
   }
 }
 
 /**
- * Set error state for a container
+ * Display error message in container
  *
- * @param {string} selector - CSS selector for the container
+ * @param {string} containerId - ID of the container element
  * @param {string} message - Error message to display
  */
-function setDashboardError(selector, message) {
-  const container = document.querySelector(selector);
+function setErrorState(containerId, message) {
+  const container = document.getElementById(containerId);
   if (container) {
     container.innerHTML = `
-      <div class="error-state">
-        <i class="fas fa-exclamation-triangle"></i>
-        <p>${message}</p>
+      <div class="alert alert-danger" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        ${escapeHtml(message)}
       </div>
     `;
   }
 }
 
 /**
- * Common error handler for dashboard fetch operations
+ * Display empty state message in container
  *
- * @param {Error} error - The error object
- * @param {string} context - Context description for logging
- * @param {Object} containers - Object mapping container names to selectors
+ * @param {string} containerId - ID of the container element
+ * @param {string} message - Empty state message to display
  */
-function handleDashboardError(error, context, containers = {}) {
-  // eslint-disable-next-line no-console
-  console.error(`[Dashboard Error] ${context}:`, error);
-
-  // Set error state for all provided containers
-  for (const [name, selector] of Object.entries(containers)) {
-    setDashboardError(selector, `Failed to load ${name}. Please refresh the page.`);
+function setEmptyState(containerId, message) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-4">
+        <i class="fas fa-inbox fa-2x mb-3"></i>
+        <p>${escapeHtml(message)}</p>
+      </div>
+    `;
   }
 }
 
-/**
- * Fetch JSON data from an API endpoint with error handling
- *
- * @param {string} url - API endpoint URL
- * @param {Object} [options={}] - Fetch options
- * @returns {Promise<Object>} Parsed JSON response
- * @throws {Error} If fetch fails or response is not ok
- */
-async function fetchDashboardData(url, options = {}) {
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'Unknown error');
-    }
-
-    return data;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(`[Dashboard] Fetch failed for ${url}:`, error);
-    throw error;
-  }
-}
-
-// Export utilities (for ES6 modules or global access)
+// Export for use in other dashboard modules (for testing)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    createDashboardManager,
-    setDashboardLoading,
-    setDashboardError,
-    handleDashboardError,
-    fetchDashboardData
+    setLoadingState,
+    setErrorState,
+    setEmptyState
   };
 }

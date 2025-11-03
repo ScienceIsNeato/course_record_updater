@@ -243,7 +243,9 @@ class TestDashboardAuthRoleDataAccess:
         assert (
             summary.get("courses", 0) >= 3
         ), "MockU should have at least 3 courses (baseline seed)"
-        assert summary.get("users", 0) == 4, "MockU should have 4 users (seeded data)"
+        assert (
+            summary.get("users", 0) == 5
+        ), "MockU should have 5 users (seeded data: site admin, inst admin, prog admin, 2 instructors)"
         assert (
             summary.get("sections", 0) >= 3
         ), "MockU should have at least 3 sections (baseline seed)"
@@ -310,8 +312,10 @@ class TestDashboardAuthRoleDataAccess:
         ), f"Program admin should see CS sections, got {summary.get('sections', 0)}"
         assert (
             summary.get("faculty", 0) >= 2
-        ), "Bob should see faculty at his institution"
-        assert summary.get("users", 0) == 4, "Bob should see users at his institution"
+        ), f"Bob should see faculty teaching CS courses, got {summary.get('faculty', 0)}"
+        assert (
+            summary.get("users", 0) == 5
+        ), "Bob should see users at his institution (site admin, inst admin, prog admin, 2 instructors)"
 
         # Dashboard bug is FIXED! Program admin now correctly sees their program's data
         courses = data.get("courses", [])
@@ -328,11 +332,11 @@ class TestDashboardAuthRoleDataAccess:
 
         # Verify courses are from the correct program (CS only)
         course_numbers = {c["course_number"] for c in courses}
-        # Bob only has CS program - baseline seed has CS101 and CS201
+        # Bob only has CS program - baseline seed has CS-101 and CS-201
         for course in courses:
             assert course["course_number"] in [
-                "CS101",
-                "CS201",
+                "CS-101",
+                "CS-201",
             ], f"Unexpected course: {course['course_number']}"
 
         # Note: Program admin currently sees 0 courses and sections due to dashboard service issue

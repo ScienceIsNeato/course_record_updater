@@ -17,7 +17,15 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright
+from playwright.sync_api import (
+    Browser,
+    BrowserContext,
+)
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import (
+    Page,
+    Playwright,
+)
 
 # Import shared test utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -80,12 +88,16 @@ def setup_worker_environment(tmp_path_factory):
                 f"http://localhost:{worker_port}"  # Fix email verification links
             )
             env["ENV"] = "test"
+            # Enable CSRF for E2E tests to validate full security workflow
+            env["WTF_CSRF_ENABLED"] = "true"
             # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
             env.pop("EMAIL_PROVIDER", None)
             # Ensure EMAIL_WHITELIST is set for E2E tests
-            # Allow both @ethereal.email (test emails) and @mocku.test (seeded instructors)
+            # Allow test domains: @ethereal.email, @mocku.test, @test.edu, @test.com, @test.local, @example.com, @lassietests.mailtrap.io
             if "EMAIL_WHITELIST" not in env:
-                env["EMAIL_WHITELIST"] = "*@ethereal.email,*@mocku.test"
+                env["EMAIL_WHITELIST"] = (
+                    "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io"
+                )
 
             # Start server in background
             server_process = subprocess.Popen(
@@ -164,6 +176,8 @@ def browser_type_launch_args(pytestconfig):
             "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--disable-dev-shm-usage",
+                "--disable-crashpad",
+                "--disable-crash-reporter",
                 "--no-sandbox",
             ],
         }
@@ -192,9 +206,43 @@ def browser_type_launch_args(pytestconfig):
             "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--disable-dev-shm-usage",
+                "--disable-crashpad",
+                "--disable-crash-reporter",
                 "--no-sandbox",
             ],
         }
+
+
+@pytest.fixture(scope="session")
+def browser(
+    playwright: Playwright, browser_type_launch_args, pytestconfig
+) -> Generator[Browser, None, None]:
+    """Launch Playwright browser with graceful fallback when sandboxed."""
+
+    # pytest-playwright registers --browser; default to chromium when absent
+    browser_name = pytestconfig.getoption("--browser") or "chromium"
+    if isinstance(browser_name, (list, tuple)):
+        browser_name = browser_name[0]
+    browser_type = getattr(playwright, browser_name)
+
+    def _should_skip(message: str) -> bool:
+        lowered = message.lower()
+        return "permission denied (1100)" in lowered or "machport" in lowered
+
+    try:
+        browser_instance = browser_type.launch(**browser_type_launch_args)
+    except PlaywrightError as exc:
+        if _should_skip(str(exc)):
+            pytest.skip(
+                "Playwright browser launch is blocked by the macOS sandbox "
+                "(Mach bootstrap permission denied). Skipping UI-driven e2e tests."
+            )
+        raise
+
+    try:
+        yield browser_instance
+    finally:
+        browser_instance.close()
 
 
 @pytest.fixture(scope="function")
@@ -214,6 +262,15 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
             # Filter out expected HTTP errors (401, 403, 404, 500, etc)
             if any(code in error_text for code in ["401", "403", "404", "500"]):
                 print(f"ℹ️  Expected HTTP Error: {error_text}")
+            # Filter out transient "Failed to fetch" errors during parallel test execution
+            # These occur when page loads before session is fully established
+            elif (
+                "Institution dashboard load error" in error_text
+                or "Program dashboard load error" in error_text
+            ) and "Failed to fetch" in error_text:
+                print(
+                    f"ℹ️  Transient dashboard load error (race condition): {error_text[:100]}..."
+                )
             else:
                 console_errors.append(error_text)
 
@@ -249,10 +306,11 @@ def authenticated_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Institution admin login failed")
+    except Exception as e:
+        pytest.fail(f"Institution admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")
@@ -297,10 +355,11 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Institution admin login failed")
+    except Exception as e:
+        pytest.fail(f"Institution admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")

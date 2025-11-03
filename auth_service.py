@@ -77,6 +77,11 @@ class Permission(Enum):
     MANAGE_SECTIONS = "manage_sections"
     VIEW_SECTION_DATA = "view_section_data"
     SUBMIT_ASSESSMENTS = "submit_assessments"
+    SUBMIT_CLO = "submit_clo"  # Submit CLOs for approval
+
+    # CLO audit permissions
+    AUDIT_CLO = "audit_clo"  # Audit CLOs in assigned programs
+    AUDIT_ALL_CLO = "audit_all_clo"  # Audit all CLOs at institution
 
 
 # Role to permissions mapping
@@ -98,6 +103,9 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_SECTIONS.value,
         Permission.VIEW_SECTION_DATA.value,
         Permission.SUBMIT_ASSESSMENTS.value,
+        Permission.SUBMIT_CLO.value,
+        Permission.AUDIT_CLO.value,
+        Permission.AUDIT_ALL_CLO.value,
     ],
     UserRole.INSTITUTION_ADMIN.value: [
         Permission.MANAGE_INSTITUTION_USERS.value,
@@ -113,6 +121,9 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_SECTIONS.value,
         Permission.VIEW_SECTION_DATA.value,
         Permission.SUBMIT_ASSESSMENTS.value,
+        Permission.SUBMIT_CLO.value,
+        Permission.AUDIT_CLO.value,
+        Permission.AUDIT_ALL_CLO.value,
     ],
     UserRole.PROGRAM_ADMIN.value: [
         Permission.MANAGE_PROGRAM_USERS.value,
@@ -124,6 +135,8 @@ ROLE_PERMISSIONS = {
         Permission.MANAGE_SECTIONS.value,
         Permission.VIEW_SECTION_DATA.value,
         Permission.SUBMIT_ASSESSMENTS.value,
+        Permission.SUBMIT_CLO.value,
+        Permission.AUDIT_CLO.value,  # Can audit CLOs in their programs
     ],
     UserRole.INSTRUCTOR.value: [
         Permission.MANAGE_SECTIONS.value,  # Can update own sections
@@ -131,6 +144,7 @@ ROLE_PERMISSIONS = {
         Permission.SUBMIT_ASSESSMENTS.value,  # Can submit/update assessments
         Permission.VIEW_PROGRAM_DATA.value,  # Can view courses (read-only)
         Permission.VIEW_INSTITUTION_DATA.value,  # Can view users (read-only, own institution)
+        Permission.SUBMIT_CLO.value,  # Can submit CLOs for approval
     ],
 }
 

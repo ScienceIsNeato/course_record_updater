@@ -344,6 +344,62 @@ class TestAdminRoutes:
             assert response.status_code == 302
             assert "/dashboard" in response.location
 
+    def test_audit_clo_route_requires_authentication(self):
+        """Test that audit-clo route requires authentication."""
+        with app_module.app.test_client() as client:
+            response = client.get("/audit-clo")
+            # Web routes redirect to login when not authenticated
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    def test_audit_clo_route_with_admin_permission(self):
+        """Test that audit-clo route works for users with admin roles."""
+        from tests.test_utils import create_test_session
+
+        # Test program_admin
+        user_data = {
+            "user_id": "admin-123",
+            "email": "admin@example.com",
+            "role": "program_admin",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+        # Test institution_admin
+        user_data["role"] = "institution_admin"
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+        # Test site_admin
+        user_data["role"] = "site_admin"
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            assert response.status_code == 200
+
+    def test_audit_clo_route_without_admin_permission(self):
+        """Test that audit-clo route denies access for users without admin roles."""
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "user-123",
+            "email": "user@example.com",
+            "role": "instructor",
+            "institution_id": "test-inst",
+        }
+
+        with app_module.app.test_client() as client:
+            create_test_session(client, user_data)
+            response = client.get("/audit-clo")
+            # User is authenticated but lacks admin role, so permission_required returns 403
+            assert response.status_code == 403
+
 
 class TestDatabaseConnection:
     """Test database connection handling."""
@@ -571,18 +627,18 @@ class TestInvitationAcceptanceRoute:
     """Test invitation acceptance route functionality."""
 
     @patch("app.is_authenticated")
-    def test_register_accept_invitation_redirects_authenticated_user(
+    def test_register_accept_invitation_logs_out_authenticated_user(
         self, mock_is_authenticated
     ):
-        """Test that authenticated users are redirected to dashboard."""
+        """Test that authenticated users are logged out before rendering registration page."""
         from app import app
 
         mock_is_authenticated.return_value = True
 
         with app.test_client() as client:
             response = client.get("/register/accept/test-token-123")
-            assert response.status_code == 302
-            assert "/dashboard" in response.location
+            # Should render the registration page (200) after logging out
+            assert response.status_code == 200
 
     @patch("app.is_authenticated")
     def test_register_accept_invitation_renders_template_for_unauthenticated(
@@ -614,3 +670,286 @@ class TestInvitationAcceptanceRoute:
             assert response.status_code == 200
             # Verify token is present in the rendered HTML
             assert test_token.encode() in response.data
+
+
+class TestDashboardRoutes:
+    """Test dashboard routing logic."""
+
+    @patch("app.is_authenticated")
+    @patch("app.get_current_user")
+    def test_dashboard_unknown_role_redirects(
+        self, mock_get_user, mock_is_authenticated
+    ):
+        """Test dashboard redirects when user has unknown role."""
+        from app import app
+
+        mock_is_authenticated.return_value = True
+        mock_get_user.return_value = {
+            "id": "user-123",
+            "email": "test@example.com",
+            "role": "unknown_role",  # Invalid role
+            "institution_id": "inst-123",
+        }
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "user-123"
+
+            response = client.get("/dashboard", follow_redirects=False)
+            assert response.status_code == 302
+            assert "/login" in response.location or "/" in response.location
+
+    @patch("app.is_authenticated")
+    @patch("app.get_current_user")
+    def test_courses_list_requires_login(self, mock_get_user, mock_is_authenticated):
+        """Test courses list route requires authentication."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/courses", follow_redirects=False)
+            assert response.status_code == 302
+            assert "/login" in response.location
+
+    @patch("app.is_authenticated")
+    @patch("app.get_current_user")
+    def test_courses_list_displays_for_authenticated_user(
+        self, mock_get_user, mock_is_authenticated
+    ):
+        """Test courses list displays for authenticated users."""
+        from app import app
+
+        mock_is_authenticated.return_value = True
+        mock_get_user.return_value = {
+            "id": "user-123",
+            "email": "test@example.com",
+            "role": "instructor",
+            "institution_id": "inst-123",
+        }
+
+        with app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "user-123"
+
+            response = client.get("/courses")
+            assert response.status_code == 200
+            assert (
+                b"courses" in response.data.lower()
+                or b"course" in response.data.lower()
+            )
+
+
+class TestReminderLogin:
+    """Test reminder login route."""
+
+    @patch("app.is_authenticated")
+    def test_reminder_login_renders_for_unauthenticated(self, mock_is_authenticated):
+        """Test reminder login renders template for unauthenticated users."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+
+        with app.test_client() as client:
+            response = client.get("/reminder-login")
+            assert response.status_code == 200
+
+    @patch("app.is_authenticated")
+    def test_reminder_login_with_next_parameter(self, mock_is_authenticated):
+        """Test reminder login preserves next parameter."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+
+        with app.test_client() as client:
+            response = client.get("/reminder-login?next=/assessments")
+            assert response.status_code == 200
+
+    @patch("login_service.LoginService.logout_user")
+    @patch("app.is_authenticated")
+    def test_reminder_login_logs_out_authenticated_user(
+        self, mock_is_authenticated, mock_logout
+    ):
+        """Test reminder login logs out authenticated users."""
+        from app import app
+
+        mock_is_authenticated.return_value = True
+
+        with app.test_client() as client:
+            response = client.get("/reminder-login", follow_redirects=False)
+            assert response.status_code == 302
+            mock_logout.assert_called_once()
+
+    @patch("login_service.LoginService.logout_user")
+    @patch("app.is_authenticated")
+    def test_reminder_login_preserves_next_after_logout(
+        self, mock_is_authenticated, mock_logout
+    ):
+        """Test reminder login preserves next parameter after logging out."""
+        from app import app
+
+        mock_is_authenticated.return_value = True
+
+        with app.test_client() as client:
+            response = client.get(
+                "/reminder-login?next=/assessments", follow_redirects=False
+            )
+            assert response.status_code == 302
+            assert "next=/assessments" in response.location
+
+    @patch("app.is_authenticated")
+    def test_reminder_login_shows_logged_out_message(self, mock_is_authenticated):
+        """Test reminder login shows flash message after logout."""
+        from app import app
+
+        mock_is_authenticated.return_value = False
+
+        with app.test_client() as client:
+            response = client.get("/reminder-login?logged_out=true")
+            assert response.status_code == 200
+
+
+class TestErrorPaths:
+    """Test error handling paths where get_current_user returns None."""
+
+    @patch("app.get_current_user")
+    def test_dashboard_no_user(self, mock_get_user):
+        """Test dashboard redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/dashboard", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_courses_no_user(self, mock_get_user):
+        """Test courses redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/courses", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_users_no_user(self, mock_get_user):
+        """Test users redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/users", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_assessments_no_user(self, mock_get_user):
+        """Test assessments redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/assessments", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_sections_no_user(self, mock_get_user):
+        """Test sections redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/sections", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_audit_clo_no_user(self, mock_get_user):
+        """Test audit_clo redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/audit-clo", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_audit_clo_non_admin(self, mock_get_user):
+        """Test audit_clo redirects for non-admin users."""
+        from app import app
+
+        mock_get_user.return_value = {
+            "id": "user-123",
+            "email": "test@example.com",
+            "role": "instructor",
+            "institution_id": "inst-123",
+        }
+
+        with app.test_client() as client:
+            response = client.get("/audit-clo", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("app.get_current_user")
+    def test_profile_no_user(self, mock_get_user):
+        """Test profile redirects when no user."""
+        from app import app
+
+        mock_get_user.return_value = None
+
+        with app.test_client() as client:
+            response = client.get("/profile", follow_redirects=False)
+            assert response.status_code == 302
+
+    def test_health_check(self):
+        """Test health check endpoint."""
+        from app import app
+
+        with app.test_client() as client:
+            response = client.get("/health")
+            assert response.status_code == 200
+            data = response.get_json()
+            assert data["status"] == "ok"
+            assert data["ready"] is True
+
+
+class TestPasswordReset:
+    """Test password reset form."""
+
+    @patch("password_reset_service.PasswordResetService.validate_reset_token")
+    def test_reset_form_valid_token(self, mock_validate):
+        """Test reset form with valid token."""
+        from app import app
+
+        mock_validate.return_value = {"valid": True, "email": "test@example.com"}
+
+        with app.test_client() as client:
+            response = client.get("/reset-password/valid-token")
+            assert response.status_code == 200
+
+    @patch("password_reset_service.PasswordResetService.validate_reset_token")
+    def test_reset_form_invalid_token(self, mock_validate):
+        """Test reset form with invalid token."""
+        from app import app
+
+        mock_validate.return_value = {"valid": False}
+
+        with app.test_client() as client:
+            response = client.get("/reset-password/invalid", follow_redirects=False)
+            assert response.status_code == 302
+
+    @patch("password_reset_service.PasswordResetService.validate_reset_token")
+    def test_reset_form_error(self, mock_validate):
+        """Test reset form handles errors."""
+        from app import app
+
+        mock_validate.side_effect = Exception("Error")
+
+        with app.test_client() as client:
+            response = client.get("/reset-password/token", follow_redirects=False)
+            assert response.status_code == 302

@@ -25,6 +25,7 @@ Base = declarative_base()  # type: ignore[valid-type,misc]
 # Constants for foreign key references
 COURSES_ID = "courses.id"
 INSTITUTIONS_ID = "institutions.id"
+USERS_ID = "users.id"
 CASCADE_OPTIONS = "all, delete-orphan"
 
 
@@ -144,7 +145,7 @@ class User(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 user_program_table = Table(
     "user_programs",
     Base.metadata,
-    Column("user_id", String, ForeignKey("users.id"), primary_key=True),
+    Column("user_id", String, ForeignKey(USERS_ID), primary_key=True),
     Column("program_id", String, ForeignKey("programs.id"), primary_key=True),
 )
 
@@ -264,7 +265,7 @@ class CourseSection(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     id = Column(String, primary_key=True, default=generate_uuid)
     offering_id = Column(String, ForeignKey("course_offerings.id"), nullable=False)
-    instructor_id = Column(String, ForeignKey("users.id"))
+    instructor_id = Column(String, ForeignKey(USERS_ID))
     section_number = Column(String, default="001")
     enrollment = Column(Integer)
     status = Column(String, default="assigned")
@@ -292,7 +293,23 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     narrative = Column(Text)
     extras = Column(JSON, default=dict)
 
+    # Workflow status fields
+    status = Column(String, default="unassigned")  # CLOStatus enum
+    submitted_at = Column(DateTime, nullable=True)
+    submitted_by_user_id = Column(String, ForeignKey(USERS_ID), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewed_by_user_id = Column(String, ForeignKey(USERS_ID), nullable=True)
+    approval_status = Column(String, default="pending")  # CLOApprovalStatus enum
+    feedback_comments = Column(Text, nullable=True)
+    feedback_provided_at = Column(DateTime, nullable=True)
+
     course = relationship("Course", back_populates="outcomes")
+    submitted_by = relationship(
+        "User", foreign_keys=[submitted_by_user_id], backref="submitted_outcomes"
+    )
+    reviewed_by = relationship(
+        "User", foreign_keys=[reviewed_by_user_id], backref="reviewed_outcomes"
+    )
 
 
 class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -520,6 +537,15 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "active": model.active,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
+        # CLO workflow fields
+        "status": model.status,
+        "submitted_at": model.submitted_at,
+        "submitted_by_user_id": model.submitted_by_user_id,
+        "reviewed_at": model.reviewed_at,
+        "reviewed_by_user_id": model.reviewed_by_user_id,
+        "approval_status": model.approval_status,
+        "feedback_comments": model.feedback_comments,
+        "feedback_provided_at": model.feedback_provided_at,
     }
 
 

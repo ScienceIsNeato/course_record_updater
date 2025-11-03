@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from adapters.cei_excel_adapter import (
+    _extract_clo_data,
     _extract_department_from_course,
     _extract_name_from_email,
     _parse_name,
@@ -24,20 +25,20 @@ class TestValidateCeiTermName:
         assert validate_cei_term_name("2026 Winter") is True
 
     def test_validate_cei_term_abbreviated_format(self):
-        """Test validation with CEI abbreviated format."""
-        assert validate_cei_term_name("FA2024") is True
-        assert validate_cei_term_name("SP2025") is True
-        assert validate_cei_term_name("SU2023") is True
-        assert validate_cei_term_name("WI2026") is True
+        """Test validation with CEI abbreviated format (YEAR+SEASON)."""
+        assert validate_cei_term_name("2024FA") is True
+        assert validate_cei_term_name("2025SP") is True
+        assert validate_cei_term_name("2023SU") is True
+        assert validate_cei_term_name("2026WI") is True
 
     def test_validate_cei_term_invalid_formats(self):
         """Test validation with invalid formats."""
         assert validate_cei_term_name("Fall 2024") is False  # Wrong order
         assert validate_cei_term_name("2024") is False  # Missing season
         assert validate_cei_term_name("Fall") is False  # Missing year
-        assert validate_cei_term_name("XX2024") is False  # Invalid season
-        assert validate_cei_term_name("FA24") is False  # Wrong year length
-        assert validate_cei_term_name("2024FA") is False  # Wrong format (year first)
+        assert validate_cei_term_name("2024XX") is False  # Invalid season
+        assert validate_cei_term_name("24FA") is False  # Wrong year length
+        assert validate_cei_term_name("FA2024") is False  # Wrong format (season first)
         assert validate_cei_term_name("") is False  # Empty string
         assert validate_cei_term_name("invalid") is False  # Completely invalid
 
@@ -46,11 +47,11 @@ class TestParseCeiTerm:
     """Test CEI term parsing function."""
 
     def test_parse_cei_term_valid_formats(self):
-        """Test parse_cei_term with valid formats."""
-        assert parse_cei_term("FA2024") == ("2024", "Fall")
-        assert parse_cei_term("SP2025") == ("2025", "Spring")
-        assert parse_cei_term("SU2023") == ("2023", "Summer")
-        assert parse_cei_term("WI2026") == ("2026", "Winter")
+        """Test parse_cei_term with valid formats (YEAR+SEASON)."""
+        assert parse_cei_term("2024FA") == ("2024", "Fall")
+        assert parse_cei_term("2025SP") == ("2025", "Spring")
+        assert parse_cei_term("2023SU") == ("2023", "Summer")
+        assert parse_cei_term("2026WI") == ("2026", "Winter")
 
     def test_parse_cei_term_invalid_length(self):
         """Test parse_cei_term with invalid length."""
@@ -64,7 +65,12 @@ class TestParseCeiTerm:
     def test_parse_cei_term_invalid_season(self):
         """Test parse_cei_term with invalid season code."""
         with pytest.raises(ValueError, match="Invalid season code"):
-            parse_cei_term("XX2024")
+            parse_cei_term("2024XX")
+
+    def test_parse_cei_term_invalid_year(self):
+        """Test parse_cei_term with non-numeric year."""
+        with pytest.raises(ValueError, match="Invalid year"):
+            parse_cei_term("ABCDFA")  # Year part should be numeric
 
 
 class TestHelperFunctions:
@@ -110,7 +116,7 @@ class TestParseCeiExcelRow:
             {
                 "course": "MATH-101",
                 "Faculty Name": "John Smith",
-                "effterm_c": "FA2024",
+                "effterm_c": "2024FA",
                 "students": "25",
             }
         )
@@ -553,3 +559,64 @@ class TestCEIExcelAdapterErrorHandling:
             import os
 
             os.unlink(tmp_path)
+
+
+class TestExtractCloData:
+    """Test CLO extraction helper function."""
+
+    def test_extract_clo_empty_text(self):
+        """Test CLO extraction with empty cllo_text."""
+        row = pd.Series({"cllo_text": ""})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_no_colon(self):
+        """Test CLO extraction without colon separator."""
+        row = pd.Series({"cllo_text": "MATH-101.1 Some description"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_no_dot_in_code(self):
+        """Test CLO extraction without dot in code part."""
+        row = pd.Series({"cllo_text": "MATH101: Description"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_course_mismatch(self):
+        """Test CLO extraction with mismatched course number."""
+        row = pd.Series({"cllo_text": "BIOL-228.1: Biology outcome"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None
+
+    def test_extract_clo_valid_format(self):
+        """Test CLO extraction with valid format."""
+        row = pd.Series({"cllo_text": "MATH-101.1: Students will understand algebra"})
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is not None
+        assert result["clo_number"] == "1"
+        assert result["description"] == "Students will understand algebra"
+        assert result["course_number"] == "MATH-101"
+
+    def test_extract_clo_exception_handling(self):
+        """Test CLO extraction handles exceptions gracefully."""
+        row = pd.Series({"cllo_text": None})  # Will cause AttributeError
+        course_data = {"course_number": "MATH-101"}
+
+        result = _extract_clo_data(row, course_data)
+
+        assert result is None

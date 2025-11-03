@@ -72,6 +72,7 @@ describe('auth module', () => {
 
   it('handles successful login flow', async () => {
     setBody(`
+      <meta name="csrf-token" content="test-csrf-token">
       <form id="loginForm" class="auth-form" novalidate>
         <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
         <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
@@ -88,7 +89,7 @@ describe('auth module', () => {
     });
 
     const form = document.getElementById('loginForm');
-    const event = { preventDefault: jest.fn(), target: form };
+    const event = { preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form };
 
     await auth.handleLogin(event);
 
@@ -101,6 +102,7 @@ describe('auth module', () => {
 
   it('handles successful registration and redirects to login', async () => {
     setBody(`
+      <meta name="csrf-token" content="test-csrf-token">
       <form id="registerForm" class="auth-form" novalidate>
         <div><input id="email" name="email" type="email" required /><div class="invalid-feedback"></div></div>
         <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
@@ -168,6 +170,7 @@ describe('auth module', () => {
 
   it('shows lockout modal when login locked', async () => {
     setBody(`
+      <meta name="csrf-token" content="test-csrf-token">
       <div id="lockoutModal"></div>
       <form id="loginForm" novalidate>
         <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
@@ -186,7 +189,7 @@ describe('auth module', () => {
     });
 
     const form = document.getElementById('loginForm');
-    const event = { preventDefault: jest.fn(), target: form };
+    const event = { preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form };
 
     await auth.handleLogin(event);
 
@@ -212,6 +215,7 @@ describe('auth module', () => {
 
   it('handles login network errors gracefully', async () => {
     setBody(`
+      <meta name="csrf-token" content="test-csrf-token">
       <form id="loginForm" class="auth-form" novalidate>
         <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
         <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
@@ -225,7 +229,7 @@ describe('auth module', () => {
     global.fetch.mockRejectedValue(new Error('Network down'));
 
     const form = document.getElementById('loginForm');
-    await auth.handleLogin({ preventDefault: jest.fn(), target: form });
+    await auth.handleLogin({ preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form });
 
     expect(document.querySelector('.alert-danger')).not.toBeNull();
   });
@@ -321,7 +325,7 @@ describe('auth module', () => {
     const loginForm = document.getElementById('loginForm');
     const loginListener = jest.spyOn(loginForm, 'addEventListener');
     auth.initializePage();
-    expect(loginListener).toHaveBeenCalledWith('submit', auth.handleLogin);
+    expect(loginListener).toHaveBeenCalledWith('submit', auth.handleLogin, { capture: true });
     loginListener.mockRestore();
 
     window.location.pathname = '/register';
@@ -357,6 +361,49 @@ describe('auth module', () => {
   });
 
   describe('additional authentication edge cases', () => {
+    it('handles missing CSRF token gracefully', async () => {
+      setBody(`
+        <form id="loginForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required value="user@example.com" /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required value="Pass123!" /><div class="invalid-feedback"></div></div>
+          <button id="loginBtn" type="submit">Login</button>
+        </form>
+      `);
+
+      const form = document.getElementById('loginForm');
+      const event = { preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form };
+
+      await auth.handleLogin(event);
+
+      expect(document.querySelector('.alert-danger')).not.toBeNull();
+      expect(document.querySelector('.alert-danger').textContent).toContain('Security token missing');
+    });
+
+    it('handles malformed server response', async () => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <form id="loginForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required value="user@example.com" /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required value="Pass123!" /><div class="invalid-feedback"></div></div>
+          <button id="loginBtn" type="submit">Login</button>
+        </form>
+      `);
+
+      // Mock fetch to return response that fails to parse
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: async () => { throw new Error('Invalid JSON'); }
+      });
+
+      const form = document.getElementById('loginForm');
+      const event = { preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form };
+
+      await auth.handleLogin(event);
+
+      expect(document.querySelector('.alert-danger')).not.toBeNull();
+      expect(document.querySelector('.alert-danger').textContent).toContain('invalid response');
+    });
+
     it('handles password strength validation edge cases', () => {
       // Test password strength function returns objects with scores
       const weakResult = auth.getPasswordStrength('weak');
@@ -485,6 +532,72 @@ describe('auth module', () => {
       
       // If we get here without errors, the function works
       expect(true).toBe(true);
+    });
+  });
+
+  describe('Error handling edge cases', () => {
+    it('handles login errors without error or message fields', async () => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <form id="loginForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+          <button id="loginBtn" type="submit">Login</button>
+        </form>
+      `);
+
+      document.getElementById('email').value = 'user@example.com';
+      document.getElementById('password').value = 'Str0ng!Pass';
+
+      // Mock response with status 401 but no error/message fields
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ success: false }) // No error or message field
+      });
+
+      const form = document.getElementById('loginForm');
+      await auth.handleLogin({ preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form });
+
+      // Should show generic error message
+      const alert = document.querySelector('.alert-danger');
+      expect(alert).not.toBeNull();
+      expect(alert.textContent).toContain('Login failed');
+    });
+
+    it('handles generic error responses without specific error fields', async () => {
+      setBody(`
+        <meta name="csrf-token" content="test-csrf-token">
+        <form id="registerForm" class="auth-form" novalidate>
+          <div><input id="email" name="email" required /><div class="invalid-feedback"></div></div>
+          <div><input id="password" name="password" type="password" required /><div class="invalid-feedback"></div></div>
+          <div><input id="confirmPassword" name="confirmPassword" type="password" required /><div class="invalid-feedback"></div></div>
+          <div><input id="firstName" name="firstName" required /><div class="invalid-feedback"></div></div>
+          <div><input id="lastName" name="lastName" required /><div class="invalid-feedback"></div></div>
+          <button id="registerBtn" type="submit">Register</button>
+        </form>
+      `);
+
+      document.getElementById('email').value = 'user@example.com';
+      document.getElementById('password').value = 'Str0ng!Pass';
+      document.getElementById('confirmPassword').value = 'Str0ng!Pass';
+      document.getElementById('firstName').value = 'John';
+      document.getElementById('lastName').value = 'Doe';
+
+      // Mock response with failure and no error/message fields - hits fallback error (lines 448-449)
+      global.fetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ success: false }) // No error or message field
+      });
+
+      const form = document.getElementById('registerForm');
+      await auth.handleRegister({ preventDefault: jest.fn(), stopPropagation: jest.fn(), target: form });
+
+      // Should show fallback error with status code (lines 448-449)
+      const alert = document.querySelector('.alert-danger');
+      expect(alert).not.toBeNull();
+      expect(alert.textContent).toContain('Request failed with status 400');
     });
   });
 });

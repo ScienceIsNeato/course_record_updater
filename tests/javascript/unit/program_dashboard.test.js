@@ -1,3 +1,9 @@
+// Load dashboard utilities globally (simulates browser <script> tag)
+const { setLoadingState, setErrorState, setEmptyState } = require('../../../static/dashboard_utils');
+global.setLoadingState = setLoadingState;
+global.setErrorState = setErrorState;
+global.setEmptyState = setEmptyState;
+
 const ProgramDashboard = require('../../../static/program_dashboard');
 const { setBody } = require('../helpers/dom');
 
@@ -59,6 +65,29 @@ describe('ProgramDashboard', () => {
     expect(document.getElementById('programCourseCount').textContent).toBe('4');
     expect(document.getElementById('programAssessmentContainer').querySelector('table')).not.toBeNull();
     expect(document.getElementById('programLastUpdated').textContent).toContain('Last updated:');
+  });
+
+  it('handles null and undefined programs in assessment results', () => {
+    const dataWithNullPrograms = {
+      ...sampleData,
+      program_overview: [
+        {
+          program_name: 'Engineering',
+          program_summaries: [
+            { program_name: 'Valid Program' },
+            null,  // null program
+            { },   // program without program_name
+            undefined  // undefined program
+          ],
+          course_count: 4,
+          assessment_progress: { completed: 8, total: 10, percent_complete: 80 }
+        }
+      ]
+    };
+    
+    ProgramDashboard.render(dataWithNullPrograms);
+    // Should render without crashing and filter out null/undefined
+    expect(document.getElementById('programAssessmentContainer').querySelector('table')).not.toBeNull();
   });
 
   it('sets loading and error states appropriately', () => {

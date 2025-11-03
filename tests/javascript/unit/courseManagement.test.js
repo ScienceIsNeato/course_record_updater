@@ -282,6 +282,63 @@ describe('Course Management - Create Course Modal', () => {
       expect(numberInput.value).toBe('');
     });
 
+    test('should handle modal closing when getInstance returns existing modal', async () => {
+      const mockHide = jest.fn();
+      const mockModal = { hide: mockHide };
+      bootstrap.Modal.getInstance.mockReturnValueOnce(mockModal);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, course_id: 'course-123' })
+      });
+
+      const form = document.getElementById('createCourseForm');
+      document.getElementById('courseNumber').value = 'CS101';
+      document.getElementById('courseTitle').value = 'Test';
+      document.getElementById('courseDepartment').value = 'CS';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(bootstrap.Modal.getInstance).toHaveBeenCalledWith(
+        document.getElementById('createCourseModal')
+      );
+      expect(mockHide).toHaveBeenCalled();
+    });
+
+    test('should handle modal closing when getInstance returns null (creates new modal)', async () => {
+      const mockHide = jest.fn();
+      const mockModalConstructor = jest.fn(() => ({ hide: mockHide }));
+      
+      bootstrap.Modal.getInstance.mockReturnValueOnce(null);
+      bootstrap.Modal = Object.assign(mockModalConstructor, {
+        getInstance: bootstrap.Modal.getInstance
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, course_id: 'course-123' })
+      });
+
+      const form = document.getElementById('createCourseForm');
+      document.getElementById('courseNumber').value = 'CS101';
+      document.getElementById('courseTitle').value = 'Test';
+      document.getElementById('courseDepartment').value = 'CS';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(bootstrap.Modal.getInstance).toHaveBeenCalled();
+      expect(mockModalConstructor).toHaveBeenCalledWith(
+        document.getElementById('createCourseModal')
+      );
+      expect(mockHide).toHaveBeenCalled();
+    });
+
     test('should display error message on API failure', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -458,6 +515,67 @@ describe('Course Management - Edit Course Modal', () => {
     const body = JSON.parse(callArgs[1].body);
     expect(body.active).toBe(false);
     expect(body.credit_hours).toBe(4);
+  });
+
+  test('should handle edit modal closing when getInstance returns existing modal', async () => {
+    const mockHide = jest.fn();
+    const mockModal = { hide: mockHide };
+    bootstrap.Modal.getInstance.mockReturnValueOnce(mockModal);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, message: 'Course updated' })
+    });
+
+    const form = document.getElementById('editCourseForm');
+    document.getElementById('editCourseId').value = 'course-123';
+    document.getElementById('editCourseNumber').value = 'CS102';
+    document.getElementById('editCourseTitle').value = 'Test';
+    document.getElementById('editCourseDepartment').value = 'CS';
+    document.getElementById('editCourseCreditHours').value = '3';
+
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(bootstrap.Modal.getInstance).toHaveBeenCalledWith(
+      document.getElementById('editCourseModal')
+    );
+    expect(mockHide).toHaveBeenCalled();
+  });
+
+  test('should handle edit modal closing when getInstance returns null (creates new modal)', async () => {
+    const mockHide = jest.fn();
+    const mockModalConstructor = jest.fn(() => ({ hide: mockHide }));
+    
+    bootstrap.Modal.getInstance.mockReturnValueOnce(null);
+    bootstrap.Modal = Object.assign(mockModalConstructor, {
+      getInstance: bootstrap.Modal.getInstance
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, message: 'Course updated' })
+    });
+
+    const form = document.getElementById('editCourseForm');
+    document.getElementById('editCourseId').value = 'course-123';
+    document.getElementById('editCourseNumber').value = 'CS102';
+    document.getElementById('editCourseTitle').value = 'Test';
+    document.getElementById('editCourseDepartment').value = 'CS';
+    document.getElementById('editCourseCreditHours').value = '3';
+
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(bootstrap.Modal.getInstance).toHaveBeenCalled();
+    expect(mockModalConstructor).toHaveBeenCalledWith(
+      document.getElementById('editCourseModal')
+    );
+    expect(mockHide).toHaveBeenCalled();
   });
 });
 

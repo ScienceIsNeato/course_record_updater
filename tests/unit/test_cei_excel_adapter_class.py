@@ -57,7 +57,7 @@ class TestCEIExcelAdapterClass:
         data = {
             "course": ["MATH-101", "ENG-201"],
             "Faculty Name": ["John Smith", "Jane Doe"],
-            "effterm_c": ["FA2024", "SP2025"],
+            "effterm_c": ["2024FA", "2025SP"],
             "students": [25, 30],
         }
 
@@ -122,7 +122,7 @@ class TestCEIExcelAdapterClass:
         data = {
             "course": ["invalid", "also-invalid"],
             "Faculty Name": ["John Smith", "Jane Doe"],
-            "effterm_c": ["FA2024", "SP2025"],
+            "effterm_c": ["2024FA", "2025SP"],
             "students": [25, 30],
         }
 
@@ -154,7 +154,7 @@ class TestCEIExcelAdapterClass:
 
             assert is_compatible is False
             assert "No valid term codes found" in message
-            assert "expected format: FA2024, SP2025" in message
+            assert "expected format: 2024FA, 2025SP" in message
 
         finally:
             Path(test_file).unlink()
@@ -198,7 +198,7 @@ class TestCEIExcelAdapterClass:
         data = {
             "course": ["MATH-101", "ENG-201"],
             "Faculty Name": ["John Smith", "Jane Doe"],
-            "effterm_c": ["FA2024", "SP2025"],
+            "effterm_c": ["2024FA", "2025SP"],
             "students": [25, 30],
         }
 
@@ -269,7 +269,7 @@ class TestCEIExcelAdapterClass:
         data = {
             "course": ["MATH-101", "ENG-201"],
             "Faculty Name": ["John Smith", "Jane Doe"],
-            "effterm_c": ["FA2024", "SP2025"],
+            "effterm_c": ["2024FA", "2025SP"],
             "students": [25, 30],
         }
 
@@ -338,7 +338,7 @@ class TestCEIExcelAdapterClass:
         data = {
             "course": ["MATH-101"],
             "Faculty Name": ["John Smith"],
-            "effterm_c": ["FA2024"],
+            "effterm_c": ["2024FA"],
             "students": [25],
         }
 
@@ -545,14 +545,14 @@ class TestCEIExcelAdapterClass:
         assert records_exported == 0
 
     def test_format_term_for_cei_export(self):
-        """Test term formatting for CEI export format."""
+        """Test term formatting for CEI export format (YEAR+SEASON)."""
         # Test with year and season
         term = {"year": 2024, "season": "Fall"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "FA2024"
+        assert result == "2024FA"
 
         # Test with different seasons
-        seasons = {"Spring": "SP2024", "Summer": "SU2024", "Winter": "WI2024"}
+        seasons = {"Spring": "2024SP", "Summer": "2024SU", "Winter": "2024WI"}
 
         for season, expected in seasons.items():
             term = {"year": 2024, "season": season}
@@ -562,12 +562,12 @@ class TestCEIExcelAdapterClass:
         # Test with unknown season
         term = {"year": 2024, "season": "Unknown"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "UN2024"
+        assert result == "2024UN"
 
         # Test with fallback to name
         term = {"name": "Fall 2024"}
         result = self.adapter._format_term_for_cei_export(term)
-        assert result == "FA2024"
+        assert result == "2024FA"
 
         # Test with empty term
         result = self.adapter._format_term_for_cei_export({})

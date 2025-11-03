@@ -75,9 +75,9 @@ class TestImportBusinessLogic:
                         "Total W's": 1,
                         "Faculty Name": f"Instructor{section} Name",  # REAL: 'Faculty Name'
                         "email": f"instructor{section}@mocku.test",  # Required for test format
-                        "effterm_c": "FA2024",
+                        "effterm_c": "2024FA",
                         "endterm_c": None,
-                        "Term": "FA2024",  # REAL: 'Term'
+                        "Term": "2024FA",  # REAL: 'Term' - CEI format is YEAR+SEASON
                         "pass_course": None,
                         "dci_course": None,
                         "passed_c": None,
@@ -115,9 +115,24 @@ class TestImportBusinessLogic:
         - Success result
         """
         # Arrange: Empty database
-        mock_get_course.return_value = None  # No existing courses
+        # Mock needs to return None initially, then return course after creation
+        created_courses = {}
+
+        def mock_get_course_fn(course_number, institution_id=None):
+            return created_courses.get(course_number)
+
+        def mock_create_course_fn(course_data):
+            course_id = f"course_{course_data['course_number']}"
+            created_courses[course_data["course_number"]] = {
+                "course_id": course_id,
+                "course_number": course_data["course_number"],
+                "institution_id": course_data.get("institution_id"),
+            }
+            return course_id
+
+        mock_get_course.side_effect = mock_get_course_fn
         mock_get_user.return_value = None  # No existing users
-        mock_create_course.return_value = "course_id_123"
+        mock_create_course.side_effect = mock_create_course_fn
 
         excel_file = self.create_test_excel_file(self.sample_courses)
 
@@ -167,10 +182,13 @@ class TestImportBusinessLogic:
         """
 
         # Arrange: Courses already exist with identical data
-        def mock_get_course_side_effect(course_number):
+        def mock_get_course_side_effect(course_number, institution_id=None):
             for course in self.sample_courses:
                 if course["course_number"] == course_number:
-                    return course  # Return existing course with identical data
+                    return {
+                        **course,
+                        "course_id": f"course_{course_number}",
+                    }  # Return existing course with identical data
             return None
 
         mock_get_course.side_effect = mock_get_course_side_effect
@@ -242,15 +260,36 @@ class TestImportBusinessLogic:
         """
 
         # Arrange: First two courses exist, third is new
-        def mock_get_course_side_effect(course_number):
+        created_courses = {}
+
+        def mock_get_course_side_effect(course_number, institution_id=None):
+            # Check if it was just created
+            if course_number in created_courses:
+                return created_courses[course_number]
+            # Check if it's one of the original two courses
             for course in self.sample_courses:  # Only first 2 courses exist
                 if course["course_number"] == course_number:
-                    return course
+                    return {**course, "course_id": f"course_{course_number}"}
             return None  # BIO-101 doesn't exist yet
 
+        def mock_create_course_fn(course_data):
+            course_id = f"course_{course_data['course_number']}"
+            created_courses[course_data["course_number"]] = {
+                "course_id": course_id,
+                "course_number": course_data["course_number"],
+                "course_title": course_data.get(
+                    "course_title", f"Course {course_data['course_number']}"
+                ),
+                "institution_id": course_data.get("institution_id"),
+            }
+            return course_id
+
         mock_get_course.side_effect = mock_get_course_side_effect
-        mock_get_user.return_value = {"email": "test@mocku.test"}
-        mock_create_course.return_value = "new_course_id"
+        mock_get_user.return_value = {
+            "user_id": "test_user_123",
+            "email": "test@mocku.test",
+        }
+        mock_create_course.side_effect = mock_create_course_fn
 
         # Import extended data (includes new BIO-101 course)
         excel_file = self.create_test_excel_file(self.extended_courses)
@@ -343,9 +382,29 @@ class TestImportBusinessLogic:
                 "course_title": "General Chemistry",
             },
         }
+        created_courses = {}
 
-        def mock_get_course_side_effect(course_number):
-            return existing_courses.get(course_number)
+        def mock_get_course_side_effect(course_number, institution_id=None):
+            # Check if it was just created
+            if course_number in created_courses:
+                return created_courses[course_number]
+            # Check existing courses
+            course = existing_courses.get(course_number)
+            if course:
+                return {**course, "course_id": f"course_{course_number}"}
+            return None
+
+        def mock_create_course_fn(course_data):
+            course_id = f"course_{course_data['course_number']}"
+            created_courses[course_data["course_number"]] = {
+                "course_id": course_id,
+                "course_number": course_data["course_number"],
+                "course_title": course_data.get(
+                    "course_title", f"Course {course_data['course_number']}"
+                ),
+                "institution_id": course_data.get("institution_id"),
+            }
+            return course_id
 
         mock_get_course.side_effect = mock_get_course_side_effect
 
@@ -354,7 +413,7 @@ class TestImportBusinessLogic:
 
         try:
             with patch("import_service.create_course") as mock_create:
-                mock_create.return_value = "new_id"
+                mock_create.side_effect = mock_create_course_fn
 
                 # Act: Import different courses
                 result = self.import_service.import_excel_file(

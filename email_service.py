@@ -317,6 +317,55 @@ class EmailService:
             to_email=email, subject=subject, html_body=html_body, text_body=text_body
         )
 
+    @staticmethod
+    def send_course_assessment_reminder(
+        to_email: str,
+        instructor_name: str,
+        course_display: str,
+        admin_name: str,
+        institution_name: str,
+        assessment_url: str,
+    ) -> bool:
+        """
+        Send course-specific assessment reminder to instructor
+
+        Args:
+            to_email: Instructor's email address
+            instructor_name: Instructor's display name
+            course_display: Course number and title (e.g., "BIOL-228 - Course BIOL-228")
+            admin_name: Name of admin sending reminder
+            institution_name: Name of institution
+            assessment_url: Direct URL to assessment page for this course
+
+        Returns:
+            True if email sent successfully, False otherwise
+        """
+        logger.info(
+            f"[Email Service] Sending course assessment reminder to {logger.sanitize(to_email)} for {course_display}"
+        )
+
+        subject = f"Reminder: Complete Assessment for {course_display}"
+
+        html_body = EmailService._render_course_reminder_html(
+            instructor_name=instructor_name,
+            course_display=course_display,
+            admin_name=admin_name,
+            institution_name=institution_name,
+            assessment_url=assessment_url,
+        )
+
+        text_body = EmailService._render_course_reminder_text(
+            instructor_name=instructor_name,
+            course_display=course_display,
+            admin_name=admin_name,
+            institution_name=institution_name,
+            assessment_url=assessment_url,
+        )
+
+        return EmailService._send_email(
+            to_email=to_email, subject=subject, html_body=html_body, text_body=text_body
+        )
+
     # Private helper methods
 
     @staticmethod
@@ -842,6 +891,181 @@ If you have any questions or need help getting started, don't hesitate to reach 
 We're excited to have you on board!
 
 © {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+        """
+
+    @staticmethod
+    def _render_course_reminder_html(
+        instructor_name: str,
+        course_display: str,
+        admin_name: str,
+        institution_name: str,
+        assessment_url: str,
+    ) -> str:
+        """Render HTML course assessment reminder email template"""
+        from html import escape
+
+        return f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Assessment Reminder</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }}
+        .content {{
+            padding: 30px;
+        }}
+        .course-badge {{
+            display: inline-block;
+            background-color: #f0f4ff;
+            color: #4c63d2;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 10px 0;
+        }}
+        .button {{
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            text-align: center;
+        }}
+        .button:hover {{
+            opacity: 0.9;
+        }}
+        .message-box {{
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        .footer {{
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+        }}
+        .highlight {{
+            color: #667eea;
+            font-weight: 600;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Assessment Reminder</h1>
+        </div>
+        <div class="content">
+            <p>Hello {escape(instructor_name)},</p>
+            
+            <p>This is a friendly reminder from <strong>{escape(admin_name)}</strong> to complete your learning outcome assessments for:</p>
+            
+            <div style="text-align: center;">
+                <div class="course-badge">{escape(course_display)}</div>
+            </div>
+            
+            <div class="message-box">
+                <p style="margin: 0;"><strong>📌 Action Required:</strong> Please submit your course learning outcome (CLO) assessment data at your earliest convenience.</p>
+            </div>
+            
+            <p>Your assessment data helps {escape(institution_name)} track student success and continuously improve our programs. The process only takes a few minutes:</p>
+            
+            <ul>
+                <li>Review course learning outcomes (CLOs)</li>
+                <li>Enter student assessment numbers</li>
+                <li>Add optional narrative comments</li>
+                <li>Submit for approval</li>
+            </ul>
+            
+            <div style="text-align: center;">
+                <a href="{assessment_url}" class="button">Complete Assessment →</a>
+            </div>
+            
+            <p style="font-size: 14px; color: #666; margin-top: 30px;">The link above will take you directly to the assessment page for this course. If you have any questions or need assistance, please don't hesitate to reach out to {escape(admin_name)}.</p>
+            
+            <p>Thank you for your continued dedication to student success!</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated reminder from the Course Record Updater system.</p>
+            <p>© {datetime.now(timezone.utc).year} {escape(institution_name)}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+
+    @staticmethod
+    def _render_course_reminder_text(
+        instructor_name: str,
+        course_display: str,
+        admin_name: str,
+        institution_name: str,
+        assessment_url: str,
+    ) -> str:
+        """Render text course assessment reminder email template"""
+        return f"""
+Course Assessment Reminder
+
+Hello {instructor_name},
+
+This is a friendly reminder from {admin_name} to complete your learning outcome assessments for:
+
+📋 {course_display}
+
+ACTION REQUIRED: Please submit your course learning outcome (CLO) assessment data at your earliest convenience.
+
+Your assessment data helps {institution_name} track student success and continuously improve our programs. The process only takes a few minutes:
+
+• Review course learning outcomes (CLOs)
+• Enter student assessment numbers
+• Add optional narrative comments
+• Submit for approval
+
+Complete your assessment here:
+{assessment_url}
+
+The link above will take you directly to the assessment page for this course. If you have any questions or need assistance, please don't hesitate to reach out to {admin_name}.
+
+Thank you for your continued dedication to student success!
+
+---
+This is an automated reminder from the Course Record Updater system.
+© {datetime.now(timezone.utc).year} {institution_name}. All rights reserved.
         """
 
 

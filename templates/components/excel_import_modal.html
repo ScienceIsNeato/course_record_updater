@@ -254,6 +254,13 @@ function executeImportRequest(formData, isValidation) {
                         </div>
                     </div>
                 `;
+                
+                // Auto-reload the page after 2 seconds for successful imports (not validations)
+                if (!isValidation) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                }
             }, 500); // 500ms delay to show completion
         } else {
             // Hide progress immediately on error

@@ -113,7 +113,8 @@ function initializeInviteUserModal() {
 
     try {
       // Get CSRF token
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       // Make API request
       const response = await fetch('/api/auth/invite', {
@@ -199,7 +200,8 @@ function initializeEditUserModal() {
 
     try {
       // Get CSRF token
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       // Make API request - Use profile endpoint for self-service updates
       const response = await fetch(`/api/users/${userId}/profile`, {

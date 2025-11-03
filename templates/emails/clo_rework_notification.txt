@@ -1,0 +1,12 @@
+Hello,
+
+Your submission for Course Learning Outcome {{ clo_number }} in {{ course_number }} requires some revisions before it can be approved.
+
+Feedback from reviewer:
+{{ feedback }}
+
+Please review the feedback, make the necessary updates, and resubmit when ready.
+
+Thank you,
+Course Record System
+

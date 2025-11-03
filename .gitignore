@@ -38,6 +38,7 @@ course_records_ci.db
 
 # SonarCloud analysis artifacts
 .scannerwork/
+.sonar_run_metadata.json
 
 .DS_Store
 
@@ -54,6 +55,9 @@ COMMIT_MSG.txt
 
 # Scratch files
 pr_comments_scratch.md
+
+# Browser automation artifacts
+cookies.txt
 
 # Security scan reports
 bandit-report.json

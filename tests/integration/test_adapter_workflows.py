@@ -73,12 +73,12 @@ class TestAdapterWorkflows:
 
     def test_site_admin_full_import_export_workflow(self):
         """Test complete import/export workflow for site admin."""
-        # Create test data (using correct term format FA2024)
+        # Create test data (using correct term format 2024FA)
         test_data = [
             {
                 "course": "MATH-101",
                 "section": "01",
-                "effterm_c": "FA2024",
+                "effterm_c": "2024FA",
                 "students": "25",
                 "Faculty Name": "Dr. John Smith",
                 "email": "john.smith@mocku.test",
@@ -86,7 +86,7 @@ class TestAdapterWorkflows:
             {
                 "course": "ENG-201",
                 "section": "01",
-                "effterm_c": "FA2024",
+                "effterm_c": "2024FA",
                 "students": "30",
                 "Faculty Name": "Prof. Jane Doe",
                 "email": "jane.doe@mocku.test",
@@ -191,12 +191,12 @@ class TestAdapterWorkflows:
 
     def test_roundtrip_data_consistency(self):
         """Test that import->export->import maintains data consistency."""
-        # Original test data (using correct term format SP2024)
+        # Original test data (using correct term format 2024SP)
         original_data = [
             {
                 "course": "PHYS-301",
                 "section": "01",
-                "effterm_c": "SP2024",
+                "effterm_c": "2024SP",
                 "students": "15",
                 "Faculty Name": "Dr. Albert Einstein",
                 "email": "einstein@mocku.test",
@@ -385,7 +385,7 @@ class TestAdapterWorkflows:
 
             term_id = db.create_term(
                 {
-                    "term_name": "FA2024",
+                    "term_name": "2024FA",
                     "name": "Fall 2024",
                     "active": True,
                     "institution_id": institution_id,

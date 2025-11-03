@@ -192,6 +192,23 @@ class TestBulkEmailService:
         assert "Dr. Smith" in html
         assert "<!DOCTYPE html>" in html
 
+    def test_render_reminder_html_with_course_id(self):
+        """Test HTML rendering with course_id for course-specific link."""
+        html = BulkEmailService._render_reminder_html(
+            instructor_name="Dr. Smith",
+            personal_message="Please review",
+            term="Spring 2024",
+            deadline="March 15",
+            base_url="http://localhost:5000",
+            course_id="course-123",
+        )
+
+        assert "Dr. Smith" in html
+        assert "course-123" in html
+        # URL should be properly encoded (old bug had double ?)
+        assert "/reminder-login?next=/assessments%3Fcourse%3Dcourse-123" in html
+        assert "Enter Course Assessments" in html
+
     def test_render_reminder_text_with_all_fields(self):
         """Test text rendering with all optional fields."""
         text = BulkEmailService._render_reminder_text(
@@ -218,6 +235,21 @@ class TestBulkEmailService:
         )
 
         assert "Dr. Smith" in text
+
+    def test_render_reminder_text_with_course_id(self):
+        """Test text rendering with course_id for course-specific link."""
+        text = BulkEmailService._render_reminder_text(
+            instructor_name="Dr. Smith",
+            personal_message="Please review",
+            term="Spring 2024",
+            deadline="March 15",
+            base_url="http://localhost:5000",
+            course_id="course-123",
+        )
+
+        assert "Dr. Smith" in text
+        assert "/reminder-login?next=/assessments?course=course-123" in text
+        assert "enter your course assessments" in text
 
     @patch("bulk_email_service.BulkEmailJob")
     def test_get_job_status_success(self, mock_bulk_email_job):

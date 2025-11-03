@@ -285,6 +285,103 @@ class TestBulkEmailAPI(unittest.TestCase):
         call_kwargs = mock_service.get_recent_jobs.call_args[1]
         assert call_kwargs["limit"] == 100  # Capped at max
 
+    @patch("api.routes.bulk_email.get_current_user")
+    @patch("api.routes.bulk_email.BulkEmailService")
+    @patch("api.routes.bulk_email.get_db")
+    def test_send_instructor_reminders_value_error(
+        self, mock_get_db, mock_service, mock_get_user
+    ):
+        """Test send instructor reminders ValueError handling"""
+        mock_get_user.return_value = self.mock_user
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Mock service to raise ValueError
+        mock_service.send_instructor_reminders.side_effect = ValueError(
+            "Invalid instructor ID format"
+        )
+
+        response = self.client.post(
+            "/api/bulk-email/send-instructor-reminders",
+            data=json.dumps({"instructor_ids": ["invalid-id"]}),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data["success"] is False
+        assert "Invalid instructor ID format" in data["error"]
+        mock_db.close.assert_called_once()
+
+    @patch("api.routes.bulk_email.get_current_user")
+    @patch("api.routes.bulk_email.BulkEmailService")
+    @patch("api.routes.bulk_email.get_db")
+    def test_send_instructor_reminders_generic_exception(
+        self, mock_get_db, mock_service, mock_get_user
+    ):
+        """Test send instructor reminders generic Exception handling"""
+        mock_get_user.return_value = self.mock_user
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Mock service to raise generic exception
+        mock_service.send_instructor_reminders.side_effect = RuntimeError(
+            "Database connection lost"
+        )
+
+        response = self.client.post(
+            "/api/bulk-email/send-instructor-reminders",
+            data=json.dumps({"instructor_ids": ["test-123"]}),
+            content_type="application/json",
+        )
+
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["success"] is False
+        mock_db.close.assert_called_once()
+
+    @patch("api.routes.bulk_email.get_current_user")
+    @patch("api.routes.bulk_email.BulkEmailService")
+    @patch("api.routes.bulk_email.get_db")
+    def test_get_job_status_generic_exception(
+        self, mock_get_db, mock_service, mock_get_user
+    ):
+        """Test get job status generic Exception handling"""
+        mock_get_user.return_value = self.mock_user
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Mock service to raise exception
+        mock_service.get_job_status.side_effect = RuntimeError("Database error")
+
+        response = self.client.get("/api/bulk-email/job-status/test-job-123")
+
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["success"] is False
+        mock_db.close.assert_called_once()
+
+    @patch("api.routes.bulk_email.get_current_user")
+    @patch("api.routes.bulk_email.BulkEmailService")
+    @patch("api.routes.bulk_email.get_db")
+    def test_get_recent_jobs_generic_exception(
+        self, mock_get_db, mock_service, mock_get_user
+    ):
+        """Test get recent jobs generic Exception handling"""
+        mock_get_user.return_value = self.mock_user
+        mock_db = Mock()
+        mock_get_db.return_value = mock_db
+
+        # Mock service to raise exception
+        mock_service.get_recent_jobs.side_effect = RuntimeError("Database error")
+
+        response = self.client.get("/api/bulk-email/recent-jobs")
+
+        assert response.status_code == 500
+        data = json.loads(response.data)
+        assert data["success"] is False
+        mock_db.close.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

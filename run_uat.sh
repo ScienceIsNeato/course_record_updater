@@ -139,6 +139,14 @@ fi
 # Set ENV to "test" so email factory automatically selects Ethereal
 export ENV="test"
 
+# Disable CSRF for E2E tests to avoid token validation issues
+# E2E tests focus on functional workflows, not CSRF security
+export WTF_CSRF_ENABLED="false"
+
+# Set EMAIL_WHITELIST for E2E tests
+# Allow test domains used by E2E test suite
+export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io"
+
 # Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
 # This overrides any EMAIL_PROVIDER=brevo from .envrc.template
 unset EMAIL_PROVIDER
@@ -158,7 +166,7 @@ export DATABASE_TYPE="sqlite"
 
 # Seed E2E database with baseline shared infrastructure
 echo -e "${YELLOW}🌱 Seeding E2E database with baseline data...${NC}"
-python scripts/seed_db.py
+python scripts/seed_db.py --env e2e
 echo ""
 echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""

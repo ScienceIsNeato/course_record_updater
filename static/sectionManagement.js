@@ -49,7 +49,8 @@ function initializeCreateSectionModal() {
     createBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch('/api/sections', {
         method: 'POST',
@@ -128,7 +129,8 @@ function initializeEditSectionModal() {
     saveBtn.disabled = true;
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/sections/${sectionId}`, {
         method: 'PUT',
@@ -174,12 +176,37 @@ function initializeEditSectionModal() {
  * Open Edit Section Modal with pre-populated data
  * Called from section list when Edit button is clicked
  */
-function openEditSectionModal(sectionId, sectionData) {
+async function openEditSectionModal(sectionId, sectionData) {
   document.getElementById('editSectionId').value = sectionId;
   document.getElementById('editSectionNumber').value = sectionData.section_number || '';
-  document.getElementById('editSectionInstructorId').value = sectionData.instructor_id || '';
   document.getElementById('editSectionEnrollment').value = sectionData.enrollment || '';
   document.getElementById('editSectionStatus').value = sectionData.status || 'assigned';
+
+  // Populate instructor dropdown
+  const instructorSelect = document.getElementById('editSectionInstructorId');
+  instructorSelect.innerHTML = '<option value="">Unassigned</option>';
+
+  try {
+    const response = await fetch('/api/users?role=instructor');
+    if (response.ok) {
+      const data = await response.json();
+      const instructors = data.data || [];
+
+      instructors.forEach(instructor => {
+        const option = document.createElement('option');
+        option.value = instructor.user_id || instructor.id;
+        option.textContent = `${instructor.first_name} ${instructor.last_name} (${instructor.email})`;
+        instructorSelect.appendChild(option);
+      });
+
+      // Set selected instructor
+      if (sectionData.instructor_id) {
+        instructorSelect.value = sectionData.instructor_id;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading instructors:', error); // eslint-disable-line no-console
+  }
 
   const modal = new bootstrap.Modal(document.getElementById('editSectionModal'));
   modal.show();

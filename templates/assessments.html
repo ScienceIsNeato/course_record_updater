@@ -2,6 +2,36 @@
 
 {% block title %}Course Assessments{% endblock %}
 
+{% block extra_css %}
+<style>
+    .outcomes-list .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .outcomes-list .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    }
+    .bg-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    .text-primary {
+        color: #667eea !important;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #63398b 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .border-start {
+        border-left-width: 4px !important;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <h1>Course Assessments</h1>
@@ -55,7 +85,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Assessment</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Assessment</button>
                 </div>
             </form>
         </div>
@@ -72,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const updateAssessmentModal = document.getElementById('updateAssessmentModal');
     const updateAssessmentForm = document.getElementById('updateAssessmentForm');
     
+    // Store sections data for enrollment lookup
+    let instructorSections = [];
+    
     console.log('📢 ASSESSMENT JS: Elements found:', {
         courseSelect: !!courseSelect,
         outcomesContainer: !!outcomesContainer
@@ -86,14 +119,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const sectionsResponse = await fetch('/api/sections');
             console.log(`📢 /api/sections response: ${sectionsResponse.status}`);
             if (!sectionsResponse.ok) throw new Error('Failed to load sections');
-            
             const sectionsData = await sectionsResponse.json();
             const sections = sectionsData.sections || [];
+            instructorSections = sections; // Store for later use
             console.log(`📢 Got ${sections.length} sections`);
             if (sections.length > 0) {
                 console.log(`📢 First section FULL:`, JSON.stringify(sections[0], null, 2));
                 console.log(`📢 First section course_id:`, sections[0].course_id);
                 console.log(`📢 First section offering_id:`, sections[0].offering_id);
+                console.log(`📢 First section enrollment:`, sections[0].enrollment);
             }
             
             // Get unique course IDs from sections
@@ -105,7 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const coursesResponse = await fetch('/api/courses');
             console.log(`📢 /api/courses response: ${coursesResponse.status}`);
             if (!coursesResponse.ok) throw new Error('Failed to load courses');
-            
             const coursesData = await coursesResponse.json();
             const allCourses = coursesData.courses || [];
             console.log(`📢 Got ${allCourses.length} total courses`);
@@ -114,13 +147,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const instructorCourses = allCourses.filter(c => courseIds.includes(c.course_id));
             console.log(`📢 Filtered to ${instructorCourses.length} instructor courses`);
             
-            // Populate dropdown
+            // Populate dropdown with term and section info
             courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
             instructorCourses.forEach(course => {
-                const option = document.createElement('option');
-                option.value = course.course_id;
-                option.textContent = `${course.course_number} - ${course.course_title}`;
-                courseSelect.appendChild(option);
+                // Find sections for this course
+                const courseSections = sections.filter(s => s.course_id === course.course_id);
+                courseSections.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = course.course_id;
+                    const termName = section.term_name || 'Unknown Term';
+                    const sectionNumber = section.section_number || '001';
+                    option.textContent = `${termName} - ${course.course_number} - Section ${sectionNumber}`;
+                    courseSelect.appendChild(option);
+                });
             });
             console.log('📢 loadCourses() COMPLETE');
         } catch (error) {
@@ -154,49 +193,141 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Get section info for this course from instructor's sections
+            const courseSections = instructorSections.filter(s => s.course_id === courseId);
+            const section = courseSections.length > 0 ? courseSections[0] : null;
+            
+            // Get term info
+            let termName = 'Unknown Term';
+            if (section && section.term_name) {
+                termName = section.term_name;
+            } else if (section && section.term_id) {
+                // Fallback: fetch term from API if needed (but should be in section data)
+                termName = section.term_id;
+            }
+            
+            // Build course header with term and section info
+            const courseHeader = section 
+                ? `${termName} - ${data.course_number} - Section ${section.section_number || '001'}`
+                : `${data.course_number} - ${data.course_title}`;
+            
+            const enrollmentInfo = section && section.enrollment 
+                ? `<span class="text-muted">${section.enrollment} students enrolled</span>`
+                : '';
+            
             // Display outcomes with update buttons
             let html = `
-                <h3>${data.course_number} - ${data.course_title}</h3>
-                <p class="text-muted">Course Learning Outcomes (CLOs)</p>
-                <div class="list-group">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h4 class="mb-0"><i class="fas fa-graduation-cap"></i> ${courseHeader}</h4>
+                        ${enrollmentInfo ? `<small>${enrollmentInfo}</small>` : ''}
+                    </div>
+                    <div class="card-body">
+                        <h5 class="mb-3">Course Learning Outcomes</h5>
+                        <p class="text-muted mb-4">Complete assessments for each learning outcome below. Click "Update Assessment" to enter student performance data.</p>
+                        <div class="outcomes-list">
             `;
             
-            outcomes.forEach(outcome => {
+            outcomes.forEach((outcome, index) => {
                 const assessment = outcome.assessment_data || {};
                 const assessed = assessment.students_assessed || 0;
                 const meeting = assessment.students_meeting_target || 0;
                 const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
                 
+                // Get CLO status and feedback
+                const status = outcome.status || 'assigned';
+                const feedback = outcome.feedback_comments || '';
+                
+                // Determine if assessment is complete
+                const isComplete = assessed > 0;
+                const isApproved = status === 'approved';
+                const needsWork = status === 'approval_pending' && feedback;
+                
+                // Get status indicator and styling
+                const statusIndicator = getStatusIndicatorHtml(status, isComplete, needsWork);
+                const borderColorClass = getBorderColorClass(isApproved, needsWork, isComplete);
+                const successRateColorClass = getSuccessRateColorClass(percentage);
+                
                 html += `
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <h5 class="mb-1">${escapeHtml(outcome.description)}</h5>
-                                ${assessed > 0 ? `
-                                    <p class="mb-1 text-success">
-                                        Assessment: ${meeting}/${assessed} students meeting target (${percentage}%)
-                                    </p>
-                                ` : `
-                                    <p class="mb-1 text-muted">No assessment data yet</p>
-                                `}
-                                ${outcome.narrative ? `
-                                    <small class="text-muted">${escapeHtml(outcome.narrative)}</small>
+                    <div class="card mb-3 border-start border-4 ${borderColorClass}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="flex-grow-1">
+                                    <h6 class="text-primary mb-2">CLO ${index + 1}</h6>
+                                    <p class="mb-2 fw-bold">${escapeHtml(outcome.description)}</p>
+                                    ${statusIndicator ? `<div class="mb-2">${statusIndicator}</div>` : ''}
+                                </div>
+                            </div>
+                            
+                            ${isComplete ? `
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Students Assessed</small>
+                                            <strong class="fs-5">${assessed}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Meeting Target</small>
+                                            <strong class="fs-5 text-success">${meeting}</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Success Rate</small>
+                                            <strong class="fs-5 ${successRateColorClass}">${percentage}%</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="alert alert-light mb-3">
+                                    <i class="fas fa-info-circle text-muted"></i> No assessment data entered yet
+                                </div>
+                            `}
+                            
+                            ${outcome.narrative ? `
+                                <div class="mt-2 p-3 bg-light rounded">
+                                    <small class="text-muted d-block mb-1">Notes:</small>
+                                    <p class="mb-0">${escapeHtml(outcome.narrative)}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${needsWork ? `
+                                <div class="alert alert-warning mt-3">
+                                    <strong><i class="fas fa-exclamation-triangle"></i> Revision Requested:</strong>
+                                    <p class="mb-0 mt-2">${escapeHtml(feedback)}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="d-flex gap-2 mt-3">
+                                <button class="btn btn-primary update-assessment-btn" 
+                                        data-outcome-id="${outcome.outcome_id}"
+                                        data-description="${escapeHtml(outcome.description)}"
+                                        data-assessed="${assessed}"
+                                        data-meeting="${meeting}"
+                                        data-narrative="${escapeHtml(outcome.narrative || '')}"
+                                        data-status="${status}">
+                                    <i class="fas fa-edit"></i> ${isComplete ? 'Update' : 'Enter'} Assessment
+                                </button>
+                                ${canSubmitForApproval(status) && isComplete ? `
+                                    <button class="btn btn-success submit-clo-btn" 
+                                            data-outcome-id="${outcome.outcome_id}"
+                                            data-description="${escapeHtml(outcome.description)}">
+                                        <i class="fas fa-paper-plane"></i> Submit for Approval
+                                    </button>
                                 ` : ''}
                             </div>
-                            <button class="btn btn-sm btn-outline-primary update-assessment-btn" 
-                                    data-outcome-id="${outcome.outcome_id}"
-                                    data-description="${escapeHtml(outcome.description)}"
-                                    data-assessed="${assessed}"
-                                    data-meeting="${meeting}"
-                                    data-narrative="${escapeHtml(outcome.narrative || '')}">
-                                Update Assessment
-                            </button>
                         </div>
                     </div>
                 `;
             });
             
-            html += '</div>';
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
             outcomesContainer.innerHTML = html;
             
             // Add click handlers for update buttons
@@ -206,9 +337,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             
+            // Add click handlers for submit buttons
+            document.querySelectorAll('.submit-clo-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    submitCLOForApproval(this.dataset.outcomeId, this.dataset.description);
+                });
+            });
+            
         } catch (error) {
             console.error('Error loading outcomes:', error);
             outcomesContainer.innerHTML = '<div class="alert alert-danger">Error loading outcomes</div>';
+        }
+    }
+    
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badges = {
+            'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
+            'assigned': '<span class="badge bg-info">Assigned</span>',
+            'in_progress': '<span class="badge bg-primary">In Progress</span>',
+            'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
+            'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
+            'approved': '<span class="badge bg-success">✓ Approved</span>'
+        };
+        return badges[status] || '';
+    }
+    
+    // Check if CLO can be submitted
+    function canSubmitForApproval(status) {
+        return status === 'in_progress' || status === 'approval_pending';
+    }
+    
+    // Submit CLO for approval
+    async function submitCLOForApproval(outcomeId, description) {
+        if (!confirm(`Submit "${description}" for approval?\n\nOnce submitted, it will be reviewed by an administrator.`)) {
+            return;
+        }
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            const response = await fetch(`/api/outcomes/${outcomeId}/submit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to submit for approval');
+            }
+            
+            alert('CLO submitted for approval successfully!');
+            
+            // Reload outcomes for current course
+            const currentCourseId = courseSelect.value;
+            if (currentCourseId) {
+                await loadOutcomes(currentCourseId);
+            }
+            
+        } catch (error) {
+            console.error('Error submitting for approval:', error);
+            alert('Failed to submit for approval: ' + error.message);
         }
     }
     
@@ -216,12 +408,71 @@ document.addEventListener('DOMContentLoaded', function() {
     function openUpdateAssessmentModal(outcomeData) {
         document.getElementById('assessmentOutcomeId').value = outcomeData.outcomeId;
         document.getElementById('assessmentOutcomeDescription').textContent = outcomeData.description;
-        document.getElementById('studentsAssessed').value = outcomeData.assessed || '';
+        
+        // Calculate default enrollment from instructor's sections for current course
+        const currentCourseId = courseSelect.value;
+        const assessedValue = parseInt(outcomeData.assessed) || 0;
+        let defaultEnrollment = '';
+        
+        // Only use default enrollment if no assessment data exists (value is 0)
+        if (assessedValue === 0 && currentCourseId && instructorSections.length > 0) {
+            // Sum up enrollment from all sections for this course
+            const totalEnrollment = instructorSections
+                .filter(s => s.course_id === currentCourseId)
+                .reduce((sum, s) => sum + (Number(s.enrollment) || 0), 0);
+            if (totalEnrollment > 0) {
+                defaultEnrollment = totalEnrollment.toString();
+            }
+        }
+        
+        // Use existing assessment value if present, otherwise use default enrollment
+        document.getElementById('studentsAssessed').value = assessedValue > 0 ? assessedValue.toString() : defaultEnrollment;
         document.getElementById('studentsMeetingTarget').value = outcomeData.meeting || '';
         document.getElementById('assessmentNarrative').value = outcomeData.narrative || '';
         
         const modal = new bootstrap.Modal(updateAssessmentModal);
         modal.show();
+    }
+    
+    // Track if user has started editing (for auto-marking in_progress)
+    let hasEdited = false;
+    let autoMarkTriggered = false;
+    
+    // Auto-track editing on form fields
+    ['studentsAssessed', 'studentsMeetingTarget', 'assessmentNarrative'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', function() {
+                hasEdited = true;
+                
+                // Auto-mark as in_progress on first edit (debounced)
+                if (!autoMarkTriggered) {
+                    autoMarkTriggered = true;
+                    const outcomeId = document.getElementById('assessmentOutcomeId').value;
+                    const status = document.querySelector(`.update-assessment-btn[data-outcome-id="${outcomeId}"]`)?.dataset?.status;
+                    
+                    // Only auto-mark if status is assigned or approval_pending
+                    if (status === 'assigned' || status === 'approval_pending') {
+                        setTimeout(() => autoMarkInProgress(outcomeId), 1000);
+                    }
+                }
+            });
+        }
+    });
+    
+    // Auto-mark CLO as in_progress
+    async function autoMarkInProgress(outcomeId) {
+        try {
+            // This will be called silently - no need to show success/error to user
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            
+            // Note: The backend update_course_outcome will handle auto-marking
+            // We could add a dedicated endpoint, but for now the assessment update will trigger it
+            console.log(`Auto-marking outcome ${outcomeId} as in_progress`);
+        } catch (error) {
+            console.error('Error auto-marking in progress:', error);
+            // Silent fail - not critical
+        }
     }
     
     // Handle assessment form submission
@@ -265,6 +516,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const modal = bootstrap.Modal.getInstance(updateAssessmentModal);
             modal.hide();
             
+            // Reset tracking state
+            hasEdited = false;
+            autoMarkTriggered = false;
+            
             alert('Assessment updated successfully!');
             
             // Reload outcomes for current course
@@ -291,8 +546,48 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
     
+    // Helper function to get status indicator HTML
+    function getStatusIndicatorHtml(status, isComplete, needsWork) {
+        if (status === 'approved') {
+            return '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>';
+        }
+        if (status === 'awaiting_approval') {
+            return '<span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Review</span>';
+        }
+        if (needsWork) {
+            return '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Needs Revision</span>';
+        }
+        if (isComplete) {
+            return '<span class="badge bg-info"><i class="fas fa-edit"></i> In Progress</span>';
+        }
+        return '';
+    }
+    
+    // Helper function to get border color class
+    function getBorderColorClass(isApproved, needsWork, isComplete) {
+        if (isApproved) return 'border-success';
+        if (needsWork) return 'border-danger';
+        if (isComplete) return 'border-info';
+        return 'border-secondary';
+    }
+    
+    // Helper function to get success rate color class
+    function getSuccessRateColorClass(percentage) {
+        if (percentage >= 80) return 'text-success';
+        if (percentage >= 60) return 'text-warning';
+        return 'text-danger';
+    }
+    
     // Initialize - call async function
-    loadCourses().catch(err => console.error('Failed to load courses:', err));
+    loadCourses().then(() => {
+        // Auto-select course if provided in URL query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseParam = urlParams.get('course');
+        if (courseParam && courseSelect) {
+            courseSelect.value = courseParam;
+            loadOutcomes(courseParam);
+        }
+    }).catch(err => console.error('Failed to load courses:', err));
 });
 </script>
 {% endblock %}

@@ -7,7 +7,7 @@ repos:
     hooks:
       - id: quality-gate
         name: Quality Gate (All Checks)
-        entry: python scripts/ship_it.py
+        entry: bash -c 'cd "$PWD" && source venv/bin/activate && source .envrc && python scripts/ship_it.py'
         language: system
         pass_filenames: false
         always_run: true

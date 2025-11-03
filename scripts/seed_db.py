@@ -13,11 +13,6 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import database_service as db
-from constants import PROGRAM_DEFAULT_DESCRIPTION, SITE_ADMIN_INSTITUTION_ID
-from models import Course, Institution, Program, Term, User
-from password_service import hash_password
-
 
 class BaselineSeeder:
     """Seeds baseline shared infrastructure for E2E tests"""
@@ -435,20 +430,283 @@ class DatabaseSeeder:
         return self.seeder.seed_baseline()
 
 
+class CEIDemoSeeder:
+    """Minimal seeding for CEI stakeholder demo"""
+
+    def __init__(self):
+        self.created = {"institutions": [], "users": [], "programs": [], "terms": []}
+
+    def log(self, message: str):
+        """Log with [SEED] prefix"""
+        print(f"[SEED] {message}")
+
+    def create_cei_institution(self):
+        """Create CEI institution"""
+        self.log("🏢 Creating CEI institution...")
+
+        existing = db.get_institution_by_short_name("CEI")
+        if existing:
+            return existing["institution_id"]
+
+        schema = Institution.create_schema(
+            name="College of Eastern Idaho",
+            short_name="CEI",
+            admin_email="admin@cei.edu",
+            website_url="https://cei.edu",
+            created_by="system",
+        )
+
+        inst_id = db.create_institution(schema)
+        if inst_id:
+            self.created["institutions"].append(inst_id)
+        return inst_id
+
+    def create_leslie_account(self, institution_id):
+        """Create Leslie Jernberg institution admin account"""
+        self.log("👩‍💼 Creating Leslie Jernberg (Institution Admin)...")
+
+        email = "leslie.jernberg@cei.edu"
+        password = "Demo2024!"
+
+        existing = db.get_user_by_email(email)
+        if existing:
+            return existing["user_id"]
+
+        password_hash = hash_password(password)
+        schema = User.create_schema(
+            email=email,
+            first_name="Leslie",
+            last_name="Jernberg",
+            role="institution_admin",
+            institution_id=institution_id,
+            password_hash=password_hash,
+            account_status="active",
+        )
+        schema["email_verified"] = True
+
+        user_id = db.create_user(schema)
+        if user_id:
+            self.created["users"].append(user_id)
+        return user_id
+
+    def create_demo_programs(self, institution_id):
+        """Create sample programs for CEI"""
+        self.log("📚 Creating demo programs...")
+
+        programs_data = [
+            {"name": "Biological Sciences", "code": "BIOL"},
+            {"name": "Zoology", "code": "ZOOL"},
+        ]
+
+        program_ids = []
+        for prog_data in programs_data:
+            schema = Program.create_schema(
+                name=prog_data["name"],
+                short_name=prog_data["code"],
+                institution_id=institution_id,
+                description=PROGRAM_DEFAULT_DESCRIPTION,
+                created_by="system",
+            )
+
+            prog_id = db.create_program(schema)
+            if prog_id:
+                program_ids.append(prog_id)
+                self.created["programs"].append(prog_id)
+
+        return program_ids
+
+    def create_demo_term(self, institution_id):
+        """Create Fall 2024 term"""
+        self.log("📅 Creating Fall 2024 term...")
+
+        base_date = datetime.now(timezone.utc)
+        start_date = base_date - timedelta(days=90)
+        end_date = base_date + timedelta(days=30)
+
+        schema = Term.create_schema(
+            name="Fall 2024",
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            assessment_due_date=end_date.isoformat(),
+            active=True,
+        )
+        schema["term_name"] = "Fall 2024"
+        schema["term_code"] = "FA2024"
+        schema["institution_id"] = institution_id
+
+        term_id = db.create_term(schema)
+        if term_id:
+            self.created["terms"].append(term_id)
+        return term_id
+
+    def link_courses_to_programs(self, institution_id):
+        """Link courses to programs based on course prefixes"""
+        self.log("🔗 Linking courses to programs...")
+        
+        # Get all courses and programs
+        courses = db.get_all_courses(institution_id)
+        programs = db.get_programs_by_institution(institution_id)
+        
+        if not courses or not programs:
+            self.log("   ⚠️  No courses or programs found to link")
+            return
+        
+        # Build program lookup by name
+        program_lookup = {p["name"]: p["id"] for p in programs}
+        
+        # Course prefix to program mapping
+        course_mappings = {
+            "BIOL": "Biological Sciences",
+            "BSN": "Biological Sciences",
+            "ZOOL": "Zoology",
+            "CEI": "CEI Default Program",
+        }
+        
+        linked_count = 0
+        for course in courses:
+            # Extract prefix from course number (e.g., "BIOL-228" -> "BIOL")
+            course_number = course["course_number"]
+            prefix = course_number.split("-")[0] if "-" in course_number else None
+            
+            if prefix and prefix in course_mappings:
+                program_name = course_mappings[prefix]
+                program_id = program_lookup.get(program_name)
+                
+                if program_id:
+                    try:
+                        db.add_course_to_program(course["id"], program_id)
+                        linked_count += 1
+                        self.log(f"   ✓ Linked {course_number} to {program_name}")
+                    except Exception as e:
+                        # Might already be linked, that's okay
+                        pass
+        
+        if linked_count > 0:
+            self.log(f"   ✅ Linked {linked_count} courses to programs")
+        else:
+            self.log("   ℹ️  No new course-program links created")
+
+    def seed_cei_demo(self):
+        """Seed minimal data for CEI demo"""
+        self.log("🎬 Seeding CEI demo environment...")
+
+        inst_id = self.create_cei_institution()
+        if not inst_id:
+            return False
+
+        leslie_id = self.create_leslie_account(inst_id)
+        if not leslie_id:
+            return False
+
+        program_ids = self.create_demo_programs(inst_id)
+        term_id = self.create_demo_term(inst_id)
+        
+        # Link any existing courses to programs
+        self.link_courses_to_programs(inst_id)
+
+        self.log("✅ CEI demo seeding completed!")
+        self.print_summary()
+        return True
+
+    def print_summary(self):
+        """Print demo seeding summary"""
+        self.log("")
+        self.log("📊 CEI Demo Environment Ready:")
+        self.log(f"   Institution: CEI")
+        self.log(f"   Programs: {len(self.created['programs'])} created")
+        self.log(f"   Terms: {len(self.created['terms'])} created")
+        self.log("")
+        self.log("🔑 Demo Account:")
+        self.log("   Leslie Jernberg (Institution Admin)")
+        self.log("   Email: leslie.jernberg@cei.edu")
+        self.log("   Password: Demo2024!")
+        self.log("")
+        self.log("📝 Next Steps:")
+        self.log("   1. Start server: ./restart_server.sh dev")
+        self.log("   2. Navigate to: http://localhost:3001")
+        self.log("   3. Login with Leslie's credentials")
+        self.log("   4. Upload research/CEI/2024FA_test_data.xlsx")
+
+
 def main():
     """Main seeding entry point"""
-    parser = argparse.ArgumentParser(description="Seed baseline E2E test data")
+    parser = argparse.ArgumentParser(
+        description="Seed baseline E2E test data",
+        epilog="Examples:\n"
+        "  python scripts/seed_db.py --cei-demo --clear --env dev\n"
+        "  python scripts/seed_db.py --clear --env e2e\n"
+        "  python scripts/seed_db.py --env prod\n",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--clear", action="store_true", help="Clear database first")
-    args = parser.parse_args()
+    parser.add_argument("--cei-demo", action="store_true", help="Seed minimal CEI demo environment")
+    parser.add_argument(
+        "--env",
+        choices=["dev", "e2e", "prod"],
+        default="prod",
+        help="Environment to seed (dev, e2e, or prod). Determines which database file to use.",
+    )
+    
+    # Parse arguments and catch errors
+    try:
+        args = parser.parse_args()
+    except SystemExit as e:
+        if e.code != 0:
+            print("\n❌ ERROR: Invalid arguments provided")
+            print("💡 TIP: Use --env dev (not just 'dev')")
+            print("Run with -h or --help for usage information\n")
+        raise
 
-    seeder = BaselineSeeder()
+    # Map environment to database file
+    db_mapping = {
+        "dev": "sqlite:///course_records_dev.db",
+        "e2e": "sqlite:///course_records_e2e.db",
+        "prod": "sqlite:///course_records.db",
+    }
+    
+    database_url = db_mapping[args.env]
+    os.environ["DATABASE_URL"] = database_url
+    
+    # Log which database we're using
+    db_file = database_url.replace("sqlite:///", "")
+    print(f"[SEED] 🗄️  Using {args.env} database: {db_file}")
+    
+    # CRITICAL: Import database modules AFTER setting DATABASE_URL
+    # This ensures the database_service initializes with the correct database
+    import database_service as db
+    from constants import PROGRAM_DEFAULT_DESCRIPTION, SITE_ADMIN_INSTITUTION_ID
+    from models import Course, Institution, Program, Term, User
+    from password_service import hash_password
 
-    if args.clear:
-        seeder.log("🧹 Clearing database...")
-        db.reset_database()
+    # Inject imports into module globals so classes can use them
+    globals()['db'] = db
+    globals()['PROGRAM_DEFAULT_DESCRIPTION'] = PROGRAM_DEFAULT_DESCRIPTION
+    globals()['SITE_ADMIN_INSTITUTION_ID'] = SITE_ADMIN_INSTITUTION_ID
+    globals()['Course'] = Course
+    globals()['Institution'] = Institution
+    globals()['Program'] = Program
+    globals()['Term'] = Term
+    globals()['User'] = User
+    globals()['hash_password'] = hash_password
 
-    success = seeder.seed_baseline()
-    sys.exit(0 if success else 1)
+    if args.cei_demo:
+        seeder = CEIDemoSeeder()
+        
+        if args.clear:
+            seeder.log("🧹 Clearing database...")
+            db.reset_database()
+        
+        success = seeder.seed_cei_demo()
+        sys.exit(0 if success else 1)
+    else:
+        seeder = BaselineSeeder()
+
+        if args.clear:
+            seeder.log("🧹 Clearing database...")
+            db.reset_database()
+
+        success = seeder.seed_baseline()
+        sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":
