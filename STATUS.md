@@ -1,95 +1,108 @@
-# Status: PR Review Complete 🎉
+# Project Status
 
-## Session Summary
-**Goal**: Address all PR comments (bot + human) following Strategic PR Review Protocol
-**Result**: 15/15 tasks completed across 8 commits
-
-### PR Comments Addressed
-- **Bot Comments**: 6 addressed (data integrity, security, code quality)
-- **User Comments**: 9 addressed (cleanup, documentation, refactoring)
-- **Total**: 15/15 (100% completion)
-
-### Commits This Session (8 total)
-1. `fix: standardize outcome_id property usage across frontend` - Data integrity
-2. `chore: remove temporary files and add cookies.txt to gitignore` - Cleanup
-3. `fix: use submitted_by_user_id for CLO instructor identification` - Data integrity
-4. `docs: clean up api_routes.py comments and add anti-pattern warning` - Documentation
-5. `refactor: remove inline onclick handlers, use event delegation` - Security (XSS prevention)
-6. `fix: enable CSRF validation in E2E tests` - Security
-7. `refactor: remove duplicate utility functions in clo_workflow.py` - Code quality (DRY)
-8. `refactor: move inline HTML to Jinja templates for CLO rework emails` - Code quality
-
-### Changes by Category
-
-#### 🔒 Security (2 commits)
-- **XSS Prevention**: Replaced inline onclick handlers with data attributes + event delegation
-- **CSRF Validation**: Enabled CSRF in E2E tests (was incorrectly disabled)
-
-#### 🐛 Data Integrity (2 commits)
-- **Outcome ID Consistency**: Standardized `outcome.outcome_id` usage across all files
-- **CLO Instructor Fix**: Use `submitted_by_user_id` instead of arbitrary section picking
-
-#### 🧹 Code Quality (3 commits)
-- **Utils Deduplication**: Removed duplicate get_current_user/get_current_institution_id
-- **Template Separation**: Moved inline HTML to Jinja templates (emails/)
-- **Event Delegation**: Modern JavaScript patterns in admin.js
-
-#### 📚 Documentation (1 commit)
-- **Anti-pattern Warning**: Added comprehensive EOF warning to api_routes.py
-
-### Issues Verified as Already Fixed
-- **Bot**: Database query bug (many-to-many) - Already correctly implemented
-- **Bot**: URL encoding bug - Already correctly using urllib.parse.quote()
-- **Bot**: Deprecated datetime.utcnow() - Already replaced with timezone-aware version
-
-### Test Updates
-- **test_clo_workflow_service.py**: Added Flask app context for render_template() calls
-- **E2E Tests**: Now validate CSRF protection (was incorrectly skipped)
-
-## Quality Gate Status
-- ✅ All 1404+ tests passing
-- ✅ JavaScript Coverage: 82.56%
-- ✅ Python Coverage: 83.99%
-- ✅ All linters passing (black, isort, flake8, eslint, mypy)
-- ✅ Security: CSRF + XSS protections validated
-- 🚀 Ready to push!
-
-## Strategic PR Review Notes
-
-### What Worked
-- **Thematic Grouping**: Organized comments by concept (security, data integrity, cleanup)
-- **Risk-First**: Prioritized critical issues (data integrity, security) before refactoring
-- **Verification**: Checked existing code before assuming bugs
-- **Batch Commits**: Logical, atomic commits with clear purpose
-
-### Deferred for Future PR
-- **api_routes.py Refactoring**: Breaking up 5200+ line file into modules
-  - Added comprehensive warning to prevent future additions
-  - Actual refactoring is ~100+ hour effort better suited for dedicated PR
-  - Warning ensures no new endpoints added to monolith
-
-## Files Modified (11 total)
-1. `static/audit_clo.js` - Outcome ID consistency
-2. `templates/assessments.html` - Outcome ID consistency
-3. `static/admin.js` - Event delegation (XSS fix)
-4. `tests/e2e/conftest.py` - Enable CSRF
-5. `api/routes/clo_workflow.py` - Remove duplicate utils
-6. `clo_workflow_service.py` - CLO instructor fix + template usage
-7. `api_routes.py` - Documentation + anti-pattern warning
-8. `tests/unit/test_clo_workflow_service.py` - Add Flask context
-9. `templates/emails/clo_rework_notification.html` - New template
-10. `templates/emails/clo_rework_notification.txt` - New template
-11. `.gitignore` - Add cookies.txt
-
-## Next Actions
-1. Push all 8 commits to feature/audit branch
-2. Trigger CI/CD pipeline
-3. Await final PR approval
+**Last Updated:** November 3, 2025  
+**Current Task:** CEI Demo Follow-ups Implementation - Phase 1: Database Schema Redesign  
+**Branch:** `feature/audit`
 
 ---
 
-## Previous Session Summary (Coverage Improvement Sprint)
-- **JavaScript Lines**: 80.18% → 83.84% (+3.66%)
-- **Python Coverage**: 83.98% → 83.99% (maintained)
-- **Uncovered Lines**: 211 → 112 (-99 lines, 47% reduction!)
-- Added 27 JavaScript tests across institution_dashboard and bulk_reminders
+## Current Focus: CEI Demo Follow-ups Implementation
+
+Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_Demo_Follow_ups.md` for full analysis.
+
+### Phase 1: Database Schema Redesign (CRITICAL) - IN PROGRESS
+
+**Completed:**
+- ✅ **Phase 1.1:** Updated CLO assessment data model (models_sql.py, models.py)
+  - Removed `narrative` field from CourseOutcome (narratives belong at course level)
+  - Removed `assessment_data` JSON field
+  - Added `students_took` (Integer) - how many students took this CLO assessment
+  - Added `students_passed` (Integer) - how many students passed this CLO assessment  
+  - Added `assessment_tool` (String, 50 chars) - brief description like "Test #3", "Lab 2"
+
+- ✅ **Phase 1.2:** Added course-level enrollment and narrative section (models_sql.py)
+  - Extended `CourseSection` model with new fields:
+    - `withdrawals` (Integer) - pre-populated from feed
+    - `students_passed` (Integer) - instructor-entered (A, B, C grades)
+    - `students_dfic` (Integer) - instructor-entered (D, F, Incomplete)
+    - `cannot_reconcile` (Boolean) - bypass enrollment math validation
+    - `reconciliation_note` (Text) - explanation when cannot_reconcile=True
+    - `narrative_celebrations` (Text) - what went well
+    - `narrative_challenges` (Text) - what was difficult
+    - `narrative_changes` (Text) - what to do differently next time
+    - `due_date` (DateTime) - when assessment is due (also covers Phase 3.2)
+
+- ✅ **Phase 1.3:** Updated database access layer (database_sqlite.py, models_sql.py)  
+  - Updated `create_course_outcome` to use new fields
+  - Updated `update_outcome_assessment` method signature
+  - Updated `_course_outcome_to_dict` to return new fields
+  - Updated `_course_section_to_dict` to return all new course-level fields
+  - Removed all references to deprecated `assessment_data` and `narrative`
+
+- ✅ **Phase 1.4:** Seed script review
+  - Reviewed `scripts/seed_db.py` - minimal changes needed
+  - New fields have nullable=True and defaults, so existing seed code compatible
+  - Will add realistic test data after nuke/rebuild validates schema
+
+- ✅ **Phase 1.5:** Nuked databases and rebuilt with new schema
+  - Deleted all `.db` files  
+  - Ran `./restart_server.sh dev` to rebuild
+  - Verified new schema fields in both `course_outcomes` and `course_sections` tables
+
+- ✅ **Phase 1.6:** Updated unit tests for new schema validation
+  - Fixed `test_models.py` - updated CourseOutcome tests for new field names
+  - Fixed `test_database_service.py` - updated test calls to use new API signatures
+  - Fixed `test_database_sqlite_coverage.py` - section creation tests now pass
+  - Fixed `test_models_sql.py` - to_dict method tests pass
+  - All 11 previously failing tests now pass!
+
+**Next Steps:**
+- 🎯 **PHASE 1 COMPLETE!** Ready to commit and move to Phase 2 (UI/Workflow Updates)
+- Phase 2 will update the instructor UI (`assessments.html`, `assessments.js`) and API endpoints
+
+**Blockers:** None
+
+**Key Design Decisions:**
+1. **Greenfield Advantage:** No migration scripts needed - we're just nuking and rebuilding databases
+2. **CourseSection is the right model:** Added course-level fields to CourseSection (not Course) because that's where instructor assessment happens
+3. **Breaking Changes:** Old assessment_data JSON and CLO narratives are gone - clean slate approach
+
+---
+
+## Implementation Plan
+
+See `research/CEI/CEI_Demo_Implementation_Plan.md` for complete 8-week implementation plan.
+
+**Timeline:**
+- Weeks 1-2: Phase 1 - Database Schema Redesign (CURRENT)
+- Weeks 3-4: Phase 2 - UI and Workflow Updates  
+- Weeks 5-6: Phase 3 - Audit Enhancements (NCI status, due dates)
+- Weeks 7-8: Phase 4 - Polish and Testing
+- **Target UAT Handoff:** End of Winter 2026
+- **Go-Live:** Mid-April 2026
+
+---
+
+## Recent Accomplishments
+
+- Analyzed October 2025 CEI demo feedback and created comprehensive follow-ups document
+- Created detailed 8-week implementation plan with 4 phases
+- Updated data models to correct fundamental design errors (narratives at CLO level)
+- Designed new course-level assessment data structure
+
+---
+
+## Known Issues
+
+- Database access layer not yet updated for new schema
+- Seed scripts not yet updated for new schema
+- UI still using old field names (will break until Phase 2 complete)
+- Tests still using old schema (will break until Phase 1.6 complete)
+
+---
+
+## Notes
+
+- This is a Greenfield project - zero backward compatibility concerns
+- Feel free to make breaking changes and nuke databases at will
+- All changes reflect feedback from Leslie (CEI stakeholder) from October 2025 demo

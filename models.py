@@ -599,13 +599,11 @@ class CourseOutcome(DataModel):
             "assessment_method": (
                 assessment_method.strip() if assessment_method else None
             ),
-            "assessment_data": {
-                "students_assessed": None,
-                "students_meeting": None,
-                "percentage_meeting": None,
-                "assessment_status": "not_started",
-            },
-            "narrative": None,
+            # CLO Assessment Fields (corrected from demo feedback)
+            "students_took": None,  # How many students took THIS CLO assessment
+            "students_passed": None,  # How many students passed THIS CLO assessment
+            "assessment_tool": None,  # Brief description: "Test #3", "Lab 2", etc. (40-50 chars)
+            # Deprecated: assessment_data JSON removed, narrative removed (belongs at course level)
             "active": active,
             "created_at": CourseOutcome.current_timestamp(),
             "last_modified": CourseOutcome.current_timestamp(),
@@ -613,31 +611,28 @@ class CourseOutcome(DataModel):
 
     @staticmethod
     def update_assessment_data(
-        students_assessed: Optional[int] = None,
-        students_meeting: Optional[int] = None,
-        percentage_meeting: Optional[float] = None,
-        assessment_status: str = "in_progress",
-        narrative: Optional[str] = None,
+        students_took: Optional[int] = None,
+        students_passed: Optional[int] = None,
+        assessment_tool: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Create assessment data update"""
+        """Create assessment data update (corrected field names from demo feedback)"""
 
-        if assessment_status not in ASSESSMENT_STATUSES:
+        # Validate assessment_tool length if provided
+        if assessment_tool and len(assessment_tool) > 50:
             raise ValueError(
-                f"Invalid assessment_status: {assessment_status}. Must be one of {ASSESSMENT_STATUSES}"
+                f"assessment_tool must be 50 characters or less (got {len(assessment_tool)})"
             )
 
         # Calculate percentage if both counts provided
-        if students_assessed and students_meeting and not percentage_meeting:
-            percentage_meeting = round((students_meeting / students_assessed) * 100, 2)
+        percentage_meeting = None
+        if students_took and students_passed:
+            percentage_meeting = round((students_passed / students_took) * 100, 2)
 
         return {
-            "assessment_data": {
-                "students_assessed": students_assessed,
-                "students_meeting": students_meeting,
-                "percentage_meeting": percentage_meeting,
-                "assessment_status": assessment_status,
-            },
-            "narrative": narrative.strip() if narrative else None,
+            "students_took": students_took,
+            "students_passed": students_passed,
+            "assessment_tool": assessment_tool.strip() if assessment_tool else None,
+            "percentage_meeting": percentage_meeting,  # Calculated field for convenience
             "last_modified": CourseOutcome.current_timestamp(),
         }
 

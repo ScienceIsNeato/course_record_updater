@@ -547,8 +547,9 @@ class SQLiteDatabase(DatabaseInterface):
             "assessment_method",
             "active",
             "status",
-            "assessment_data",
-            "narrative",
+            "students_took",
+            "students_passed",
+            "assessment_tool",
             "created_at",
             "last_modified",
             "updated_at",
@@ -564,14 +565,10 @@ class SQLiteDatabase(DatabaseInterface):
             assessment_method=payload.get("assessment_method"),
             active=payload.get("active", True),
             status=payload.get("status", "unassigned"),
-            assessment_data=payload.get("assessment_data")
-            or {
-                "students_assessed": None,
-                "students_meeting": None,
-                "percentage_meeting": None,
-                "assessment_status": "not_started",
-            },
-            narrative=payload.get("narrative"),
+            # New CLO assessment fields (corrected from demo feedback)
+            students_took=payload.get("students_took"),
+            students_passed=payload.get("students_passed"),
+            assessment_tool=payload.get("assessment_tool"),
             extras=extras_dict,
         )
 
@@ -602,13 +599,18 @@ class SQLiteDatabase(DatabaseInterface):
     def update_outcome_assessment(
         self,
         outcome_id: str,
-        assessment_data: Dict[str, Any],
-        narrative: Optional[str] = None,
+        students_took: Optional[int] = None,
+        students_passed: Optional[int] = None,
+        assessment_tool: Optional[str] = None,
     ) -> bool:
-        """Update outcome assessment data and narrative."""
-        update_data: Dict[str, Any] = {"assessment_data": assessment_data}
-        if narrative is not None:
-            update_data["narrative"] = narrative
+        """Update outcome assessment data (corrected field names from demo feedback)."""
+        update_data: Dict[str, Any] = {}
+        if students_took is not None:
+            update_data["students_took"] = students_took
+        if students_passed is not None:
+            update_data["students_passed"] = students_passed
+        if assessment_tool is not None:
+            update_data["assessment_tool"] = assessment_tool
         return self.update_course_outcome(outcome_id, update_data)
 
     def delete_course_outcome(self, outcome_id: str) -> bool:
@@ -636,7 +638,7 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(outcome) for outcome in outcomes]
 
     def get_course_outcome(self, outcome_id: str) -> Optional[Dict[str, Any]]:
-        """Get single course outcome by ID (includes assessment_data and narrative)"""
+        """Get single course outcome by ID (includes students_took, students_passed, assessment_tool)"""
         with self.sqlite.session_scope() as session:
             outcome = session.get(CourseOutcome, outcome_id)
             return to_dict(outcome) if outcome else None
@@ -986,9 +988,21 @@ class SQLiteDatabase(DatabaseInterface):
             offering_id=payload.get("offering_id"),
             instructor_id=payload.get("instructor_id"),
             section_number=payload.get("section_number", "001"),
+            # Enrollment data (pre-populated from feed)
             enrollment=payload.get("enrollment"),
+            withdrawals=payload.get("withdrawals", 0),
+            # Course-level assessment data (instructor-entered)
+            students_passed=payload.get("students_passed"),
+            students_dfic=payload.get("students_dfic"),
+            cannot_reconcile=payload.get("cannot_reconcile", False),
+            reconciliation_note=payload.get("reconciliation_note"),
+            # Course-level narratives
+            narrative_celebrations=payload.get("narrative_celebrations"),
+            narrative_challenges=payload.get("narrative_challenges"),
+            narrative_changes=payload.get("narrative_changes"),
+            # Workflow fields
             status=payload.get("status", "assigned"),
-            grade_distribution=payload.get("grade_distribution", {}),
+            due_date=payload.get("due_date"),
             assigned_date=payload.get("assigned_date"),
             completed_date=payload.get("completed_date"),
             extras={**payload, "section_id": section_id},

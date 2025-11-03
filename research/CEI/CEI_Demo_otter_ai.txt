@@ -1,0 +1,274 @@
+Unknown Speaker  0:00  
+Okay, all right, well, let me go ahead and get started. I'll share my screen, and let's do I'm
+
+Speaker 1  0:20  
+I had a million tabs open. Let's just do this whole window over here. There we go. Okay, all
+
+Unknown Speaker  0:42  
+right. Do you see a little presentation?
+
+Unknown Speaker  0:46  
+See a calendar?
+
+Unknown Speaker  0:48  
+Now we know all your dinner plans.
+
+Unknown Speaker  0:58  
+You a busy guy?
+
+Unknown Speaker  1:02  
+Huh? So you don't see a PowerPoint presentation right now
+
+Unknown Speaker  1:08  
+because I have it on my screen. Let me see
+
+Unknown Speaker  1:15  
+if I can get a different window going here. I
+
+Speaker 1  1:24  
+All right, let's just, we'll skip the PowerPoint this. It's short. Anyway, I'll just go here. Okay, so now you see a web page right, correct? Okay, so let me just take a couple minutes and tell you kind of where we're at. So I have been really focusing hard on getting the underlying business logic and all of the Database entries and like the API back end parts all working kind of top to bottom. I haven't spent much time on the actual UI the front end, so it just kind of looks like what it looks like. I haven't put any effort or thought into it. That's not what I'm trying to show you today. I'm just trying to show you the functionality. So I wanted to take you through what I've got working so far and just make sure, basically, that it's what you're looking for. So I'm going to go through a little demo here where I'm starting with a brand new site. Nothing going on in it, except for I've added one user.
+
+Unknown Speaker  2:31  
+Geez, multiple tabs here. I
+
+Speaker 1  2:48  
+was scrambling getting some technical stuff done, and I should have practiced for the actual
+
+Speaker 2  2:53  
+you're playing. We're pretty relaxed. The fact
+
+Speaker 3  2:59  
+that we all got on the meeting within the first 10 minutes is, you know, technical feed of itself kind
+
+Speaker 1  3:06  
+of okay. I got there all right. So the only thing that exists in here right now is just a user for Wesley. So I'm going to sign in as that user and land us to a site. So right now we just have views to a lot of different data ideas. So we've got program management, and we right now, I've just got it set up as just having, like Biological Sciences. There's nothing in this database right now, so I'm going to scroll down to the bottom here for data management. I'm going to choose that test data file that you sent me, and I've got an adapter for it, and then we'll run that import, and then that'll basically just take everything that was in that little Excel and kind of populate the database. There's a little issue I've got with this display section right now, but so here, it'll pull in all the courses. It'll pull in the term offerings, faculty overview, and so now I'm going to show you like, okay, let's say I've got a course I want to invite a new faculty. I'll click over here, and I'll say I know this guy, will Martin. He is going to be teaching in the fall, biology. It's actually section one. He's going to be replacing
+
+Unknown Speaker  4:29  
+Matt coming.
+
+Speaker 1  4:32  
+I'll send that invitation here, you can see invitation sent. It will be assigned to the Selected section. The instructor will receive an email with instructions to complete their registration. Okay, so now, oh, you can't actually see that, so I'm going to go to my I'm going to go to my email. You need to see this part.
+
+Unknown Speaker  4:57  
+Present something else. Yeah.
+
+Speaker 1  5:04  
+Okay, so now I'm in my email here, and I've got this,
+
+Speaker 1  5:13  
+got this invitation, you're invited join college of Eastern Idaho,
+
+Unknown Speaker  5:18  
+accept invitation.
+
+Speaker 1  5:22  
+So then I go here, I'm gonna put in a password
+
+Unknown Speaker  5:30  
+and complete my registration
+
+Unknown Speaker  5:35  
+first time. Password set
+
+Unknown Speaker  5:37  
+up, yeah, just, just once for the first time.
+
+Speaker 1  5:41  
+So then I'm in there and I get signed in your email. Oh yeah, I gotta switch back.
+
+Speaker 1  5:58  
+Okay, so now I'm signed in as me the new instructor, and I've got this course biology. I can go in here. I can see my learning outcomes, but we'll say right now, it's just the beginning of this semester. I don't have anything to do yet, so let me log back out, and let's fast forward in time. We'll go to the end of the semester, and I'll log back in as Leslie.
+
+Speaker 1  6:33  
+And now we can say, Okay, we got some learning assessments due, but I don't see anything coming in yet. So let's go to the send reminders, and now we can select all the professors that we have for this semester. I'll say will Martin. Hey, your deadline is Halloween. Need to input silos. You those try send that reminder. You can do it as a bulk job. So if you've got like 100 professors, you could just do it all at once. There we go. Successfully sent one reminder.
+
+Unknown Speaker  7:14  
+So now let's go back over to my email. I'm
+
+Speaker 1  7:25  
+and I can see I got a reminder. Need to input my Clos, okay. Well, let's go click over here, and then let me switch back what I'm presenting I'm so
+
+Speaker 1  7:59  
+there's a little bug in that point where it doesn't actually take you directly to take you directly to the page, but ideally we take you back here, and then you'd go through for each of your Clos and enter. So it'll pre populate the number of students, and then you'll say, All right, we got 19 students passing this
+
+Unknown Speaker  8:21  
+extra notes about how great this semester was. Click, Save assessment,
+
+Unknown Speaker  8:32  
+and then that'll tell you.
+
+Speaker 2  8:33  
+Could you go back to that for a second? Sure?
+
+Unknown Speaker  8:40  
+Okay, okay, thank you.
+
+Speaker 2  8:45  
+I'm saving my questions. Okay, because I know there's a Q and A session, right?
+
+Speaker 1  8:49  
+Yeah, so then they would go through this for each of their sections. I've got a lot of the back end part working for what you would do next. I haven't actually got the front end of that of that working yet, but you would have a different place that you could go in for the final part of it, which is the the auditing. So after they had submitted, you would go to this page, and then you could see here whatever, whatever instructors had submitted, you could go and audit and do your final, like, approved, approve, deny, but that is pretty much it for the demo for today. That's just kind of like high level, what the, what the process would look like for you over the course of a semester, and what, what I've got in place now, and I just wanted to check in and see if that's what you were looking for.
+
+Speaker 2  9:41  
+Basically, yeah. I mean, it looks pretty close, I don't I guess we probably have to have the users set up. I usually just send it directly to them and but that, I mean, that's fine. They have to get their password in. So I get that on the actual assessment. So it pre populated how many students were in the course, and so every student that's in the course does not necessarily take the assessment. Okay? Students literally don't show up for class, right? They don't show up for the test day. They don't show up the day that that thing is due. They don't turn it in. So the way that it's that I had it set up, is that the instructor would input how many students took the assessment, how many students passed the assessment? Okay, the percentage that matters, of course, the number of students that took the assessment can't exceed enrollment, right? I see, but that's really has not been a problem.
+
+Speaker 1  10:45  
+Okay, so maybe on that page we could have enrollment, like as a static, uneditable field, and then we could have number students participated, number students passed,
+
+Speaker 2  10:54  
+exactly so is it took past, and that's what the percentage is based on. You have a narrative, but I don't know that we want them. I don't think, I think that's too much data to have a narrative for each individual clue that's being assessed. Okay, what we do need is that text box where they identify what their assessment tool is. So it simply says, you know, test number 315, people took it,
+
+Unknown Speaker  11:26  
+13 people passed. Here's the percentage. Okay, I think you
+
+Speaker 2  11:31  
+can convert that text box probably to what their assessment tool was.
+
+Speaker 1  11:35  
+I see, okay, so instead of, like a general notes box, you want a specific assessment tool,
+
+Speaker 2  11:41  
+yeah, I give them like 40 characters. We don't get much, like 4050, characters, whatever fits in there nicely. It's just enough for them to remember
+
+Unknown Speaker  11:52  
+what assignment that they used.
+
+Unknown Speaker  11:55  
+So we, I don't.
+
+Speaker 2  11:57  
+I've been to other colleges where you have these lengthy descriptions of the assignment. It's like, Nah, we don't need that. But then for an overall course, there is a narrative, celebrations, challenges and changes. You probably saw that on the documentation.
+
+Speaker 1  12:17  
+Okay? So that's not an individual flow. That's something that applies to the whole course. Okay,
+
+Speaker 2  12:23  
+yeah, the course is a whole as is the enrollment, the number of students withdrew, and then the faculty member would populate how many passed and how many DFI seed, okay, a D, an F or an incomplete and that helps us compute our pass rate.
+
+Unknown Speaker  12:46  
+Okay, too much information.
+
+Speaker 1  12:48  
+Nope, that's all. That's great information to have.
+
+Speaker 2  12:52  
+Okay, good. And then on the audit portion, I'm looking at that line, what would I see if I clicked, okay, maybe this is the question, if I presumably, there's going to be a clue there that I can click on, and then I would mark it. At that point, I would mark it as either it needs to be reworked or it's approved,
+
+Speaker 1  13:18  
+right? Yeah, you would have a little Approve button, or you'd have a rework. And then there's just kind of a general comment field for if it needs rework. Give a brief explanation of what's what's wrong with it and why you want them to resubmit.
+
+Speaker 2  13:30  
+Yep, that's exactly. That's exactly. And then does that feedback go directly to the instructor, or is that something that I follow up on?
+
+Speaker 1  13:39  
+It would be, it would be emailed automatically as part of the request for rework.
+
+Unknown Speaker  13:45  
+Okay, okay, yeah, I like it. Okay, well, good.
+
+Speaker 1  13:54  
+What if anything is missing from what you need? Functionality wise,
+
+Speaker 2  14:02  
+I uh, you know, we're only taking sort of that little piece out of the front and the back right. You're only looking at that little piece right now. So we have the ability to bulk invite instructors based on the instructors listed on the Excel sheet. Is that correct? And then we have the ability to bulk invite instructors to actually do their thing right? And they do their thing. There's a little bit of that thing that needs tweaking that we just talked about,
+
+Unknown Speaker  14:43  
+and then it would
+
+Speaker 2  14:47  
+come back in and have a kind of a remediation loop. And then when we got all of them to either be okay, this might have come up. After the last time we talked, they're all going to either be approved. I mean, like, at some point they're all going to be approved, or we have to be able to mark them, as I call it, MCI, never coming in. Okay, right? You're really going to get 100% participation. I try really hard, but people move. People quit answering their email. They resigned from the institution the I see, whatever right so
+
+Unknown Speaker  15:29  
+personal grudges against you, whatever, whatever
+
+Speaker 2  15:35  
+it is, and so that way is I sent out. 198 of them are approved at this point. Two of them are never coming in, because I don't want it to keep on coming up as as still out, still out, still out, right, still out. And then there's I already know they're never coming in, so that would be another piece. They are sorry that didn't come up until I was finishing up some other stuff
+
+Speaker 1  15:59  
+I was, I hadn't thought about what eventual statuses could come out of the approval process. So that fills in a gap. I didn't, I didn't know,
+
+Speaker 2  16:10  
+yeah, so at some point I need to know that everybody's done their thing right and and who hasn't done their thing, and it looks like this is the screen that it's approved, never coming in, or it needs reworked, and then at some point I'm going to resolve all the needs we worked and they're going to move into the approval column.
+
+Speaker 1  16:32  
+Are you, do you tend to do this semester by semester? Or is it the kind of thing where you're still trying to chase down Clos from last semester. This semester, no,
+
+Speaker 2  16:43  
+last semester was all done. It's just I had to do it manually. So it took a little longer than it and it should have
+
+Unknown Speaker  16:50  
+my 28 spreadsheets.
+
+Speaker 2  16:57  
+So everything in the fall we assess all courses. So in this this semester, there's 460 individual sections. So, you know, we assess all of those. They're all due on a certain day. The day after grades are due, they're all due. Okay, they might trickle in for the rest of that week, but that should be pretty much it, except for early college classes and I'm coming later, which is why I tried to sort of set it up. As you know, we've This batch is ready, and the other batches are going to come in until later, because the high school classes, when we're teaching college classes at the high school, their last day of instruction might be well into January, whereas the rest of the campus is done. Our campus is done, first week, second week of December. Yeah. So there, you know. So, so at some point, you know, like I said, so it's done, I can import this many into the system, but then there's always going to be some that are still coming along, and then it never came, never coming in. Does that make sense to you? It does. Yeah.
+
+Unknown Speaker  18:22  
+Let me just check our agenda here make sure.
+
+Speaker 1  18:26  
+All right, so we did the demo, so I guess right now we're in the 10 minutes of Q and A feedback. I do have a question for you, and it's something that I'm not entirely clear on so let's say we've got all the bugs smoothed out. This entire system works great. You get all of the information filled out that you need. Now the way I've set up the import is that everything is bi directional, so whatever the format is of the import that I'm using to get all the data in, I can export it in exactly the same way, so we can add data and then we can export it, but I'm not sure, from your perspective, how you want to take it into your existing system after we've done all this to collect everything. So it's possible that I could just do an export and then you could import it into access. That's probably
+
+Unknown Speaker  19:18  
+likely the way it would work. Yeah. Okay,
+
+Speaker 1  19:27  
+I would have a concern that I might mess up your database if I didn't do a lot of due diligence to make sure that that import was going to go well. So we'll have to coordinate there so I can make sure that the adapter is, you know, not buggy,
+
+Unknown Speaker  19:49  
+and my database is buggy right now.
+
+Speaker 2  19:52  
+Like I said, I have, I have my bubble my bubble gum database, right is buggy right now, which we knew it would be a second last. Forever, because I'm not a programmer, and I don't know where they are on the it, the one that it is building right now. They don't know that we're collaborating, and I'm not quite ready to let them know that we're collaborating, because they're working on their stuff as well, to try and see what we can do. Um, but I could at least be able to show you what we do with the data. I mean, I don't know what your table looks like, I guess. I guess what you have is what you have, what I sent you, and then it would be populated. Correct. So in reality, will right now, what I'm doing is I would have all of that data, and then I end up pulling it into like 28 programs or whatever, pulling the 28 spreadsheets and then and then to be able to get 10 sections of English, 101, I want to know overall, for flow one, or for clue one, how many students took it, how many students passed it, to know if That course is satisfactory, right? So it's sort of a group, a subtotal kind of thing. It's really basically in that same format, and then they have to go through and manually attach it back to program outcomes, which is outside the scope of what we're working on. Okay? So really, it just, it really comes back to that same spreadsheet, sorted by course, so no longer by instructor or whatever, sorted by course, sorted by clo and then, and then as a subtotal for each clo, so that It captures all of the various sections of that class.
+
+Unknown Speaker  22:03  
+Okay, so it sounds like if we could just
+
+Speaker 1  22:07  
+basically export the database in the same format, that the form is exactly that. That would
+
+Speaker 2  22:11  
+work. Okay? Yeah, I think so.
+
+Speaker 1  22:15  
+All right. Well, that's very doable. The form is pretty deterministic and not super complicated. So it's it's not hard to write an adapter for it. Okay, so that clears that out, I guess for the last few minutes here, we just want to talk about next steps and where to go from here. I don't know what, what term you're thinking about, potentially starting to actually utilize this and when, when the deadlines are so
+
+Speaker 2  22:47  
+well, if we were going to utilize it this semester, which I think is probably pretty unlikely, we're three weeks out. Okay, so I think that's probably unlikely. So then the next assessment period would be spring semester, so that's mid, mid April. We would have to
+
+Unknown Speaker  23:10  
+be ready to rock and roll.
+
+Speaker 1  23:11  
+Okay. Well, how would this sound for a timeline? Then I've got lots of little wrinkles I still need to iron out and, you know, functionality and stuff, but I feel very comfortable about having something ready by April, so maybe I could get to the point where the website is kind of fully functional, and then hand it over to you, to you and Matt to kind of beat it up and tell me what's not working or what we don't need and that kind of thing, and we can kind of finalize how everything looks and works in the end of fall and winter, and then in the end of winter and beginning of spring, we could actually start ramping up to actually use it in the spring semester and get users, get accounts created for instructors and that kind of stuff. If that sounds good to you,
+
+Unknown Speaker  24:02  
+to you, sounds great to me. Matt,
+
+Unknown Speaker  24:06  
+yeah, that sounds pretty reasonable.
+
+Unknown Speaker  24:11  
+Okay, this is fun. Yeah, it's exciting for me.
+
+Speaker 2  24:18  
+I like the name lossy too. That it didn't, it wasn't until you brought up your splash screen and I figured out what that meant,
+
+Unknown Speaker  24:27  
+something, something, something,
+
+Speaker 1  24:29  
+yeah, I have to call this something. But for a while it was the course record updater, and that's not, that's not a good name, that's kind of clunky. Yeah? Lassie, well, it's easy to refer to.
+
+Unknown Speaker  24:42  
+Yeah, yeah, I get it
+
+Unknown Speaker  24:46  
+cool. Well, thank you will appreciate you.
+
+Speaker 1  24:47  
+Okay, well, thank you, and hope you guys have a great weekend.
+
+Speaker 3  24:52  
+Thank you. You too. Okay, take it easy. Thanks. Will. You.
+
+Transcribed by https://otter.ai

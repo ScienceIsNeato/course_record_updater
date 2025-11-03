@@ -267,11 +267,31 @@ class CourseSection(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     offering_id = Column(String, ForeignKey("course_offerings.id"), nullable=False)
     instructor_id = Column(String, ForeignKey(USERS_ID))
     section_number = Column(String, default="001")
+
+    # Enrollment Data (pre-populated from feed or admin)
     enrollment = Column(Integer)
+    withdrawals = Column(Integer, default=0)
+
+    # Course-Level Assessment Data (instructor-entered)
+    students_passed = Column(Integer, nullable=True)  # Students with A, B, C
+    students_dfic = Column(Integer, nullable=True)  # Students with D, F, Incomplete
+    cannot_reconcile = Column(Boolean, default=False)  # Enrollment math doesn't add up
+    reconciliation_note = Column(
+        Text, nullable=True
+    )  # Explanation when cannot_reconcile=True
+
+    # Course-Level Narratives (NOT at CLO level - corrected from demo feedback)
+    narrative_celebrations = Column(Text, nullable=True)  # What went well
+    narrative_challenges = Column(Text, nullable=True)  # What was difficult
+    narrative_changes = Column(Text, nullable=True)  # What to do differently next time
+
+    # Workflow fields
     status = Column(String, default="assigned")
-    grade_distribution = Column(JSON, default=dict)
+    due_date = Column(DateTime, nullable=True)  # When assessment is due (Phase 3.2)
     assigned_date = Column(DateTime)
     completed_date = Column(DateTime)
+
+    # Deprecated: grade_distribution JSON replaced with explicit fields above
     extras = Column(PickleType, default=dict)
 
     offering = relationship("CourseOffering", back_populates="sections")
@@ -289,8 +309,20 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     description = Column(Text, nullable=False)
     assessment_method = Column(String)
     active = Column(Boolean, default=True)
-    assessment_data = Column(JSON, default=dict)
-    narrative = Column(Text)
+
+    # CLO Assessment Fields (corrected from demo feedback)
+    students_took = Column(
+        Integer, nullable=True
+    )  # How many students took THIS CLO assessment
+    students_passed = Column(
+        Integer, nullable=True
+    )  # How many students passed THIS CLO assessment
+    assessment_tool = Column(
+        String(50), nullable=True
+    )  # Brief description: "Test #3", "Lab 2", etc.
+
+    # Deprecated: assessment_data JSON removed in favor of explicit fields above
+    # Deprecated: narrative removed - narratives belong at COURSE level, not CLO level
     extras = Column(JSON, default=dict)
 
     # Workflow status fields
@@ -514,9 +546,21 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
         "offering_id": model.offering_id,
         "instructor_id": model.instructor_id,
         "section_number": model.section_number,
+        # Enrollment data (pre-populated from feed)
         "enrollment": model.enrollment,
+        "withdrawals": model.withdrawals,
+        # Course-level assessment data (instructor-entered)
+        "students_passed": model.students_passed,
+        "students_dfic": model.students_dfic,
+        "cannot_reconcile": model.cannot_reconcile,
+        "reconciliation_note": model.reconciliation_note,
+        # Course-level narratives (NOT at CLO level)
+        "narrative_celebrations": model.narrative_celebrations,
+        "narrative_challenges": model.narrative_challenges,
+        "narrative_changes": model.narrative_changes,
+        # Workflow fields
         "status": model.status,
-        "grade_distribution": model.grade_distribution,
+        "due_date": model.due_date,
         "assigned_date": model.assigned_date,
         "completed_date": model.completed_date,
         "created_at": model.created_at,
@@ -532,8 +576,10 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "clo_number": model.clo_number,
         "description": model.description,
         "assessment_method": model.assessment_method,
-        "assessment_data": model.assessment_data,
-        "narrative": model.narrative,
+        # CLO assessment fields (corrected from demo feedback)
+        "students_took": model.students_took,
+        "students_passed": model.students_passed,
+        "assessment_tool": model.assessment_tool,
         "active": model.active,
         "created_at": model.created_at,
         "last_modified": model.updated_at,

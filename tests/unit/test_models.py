@@ -194,30 +194,33 @@ class TestCourseOutcome:
         assert outcome["clo_number"] == "1"
         assert outcome["description"] == "Students will demonstrate understanding of..."
         assert outcome["active"] is True
-        assert "assessment_data" in outcome
-        assert outcome["assessment_data"]["assessment_status"] == "not_started"
+        # New CLO assessment fields (corrected from demo feedback)
+        assert outcome["students_took"] is None
+        assert outcome["students_passed"] is None
+        assert outcome["assessment_tool"] is None
 
     def test_update_assessment_data(self):
-        """Test updating assessment data"""
+        """Test updating assessment data (corrected field names from demo feedback)"""
         assessment = CourseOutcome.update_assessment_data(
-            students_assessed=25,
-            students_meeting=22,
-            assessment_status="completed",
-            narrative="Most students performed well...",
+            students_took=25,
+            students_passed=22,
+            assessment_tool="Test #3",
         )
 
-        assert assessment["assessment_data"]["students_assessed"] == 25
-        assert assessment["assessment_data"]["students_meeting"] == 22
+        assert assessment["students_took"] == 25
+        assert assessment["students_passed"] == 22
+        assert assessment["assessment_tool"] == "Test #3"
         assert (
-            abs(assessment["assessment_data"]["percentage_meeting"] - 88.0) < 0.01
-        )  # Calculated with tolerance
-        assert assessment["assessment_data"]["assessment_status"] == "completed"
-        assert assessment["narrative"] == "Most students performed well..."
+            abs(assessment["percentage_meeting"] - 88.0) < 0.01
+        )  # Calculated field with tolerance
 
-    def test_invalid_assessment_status(self):
-        """Test that invalid assessment status raises ValueError"""
-        with pytest.raises(ValueError, match="Invalid assessment_status"):
-            CourseOutcome.update_assessment_data(assessment_status="invalid_status")
+    def test_invalid_assessment_tool_length(self):
+        """Test that assessment_tool exceeding 50 chars raises ValueError"""
+        long_tool = "This is a very long assessment tool name that exceeds the 50 character limit"
+        with pytest.raises(
+            ValueError, match="assessment_tool must be 50 characters or less"
+        ):
+            CourseOutcome.update_assessment_data(assessment_tool=long_tool)
 
 
 class TestValidationFunctions:
@@ -524,16 +527,14 @@ class TestCourseOutcomeAdditional:
     """Test CourseOutcome model additional functionality."""
 
     def test_update_assessment_data_percentage_calculation(self):
-        """Test automatic percentage calculation in assessment data update."""
+        """Test automatic percentage calculation in assessment data update (corrected field names)."""
         from models import CourseOutcome
 
         # Test the specific case where percentage is calculated automatically
-        # This should trigger the percentage calculation on lines 631-632
         updated_data = CourseOutcome.update_assessment_data(
-            students_assessed=30, students_meeting=24, assessment_status="completed"
+            students_took=30, students_passed=24
         )
 
-        assert updated_data["assessment_data"]["students_assessed"] == 30
-        assert updated_data["assessment_data"]["students_meeting"] == 24
-        assert updated_data["assessment_data"]["percentage_meeting"] == 80.0
-        assert updated_data["assessment_data"]["assessment_status"] == "completed"
+        assert updated_data["students_took"] == 30
+        assert updated_data["students_passed"] == 24
+        assert updated_data["percentage_meeting"] == 80.0

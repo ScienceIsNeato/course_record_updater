@@ -580,7 +580,7 @@ jobs:
 
   sonarcloud-status:
     runs-on: ubuntu-latest
-    needs: sonarcloud-analyze
+    needs: [setup, sonarcloud-analyze]
     if: always()  # Run even if sonarcloud-analyze fails
     timeout-minutes: 15
     steps:
