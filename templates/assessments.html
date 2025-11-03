@@ -532,8 +532,6 @@ document.addEventListener('DOMContentLoaded', function() {
     async function autoMarkInProgress(outcomeId) {
         try {
             // This will be called silently - no need to show success/error to user
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            
             // Note: The backend update_course_outcome will handle auto-marking
             // We could add a dedicated endpoint, but for now the assessment update will trigger it
             console.log(`Auto-marking outcome ${outcomeId} as in_progress`);
