@@ -313,17 +313,18 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             
             outcomes.forEach((outcome, index) => {
-                const assessment = outcome.assessment_data || {};
-                const assessed = assessment.students_assessed || 0;
-                const meeting = assessment.students_meeting_target || 0;
-                const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
+                // Get assessment data (updated from CEI demo feedback)
+                const studentsTook = outcome.students_took || 0;
+                const studentsPassed = outcome.students_passed || 0;
+                const assessmentTool = outcome.assessment_tool || '';
+                const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
                 
                 // Get CLO status and feedback
                 const status = outcome.status || 'assigned';
                 const feedback = outcome.feedback_comments || '';
                 
-                // Determine if assessment is complete
-                const isComplete = assessed > 0;
+                // Determine if assessment is complete (has required new fields)
+                const isComplete = studentsTook > 0 && studentsPassed >= 0 && assessmentTool;
                 const isApproved = status === 'approved';
                 const needsWork = status === 'approval_pending' && feedback;
                 
@@ -345,22 +346,28 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             ${isComplete ? `
                                 <div class="row g-3 mb-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="p-3 bg-light rounded">
-                                            <small class="text-muted d-block">Students Assessed</small>
-                                            <strong class="fs-5">${assessed}</strong>
+                                            <small class="text-muted d-block">Students Took</small>
+                                            <strong class="fs-5">${studentsTook}</strong>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="p-3 bg-light rounded">
-                                            <small class="text-muted d-block">Meeting Target</small>
-                                            <strong class="fs-5 text-success">${meeting}</strong>
+                                            <small class="text-muted d-block">Students Passed</small>
+                                            <strong class="fs-5 text-success">${studentsPassed}</strong>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         <div class="p-3 bg-light rounded">
                                             <small class="text-muted d-block">Success Rate</small>
-                                            <strong class="fs-5 ${successRateColorClass}">${percentage}%</strong>
+                                            <strong class="fs-5 ${getSuccessRateColorClass(percentage)}">${percentage}%</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="p-3 bg-light rounded">
+                                            <small class="text-muted d-block">Assessment Tool</small>
+                                            <strong class="fs-6">${escapeHtml(assessmentTool)}</strong>
                                         </div>
                                     </div>
                                 </div>
