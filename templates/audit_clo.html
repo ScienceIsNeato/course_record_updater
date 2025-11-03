@@ -16,37 +16,45 @@
         </div>
     </div>
 
-    <!-- Summary Stats -->
+    <!-- Summary Stats (added NCI from CEI demo feedback) -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4">
             <div class="card border-warning">
                 <div class="card-body text-center">
                     <h3 class="mb-0" id="statAwaitingApproval">-</h3>
-                    <p class="text-muted mb-0">Awaiting Approval</p>
+                    <p class="text-muted mb-0 small">Awaiting Approval</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4">
             <div class="card border-danger">
                 <div class="card-body text-center">
                     <h3 class="mb-0" id="statNeedsRework">-</h3>
-                    <p class="text-muted mb-0">Needs Rework</p>
+                    <p class="text-muted mb-0 small">Needs Rework</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4">
             <div class="card border-success">
                 <div class="card-body text-center">
                     <h3 class="mb-0" id="statApproved">-</h3>
-                    <p class="text-muted mb-0">Approved This Term</p>
+                    <p class="text-muted mb-0 small">Approved</p>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-lg-2 col-md-4">
+            <div class="card border-dark">
+                <div class="card-body text-center">
+                    <h3 class="mb-0" id="statNCI">-</h3>
+                    <p class="text-muted mb-0 small">Never Coming In</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4">
             <div class="card border-primary">
                 <div class="card-body text-center">
                     <h3 class="mb-0" id="statInProgress">-</h3>
-                    <p class="text-muted mb-0">In Progress</p>
+                    <p class="text-muted mb-0 small">In Progress</p>
                 </div>
             </div>
         </div>
@@ -118,6 +126,9 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-warning" id="requestReworkBtn" onclick="openReworkModal()">
                     Request Rework
+                </button>
+                <button type="button" class="btn btn-dark" id="markNCIBtn" onclick="markAsNCI()">
+                    Mark as NCI (Never Coming In)
                 </button>
                 <button type="button" class="btn btn-success" id="approveBtn" onclick="approveCLO()">
                     Approve

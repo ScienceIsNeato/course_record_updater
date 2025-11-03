@@ -14,7 +14,12 @@ from api.utils import get_current_user, handle_api_error
 from auth_service import get_current_institution_id
 from clo_workflow_service import CLOWorkflowService
 from constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
-from database_service import get_course_by_id, get_course_outcome
+from database_service import (
+    get_all_courses,
+    get_course_by_id,
+    get_course_outcome,
+    get_course_outcomes,
+)
 from logging_config import get_logger
 
 
@@ -285,6 +290,65 @@ def request_clo_rework(outcome_id: str):
     except Exception as e:
         return handle_api_error(
             e, "Request CLO rework", "Failed to request CLO rework"
+        )
+
+
+@clo_workflow_bp.route("/<outcome_id>/mark-nci", methods=["POST"])
+@lazy_permission_required("audit_clo")
+def mark_clo_as_nci(outcome_id: str):
+    """
+    Mark a CLO as "Never Coming In" (NCI).
+    
+    Use cases from CEI demo feedback:
+    - Instructor left institution
+    - Instructor non-responsive despite multiple reminders
+    - Course cancelled/dropped after initial assignment
+    
+    Changes status to NEVER_COMING_IN.
+    """
+    try:
+        data = request.get_json(silent=True)
+        reason = data.get("reason") if data else None
+        
+        user = get_current_user()
+        user_id = user.get("user_id")
+        
+        # Verify outcome exists
+        institution_id = get_current_institution_id()
+        courses = get_all_courses(institution_id)
+        
+        found = False
+        for course in courses:
+            outcomes = get_course_outcomes(course["course_id"])
+            if any(o.get("outcome_id") == outcome_id for o in outcomes):
+                found = True
+                break
+        
+        if not found:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+        
+        # Mark as NCI
+        success = CLOWorkflowService.mark_as_nci(outcome_id, user_id, reason)
+        
+        if success:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": "CLO marked as Never Coming In (NCI)",
+                    }
+                ),
+                200,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to mark CLO as NCI"}),
+                500,
+            )
+    
+    except Exception as e:
+        return handle_api_error(
+            e, "Mark CLO as NCI", "Failed to mark CLO as NCI"
         )
 
 

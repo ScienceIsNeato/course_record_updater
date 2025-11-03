@@ -171,6 +171,56 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
+    def mark_as_nci(outcome_id: str, reviewer_id: str, reason: str = None) -> bool:
+        """
+        Mark a CLO as "Never Coming In" (NCI) - added from CEI demo feedback.
+
+        Use cases:
+        - Instructor left institution
+        - Instructor non-responsive despite multiple reminders
+        - Course cancelled/dropped after initial assignment
+
+        Args:
+            outcome_id: The ID of the course outcome to mark as NCI
+            reviewer_id: The ID of the admin marking as NCI
+            reason: Optional reason/note for NCI designation
+
+        Returns:
+            bool: True if successfully marked as NCI, False otherwise
+        """
+        try:
+            outcome = db.get_course_outcome(outcome_id)
+            if not outcome:
+                logger.error(f"CLO not found: {outcome_id}")
+                return False
+
+            # Update status to NCI
+            update_data = {
+                "status": "never_coming_in",
+                "approval_status": "never_coming_in",
+                "reviewed_at": datetime.now(timezone.utc),
+                "reviewed_by_user_id": reviewer_id,
+                "feedback_comments": reason or "Marked as Never Coming In (NCI)",
+                "feedback_provided_at": datetime.now(timezone.utc),
+            }
+
+            success = db.update_course_outcome(outcome_id, update_data)
+            if not success:
+                logger.error(f"Failed to mark CLO {outcome_id} as NCI")
+                return False
+
+            logger.info(
+                f"CLO {outcome_id} marked as NCI by reviewer {reviewer_id}"
+                + (f" - Reason: {reason}" if reason else "")
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Error marking CLO as NCI: {e}")
+            return False
+
+    @staticmethod
     def _send_rework_notification(outcome_id: str, feedback: str) -> bool:
         """
         Send email notification to instructor about rework request.

@@ -14,7 +14,8 @@ function getStatusBadge(status) {
     in_progress: '<span class="badge bg-primary">In Progress</span>',
     awaiting_approval: '<span class="badge bg-warning">Awaiting Approval</span>',
     approval_pending: '<span class="badge bg-danger">Needs Rework</span>',
-    approved: '<span class="badge bg-success">✓ Approved</span>'
+    approved: '<span class="badge bg-success">✓ Approved</span>',
+    never_coming_in: '<span class="badge bg-dark">NCI - Never Coming In</span>'
   };
   return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
 }
@@ -143,20 +144,29 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   async function updateStats() {
     try {
-      // Fetch stats for each status
-      const statuses = ['awaiting_approval', 'approval_pending', 'approved', 'in_progress'];
+      // Fetch stats for each status (added NCI from CEI demo feedback)
+      const statuses = [
+        'awaiting_approval',
+        'approval_pending',
+        'approved',
+        'in_progress',
+        'never_coming_in'
+      ];
       const promises = statuses.map(status =>
         fetch(`/api/outcomes/audit?status=${status}`)
           .then(r => r.json())
           .then(d => d.count || 0)
       );
 
-      const [awaiting, pending, approved, inProgress] = await Promise.all(promises);
+      const [awaiting, pending, approved, inProgress, nci] = await Promise.all(promises);
 
       document.getElementById('statAwaitingApproval').textContent = awaiting;
       document.getElementById('statNeedsRework').textContent = pending;
       document.getElementById('statApproved').textContent = approved;
       document.getElementById('statInProgress').textContent = inProgress;
+      if (document.getElementById('statNCI')) {
+        document.getElementById('statNCI').textContent = nci;
+      }
     } catch (error) {
       // Log error to aid debugging, but allow graceful degradation
       // eslint-disable-next-line no-console
@@ -408,10 +418,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show/hide action buttons based on status
     const canApprove = ['awaiting_approval', 'approval_pending'].includes(clo.status);
+    const canMarkNCI = [
+      'awaiting_approval',
+      'approval_pending',
+      'assigned',
+      'in_progress'
+    ].includes(clo.status);
     document.getElementById('approveBtn').style.display = canApprove ? 'inline-block' : 'none';
     document.getElementById('requestReworkBtn').style.display = canApprove
       ? 'inline-block'
       : 'none';
+    document.getElementById('markNCIBtn').style.display = canMarkNCI ? 'inline-block' : 'none';
   }
 
   /**
@@ -537,6 +554,58 @@ document.addEventListener('DOMContentLoaded', () => {
       await loadCLOs();
     } catch (error) {
       alert('Failed to approve CLO: ' + error.message);
+    }
+  };
+
+  /**
+   * Mark CLO as Never Coming In (NCI)
+   */
+  window.markAsNCI = async function () {
+    if (!currentCLO) return;
+
+    const reason = prompt(
+      `Mark this CLO as "Never Coming In"?\n\n${currentCLO.course_number} - CLO ${currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
+    );
+
+    // null means cancelled, empty string is allowed
+    if (reason === null) {
+      return;
+    }
+
+    try {
+      const outcomeId = currentCLO.outcome_id;
+
+      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
+      const response = await fetch(`/api/outcomes/${outcomeId}/mark-nci`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({
+          reason: reason.trim() || null
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to mark CLO as NCI');
+      }
+
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(cloDetailModal);
+      modal.hide();
+
+      // Show success
+      alert('CLO marked as Never Coming In (NCI)');
+
+      // Reload list
+      await loadCLOs();
+      await updateStats();
+    } catch (error) {
+      alert('Failed to mark CLO as NCI: ' + error.message);
     }
   };
 });

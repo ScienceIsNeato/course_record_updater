@@ -88,9 +88,21 @@ Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_
   - Fixed `test_uat_009_clo_rework_feedback.py` - form fields and validation
   - Fixed `test_uat_010_clo_pipeline_end_to_end.py` - full workflow tests
 
+### Phase 3: Audit Enhancements - ✅ PHASE 3.1 COMPLETE
+
+**Completed:**
+- ✅ **Phase 3.1:** Added "Never Coming In" (NCI) status to audit workflow
+  - Added NCI status badge to `audit_clo.js`
+  - Added "Mark as NCI" button to audit detail modal
+  - Added NCI stat card to dashboard (5 cards total)
+  - Created `/api/outcomes/<id>/mark-nci` endpoint in `clo_workflow.py`
+  - Added `mark_as_nci()` method to `CLOWorkflowService`
+  - Updated stats to track NCI count separately
+  - NCI items no longer show as "still out" in pending counts
+
 **Next Steps:**
-- 🎯 **PHASE 2 COMPLETE!** Ready to commit
-- Phase 3: Add "Never Coming In" (NCI) status and due date UI components
+- 🎯 **PHASE 3.1 COMPLETE!** Ready to commit
+- Phase 3.2: Add due date UI with calendar picker (schema already done)
 - Phase 4: Final polish and UAT handoff
 
 **Blockers:** None
