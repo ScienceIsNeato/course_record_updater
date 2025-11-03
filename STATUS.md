@@ -88,7 +88,7 @@ Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_
   - Fixed `test_uat_009_clo_rework_feedback.py` - form fields and validation
   - Fixed `test_uat_010_clo_pipeline_end_to_end.py` - full workflow tests
 
-### Phase 3: Audit Enhancements - ✅ PHASE 3.1 COMPLETE
+### Phase 3: Audit Enhancements - ✅ COMPLETE
 
 **Completed:**
 - ✅ **Phase 3.1:** Added "Never Coming In" (NCI) status to audit workflow
@@ -100,10 +100,15 @@ Implementing feedback from October 2025 CEI demo meeting. See `research/CEI/CEI_
   - Updated stats to track NCI count separately
   - NCI items no longer show as "still out" in pending counts
 
+- ✅ **Phase 3.2:** Added due date display for course assessments
+  - Schema already implemented in Phase 1 (`due_date` field on CourseSection)
+  - Added due date display to instructor assessment page (read-only)
+  - Shows formatted date or "Not set" message
+  - Provides visibility for course-specific deadlines (main campus vs. early college)
+
 **Next Steps:**
-- 🎯 **PHASE 3.1 COMPLETE!** Ready to commit
-- Phase 3.2: Add due date UI with calendar picker (schema already done)
-- Phase 4: Final polish and UAT handoff
+- 🎯 **PHASE 3 COMPLETE!** Ready to commit
+- Phase 4: Final polish and UAT handoff (email deep link fix, testing, documentation)
 
 **Blockers:** None
 

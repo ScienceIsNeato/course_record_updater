@@ -56,13 +56,18 @@
                 <div class="col-md-12">
                     <h6 class="text-primary mb-3">Enrollment Information (Pre-Populated)</h6>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label fw-bold">Total Enrollment:</label>
                     <input type="text" class="form-control-plaintext" id="courseEnrollment" readonly>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label fw-bold">Withdrawals:</label>
                     <input type="text" class="form-control-plaintext" id="courseWithdrawals" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Assessment Due Date:</label>
+                    <input type="text" class="form-control-plaintext" id="courseDueDate" readonly>
+                    <small class="text-muted">Set by program admin</small>
                 </div>
             </div>
             
@@ -669,6 +674,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Populate read-only enrollment fields
                 document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
                 document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
+                
+                // Format and display due date (added from CEI demo feedback)
+                if (section.due_date) {
+                    const dueDate = new Date(section.due_date);
+                    document.getElementById('courseDueDate').value = dueDate.toLocaleDateString();
+                } else {
+                    document.getElementById('courseDueDate').value = 'Not set';
+                }
                 
                 // Populate instructor input fields (if they exist)
                 document.getElementById('courseStudentsPassed').value = section.students_passed || '';
