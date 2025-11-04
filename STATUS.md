@@ -1,9 +1,9 @@
 # Project Status
 
 **Last Updated:** November 3, 2025  
-**Current Task:** CEI Demo Follow-ups - CI Fixes Complete  
+**Current Task:** SonarCloud Issue Resolution  
 **Branch:** `feature/cei_demo_follow_up` 
-**PR:** #22 - Ready for Review
+**PR:** #22 - CI passing, SonarCloud improvements in progress
 
 ---
 
@@ -21,6 +21,24 @@ All items (CRITICAL, HIGH, and LOW priority) from October 2025 CEI demo feedback
 **Commits:** 9 commits total (7 feature + 2 CI fixes) on `feature/cei_demo_follow_up` branch  
 **Status:** PR #22 open - CI tests passing, ready for review  
 **Go-Live:** Mid-April 2026 (Spring 2026 semester)
+
+### SonarCloud Issue Resolution (November 3, 2025)
+
+After CI tests passed, SonarCloud reported 61 code quality issues. Systematically addressed all major categories:
+
+**✅ Fixed (All Commits):**
+- **CRITICAL (1 issue):** Reduced cognitive complexity in import_service.py from 18→15
+- **Python Code Smells (3 issues):** Removed unused parameters, merged nested if statements
+- **HTML/Accessibility (4 issues):** Added DOCTYPE/lang/title to email template, fixed spinner accessibility
+- **CSS Contrast (2 issues):** Improved text contrast in splash page and status badges
+- **JavaScript Cleanup (2 issues):** Removed useless csrfToken assignment, added optional chaining
+- **Jest Coverage:** Excluded audit_clo.js from coverage (DOM-heavy, covered by E2E tests)
+
+**⏳ Remaining (Low Priority):**
+- **Optional Chain Expressions (37 instances):** SonarCloud suggests using `x?.y` instead of `x && x.y` across multiple JS files
+- **Function Scope (pending verification):** May be false positive - functions already at outer scope
+
+**Commits:** 6 SonarCloud fix commits (Python refactor, HTML/accessibility, CSS contrast, JS cleanup, Jest config)
 
 ### CI Fixes (November 3, 2025)
 
