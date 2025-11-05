@@ -161,42 +161,47 @@ class QualityGateExecutor:
                 self.logger.info("🔍 SonarCloud Analysis (coverage + upload + status)...")
                 outputs = []
                 
-                # Step 1: Run Python coverage (generates coverage.xml)
+                # Step 1: Generate Python coverage directly (ensures coverage.xml exists)
                 self.logger.info("  📊 Step 1/5: Generating Python coverage...")
                 cov_result = subprocess.run(
-                    [self.script_path, "--coverage"],
+                    ["python", "-m", "pytest", "tests/unit/", "-n", "auto",
+                     "--cov=.", "--cov-config=.coveragerc", 
+                     "--cov-report=xml:coverage.xml",
+                     "--cov-report=term-missing",
+                     "--junitxml=test-results.xml",
+                     "--tb=short", "-q"],
                     capture_output=True,
                     text=True,
                     timeout=300,
                     check=False,
                 )
-                outputs.append(cov_result.stdout)
+                outputs.append(f"Python Coverage:\n{cov_result.stdout}")
                 if cov_result.returncode != 0:
                     return CheckResult(
                         name=check_name,
                         status=CheckStatus.FAILED,
                         duration=time.time() - start_time,
                         output="\n".join(outputs),
-                        error="Python coverage check failed",
+                        error="Python tests/coverage generation failed",
                     )
                 
-                # Step 2: Run JavaScript coverage (generates coverage/lcov.info)
+                # Step 2: Generate JavaScript coverage directly (ensures coverage/lcov.info exists)
                 self.logger.info("  📊 Step 2/5: Generating JavaScript coverage...")
                 js_cov_result = subprocess.run(
-                    [self.script_path, "--js-coverage"],
+                    ["npm", "run", "test:coverage"],
                     capture_output=True,
                     text=True,
                     timeout=120,
                     check=False,
                 )
-                outputs.append(js_cov_result.stdout)
+                outputs.append(f"JavaScript Coverage:\n{js_cov_result.stdout}")
                 if js_cov_result.returncode != 0:
                     return CheckResult(
                         name=check_name,
                         status=CheckStatus.FAILED,
                         duration=time.time() - start_time,
                         output="\n".join(outputs),
-                        error="JavaScript coverage check failed",
+                        error="JavaScript tests/coverage generation failed",
                     )
                 
                 # Step 3: Upload to SonarCloud via sonar-scanner
@@ -209,16 +214,43 @@ class QualityGateExecutor:
                     "-Dsonar.python.xunit.reportPath=test-results.xml",
                 ]
                 
-                # Detect PR context from GitHub Actions environment
+                # Detect PR context from GitHub Actions environment OR gh CLI
+                pr_number = None
                 github_ref = os.environ.get("GITHUB_REF", "")
+                
                 if "pull" in github_ref:
+                    # Running in GitHub Actions
                     pr_number = github_ref.split("/")[2]
+                    branch_name = os.environ.get('GITHUB_HEAD_REF', '')
+                    base_branch = os.environ.get('GITHUB_BASE_REF', 'main')
+                else:
+                    # Running locally - try gh CLI
+                    try:
+                        gh_result = subprocess.run(
+                            ["gh", "pr", "view", "--json", "number,headRefName,baseRefName"],
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=False,
+                        )
+                        if gh_result.returncode == 0:
+                            import json
+                            pr_info = json.loads(gh_result.stdout)
+                            pr_number = str(pr_info.get("number", ""))
+                            branch_name = pr_info.get("headRefName", "")
+                            base_branch = pr_info.get("baseRefName", "main")
+                    except Exception:
+                        pass
+                
+                if pr_number:
                     self.logger.info(f"  🔍 Detected PR context: PR #{pr_number}")
                     sonar_args.extend([
                         f"-Dsonar.pullrequest.key={pr_number}",
-                        f"-Dsonar.pullrequest.branch={os.environ.get('GITHUB_HEAD_REF', 'feature/cei_demo_follow_up')}",
-                        f"-Dsonar.pullrequest.base={os.environ.get('GITHUB_BASE_REF', 'main')}",
+                        f"-Dsonar.pullrequest.branch={branch_name}",
+                        f"-Dsonar.pullrequest.base={base_branch}",
                     ])
+                else:
+                    self.logger.info("  ℹ️  No PR context detected - analyzing as branch")
                 
                 sonar_result = subprocess.run(
                     sonar_args,
