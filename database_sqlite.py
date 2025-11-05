@@ -553,6 +553,9 @@ class SQLiteDatabase(DatabaseInterface):
             "created_at",
             "last_modified",
             "updated_at",
+            # Deprecated fields (removed in CEI demo follow-ups) - explicitly exclude
+            "assessment_data",
+            "narrative",
         }
         extras_dict = {k: v for k, v in payload.items() if k not in exclude_fields}
         extras_dict["outcome_id"] = outcome_id

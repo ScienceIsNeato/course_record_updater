@@ -109,6 +109,9 @@ class CLOStatus:
     AWAITING_APPROVAL = "awaiting_approval"  # Instructor submitted for review
     APPROVAL_PENDING = "approval_pending"  # Sent back for rework with feedback
     APPROVED = "approved"  # Final approval granted
+    NEVER_COMING_IN = (
+        "never_coming_in"  # Instructor left/non-responsive (CEI demo feedback)
+    )
 
 
 # CLO Approval Status constants

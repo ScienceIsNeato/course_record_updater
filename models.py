@@ -624,8 +624,13 @@ class CourseOutcome(DataModel):
             )
 
         # Calculate percentage if both counts provided
+        # Use 'is not None' to handle 0% pass rate (students_passed=0)
         percentage_meeting = None
-        if students_took and students_passed:
+        if (
+            students_took is not None
+            and students_passed is not None
+            and students_took > 0
+        ):
             percentage_meeting = round((students_passed / students_took) * 100, 2)
 
         return {

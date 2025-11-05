@@ -313,18 +313,15 @@ def mark_clo_as_nci(outcome_id: str):
         user = get_current_user()
         user_id = user.get("user_id")
         
-        # Verify outcome exists
+        # Verify outcome exists and belongs to current institution (efficient O(1) lookup)
+        outcome = get_course_outcome(outcome_id)
+        if not outcome:
+            return jsonify({"success": False, "error": "Outcome not found"}), 404
+        
+        # Verify institution access
         institution_id = get_current_institution_id()
-        courses = get_all_courses(institution_id)
-        
-        found = False
-        for course in courses:
-            outcomes = get_course_outcomes(course["course_id"])
-            if any(o.get("outcome_id") == outcome_id for o in outcomes):
-                found = True
-                break
-        
-        if not found:
+        course = get_course_by_id(outcome.get("course_id"))
+        if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
         
         # Mark as NCI

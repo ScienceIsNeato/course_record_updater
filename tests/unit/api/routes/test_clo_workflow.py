@@ -510,12 +510,12 @@ class TestCLOAuditEndpoints:
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_current_user")
-    @patch("api.routes.clo_workflow.get_course_outcomes")
-    @patch("api.routes.clo_workflow.get_all_courses")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
     def test_mark_nci_success(
         self,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
+        mock_get_course,
         mock_get_user,
         mock_workflow,
         client,
@@ -524,8 +524,11 @@ class TestCLOAuditEndpoints:
     ):
         """Test marking CLO as Never Coming In (CEI demo follow-up)."""
         mock_get_user.return_value = {"user_id": "user-123"}
-        mock_get_courses.return_value = [{"course_id": "course-1"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-1",
+            "course_id": "course-1",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.mark_as_nci.return_value = True
 
         response = client.post(
@@ -536,12 +539,10 @@ class TestCLOAuditEndpoints:
         assert response.json["message"] == "CLO marked as Never Coming In (NCI)"
 
     @patch("api.routes.clo_workflow.get_current_user")
-    @patch("api.routes.clo_workflow.get_course_outcomes")
-    @patch("api.routes.clo_workflow.get_all_courses")
+    @patch("api.routes.clo_workflow.get_course_outcome")
     def test_mark_nci_not_found(
         self,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
         mock_get_user,
         client,
         mock_institution,
@@ -549,8 +550,7 @@ class TestCLOAuditEndpoints:
     ):
         """Test marking NCI when outcome doesn't exist."""
         mock_get_user.return_value = {"user_id": "user-123"}
-        mock_get_courses.return_value = [{"course_id": "course-1"}]
-        mock_get_outcomes.return_value = []
+        mock_get_outcome.return_value = None
 
         response = client.post(
             "/api/outcomes/fake-id/mark-nci",
@@ -560,12 +560,12 @@ class TestCLOAuditEndpoints:
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_current_user")
-    @patch("api.routes.clo_workflow.get_course_outcomes")
-    @patch("api.routes.clo_workflow.get_all_courses")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
     def test_mark_nci_service_fails(
         self,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
+        mock_get_course,
         mock_get_user,
         mock_workflow,
         client,
@@ -574,8 +574,11 @@ class TestCLOAuditEndpoints:
     ):
         """Test marking NCI when service method returns False."""
         mock_get_user.return_value = {"user_id": "user-123"}
-        mock_get_courses.return_value = [{"course_id": "course-1"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-1",
+            "course_id": "course-1",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.mark_as_nci.return_value = False
 
         response = client.post(
@@ -586,12 +589,12 @@ class TestCLOAuditEndpoints:
 
     @patch("api.routes.clo_workflow.CLOWorkflowService")
     @patch("api.routes.clo_workflow.get_current_user")
-    @patch("api.routes.clo_workflow.get_course_outcomes")
-    @patch("api.routes.clo_workflow.get_all_courses")
+    @patch("api.routes.clo_workflow.get_course_by_id")
+    @patch("api.routes.clo_workflow.get_course_outcome")
     def test_mark_nci_exception(
         self,
-        mock_get_courses,
-        mock_get_outcomes,
+        mock_get_outcome,
+        mock_get_course,
         mock_get_user,
         mock_workflow,
         client,
@@ -600,8 +603,11 @@ class TestCLOAuditEndpoints:
     ):
         """Test marking NCI handles unexpected exceptions."""
         mock_get_user.return_value = {"user_id": "user-123"}
-        mock_get_courses.return_value = [{"course_id": "course-1"}]
-        mock_get_outcomes.return_value = [{"outcome_id": "outcome-1"}]
+        mock_get_outcome.return_value = {
+            "outcome_id": "outcome-1",
+            "course_id": "course-1",
+        }
+        mock_get_course.return_value = {"id": "course-1", "institution_id": "inst-123"}
         mock_workflow.mark_as_nci.side_effect = Exception("Unexpected error")
 
         response = client.post(
