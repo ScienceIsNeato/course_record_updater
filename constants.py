@@ -121,6 +121,9 @@ class CLOApprovalStatus:
     PENDING = "pending"  # Not yet reviewed
     APPROVED = "approved"  # Approved by admin
     NEEDS_REWORK = "needs_rework"  # Requires changes
+    NEVER_COMING_IN = (
+        "never_coming_in"  # Instructor non-responsive/left (CEI demo feedback)
+    )
 
 
 # Permission constants

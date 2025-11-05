@@ -197,7 +197,7 @@ class CLOWorkflowService:
             # Update status to NCI
             update_data = {
                 "status": CLOStatus.NEVER_COMING_IN,
-                "approval_status": CLOStatus.NEVER_COMING_IN,
+                "approval_status": CLOApprovalStatus.NEVER_COMING_IN,
                 "reviewed_at": datetime.now(timezone.utc),
                 "reviewed_by_user_id": reviewer_id,
                 "feedback_comments": reason or "Marked as Never Coming In (NCI)",
