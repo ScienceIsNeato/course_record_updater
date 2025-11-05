@@ -5,13 +5,14 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/javascript/setupTests.js'],
   moduleDirectories: ['node_modules', '<rootDir>/static', '<rootDir>/tests/javascript'],
   collectCoverageFrom: [
-    'static/**/*.js'
+    'static/**/*.js',
+    '!static/audit_clo.js'  // DOM-heavy file, tested at E2E level
   ],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['lcov', 'text-summary'],
   coverageThreshold: {
     global: {
-      lines: 79
+      lines: 80
     }
   },
   moduleNameMapper: {
