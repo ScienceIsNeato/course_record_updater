@@ -156,13 +156,13 @@ class QualityGateExecutor:
 
         try:
             # Special handling for composite "sonar" check
-            # For now, just runs coverage analysis until we integrate with SonarCloud API
+            # Runs: coverage generation → upload to SonarCloud → wait → fetch results
             if check_flag == "sonar":
-                self.logger.info("🔍 SonarCloud Analysis (local coverage + PR gap analysis)...")
+                self.logger.info("🔍 SonarCloud Analysis (coverage + upload + status)...")
                 outputs = []
                 
-                # Step 1: Run Python coverage
-                self.logger.info("  📊 Step 1/3: Running Python coverage...")
+                # Step 1: Run Python coverage (generates coverage.xml)
+                self.logger.info("  📊 Step 1/5: Generating Python coverage...")
                 cov_result = subprocess.run(
                     [self.script_path, "--coverage"],
                     capture_output=True,
@@ -180,8 +180,8 @@ class QualityGateExecutor:
                         error="Python coverage check failed",
                     )
                 
-                # Step 2: Run JavaScript coverage
-                self.logger.info("  📊 Step 2/3: Running JavaScript coverage...")
+                # Step 2: Run JavaScript coverage (generates coverage/lcov.info)
+                self.logger.info("  📊 Step 2/5: Generating JavaScript coverage...")
                 js_cov_result = subprocess.run(
                     [self.script_path, "--js-coverage"],
                     capture_output=True,
@@ -199,8 +199,63 @@ class QualityGateExecutor:
                         error="JavaScript coverage check failed",
                     )
                 
-                # Step 3: Analyze PR coverage gaps (informational only)
-                self.logger.info("  📊 Step 3/3: Analyzing PR coverage gaps...")
+                # Step 3: Upload to SonarCloud via sonar-scanner
+                self.logger.info("  📤 Step 3/5: Uploading to SonarCloud...")
+                import os
+                sonar_args = [
+                    "sonar-scanner",
+                    "-Dsonar.qualitygate.wait=false",
+                    "-Dsonar.python.coverage.reportPaths=coverage.xml",
+                    "-Dsonar.python.xunit.reportPath=test-results.xml",
+                ]
+                
+                # Detect PR context from GitHub Actions environment
+                github_ref = os.environ.get("GITHUB_REF", "")
+                if "pull" in github_ref:
+                    pr_number = github_ref.split("/")[2]
+                    self.logger.info(f"  🔍 Detected PR context: PR #{pr_number}")
+                    sonar_args.extend([
+                        f"-Dsonar.pullrequest.key={pr_number}",
+                        f"-Dsonar.pullrequest.branch={os.environ.get('GITHUB_HEAD_REF', 'feature/cei_demo_follow_up')}",
+                        f"-Dsonar.pullrequest.base={os.environ.get('GITHUB_BASE_REF', 'main')}",
+                    ])
+                
+                sonar_result = subprocess.run(
+                    sonar_args,
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                    check=False,
+                )
+                outputs.append(sonar_result.stdout)
+                
+                if sonar_result.returncode != 0:
+                    return CheckResult(
+                        name=check_name,
+                        status=CheckStatus.FAILED,
+                        duration=time.time() - start_time,
+                        output="\n".join(outputs),
+                        error=f"SonarCloud upload failed: {sonar_result.stderr}",
+                    )
+                
+                # Step 4: Wait for SonarCloud processing
+                self.logger.info("  ⏳ Step 4/5: Waiting for SonarCloud to process (30s)...")
+                time.sleep(30)
+                outputs.append("\n⏳ Waited 30s for SonarCloud processing...")
+                
+                # Step 5: Fetch results via scraper script
+                self.logger.info("  📊 Step 5/5: Fetching SonarCloud results...")
+                scraper_result = subprocess.run(
+                    ["python", "scripts/sonar_issues_scraper.py", 
+                     "--project-key", "ScienceIsNeato_course_record_updater"],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    check=False,
+                )
+                outputs.append(scraper_result.stdout)
+                
+                # Also run PR coverage gap analysis (informational)
                 pr_cov_result = subprocess.run(
                     ["python", "scripts/analyze_pr_coverage.py"],
                     capture_output=True,
@@ -208,14 +263,13 @@ class QualityGateExecutor:
                     timeout=120,
                     check=False,
                 )
-                outputs.append(pr_cov_result.stdout)
+                outputs.append("\n📊 PR Coverage Gap Analysis:\n" + pr_cov_result.stdout)
                 
                 duration = time.time() - start_time
                 combined_output = "\n" + "="*60 + "\n" + "\n".join(outputs)
                 
-                # Success if coverage thresholds passed (Python + JS)
-                # PR coverage gaps are informational, not a hard failure
-                if cov_result.returncode == 0 and js_cov_result.returncode == 0:
+                # Success if scraper reports quality gate passed
+                if scraper_result.returncode == 0:
                     return CheckResult(
                         name=check_name,
                         status=CheckStatus.PASSED,
@@ -228,7 +282,7 @@ class QualityGateExecutor:
                         status=CheckStatus.FAILED,
                         duration=duration,
                         output=combined_output,
-                        error="Coverage thresholds not met (80% required)",
+                        error="SonarCloud quality gate failed - see details above",
                     )
             
             # Configure timeout per check type
