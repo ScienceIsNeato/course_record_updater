@@ -508,107 +508,115 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /**
-   * Approve CLO
-   */
-  window.approveCLO = async function () {
-    if (!currentCLO) return;
-
-    if (
-      !confirm(`Approve this CLO?\n\n${currentCLO.course_number} - CLO ${currentCLO.clo_number}`)
-    ) {
-      return;
-    }
-
-    const outcomeId = currentCLO.outcome_id;
-    if (!outcomeId) {
-      alert('Error: CLO ID not found');
-      return;
-    }
-
-    try {
-      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-      const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to approve CLO');
-      }
-
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(cloDetailModal);
-      modal.hide();
-
-      // Show success
-      alert('CLO approved successfully!');
-
-      // Reload list
-      await loadCLOs();
-    } catch (error) {
-      alert('Failed to approve CLO: ' + error.message);
-    }
-  };
-
-  /**
-   * Mark CLO as Never Coming In (NCI)
-   */
-  window.markAsNCI = async function () {
-    if (!currentCLO) return;
-
-    const reason = prompt(
-      `Mark this CLO as "Never Coming In"?\n\n${currentCLO.course_number} - CLO ${currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
-    );
-
-    // null means cancelled, empty string is allowed
-    if (reason === null) {
-      return;
-    }
-
-    try {
-      const outcomeId = currentCLO.outcome_id;
-
-      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-      const response = await fetch(`/api/outcomes/${outcomeId}/mark-nci`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({
-          reason: reason.trim() || null
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to mark CLO as NCI');
-      }
-
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(cloDetailModal);
-      modal.hide();
-
-      // Show success
-      alert('CLO marked as Never Coming In (NCI)');
-
-      // Reload list
-      await loadCLOs();
-      await updateStats();
-    } catch (error) {
-      alert('Failed to mark CLO as NCI: ' + error.message);
-    }
-  };
+  // Assign to window for browser use
+  window.approveCLO = approveCLO;
+  window.markAsNCI = markAsNCI;
 });
+
+/**
+ * Approve CLO (extracted for testability)
+ */
+async function approveCLO() {
+  if (!window.currentCLO) return;
+
+  if (
+    !confirm(
+      `Approve this CLO?\n\n${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}`
+    )
+  ) {
+    return;
+  }
+
+  const outcomeId = window.currentCLO.outcome_id;
+  if (!outcomeId) {
+    alert('Error: CLO ID not found');
+    return;
+  }
+
+  try {
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
+    const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to approve CLO');
+    }
+
+    // Close modal
+    const cloDetailModal = document.getElementById('cloDetailModal');
+    const modal = bootstrap.Modal.getInstance(cloDetailModal);
+    modal.hide();
+
+    // Show success
+    alert('CLO approved successfully!');
+
+    // Reload list
+    await window.loadCLOs();
+  } catch (error) {
+    alert('Failed to approve CLO: ' + error.message);
+  }
+}
+
+/**
+ * Mark CLO as Never Coming In (NCI) (extracted for testability)
+ */
+async function markAsNCI() {
+  if (!window.currentCLO) return;
+
+  const reason = prompt(
+    `Mark this CLO as "Never Coming In"?\n\n${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
+  );
+
+  // null means cancelled, empty string is allowed
+  if (reason === null) {
+    return;
+  }
+
+  try {
+    const outcomeId = window.currentCLO.outcome_id;
+
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
+    const response = await fetch(`/api/outcomes/${outcomeId}/mark-nci`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({
+        reason: reason.trim() || null
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to mark CLO as NCI');
+    }
+
+    // Close modal
+    const cloDetailModal = document.getElementById('cloDetailModal');
+    const modal = bootstrap.Modal.getInstance(cloDetailModal);
+    modal.hide();
+
+    // Show success
+    alert('CLO marked as Never Coming In (NCI)');
+
+    // Reload list
+    await window.loadCLOs();
+    await window.updateStats();
+  } catch (error) {
+    alert('Failed to mark CLO as NCI: ' + error.message);
+  }
+}
 
 // Export for testing (Node.js environment only)
 if (typeof module !== 'undefined' && module.exports) {
@@ -616,6 +624,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getStatusBadge,
     formatDate,
     truncateText,
-    escapeHtml
+    escapeHtml,
+    approveCLO,
+    markAsNCI
   };
 }

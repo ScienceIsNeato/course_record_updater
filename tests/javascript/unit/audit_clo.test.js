@@ -21,6 +21,7 @@ global.prompt = jest.fn();
 
 // Import the module directly so Jest can track coverage
 const auditCloModule = require('../../../static/audit_clo.js');
+const { approveCLO, markAsNCI } = auditCloModule;
 
 describe('audit_clo.js - Utility Functions', () => {
   beforeEach(() => {
@@ -470,63 +471,23 @@ describe('audit_clo.js - DOM Integration', () => {
 
   describe('markAsNCI', () => {
     beforeEach(() => {
-      // Setup window.markAsNCI by loading the script
-      const fs = require('fs');
-      const path = require('path');
-      const auditCloCode = fs.readFileSync(
-        path.join(__dirname, '../../../static/audit_clo.js'),
-        'utf8'
-      );
-      eval(auditCloCode);
-
-      // Trigger DOMContentLoaded to initialize
-      const event = new Event('DOMContentLoaded');
-      document.dispatchEvent(event);
-
-      // Set currentCLO by calling showCLODetails first
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-    });
-
-    it('should mark CLO as NCI with reason', async () => {
-      // Clear and setup
+      // Setup window.currentCLO and mock functions
+      global.window.currentCLO = {
+        outcome_id: 'test-123',
+        course_number: 'CS101',
+        clo_number: 1
+      };
+      global.window.loadCLOs = jest.fn(() => Promise.resolve());
+      global.window.updateStats = jest.fn(() => Promise.resolve());
+      
+      // Clear mocks
+      jest.clearAllMocks();
       fetch.mockClear();
       alert.mockClear();
       prompt.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
-      
+    });
+
+    it('should mark CLO as NCI with reason', async () => {
       // Mock prompt to return a reason
       prompt.mockReturnValue('Instructor left institution');
 
@@ -536,13 +497,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ success: true })
       });
 
-      // Mock loadCLOs responses
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ count: 0, outcomes: [] })
-      });
-
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify prompt was called
       expect(prompt).toHaveBeenCalledWith(expect.stringContaining('Never Coming In'));
@@ -565,35 +520,13 @@ describe('audit_clo.js - DOM Integration', () => {
 
       // Verify success alert
       expect(alert).toHaveBeenCalledWith('CLO marked as Never Coming In (NCI)');
+      
+      // Verify reload functions called
+      expect(global.window.loadCLOs).toHaveBeenCalled();
+      expect(global.window.updateStats).toHaveBeenCalled();
     });
 
     it('should mark CLO as NCI without reason (empty string)', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      prompt.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
-      
       // Mock prompt to return empty string
       prompt.mockReturnValue('');
 
@@ -603,13 +536,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ success: true })
       });
 
-      // Mock loadCLOs responses
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ count: 0, outcomes: [] })
-      });
-
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify API call with null reason
       expect(fetch).toHaveBeenCalledWith(
@@ -621,72 +548,19 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should not mark CLO as NCI if prompt is cancelled', async () => {
-      // Clear previous calls
-      fetch.mockClear();
-      alert.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      
-      // Clear alerts from showCLODetails
-      alert.mockClear();
-      
       // Mock prompt to return null (cancelled)
       prompt.mockReturnValue(null);
 
-      await window.markAsNCI();
+      await markAsNCI();
 
-      // Verify no API call was made (only the showCLODetails calls)
-      const nciCalls = fetch.mock.calls.filter(call => 
-        call[0].includes('mark-nci')
-      );
-      expect(nciCalls).toHaveLength(0);
+      // Verify no API call was made
+      expect(fetch).not.toHaveBeenCalled();
 
-      // Verify no alert (cleared after showCLODetails)
+      // Verify no alert
       expect(alert).not.toHaveBeenCalled();
     });
 
     it('should handle API error when marking as NCI', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      
       // Mock prompt
       prompt.mockReturnValue('Test reason');
 
@@ -696,7 +570,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ error: 'Database error' })
       });
 
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Failed to mark CLO as NCI: Database error');
@@ -706,68 +580,19 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should handle network error when marking as NCI', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      
       // Mock prompt
       prompt.mockReturnValue('Test reason');
 
       // Mock network error
       fetch.mockRejectedValueOnce(new Error('Network error'));
 
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Failed to mark CLO as NCI: Network error');
     });
 
     it('should trim whitespace from reason', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      // Setup currentCLO
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
-      
       // Mock prompt with whitespace
       prompt.mockReturnValue('  Reason with spaces  ');
 
@@ -777,13 +602,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ success: true })
       });
 
-      // Mock loadCLOs responses
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ count: 0, outcomes: [] })
-      });
-
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify trimmed reason
       expect(fetch).toHaveBeenCalledWith(
@@ -795,10 +614,10 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should do nothing if currentCLO is not set', async () => {
-      // Don't set currentCLO
-      fetch.mockClear();
+      // Clear window.currentCLO
+      global.window.currentCLO = null;
 
-      await window.markAsNCI();
+      await markAsNCI();
 
       // Verify no prompt
       expect(prompt).not.toHaveBeenCalled();
@@ -809,32 +628,24 @@ describe('audit_clo.js - DOM Integration', () => {
   });
 
   describe('approveCLO', () => {
-    it('should approve CLO successfully', async () => {
-      // Clear and setup
+    beforeEach(() => {
+      // Setup window.currentCLO and mock functions
+      global.window.currentCLO = {
+        outcome_id: 'test-123',
+        course_number: 'CS101',
+        clo_number: 1
+      };
+      global.window.loadCLOs = jest.fn(() => Promise.resolve());
+      global.confirm = jest.fn();
+      
+      // Clear mocks
+      jest.clearAllMocks();
       fetch.mockClear();
       alert.mockClear();
       confirm.mockClear();
-      
-      // Mock showCLODetails to set currentCLO
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
-      
+    });
+
+    it('should approve CLO successfully', async () => {
       // Mock confirm to accept
       confirm.mockReturnValue(true);
       
@@ -844,13 +655,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ success: true })
       });
       
-      // Mock loadCLOs response
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ count: 0, outcomes: [] })
-      });
-      
-      await window.approveCLO();
+      await approveCLO();
       
       // Verify confirm was called
       expect(confirm).toHaveBeenCalledWith('Approve this CLO?\n\nCS101 - CLO 1');
@@ -871,67 +676,22 @@ describe('audit_clo.js - DOM Integration', () => {
       
       // Verify modal was closed
       expect(mockModalInstance.hide).toHaveBeenCalled();
+      
+      // Verify reload called
+      expect(global.window.loadCLOs).toHaveBeenCalled();
     });
     
     it('should do nothing if confirmation is cancelled', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      confirm.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      await window.showCLODetails('test-123');
-      fetch.mockClear();
-      
       // Mock confirm to cancel
       confirm.mockReturnValue(false);
       
-      await window.approveCLO();
+      await approveCLO();
       
       // Verify no API call
       expect(fetch).not.toHaveBeenCalled();
     });
     
     it('should handle API error when approving', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      confirm.mockClear();
-      
-      // Mock showCLODetails
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            outcome_id: 'test-123',
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            submitted_at: '2024-01-15T10:00:00Z',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
-      
       // Mock confirm
       confirm.mockReturnValue(true);
       
@@ -941,7 +701,7 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({ error: 'Database error' })
       });
       
-      await window.approveCLO();
+      await approveCLO();
       
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Failed to approve CLO: Database error');
@@ -951,33 +711,16 @@ describe('audit_clo.js - DOM Integration', () => {
     });
     
     it('should handle missing outcome_id', async () => {
-      // Clear and setup
-      fetch.mockClear();
-      alert.mockClear();
-      confirm.mockClear();
-      
-      // Mock showCLODetails with missing outcome_id
-      fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          outcome: {
-            course_number: 'CS101',
-            clo_number: 1,
-            description: 'Test CLO',
-            status: 'awaiting_approval',
-            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
-          }
-        })
-      });
-      
-      await window.showCLODetails('test-123');
-      alert.mockClear();
-      fetch.mockClear();
+      // Set currentCLO without outcome_id
+      global.window.currentCLO = {
+        course_number: 'CS101',
+        clo_number: 1
+      };
       
       // Mock confirm
       confirm.mockReturnValue(true);
       
-      await window.approveCLO();
+      await approveCLO();
       
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Error: CLO ID not found');
