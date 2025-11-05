@@ -29,19 +29,23 @@ Successfully addressed all 5 bot PR comments and fixed 3 critical CI issues:
    - **Solution**: Changed to `window.currentCLO = null` (line 172) for global access
    - Should fix both `test_uat_008` (dialogs) and `test_uat_010` (approval) failures
 
-**Current Status (14:40 PST):**
-- ✅ All 5 bot comments addressed
+**Current Status (14:50 PST):**
+- ✅ All 7 bot comments addressed (5 original + 2 new from latest scan)
 - ✅ Workflow CI error fixed (sonarcloud-status)
 - ✅ E2E test issue REALLY fixed (variable scoping - 3rd attempt is the charm!)
+- ✅ Frontend/backend field name mismatch fixed (CEI demo schema migration)
+- ✅ Missing window exports fixed (loadCLOs, updateStats)
 - ✅ SonarCloud PASSED: 83.33% coverage, quality gate green! 🎉
-- ✅ Local Coverage: JS 81.25%, Python 84.21%
+- ✅ Local Coverage: JS 81.28%, Python 84.21%
 - ✅ All 1423 unit tests passing
 - ✅ ESLint, Jest, all JS checks passing
-- ⏳ Awaiting E2E test validation (high confidence this time!)
+- ⏳ Awaiting E2E test validation (HIGH confidence - all scoping issues resolved!)
 
-**Commits:** 5 fix commits (CLOApprovalStatus, workflow, 3x E2E debugging attempts)
+**Commits:** 6 fix commits (CLOApprovalStatus, workflow, 3x E2E, CEI field names)
 
-**Key Lesson**: When functions are extracted from a closure for testability, ensure ALL variable references are updated to match the new scope (window vs local).
+**Key Lessons**: 
+1. When functions are extracted from a closure for testability, ensure ALL variable references are updated to match the new scope (window vs local).
+2. After schema migrations, always verify frontend code uses new field names.
 
 ---
 
