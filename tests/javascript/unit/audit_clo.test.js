@@ -19,25 +19,10 @@ global.bootstrap = {
 global.alert = jest.fn();
 global.prompt = jest.fn();
 
+// Import the module directly so Jest can track coverage
+const auditCloModule = require('../../../static/audit_clo.js');
+
 describe('audit_clo.js - Utility Functions', () => {
-  let auditCloModule;
-
-  beforeAll(() => {
-    // Load the audit_clo.js file - functions are in global scope
-    const fs = require('fs');
-    const path = require('path');
-    const auditCloCode = fs.readFileSync(
-      path.join(__dirname, '../../../static/audit_clo.js'),
-      'utf8'
-    );
-    
-    // Extract just the utility functions (before DOMContentLoaded)
-    const functionsOnly = auditCloCode.split('document.addEventListener(\'DOMContentLoaded\'')[0];
-    eval(functionsOnly);
-    
-    auditCloModule = { getStatusBadge, formatDate, truncateText, escapeHtml };
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
   });

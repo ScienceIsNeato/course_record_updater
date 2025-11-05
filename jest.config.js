@@ -5,8 +5,7 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/javascript/setupTests.js'],
   moduleDirectories: ['node_modules', '<rootDir>/static', '<rootDir>/tests/javascript'],
   collectCoverageFrom: [
-    'static/**/*.js',
-    '!static/audit_clo.js'  // Excluded: DOM-event-driven, covered by E2E tests
+    'static/**/*.js'
   ],
   coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['lcov', 'text-summary'],

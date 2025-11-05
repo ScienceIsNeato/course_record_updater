@@ -609,3 +609,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 });
+
+// Export for testing (Node.js environment only)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getStatusBadge,
+    formatDate,
+    truncateText,
+    escapeHtml
+  };
+}
