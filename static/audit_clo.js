@@ -153,6 +153,11 @@ async function markAsNCI() {
   }
 }
 
+// Assign to window IMMEDIATELY for browser use (not inside DOMContentLoaded)
+// This ensures functions are available even if DOM is already loaded
+window.approveCLO = approveCLO;
+window.markAsNCI = markAsNCI;
+
 document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
   const statusFilter = document.getElementById('statusFilter');
@@ -612,10 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to request rework: ' + error.message);
     }
   }
-
-  // Assign to window for browser use
-  window.approveCLO = approveCLO;
-  window.markAsNCI = markAsNCI;
 });
 
 // Export for testing (Node.js environment only)
