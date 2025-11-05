@@ -91,6 +91,7 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
+            ("sonar", "🔍 SonarCloud - Full Analysis (analyze + wait + status)"),
             ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),
             ("sonar-status", "📊 SonarCloud - Fetch Latest Results"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
@@ -159,11 +160,71 @@ class QualityGateExecutor:
         actual_flag = flag_mapping.get(check_flag, check_flag)
 
         try:
+            # Special handling for composite "sonar" check
+            # Runs: analyze → wait 30s → status (full feedback loop)
+            if check_flag == "sonar":
+                self.logger.info("🔍 SonarCloud Full Analysis (analyze + wait + status)...")
+                
+                # Step 1: Trigger analysis
+                self.logger.info("  📤 Step 1/3: Uploading to SonarCloud...")
+                analyze_result = subprocess.run(
+                    [self.script_path, "--sonar-analyze"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    check=False,
+                )
+                
+                if analyze_result.returncode != 0:
+                    duration = time.time() - start_time
+                    return CheckResult(
+                        name=check_name,
+                        status=CheckStatus.FAILED,
+                        duration=duration,
+                        output=analyze_result.stdout,
+                        error=analyze_result.stderr or "Failed to upload analysis to SonarCloud",
+                    )
+                
+                # Step 2: Wait for SonarCloud to process (typically 10-30s)
+                self.logger.info("  ⏳ Step 2/3: Waiting for SonarCloud to process (30s)...")
+                time.sleep(30)
+                
+                # Step 3: Fetch results
+                self.logger.info("  📊 Step 3/3: Fetching analysis results...")
+                status_result = subprocess.run(
+                    [self.script_path, "--sonar-status"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    check=False,
+                )
+                
+                duration = time.time() - start_time
+                
+                # Combine outputs
+                combined_output = f"{analyze_result.stdout}\n{'='*60}\n⏳ Waited 30s for processing...\n{'='*60}\n{status_result.stdout}"
+                
+                if status_result.returncode == 0:
+                    return CheckResult(
+                        name=check_name,
+                        status=CheckStatus.PASSED,
+                        duration=duration,
+                        output=combined_output,
+                    )
+                else:
+                    return CheckResult(
+                        name=check_name,
+                        status=CheckStatus.FAILED,
+                        duration=duration,
+                        output=combined_output,
+                        error=status_result.stderr,
+                    )
+            
             # Configure timeout per check type
             # E2E: 600s (IMAP verification is slow in CI)
-            # Sonar: 600s (SonarCloud server-side processing can be slow)
+            # Sonar-analyze/status: 600s (SonarCloud server-side processing can be slow)
             # Others: 300s (default)
-            if check_flag in ["e2e", "sonar"]:
+            if check_flag in ["e2e", "sonar-analyze", "sonar-status"]:
                 timeout_seconds = 600
             else:
                 timeout_seconds = 300
@@ -800,7 +861,7 @@ Validation Types:
   commit - Fast checks for development cycle (excludes security & sonar-analyze, ~30s savings)
   PR     - Full validation for pull requests (all checks including security & sonar-analyze)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar (full: analyze+wait+status), sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -817,7 +878,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar (full loop), sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
     )
 
     parser.add_argument(
