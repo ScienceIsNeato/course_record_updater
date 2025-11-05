@@ -256,9 +256,33 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
         ""
     ]
     
+    # Filter out test files and scripts from the report - they should never need "coverage"
+    production_gaps = {
+        filepath: line_numbers
+        for filepath, line_numbers in pr_coverage_gaps.items()
+        if not (filepath.startswith('tests/') or 
+                filepath.startswith('scripts/') or 
+                filepath.endswith('.test.js') or
+                filepath == 'jest.config.js')
+    }
+    
+    if not production_gaps:
+        message = "✅ All production code in this PR is covered!\n(Test files excluded from coverage requirements)\n"
+        print(message)
+        if output_file:
+            Path(output_file).write_text(message)
+        return
+    
+    # Recalculate totals for production code only
+    total_files = len(production_gaps)
+    total_lines = sum(len(lines) for lines in production_gaps.values())
+    
+    # Update header to reflect production-only count
+    lines[1] = f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests"
+    
     # Sort files by number of uncovered lines (most first)
     sorted_files = sorted(
-        pr_coverage_gaps.items(),
+        production_gaps.items(),
         key=lambda x: len(x[1]),
         reverse=True
     )

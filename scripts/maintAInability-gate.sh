@@ -943,13 +943,21 @@ if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
     # Calculate time since last run (use portable date command)
     CURRENT_TIME=$(date +%s)
     if [[ "$OSTYPE" == "darwin"* ]]; then
-      # macOS date command
-      LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+      # macOS date command - handle both with and without Z suffix
+      CLEAN_TIME="${LAST_RUN_TIME%Z}"  # Remove Z if present
+      LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%S" "$CLEAN_TIME" +%s 2>/dev/null || echo "0")
     else
       # Linux date command
       LAST_RUN_TIMESTAMP=$(date -d "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
     fi
     TIME_DIFF=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
+    
+    # Sanity check: if TIME_DIFF is huge (> 1 year), parsing failed
+    if [[ $TIME_DIFF -gt 31536000 ]]; then
+      echo "⚠️  Warning: Could not parse timestamp from metadata"
+      TIME_DIFF=999999  # Set to large number to trigger "stale" warning
+      LAST_RUN_TIMESTAMP=0
+    fi
     
     # Wait for analysis to complete if it's very recent (< 5 minutes)
     if [[ $TIME_DIFF -lt 300 && $TIME_DIFF -gt 0 ]]; then
