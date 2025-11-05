@@ -172,6 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.currentCLO = null;
   let allCLOs = [];
 
+  // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
+  window.loadCLOs = loadCLOs;
+  window.updateStats = updateStats;
+
   // Initialize
   loadCLOs();
 
@@ -419,10 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
    * Render CLO details in modal
    */
   function renderCLODetails(clo) {
-    const assessment = clo.assessment_data || {};
-    const assessed = assessment.students_assessed || 0;
-    const meeting = assessment.students_meeting_target || 0;
-    const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
+    // Use new field names from CEI demo schema changes
+    const studentsTook = clo.students_took || 0;
+    const studentsPassed = clo.students_passed || 0;
+    const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
 
     const statusBadge = getStatusBadge(clo.status);
 
@@ -463,14 +467,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="row mb-3">
                 <div class="col-md-4">
                     <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${assessed}</h4>
-                        <small class="text-muted">Students Assessed</small>
+                        <h4 class="mb-0">${studentsTook}</h4>
+                        <small class="text-muted">Students Took</small>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${meeting}</h4>
-                        <small class="text-muted">Meeting Target</small>
+                        <h4 class="mb-0">${studentsPassed}</h4>
+                        <small class="text-muted">Students Passed</small>
                     </div>
                 </div>
                 <div class="col-md-4">
