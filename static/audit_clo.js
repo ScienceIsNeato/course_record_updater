@@ -168,8 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const requestReworkModal = document.getElementById('requestReworkModal');
   const requestReworkForm = document.getElementById('requestReworkForm');
 
-  // State
-  let currentCLO = null;
+  // State - use window for global access by extracted functions
+  window.currentCLO = null;
   let allCLOs = [];
 
   // Initialize
@@ -404,9 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const data = await response.json();
-      currentCLO = data.outcome;
+      window.currentCLO = data.outcome;
 
-      renderCLODetails(currentCLO);
+      renderCLODetails(window.currentCLO);
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
@@ -545,10 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
    * Open rework modal
    */
   window.openReworkModal = function () {
-    if (!currentCLO) return;
+    if (!window.currentCLO) return;
 
     document.getElementById('reworkCloDescription').textContent =
-      `${currentCLO.course_number} - CLO ${currentCLO.clo_number}: ${currentCLO.description}`;
+      `${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}: ${window.currentCLO.description}`;
     document.getElementById('feedbackComments').value = '';
     document.getElementById('sendEmailCheckbox').checked = true;
 
@@ -567,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Submit rework request
    */
   async function submitReworkRequest() {
-    if (!currentCLO) return;
+    if (!window.currentCLO) return;
 
     const comments = document.getElementById('feedbackComments').value.trim();
     const sendEmail = document.getElementById('sendEmailCheckbox').checked;
@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const outcomeId = currentCLO.outcome_id;
+    const outcomeId = window.currentCLO.outcome_id;
     if (!outcomeId) {
       alert('Error: CLO ID not found');
       return;
