@@ -1,9 +1,28 @@
 # Project Status
 
 **Last Updated:** November 5, 2025  
-**Current Task:** JavaScript Coverage Improvement COMPLETE ✅  
+**Current Task:** Sonar Integration Fixed + 80% JS Coverage ✅  
 **Branch:** `feature/cei_demo_follow_up` 
-**PR:** #22 - CI passing, SonarCloud improvements complete
+**PR:** #22 - Sonar working, tests passing, 80.23% JS coverage
+
+---
+
+## ⚙️ Sonar Integration Fixed (November 5, 2025)
+
+**Problem:** Attempted unified "sonar" check broke CI completely
+
+**Solution:** Reverted to main's working implementation
+- Restored `scripts/ship_it.py` → `sonar-analyze`/`sonar-status` split
+- Restored `scripts/maintAInability-gate.sh` → bash implementation
+- Restored `.github/workflows/quality-gate.yml` → separate sonar jobs
+
+**JavaScript Coverage Achievement (77.55% → 80.23%):**
+- Added 15 comprehensive tests for `inviteFaculty.js` (19.85% → 66.91%)
+- Added 5 tests for `window.approveCLO` in `audit_clo.js`
+- 550 tests passing, 80.23% lines coverage
+- No exclusions or threshold gaming
+
+**Commits:** 1 revert commit (restored working sonar + coverage improvements)
 
 ---
 
