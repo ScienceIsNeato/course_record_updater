@@ -807,5 +807,184 @@ describe('audit_clo.js - DOM Integration', () => {
       expect(fetch).not.toHaveBeenCalled();
     });
   });
+
+  describe('approveCLO', () => {
+    it('should approve CLO successfully', async () => {
+      // Clear and setup
+      fetch.mockClear();
+      alert.mockClear();
+      confirm.mockClear();
+      
+      // Mock showCLODetails to set currentCLO
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          outcome: {
+            outcome_id: 'test-123',
+            course_number: 'CS101',
+            clo_number: 1,
+            description: 'Test CLO',
+            status: 'awaiting_approval',
+            submitted_at: '2024-01-15T10:00:00Z',
+            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
+          }
+        })
+      });
+      
+      await window.showCLODetails('test-123');
+      alert.mockClear();
+      fetch.mockClear();
+      
+      // Mock confirm to accept
+      confirm.mockReturnValue(true);
+      
+      // Mock successful approve request
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true })
+      });
+      
+      // Mock loadCLOs response
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ count: 0, outcomes: [] })
+      });
+      
+      await window.approveCLO();
+      
+      // Verify confirm was called
+      expect(confirm).toHaveBeenCalledWith('Approve this CLO?\n\nCS101 - CLO 1');
+      
+      // Verify API call
+      expect(fetch).toHaveBeenCalledWith(
+        '/api/outcomes/test-123/approve',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json'
+          })
+        })
+      );
+      
+      // Verify success alert
+      expect(alert).toHaveBeenCalledWith('CLO approved successfully!');
+      
+      // Verify modal was closed
+      expect(mockModalInstance.hide).toHaveBeenCalled();
+    });
+    
+    it('should do nothing if confirmation is cancelled', async () => {
+      // Clear and setup
+      fetch.mockClear();
+      confirm.mockClear();
+      
+      // Mock showCLODetails
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          outcome: {
+            outcome_id: 'test-123',
+            course_number: 'CS101',
+            clo_number: 1,
+            description: 'Test CLO',
+            status: 'awaiting_approval',
+            submitted_at: '2024-01-15T10:00:00Z',
+            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
+          }
+        })
+      });
+      
+      await window.showCLODetails('test-123');
+      fetch.mockClear();
+      
+      // Mock confirm to cancel
+      confirm.mockReturnValue(false);
+      
+      await window.approveCLO();
+      
+      // Verify no API call
+      expect(fetch).not.toHaveBeenCalled();
+    });
+    
+    it('should handle API error when approving', async () => {
+      // Clear and setup
+      fetch.mockClear();
+      alert.mockClear();
+      confirm.mockClear();
+      
+      // Mock showCLODetails
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          outcome: {
+            outcome_id: 'test-123',
+            course_number: 'CS101',
+            clo_number: 1,
+            description: 'Test CLO',
+            status: 'awaiting_approval',
+            submitted_at: '2024-01-15T10:00:00Z',
+            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
+          }
+        })
+      });
+      
+      await window.showCLODetails('test-123');
+      alert.mockClear();
+      fetch.mockClear();
+      
+      // Mock confirm
+      confirm.mockReturnValue(true);
+      
+      // Mock API error
+      fetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Database error' })
+      });
+      
+      await window.approveCLO();
+      
+      // Verify error alert
+      expect(alert).toHaveBeenCalledWith('Failed to approve CLO: Database error');
+      
+      // Verify modal was not closed
+      expect(mockModalInstance.hide).not.toHaveBeenCalled();
+    });
+    
+    it('should handle missing outcome_id', async () => {
+      // Clear and setup
+      fetch.mockClear();
+      alert.mockClear();
+      confirm.mockClear();
+      
+      // Mock showCLODetails with missing outcome_id
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          outcome: {
+            course_number: 'CS101',
+            clo_number: 1,
+            description: 'Test CLO',
+            status: 'awaiting_approval',
+            assessment_data: { students_assessed: 30, students_meeting_target: 25 }
+          }
+        })
+      });
+      
+      await window.showCLODetails('test-123');
+      alert.mockClear();
+      fetch.mockClear();
+      
+      // Mock confirm
+      confirm.mockReturnValue(true);
+      
+      await window.approveCLO();
+      
+      // Verify error alert
+      expect(alert).toHaveBeenCalledWith('Error: CLO ID not found');
+      
+      // Verify no API call
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
 });
 

@@ -20,7 +20,9 @@ in parallel threads, then collects and formats the results. Fail-fast behavior
 is always enabled for rapid development cycles.
 
 IMPORTANT: SonarCloud analysis workflow:
-  --checks sonar: Full analysis with wait and results fetch (~90s)
+  --checks sonar-analyze: Trigger new analysis (slow ~60s)
+  --checks sonar-status: Fetch latest results (fast <5s)
+See SONAR_ANALYSIS_RESULTS.md for the proper workflow.
 """
 
 import argparse
@@ -89,7 +91,8 @@ class QualityGateExecutor:
             ("types", "🔧 Type Check (mypy)"),
             ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
-            ("sonar", "🔍 SonarCloud - Full Analysis (analyze + wait + status)"),
+            ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),
+            ("sonar-status", "📊 SonarCloud - Fetch Latest Results"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
@@ -112,6 +115,7 @@ class QualityGateExecutor:
             ("imports", "📦 Import Analysis & Organization"),
             # Duplication check moved to PR validation (non-critical, saves 2.2s)
             # ("duplication", "🔄 Code Duplication Check"),  # Moved to PR checks
+            # ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),  # Excluded from commit checks (too slow)
         ]
 
         # Full checks for PR validation (all checks)
@@ -155,171 +159,9 @@ class QualityGateExecutor:
         actual_flag = flag_mapping.get(check_flag, check_flag)
 
         try:
-            # Special handling for composite "sonar" check
-            # Runs: coverage generation → upload to SonarCloud → wait → fetch results
-            if check_flag == "sonar":
-                self.logger.info("🔍 SonarCloud Analysis (coverage + upload + status)...")
-                outputs = []
-                
-                # Step 1: Generate Python coverage directly (ensures coverage.xml exists)
-                self.logger.info("  📊 Step 1/5: Generating Python coverage...")
-                cov_result = subprocess.run(
-                    ["python", "-m", "pytest", "tests/unit/", "-n", "auto",
-                     "--cov=.", "--cov-config=.coveragerc", 
-                     "--cov-report=xml:coverage.xml",
-                     "--cov-report=term-missing",
-                     "--junitxml=test-results.xml",
-                     "--tb=short", "-q"],
-                    capture_output=True,
-                    text=True,
-                    timeout=300,
-                    check=False,
-                )
-                outputs.append(f"Python Coverage:\n{cov_result.stdout}")
-                if cov_result.returncode != 0:
-                    return CheckResult(
-                        name=check_name,
-                        status=CheckStatus.FAILED,
-                        duration=time.time() - start_time,
-                        output="\n".join(outputs),
-                        error="Python tests/coverage generation failed",
-                    )
-                
-                # Step 2: Generate JavaScript coverage directly (ensures coverage/lcov.info exists)
-                self.logger.info("  📊 Step 2/5: Generating JavaScript coverage...")
-                js_cov_result = subprocess.run(
-                    ["npm", "run", "test:coverage"],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
-                )
-                outputs.append(f"JavaScript Coverage:\n{js_cov_result.stdout}")
-                if js_cov_result.returncode != 0:
-                    return CheckResult(
-                        name=check_name,
-                        status=CheckStatus.FAILED,
-                        duration=time.time() - start_time,
-                        output="\n".join(outputs),
-                        error="JavaScript tests/coverage generation failed",
-                    )
-                
-                # Step 3: Upload to SonarCloud via sonar-scanner
-                self.logger.info("  📤 Step 3/5: Uploading to SonarCloud...")
-                import os
-                sonar_args = [
-                    "sonar-scanner",
-                    "-Dsonar.qualitygate.wait=false",
-                    "-Dsonar.python.coverage.reportPaths=coverage.xml",
-                    "-Dsonar.python.xunit.reportPath=test-results.xml",
-                ]
-                
-                # Detect PR context from GitHub Actions environment OR gh CLI
-                pr_number = None
-                github_ref = os.environ.get("GITHUB_REF", "")
-                
-                if "pull" in github_ref:
-                    # Running in GitHub Actions
-                    pr_number = github_ref.split("/")[2]
-                    branch_name = os.environ.get('GITHUB_HEAD_REF', '')
-                    base_branch = os.environ.get('GITHUB_BASE_REF', 'main')
-                else:
-                    # Running locally - try gh CLI
-                    try:
-                        gh_result = subprocess.run(
-                            ["gh", "pr", "view", "--json", "number,headRefName,baseRefName"],
-                            capture_output=True,
-                            text=True,
-                            timeout=10,
-                            check=False,
-                        )
-                        if gh_result.returncode == 0:
-                            import json
-                            pr_info = json.loads(gh_result.stdout)
-                            pr_number = str(pr_info.get("number", ""))
-                            branch_name = pr_info.get("headRefName", "")
-                            base_branch = pr_info.get("baseRefName", "main")
-                    except Exception:
-                        pass
-                
-                if pr_number:
-                    self.logger.info(f"  🔍 Detected PR context: PR #{pr_number}")
-                    sonar_args.extend([
-                        f"-Dsonar.pullrequest.key={pr_number}",
-                        f"-Dsonar.pullrequest.branch={branch_name}",
-                        f"-Dsonar.pullrequest.base={base_branch}",
-                    ])
-                else:
-                    self.logger.info("  ℹ️  No PR context detected - analyzing as branch")
-                
-                sonar_result = subprocess.run(
-                    sonar_args,
-                    capture_output=True,
-                    text=True,
-                    timeout=180,
-                    check=False,
-                )
-                outputs.append(sonar_result.stdout)
-                
-                if sonar_result.returncode != 0:
-                    return CheckResult(
-                        name=check_name,
-                        status=CheckStatus.FAILED,
-                        duration=time.time() - start_time,
-                        output="\n".join(outputs),
-                        error=f"SonarCloud upload failed: {sonar_result.stderr}",
-                    )
-                
-                # Step 4: Wait for SonarCloud processing
-                self.logger.info("  ⏳ Step 4/5: Waiting for SonarCloud to process (30s)...")
-                time.sleep(30)
-                outputs.append("\n⏳ Waited 30s for SonarCloud processing...")
-                
-                # Step 5: Fetch results via scraper script
-                self.logger.info("  📊 Step 5/5: Fetching SonarCloud results...")
-                scraper_result = subprocess.run(
-                    ["python", "scripts/sonar_issues_scraper.py", 
-                     "--project-key", "ScienceIsNeato_course_record_updater"],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
-                )
-                outputs.append(scraper_result.stdout)
-                
-                # Also run PR coverage gap analysis (informational)
-                pr_cov_result = subprocess.run(
-                    ["python", "scripts/analyze_pr_coverage.py"],
-                    capture_output=True,
-                    text=True,
-                    timeout=120,
-                    check=False,
-                )
-                outputs.append("\n📊 PR Coverage Gap Analysis:\n" + pr_cov_result.stdout)
-                
-                duration = time.time() - start_time
-                combined_output = "\n" + "="*60 + "\n" + "\n".join(outputs)
-                
-                # Success if scraper reports quality gate passed
-                if scraper_result.returncode == 0:
-                    return CheckResult(
-                        name=check_name,
-                        status=CheckStatus.PASSED,
-                        duration=duration,
-                        output=combined_output,
-                    )
-                else:
-                    return CheckResult(
-                        name=check_name,
-                        status=CheckStatus.FAILED,
-                        duration=duration,
-                        output=combined_output,
-                        error="SonarCloud quality gate failed - see details above",
-                    )
-            
             # Configure timeout per check type
             # E2E: 600s (IMAP verification is slow in CI)
-            # E2E and sonar: 600s (browser automation and SonarCloud can be slow)
+            # Sonar: 600s (SonarCloud server-side processing can be slow)
             # Others: 300s (default)
             if check_flag in ["e2e", "sonar"]:
                 timeout_seconds = 600
@@ -955,10 +797,10 @@ Examples:
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
 Validation Types:
-  commit - Fast checks for development cycle (excludes security, ~30s savings)
-  PR     - Full validation for pull requests (all checks including security)
+  commit - Fast checks for development cycle (excludes security & sonar-analyze, ~30s savings)
+  PR     - Full validation for pull requests (all checks including security & sonar-analyze)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar (full: analyze+wait+status), types, imports, duplication, integration, smoke, frontend-check
+Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -975,7 +817,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar (full loop), types, imports, duplication, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
     )
 
     parser.add_argument(

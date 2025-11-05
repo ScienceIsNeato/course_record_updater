@@ -86,6 +86,8 @@ RUN_INTEGRATION_TESTS=false
 RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
+RUN_SONAR_ANALYZE=false
+RUN_SONAR_STATUS=false
 RUN_DUPLICATION=false
 RUN_IMPORTS=false
 RUN_COMPLEXITY=false
@@ -110,6 +112,8 @@ else
       --e2e) RUN_E2E_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
+      --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
+      --sonar-status) RUN_SONAR_STATUS=true ;;
       --duplication) RUN_DUPLICATION=true ;;
       --imports) RUN_IMPORTS=true ;;
       --complexity) RUN_COMPLEXITY=true ;;
@@ -131,6 +135,8 @@ else
         echo "  ./scripts/maintAInability-gate.sh --tests   # Run test suite only"
         echo "  ./scripts/maintAInability-gate.sh --coverage # Run coverage analysis only"
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
+        echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
+        echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
         echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
         echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
@@ -161,6 +167,7 @@ if [[ "$RUN_ALL" == "true" ]]; then
   RUN_COVERAGE=true
   RUN_TYPES=true
   RUN_SECURITY=true
+  RUN_SONAR_ANALYZE=true  # Enabled - SonarCloud project is configured
   RUN_DUPLICATION=true
   RUN_IMPORTS=true
   RUN_JS_LINT=true
@@ -794,3 +801,832 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SONARCLOUD QUALITY ANALYSIS - ANALYZE MODE (Trigger New Analysis)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
+  echo "🔍 SonarCloud Analysis - Triggering New Scan"
+
+  SONAR_PASSED=true
+  METADATA_FILE=".sonar_run_metadata.json"
+
+  # Check if sonar-scanner is available
+  if ! command -v sonar-scanner &> /dev/null; then
+    echo "❌ SonarCloud Scanner not found"
+    echo "📋 Installation Instructions:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  1. Download SonarScanner from: https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/"
+    echo "  2. Or install via Homebrew: brew install sonar-scanner"
+    echo "  3. Configure SONAR_TOKEN environment variable for SonarCloud"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    add_failure "SonarCloud Analyze" "SonarCloud Scanner not installed" "Install sonar-scanner and configure environment variables"
+    SONAR_PASSED=false
+  else
+    # Check if SONAR_TOKEN is set
+    if [[ -z "$SONAR_TOKEN" ]]; then
+      echo "⚠️  SonarCloud environment variables not configured"
+      echo "📋 Required Environment Variables:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "  export SONAR_TOKEN=your-sonarcloud-token"
+      echo ""
+      echo "  Get your token from: https://sonarcloud.io/account/security"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      add_failure "SonarCloud Analyze" "Environment variables not configured" "Set SONAR_TOKEN environment variable"
+      SONAR_PASSED=false
+    else
+      # Generate fresh coverage data
+      echo "🔧 Generating fresh coverage data for SonarCloud..."
+      
+      # Clean up old coverage data files to prevent race conditions
+      rm -f .coverage .coverage.*
+      
+      # Run Python tests with coverage
+      if DATABASE_URL="$DATABASE_URL" python -m pytest tests/unit/ -n auto --cov=. --cov-config=.coveragerc --cov-report=xml:coverage.xml --cov-report=term-missing --junitxml=test-results.xml --tb=short -q; then
+        echo "✅ Python coverage data generated successfully"
+        
+        # Run JavaScript tests with coverage
+        echo "🔧 Generating JavaScript coverage data..."
+        JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
+        
+        if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
+          echo "⚠️  JavaScript coverage generation failed - continuing with Python coverage only"
+        else
+          echo "✅ JavaScript coverage data generated successfully"
+        fi
+        
+        # Run SonarCloud scanner with fresh data (just upload, don't wait for results)
+        echo "🔧 Uploading analysis to SonarCloud..."
+        SCAN_START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        
+        # Detect PR context from GitHub Actions environment
+        SONAR_ARGS=(
+          -Dsonar.qualitygate.wait=false
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.python.xunit.reportPath=test-results.xml
+        )
+        
+        # Configure PR analysis if running in GitHub Actions PR context
+        if [[ -n "${GITHUB_PULL_REQUEST_NUMBER:-}" ]]; then
+          echo "🔍 Detected PR context: PR #${GITHUB_PULL_REQUEST_NUMBER}"
+          SONAR_ARGS+=(
+            -Dsonar.pullrequest.key="${GITHUB_PULL_REQUEST_NUMBER}"
+            -Dsonar.pullrequest.branch="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
+            -Dsonar.pullrequest.base="${GITHUB_BASE_REF:-main}"
+          )
+        elif [[ -n "${GITHUB_REF}" ]] && [[ "${GITHUB_REF}" =~ ^refs/pull/[0-9]+/merge$ ]]; then
+          # Extract PR number from GITHUB_REF (format: refs/pull/21/merge)
+          PR_NUMBER=$(echo "${GITHUB_REF}" | sed -n 's|refs/pull/\([0-9]*\)/merge|\1|p')
+          if [[ -n "${PR_NUMBER}" ]]; then
+            echo "🔍 Detected PR context: PR #${PR_NUMBER}"
+            SONAR_ARGS+=(
+              -Dsonar.pullrequest.key="${PR_NUMBER}"
+              -Dsonar.pullrequest.branch="${GITHUB_HEAD_REF:-$(git rev-parse --abbrev-ref HEAD)}"
+              -Dsonar.pullrequest.base="${GITHUB_BASE_REF:-main}"
+            )
+          fi
+        fi
+        
+        if sonar-scanner "${SONAR_ARGS[@]}"; then
+          echo "✅ SonarCloud analysis uploaded successfully"
+          
+          # Save analysis metadata for later queries
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+          CURRENT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+          
+          cat > "$METADATA_FILE" <<EOF
+{
+  "timestamp": "$SCAN_START_TIME",
+  "branch": "$CURRENT_BRANCH",
+  "commit": "$CURRENT_COMMIT",
+  "status": "completed"
+}
+EOF
+          echo "📝 Analysis metadata saved to $METADATA_FILE"
+          echo ""
+          echo "⏳ SonarCloud is processing the analysis (typically 10-30 seconds)"
+          echo "💡 Wait a moment, then run: python scripts/ship_it.py --checks sonar-status"
+        else
+          echo "❌ SonarCloud scanner failed"
+          add_failure "SonarCloud Analyze" "SonarCloud scanner execution failed" "Check sonar-scanner configuration and network connectivity"
+          SONAR_PASSED=false
+        fi
+      else
+        echo "❌ Failed to generate coverage data"
+        add_failure "SonarCloud Analyze" "Coverage data generation failed" "Fix failing tests before running SonarCloud analysis"
+        SONAR_PASSED=false
+      fi
+    fi
+  fi
+  
+  if [[ "$SONAR_PASSED" == "true" ]]; then
+    add_success "SonarCloud Analyze" "Analysis triggered successfully - use --sonar-status to fetch results"
+  fi
+  
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SONARCLOUD QUALITY ANALYSIS - STATUS MODE (Fetch Results)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
+  echo "🔍 SonarCloud Analysis - Fetching Latest Results"
+
+  SONAR_STATUS_PASSED=true
+  METADATA_FILE=".sonar_run_metadata.json"
+
+  # Check if we have analysis metadata
+  if [[ -f "$METADATA_FILE" ]]; then
+    LAST_RUN_TIME=$(grep -o '"timestamp": "[^"]*"' "$METADATA_FILE" | cut -d'"' -f4)
+    LAST_RUN_BRANCH=$(grep -o '"branch": "[^"]*"' "$METADATA_FILE" | cut -d'"' -f4)
+    
+    echo "📊 Last analysis: $LAST_RUN_TIME (branch: $LAST_RUN_BRANCH)"
+    
+    # Calculate time since last run (use portable date command)
+    CURRENT_TIME=$(date +%s)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      # macOS date command
+      LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    else
+      # Linux date command
+      LAST_RUN_TIMESTAMP=$(date -d "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+    fi
+    TIME_DIFF=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
+    
+    # Wait for analysis to complete if it's very recent (< 5 minutes)
+    if [[ $TIME_DIFF -lt 300 && $TIME_DIFF -gt 0 ]]; then
+      echo "⏳ Analysis was triggered $TIME_DIFF seconds ago"
+      echo "⏳ Waiting for SonarCloud to process (typical: 2-5 minutes)..."
+      
+      # Poll with exponential backoff: 10s, 20s, 30s, 40s, 50s, 60s intervals
+      MAX_RETRIES=10
+      RETRY_COUNT=0
+      WAIT_TIME=10
+      
+      while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
+        # Check if enough time has passed (at least 2 minutes)
+        CURRENT_TIME=$(date +%s)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          LAST_RUN_TIMESTAMP=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+        else
+          LAST_RUN_TIMESTAMP=$(date -d "$LAST_RUN_TIME" +%s 2>/dev/null || echo "0")
+        fi
+        TIME_SINCE_TRIGGER=$((CURRENT_TIME - LAST_RUN_TIMESTAMP))
+        
+        if [[ $TIME_SINCE_TRIGGER -ge 120 ]]; then
+          echo "✅ Sufficient time elapsed ($TIME_SINCE_TRIGGER seconds) - proceeding to fetch results"
+          break
+        fi
+        
+        echo "⏳ Waiting ${WAIT_TIME}s before next check (${TIME_SINCE_TRIGGER}s elapsed, ${RETRY_COUNT}/${MAX_RETRIES} attempts)..."
+        sleep $WAIT_TIME
+        
+        # Increase wait time up to 60 seconds max
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        WAIT_TIME=$((WAIT_TIME + 10))
+        if [[ $WAIT_TIME -gt 60 ]]; then
+          WAIT_TIME=60
+        fi
+      done
+      
+      if [[ $RETRY_COUNT -eq $MAX_RETRIES ]]; then
+        echo "⚠️  Reached maximum retry attempts - proceeding anyway"
+      fi
+    elif [[ $TIME_DIFF -gt 300 ]]; then
+      # More than 5 minutes old
+      MINUTES_AGO=$((TIME_DIFF / 60))
+      echo "⚠️  WARNING: Analysis is $MINUTES_AGO minutes old - results may be stale"
+      echo "💡 Run --sonar-analyze to trigger a fresh analysis"
+    fi
+  else
+    echo "⚠️  No analysis metadata found"
+    echo "💡 Run --sonar-analyze first to trigger an analysis"
+  fi
+  
+  # Fetch quality gate status from SonarCloud
+  echo "🔧 Fetching SonarCloud quality gate status..."
+  if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
+    echo "✅ SonarCloud Status: PASSED"
+    add_success "SonarCloud Status" "All quality gate conditions met"
+  else
+    echo "❌ SonarCloud Status: FAILED"
+    echo "📋 See detailed issues above for specific fixes needed"
+    
+    # Run PR coverage analysis to identify specific uncovered lines
+    echo ""
+    echo "🔬 Analyzing coverage gaps in modified code..."
+    if python scripts/analyze_pr_coverage.py; then
+      echo "✅ All modified lines are covered"
+    else
+      echo "📄 Full PR coverage analysis: logs/pr_coverage_gaps.txt"
+      echo "📄 Python coverage details: logs/coverage_report.txt"
+      echo "📄 JavaScript coverage report: coverage/lcov-report/index.html"
+    fi
+    
+    add_failure "SonarCloud Status" "Quality gate failed with specific issues" "Fix the issues listed above and re-run --sonar-analyze"
+    SONAR_STATUS_PASSED=false
+  fi
+
+  if [[ "$SONAR_STATUS_PASSED" != "true" ]]; then
+    echo ""
+    echo "💡 SonarCloud Quality Gate Information:"
+    echo "   • Code smells and maintainability issues"
+    echo "   • Security vulnerabilities"
+    echo "   • Code coverage analysis"
+    echo "   • Technical debt assessment"
+    echo "   • Duplication detection"
+    echo ""
+    echo "⚠️  CRITICAL: SonarCloud 'Coverage on New Code' vs Global Coverage"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Global Coverage (ship_it.py --checks coverage):"
+    echo "   • Scope: Entire codebase"
+    echo "   • Fix: Add tests for ANY uncovered code"
+    echo ""
+    echo "📊 Coverage on New Code (SonarCloud Quality Gate):"
+    echo "   • Scope: ONLY files modified in this branch/PR"
+    echo "   • Fix: Add tests for SPECIFIC files in your changes"
+    echo "   • ❌ Adding unrelated tests WON'T fix this failure"
+    echo "   • ✅ Focus on files listed in SonarCloud coverage report"
+    echo ""
+    echo "🔍 To identify which files need coverage:"
+    echo "   1. Check SonarCloud UI → Measures → Coverage → Coverage on New Code"
+    echo "   2. Focus testing on files with low coverage in your branch"
+    echo "   3. Re-run --sonar-analyze after adding tests"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# IMPORT ORGANIZATION CHECK
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_IMPORTS" == "true" ]]; then
+  echo "📦 Import Organization Check"
+
+  # Check import organization with isort
+  IMPORT_OUTPUT=$(isort --check-only --diff --profile black --skip venv --skip .venv --skip-glob="**/venv/*" --skip-glob="**/.venv/*" . 2>&1) || IMPORT_FAILED=true
+
+  if [[ "$IMPORT_FAILED" != "true" ]]; then
+    echo "✅ Import Organization: PASSED"
+    add_success "Import Organization" "All imports properly organized"
+  else
+    echo "❌ Import Organization: FAILED"
+    echo "📋 Import Issues:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$IMPORT_OUTPUT" | head -15 | sed 's/^/  /'
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    add_failure "Import Organization" "Import organization issues found" "Run 'isort --profile black *.py **/*.py' to fix"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CODE DUPLICATION CHECK
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_DUPLICATION" == "true" ]]; then
+  echo "🔄 Code Duplication Check"
+
+  # Check if npx is available for jscpd
+  if ! command -v npx &> /dev/null; then
+    echo "⚠️  npx not found, delegating to SonarCloud"
+    echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
+    add_success "Duplication Check" "npx unavailable, duplication analysis delegated to SonarCloud"
+  else
+    echo "🔧 Running jscpd code duplication analysis..."
+    
+    # Run jscpd with appropriate settings for Python project
+    # - min-lines 3: Detect duplications of 3+ lines (sensitive)
+    # - threshold 5: Fail if >5% duplication (reasonable for Python)
+    # - Focus on Python files with comprehensive exclusions
+    DUPLICATION_OUTPUT=$(npx jscpd . \
+      --min-lines 3 \
+      --threshold 5 \
+      --reporters console \
+      --ignore '**/__tests__/**,**/*.test.*,**/tests/**,**/venv/**,**/.venv/**,**/__pycache__/**,**/*.pyc,**/node_modules/**,**/.git/**,**/logs/**,**/.scannerwork/**,**/python-database/**,**/codeql-**,**/cursor-rules/**' \
+      --format python \
+      --silent 2>&1) || DUPLICATION_FAILED=true
+
+    if [[ "$DUPLICATION_FAILED" != "true" ]]; then
+      # Extract duplication percentage from output
+      DUPLICATION_PERCENT=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+\.[0-9]\+%' | tail -1 || echo "0.0%")
+      CLONES_FOUND=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+ clones' | grep -o '[0-9]\+' || echo "0")
+      
+      echo "✅ Code Duplication: PASSED ($DUPLICATION_PERCENT duplication, $CLONES_FOUND clones)"
+      add_success "Code Duplication" "Duplication at $DUPLICATION_PERCENT with $CLONES_FOUND clones (below 5% threshold)"
+    else
+      echo "❌ Code Duplication: FAILED"
+      echo "📋 Duplication Analysis Results:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$DUPLICATION_OUTPUT" | head -20 | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Extract duplication percentage for failure message
+      DUPLICATION_PERCENT=$(echo "$DUPLICATION_OUTPUT" | grep -o '[0-9]\+\.[0-9]\+%' | tail -1 || echo "unknown")
+      add_failure "Code Duplication" "Excessive duplication detected ($DUPLICATION_PERCENT)" "Review and refactor duplicated code blocks shown above"
+    fi
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SUMMARY REPORT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo "📊 Quality Gate Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [[ ${#PASSED_CHECKS[@]} -gt 0 ]]; then
+  echo "✅ PASSED CHECKS (${#PASSED_CHECKS[@]}):"
+  for check in "${PASSED_CHECKS[@]}"; do
+    IFS='|' read -r name message <<< "$check"
+    echo "   • $name: $message"
+  done
+  echo ""
+fi
+
+if [[ ${#FAILED_CHECKS_DETAILS[@]} -gt 0 ]]; then
+  echo "❌ FAILED CHECKS (${#FAILED_CHECKS_DETAILS[@]}):"
+  for check in "${FAILED_CHECKS_DETAILS[@]}"; do
+    IFS='|' read -r name reason suggestion <<< "$check"
+    echo "   • $name: $reason"
+    echo "     Fix: $suggestion"
+  done
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🟨 JAVASCRIPT LINTING CHECK (ESLint) 🟨
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_LINT" == "true" ]]; then
+  echo "🔍 JavaScript Lint Check (ESLint)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "⚠️  npm not found, skipping JavaScript linting"
+    echo "✅ JavaScript Lint Check: SKIPPED (npm not available)"
+    add_success "JavaScript Lint Check" "npm not available, JavaScript linting skipped"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+    # Run ESLint on JavaScript files with auto-fix
+    echo "🔧 Running ESLint analysis with auto-fix..."
+    
+    # First try to auto-fix
+    if npm run lint:fix >/dev/null 2>&1; then
+      echo "🔧 Auto-fixed JavaScript linting issues"
+    fi
+    
+    # Then check if everything passes
+    if npm run lint; then
+      echo "✅ JavaScript Lint Check: PASSED"
+      add_success "JavaScript Lint Check" "All JavaScript files pass ESLint rules"
+    else
+      echo "❌ JavaScript Lint Check: FAILED"
+      add_failure "JavaScript Lint Check" \
+                  "JavaScript files have linting errors that couldn't be auto-fixed" \
+                  "Review ESLint output above and fix manually"
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🎨 JAVASCRIPT FORMATTING CHECK (Prettier) 🎨
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_FORMAT" == "true" ]]; then
+  echo "🎨 JavaScript Format Check (Prettier)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "⚠️  npm not found, skipping JavaScript formatting"
+    echo "✅ JavaScript Format Check: SKIPPED (npm not available)"
+    add_success "JavaScript Format Check" "npm not available, JavaScript formatting skipped"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+    # Run Prettier to format and then check
+    echo "🔧 Running Prettier auto-format and check..."
+    
+    # First auto-format
+    if npm run format >/dev/null 2>&1; then
+      echo "🔧 Auto-formatted JavaScript files"
+    fi
+    
+    # Then verify formatting is correct
+    if npm run format:check; then
+      echo "✅ JavaScript Format Check: PASSED"
+      add_success "JavaScript Format Check" "All JavaScript files are properly formatted"
+    else
+      echo "❌ JavaScript Format Check: FAILED"
+      add_failure "JavaScript Format Check" \
+                  "JavaScript files are not properly formatted after auto-fix" \
+                  "Review Prettier output above and fix manually"
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🧪 JAVASCRIPT TEST SUITE (Jest) 🧪
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_TESTS" == "true" ]]; then
+  echo "🧪 JavaScript Test Suite (Jest)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "⚠️  npm not found, skipping JavaScript tests"
+    echo "✅ JavaScript Tests: SKIPPED (npm not available)"
+    add_success "JavaScript Tests" "npm not available, JavaScript tests skipped"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+    # Run Jest tests and capture detailed output
+    echo "  🔍 Running JavaScript test suite..."
+    JS_TEST_OUTPUT=$(npm run test:js 2>&1) || JS_TEST_FAILED=true
+    
+    if [[ "$JS_TEST_FAILED" == "true" ]]; then
+      echo "❌ JavaScript Tests: FAILED"
+      echo ""
+      echo "📋 Test Results:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      
+      # Extract test summary from Jest output
+      TEST_SUMMARY=$(echo "$JS_TEST_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+      if [[ -n "$TEST_SUMMARY" ]]; then
+        echo "$TEST_SUMMARY"
+      else
+        echo "  Unable to parse test summary"
+      fi
+      
+      # Extract failed test details
+      FAILED_TESTS=$(echo "$JS_TEST_OUTPUT" | grep -A 5 "FAIL " | sed 's/^/  /')
+      if [[ -n "$FAILED_TESTS" ]]; then
+        echo ""
+        echo "📋 Failed Tests:"
+        echo "$FAILED_TESTS"
+      fi
+      
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      
+      # Extract specific failure counts for better error message
+      FAILED_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* failed' | grep -o '[0-9]*' | head -1 || echo "unknown")
+      TOTAL_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* total' | grep -o '[0-9]*' | head -1 || echo "unknown")
+      
+      add_failure "JavaScript Tests" \
+                  "$FAILED_COUNT of $TOTAL_COUNT tests failed" \
+                  "Fix failing tests and run 'npm run test:js' for details"
+    else
+      echo "✅ JavaScript Tests: PASSED"
+      
+      # Extract and display test summary for successful runs
+      TEST_SUMMARY=$(echo "$JS_TEST_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+      if [[ -n "$TEST_SUMMARY" ]]; then
+        echo ""
+        echo "📊 Test Summary:"
+        echo "$TEST_SUMMARY"
+      fi
+      
+      # Extract passed count for success message
+      PASSED_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* passed' | grep -o '[0-9]*' | head -1 || echo "all")
+      TOTAL_COUNT=$(echo "$JS_TEST_OUTPUT" | grep -o '[0-9]* total' | grep -o '[0-9]*' | head -1 || echo "")
+      
+      if [[ -n "$TOTAL_COUNT" ]]; then
+        add_success "JavaScript Tests" "$PASSED_COUNT of $TOTAL_COUNT tests passed"
+      else
+        add_success "JavaScript Tests" "All JavaScript tests passed"
+      fi
+    fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📊 JAVASCRIPT COVERAGE ANALYSIS (80% threshold) 📊
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
+  echo "📊 JavaScript Coverage Analysis (80% threshold)"
+
+  # Check if Node.js and npm are available
+  if ! command -v npm &> /dev/null; then
+    echo "❌ JavaScript Coverage: FAILED (npm not available)"
+    echo ""
+    echo "📋 Node.js and npm are required for JavaScript coverage checks."
+    echo ""
+    echo "🔧 Fix: Install Node.js and npm:"
+    echo "   • macOS: brew install node"
+    echo "   • Ubuntu: sudo apt-get install nodejs npm"
+    echo "   • Or download from: https://nodejs.org/"
+    echo ""
+    add_failure "JavaScript Coverage" "npm not found in PATH" "Install Node.js and npm, then run 'npm install' in the project directory"
+  else
+    # Check if node_modules exists, if not install dependencies
+    if [ ! -d "node_modules" ]; then
+      echo "📦 Installing JavaScript dependencies..."
+      npm install --silent
+    fi
+
+            # Run Jest with coverage
+            echo "  🔍 Running JavaScript coverage analysis..."
+            JS_COVERAGE_OUTPUT=$(npm run test:coverage 2>&1) || JS_COVERAGE_FAILED=true
+            
+            if [[ "$JS_COVERAGE_FAILED" == "true" ]]; then
+              echo "❌ JavaScript Coverage: FAILED"
+              echo ""
+              echo "📊 Coverage Results:"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              
+              # Extract and display coverage summary table
+              COVERAGE_TABLE=$(echo "$JS_COVERAGE_OUTPUT" | sed -n '/All files/,/^$/p' | head -10 | sed 's/^/  /')
+              if [[ -n "$COVERAGE_TABLE" ]]; then
+                echo "$COVERAGE_TABLE"
+              fi
+              
+              # Extract individual coverage percentages
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              
+              echo ""
+              echo "  📈 Coverage Summary:"
+              echo "    Statements: $STATEMENTS (threshold: 80%)"
+              echo "    Branches:   $BRANCHES (threshold: 75%)"
+              echo "    Functions:  $FUNCTIONS (threshold: 90%)"
+              echo "    Lines:      $LINES (threshold: 80%)"
+              
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              
+              # Extract failure details from Jest output
+              FAILED_THRESHOLDS=$(echo "$JS_COVERAGE_OUTPUT" | grep "coverage threshold" | sed 's/^/  /')
+              if [[ -n "$FAILED_THRESHOLDS" ]]; then
+                echo "  ❌ Failed thresholds:"
+                echo "$FAILED_THRESHOLDS"
+                echo ""
+              fi
+              
+              # Jest failed, so the check fails (don't parse individual metrics - Jest already did that)
+              add_failure "JavaScript Coverage" \
+                          "One or more coverage thresholds not met (statements: $STATEMENTS, branches: $BRANCHES, functions: $FUNCTIONS, lines: $LINES)" \
+                          "Run 'npm run test:coverage' for details and add tests to increase coverage"
+            else
+              # Extract and display coverage summary for successful runs
+              STATEMENTS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Statements.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              BRANCHES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Branches.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              FUNCTIONS=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Functions.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              LINES=$(echo "$JS_COVERAGE_OUTPUT" | grep -o 'Lines.*: [0-9.]*%' | grep -o '[0-9.]*%' | head -1 || echo "unknown")
+              
+              echo "✅ JavaScript Coverage: PASSED"
+              echo ""
+              echo "📊 Coverage Summary (threshold: lines ≥ 80%):"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "  Lines:      $LINES ✅"
+              echo "  Statements: $STATEMENTS"
+              echo "  Branches:   $BRANCHES" 
+              echo "  Functions:  $FUNCTIONS"
+              echo "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo ""
+              
+              add_success "JavaScript Coverage" "Lines: $LINES ✅ (threshold: 80%) | Statements: $STATEMENTS | Branches: $BRANCHES | Functions: $FUNCTIONS"
+            fi
+  fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SMOKE TESTS EXECUTION - END-TO-END TESTING
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
+  echo "🔥 Smoke Tests Execution (End-to-End Validation)"
+  
+  # Colors for output
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  NC='\033[0m' # No Color
+  
+  # Test configuration
+  TEST_PORT=${LASSIE_DEFAULT_PORT_DEV:-3001}
+  TEST_URL="http://localhost:$TEST_PORT"
+  SERVER_PID=""
+  
+  # Function to check if Chrome/Chromium is available
+  check_chrome() {
+    # Check for Chrome in common locations (works with modern Selenium)
+    if command -v google-chrome >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chrome found in PATH${NC}"
+      return 0
+    elif command -v chromium-browser >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chromium found in PATH${NC}"
+      return 0
+    elif command -v chromium >/dev/null 2>&1; then
+      echo -e "${GREEN}✅ Chromium found in PATH${NC}"
+      return 0
+    elif [ -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+      echo -e "${GREEN}✅ Chrome found in Applications (macOS)${NC}"
+      return 0
+    elif [ -f "/Applications/Chromium.app/Contents/MacOS/Chromium" ]; then
+      echo -e "${GREEN}✅ Chromium found in Applications (macOS)${NC}"
+      return 0
+    elif [ -f "/usr/bin/google-chrome-stable" ]; then
+      echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+      return 0
+    elif [ -f "/usr/bin/google-chrome" ]; then
+      echo -e "${GREEN}✅ Chrome found in /usr/bin (CI/Linux)${NC}"
+      return 0
+    else
+      echo -e "${RED}❌ Chrome/Chromium not found. Please install Chrome or Chromium for frontend tests${NC}"
+      echo -e "${YELLOW}💡 On macOS: brew install --cask google-chrome${NC}"
+      echo -e "${YELLOW}💡 On Ubuntu/CI: sudo apt-get install google-chrome-stable${NC}"
+      return 1
+    fi
+  }
+  
+  # Function to start test server
+  start_test_server() {
+    echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
+    
+    # Load environment variables
+    if [ -f ".envrc" ]; then
+      source .envrc
+    fi
+    
+    # Activate virtual environment if it exists
+    if [ -d "venv" ]; then
+      source venv/bin/activate
+    fi
+    
+    # Start server on test port in background
+    PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
+    SERVER_PID=$!
+    
+    # Wait for server to start
+    echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
+    for i in {1..30}; do
+      if curl -s "$TEST_URL" > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Test server started successfully${NC}"
+        return 0
+      fi
+      sleep 1
+    done
+    
+    echo -e "${RED}❌ Test server failed to start${NC}"
+    kill $SERVER_PID 2>/dev/null || true
+    return 1
+  }
+  
+  # Function to stop test server
+  stop_test_server() {
+    if [ ! -z "$SERVER_PID" ]; then
+      echo -e "${BLUE}🛑 Stopping test server...${NC}"
+      kill $SERVER_PID 2>/dev/null || true
+      
+      # Wait for process to terminate
+      for i in {1..10}; do
+        if ! kill -0 $SERVER_PID 2>/dev/null; then
+          break
+        fi
+        sleep 1
+      done
+      
+      # Force kill if still running
+      kill -9 $SERVER_PID 2>/dev/null || true
+      echo -e "${GREEN}✅ Test server stopped${NC}"
+    fi
+  }
+  
+  # Function to run smoke tests
+  run_smoke_tests() {
+    echo -e "${BLUE}🧪 Running smoke tests...${NC}"
+    
+    # Install test dependencies if needed
+    pip install -q pytest selenium requests 2>/dev/null || true
+    
+    # Test Selenium WebDriver setup
+    python -c "
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+try:
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    driver = webdriver.Chrome(options=options)
+    print('✅ Selenium WebDriver setup verified')
+    driver.quit()
+except Exception as e:
+    print(f'❌ Selenium WebDriver setup failed: {e}')
+    exit(1)
+" || {
+      echo -e "${RED}❌ Selenium WebDriver setup failed${NC}"
+      return 1
+    }
+    
+    # Run the smoke tests
+    pytest tests/smoke/ -v --tb=short
+    TEST_EXIT_CODE=$?
+    
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+      echo -e "${GREEN}✅ All smoke tests passed!${NC}"
+    else
+      echo -e "${RED}❌ Some smoke tests failed${NC}"
+    fi
+    
+    return $TEST_EXIT_CODE
+  }
+  
+  # Main smoke test execution
+  echo "  🔍 Checking prerequisites..."
+  
+  # Create logs directory
+  mkdir -p logs
+  
+  # Check Chrome availability
+  if ! check_chrome; then
+    add_failure "Smoke Tests" "Chrome/Chromium not available" "Install Chrome or Chromium for frontend tests"
+    echo ""
+    return
+  fi
+  
+  # SQLite is used for persistence; no external emulator required.
+
+  # Start test server
+  if ! start_test_server; then
+    add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"
+    echo ""
+    return
+  fi
+  
+  # Run tests
+  run_smoke_tests
+  TEST_RESULT=$?
+  
+  # Stop test server
+  stop_test_server
+  
+  # Report results
+  if [ $TEST_RESULT -eq 0 ]; then
+    echo -e "${GREEN}🎉 All smoke tests completed successfully!${NC}"
+    echo -e "${GREEN}📊 The application UI is working correctly${NC}"
+    add_success "Smoke Tests" "All smoke tests passed successfully"
+  else
+    echo -e "${RED}💥 Smoke tests failed!${NC}"
+    echo -e "${RED}🔍 Check test output above for details${NC}"
+    echo -e "${YELLOW}💡 Common issues:${NC}"
+    echo -e "${YELLOW}   - JavaScript errors in browser console${NC}"
+    echo -e "${YELLOW}   - Missing HTML elements${NC}"
+    echo -e "${YELLOW}   - API endpoints not responding${NC}"
+    echo -e "${YELLOW}   - Static assets not loading${NC}"
+    add_failure "Smoke Tests" "Smoke test failures detected" "See detailed output above and run 'pytest tests/smoke/ -v' for full details"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FRONTEND CHECK - QUICK UI VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
+  echo "🌐 Frontend Check (Quick UI Validation)"
+  
+  # Run the frontend check script
+  echo "  🔍 Running frontend validation check..."
+  FRONTEND_OUTPUT=$(./check_frontend.sh 2>&1) || FRONTEND_FAILED=true
+  
+  if [[ "$FRONTEND_FAILED" == "true" ]]; then
+    echo "❌ Frontend Check: FAILED"
+    echo ""
+    echo "📋 Frontend Check Output:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$FRONTEND_OUTPUT" | sed 's/^/  /'
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './check_frontend.sh' manually"
+  else
+    echo "✅ Frontend Check: PASSED"
+    add_success "Frontend Check" "Frontend validation passed successfully"
+  fi
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [[ $FAILED_CHECKS -eq 0 ]]; then
+  echo "🎉 ALL CHECKS PASSED!"
+  echo "✅ Ready to commit with confidence!"
+  echo ""
+  echo "🚀 Course Record Updater quality validation completed successfully!"
+  exit 0
+else
+  echo "❌ QUALITY GATE FAILED"
+  echo "🔧 $FAILED_CHECKS check(s) need attention"
+  echo ""
+  echo "💡 Fix the issues above and run the checks again"
+  exit 1
+fi
