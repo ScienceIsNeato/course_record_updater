@@ -1,9 +1,10 @@
 # Project Status
 
 **Last Updated:** November 6, 2025  
-**Current Task:** Issue #18 - Database Schema Validation ✅ COMPLETE  
+**Current Task:** Issue #18 - Database Schema Validation ✅ COMPLETE - PR #26 Ready  
 **Branch:** `feature/issue-18-database-schema-validation`  
-**GitHub Issue**: https://github.com/ScienceIsNeato/course_record_updater/issues/18
+**GitHub Issue**: https://github.com/ScienceIsNeato/course_record_updater/issues/18  
+**Pull Request**: https://github.com/ScienceIsNeato/course_record_updater/pull/26
 
 ---
 
