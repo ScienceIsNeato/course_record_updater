@@ -1,9 +1,40 @@
 # Project Status
 
 **Last Updated:** November 5, 2025  
-**Current Task:** All PR Issues Resolved - Ready for Final Push ✅  
+**Current Task:** Coverage Improvements + SonarCloud Fixes 🎯  
 **Branch:** `feature/cei_demo_follow_up` 
-**PR:** #22 - All CI issues fixed, coverage at 81.25%, ready for merge
+**PR:** #22 - Addressing coverage gap (78.55% → target 80%) and 11 code smell issues
+
+---
+
+## 🚀 Coverage Improvement + SonarCloud Code Smell Fixes (November 5, 2025 - 15:10 PST)
+
+**Issue:** SonarCloud coverage dropped to 78.55% (below 80% threshold) + 11 new code smell issues
+
+**✅ SonarCloud Code Smell Fixes (11 issues):**
+- **Issue**: "Prefer 'globalThis' over 'window'" (es2020 portability rule)
+- **Fix**: Replaced all 24 `window.` references with `globalThis.` in `static/audit_clo.js`
+- **Why**: `globalThis` is ES2020 standard, works in browser, Node.js, and other environments
+- **Commit**: 87ecd69
+
+**✅ renderCLODetails Unit Test Coverage:**
+- **Issue**: `renderCLODetails` function had 0% coverage, contributing to 78.55% SonarCloud score
+- **Fix**: Extracted function from DOMContentLoaded closure for testability (lines 159-254)
+- **Added**: 13 comprehensive unit tests covering:
+  - Basic rendering with CEI demo field names (students_took, students_passed)
+  - Edge cases (0 students, null/undefined values, N/A handling)
+  - Percentage calculation and rounding (0%, 83%, 90%)
+  - HTML escaping for XSS prevention
+  - Optional fields (narrative, feedback_comments, reviewed_by_name)
+  - Various status badges (never_coming_in, awaiting_approval, etc.)
+- **Local JS coverage**: 81.42% ✅ (up from 81.28%)
+- **Commit**: 32a270f
+
+**Current Status:**
+- ✅ Local JS coverage: 81.42%
+- ✅ All 575 tests passing (13 new renderCLODetails tests)
+- ✅ All JS checks passing (ESLint, Jest)
+- ⏳ Awaiting SonarCloud validation (expect coverage improvement from 78.55% → ~80%)
 
 ---
 
