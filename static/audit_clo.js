@@ -153,6 +153,106 @@ async function markAsNCI() {
   }
 }
 
+/**
+ * Render CLO details in modal (extracted for testability)
+ */
+function renderCLODetails(clo) {
+  // Use new field names from CEI demo schema changes
+  const studentsTook = clo.students_took || 0;
+  const studentsPassed = clo.students_passed || 0;
+  const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
+
+  const statusBadge = getStatusBadge(clo.status);
+
+  return `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Status</h6>
+                ${statusBadge}
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Course:</strong> ${escapeHtml(clo.course_number || 'N/A')} - ${escapeHtml(clo.course_title || 'N/A')}
+            </div>
+            <div class="col-md-6">
+                <strong>CLO Number:</strong> ${escapeHtml(clo.clo_number || 'N/A')}
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <strong>Description:</strong>
+            <p>${escapeHtml(clo.description)}</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Instructor:</strong> ${escapeHtml(clo.instructor_name || 'N/A')}
+            </div>
+            <div class="col-md-6">
+                <strong>Instructor Email:</strong> ${escapeHtml(clo.instructor_email || 'N/A')}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <h6 class="mb-3">Assessment Data</h6>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${studentsTook}</h4>
+                    <small class="text-muted">Students Took</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${studentsPassed}</h4>
+                    <small class="text-muted">Students Passed</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${percentage}%</h4>
+                    <small class="text-muted">Success Rate</small>
+                </div>
+            </div>
+        </div>
+        
+        ${
+          clo.narrative
+            ? `
+            <div class="mb-3">
+                <strong>Narrative:</strong>
+                <p class="text-muted">${escapeHtml(clo.narrative)}</p>
+            </div>
+        `
+            : ''
+        }
+        
+        ${
+          clo.feedback_comments
+            ? `
+            <div class="mb-3">
+                <strong>Admin Feedback:</strong>
+                <p class="text-muted">${escapeHtml(clo.feedback_comments)}</p>
+            </div>
+        `
+            : ''
+        }
+        
+        ${
+          clo.reviewed_by_name
+            ? `
+            <div class="mt-3 text-muted small">
+                <em>Reviewed by ${escapeHtml(clo.reviewed_by_name)} on ${formatDate(clo.reviewed_at)}</em>
+            </div>
+        `
+            : ''
+        }
+    `;
+}
+
 // Assign to globalThis IMMEDIATELY for browser use (not inside DOMContentLoaded)
 // This ensures functions are available even if DOM is already loaded
 // Note: globalThis is preferred over window for ES2020 cross-environment compatibility
@@ -410,8 +510,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       globalThis.currentCLO = data.outcome;
+      const clo = globalThis.currentCLO;
 
-      renderCLODetails(globalThis.currentCLO);
+      // Render HTML using extracted function
+      document.getElementById('cloDetailContent').innerHTML = renderCLODetails(clo);
+
+      // Show/hide action buttons based on status
+      const canApprove = ['awaiting_approval', 'approval_pending'].includes(clo.status);
+      const canMarkNCI = [
+        'awaiting_approval',
+        'approval_pending',
+        'assigned',
+        'in_progress'
+      ].includes(clo.status);
+      document.getElementById('approveBtn').style.display = canApprove ? 'inline-block' : 'none';
+      document.getElementById('requestReworkBtn').style.display = canApprove
+        ? 'inline-block'
+        : 'none';
+      document.getElementById('markNCIBtn').style.display = canMarkNCI ? 'inline-block' : 'none';
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
@@ -419,132 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to load CLO details: ' + error.message);
     }
   };
-
-  /**
-   * Render CLO details in modal
-   */
-  function renderCLODetails(clo) {
-    // Use new field names from CEI demo schema changes
-    const studentsTook = clo.students_took || 0;
-    const studentsPassed = clo.students_passed || 0;
-    const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
-
-    const statusBadge = getStatusBadge(clo.status);
-
-    const html = `
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">Status</h6>
-                    ${statusBadge}
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Course:</strong> ${escapeHtml(clo.course_number || 'N/A')} - ${escapeHtml(clo.course_title || 'N/A')}
-                </div>
-                <div class="col-md-6">
-                    <strong>CLO Number:</strong> ${escapeHtml(clo.clo_number || 'N/A')}
-                </div>
-            </div>
-            
-            <div class="mb-3">
-                <strong>Description:</strong>
-                <p>${escapeHtml(clo.description)}</p>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Instructor:</strong> ${escapeHtml(clo.instructor_name || 'N/A')}
-                </div>
-                <div class="col-md-6">
-                    <strong>Instructor Email:</strong> ${escapeHtml(clo.instructor_email || 'N/A')}
-                </div>
-            </div>
-            
-            <hr>
-            
-            <h6 class="mb-3">Assessment Data</h6>
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${studentsTook}</h4>
-                        <small class="text-muted">Students Took</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${studentsPassed}</h4>
-                        <small class="text-muted">Students Passed</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${percentage}%</h4>
-                        <small class="text-muted">Success Rate</small>
-                    </div>
-                </div>
-            </div>
-            
-            ${
-              clo.narrative
-                ? `
-                <div class="mb-3">
-                    <strong>Narrative:</strong>
-                    <p class="text-muted">${escapeHtml(clo.narrative)}</p>
-                </div>
-            `
-                : ''
-            }
-            
-            <hr>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Submitted By:</strong> ${escapeHtml(clo.submitted_by_user_id || 'N/A')}<br>
-                    <strong>Submitted At:</strong> ${clo.submitted_at ? formatDate(clo.submitted_at) : 'N/A'}
-                </div>
-                <div class="col-md-6">
-                    ${
-                      clo.reviewed_by_user_id
-                        ? `
-                        <strong>Reviewed By:</strong> ${escapeHtml(clo.reviewed_by_user_id)}<br>
-                        <strong>Reviewed At:</strong> ${formatDate(clo.reviewed_at)}
-                    `
-                        : ''
-                    }
-                </div>
-            </div>
-            
-            ${
-              clo.feedback_comments
-                ? `
-                <div class="alert alert-warning">
-                    <strong>Previous Feedback:</strong>
-                    <p class="mb-0">${escapeHtml(clo.feedback_comments)}</p>
-                    <small class="text-muted">Provided: ${formatDate(clo.feedback_provided_at)}</small>
-                </div>
-            `
-                : ''
-            }
-        `;
-
-    document.getElementById('cloDetailContent').innerHTML = html;
-
-    // Show/hide action buttons based on status
-    const canApprove = ['awaiting_approval', 'approval_pending'].includes(clo.status);
-    const canMarkNCI = [
-      'awaiting_approval',
-      'approval_pending',
-      'assigned',
-      'in_progress'
-    ].includes(clo.status);
-    document.getElementById('approveBtn').style.display = canApprove ? 'inline-block' : 'none';
-    document.getElementById('requestReworkBtn').style.display = canApprove
-      ? 'inline-block'
-      : 'none';
-    document.getElementById('markNCIBtn').style.display = canMarkNCI ? 'inline-block' : 'none';
-  }
 
   /**
    * Open rework modal
@@ -631,6 +621,7 @@ if (typeof module !== 'undefined' && module.exports) {
     formatDate,
     truncateText,
     escapeHtml,
+    renderCLODetails,
     approveCLO,
     markAsNCI
   };

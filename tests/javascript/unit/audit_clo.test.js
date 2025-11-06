@@ -729,5 +729,221 @@ describe('audit_clo.js - DOM Integration', () => {
       expect(fetch).not.toHaveBeenCalled();
     });
   });
+
+  describe('renderCLODetails', () => {
+    const { renderCLODetails } = auditCloModule;
+
+    it('should render CLO details with valid data', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        course_title: 'Intro to CS',
+        clo_number: 1,
+        description: 'Demonstrate problem-solving skills',
+        instructor_name: 'Jane Doe',
+        instructor_email: 'jane@example.com',
+        students_took: 30,
+        students_passed: 27
+      };
+
+      const html = renderCLODetails(clo);
+
+      // Verify structure and content
+      expect(html).toContain('CS101');
+      expect(html).toContain('Intro to CS');
+      expect(html).toContain('1');
+      expect(html).toContain('Demonstrate problem-solving skills');
+      expect(html).toContain('Jane Doe');
+      expect(html).toContain('jane@example.com');
+      expect(html).toContain('30'); // students_took
+      expect(html).toContain('27'); // students_passed
+      expect(html).toContain('90%'); // percentage: 27/30 = 90%
+      expect(html).toContain('Students Took');
+      expect(html).toContain('Students Passed');
+      expect(html).toContain('Success Rate');
+    });
+
+    it('should calculate 0% when students_took is 0', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('0%'); // 0/0 should be 0%
+    });
+
+    it('should handle null/undefined students_took and students_passed', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: null,
+        students_passed: undefined
+      };
+
+      const html = renderCLODetails(clo);
+
+      // Should default to 0
+      expect(html).toContain('0%');
+    });
+
+    it('should round percentage correctly', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 30,
+        students_passed: 25
+      };
+
+      const html = renderCLODetails(clo);
+
+      // 25/30 = 83.333... should round to 83%
+      expect(html).toContain('83%');
+    });
+
+    it('should render status badge', () => {
+      const clo = {
+        status: 'never_coming_in',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('NCI - Never Coming In');
+      expect(html).toContain('badge bg-dark');
+    });
+
+    it('should display N/A for missing course info', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('N/A');
+    });
+
+    it('should escape HTML in CLO description', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: '<script>alert("XSS")</script>',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      // Should be escaped
+      expect(html).not.toContain('<script>');
+      expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('should include narrative when present', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0,
+        narrative: 'This is a detailed narrative about the assessment'
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('Narrative:');
+      expect(html).toContain('This is a detailed narrative about the assessment');
+    });
+
+    it('should exclude narrative when not present', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).not.toContain('Narrative:');
+    });
+
+    it('should include feedback_comments when present', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 0,
+        students_passed: 0,
+        feedback_comments: 'Please revise the assessment data'
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('Admin Feedback:');
+      expect(html).toContain('Please revise the assessment data');
+    });
+
+    it('should include reviewed_by info when present', () => {
+      const clo = {
+        status: 'approved',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        students_took: 30,
+        students_passed: 27,
+        reviewed_by_name: 'Admin User',
+        reviewed_at: '2025-11-05T10:30:00Z'
+      };
+
+      const html = renderCLODetails(clo);
+
+      expect(html).toContain('Reviewed by Admin User');
+    });
+
+    it('should handle all special characters in instructor name and email', () => {
+      const clo = {
+        status: 'awaiting_approval',
+        course_number: 'CS101',
+        clo_number: 1,
+        description: 'Test',
+        instructor_name: 'Jane <Test> O\'Brien & Co.',
+        instructor_email: 'jane+test@example.com',
+        students_took: 0,
+        students_passed: 0
+      };
+
+      const html = renderCLODetails(clo);
+
+      // HTML tags and ampersands should be escaped (textContent escapes <, >, &)
+      expect(html).toContain('&lt;Test&gt;');
+      expect(html).toContain('O\'Brien'); // Single quotes are NOT escaped by textContent
+      expect(html).toContain('&amp; Co.');
+      // Email should be present
+      expect(html).toContain('jane+test@example.com');
+    });
+  });
 });
 
