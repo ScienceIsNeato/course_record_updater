@@ -52,17 +52,17 @@ function escapeHtml(text) {
  * Approve CLO (extracted for testability)
  */
 async function approveCLO() {
-  if (!window.currentCLO) return;
+  if (!globalThis.currentCLO) return;
 
   if (
     !confirm(
-      `Approve this CLO?\n\n${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}`
+      `Approve this CLO?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}`
     )
   ) {
     return;
   }
 
-  const outcomeId = window.currentCLO.outcome_id;
+  const outcomeId = globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
     alert('Error: CLO ID not found');
     return;
@@ -94,7 +94,7 @@ async function approveCLO() {
     alert('CLO approved successfully!');
 
     // Reload list
-    await window.loadCLOs();
+    await globalThis.loadCLOs();
   } catch (error) {
     alert('Failed to approve CLO: ' + error.message);
   }
@@ -104,10 +104,10 @@ async function approveCLO() {
  * Mark CLO as Never Coming In (NCI) (extracted for testability)
  */
 async function markAsNCI() {
-  if (!window.currentCLO) return;
+  if (!globalThis.currentCLO) return;
 
   const reason = prompt(
-    `Mark this CLO as "Never Coming In"?\n\n${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
+    `Mark this CLO as "Never Coming In"?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
   );
 
   // null means cancelled, empty string is allowed
@@ -116,7 +116,7 @@ async function markAsNCI() {
   }
 
   try {
-    const outcomeId = window.currentCLO.outcome_id;
+    const outcomeId = globalThis.currentCLO.outcome_id;
 
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
@@ -146,17 +146,18 @@ async function markAsNCI() {
     alert('CLO marked as Never Coming In (NCI)');
 
     // Reload list
-    await window.loadCLOs();
-    await window.updateStats();
+    await globalThis.loadCLOs();
+    await globalThis.updateStats();
   } catch (error) {
     alert('Failed to mark CLO as NCI: ' + error.message);
   }
 }
 
-// Assign to window IMMEDIATELY for browser use (not inside DOMContentLoaded)
+// Assign to globalThis IMMEDIATELY for browser use (not inside DOMContentLoaded)
 // This ensures functions are available even if DOM is already loaded
-window.approveCLO = approveCLO;
-window.markAsNCI = markAsNCI;
+// Note: globalThis is preferred over window for ES2020 cross-environment compatibility
+globalThis.approveCLO = approveCLO;
+globalThis.markAsNCI = markAsNCI;
 
 document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
@@ -169,12 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const requestReworkForm = document.getElementById('requestReworkForm');
 
   // State - use window for global access by extracted functions
-  window.currentCLO = null;
+  globalThis.currentCLO = null;
   let allCLOs = [];
 
   // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
-  window.loadCLOs = loadCLOs;
-  window.updateStats = updateStats;
+  globalThis.loadCLOs = loadCLOs;
+  globalThis.updateStats = updateStats;
 
   // Initialize
   loadCLOs();
@@ -190,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (row && !e.target.closest('.clo-actions')) {
       const outcomeId = row.dataset.outcomeId;
       if (outcomeId) {
-        window.showCLODetails(outcomeId);
+        globalThis.showCLODetails(outcomeId);
       }
       return;
     }
@@ -201,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const outcomeId = viewBtn.dataset.outcomeId;
       if (outcomeId) {
-        window.showCLODetails(outcomeId);
+        globalThis.showCLODetails(outcomeId);
       }
     }
   });
@@ -400,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Show CLO details in modal
    */
-  window.showCLODetails = async function (cloId) {
+  globalThis.showCLODetails = async function (cloId) {
     try {
       const response = await fetch(`/api/outcomes/${cloId}/audit-details`);
       if (!response.ok) {
@@ -408,9 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const data = await response.json();
-      window.currentCLO = data.outcome;
+      globalThis.currentCLO = data.outcome;
 
-      renderCLODetails(window.currentCLO);
+      renderCLODetails(globalThis.currentCLO);
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
@@ -548,11 +549,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Open rework modal
    */
-  window.openReworkModal = function () {
-    if (!window.currentCLO) return;
+  globalThis.openReworkModal = function () {
+    if (!globalThis.currentCLO) return;
 
     document.getElementById('reworkCloDescription').textContent =
-      `${window.currentCLO.course_number} - CLO ${window.currentCLO.clo_number}: ${window.currentCLO.description}`;
+      `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
     document.getElementById('feedbackComments').value = '';
     document.getElementById('sendEmailCheckbox').checked = true;
 
@@ -571,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Submit rework request
    */
   async function submitReworkRequest() {
-    if (!window.currentCLO) return;
+    if (!globalThis.currentCLO) return;
 
     const comments = document.getElementById('feedbackComments').value.trim();
     const sendEmail = document.getElementById('sendEmailCheckbox').checked;
@@ -581,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const outcomeId = window.currentCLO.outcome_id;
+    const outcomeId = globalThis.currentCLO.outcome_id;
     if (!outcomeId) {
       alert('Error: CLO ID not found');
       return;
