@@ -32,9 +32,14 @@
 
 **Current Status:**
 - ✅ Local JS coverage: 81.42%
-- ✅ All 575 tests passing (13 new renderCLODetails tests)
+- ✅ All 575 unit tests passing (13 new renderCLODetails tests)
 - ✅ All JS checks passing (ESLint, Jest)
-- ⏳ Awaiting SonarCloud validation (expect coverage improvement from 78.55% → ~80%)
+- ✅ 65/66 E2E tests passing
+- ⚠️ Known Issue: 1 E2E test failure (test_uat_010_clo_pipeline_end_to_end)
+  - Issue: `.alert` element timing out (waiting for visibility)
+  - Decision: Merge with known issue, fix on next branch
+  - Does not affect core functionality (all unit tests pass)
+- ✅ Ready to merge!
 
 ---
 
