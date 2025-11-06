@@ -16,7 +16,7 @@ function openInviteFacultyModal() {
   if (window.dashboardDataCache) {
     dashboardData = window.dashboardDataCache;
     populateTermDropdown();
-  } else if (window.InstitutionDashboard && window.InstitutionDashboard.cache) {
+  } else if (window.InstitutionDashboard?.cache) {
     dashboardData = window.InstitutionDashboard.cache;
     populateTermDropdown();
   }
@@ -32,7 +32,7 @@ function populateTermDropdown() {
   const termSelect = document.getElementById('inviteFacultyTerm');
   termSelect.innerHTML = '<option value="">No course assignment</option>';
 
-  if (!dashboardData || !dashboardData.terms) return;
+  if (!dashboardData?.terms) return;
 
   // Sort terms by start_date descending (most recent first)
   const terms = dashboardData.terms.sort((a, b) => {
@@ -78,7 +78,7 @@ function populateOfferingDropdown(termId) {
   const offeringSelect = document.getElementById('inviteFacultyOffering');
   offeringSelect.innerHTML = '<option value="">Select an offering</option>';
 
-  if (!dashboardData || !dashboardData.offerings) {
+  if (!dashboardData?.offerings) {
     offeringSelect.disabled = true;
     return;
   }
@@ -129,7 +129,7 @@ function populateSectionDropdown(offeringId) {
   const sectionSelect = document.getElementById('inviteFacultySection');
   sectionSelect.innerHTML = '<option value="">Select a section</option>';
 
-  if (!dashboardData || !dashboardData.sections) {
+  if (!dashboardData?.sections) {
     sectionSelect.disabled = true;
     return;
   }
@@ -235,7 +235,7 @@ async function submitFacultyInvitation(event) {
       );
 
       // Reload dashboard to show updated data
-      if (window.InstitutionDashboard && window.InstitutionDashboard.loadData) {
+      if (window.InstitutionDashboard?.loadData) {
         window.InstitutionDashboard.loadData({ silent: true });
       }
     } else {

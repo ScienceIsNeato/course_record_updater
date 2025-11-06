@@ -849,11 +849,9 @@ class TestOutcomesCRUD:
         response = client.put(
             "/api/outcomes/outcome-123/assessment",
             json={
-                "assessment_data": {
-                    "students_assessed": 30,
-                    "students_meeting_target": 25,
-                },
-                "narrative": "Students performed well",
+                "students_took": 30,
+                "students_passed": 25,
+                "assessment_tool": "Final Exam",
             },
             headers={"X-CSRFToken": get_csrf_token(client)},
         )
@@ -890,11 +888,9 @@ class TestOutcomesCRUD:
         response = client.put(
             "/api/outcomes/outcome-123/assessment",
             json={
-                "assessment_data": {
-                    "students_assessed": 30,
-                    "students_meeting_target": 25,
-                },
-                "narrative": "Students performed well",
+                "students_took": 30,
+                "students_passed": 25,
+                "assessment_tool": "Midterm Exam",
             },
             headers={"X-CSRFToken": get_csrf_token(client)},
         )
@@ -902,6 +898,37 @@ class TestOutcomesCRUD:
         assert response.status_code == 200
         # Verify auto_mark_in_progress was called
         mock_auto_mark.assert_called_once_with("outcome-123", "user-456")
+
+    @patch("api_routes.get_course_outcomes")
+    @patch("api_routes.get_all_courses")
+    @patch("api_routes.get_current_institution_id")
+    def test_update_outcome_assessment_tool_too_long(
+        self,
+        mock_get_inst_id,
+        mock_get_courses,
+        mock_get_outcomes,
+        client,
+    ):
+        """Test PUT /api/outcomes/<id>/assessment - assessment_tool > 50 chars (CEI demo fix)"""
+        create_site_admin_session(client)
+        mock_get_inst_id.return_value = "inst-1"
+        mock_get_courses.return_value = [{"course_id": "course-123"}]
+        mock_get_outcomes.return_value = [{"outcome_id": "outcome-123"}]
+
+        response = client.put(
+            "/api/outcomes/outcome-123/assessment",
+            json={
+                "students_took": 30,
+                "students_passed": 25,
+                "assessment_tool": "A" * 51,  # 51 chars - exceeds 50 char limit
+            },
+            headers={"X-CSRFToken": get_csrf_token(client)},
+        )
+
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "50 characters" in data["error"]
 
     @patch("api_routes.delete_course_outcome")
     @patch("api_routes.get_course_by_id")

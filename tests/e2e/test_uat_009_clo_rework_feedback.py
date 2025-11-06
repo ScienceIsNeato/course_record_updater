@@ -184,9 +184,9 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
                 "clo_number": 1,
                 "description": "Apply thermodynamic laws to real-world systems",
                 "status": "assigned",
-                "students_assessed": 30,
-                "students_meeting_target": 18,
-                "narrative": "Basic understanding demonstrated.",
+                "students_took": 30,
+                "students_passed": 18,
+                "assessment_tool": "Lab Report",
             }
         ),
     )
@@ -354,21 +354,17 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
         "#updateAssessmentModal", state="visible", timeout=5000
     )
 
-    # Modal should have existing assessment data pre-filled, but update narrative
+    # Modal should have existing assessment data pre-filled (updated field names from CEI demo feedback)
     # Make sure required fields have values (they should be pre-populated)
-    assessed_value = instructor_page.input_value("#studentsAssessed")
+    assessed_value = instructor_page.input_value("#studentsTook")
     if not assessed_value:
-        instructor_page.fill("#studentsAssessed", "30")
-        instructor_page.fill("#studentsMeetingTarget", "18")
+        instructor_page.fill("#studentsTook", "30")
+        instructor_page.fill("#studentsPassed", "18")
 
-    # Update narrative with feedback addressed
+    # Update assessment tool field (replaces old narrative field)
     instructor_page.fill(
-        "#assessmentNarrative",
-        "Students applied the second law of thermodynamics to analyze heat engine "
-        "efficiency in practical scenarios. They calculated Carnot efficiency for "
-        "various temperature differentials. The 60% target achievement is due to "
-        "calculation errors on the final exam, which will be addressed with additional "
-        "problem sets next semester.",
+        "#assessmentTool",
+        "Final Exam",
     )
 
     # Save changes (submit the form) - need to handle success alert

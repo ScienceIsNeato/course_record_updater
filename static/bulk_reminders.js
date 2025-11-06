@@ -463,8 +463,7 @@ class BulkReminderManager {
     // Add status message
     if (job.emails_sent > 0) {
       const lastMessageDiv = document.querySelector('#reminderStatusMessages div:last-child');
-      const lastMessage =
-        lastMessageDiv && lastMessageDiv.textContent ? lastMessageDiv.textContent : '';
+      const lastMessage = lastMessageDiv?.textContent || '';
       const newMessage = `Sent ${job.emails_sent}/${job.recipient_count} reminders...`;
       if (!lastMessage.includes(newMessage)) {
         this.addStatusMessage(newMessage, 'success');

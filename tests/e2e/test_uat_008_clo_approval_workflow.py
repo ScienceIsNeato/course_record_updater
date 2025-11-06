@@ -176,9 +176,9 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
                 "clo_number": 1,
                 "description": "Understand marketing segmentation strategies",
                 "status": "assigned",
-                "students_assessed": 25,
-                "students_meeting_target": 22,
-                "narrative": "Students showed good understanding of segmentation.",
+                "students_took": 25,
+                "students_passed": 22,
+                "assessment_tool": "Midterm Exam",
             }
         ),
     )

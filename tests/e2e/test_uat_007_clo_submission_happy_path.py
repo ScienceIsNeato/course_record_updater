@@ -232,12 +232,12 @@ def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
             "#updateAssessmentModal", state="visible", timeout=5000
         )
 
-    # Fill in assessment data in modal
-    instructor_page.fill("#studentsAssessed", "30")
-    instructor_page.fill("#studentsMeetingTarget", "27")
+    # Fill in assessment data in modal (updated field names from CEI demo feedback)
+    instructor_page.fill("#studentsTook", "30")
+    instructor_page.fill("#studentsPassed", "27")
     instructor_page.fill(
-        "#assessmentNarrative",
-        "Students demonstrated strong understanding of design patterns.",
+        "#assessmentTool",
+        "Final Project",
     )
 
     # Save (auto-marks IN_PROGRESS) - submit the form

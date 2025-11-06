@@ -14,7 +14,8 @@ function getStatusBadge(status) {
     in_progress: '<span class="badge bg-primary">In Progress</span>',
     awaiting_approval: '<span class="badge bg-warning">Awaiting Approval</span>',
     approval_pending: '<span class="badge bg-danger">Needs Rework</span>',
-    approved: '<span class="badge bg-success">✓ Approved</span>'
+    approved: '<span class="badge bg-success">✓ Approved</span>',
+    never_coming_in: '<span class="badge bg-dark">NCI - Never Coming In</span>'
   };
   return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
 }
@@ -47,6 +48,217 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+/**
+ * Approve CLO (extracted for testability)
+ */
+async function approveCLO() {
+  if (!globalThis.currentCLO) return;
+
+  if (
+    !confirm(
+      `Approve this CLO?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}`
+    )
+  ) {
+    return;
+  }
+
+  const outcomeId = globalThis.currentCLO.outcome_id;
+  if (!outcomeId) {
+    alert('Error: CLO ID not found');
+    return;
+  }
+
+  try {
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
+    const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to approve CLO');
+    }
+
+    // Close modal
+    const cloDetailModal = document.getElementById('cloDetailModal');
+    const modal = bootstrap.Modal.getInstance(cloDetailModal);
+    modal.hide();
+
+    // Show success
+    alert('CLO approved successfully!');
+
+    // Reload list
+    await globalThis.loadCLOs();
+  } catch (error) {
+    alert('Failed to approve CLO: ' + error.message);
+  }
+}
+
+/**
+ * Mark CLO as Never Coming In (NCI) (extracted for testability)
+ */
+async function markAsNCI() {
+  if (!globalThis.currentCLO) return;
+
+  const reason = prompt(
+    `Mark this CLO as "Never Coming In"?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}\n\nOptional: Provide a reason (e.g., "Instructor left institution", "Non-responsive instructor"):`
+  );
+
+  // null means cancelled, empty string is allowed
+  if (reason === null) {
+    return;
+  }
+
+  try {
+    const outcomeId = globalThis.currentCLO.outcome_id;
+
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
+    const response = await fetch(`/api/outcomes/${outcomeId}/mark-nci`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({
+        reason: reason.trim() || null
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to mark CLO as NCI');
+    }
+
+    // Close modal
+    const cloDetailModal = document.getElementById('cloDetailModal');
+    const modal = bootstrap.Modal.getInstance(cloDetailModal);
+    modal.hide();
+
+    // Show success
+    alert('CLO marked as Never Coming In (NCI)');
+
+    // Reload list
+    await globalThis.loadCLOs();
+    await globalThis.updateStats();
+  } catch (error) {
+    alert('Failed to mark CLO as NCI: ' + error.message);
+  }
+}
+
+/**
+ * Render CLO details in modal (extracted for testability)
+ */
+function renderCLODetails(clo) {
+  // Use new field names from CEI demo schema changes
+  const studentsTook = clo.students_took || 0;
+  const studentsPassed = clo.students_passed || 0;
+  const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
+
+  const statusBadge = getStatusBadge(clo.status);
+
+  return `
+        <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Status</h6>
+                ${statusBadge}
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Course:</strong> ${escapeHtml(clo.course_number || 'N/A')} - ${escapeHtml(clo.course_title || 'N/A')}
+            </div>
+            <div class="col-md-6">
+                <strong>CLO Number:</strong> ${escapeHtml(clo.clo_number || 'N/A')}
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <strong>Description:</strong>
+            <p>${escapeHtml(clo.description)}</p>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Instructor:</strong> ${escapeHtml(clo.instructor_name || 'N/A')}
+            </div>
+            <div class="col-md-6">
+                <strong>Instructor Email:</strong> ${escapeHtml(clo.instructor_email || 'N/A')}
+            </div>
+        </div>
+        
+        <hr>
+        
+        <h6 class="mb-3">Assessment Data</h6>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${studentsTook}</h4>
+                    <small class="text-muted">Students Took</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${studentsPassed}</h4>
+                    <small class="text-muted">Students Passed</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center p-3 bg-light rounded">
+                    <h4 class="mb-0">${percentage}%</h4>
+                    <small class="text-muted">Success Rate</small>
+                </div>
+            </div>
+        </div>
+        
+        ${
+          clo.narrative
+            ? `
+            <div class="mb-3">
+                <strong>Narrative:</strong>
+                <p class="text-muted">${escapeHtml(clo.narrative)}</p>
+            </div>
+        `
+            : ''
+        }
+        
+        ${
+          clo.feedback_comments
+            ? `
+            <div class="mb-3">
+                <strong>Admin Feedback:</strong>
+                <p class="text-muted">${escapeHtml(clo.feedback_comments)}</p>
+            </div>
+        `
+            : ''
+        }
+        
+        ${
+          clo.reviewed_by_name
+            ? `
+            <div class="mt-3 text-muted small">
+                <em>Reviewed by ${escapeHtml(clo.reviewed_by_name)} on ${formatDate(clo.reviewed_at)}</em>
+            </div>
+        `
+            : ''
+        }
+    `;
+}
+
+// Assign to globalThis IMMEDIATELY for browser use (not inside DOMContentLoaded)
+// This ensures functions are available even if DOM is already loaded
+// Note: globalThis is preferred over window for ES2020 cross-environment compatibility
+globalThis.approveCLO = approveCLO;
+globalThis.markAsNCI = markAsNCI;
+
 document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
   const statusFilter = document.getElementById('statusFilter');
@@ -57,9 +269,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const requestReworkModal = document.getElementById('requestReworkModal');
   const requestReworkForm = document.getElementById('requestReworkForm');
 
-  // State
-  let currentCLO = null;
+  // State - use window for global access by extracted functions
+  globalThis.currentCLO = null;
   let allCLOs = [];
+
+  // Expose functions on window for access by extracted functions (approveCLO, markAsNCI)
+  globalThis.loadCLOs = loadCLOs;
+  globalThis.updateStats = updateStats;
 
   // Initialize
   loadCLOs();
@@ -75,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (row && !e.target.closest('.clo-actions')) {
       const outcomeId = row.dataset.outcomeId;
       if (outcomeId) {
-        window.showCLODetails(outcomeId);
+        globalThis.showCLODetails(outcomeId);
       }
       return;
     }
@@ -86,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const outcomeId = viewBtn.dataset.outcomeId;
       if (outcomeId) {
-        window.showCLODetails(outcomeId);
+        globalThis.showCLODetails(outcomeId);
       }
     }
   });
@@ -143,20 +359,29 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   async function updateStats() {
     try {
-      // Fetch stats for each status
-      const statuses = ['awaiting_approval', 'approval_pending', 'approved', 'in_progress'];
+      // Fetch stats for each status (added NCI from CEI demo feedback)
+      const statuses = [
+        'awaiting_approval',
+        'approval_pending',
+        'approved',
+        'in_progress',
+        'never_coming_in'
+      ];
       const promises = statuses.map(status =>
         fetch(`/api/outcomes/audit?status=${status}`)
           .then(r => r.json())
           .then(d => d.count || 0)
       );
 
-      const [awaiting, pending, approved, inProgress] = await Promise.all(promises);
+      const [awaiting, pending, approved, inProgress, nci] = await Promise.all(promises);
 
       document.getElementById('statAwaitingApproval').textContent = awaiting;
       document.getElementById('statNeedsRework').textContent = pending;
       document.getElementById('statApproved').textContent = approved;
       document.getElementById('statInProgress').textContent = inProgress;
+      if (document.getElementById('statNCI')) {
+        document.getElementById('statNCI').textContent = nci;
+      }
     } catch (error) {
       // Log error to aid debugging, but allow graceful degradation
       // eslint-disable-next-line no-console
@@ -276,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Show CLO details in modal
    */
-  window.showCLODetails = async function (cloId) {
+  globalThis.showCLODetails = async function (cloId) {
     try {
       const response = await fetch(`/api/outcomes/${cloId}/audit-details`);
       if (!response.ok) {
@@ -284,9 +509,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const data = await response.json();
-      currentCLO = data.outcome;
+      globalThis.currentCLO = data.outcome;
+      const clo = globalThis.currentCLO;
 
-      renderCLODetails(currentCLO);
+      // Render HTML using extracted function
+      document.getElementById('cloDetailContent').innerHTML = renderCLODetails(clo);
+
+      // Show/hide action buttons based on status
+      const canApprove = ['awaiting_approval', 'approval_pending'].includes(clo.status);
+      const canMarkNCI = [
+        'awaiting_approval',
+        'approval_pending',
+        'assigned',
+        'in_progress'
+      ].includes(clo.status);
+      document.getElementById('approveBtn').style.display = canApprove ? 'inline-block' : 'none';
+      document.getElementById('requestReworkBtn').style.display = canApprove
+        ? 'inline-block'
+        : 'none';
+      document.getElementById('markNCIBtn').style.display = canMarkNCI ? 'inline-block' : 'none';
 
       const modal = new bootstrap.Modal(cloDetailModal);
       modal.show();
@@ -296,132 +537,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /**
-   * Render CLO details in modal
-   */
-  function renderCLODetails(clo) {
-    const assessment = clo.assessment_data || {};
-    const assessed = assessment.students_assessed || 0;
-    const meeting = assessment.students_meeting_target || 0;
-    const percentage = assessed > 0 ? Math.round((meeting / assessed) * 100) : 0;
-
-    const statusBadge = getStatusBadge(clo.status);
-
-    const html = `
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="mb-0">Status</h6>
-                    ${statusBadge}
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Course:</strong> ${escapeHtml(clo.course_number || 'N/A')} - ${escapeHtml(clo.course_title || 'N/A')}
-                </div>
-                <div class="col-md-6">
-                    <strong>CLO Number:</strong> ${escapeHtml(clo.clo_number || 'N/A')}
-                </div>
-            </div>
-            
-            <div class="mb-3">
-                <strong>Description:</strong>
-                <p>${escapeHtml(clo.description)}</p>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Instructor:</strong> ${escapeHtml(clo.instructor_name || 'N/A')}
-                </div>
-                <div class="col-md-6">
-                    <strong>Instructor Email:</strong> ${escapeHtml(clo.instructor_email || 'N/A')}
-                </div>
-            </div>
-            
-            <hr>
-            
-            <h6 class="mb-3">Assessment Data</h6>
-            <div class="row mb-3">
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${assessed}</h4>
-                        <small class="text-muted">Students Assessed</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${meeting}</h4>
-                        <small class="text-muted">Meeting Target</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-center p-3 bg-light rounded">
-                        <h4 class="mb-0">${percentage}%</h4>
-                        <small class="text-muted">Success Rate</small>
-                    </div>
-                </div>
-            </div>
-            
-            ${
-              clo.narrative
-                ? `
-                <div class="mb-3">
-                    <strong>Narrative:</strong>
-                    <p class="text-muted">${escapeHtml(clo.narrative)}</p>
-                </div>
-            `
-                : ''
-            }
-            
-            <hr>
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <strong>Submitted By:</strong> ${escapeHtml(clo.submitted_by_user_id || 'N/A')}<br>
-                    <strong>Submitted At:</strong> ${clo.submitted_at ? formatDate(clo.submitted_at) : 'N/A'}
-                </div>
-                <div class="col-md-6">
-                    ${
-                      clo.reviewed_by_user_id
-                        ? `
-                        <strong>Reviewed By:</strong> ${escapeHtml(clo.reviewed_by_user_id)}<br>
-                        <strong>Reviewed At:</strong> ${formatDate(clo.reviewed_at)}
-                    `
-                        : ''
-                    }
-                </div>
-            </div>
-            
-            ${
-              clo.feedback_comments
-                ? `
-                <div class="alert alert-warning">
-                    <strong>Previous Feedback:</strong>
-                    <p class="mb-0">${escapeHtml(clo.feedback_comments)}</p>
-                    <small class="text-muted">Provided: ${formatDate(clo.feedback_provided_at)}</small>
-                </div>
-            `
-                : ''
-            }
-        `;
-
-    document.getElementById('cloDetailContent').innerHTML = html;
-
-    // Show/hide action buttons based on status
-    const canApprove = ['awaiting_approval', 'approval_pending'].includes(clo.status);
-    document.getElementById('approveBtn').style.display = canApprove ? 'inline-block' : 'none';
-    document.getElementById('requestReworkBtn').style.display = canApprove
-      ? 'inline-block'
-      : 'none';
-  }
-
-  /**
    * Open rework modal
    */
-  window.openReworkModal = function () {
-    if (!currentCLO) return;
+  globalThis.openReworkModal = function () {
+    if (!globalThis.currentCLO) return;
 
     document.getElementById('reworkCloDescription').textContent =
-      `${currentCLO.course_number} - CLO ${currentCLO.clo_number}: ${currentCLO.description}`;
+      `${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}: ${globalThis.currentCLO.description}`;
     document.getElementById('feedbackComments').value = '';
     document.getElementById('sendEmailCheckbox').checked = true;
 
@@ -440,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Submit rework request
    */
   async function submitReworkRequest() {
-    if (!currentCLO) return;
+    if (!globalThis.currentCLO) return;
 
     const comments = document.getElementById('feedbackComments').value.trim();
     const sendEmail = document.getElementById('sendEmailCheckbox').checked;
@@ -450,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const outcomeId = currentCLO.outcome_id;
+    const outcomeId = globalThis.currentCLO.outcome_id;
     if (!outcomeId) {
       alert('Error: CLO ID not found');
       return;
@@ -490,53 +612,17 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Failed to request rework: ' + error.message);
     }
   }
-
-  /**
-   * Approve CLO
-   */
-  window.approveCLO = async function () {
-    if (!currentCLO) return;
-
-    if (
-      !confirm(`Approve this CLO?\n\n${currentCLO.course_number} - CLO ${currentCLO.clo_number}`)
-    ) {
-      return;
-    }
-
-    const outcomeId = currentCLO.outcome_id;
-    if (!outcomeId) {
-      alert('Error: CLO ID not found');
-      return;
-    }
-
-    try {
-      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
-
-      const response = await fetch(`/api/outcomes/${outcomeId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to approve CLO');
-      }
-
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(cloDetailModal);
-      modal.hide();
-
-      // Show success
-      alert('CLO approved successfully!');
-
-      // Reload list
-      await loadCLOs();
-    } catch (error) {
-      alert('Failed to approve CLO: ' + error.message);
-    }
-  };
 });
+
+// Export for testing (Node.js environment only)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    getStatusBadge,
+    formatDate,
+    truncateText,
+    escapeHtml,
+    renderCLODetails,
+    approveCLO,
+    markAsNCI
+  };
+}

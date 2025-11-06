@@ -288,9 +288,15 @@ def update_course_outcome(outcome_id: str, outcome_data: Dict[str, Any]) -> bool
 
 
 def update_outcome_assessment(
-    outcome_id: str, assessment_data: Dict[str, Any], narrative: Optional[str] = None
+    outcome_id: str,
+    students_took: Optional[int] = None,
+    students_passed: Optional[int] = None,
+    assessment_tool: Optional[str] = None,
 ) -> bool:
-    return _db_service.update_outcome_assessment(outcome_id, assessment_data, narrative)
+    """Update outcome assessment data (corrected field names from demo feedback)."""
+    return _db_service.update_outcome_assessment(
+        outcome_id, students_took, students_passed, assessment_tool
+    )
 
 
 def delete_course_outcome(outcome_id: str) -> bool:

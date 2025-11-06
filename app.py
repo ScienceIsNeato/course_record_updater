@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 
 from api import register_blueprints  # New modular API structure
@@ -136,10 +136,15 @@ def index():
 # Authentication Routes
 @app.route("/login")
 def login():
-    """Login page"""
+    """Login page (supports deep linking via ?next parameter)"""
     # Redirect to dashboard if already authenticated
     if is_authenticated():
         return redirect(url_for(DASHBOARD_ENDPOINT))
+
+    # Store 'next' URL in session for post-login redirect (fixes email deep link)
+    next_url = request.args.get("next")
+    if next_url:
+        session["next_after_login"] = next_url
 
     return render_template("auth/login.html")
 
@@ -175,8 +180,6 @@ def reminder_login():
 
     # Store next_url in session so login handler can use it
     if next_url:
-        from flask import session
-
         session["next_after_login"] = next_url
 
     return render_template("auth/login.html")

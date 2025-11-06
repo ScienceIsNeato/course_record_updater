@@ -166,7 +166,7 @@ function initializeCreateCourseModal() {
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('courseActive');
-        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+        return checkbox?.checked !== undefined ? checkbox.checked : true;
       })()
     };
 
@@ -255,7 +255,7 @@ function initializeEditCourseModal() {
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('editCourseActive');
-        return checkbox && checkbox.checked !== undefined ? checkbox.checked : true;
+        return checkbox?.checked !== undefined ? checkbox.checked : true;
       })()
     };
 

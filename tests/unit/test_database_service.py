@@ -1645,22 +1645,19 @@ def test_outcome_crud_operations():
         == "Students will master comprehensive testing strategies"
     )
 
-    # Test update_outcome_assessment
-    assessment_data = {
-        "students_assessed": 30,
-        "students_meeting": 27,
-        "percentage_meeting": 90.0,
-        "assessment_status": "completed",
-    }
-    narrative = "Students performed exceptionally well on the final project"
+    # Test update_outcome_assessment (corrected API from demo feedback)
     result = database_service.update_outcome_assessment(
-        outcome_id, assessment_data, narrative
+        outcome_id,
+        students_took=30,
+        students_passed=27,
+        assessment_tool="Final Project",
     )
     assert result is True
 
     outcomes = database_service.get_course_outcomes(course_id)
-    assert outcomes[0]["assessment_data"]["students_assessed"] == 30
-    assert outcomes[0]["narrative"] == narrative
+    assert outcomes[0]["students_took"] == 30
+    assert outcomes[0]["students_passed"] == 27
+    assert outcomes[0]["assessment_tool"] == "Final Project"
 
     # Test delete_course_outcome
     result = database_service.delete_course_outcome(outcome_id)

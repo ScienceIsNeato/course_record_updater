@@ -455,7 +455,7 @@ class ImportService:
             self._process_offering_import(record, conflict_strategy, dry_run)
             return []
         elif data_type == "sections":
-            self._process_section_import(record, conflict_strategy, dry_run)
+            self._process_section_import(record, dry_run)
             return []
         elif data_type == "clos":
             self._process_clo_import(record, conflict_strategy, dry_run)
@@ -884,7 +884,6 @@ class ImportService:
 
     def _handle_offering_conflict(
         self,
-        existing_offering: Dict[str, Any],
         strategy: ConflictStrategy,
         course_number: str,
         term_name: str,
@@ -936,11 +935,10 @@ class ImportService:
             existing_offering = get_course_offering_by_course_and_term(
                 course_id, term_id
             )
-            if existing_offering:
-                if self._handle_offering_conflict(
-                    existing_offering, strategy, course_number, term_name
-                ):
-                    return
+            if existing_offering and self._handle_offering_conflict(
+                strategy, course_number, term_name
+            ):
+                return
 
             # Create new offering
             from models import CourseOffering
@@ -1023,7 +1021,6 @@ class ImportService:
     def _process_section_import(
         self,
         section_data: Dict[str, Any],
-        strategy: ConflictStrategy,
         dry_run: bool = False,
     ):
         """Process course section import"""
@@ -1186,6 +1183,29 @@ class ImportService:
 
             self._log(f"Traceback: {traceback.format_exc()}", "error")
 
+    def _try_link_single_course(
+        self, course, program_lookup, course_mappings, add_course_to_program_func
+    ):
+        """Helper to link a single course to its program. Returns True if linked."""
+        course_number = course["course_number"]
+        prefix = course_number.split("-")[0] if "-" in course_number else None
+
+        if not (prefix and prefix in course_mappings):
+            return False
+
+        program_name = course_mappings[prefix]
+        program_id = program_lookup.get(program_name)
+
+        if not program_id:
+            return False
+
+        try:
+            add_course_to_program_func(course["id"], program_id)
+            return True
+        except Exception:
+            # Already linked, that's fine
+            return False
+
     def _link_courses_to_programs(self):
         """
         Automatically link imported courses to programs based on course number prefixes.
@@ -1224,22 +1244,13 @@ class ImportService:
                 "CEI": "CEI Default Program",
             }
 
-            linked_count = 0
-            for course in courses:
-                course_number = course["course_number"]
-                prefix = course_number.split("-")[0] if "-" in course_number else None
-
-                if prefix and prefix in course_mappings:
-                    program_name = course_mappings[prefix]
-                    program_id = program_lookup.get(program_name)
-
-                    if program_id:
-                        try:
-                            add_course_to_program(course["id"], program_id)
-                            linked_count += 1
-                        except Exception:
-                            # Already linked, that's fine
-                            pass
+            linked_count = sum(
+                1
+                for course in courses
+                if self._try_link_single_course(
+                    course, program_lookup, course_mappings, add_course_to_program
+                )
+            )
 
             if linked_count > 0:
                 self.logger.info(f"[Import] Linked {linked_count} courses to programs")

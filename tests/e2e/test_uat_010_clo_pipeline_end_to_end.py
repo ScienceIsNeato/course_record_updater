@@ -227,12 +227,12 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         "#updateAssessmentModal", state="visible", timeout=5000
     )
 
-    # Fill assessment data in modal
-    instructor_page.fill("#studentsAssessed", "35")
-    instructor_page.fill("#studentsMeetingTarget", "30")
+    # Fill assessment data in modal (updated field names from CEI demo feedback)
+    instructor_page.fill("#studentsTook", "35")
+    instructor_page.fill("#studentsPassed", "30")
     instructor_page.fill(
-        "#assessmentNarrative",
-        "Initial narrative: Students completed data structure implementations.",
+        "#assessmentTool",
+        "Programming Assignment",
     )
 
     # Save changes (triggers auto-mark IN_PROGRESS)
@@ -345,14 +345,10 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         "#updateAssessmentModal", state="visible", timeout=5000
     )
 
-    # Address feedback with improved narrative
+    # Address feedback - assessment tool should already be filled, but ensure it's set
     instructor_page.fill(
-        "#assessmentNarrative",
-        "Students implemented arrays, linked lists, stacks, queues, trees, and hash tables. "
-        "They analyzed time complexity (O(1), O(n), O(log n)) and space complexity for each "
-        "data structure. Performance comparisons were conducted using empirical testing with "
-        "various dataset sizes. 86% of students successfully analyzed both time and space "
-        "trade-offs in their final projects.",
+        "#assessmentTool",
+        "Final Project",
     )
 
     # Save changes (submit the form)
@@ -426,10 +422,10 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     assert outcome_data["feedback_comments"] is not None  # Feedback preserved
     assert outcome_data["feedback_provided_at"] is not None
 
-    # Verify improved narrative is present
-    assert "arrays" in outcome_data["narrative"]
-    assert "O(1)" in outcome_data["narrative"] or "O(n)" in outcome_data["narrative"]
-    assert "86%" in outcome_data["narrative"]
+    # Verify assessment tool is present (replaces old narrative field)
+    assert outcome_data["assessment_tool"] == "Final Project"
+    assert outcome_data["students_took"] is not None
+    assert outcome_data["students_passed"] is not None
 
     # === Complete lifecycle verified ===
     # UNASSIGNED → ASSIGNED → IN_PROGRESS → AWAITING_APPROVAL →

@@ -284,6 +284,87 @@ class TestRequestRework:
         assert result is False
 
 
+class TestMarkAsNCI:
+    """Test CLOWorkflowService.mark_as_nci method (CEI demo follow-up)"""
+
+    @patch("clo_workflow_service.db")
+    def test_mark_as_nci_success_with_reason(self, mock_db):
+        """Test marking CLO as Never Coming In with reason"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+        reason = "Instructor left institution"
+
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.mark_as_nci(outcome_id, reviewer_id, reason)
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["status"] == "never_coming_in"
+        assert update_data["approval_status"] == "never_coming_in"
+        assert update_data["feedback_comments"] == reason
+        assert update_data["reviewed_by_user_id"] == reviewer_id
+
+    @patch("clo_workflow_service.db")
+    def test_mark_as_nci_success_without_reason(self, mock_db):
+        """Test marking CLO as NCI without specific reason"""
+        outcome_id = "outcome-123"
+        reviewer_id = "admin-456"
+
+        mock_db.get_course_outcome.return_value = {
+            "id": outcome_id,
+            "status": CLOStatus.IN_PROGRESS,
+        }
+        mock_db.update_course_outcome.return_value = True
+
+        result = CLOWorkflowService.mark_as_nci(outcome_id, reviewer_id, None)
+
+        assert result is True
+        update_call = mock_db.update_course_outcome.call_args[0]
+        update_data = update_call[1]
+        assert update_data["feedback_comments"] == "Marked as Never Coming In (NCI)"
+
+    @patch("clo_workflow_service.db")
+    def test_mark_as_nci_not_found(self, mock_db):
+        """Test NCI marking when CLO doesn't exist"""
+        mock_db.get_course_outcome.return_value = None
+
+        result = CLOWorkflowService.mark_as_nci("fake-id", "admin-456", "Reason")
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
+    def test_mark_as_nci_update_fails(self, mock_db):
+        """Test NCI marking when database update returns False"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.ASSIGNED,
+        }
+        mock_db.update_course_outcome.return_value = False
+
+        result = CLOWorkflowService.mark_as_nci("outcome-123", "admin-456", "Reason")
+
+        assert result is False
+
+    @patch("clo_workflow_service.db")
+    def test_mark_as_nci_database_error(self, mock_db):
+        """Test NCI marking with database exception"""
+        mock_db.get_course_outcome.return_value = {
+            "id": "outcome-123",
+            "status": CLOStatus.AWAITING_APPROVAL,
+        }
+        mock_db.update_course_outcome.side_effect = Exception("Database error")
+
+        result = CLOWorkflowService.mark_as_nci("outcome-123", "admin-456", "Reason")
+
+        assert result is False
+
+
 class TestAutoMarkInProgress:
     """Test CLOWorkflowService.auto_mark_in_progress method"""
 

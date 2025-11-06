@@ -180,10 +180,11 @@ class DatabaseInterface(ABC):
     def update_outcome_assessment(
         self,
         outcome_id: str,
-        assessment_data: Dict[str, Any],
-        narrative: Optional[str] = None,
+        students_took: Optional[int] = None,
+        students_passed: Optional[int] = None,
+        assessment_tool: Optional[str] = None,
     ) -> bool:
-        """Update outcome assessment data and narrative"""
+        """Update outcome assessment data (corrected field names from demo feedback)"""
         raise NotImplementedError
 
     @abstractmethod
