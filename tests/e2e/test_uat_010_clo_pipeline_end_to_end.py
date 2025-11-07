@@ -393,13 +393,33 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     modal = admin_page.locator("#cloDetailModal")
     expect(modal).to_be_visible()
 
-    # Approve
+    # Approve - use dialog handler like test_uat_008
     approve_button = modal.locator('button:has-text("Approve")')
-    admin_page.once("dialog", lambda dialog: dialog.accept())
+    expect(approve_button).to_be_visible()
+
+    # Set up dialog handler for confirmation and success dialogs
+    dialog_messages = []
+
+    def handle_dialog(dialog):
+        dialog_messages.append(dialog.message)
+        dialog.accept()
+
+    admin_page.on("dialog", handle_dialog)
     approve_button.click()
 
-    # Wait for success
-    admin_page.wait_for_selector(".alert", timeout=5000)
+    # Wait for dialogs to be handled
+    admin_page.wait_for_timeout(1000)
+
+    # Verify we got success dialog
+    assert (
+        len(dialog_messages) >= 1
+    ), f"Expected at least 1 dialog, got {len(dialog_messages)}: {dialog_messages}"
+    assert any(
+        "approved" in msg.lower() for msg in dialog_messages
+    ), f"Expected approval success dialog, got: {dialog_messages}"
+
+    # Modal should close after approval
+    expect(modal).not_to_be_visible(timeout=5000)
 
     # === STEP 8: Verify audit trail in database ===
 
