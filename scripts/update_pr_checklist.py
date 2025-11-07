@@ -3,8 +3,9 @@
 update_pr_checklist.py - Update PR issues checklist as items are completed
 
 Usage:
-    # Mark an item as complete
+    # Mark an item as complete (optionally reply to PR comment)
     python scripts/update_pr_checklist.py --complete "Fix failing CI job: e2e-tests"
+    python scripts/update_pr_checklist.py --complete "Address comment from ScienceIsNeato" --reply-to-comment --thread-id PRRT_xxx
     
     # Mark an item as in-progress
     python scripts/update_pr_checklist.py --in-progress "Address comment from ScienceIsNeato"
@@ -185,6 +186,22 @@ def main():
         help="Commit SHA (default: current HEAD)",
     )
     
+    parser.add_argument(
+        "--reply-to-comment",
+        action="store_true",
+        help="Reply to PR comment when marking item complete (requires --thread-id or --comment-id)",
+    )
+    
+    parser.add_argument(
+        "--thread-id",
+        help="Review thread ID (for inline comments, used with --reply-to-comment)",
+    )
+    
+    parser.add_argument(
+        "--comment-id",
+        help="Comment ID (for general PR comments, used with --reply-to-comment)",
+    )
+    
     args = parser.parse_args()
     
     pr_number = args.pr or get_pr_number()
@@ -214,6 +231,47 @@ def main():
     if args.complete:
         item_id = update_item_status(state, args.complete, "completed")
         save_checklist_state(state)
+        
+        # If --reply-to-comment is specified, reply to the PR comment
+        if args.reply_to_comment:
+            if not args.thread_id and not args.comment_id:
+                print("❌ Error: --reply-to-comment requires --thread-id or --comment-id")
+                return 1
+            
+            # Import reply function
+            parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
+            
+            try:
+                from scripts.ship_it import reply_to_pr_comment
+
+                # Create reply body with commit reference
+                commit_sha_full = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                
+                reply_body = f"Fixed in commit `{commit_sha_full[:8]}`"
+                
+                # Reply and resolve thread
+                success = reply_to_pr_comment(
+                    comment_id=args.comment_id,
+                    body=reply_body,
+                    thread_id=args.thread_id,
+                    resolve_thread=True if args.thread_id else False,
+                )
+                
+                if success:
+                    print(f"✅ Replied to PR comment and marked as resolved")
+                else:
+                    print(f"⚠️  Failed to reply to PR comment, but item marked as complete")
+            except Exception as e:
+                print(f"⚠️  Error replying to PR comment: {e}")
+                print(f"✅ Item marked as completed locally")
+        
         print(f"✅ Marked as completed: {args.complete}")
         return 0
     

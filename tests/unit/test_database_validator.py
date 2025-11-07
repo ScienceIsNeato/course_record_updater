@@ -291,3 +291,120 @@ class TestSQLAlchemySchemaValidation:
         # Should raise AttributeError in strict mode
         with pytest.raises(AttributeError):
             validate_schema(db_service, strict=True)
+
+    def test_get_sqlalchemy_engine_direct_engine_attribute(self):
+        """Should handle db_service with direct engine attribute."""
+        engine = create_engine("sqlite:///:memory:")
+
+        # Create service with direct engine attribute
+        class DirectEngineService:
+            def __init__(self, engine):
+                self.engine = engine
+
+        db_service = DirectEngineService(engine)
+
+        from database_validator import _get_sqlalchemy_engine
+
+        result_engine = _get_sqlalchemy_engine(db_service)
+        assert result_engine is engine
+
+    def test_get_all_models_fallback_to_metadata(self):
+        """Should fallback to metadata approach when registry access fails."""
+        import database_validator
+        from database_validator import _get_all_models
+
+        # Mock Base to raise AttributeError when accessing registry
+        original_base = database_validator.Base
+
+        class MockBase:
+            metadata = original_base.metadata
+            registry = None  # Simulate missing registry
+
+        # Temporarily replace Base
+        database_validator.Base = MockBase  # type: ignore[assignment]
+
+        try:
+            # Should not raise, should fallback to metadata
+            models = _get_all_models()
+            # Should return empty list or handle gracefully
+            assert isinstance(models, list)
+        finally:
+            database_validator.Base = original_base
+
+    def test_validate_table_exists_table_missing(self):
+        """Should return issues and should_continue=False when table missing."""
+        from sqlalchemy import inspect
+
+        from database_validator import _validate_table_exists
+
+        engine = create_engine("sqlite:///:memory:")
+        inspector = inspect(engine)
+
+        # Create a mock model for non-existent table
+        class MockModel:
+            __tablename__ = "nonexistent_table"
+            __name__ = "MockModel"
+
+        model = MockModel()
+
+        # Should return issues and False
+        issues, should_continue = _validate_table_exists(inspector, model, strict=False)
+        assert len(issues) > 0
+        assert "nonexistent_table" in issues[0]
+        assert should_continue is False
+
+    def test_validate_model_columns_db_columns_not_in_model(self):
+        """Should return warnings for columns in DB but not in model."""
+        from sqlalchemy import inspect
+
+        from database_validator import _validate_model_columns
+
+        engine = create_engine("sqlite:///:memory:")
+        inspector = inspect(engine)
+
+        # Create table with extra column
+        TestBase = declarative_base()
+
+        class TestModel(TestBase):  # type: ignore[misc,valid-type]
+            __tablename__ = "test_table"
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            # Missing 'extra_column' that exists in DB
+
+        # Create table with extra column
+        from sqlalchemy import Column as TableColumn
+        from sqlalchemy import MetaData, Table
+
+        metadata = MetaData()
+        Table(
+            "test_table",
+            metadata,
+            TableColumn("id", Integer, primary_key=True),
+            TableColumn("name", String),
+            TableColumn("extra_column", String),  # Extra column in DB
+        )
+        metadata.create_all(engine)
+
+        # Should return warnings
+        issues = _validate_model_columns(inspector, TestModel, strict=False)
+        assert len(issues) > 0
+        assert any("extra_column" in issue for issue in issues)
+        assert any("⚠️" in issue for issue in issues)  # Should be warnings, not errors
+
+    def test_validate_schema_or_exit_unexpected_error(self):
+        """Should raise SchemaValidationError for unexpected errors."""
+        import database_validator
+        from database_validator import SchemaValidationError, validate_schema_or_exit
+
+        # Create service that will cause unexpected error
+        class BrokenService:
+            def __getattr__(self, name):
+                raise RuntimeError("Unexpected error")
+
+        db_service = BrokenService()
+
+        # Should raise SchemaValidationError wrapping the unexpected error
+        with pytest.raises(SchemaValidationError) as exc_info:
+            validate_schema_or_exit(db_service)
+
+        assert "Unexpected error" in str(exc_info.value)
