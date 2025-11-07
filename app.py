@@ -18,7 +18,8 @@ from auth_service import (
 
 # Import constants
 from constants import DASHBOARD_ENDPOINT
-from database_service import check_db_connection
+from database_service import check_db_connection, db
+from database_validator import validate_schema_or_exit
 from email_service import EmailService
 from logging_config import get_app_logger
 
@@ -407,5 +408,11 @@ if __name__ == "__main__":
     logger.info(
         "To use a different port, set PORT environment variable: PORT=3002 python app.py"
     )
+
+    # Validate database schema before starting the application
+    # This catches column name typos and schema mismatches at startup
+    # validate_schema_or_exit handles all exceptions internally and will raise
+    # SchemaValidationError if validation fails, blocking startup
+    validate_schema_or_exit(db)
 
     app.run(host="0.0.0.0", port=port, debug=use_debug)

@@ -95,8 +95,13 @@ class TestUAT001RegistrationAndPasswordManagement:
         page.fill('input[name="password"]', self.TEST_PASSWORD)
         page.fill('input[name="confirmPassword"]', self.TEST_PASSWORD)
 
-        # Accept terms and conditions
-        page.check('input[name="agreeTerms"]')
+        # Accept terms and conditions - use locator and wait for it to be ready
+        terms_checkbox = page.locator('input[name="agreeTerms"]')
+        expect(terms_checkbox).to_be_visible()
+        terms_checkbox.check()
+
+        # Verify checkbox is checked
+        expect(terms_checkbox).to_be_checked()
 
         # Submit registration (button enabled after form completion)
         page.click('button[type="submit"]')
