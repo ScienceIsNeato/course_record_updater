@@ -1,121 +1,397 @@
 """
 Test constants for generic adapter test data
 
-Contains all test data strings used in E2E test fixtures.
-These constants are parameterized to allow reuse across tests.
+Contains all test data used in E2E test fixtures, organized into dataclasses
+for better readability and maintainability.
 """
 
-# Institution constants
-TEST_INSTITUTION_ID = "test-institution-001"
-TEST_INSTITUTION_NAME = "Test University"
-TEST_INSTITUTION_SHORT_NAME = "TestU"
-TEST_INSTITUTION_WEBSITE = "https://testu.edu"
-TEST_INSTITUTION_ADMIN_EMAIL = "admin@testu.edu"
+from dataclasses import dataclass
+from typing import Optional
 
-# User constants
-TEST_ADMIN_ID = "admin-001"
-TEST_INSTRUCTOR_1_ID = "user-instructor-1"
-TEST_INSTRUCTOR_1_EMAIL = "instructor1@testu.edu"
-TEST_INSTRUCTOR_1_FIRST_NAME = "Alice"
-TEST_INSTRUCTOR_1_LAST_NAME = "Johnson"
-TEST_INSTRUCTOR_2_ID = "user-instructor-2"
-TEST_INSTRUCTOR_2_EMAIL = "instructor2@testu.edu"
-TEST_INSTRUCTOR_2_FIRST_NAME = "Bob"
-TEST_INSTRUCTOR_2_LAST_NAME = "Smith"
-TEST_ADMIN_USER_ID = "user-admin-1"
-TEST_ADMIN_USER_EMAIL = "admin@testu.edu"
-TEST_ADMIN_USER_FIRST_NAME = "Admin"
-TEST_ADMIN_USER_LAST_NAME = "User"
 
-# Program constants
-TEST_PROGRAM_CS_ID = "prog-cs"
-TEST_PROGRAM_CS_NAME = "Computer Science"
-TEST_PROGRAM_CS_SHORT_NAME = "CS"
-TEST_PROGRAM_CS_DESCRIPTION = "Undergraduate Computer Science Program"
-TEST_PROGRAM_MATH_ID = "prog-math"
-TEST_PROGRAM_MATH_NAME = "Mathematics"
-TEST_PROGRAM_MATH_SHORT_NAME = "MATH"
-TEST_PROGRAM_MATH_DESCRIPTION = "Mathematics Program"
-TEST_PROGRAM_ENG_ID = "prog-eng"
-TEST_PROGRAM_ENG_NAME = "Engineering"
-TEST_PROGRAM_ENG_SHORT_NAME = "ENG"
-TEST_PROGRAM_ENG_DESCRIPTION = "Engineering Program"
+@dataclass(frozen=True)
+class Institution:
+    """Test institution data."""
 
-# Course constants
-TEST_COURSE_CS101_ID = "course-cs101"
-TEST_COURSE_CS101_NUMBER = "CS101"
-TEST_COURSE_CS101_TITLE = "Introduction to Computer Science"
-TEST_COURSE_CS101_DEPARTMENT = "Computer Science"
-TEST_COURSE_CS101_CREDITS = "3"
-TEST_COURSE_MATH201_ID = "course-math201"
-TEST_COURSE_MATH201_NUMBER = "MATH-201"
-TEST_COURSE_MATH201_TITLE = "Calculus I"
-TEST_COURSE_MATH201_DEPARTMENT = "Mathematics"
-TEST_COURSE_MATH201_CREDITS = "4"
-TEST_COURSE_ENG301_ID = "course-eng301"
-TEST_COURSE_ENG301_NUMBER = "ENG301"
-TEST_COURSE_ENG301_TITLE = "Engineering Design"
-TEST_COURSE_ENG301_DEPARTMENT = "Engineering"
-TEST_COURSE_ENG301_CREDITS = "2"
-TEST_COURSE_CS999_ID = "course-cs999"
-TEST_COURSE_CS999_NUMBER = "CS999"
-TEST_COURSE_CS999_TITLE = "Deprecated Course"
-TEST_COURSE_MATH401_ID = "course-math401"
-TEST_COURSE_MATH401_NUMBER = "MATH401"
-TEST_COURSE_MATH401_TITLE = (
-    "Advanced Topics in Mathematical Analysis and Differential Equations"
+    id: str
+    name: str
+    short_name: str
+    website: str
+    admin_email: str
+
+
+@dataclass(frozen=True)
+class Program:
+    """Test program data."""
+
+    id: str
+    name: str
+    short_name: str
+    description: str
+
+
+@dataclass(frozen=True)
+class User:
+    """Test user data."""
+
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    role: str
+    display_name: str = ""
+
+
+@dataclass(frozen=True)
+class Course:
+    """Test course data."""
+
+    id: str
+    number: str
+    title: str
+    department: str
+    credits: str
+    active: bool = True
+
+
+@dataclass(frozen=True)
+class Term:
+    """Test term data."""
+
+    id: str
+    name: str
+    display_name: str
+    start_date: str
+    end_date: str
+    due_date: str
+    active: bool = True
+
+
+@dataclass(frozen=True)
+class CourseOffering:
+    """Test course offering data."""
+
+    id: str
+    course_id: str
+    term_id: str
+    status: str
+    capacity: str
+    enrollment: str
+    section_count: str
+
+
+@dataclass(frozen=True)
+class CourseSection:
+    """Test course section data."""
+
+    id: str
+    offering_id: str
+    instructor_id: Optional[str]
+    section_number: str
+    enrollment: str
+    status: str
+    grade_distribution: str
+
+
+@dataclass(frozen=True)
+class CourseOutcome:
+    """Test course outcome data."""
+
+    id: str
+    course_id: str
+    clo_number: str
+    description: str
+    assessment_method: str
+    assessment_data: str
+    active: bool = True
+
+
+# Institution
+TEST_INSTITUTION = Institution(
+    id="test-institution-001",
+    name="Test University",
+    short_name="TestU",
+    website="https://testu.edu",
+    admin_email="admin@testu.edu",
 )
-TEST_COURSE_CS202_DEPARTMENT = "Computer Science"
-TEST_COURSE_CS202_CREDITS = "3"
-TEST_COURSE_MATH401_DEPARTMENT = "Mathematics"
-TEST_COURSE_MATH401_CREDITS = "3"
-TEST_COURSE_CS202_ID = "course-cs202"
-TEST_COURSE_CS202_NUMBER = "CS202"
-TEST_COURSE_CS202_TITLE = "Data Structures & Algorithms"
-TEST_COURSE_CS101_DUP_ID = "course-cs101-dup"
-TEST_COURSE_CS101_DUP_TITLE = "Introduction to Computer Science (Duplicate)"
 
-# Term constants
-TEST_TERM_FA2024_ID = "term-fa2024"
-TEST_TERM_FA2024_NAME = "FA2024"
-TEST_TERM_FA2024_DISPLAY_NAME = "Fall 2024"
-TEST_TERM_FA2024_START = "2024-08-26"
-TEST_TERM_FA2024_END = "2024-12-15"
-TEST_TERM_FA2024_DUE = "2024-12-20"
-TEST_TERM_SP2025_ID = "term-sp2025"
-TEST_TERM_SP2025_NAME = "SP2025"
-TEST_TERM_SP2025_DISPLAY_NAME = "Spring 2025"
-TEST_TERM_SP2025_START = "2025-01-13"
-TEST_TERM_SP2025_END = "2025-05-10"
-TEST_TERM_SP2025_DUE = "2025-05-15"
-TEST_TERM_SU2023_ID = "term-su2023"
-TEST_TERM_SU2023_NAME = "SU2023"
-TEST_TERM_SU2023_DISPLAY_NAME = "Summer 2023"
-TEST_TERM_SU2023_START = "2023-06-01"
-TEST_TERM_SU2023_END = "2023-08-15"
-TEST_TERM_SU2023_DUE = "2023-08-20"
+# Programs
+TEST_PROGRAM_CS = Program(
+    id="prog-cs",
+    name="Computer Science",
+    short_name="CS",
+    description="Undergraduate Computer Science Program",
+)
 
-# Course offering constants
-TEST_OFFERING_CS101_FA2024_ID = "off-cs101-fa2024"
-TEST_OFFERING_MATH201_FA2024_ID = "off-math201-fa2024"
-TEST_OFFERING_ENG301_SP2025_ID = "off-eng301-sp2025"
-TEST_OFFERING_CS202_FA2024_ID = "off-cs202-fa2024"
-TEST_OFFERING_MATH401_SP2025_ID = "off-math401-sp2025"
+TEST_PROGRAM_MATH = Program(
+    id="prog-math",
+    name="Mathematics",
+    short_name="MATH",
+    description="Mathematics Program",
+)
 
-# Section constants
-TEST_SECTION_1_ID = "section-1"
-TEST_SECTION_2_ID = "section-2"
-TEST_SECTION_3_ID = "section-3"
-TEST_SECTION_4_ID = "section-4"
-TEST_SECTION_5_ID = "section-5"
+TEST_PROGRAM_ENG = Program(
+    id="prog-eng",
+    name="Engineering",
+    short_name="ENG",
+    description="Engineering Program",
+)
 
-# Outcome constants
-TEST_OUTCOME_1_ID = "outcome-1"
-TEST_OUTCOME_2_ID = "outcome-2"
-TEST_OUTCOME_3_ID = "outcome-3"
-TEST_OUTCOME_4_ID = "outcome-4"
+# Users
+TEST_ADMIN_ID = "admin-001"
 
-# Assessment constants
+TEST_INSTRUCTOR_1 = User(
+    id="user-instructor-1",
+    email="instructor1@testu.edu",
+    first_name="Alice",
+    last_name="Johnson",
+    role="instructor",
+)
+
+TEST_INSTRUCTOR_2 = User(
+    id="user-instructor-2",
+    email="instructor2@testu.edu",
+    first_name="Bob",
+    last_name="Smith",
+    role="instructor",
+)
+
+TEST_ADMIN_USER = User(
+    id="user-admin-1",
+    email="admin@testu.edu",
+    first_name="Admin",
+    last_name="User",
+    role="institution_admin",
+)
+
+# Courses
+TEST_COURSE_CS101 = Course(
+    id="course-cs101",
+    number="CS101",
+    title="Introduction to Computer Science",
+    department="Computer Science",
+    credits="3",
+)
+
+TEST_COURSE_MATH201 = Course(
+    id="course-math201",
+    number="MATH-201",
+    title="Calculus I",
+    department="Mathematics",
+    credits="4",
+)
+
+TEST_COURSE_ENG301 = Course(
+    id="course-eng301",
+    number="ENG301",
+    title="Engineering Design",
+    department="Engineering",
+    credits="2",
+)
+
+TEST_COURSE_CS999 = Course(
+    id="course-cs999",
+    number="CS999",
+    title="Deprecated Course",
+    department="Computer Science",
+    credits="3",
+    active=False,
+)
+
+TEST_COURSE_MATH401 = Course(
+    id="course-math401",
+    number="MATH401",
+    title="Advanced Topics in Mathematical Analysis and Differential Equations",
+    department="Mathematics",
+    credits="3",
+)
+
+TEST_COURSE_CS202 = Course(
+    id="course-cs202",
+    number="CS202",
+    title="Data Structures & Algorithms",
+    department="Computer Science",
+    credits="3",
+)
+
+TEST_COURSE_CS101_DUP = Course(
+    id="course-cs101-dup",
+    number="CS101",
+    title="Introduction to Computer Science (Duplicate)",
+    department="Computer Science",
+    credits="3",
+)
+
+# Terms
+TEST_TERM_FA2024 = Term(
+    id="term-fa2024",
+    name="FA2024",
+    display_name="Fall 2024",
+    start_date="2024-08-26",
+    end_date="2024-12-15",
+    due_date="2024-12-20",
+)
+
+TEST_TERM_SP2025 = Term(
+    id="term-sp2025",
+    name="SP2025",
+    display_name="Spring 2025",
+    start_date="2025-01-13",
+    end_date="2025-05-10",
+    due_date="2025-05-15",
+)
+
+TEST_TERM_SU2023 = Term(
+    id="term-su2023",
+    name="SU2023",
+    display_name="Summer 2023",
+    start_date="2023-06-01",
+    end_date="2023-08-15",
+    due_date="2023-08-20",
+    active=False,
+)
+
+# Course Offerings
+TEST_OFFERING_CS101_FA2024 = CourseOffering(
+    id="off-cs101-fa2024",
+    course_id=TEST_COURSE_CS101.id,
+    term_id=TEST_TERM_FA2024.id,
+    status="active",
+    capacity="75",
+    enrollment="50",
+    section_count="2",
+)
+
+TEST_OFFERING_MATH201_FA2024 = CourseOffering(
+    id="off-math201-fa2024",
+    course_id=TEST_COURSE_MATH201.id,
+    term_id=TEST_TERM_FA2024.id,
+    status="active",
+    capacity="60",
+    enrollment="45",
+    section_count="1",
+)
+
+TEST_OFFERING_ENG301_SP2025 = CourseOffering(
+    id="off-eng301-sp2025",
+    course_id=TEST_COURSE_ENG301.id,
+    term_id=TEST_TERM_SP2025.id,
+    status="active",
+    capacity="40",
+    enrollment="30",
+    section_count="1",
+)
+
+TEST_OFFERING_CS202_FA2024 = CourseOffering(
+    id="off-cs202-fa2024",
+    course_id=TEST_COURSE_CS202.id,
+    term_id=TEST_TERM_FA2024.id,
+    status="active",
+    capacity="50",
+    enrollment="50",
+    section_count="1",
+)
+
+TEST_OFFERING_MATH401_SP2025 = CourseOffering(
+    id="off-math401-sp2025",
+    course_id=TEST_COURSE_MATH401.id,
+    term_id=TEST_TERM_SP2025.id,
+    status="active",
+    capacity="30",
+    enrollment="0",
+    section_count="0",
+)
+
+# Course Sections
+TEST_SECTION_1 = CourseSection(
+    id="section-1",
+    offering_id=TEST_OFFERING_CS101_FA2024.id,
+    instructor_id=TEST_INSTRUCTOR_1.id,
+    section_number="001",
+    enrollment="25",
+    status="in_progress",
+    grade_distribution="{}",
+)
+
+TEST_SECTION_2 = CourseSection(
+    id="section-2",
+    offering_id=TEST_OFFERING_CS101_FA2024.id,
+    instructor_id=TEST_INSTRUCTOR_2.id,
+    section_number="002",
+    enrollment="25",
+    status="in_progress",
+    grade_distribution='{"A":5,"B":10,"C":8,"D":2}',
+)
+
+TEST_SECTION_3 = CourseSection(
+    id="section-3",
+    offering_id=TEST_OFFERING_MATH201_FA2024.id,
+    instructor_id=TEST_INSTRUCTOR_1.id,
+    section_number="001",
+    enrollment="45",
+    status="in_progress",
+    grade_distribution="{}",
+)
+
+TEST_SECTION_4 = CourseSection(
+    id="section-4",
+    offering_id=TEST_OFFERING_ENG301_SP2025.id,
+    instructor_id=TEST_INSTRUCTOR_2.id,
+    section_number="001",
+    enrollment="30",
+    status="completed",
+    grade_distribution='{"A":8,"B":12,"C":7,"D":3}',
+)
+
+TEST_SECTION_5 = CourseSection(
+    id="section-5",
+    offering_id=TEST_OFFERING_CS202_FA2024.id,
+    instructor_id=None,
+    section_number="001",
+    enrollment="50",
+    status="assigned",
+    grade_distribution="{}",
+)
+
+# Course Outcomes
+TEST_OUTCOME_1 = CourseOutcome(
+    id="outcome-1",
+    course_id=TEST_COURSE_CS101.id,
+    clo_number="1",
+    description="Students will understand basic programming concepts",
+    assessment_method="Written Exam",
+    assessment_data="{}",
+)
+
+TEST_OUTCOME_2 = CourseOutcome(
+    id="outcome-2",
+    course_id=TEST_COURSE_CS101.id,
+    clo_number="2",
+    description="Students will write simple programs",
+    assessment_method="Programming Assignment",
+    assessment_data='{"students_took":25,"students_passed":20}',
+)
+
+TEST_OUTCOME_3 = CourseOutcome(
+    id="outcome-3",
+    course_id=TEST_COURSE_MATH201.id,
+    clo_number="1",
+    description="Students will solve differential equations",
+    assessment_method="Problem Set",
+    assessment_data="{}",
+)
+
+TEST_OUTCOME_4 = CourseOutcome(
+    id="outcome-4",
+    course_id=TEST_COURSE_CS101.id,
+    clo_number="3",
+    description="Deprecated learning outcome",
+    assessment_method="Written Exam",
+    assessment_data="{}",
+    active=False,
+)
+
+# Assessment method constants (used as strings)
 TEST_ASSESSMENT_METHOD_EXAM = "Written Exam"
 TEST_ASSESSMENT_METHOD_ASSIGNMENT = "Programming Assignment"
 TEST_ASSESSMENT_METHOD_PROBLEM_SET = "Problem Set"
@@ -128,3 +404,6 @@ TEST_GRADE_DIST_COMPLETED = '{"A":8,"B":12,"C":7,"D":3}'
 # Assessment data examples (JSON strings)
 TEST_ASSESSMENT_DATA_EMPTY = "{}"
 TEST_ASSESSMENT_DATA_SAMPLE = '{"students_took":25,"students_passed":20}'
+
+# Timestamps
+CREATED_AT = "2024-01-01T00:00:00Z"
