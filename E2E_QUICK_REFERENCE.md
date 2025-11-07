@@ -84,7 +84,7 @@
 source venv/bin/activate
 
 # 3. Verify test data exists
-ls research/MockU/2024FA_test_data.xlsx
+ls tests/e2e/fixtures/generic_test_data.zip
 
 # 4. Run tests
 ./run_uat.sh
