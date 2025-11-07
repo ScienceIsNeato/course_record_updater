@@ -411,11 +411,8 @@ if __name__ == "__main__":
 
     # Validate database schema before starting the application
     # This catches column name typos and schema mismatches at startup
-    try:
-        validate_schema_or_exit(db)
-    except Exception as e:
-        logger.error(f"Schema validation failed: {e}")
-        logger.error("Application startup blocked. Fix schema issues and restart.")
-        sys.exit(1)
+    # validate_schema_or_exit handles all exceptions internally and will raise
+    # SchemaValidationError if validation fails, blocking startup
+    validate_schema_or_exit(db)
 
     app.run(host="0.0.0.0", port=port, debug=use_debug)

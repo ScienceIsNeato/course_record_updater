@@ -1,21 +1,25 @@
-"""Tests for database schema validator."""
+"""Tests for database schema validator.
+
+This test suite includes:
+- Generic validator tests (column extraction, error handling)
+- SQLAlchemy-specific integration tests
+"""
 
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
-from sqlalchemy.orm import DeclarativeMeta, declarative_base, registry
+from sqlalchemy.orm import declarative_base
 
 from database_validator import (
     SchemaValidationError,
     _get_model_columns,
     _get_table_columns,
-    _suggest_similar_column,
     validate_schema,
     validate_schema_or_exit,
 )
 
 
 class TestColumnExtraction:
-    """Test helper functions for extracting column information."""
+    """Test helper functions for extracting column information (generic)."""
 
     def test_get_model_columns(self):
         """Should extract column names from SQLAlchemy model."""
@@ -31,7 +35,7 @@ class TestColumnExtraction:
         assert columns == {"id", "name", "email"}
 
     def test_get_table_columns_from_inspector(self):
-        """Should extract column names from database table via inspector."""
+        """Should extract column names from database table via inspector (SQLAlchemy-specific)."""
         # Create in-memory database with a test table
         engine = create_engine("sqlite:///:memory:")
         metadata = MetaData()
@@ -52,48 +56,18 @@ class TestColumnExtraction:
         assert columns == {"id", "name", "created_at"}
 
 
-class TestColumnSuggestions:
-    """Test 'did you mean?' column name suggestions."""
+class TestSQLAlchemySchemaValidation:
+    """SQLAlchemy-specific schema validation tests."""
 
-    def test_suggest_exact_match_case_insensitive(self):
-        """Should suggest exact match ignoring case."""
-        available = {"email_verified", "is_active", "created_at"}
-        suggestion = _suggest_similar_column("EMAIL_VERIFIED", available)
-        assert suggestion == "email_verified"
+    def _create_db_service_with_engine(self, engine):
+        """Create a db_service-like object with SQLAlchemy engine."""
 
-    def test_suggest_contains_match(self):
-        """Should suggest column name that contains the typo."""
-        available = {"email_verified", "is_active", "created_at"}
-        suggestion = _suggest_similar_column("email", available)
-        assert suggestion == "email_verified"
+        # Simple object that mimics SQLiteDatabase structure
+        class Service:
+            def __init__(self, engine):
+                self.sqlite = type("SQLite", (), {"engine": engine})()
 
-    def test_suggest_is_contained_match(self):
-        """Should suggest column name that is contained by the typo."""
-        available = {"email", "is_active", "created_at"}
-        suggestion = _suggest_similar_column("email_verified", available)
-        assert suggestion == "email"
-
-    def test_suggest_prefix_match(self):
-        """Should suggest column with same prefix (4+ chars)."""
-        available = {"email_verified", "email_sent_at", "is_active"}
-        suggestion = _suggest_similar_column("email_confirm", available)
-        assert suggestion in ["email_verified", "email_sent_at"]
-
-    def test_suggest_none_for_no_match(self):
-        """Should return None if no similar column found."""
-        available = {"id", "name", "created_at"}
-        suggestion = _suggest_similar_column("totally_different", available)
-        assert suggestion is None
-
-    def test_suggest_none_for_short_name(self):
-        """Should return None for very short names (< 4 chars)."""
-        available = {"id", "name", "age"}
-        suggestion = _suggest_similar_column("xyz", available)
-        assert suggestion is None
-
-
-class TestSchemaValidation:
-    """Test schema validation against actual database."""
+        return Service(engine)
 
     def test_validate_schema_success(self):
         """Should pass validation when schema matches."""
@@ -112,15 +86,6 @@ class TestSchemaValidation:
         # Create table in database
         TestBase.metadata.create_all(engine)
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base with TestBase
         import database_validator
 
@@ -128,7 +93,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
             issues = validate_schema(db_service, strict=True)
             assert issues == []
         finally:
@@ -158,15 +123,6 @@ class TestSchemaValidation:
             name = Column(String)
             age = Column(Integer)  # This doesn't exist in DB
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base
         import database_validator
 
@@ -174,7 +130,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
 
             # Should raise error in strict mode
             with pytest.raises(SchemaValidationError) as exc_info:
@@ -212,15 +168,6 @@ class TestSchemaValidation:
             id = Column(Integer, primary_key=True)
             name = Column(String)
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base
         import database_validator
 
@@ -228,7 +175,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
 
             # Should not raise in strict mode (warnings only for extra DB columns)
             issues = validate_schema(db_service, strict=True)
@@ -253,15 +200,6 @@ class TestSchemaValidation:
             __tablename__ = "missing_table"
             id = Column(Integer, primary_key=True)
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base
         import database_validator
 
@@ -269,7 +207,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
 
             # Should raise error about missing table
             with pytest.raises(SchemaValidationError) as exc_info:
@@ -293,15 +231,6 @@ class TestSchemaValidation:
 
         TestBase.metadata.create_all(engine)
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base
         import database_validator
 
@@ -309,7 +238,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
             # Should not raise
             validate_schema_or_exit(db_service)
         finally:
@@ -330,15 +259,6 @@ class TestSchemaValidation:
             id = Column(Integer, primary_key=True)
             missing_col = Column(String)  # Not in DB
 
-        # Create mock db_service
-        class MockSQLite:
-            def __init__(self):
-                self.engine = engine
-
-        class MockDBService:
-            def __init__(self):
-                self.sqlite = MockSQLite()
-
         # Temporarily replace Base
         import database_validator
 
@@ -346,7 +266,7 @@ class TestSchemaValidation:
         database_validator.Base = TestBase
 
         try:
-            db_service = MockDBService()
+            db_service = self._create_db_service_with_engine(engine)
 
             # Should raise
             with pytest.raises(SchemaValidationError):
@@ -354,19 +274,19 @@ class TestSchemaValidation:
         finally:
             database_validator.Base = original_base
 
-    def test_validate_schema_non_sqlite_backend(self):
-        """Should handle non-SQLite database services gracefully."""
+    def test_validate_schema_non_sqlalchemy_backend(self):
+        """Should handle non-SQLAlchemy database services gracefully."""
 
-        # Create mock db_service without sqlite attribute
-        class MockDBService:
+        # Create service without SQLAlchemy engine
+        class NonSQLAlchemyService:
             pass
 
-        db_service = MockDBService()
+        db_service = NonSQLAlchemyService()
 
         # Should not raise in non-strict mode
         issues = validate_schema(db_service, strict=False)
         assert len(issues) == 1
-        assert "doesn't have expected SQLite backend" in issues[0]
+        assert "doesn't expose SQLAlchemy engine" in issues[0]
 
         # Should raise AttributeError in strict mode
         with pytest.raises(AttributeError):

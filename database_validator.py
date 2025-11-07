@@ -3,12 +3,16 @@
 This module validates that SQLAlchemy models match the actual database schema,
 catching column name typos and schema mismatches at startup before they cause
 runtime errors.
+
+Note: This validator is SQLAlchemy-specific and works with any database backend
+that uses SQLAlchemy (SQLite, PostgreSQL, MySQL, etc.). It accesses the database
+through SQLAlchemy's inspector API, not through DatabaseInterface.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, List, Set
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta
@@ -38,7 +42,7 @@ def _get_model_columns(model: DeclarativeMeta) -> Set[str]:
 
 
 def _get_table_columns(inspector: Any, table_name: str) -> Set[str]:
-    """Extract column names from database table.
+    """Extract column names from database table via SQLAlchemy inspector.
 
     Args:
         inspector: SQLAlchemy inspector instance
@@ -51,52 +55,49 @@ def _get_table_columns(inspector: Any, table_name: str) -> Set[str]:
     return {col["name"] for col in columns}
 
 
-def _suggest_similar_column(
-    incorrect_name: str, available_columns: Set[str]
-) -> str | None:
-    """Suggest a similar column name for a typo.
+def _get_sqlalchemy_engine(db_service: Any) -> Any:
+    """Extract SQLAlchemy engine from database service.
 
-    Uses simple string similarity to suggest corrections.
+    Works with any database implementation that uses SQLAlchemy and exposes
+    the engine (e.g., SQLiteDatabase via sqlite.engine).
 
     Args:
-        incorrect_name: The column name that wasn't found
-        available_columns: Set of valid column names
+        db_service: Database service instance
 
     Returns:
-        Suggested column name or None
+        SQLAlchemy engine instance
+
+    Raises:
+        AttributeError: If db_service doesn't have SQLAlchemy engine
     """
-    # Simple Levenshtein-like heuristic: check for similar names
-    incorrect_lower = incorrect_name.lower()
+    # Try common patterns for accessing SQLAlchemy engine
+    # SQLiteDatabase: db_service.sqlite.engine
+    # Other implementations might expose engine differently
+    if hasattr(db_service, "sqlite") and hasattr(db_service.sqlite, "engine"):
+        return db_service.sqlite.engine
 
-    # Exact match (case-insensitive)
-    for col in available_columns:
-        if col.lower() == incorrect_lower:
-            return col
+    # Try direct engine attribute
+    if hasattr(db_service, "engine"):
+        return db_service.engine
 
-    # Contains or is contained by
-    for col in available_columns:
-        col_lower = col.lower()
-        if incorrect_lower in col_lower or col_lower in incorrect_lower:
-            return col
-
-    # Start with same prefix (at least 4 chars)
-    if len(incorrect_lower) >= 4:
-        for col in available_columns:
-            if col.lower().startswith(incorrect_lower[:4]):
-                return col
-
-    return None
+    raise AttributeError(
+        f"Database service {type(db_service).__name__} doesn't expose SQLAlchemy engine. "
+        "Schema validation requires SQLAlchemy-based database implementation."
+    )
 
 
 def validate_schema(db_service: Any, strict: bool = True) -> List[str]:
     """Validate that SQLAlchemy models match database schema.
 
     Compares the columns defined in SQLAlchemy models against the actual
-    columns in the database tables. Reports any mismatches with helpful
+    columns in the database tables. Reports any mismatches with clear
     error messages.
 
+    Note: This function is SQLAlchemy-specific and works with any database
+    backend that uses SQLAlchemy (SQLite, PostgreSQL, MySQL, etc.).
+
     Args:
-        db_service: Database service instance (must have SQLite backend)
+        db_service: Database service instance (must use SQLAlchemy)
         strict: If True, raise exception on first mismatch. If False,
                 collect all issues and return as list.
 
@@ -105,17 +106,18 @@ def validate_schema(db_service: Any, strict: bool = True) -> List[str]:
 
     Raises:
         SchemaValidationError: If strict=True and schema mismatch found
-        AttributeError: If db_service doesn't have required attributes
+        AttributeError: If db_service doesn't expose SQLAlchemy engine
     """
     issues: List[str] = []
 
-    # Get database engine from service
+    # Get SQLAlchemy engine from service
     try:
-        engine = db_service.sqlite.engine
+        engine = _get_sqlalchemy_engine(db_service)
     except AttributeError as e:
         error_msg = (
-            f"Database service doesn't have expected SQLite backend: {e}. "
-            "Schema validation only works with SQLite implementation."
+            f"Schema validation requires SQLAlchemy-based database: {e}. "
+            "This validator works with SQLite, PostgreSQL, MySQL, and other "
+            "SQLAlchemy-supported backends."
         )
         if strict:
             raise AttributeError(error_msg) from e
@@ -170,12 +172,9 @@ def validate_schema(db_service: Any, strict: bool = True) -> List[str]:
         # Find columns that exist in model but not in database
         missing_in_db = model_columns - db_columns
         for col_name in missing_in_db:
-            suggestion = _suggest_similar_column(col_name, db_columns)
-            suggestion_text = f" Did you mean '{suggestion}'?" if suggestion else ""
-
             issue = (
                 f"❌ Column '{col_name}' defined in {model.__name__} model "
-                f"but not found in database table '{table_name}'.{suggestion_text}"
+                f"but not found in database table '{table_name}'."
             )
             issues.append(issue)
             logger.error(issue)
@@ -212,7 +211,7 @@ def validate_schema_or_exit(db_service: Any) -> None:
 
     Raises:
         SchemaValidationError: If schema validation fails
-        SystemExit: If validation fails and we want to prevent startup
+        SystemExit: If validation fails (prevents startup)
     """
     logger.info("🔍 Validating database schema...")
 
@@ -234,6 +233,11 @@ def validate_schema_or_exit(db_service: Any) -> None:
         )
         raise
     except Exception as e:
-        logger.error(f"⚠️  Schema validation encountered unexpected error: {e}")
-        # Don't block startup for unexpected validation errors
-        logger.warning("Proceeding with application startup despite validation error")
+        # Unexpected errors should also block startup - don't silently proceed
+        logger.error(
+            f"⛔ Schema validation encountered unexpected error: {e}. "
+            "Application startup blocked. Fix the validation error before restarting."
+        )
+        raise SchemaValidationError(
+            f"Schema validation failed with unexpected error: {e}"
+        ) from e
