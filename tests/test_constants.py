@@ -1,0 +1,130 @@
+"""
+Test constants for generic adapter test data
+
+Contains all test data strings used in E2E test fixtures.
+These constants are parameterized to allow reuse across tests.
+"""
+
+# Institution constants
+TEST_INSTITUTION_ID = "test-institution-001"
+TEST_INSTITUTION_NAME = "Test University"
+TEST_INSTITUTION_SHORT_NAME = "TestU"
+TEST_INSTITUTION_WEBSITE = "https://testu.edu"
+TEST_INSTITUTION_ADMIN_EMAIL = "admin@testu.edu"
+
+# User constants
+TEST_ADMIN_ID = "admin-001"
+TEST_INSTRUCTOR_1_ID = "user-instructor-1"
+TEST_INSTRUCTOR_1_EMAIL = "instructor1@testu.edu"
+TEST_INSTRUCTOR_1_FIRST_NAME = "Alice"
+TEST_INSTRUCTOR_1_LAST_NAME = "Johnson"
+TEST_INSTRUCTOR_2_ID = "user-instructor-2"
+TEST_INSTRUCTOR_2_EMAIL = "instructor2@testu.edu"
+TEST_INSTRUCTOR_2_FIRST_NAME = "Bob"
+TEST_INSTRUCTOR_2_LAST_NAME = "Smith"
+TEST_ADMIN_USER_ID = "user-admin-1"
+TEST_ADMIN_USER_EMAIL = "admin@testu.edu"
+TEST_ADMIN_USER_FIRST_NAME = "Admin"
+TEST_ADMIN_USER_LAST_NAME = "User"
+
+# Program constants
+TEST_PROGRAM_CS_ID = "prog-cs"
+TEST_PROGRAM_CS_NAME = "Computer Science"
+TEST_PROGRAM_CS_SHORT_NAME = "CS"
+TEST_PROGRAM_CS_DESCRIPTION = "Undergraduate Computer Science Program"
+TEST_PROGRAM_MATH_ID = "prog-math"
+TEST_PROGRAM_MATH_NAME = "Mathematics"
+TEST_PROGRAM_MATH_SHORT_NAME = "MATH"
+TEST_PROGRAM_MATH_DESCRIPTION = "Mathematics Program"
+TEST_PROGRAM_ENG_ID = "prog-eng"
+TEST_PROGRAM_ENG_NAME = "Engineering"
+TEST_PROGRAM_ENG_SHORT_NAME = "ENG"
+TEST_PROGRAM_ENG_DESCRIPTION = "Engineering Program"
+
+# Course constants
+TEST_COURSE_CS101_ID = "course-cs101"
+TEST_COURSE_CS101_NUMBER = "CS101"
+TEST_COURSE_CS101_TITLE = "Introduction to Computer Science"
+TEST_COURSE_CS101_DEPARTMENT = "Computer Science"
+TEST_COURSE_CS101_CREDITS = "3"
+TEST_COURSE_MATH201_ID = "course-math201"
+TEST_COURSE_MATH201_NUMBER = "MATH-201"
+TEST_COURSE_MATH201_TITLE = "Calculus I"
+TEST_COURSE_MATH201_DEPARTMENT = "Mathematics"
+TEST_COURSE_MATH201_CREDITS = "4"
+TEST_COURSE_ENG301_ID = "course-eng301"
+TEST_COURSE_ENG301_NUMBER = "ENG301"
+TEST_COURSE_ENG301_TITLE = "Engineering Design"
+TEST_COURSE_ENG301_DEPARTMENT = "Engineering"
+TEST_COURSE_ENG301_CREDITS = "2"
+TEST_COURSE_CS999_ID = "course-cs999"
+TEST_COURSE_CS999_NUMBER = "CS999"
+TEST_COURSE_CS999_TITLE = "Deprecated Course"
+TEST_COURSE_MATH401_ID = "course-math401"
+TEST_COURSE_MATH401_NUMBER = "MATH401"
+TEST_COURSE_MATH401_TITLE = (
+    "Advanced Topics in Mathematical Analysis and Differential Equations"
+)
+TEST_COURSE_CS202_DEPARTMENT = "Computer Science"
+TEST_COURSE_CS202_CREDITS = "3"
+TEST_COURSE_MATH401_DEPARTMENT = "Mathematics"
+TEST_COURSE_MATH401_CREDITS = "3"
+TEST_COURSE_CS202_ID = "course-cs202"
+TEST_COURSE_CS202_NUMBER = "CS202"
+TEST_COURSE_CS202_TITLE = "Data Structures & Algorithms"
+TEST_COURSE_CS101_DUP_ID = "course-cs101-dup"
+TEST_COURSE_CS101_DUP_TITLE = "Introduction to Computer Science (Duplicate)"
+
+# Term constants
+TEST_TERM_FA2024_ID = "term-fa2024"
+TEST_TERM_FA2024_NAME = "FA2024"
+TEST_TERM_FA2024_DISPLAY_NAME = "Fall 2024"
+TEST_TERM_FA2024_START = "2024-08-26"
+TEST_TERM_FA2024_END = "2024-12-15"
+TEST_TERM_FA2024_DUE = "2024-12-20"
+TEST_TERM_SP2025_ID = "term-sp2025"
+TEST_TERM_SP2025_NAME = "SP2025"
+TEST_TERM_SP2025_DISPLAY_NAME = "Spring 2025"
+TEST_TERM_SP2025_START = "2025-01-13"
+TEST_TERM_SP2025_END = "2025-05-10"
+TEST_TERM_SP2025_DUE = "2025-05-15"
+TEST_TERM_SU2023_ID = "term-su2023"
+TEST_TERM_SU2023_NAME = "SU2023"
+TEST_TERM_SU2023_DISPLAY_NAME = "Summer 2023"
+TEST_TERM_SU2023_START = "2023-06-01"
+TEST_TERM_SU2023_END = "2023-08-15"
+TEST_TERM_SU2023_DUE = "2023-08-20"
+
+# Course offering constants
+TEST_OFFERING_CS101_FA2024_ID = "off-cs101-fa2024"
+TEST_OFFERING_MATH201_FA2024_ID = "off-math201-fa2024"
+TEST_OFFERING_ENG301_SP2025_ID = "off-eng301-sp2025"
+TEST_OFFERING_CS202_FA2024_ID = "off-cs202-fa2024"
+TEST_OFFERING_MATH401_SP2025_ID = "off-math401-sp2025"
+
+# Section constants
+TEST_SECTION_1_ID = "section-1"
+TEST_SECTION_2_ID = "section-2"
+TEST_SECTION_3_ID = "section-3"
+TEST_SECTION_4_ID = "section-4"
+TEST_SECTION_5_ID = "section-5"
+
+# Outcome constants
+TEST_OUTCOME_1_ID = "outcome-1"
+TEST_OUTCOME_2_ID = "outcome-2"
+TEST_OUTCOME_3_ID = "outcome-3"
+TEST_OUTCOME_4_ID = "outcome-4"
+
+# Assessment constants
+TEST_ASSESSMENT_METHOD_EXAM = "Written Exam"
+TEST_ASSESSMENT_METHOD_ASSIGNMENT = "Programming Assignment"
+TEST_ASSESSMENT_METHOD_PROBLEM_SET = "Problem Set"
+
+# Grade distribution examples (JSON strings)
+TEST_GRADE_DIST_EMPTY = "{}"
+TEST_GRADE_DIST_SAMPLE = '{"A":5,"B":10,"C":8,"D":2}'
+TEST_GRADE_DIST_COMPLETED = '{"A":8,"B":12,"C":7,"D":3}'
+
+# Assessment data examples (JSON strings)
+TEST_ASSESSMENT_DATA_EMPTY = "{}"
+TEST_ASSESSMENT_DATA_SAMPLE = '{"students_took":25,"students_passed":20}'

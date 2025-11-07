@@ -9,11 +9,118 @@ Creates a ZIP file following the Generic CSV Adapter format with:
 """
 
 import csv
+import io
 import json
+import sys
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, Dict, List, cast
+
+# Import test constants
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from tests.test_constants import (
+    TEST_ADMIN_ID,
+    TEST_ADMIN_USER_EMAIL,
+    TEST_ADMIN_USER_FIRST_NAME,
+    TEST_ADMIN_USER_ID,
+    TEST_ADMIN_USER_LAST_NAME,
+    TEST_ASSESSMENT_DATA_EMPTY,
+    TEST_ASSESSMENT_DATA_SAMPLE,
+    TEST_ASSESSMENT_METHOD_ASSIGNMENT,
+    TEST_ASSESSMENT_METHOD_EXAM,
+    TEST_ASSESSMENT_METHOD_PROBLEM_SET,
+    TEST_COURSE_CS101_CREDITS,
+    TEST_COURSE_CS101_DEPARTMENT,
+    TEST_COURSE_CS101_DUP_ID,
+    TEST_COURSE_CS101_DUP_TITLE,
+    TEST_COURSE_CS101_ID,
+    TEST_COURSE_CS101_NUMBER,
+    TEST_COURSE_CS101_TITLE,
+    TEST_COURSE_CS202_CREDITS,
+    TEST_COURSE_CS202_DEPARTMENT,
+    TEST_COURSE_CS202_ID,
+    TEST_COURSE_CS202_NUMBER,
+    TEST_COURSE_CS202_TITLE,
+    TEST_COURSE_CS999_ID,
+    TEST_COURSE_CS999_NUMBER,
+    TEST_COURSE_CS999_TITLE,
+    TEST_COURSE_ENG301_CREDITS,
+    TEST_COURSE_ENG301_DEPARTMENT,
+    TEST_COURSE_ENG301_ID,
+    TEST_COURSE_ENG301_NUMBER,
+    TEST_COURSE_ENG301_TITLE,
+    TEST_COURSE_MATH201_CREDITS,
+    TEST_COURSE_MATH201_DEPARTMENT,
+    TEST_COURSE_MATH201_ID,
+    TEST_COURSE_MATH201_NUMBER,
+    TEST_COURSE_MATH201_TITLE,
+    TEST_COURSE_MATH401_CREDITS,
+    TEST_COURSE_MATH401_DEPARTMENT,
+    TEST_COURSE_MATH401_ID,
+    TEST_COURSE_MATH401_NUMBER,
+    TEST_COURSE_MATH401_TITLE,
+    TEST_GRADE_DIST_COMPLETED,
+    TEST_GRADE_DIST_EMPTY,
+    TEST_GRADE_DIST_SAMPLE,
+    TEST_INSTITUTION_ADMIN_EMAIL,
+    TEST_INSTITUTION_ID,
+    TEST_INSTITUTION_NAME,
+    TEST_INSTITUTION_SHORT_NAME,
+    TEST_INSTITUTION_WEBSITE,
+    TEST_INSTRUCTOR_1_EMAIL,
+    TEST_INSTRUCTOR_1_FIRST_NAME,
+    TEST_INSTRUCTOR_1_ID,
+    TEST_INSTRUCTOR_1_LAST_NAME,
+    TEST_INSTRUCTOR_2_EMAIL,
+    TEST_INSTRUCTOR_2_FIRST_NAME,
+    TEST_INSTRUCTOR_2_ID,
+    TEST_INSTRUCTOR_2_LAST_NAME,
+    TEST_OFFERING_CS101_FA2024_ID,
+    TEST_OFFERING_CS202_FA2024_ID,
+    TEST_OFFERING_ENG301_SP2025_ID,
+    TEST_OFFERING_MATH201_FA2024_ID,
+    TEST_OFFERING_MATH401_SP2025_ID,
+    TEST_OUTCOME_1_ID,
+    TEST_OUTCOME_2_ID,
+    TEST_OUTCOME_3_ID,
+    TEST_OUTCOME_4_ID,
+    TEST_PROGRAM_CS_DESCRIPTION,
+    TEST_PROGRAM_CS_ID,
+    TEST_PROGRAM_CS_NAME,
+    TEST_PROGRAM_CS_SHORT_NAME,
+    TEST_PROGRAM_ENG_DESCRIPTION,
+    TEST_PROGRAM_ENG_ID,
+    TEST_PROGRAM_ENG_NAME,
+    TEST_PROGRAM_ENG_SHORT_NAME,
+    TEST_PROGRAM_MATH_DESCRIPTION,
+    TEST_PROGRAM_MATH_ID,
+    TEST_PROGRAM_MATH_NAME,
+    TEST_PROGRAM_MATH_SHORT_NAME,
+    TEST_SECTION_1_ID,
+    TEST_SECTION_2_ID,
+    TEST_SECTION_3_ID,
+    TEST_SECTION_4_ID,
+    TEST_SECTION_5_ID,
+    TEST_TERM_FA2024_DISPLAY_NAME,
+    TEST_TERM_FA2024_DUE,
+    TEST_TERM_FA2024_END,
+    TEST_TERM_FA2024_ID,
+    TEST_TERM_FA2024_NAME,
+    TEST_TERM_FA2024_START,
+    TEST_TERM_SP2025_DISPLAY_NAME,
+    TEST_TERM_SP2025_DUE,
+    TEST_TERM_SP2025_END,
+    TEST_TERM_SP2025_ID,
+    TEST_TERM_SP2025_NAME,
+    TEST_TERM_SP2025_START,
+    TEST_TERM_SU2023_DISPLAY_NAME,
+    TEST_TERM_SU2023_DUE,
+    TEST_TERM_SU2023_END,
+    TEST_TERM_SU2023_ID,
+    TEST_TERM_SU2023_NAME,
+    TEST_TERM_SU2023_START,
+)
 
 # Output directory
 SCRIPT_DIR = Path(__file__).parent
@@ -26,14 +133,26 @@ OUTPUT_FILE = OUTPUT_DIR / "generic_test_data.zip"
 FORMAT_VERSION = "1.0"
 MANIFEST_FILENAME = "manifest.json"
 
-# Test institution ID (generic, not CEI-specific)
-TEST_INSTITUTION_ID = "test-institution-001"
-TEST_INSTITUTION_NAME = "Test University"
-
 # Timestamps
 NOW = datetime.now(timezone.utc).isoformat()
 CREATED_AT = "2024-01-01T00:00:00Z"
 UPDATED_AT = NOW
+
+
+def _write_csv_to_zip(zf: zipfile.ZipFile, filename: str, rows: List[List[str]]) -> None:
+    """
+    Write CSV rows to ZIP file using csv.writer for proper escaping.
+
+    Args:
+        zf: ZipFile object
+        filename: Name of CSV file in ZIP
+        rows: List of rows, each row is a list of strings
+    """
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerows(rows)
+    zf.writestr(filename, output.getvalue())
+
 
 # Create ZIP file
 with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -55,10 +174,10 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         [
             TEST_INSTITUTION_ID,
             TEST_INSTITUTION_NAME,
-            "TestU",
-            "https://testu.edu",
-            "admin-001",
-            "admin@testu.edu",
+            TEST_INSTITUTION_SHORT_NAME,
+            TEST_INSTITUTION_WEBSITE,
+            TEST_ADMIN_ID,
+            TEST_INSTITUTION_ADMIN_EMAIL,
             "true",
             "true",
             "true",
@@ -66,10 +185,7 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "institutions.csv",
-        "\n".join(",".join(row) for row in institutions_csv),
-    )
+    _write_csv_to_zip(zf, "institutions.csv", institutions_csv)
 
     # 2. programs.csv
     programs_csv = [
@@ -86,46 +202,43 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "prog-cs",
-            "Computer Science",
-            "CS",
-            "Undergraduate Computer Science Program",
+            TEST_PROGRAM_CS_ID,
+            TEST_PROGRAM_CS_NAME,
+            TEST_PROGRAM_CS_SHORT_NAME,
+            TEST_PROGRAM_CS_DESCRIPTION,
             TEST_INSTITUTION_ID,
-            "admin-001",
+            TEST_ADMIN_ID,
             "true",
             "true",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "prog-math",
-            "Mathematics",
-            "MATH",
-            "Mathematics Program",
+            TEST_PROGRAM_MATH_ID,
+            TEST_PROGRAM_MATH_NAME,
+            TEST_PROGRAM_MATH_SHORT_NAME,
+            TEST_PROGRAM_MATH_DESCRIPTION,
             TEST_INSTITUTION_ID,
-            "admin-001",
+            TEST_ADMIN_ID,
             "false",
             "true",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "prog-eng",
-            "Engineering",
-            "ENG",
-            "Engineering Program",
+            TEST_PROGRAM_ENG_ID,
+            TEST_PROGRAM_ENG_NAME,
+            TEST_PROGRAM_ENG_SHORT_NAME,
+            TEST_PROGRAM_ENG_DESCRIPTION,
             TEST_INSTITUTION_ID,
-            "admin-001",
+            TEST_ADMIN_ID,
             "false",
             "true",
             CREATED_AT,
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "programs.csv",
-        "\n".join(",".join(row) for row in programs_csv),
-    )
+    _write_csv_to_zip(zf, "programs.csv", programs_csv)
 
     # 3. users.csv (instructors and admins)
     users_csv = [
@@ -148,11 +261,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "user-instructor-1",
-            "instructor1@testu.edu",
+            TEST_INSTRUCTOR_1_ID,
+            TEST_INSTRUCTOR_1_EMAIL,
             "",  # No password hash (security)
-            "Alice",
-            "Johnson",
+            TEST_INSTRUCTOR_1_FIRST_NAME,
+            TEST_INSTRUCTOR_1_LAST_NAME,
             "",
             "instructor",
             TEST_INSTITUTION_ID,
@@ -166,11 +279,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
         [
-            "user-instructor-2",
-            "instructor2@testu.edu",
+            TEST_INSTRUCTOR_2_ID,
+            TEST_INSTRUCTOR_2_EMAIL,
             "",
-            "Bob",
-            "Smith",
+            TEST_INSTRUCTOR_2_FIRST_NAME,
+            TEST_INSTRUCTOR_2_LAST_NAME,
             "",
             "instructor",
             TEST_INSTITUTION_ID,
@@ -184,11 +297,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
         [
-            "user-admin-1",
-            "admin@testu.edu",
+            TEST_ADMIN_USER_ID,
+            TEST_ADMIN_USER_EMAIL,
             "",
-            "Admin",
-            "User",
+            TEST_ADMIN_USER_FIRST_NAME,
+            TEST_ADMIN_USER_LAST_NAME,
             "",
             "institution_admin",
             TEST_INSTITUTION_ID,
@@ -202,22 +315,16 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "users.csv",
-        "\n".join(",".join(row) for row in users_csv),
-    )
+    _write_csv_to_zip(zf, "users.csv", users_csv)
 
     # 4. user_programs.csv
     user_programs_csv = [
         ["user_id", "program_id"],
-        ["user-instructor-1", "prog-cs"],
-        ["user-instructor-1", "prog-math"],
-        ["user-instructor-2", "prog-eng"],
+        [TEST_INSTRUCTOR_1_ID, TEST_PROGRAM_CS_ID],
+        [TEST_INSTRUCTOR_1_ID, TEST_PROGRAM_MATH_ID],
+        [TEST_INSTRUCTOR_2_ID, TEST_PROGRAM_ENG_ID],
     ]
-    zf.writestr(
-        "user_programs.csv",
-        "\n".join(",".join(row) for row in user_programs_csv),
-    )
+    _write_csv_to_zip(zf, "user_programs.csv", user_programs_csv)
 
     # 5. courses.csv (6-10 courses with edge cases)
     courses_csv = [
@@ -234,11 +341,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Normal course
         [
-            "course-cs101",
-            "CS101",
-            "Introduction to Computer Science",
-            "Computer Science",
-            "3",
+            TEST_COURSE_CS101_ID,
+            TEST_COURSE_CS101_NUMBER,
+            TEST_COURSE_CS101_TITLE,
+            TEST_COURSE_CS101_DEPARTMENT,
+            TEST_COURSE_CS101_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
@@ -246,11 +353,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Course with hyphen in number
         [
-            "course-math201",
-            "MATH-201",
-            "Calculus I",
-            "Mathematics",
-            "4",
+            TEST_COURSE_MATH201_ID,
+            TEST_COURSE_MATH201_NUMBER,
+            TEST_COURSE_MATH201_TITLE,
+            TEST_COURSE_MATH201_DEPARTMENT,
+            TEST_COURSE_MATH201_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
@@ -258,11 +365,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Course with different credit hours
         [
-            "course-eng301",
-            "ENG301",
-            "Engineering Design",
-            "Engineering",
-            "2",
+            TEST_COURSE_ENG301_ID,
+            TEST_COURSE_ENG301_NUMBER,
+            TEST_COURSE_ENG301_TITLE,
+            TEST_COURSE_ENG301_DEPARTMENT,
+            TEST_COURSE_ENG301_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
@@ -270,11 +377,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Inactive course (edge case)
         [
-            "course-cs999",
-            "CS999",
-            "Deprecated Course",
-            "Computer Science",
-            "3",
+            TEST_COURSE_CS999_ID,
+            TEST_COURSE_CS999_NUMBER,
+            TEST_COURSE_CS999_TITLE,
+            TEST_COURSE_CS101_DEPARTMENT,
+            TEST_COURSE_CS101_CREDITS,
             TEST_INSTITUTION_ID,
             "false",
             CREATED_AT,
@@ -282,11 +389,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Course with long title (edge case)
         [
-            "course-math401",
-            "MATH401",
-            "Advanced Topics in Mathematical Analysis and Differential Equations",
-            "Mathematics",
-            "3",
+            TEST_COURSE_MATH401_ID,
+            TEST_COURSE_MATH401_NUMBER,
+            TEST_COURSE_MATH401_TITLE,
+            TEST_COURSE_MATH201_DEPARTMENT,
+            TEST_COURSE_MATH401_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
@@ -294,11 +401,11 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Course with special characters
         [
-            "course-cs202",
-            "CS202",
-            "Data Structures & Algorithms",
-            "Computer Science",
-            "3",
+            TEST_COURSE_CS202_ID,
+            TEST_COURSE_CS202_NUMBER,
+            TEST_COURSE_CS202_TITLE,
+            TEST_COURSE_CS202_DEPARTMENT,
+            TEST_COURSE_CS202_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
@@ -306,37 +413,31 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Duplicate course number (conflict case)
         [
-            "course-cs101-dup",
-            "CS101",
-            "Introduction to Computer Science (Duplicate)",
-            "Computer Science",
-            "3",
+            TEST_COURSE_CS101_DUP_ID,
+            TEST_COURSE_CS101_NUMBER,
+            TEST_COURSE_CS101_DUP_TITLE,
+            TEST_COURSE_CS101_DEPARTMENT,
+            TEST_COURSE_CS101_CREDITS,
             TEST_INSTITUTION_ID,
             "true",
             CREATED_AT,
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "courses.csv",
-        "\n".join(",".join(row) for row in courses_csv),
-    )
+    _write_csv_to_zip(zf, "courses.csv", courses_csv)
 
     # 6. course_programs.csv
     course_programs_csv = [
         ["course_id", "program_id"],
-        ["course-cs101", "prog-cs"],
-        ["course-math201", "prog-math"],
-        ["course-eng301", "prog-eng"],
-        ["course-cs202", "prog-cs"],
-        ["course-math401", "prog-math"],
+        [TEST_COURSE_CS101_ID, TEST_PROGRAM_CS_ID],
+        [TEST_COURSE_MATH201_ID, TEST_PROGRAM_MATH_ID],
+        [TEST_COURSE_ENG301_ID, TEST_PROGRAM_ENG_ID],
+        [TEST_COURSE_CS202_ID, TEST_PROGRAM_CS_ID],
+        [TEST_COURSE_MATH401_ID, TEST_PROGRAM_MATH_ID],
         # Duplicate association (edge case)
-        ["course-cs101", "prog-math"],
+        [TEST_COURSE_CS101_ID, TEST_PROGRAM_MATH_ID],
     ]
-    zf.writestr(
-        "course_programs.csv",
-        "\n".join(",".join(row) for row in course_programs_csv),
-    )
+    _write_csv_to_zip(zf, "course_programs.csv", course_programs_csv)
 
     # 7. terms.csv
     terms_csv = [
@@ -353,24 +454,24 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "term-fa2024",
-            "FA2024",
-            "Fall 2024",
-            "2024-08-26",
-            "2024-12-15",
-            "2024-12-20",
+            TEST_TERM_FA2024_ID,
+            TEST_TERM_FA2024_NAME,
+            TEST_TERM_FA2024_DISPLAY_NAME,
+            TEST_TERM_FA2024_START,
+            TEST_TERM_FA2024_END,
+            TEST_TERM_FA2024_DUE,
             "true",
             TEST_INSTITUTION_ID,
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "term-sp2025",
-            "SP2025",
-            "Spring 2025",
-            "2025-01-13",
-            "2025-05-10",
-            "2025-05-15",
+            TEST_TERM_SP2025_ID,
+            TEST_TERM_SP2025_NAME,
+            TEST_TERM_SP2025_DISPLAY_NAME,
+            TEST_TERM_SP2025_START,
+            TEST_TERM_SP2025_END,
+            TEST_TERM_SP2025_DUE,
             "true",
             TEST_INSTITUTION_ID,
             CREATED_AT,
@@ -378,22 +479,19 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Inactive term (edge case)
         [
-            "term-su2023",
-            "SU2023",
-            "Summer 2023",
-            "2023-06-01",
-            "2023-08-15",
-            "2023-08-20",
+            TEST_TERM_SU2023_ID,
+            TEST_TERM_SU2023_NAME,
+            TEST_TERM_SU2023_DISPLAY_NAME,
+            TEST_TERM_SU2023_START,
+            TEST_TERM_SU2023_END,
+            TEST_TERM_SU2023_DUE,
             "false",
             TEST_INSTITUTION_ID,
             CREATED_AT,
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "terms.csv",
-        "\n".join(",".join(row) for row in terms_csv),
-    )
+    _write_csv_to_zip(zf, "terms.csv", terms_csv)
 
     # 8. course_offerings.csv
     course_offerings_csv = [
@@ -410,9 +508,9 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "off-cs101-fa2024",
-            "course-cs101",
-            "term-fa2024",
+            TEST_OFFERING_CS101_FA2024_ID,
+            TEST_COURSE_CS101_ID,
+            TEST_TERM_FA2024_ID,
             TEST_INSTITUTION_ID,
             "active",
             "75",
@@ -422,9 +520,9 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
         [
-            "off-math201-fa2024",
-            "course-math201",
-            "term-fa2024",
+            TEST_OFFERING_MATH201_FA2024_ID,
+            TEST_COURSE_MATH201_ID,
+            TEST_TERM_FA2024_ID,
             TEST_INSTITUTION_ID,
             "active",
             "60",
@@ -434,9 +532,9 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
         [
-            "off-eng301-sp2025",
-            "course-eng301",
-            "term-sp2025",
+            TEST_OFFERING_ENG301_SP2025_ID,
+            TEST_COURSE_ENG301_ID,
+            TEST_TERM_SP2025_ID,
             TEST_INSTITUTION_ID,
             "active",
             "40",
@@ -447,9 +545,9 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Full capacity (edge case)
         [
-            "off-cs202-fa2024",
-            "course-cs202",
-            "term-fa2024",
+            TEST_OFFERING_CS202_FA2024_ID,
+            TEST_COURSE_CS202_ID,
+            TEST_TERM_FA2024_ID,
             TEST_INSTITUTION_ID,
             "active",
             "50",
@@ -460,9 +558,9 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Zero enrollment (edge case)
         [
-            "off-math401-sp2025",
-            "course-math401",
-            "term-sp2025",
+            TEST_OFFERING_MATH401_SP2025_ID,
+            TEST_COURSE_MATH401_ID,
+            TEST_TERM_SP2025_ID,
             TEST_INSTITUTION_ID,
             "active",
             "30",
@@ -472,10 +570,7 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "course_offerings.csv",
-        "\n".join(",".join(row) for row in course_offerings_csv),
-    )
+    _write_csv_to_zip(zf, "course_offerings.csv", course_offerings_csv)
 
     # 9. course_sections.csv
     course_sections_csv = [
@@ -493,39 +588,39 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "section-1",
-            "off-cs101-fa2024",
-            "user-instructor-1",
+            TEST_SECTION_1_ID,
+            TEST_OFFERING_CS101_FA2024_ID,
+            TEST_INSTRUCTOR_1_ID,
             "001",
             "25",
             "in_progress",
-            "{}",
+            TEST_GRADE_DIST_EMPTY,
             CREATED_AT,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "section-2",
-            "off-cs101-fa2024",
-            "user-instructor-2",
+            TEST_SECTION_2_ID,
+            TEST_OFFERING_CS101_FA2024_ID,
+            TEST_INSTRUCTOR_2_ID,
             "002",
             "25",
             "in_progress",
-            '{"A":5,"B":10,"C":8,"D":2}',
+            TEST_GRADE_DIST_SAMPLE,
             CREATED_AT,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "section-3",
-            "off-math201-fa2024",
-            "user-instructor-1",
+            TEST_SECTION_3_ID,
+            TEST_OFFERING_MATH201_FA2024_ID,
+            TEST_INSTRUCTOR_1_ID,
             "001",
             "45",
             "in_progress",
-            "{}",
+            TEST_GRADE_DIST_EMPTY,
             CREATED_AT,
             "",
             CREATED_AT,
@@ -533,13 +628,13 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Completed section (edge case)
         [
-            "section-4",
-            "off-eng301-sp2025",
-            "user-instructor-2",
+            TEST_SECTION_4_ID,
+            TEST_OFFERING_ENG301_SP2025_ID,
+            TEST_INSTRUCTOR_2_ID,
             "001",
             "30",
             "completed",
-            '{"A":8,"B":12,"C":7,"D":3}',
+            TEST_GRADE_DIST_COMPLETED,
             CREATED_AT,
             UPDATED_AT,
             CREATED_AT,
@@ -547,23 +642,20 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
         ],
         # Section with no instructor (edge case)
         [
-            "section-5",
-            "off-cs202-fa2024",
+            TEST_SECTION_5_ID,
+            TEST_OFFERING_CS202_FA2024_ID,
             "",
             "001",
             "50",
             "assigned",
-            "{}",
+            TEST_GRADE_DIST_EMPTY,
             CREATED_AT,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "course_sections.csv",
-        "\n".join(",".join(row) for row in course_sections_csv),
-    )
+    _write_csv_to_zip(zf, "course_sections.csv", course_sections_csv)
 
     # 10. course_outcomes.csv
     course_outcomes_csv = [
@@ -580,59 +672,56 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
         [
-            "outcome-1",
-            "course-cs101",
+            TEST_OUTCOME_1_ID,
+            TEST_COURSE_CS101_ID,
             "1",
             "Students will understand basic programming concepts",
-            "Written Exam",
+            TEST_ASSESSMENT_METHOD_EXAM,
             "true",
-            "{}",
+            TEST_ASSESSMENT_DATA_EMPTY,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "outcome-2",
-            "course-cs101",
+            TEST_OUTCOME_2_ID,
+            TEST_COURSE_CS101_ID,
             "2",
             "Students will write simple programs",
-            "Programming Assignment",
+            TEST_ASSESSMENT_METHOD_ASSIGNMENT,
             "true",
-            '{"students_took":25,"students_passed":20}',
+            TEST_ASSESSMENT_DATA_SAMPLE,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
         [
-            "outcome-3",
-            "course-math201",
+            TEST_OUTCOME_3_ID,
+            TEST_COURSE_MATH201_ID,
             "1",
             "Students will solve differential equations",
-            "Problem Set",
+            TEST_ASSESSMENT_METHOD_PROBLEM_SET,
             "true",
-            "{}",
+            TEST_ASSESSMENT_DATA_EMPTY,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
         # Inactive outcome (edge case)
         [
-            "outcome-4",
-            "course-cs101",
+            TEST_OUTCOME_4_ID,
+            TEST_COURSE_CS101_ID,
             "3",
             "Deprecated learning outcome",
-            "Exam",
+            TEST_ASSESSMENT_METHOD_EXAM,
             "false",
-            "{}",
+            TEST_ASSESSMENT_DATA_EMPTY,
             "",
             CREATED_AT,
             UPDATED_AT,
         ],
     ]
-    zf.writestr(
-        "course_outcomes.csv",
-        "\n".join(",".join(row) for row in course_outcomes_csv),
-    )
+    _write_csv_to_zip(zf, "course_outcomes.csv", course_outcomes_csv)
 
     # 11. user_invitations.csv (empty for test data)
     user_invitations_csv = [
@@ -650,10 +739,7 @@ with zipfile.ZipFile(OUTPUT_FILE, "w", zipfile.ZIP_DEFLATED) as zf:
             "updated_at",
         ],
     ]
-    zf.writestr(
-        "user_invitations.csv",
-        "\n".join(",".join(row) for row in user_invitations_csv),
-    )
+    _write_csv_to_zip(zf, "user_invitations.csv", user_invitations_csv)
 
     # 12. manifest.json
     manifest = {
@@ -698,4 +784,3 @@ print(f"✅ Created generic test data: {OUTPUT_FILE}")
 entity_counts = cast(Dict[str, int], manifest["entity_counts"])
 print(f"   Contains: {sum(entity_counts.values())} total records")
 print(f"   Entity types: {len([k for k, v in entity_counts.items() if v > 0])}")
-
