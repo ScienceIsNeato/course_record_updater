@@ -44,8 +44,9 @@ def get_worker_port():
 
 
 BASE_URL = f"http://localhost:{get_worker_port()}"
-TEST_DATA_DIR = Path(__file__).parent.parent.parent / "research" / "MockU"
-TEST_FILE = TEST_DATA_DIR / "2024FA_test_data.xlsx"
+# Use generic adapter test data (institution-agnostic)
+TEST_DATA_DIR = Path(__file__).parent / "fixtures"
+TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -94,9 +94,8 @@ describe('auth module', () => {
     await auth.handleLogin(event);
 
     expect(global.fetch).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({ method: 'POST' }));
-    expect(document.querySelector('.alert-success')).not.toBeNull();
-
-    jest.advanceTimersByTime(1000);
+    
+    // No setTimeout anymore - redirect happens immediately
     expect(window.location.href).toBe('/dashboard');
   });
 
@@ -139,8 +138,9 @@ describe('auth module', () => {
       expect.objectContaining({ method: 'POST' })
     );
 
-    jest.advanceTimersByTime(3000);
-    expect(window.location.href).toBe('/login');
+    // No setTimeout anymore - redirect happens immediately with query parameter
+    expect(window.location.href).toMatch(/^\/login\?message=Account%20created/);
+    expect(window.location.href).toContain('Please%20check%20your%20email');
   });
 
   it('handles forgot password success state', async () => {

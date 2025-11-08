@@ -475,12 +475,10 @@ async function handleLogin(e) {
       remember_me: formData.get('rememberMe') === 'on'
     },
     onSuccess: result => {
-      showSuccess('Login successful! Redirecting...');
-      setTimeout(() => {
-        // Use next_url if provided (from reminder emails), otherwise go to dashboard
-        const redirectUrl = result.next_url || '/dashboard';
-        window.location.href = redirectUrl;
-      }, 1000);
+      // Redirect immediately - being on the dashboard IS the success indicator
+      // No need to show message and force user to wait
+      const redirectUrl = result.next_url || '/dashboard';
+      window.location.href = redirectUrl;
     },
     onError: (response, result) => {
       if (response.status === 423) {
@@ -518,10 +516,12 @@ async function handleRegister(e) {
       institution_website: formData.get('institutionWebsite') || null
     },
     onSuccess: () => {
-      showSuccess('Account created successfully! Please check your email to verify your account.');
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 3000);
+      // Redirect immediately with success message as query parameter
+      // The login page will display the message
+      const message = encodeURIComponent(
+        'Account created successfully! Please check your email to verify your account.'
+      );
+      window.location.href = `/login?message=${message}`;
     }
   });
 }

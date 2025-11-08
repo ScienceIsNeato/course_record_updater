@@ -18,5 +18,5 @@ Running E2E Tests:
 Requirements:
 - Application server running on localhost:3001
 - Clean database state (or use fixtures to manage)
-- Test data files in research/MockU/
+- Test data files in tests/e2e/fixtures/ (generic adapter format)
 """

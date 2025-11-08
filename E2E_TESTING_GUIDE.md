@@ -32,10 +32,12 @@ E2E tests automate real user interactions in a browser, replacing manual UAT. Th
 
 ## Test Data
 
-**Current**: Uses `research/MockU/2024FA_test_data.xlsx`  
-**TODO**: Create generic adapter test data file (not institution-specific) - see [Issue #TBD]
+**Current**: Uses `tests/e2e/fixtures/generic_test_data.zip` (Generic CSV Adapter format)  
+**Format**: ZIP file containing normalized CSV files (institution-agnostic)
 
-The test file contains 6 course records used to validate import/export functionality.
+The test file contains 7 course records, 3 programs, 3 users, and other entities used to validate import/export functionality. Edge cases include duplicates, conflicts, and inactive records.
+
+**Note**: CEI-specific test data remains in `research/CEI/` for manual testing only.
 
 ---
 
@@ -57,7 +59,7 @@ tests/e2e/test_import_export.py
 ### Fixtures (`tests/e2e/conftest.py`)
 - `authenticated_page`: Browser already logged in
 - `database_baseline`: Snapshot for validation
-- `test_data_file`: Path to test Excel file
+- `test_data_file`: Path to generic CSV adapter test data ZIP file
 
 ---
 
@@ -85,8 +87,8 @@ sqlite3 course_records_e2e.db "SELECT email FROM users WHERE email LIKE '%admin%
 ```
 
 **Import failures**:
-- Verify test file exists: `ls -la research/MockU/2024FA_test_data.xlsx`
-- Check file format matches adapter expectations
+- Verify test file exists: `ls -la tests/e2e/fixtures/generic_test_data.zip`
+- Check file format matches Generic CSV Adapter expectations
 - Review import results in UI screenshots: `test-results/screenshots/`
 
 **Timeout errors**:
