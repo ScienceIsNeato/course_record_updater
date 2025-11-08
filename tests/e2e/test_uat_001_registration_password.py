@@ -106,9 +106,9 @@ class TestUAT001RegistrationAndPasswordManagement:
         # Submit registration (button enabled after form completion)
         page.click('button[type="submit"]')
 
-        # Registration redirects to login page - wait for navigation
-        # Note: 15s timeout accounts for: form submission (1-3s) + email sending (1-3s) + JS redirect delay (3s) + buffer for parallel execution
-        expect(page).to_have_url(f"{BASE_URL}/login", timeout=15000)
+        # Registration redirects to login page immediately after API success
+        # Note: Timeout accounts for form submission + email sending + redirect (no artificial JS delay)
+        page.wait_for_url(f"{BASE_URL}/login*", timeout=5000)  # * allows query params
 
         # Note: Success message may not persist across redirect
         # The fact that we're on the login page indicates successful registration

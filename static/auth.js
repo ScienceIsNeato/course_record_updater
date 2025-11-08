@@ -518,10 +518,12 @@ async function handleRegister(e) {
       institution_website: formData.get('institutionWebsite') || null
     },
     onSuccess: () => {
-      showSuccess('Account created successfully! Please check your email to verify your account.');
-      setTimeout(() => {
-        window.location.href = '/login';
-      }, 3000);
+      // Redirect immediately with success message as query parameter
+      // The login page will display the message
+      const message = encodeURIComponent(
+        'Account created successfully! Please check your email to verify your account.'
+      );
+      window.location.href = `/login?message=${message}`;
     }
   });
 }

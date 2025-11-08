@@ -139,8 +139,9 @@ describe('auth module', () => {
       expect.objectContaining({ method: 'POST' })
     );
 
-    jest.advanceTimersByTime(3000);
-    expect(window.location.href).toBe('/login');
+    // No setTimeout anymore - redirect happens immediately with query parameter
+    expect(window.location.href).toMatch(/^\/login\?message=Account%20created/);
+    expect(window.location.href).toContain('Please%20check%20your%20email');
   });
 
   it('handles forgot password success state', async () => {
