@@ -475,12 +475,10 @@ async function handleLogin(e) {
       remember_me: formData.get('rememberMe') === 'on'
     },
     onSuccess: result => {
-      showSuccess('Login successful! Redirecting...');
-      setTimeout(() => {
-        // Use next_url if provided (from reminder emails), otherwise go to dashboard
-        const redirectUrl = result.next_url || '/dashboard';
-        window.location.href = redirectUrl;
-      }, 1000);
+      // Redirect immediately - being on the dashboard IS the success indicator
+      // No need to show message and force user to wait
+      const redirectUrl = result.next_url || '/dashboard';
+      window.location.href = redirectUrl;
     },
     onError: (response, result) => {
       if (response.status === 423) {

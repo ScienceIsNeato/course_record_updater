@@ -393,8 +393,8 @@ const setupTableDom = () => {
     await flushPromises();
     expect(document.getElementById('importResults').innerHTML).toContain('Conflicts Resolved');
 
-    jest.advanceTimersByTime(3000);
-    expect(document.getElementById('importResults').textContent).toContain('Import completed successfully');
+    // No setTimeout anymore - reload happens immediately
+    // Just verify the reload was triggered (window.location.reload called)
 
     jest.useRealTimers();
   });

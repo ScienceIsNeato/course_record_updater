@@ -794,19 +794,9 @@ function initializeImportForm() {
 
     // Helper function to show success message and refresh
     function showSuccessAndRefresh() {
-      const successMessage = document.createElement('div');
-      successMessage.className = 'alert alert-success text-center mt-3';
-      successMessage.innerHTML =
-        '<i class="fas fa-check-circle"></i> Import completed successfully! Refreshing page...';
-
-      const resultsDiv = document.getElementById('importResults');
-      if (resultsDiv) {
-        resultsDiv.appendChild(successMessage);
-      }
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 3000);
+      // Reload immediately - the refreshed page with updated data IS the success indicator
+      // Flash messages will show import results if needed
+      window.location.reload();
     }
 
     // Start polling
