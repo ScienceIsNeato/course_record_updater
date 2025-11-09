@@ -7,10 +7,10 @@
 {% endblock %}
 
 {% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-graduation-cap me-1"></i>Programs</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-users me-1"></i>Faculty</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-chart-bar me-1"></i>Outcomes</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-programs" onclick="filterDashboard('programs')"><i class="fas fa-graduation-cap me-1"></i>Programs</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i class="fas fa-users me-1"></i>Faculty</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-outcomes" onclick="filterDashboard('outcomes')"><i class="fas fa-chart-bar me-1"></i>Outcomes</button>
 {% endblock %}
 
 {% block page_title %}🏛️ Institution Administration{% endblock %}
@@ -988,6 +988,62 @@
     function manageOutcomes() {
         alert('Outcome management list coming soon!');
     }
+
+    /**
+     * Filter dashboard panels based on selected view
+     * @param {string} view - 'all', 'programs', 'faculty', or 'outcomes'
+     */
+    function filterDashboard(view) {
+        // Panel IDs mapped to views
+        const panelMapping = {
+            'programs': ['institution-program-panel', 'institution-course-panel'],
+            'faculty': ['institution-faculty-panel', 'institution-sections-panel'],
+            'outcomes': ['institution-outcome-panel', 'institution-assessment-panel', 'institution-clo-audit-panel'],
+            'all': ['institution-program-panel', 'institution-course-panel', 'institution-term-panel', 'institution-offering-panel', 'institution-faculty-panel', 'institution-sections-panel', 'institution-outcome-panel', 'institution-assessment-panel', 'institution-clo-audit-panel']
+        };
+        
+        // Data management panel is always visible
+        const allPanelIds = [
+            'institution-program-panel',
+            'institution-course-panel',
+            'institution-term-panel',
+            'institution-offering-panel',
+            'institution-faculty-panel',
+            'institution-sections-panel',
+            'institution-outcome-panel',
+            'institution-assessment-panel',
+            'institution-clo-audit-panel'
+        ];
+        
+        const visiblePanels = panelMapping[view] || panelMapping['all'];
+        
+        // Show/hide panels
+        allPanelIds.forEach(panelId => {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                if (visiblePanels.includes(panelId)) {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+            }
+        });
+        
+        // Update active state on nav buttons
+        document.querySelectorAll('.navbar-nav button.nav-link').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeButton = document.getElementById(`dashboard-${view === 'all' ? 'view-all' : view}`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+    }
+    
+    // Set initial view to 'all' on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        filterDashboard('all');
+    });
 </script>
 
 <!-- Include Bulk Reminder Modal -->
