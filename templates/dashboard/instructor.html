@@ -7,10 +7,10 @@
 {% endblock %}
 
 {% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-book-open me-1"></i>Teaching</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-tasks me-1"></i>Assessments</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-chart-line me-1"></i>Progress</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-teaching" onclick="filterDashboard('teaching')"><i class="fas fa-book-open me-1"></i>Teaching</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-assessments" onclick="filterDashboard('assessments')"><i class="fas fa-tasks me-1"></i>Assessments</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-progress" onclick="filterDashboard('progress')"><i class="fas fa-chart-line me-1"></i>Progress</button>
 {% endblock %}
 
 {% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
@@ -133,6 +133,57 @@
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
 <script src="{{ url_for('static', filename='instructor_dashboard.js') }}"></script>
 <script>
+    /**
+     * Filter dashboard panels based on selected view
+     * @param {string} view - 'all', 'teaching', 'assessments', or 'progress'
+     */
+    function filterDashboard(view) {
+        // Panel IDs mapped to views
+        const panelMapping = {
+            'teaching': ['instructor-teaching-panel'],
+            'assessments': ['instructor-assessment-panel'],
+            'progress': ['instructor-activity-panel', 'instructor-summary-panel'],
+            'all': ['instructor-teaching-panel', 'instructor-assessment-panel', 'instructor-activity-panel', 'instructor-summary-panel']
+        };
+        
+        // Data management panel is always visible
+        const allPanelIds = [
+            'instructor-teaching-panel',
+            'instructor-assessment-panel',
+            'instructor-activity-panel',
+            'instructor-summary-panel'
+        ];
+        
+        const visiblePanels = panelMapping[view] || panelMapping['all'];
+        
+        // Show/hide panels
+        allPanelIds.forEach(panelId => {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                if (visiblePanels.includes(panelId)) {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+            }
+        });
+        
+        // Update active state on nav buttons
+        document.querySelectorAll('.navbar-nav button.nav-link').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeButton = document.getElementById(`dashboard-${view === 'all' ? 'view-all' : view}`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+    }
+    
+    // Set initial view to 'all' on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        filterDashboard('all');
+    });
+
     // Instructor Data Management Functions (Export Only)
     function instructorQuickExport() {
         const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;
