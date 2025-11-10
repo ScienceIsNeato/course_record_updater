@@ -174,6 +174,11 @@
         data: tasks.map(task => {
           const status = (task.status || 'pending').replace(/_/g, ' ');
           const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : '—';
+          const courseId = task.course_id || '';
+          const sectionId = task.section_id || '';
+          const buttonText = this.isTaskComplete(task.status) ? 'Review' : 'Enter';
+          // Build URL with both course and section parameters
+          const url = `/assessments?course=${courseId}&section=${sectionId}`;
           return {
             course: task.course_number
               ? `${task.course_number} — ${task.course_title || ''}`
@@ -182,7 +187,7 @@
             due: dueDate,
             due_sort: task.due_date || '',
             status: status.charAt(0).toUpperCase() + status.slice(1),
-            action: `<button class="btn btn-sm btn-outline-success" onclick="return false;">${this.isTaskComplete(task.status) ? 'Review' : 'Enter'}</button>`
+            action: `<a href="${url}" class="btn btn-sm btn-outline-success">${buttonText}</a>`
           };
         })
       });
