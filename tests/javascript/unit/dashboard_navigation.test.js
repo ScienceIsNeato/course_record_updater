@@ -242,6 +242,59 @@ describe('Dashboard Navigation', () => {
       expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
       expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
     });
+
+    it('should handle missing activeButton gracefully', () => {
+      document.body.innerHTML = `
+        <div class="navbar-nav">
+          <!-- No button with id="dashboard-teaching" -->
+        </div>
+        <div id="instructor-teaching-panel" style="display: block;">Teaching</div>
+      `;
+
+      const panelMapping = {
+        teaching: ['instructor-teaching-panel'],
+        all: ['instructor-teaching-panel']
+      };
+      const allPanelIds = ['instructor-teaching-panel'];
+
+      window.configureDashboardFilter(panelMapping, allPanelIds);
+
+      // Should not throw when activeButton doesn't exist
+      expect(() => window.filterDashboard('teaching')).not.toThrow();
+    });
+
+    it('should handle showing panels when visiblePanels includes them', () => {
+      const panelMapping = {
+        teaching: ['instructor-teaching-panel'],
+        all: ['instructor-teaching-panel', 'instructor-assessment-panel']
+      };
+      const allPanelIds = ['instructor-teaching-panel', 'instructor-assessment-panel'];
+
+      window.configureDashboardFilter(panelMapping, allPanelIds);
+
+      // Test showing specific panel
+      window.filterDashboard('teaching');
+      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
+
+      // Test showing all panels
+      window.filterDashboard('all');
+      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
+      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
+    });
+
+    it('should handle hiding panels when visiblePanels does not include them', () => {
+      const panelMapping = {
+        teaching: ['instructor-teaching-panel'],
+        all: ['instructor-teaching-panel', 'instructor-assessment-panel']
+      };
+      const allPanelIds = ['instructor-teaching-panel', 'instructor-assessment-panel'];
+
+      window.configureDashboardFilter(panelMapping, allPanelIds);
+
+      // Filter to teaching - should hide assessment panel
+      window.filterDashboard('teaching');
+      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('none');
+    });
   });
 });
 
