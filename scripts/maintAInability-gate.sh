@@ -1001,9 +1001,33 @@ if [[ "$RUN_SONAR_STATUS" == "true" ]]; then
     echo "💡 Run --sonar-analyze first to trigger an analysis"
   fi
   
+  # Detect PR context (GitHub Actions or local gh CLI)
+  PR_ARG=""
+  if [[ -n "${GITHUB_PULL_REQUEST_NUMBER:-}" ]]; then
+    # GitHub Actions PR context
+    PR_ARG="--pull-request ${GITHUB_PULL_REQUEST_NUMBER}"
+    echo "🔍 Detected PR context: PR #${GITHUB_PULL_REQUEST_NUMBER}"
+  elif [[ -n "${GITHUB_REF}" ]] && [[ "${GITHUB_REF}" =~ ^refs/pull/[0-9]+/merge$ ]]; then
+    # GitHub Actions PR ref format
+    PR_NUMBER=$(echo "${GITHUB_REF}" | sed -n 's|refs/pull/\([0-9]*\)/merge|\1|p')
+    if [[ -n "${PR_NUMBER}" ]]; then
+      PR_ARG="--pull-request ${PR_NUMBER}"
+      echo "🔍 Detected PR context: PR #${PR_NUMBER}"
+    fi
+  elif command -v gh &> /dev/null; then
+    # Local development - use gh CLI to detect PR
+    PR_NUMBER=$(gh pr view --json number -q '.number' 2>/dev/null || echo "")
+    if [[ -n "${PR_NUMBER}" ]]; then
+      PR_ARG="--pull-request ${PR_NUMBER}"
+      echo "🔍 Detected PR context: PR #${PR_NUMBER}"
+    else
+      echo "💡 Not in PR context - fetching branch analysis instead"
+    fi
+  fi
+  
   # Fetch quality gate status from SonarCloud
   echo "🔧 Fetching SonarCloud quality gate status..."
-  if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater; then
+  if python scripts/sonar_issues_scraper.py --project-key ScienceIsNeato_course_record_updater ${PR_ARG}; then
     echo "✅ SonarCloud Status: PASSED"
     add_success "SonarCloud Status" "All quality gate conditions met"
   else
