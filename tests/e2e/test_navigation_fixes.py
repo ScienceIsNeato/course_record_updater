@@ -7,6 +7,8 @@ Tests:
 3. Dashboard button shows all panels
 """
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -63,7 +65,7 @@ class TestNavigationFixes:
         expect(summary_panel).to_be_visible()
 
         # Verify Dashboard button is active
-        expect(dashboard_btn).to_have_class(pytest.contains("active"))
+        expect(dashboard_btn).to_have_class(re.compile(".*active.*"))
 
     def test_teaching_button_filters_to_teaching_panel(self, page: Page):
         """Test that Teaching button shows only Teaching panel."""
@@ -84,7 +86,7 @@ class TestNavigationFixes:
         expect(summary_panel).not_to_be_visible()
 
         # Verify Teaching button is active
-        expect(teaching_btn).to_have_class(pytest.contains("active"))
+        expect(teaching_btn).to_have_class(re.compile(".*active.*"))
 
     def test_assessments_button_filters_to_assessment_panel(self, page: Page):
         """Test that Assessments button shows only Assessment panel."""
@@ -105,7 +107,7 @@ class TestNavigationFixes:
         expect(summary_panel).not_to_be_visible()
 
         # Verify Assessments button is active
-        expect(assessments_btn).to_have_class(pytest.contains("active"))
+        expect(assessments_btn).to_have_class(re.compile(".*active.*"))
 
     def test_progress_button_filters_to_progress_panels(self, page: Page):
         """Test that Progress button shows Activity and Summary panels."""
@@ -126,7 +128,7 @@ class TestNavigationFixes:
         expect(summary_panel).to_be_visible()
 
         # Verify Progress button is active
-        expect(progress_btn).to_have_class(pytest.contains("active"))
+        expect(progress_btn).to_have_class(re.compile(".*active.*"))
 
     def test_navigation_buttons_toggle_active_state(self, page: Page):
         """Test that clicking navigation buttons toggles active state correctly."""
@@ -138,26 +140,26 @@ class TestNavigationFixes:
         # Click Teaching
         teaching_btn.click()
         page.wait_for_timeout(300)
-        expect(teaching_btn).to_have_class(pytest.contains("active"))
-        expect(dashboard_btn).not_to_have_class(pytest.contains("active"))
+        expect(teaching_btn).to_have_class(re.compile(".*active.*"))
+        expect(dashboard_btn).not_to_have_class(re.compile(".*active.*"))
 
         # Click Assessments
         assessments_btn.click()
         page.wait_for_timeout(300)
-        expect(assessments_btn).to_have_class(pytest.contains("active"))
-        expect(teaching_btn).not_to_have_class(pytest.contains("active"))
+        expect(assessments_btn).to_have_class(re.compile(".*active.*"))
+        expect(teaching_btn).not_to_have_class(re.compile(".*active.*"))
 
         # Click Progress
         progress_btn.click()
         page.wait_for_timeout(300)
-        expect(progress_btn).to_have_class(pytest.contains("active"))
-        expect(assessments_btn).not_to_have_class(pytest.contains("active"))
+        expect(progress_btn).to_have_class(re.compile(".*active.*"))
+        expect(assessments_btn).not_to_have_class(re.compile(".*active.*"))
 
         # Click Dashboard
         dashboard_btn.click()
         page.wait_for_timeout(300)
-        expect(dashboard_btn).to_have_class(pytest.contains("active"))
-        expect(progress_btn).not_to_have_class(pytest.contains("active"))
+        expect(dashboard_btn).to_have_class(re.compile(".*active.*"))
+        expect(progress_btn).not_to_have_class(re.compile(".*active.*"))
 
     def test_data_management_panel_always_visible(self, page: Page):
         """Test that Data Management panel is always visible regardless of filter."""
