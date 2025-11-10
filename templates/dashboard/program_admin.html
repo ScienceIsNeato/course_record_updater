@@ -180,60 +180,26 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard_navigation.js') }}"></script>
 <script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='courseManagement.js') }}"></script>
 <script>
-    /**
-     * Filter dashboard panels based on selected view
-     * @param {string} view - 'all', 'courses', 'faculty', or 'clos'
-     */
-    function filterDashboard(view) {
-        // Panel IDs mapped to views
-        const panelMapping = {
+    // Configure dashboard navigation for Program Admin role
+    configureDashboardFilter(
+        {
             'courses': ['program-courses-panel'],
             'faculty': ['program-faculty-panel'],
             'clos': ['program-clo-panel'],
             'all': ['program-courses-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
-        };
-        
-        // Data management panel is always visible
-        const allPanelIds = [
+        },
+        [
             'program-courses-panel',
             'program-faculty-panel',
             'program-clo-panel',
             'program-assessment-panel',
             'program-clo-audit-panel'
-        ];
-        
-        const visiblePanels = panelMapping[view] || panelMapping['all'];
-        
-        // Show/hide panels
-        allPanelIds.forEach(panelId => {
-            const panel = document.getElementById(panelId);
-            if (panel) {
-                if (visiblePanels.includes(panelId)) {
-                    panel.style.display = 'block';
-                } else {
-                    panel.style.display = 'none';
-                }
-            }
-        });
-        
-        // Update active state on nav buttons
-        document.querySelectorAll('.navbar-nav button.nav-link').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        const activeButton = document.getElementById(`dashboard-${view === 'all' ? 'view-all' : view}`);
-        if (activeButton) {
-            activeButton.classList.add('active');
-        }
-    }
-    
-    // Set initial view to 'all' on page load
-    document.addEventListener('DOMContentLoaded', () => {
-        filterDashboard('all');
-    });
+        ]
+    );
 
     // Program Data Management Functions
     // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
