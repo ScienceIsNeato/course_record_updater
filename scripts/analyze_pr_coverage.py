@@ -13,8 +13,61 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Tuple
+
+
+def get_repo_metadata() -> str:
+    """
+    Get current repository state metadata for report freshness checking.
+    
+    Returns:
+        Formatted metadata string with commit, status, timestamp
+    """
+    try:
+        # Get current commit
+        commit_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        commit_sha = commit_result.stdout.strip()[:7]
+        
+        # Get current branch
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        branch = branch_result.stdout.strip()
+        
+        # Get git status (check if clean)
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        is_clean = len(status_result.stdout.strip()) == 0
+        status = "clean" if is_clean else "dirty (uncommitted changes)"
+        
+        # Get timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        return f"""╔════════════════════════════════════════════════════════════
+║ REPORT METADATA (Check freshness)
+║ Generated: {timestamp}
+║ Commit:    {commit_sha}
+║ Branch:    {branch}
+║ Status:    {status}
+╚════════════════════════════════════════════════════════════
+
+"""
+    except Exception as e:
+        return f"⚠️  Could not generate metadata: {e}\n\n"
 
 
 def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
@@ -234,7 +287,8 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     """Print or save a formatted report of coverage gaps."""
     
     if not pr_coverage_gaps:
-        message = "✅ All NEWLY ADDED lines in this PR are covered by tests!\n"
+        metadata = get_repo_metadata()
+        message = metadata + "✅ All NEWLY ADDED lines in this PR are covered by tests!\n"
         print(message)
         if output_file:
             Path(output_file).write_text(message)
@@ -267,7 +321,8 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     }
     
     if not production_gaps:
-        message = "✅ All production code in this PR is covered!\n(Test files excluded from coverage requirements)\n"
+        metadata = get_repo_metadata()
+        message = metadata + "✅ All production code in this PR is covered!\n(Test files excluded from coverage requirements)\n"
         print(message)
         if output_file:
             Path(output_file).write_text(message)
@@ -277,8 +332,12 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     total_files = len(production_gaps)
     total_lines = sum(len(lines) for lines in production_gaps.values())
     
-    # Update header to reflect production-only count
-    lines[1] = f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests"
+    # Prepend metadata header
+    metadata = get_repo_metadata()
+    lines.insert(0, metadata)
+    
+    # Update header to reflect production-only count (adjust index due to metadata)
+    lines[2] = f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests"
     
     # Sort files by number of uncovered lines (most first)
     sorted_files = sorted(
