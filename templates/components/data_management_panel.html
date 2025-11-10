@@ -194,6 +194,15 @@ function populateAdapterDropdown(dropdownId, adapters) {
     if (adapters.length === 0) {
         adapterSelect.innerHTML = '<option value="">No adapters available</option>';
         adapterSelect.disabled = true;
+        
+        // Also disable the export button if this is the export dropdown
+        if (dropdownId === 'export_adapter') {
+            const exportButton = document.querySelector('#dataExportForm button[onclick="executeDataExport()"]');
+            if (exportButton) {
+                exportButton.disabled = true;
+                exportButton.title = 'No export adapters configured. Contact your administrator to set up data export.';
+            }
+        }
         return;
     }
     
@@ -213,6 +222,15 @@ function populateAdapterDropdown(dropdownId, adapters) {
     });
     
     adapterSelect.disabled = false;
+    
+    // Re-enable export button if adapters are available
+    if (dropdownId === 'export_adapter') {
+        const exportButton = document.querySelector('#dataExportForm button[onclick="executeDataExport()"]');
+        if (exportButton) {
+            exportButton.disabled = false;
+            exportButton.title = '';
+        }
+    }
 }
 
 // Data Import Functions
@@ -284,7 +302,7 @@ function executeDataExport() {
     const exportAdapter = document.getElementById('export_adapter').value;
     
     if (!exportAdapter) {
-        alert('Please select an export adapter');
+        alert('No export adapters are configured. Please contact your administrator to set up data export.');
         return;
     }
     
