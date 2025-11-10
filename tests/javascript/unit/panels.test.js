@@ -1043,5 +1043,130 @@ describe('createAuditLogRow - ACTUAL INTEGRATION', () => {
         statItem.dispatchEvent(mouseenterEvent);
       }).not.toThrow();
     });
+
+    it('should call transform with institutions data when loadStatPreviewData is called', async () => {
+      const { PanelManager } = require('../../../static/panels');
+      const manager = new PanelManager();
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          institutions: [
+            { name: 'MIT', user_count: 100 },
+            { name: 'Stanford', user_count: 200 }
+          ]
+        })
+      });
+
+      const result = await manager.loadStatPreviewData('institutions');
+      
+      // Line 475: data.institutions?.map(...) should have been executed
+      expect(result.items).toEqual([
+        { label: 'MIT', value: '100 users' },
+        { label: 'Stanford', value: '200 users' }
+      ]);
+      
+      global.fetch.mockRestore();
+    });
+
+    it('should call transform with courses data when loadStatPreviewData is called', async () => {
+      const { PanelManager } = require('../../../static/panels');
+      const manager = new PanelManager();
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          courses: [
+            { course_number: 'CS101', title: 'Intro to CS' },
+            { course_number: 'CS201', title: 'Data Structures' }
+          ]
+        })
+      });
+
+      const result = await manager.loadStatPreviewData('courses');
+      
+      // Line 493: data.courses?.map(...) should have been executed
+      expect(result.items).toEqual([
+        { label: 'CS101', value: 'Intro to CS' },
+        { label: 'CS201', value: 'Data Structures' }
+      ]);
+      
+      global.fetch.mockRestore();
+    });
+
+    it('should call transform with faculty data when loadStatPreviewData is called', async () => {
+      const { PanelManager } = require('../../../static/panels');
+      const manager = new PanelManager();
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          users: [
+            { full_name: 'John Doe', email: 'john@example.com', department: 'CS', role: 'instructor' },
+            { first_name: 'Jane', last_name: 'Smith', email: 'jane@example.com', role: 'instructor' }
+          ]
+        })
+      });
+
+      const result = await manager.loadStatPreviewData('faculty');
+      
+      // Line 502: data.users?.map(...) should have been executed
+      expect(result.items).toEqual([
+        { label: 'John Doe', value: 'CS' },
+        { label: 'Jane Smith', value: 'instructor' }
+      ]);
+      
+      global.fetch.mockRestore();
+    });
+
+    it('should call transform with sections data when loadStatPreviewData is called', async () => {
+      const { PanelManager } = require('../../../static/panels');
+      const manager = new PanelManager();
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sections: [
+            { course_number: 'CS101', section_number: 'A', enrollment: 30 },
+            { section_id: '123', enrollment: 25 }
+          ]
+        })
+      });
+
+      const result = await manager.loadStatPreviewData('sections');
+      
+      // Line 513: data.sections?.map(...) should have been executed
+      expect(result.items).toEqual([
+        { label: 'CS101 Section A', value: '30 students' },
+        { label: 'Section 123', value: '25 students' }
+      ]);
+      
+      global.fetch.mockRestore();
+    });
+
+    it('should call transform with users data when loadStatPreviewData is called', async () => {
+      const { PanelManager } = require('../../../static/panels');
+      const manager = new PanelManager();
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          users: [
+            { first_name: 'Alice', last_name: 'Johnson', role: 'site_admin' },
+            { first_name: 'Bob', last_name: 'Williams', role: 'instructor' }
+          ]
+        })
+      });
+
+      const result = await manager.loadStatPreviewData('users');
+      
+      // Line 524: data.users?.map(...) should have been executed
+      expect(result.items).toEqual([
+        { label: 'Alice Johnson', value: 'site admin' },
+        { label: 'Bob Williams', value: 'instructor' }
+      ]);
+      
+      global.fetch.mockRestore();
+    });
   });
 });

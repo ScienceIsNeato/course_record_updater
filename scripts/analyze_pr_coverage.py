@@ -149,7 +149,11 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
 
 def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
-    Parse coverage.xml (Python) to find uncovered lines.
+    Parse coverage.xml (Python) to find uncovered lines AND partially covered branches.
+    
+    This matches SonarCloud's "Coverage on New Code" metric which counts:
+    1. Lines with hits == 0 (completely uncovered)
+    2. Lines with branch="true" and condition-coverage < 100% (partially covered branches)
     
     Returns:
         Tuple of (uncovered_lines dict, all_covered_files set)
@@ -177,8 +181,26 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[D
                     line_num = int(line.get('number'))
                     hits = int(line.get('hits', 0))
                     
+                    # Track completely uncovered lines
                     if hits == 0:
                         uncovered_lines[filename].add(line_num)
+                        continue
+                    
+                    # Track partially covered branches (like SonarCloud does)
+                    is_branch = line.get('branch') == 'true'
+                    if is_branch:
+                        condition_coverage = line.get('condition-coverage', '100% (0/0)')
+                        # Parse "50% (1/2)" format
+                        if '(' in condition_coverage:
+                            try:
+                                # Extract "1/2" from "50% (1/2)"
+                                fraction = condition_coverage.split('(')[1].split(')')[0]
+                                covered, total = map(int, fraction.split('/'))
+                                # If not all branches covered, report this line
+                                if covered < total:
+                                    uncovered_lines[filename].add(line_num)
+                            except (ValueError, IndexError):
+                                pass  # Malformed coverage data, skip
         
         return dict(uncovered_lines), all_covered_files
     
@@ -189,11 +211,16 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[D
 
 def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
-    Parse lcov.info (JavaScript) to find uncovered lines.
+    Parse lcov.info (JavaScript) to find uncovered lines AND partially covered branches.
+    
+    This matches SonarCloud's "Coverage on New Code" metric which counts:
+    1. Lines with DA hits == 0 (completely uncovered)
+    2. Lines with BRDA hits == 0 or '-' (uncovered branch)
     
     LCOV format:
         SF:<source file path>
         DA:<line number>,<hit count>
+        BRDA:<line>,<block>,<branch>,<hits>
         end_of_record
     
     Returns:
@@ -235,6 +262,19 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tupl
                         hits = int(parts[1])
                         
                         if hits == 0:
+                            uncovered_lines[current_file].add(line_num)
+                    except (ValueError, IndexError):
+                        continue
+                
+                # Parse branch coverage: BRDA:<line>,<block>,<branch>,<hits>
+                elif line.startswith('BRDA:') and current_file:
+                    try:
+                        parts = line[5:].split(',')  # Remove 'BRDA:' and split
+                        line_num = int(parts[0])
+                        hits = parts[3]  # Can be a number or '-' for not executed
+                        
+                        # If branch not hit (0 or '-'), report this line
+                        if hits == '-' or hits == '0':
                             uncovered_lines[current_file].add(line_num)
                     except (ValueError, IndexError):
                         continue
