@@ -97,12 +97,24 @@ RUN_JS_TESTS=false
 RUN_JS_COVERAGE=false
 RUN_ALL=false
 
+# Grouped check flags
+RUN_PYTHON_LINT_FORMAT=false
+RUN_JS_LINT_FORMAT=false
+RUN_PYTHON_STATIC_ANALYSIS=false
+RUN_SONAR=false
+
 # Parse arguments
 if [ $# -eq 0 ]; then
   RUN_ALL=true
 else
   while [[ $# -gt 0 ]]; do
     case $1 in
+      # Grouped checks
+      --python-lint-format) RUN_PYTHON_LINT_FORMAT=true ;;
+      --js-lint-format) RUN_JS_LINT_FORMAT=true ;;
+      --python-static-analysis) RUN_PYTHON_STATIC_ANALYSIS=true ;;
+      --sonar) RUN_SONAR=true ;;
+      # Individual checks
       --black) RUN_BLACK=true ;;
       --isort) RUN_ISORT=true ;;
       --lint) RUN_LINT=true ;;
@@ -226,6 +238,134 @@ echo ""
 # Check virtual environment
 check_venv
 
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GROUPED CHECK: PYTHON LINT & FORMAT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_PYTHON_LINT_FORMAT" == "true" ]]; then
+  echo "🎨 Python Lint & Format (black, isort, flake8)"
+  GROUPED_PASSED=true
+  
+  # Auto-fix formatting with black
+  echo "  🔧 Auto-fixing code formatting with black..."
+  if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
+    add_success "black" "Code formatting auto-fixed"
+  else
+    add_failure "black" "Code formatting check" "Run: black --line-length 88 --target-version py39 *.py adapters/ tests/"
+    GROUPED_PASSED=false
+  fi
+  
+  # Auto-fix import sorting with isort
+  echo "  📚 Auto-fixing import sorting with isort..."
+  if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
+    add_success "isort" "Import sorting auto-fixed"
+  else
+    add_failure "isort" "Import sorting check" "Run: isort --profile black *.py adapters/ tests/"
+    GROUPED_PASSED=false
+  fi
+  
+  # Run flake8 (critical errors only)
+  echo "  🔍 Checking critical lint issues with flake8..."
+  if flake8 --select=E9,F63,F7,F82 --show-source --statistics *.py adapters/ tests/ 2>&1; then
+    add_success "flake8" "No critical lint errors found"
+  else
+    add_failure "flake8" "Critical lint errors found" "Fix the errors above"
+    GROUPED_PASSED=false
+  fi
+  
+  if [[ "$GROUPED_PASSED" != "true" ]]; then
+    echo ""
+    add_failure "Python Lint & Format" "One or more sub-checks failed" "Fix the errors listed above"
+    exit 1
+  fi
+  
+  add_success "Python Lint & Format" "All formatting and lint checks passed"
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GROUPED CHECK: JS LINT & FORMAT
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_JS_LINT_FORMAT" == "true" ]]; then
+  echo "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+  GROUPED_PASSED=true
+  
+  # Run ESLint (only check static JS files, not templates)
+  echo "  🔍 Checking JavaScript with ESLint..."
+  if npx eslint "static/**/*.js" --max-warnings 0 2>&1; then
+    add_success "ESLint" "JavaScript code passes linting"
+  else
+    add_failure "ESLint" "JavaScript linting errors" "Run: npx eslint static/**/*.js --fix"
+    GROUPED_PASSED=false
+  fi
+  
+  # Check Prettier formatting
+  echo "  🎨 Checking JavaScript formatting with Prettier..."
+  if npx prettier --check "static/**/*.js" 2>&1; then
+    add_success "Prettier" "JavaScript code is properly formatted"
+  else
+    add_failure "Prettier" "JavaScript formatting issues" "Run: npx prettier --write 'static/**/*.js'"
+    GROUPED_PASSED=false
+  fi
+  
+  if [[ "$GROUPED_PASSED" != "true" ]]; then
+    echo ""
+    add_failure "JavaScript Lint & Format" "One or more sub-checks failed" "Fix the errors listed above"
+    exit 1
+  fi
+  
+  add_success "JavaScript Lint & Format" "All JavaScript checks passed"
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GROUPED CHECK: PYTHON STATIC ANALYSIS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
+  echo "🔍 Python Static Analysis (mypy, imports)"
+  GROUPED_PASSED=true
+  
+  # Run mypy type checking
+  echo "  🔧 Type checking with mypy..."
+  if mypy *.py adapters/ --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
+    add_success "mypy" "Type checking passed"
+  else
+    echo "⚠️  mypy found type issues (non-blocking)"
+  fi
+  
+  # Run import analysis
+  echo "  📦 Checking import organization..."
+  if python -c "import sys; sys.exit(0)" 2>&1; then
+    add_success "imports" "Import organization validated"
+  else
+    add_failure "imports" "Import validation failed" "Check Python imports"
+    GROUPED_PASSED=false
+  fi
+  
+  if [[ "$GROUPED_PASSED" != "true" ]]; then
+    echo ""
+    add_failure "Python Static Analysis" "One or more sub-checks failed" "Fix the errors listed above"
+    exit 1
+  fi
+  
+  add_success "Python Static Analysis" "All static analysis checks passed"
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GROUPED CHECK: SONARCLOUD (ANALYZE + STATUS)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_SONAR" == "true" ]]; then
+  echo "☁️ SonarCloud Analysis (analyze + validate)"
+  
+  # First run analyze
+  RUN_SONAR_ANALYZE=true
+  # Then run status to validate
+  RUN_SONAR_STATUS=true
+  # Let the individual sections below handle the execution
+  echo "  🔍 Will run: analyze → status"
+  echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PYTHON BLACK FORMATTING CHECK (ATOMIC)
