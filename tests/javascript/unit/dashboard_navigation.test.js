@@ -211,6 +211,37 @@ describe('Dashboard Navigation', () => {
       expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
       expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
     });
+
+    it('should initialize with all panels visible on DOMContentLoaded', () => {
+      const panelMapping = {
+        teaching: ['instructor-teaching-panel'],
+        all: [
+          'instructor-teaching-panel',
+          'instructor-assessment-panel',
+          'instructor-activity-panel',
+          'instructor-summary-panel'
+        ]
+      };
+      const allPanelIds = [
+        'instructor-teaching-panel',
+        'instructor-assessment-panel',
+        'instructor-activity-panel',
+        'instructor-summary-panel'
+      ];
+
+      // Configure first
+      window.configureDashboardFilter(panelMapping, allPanelIds);
+
+      // Trigger DOMContentLoaded event
+      const event = new Event('DOMContentLoaded');
+      document.dispatchEvent(event);
+
+      // All panels should be visible after DOMContentLoaded
+      expect(document.getElementById('instructor-teaching-panel').style.display).toBe('block');
+      expect(document.getElementById('instructor-assessment-panel').style.display).toBe('block');
+      expect(document.getElementById('instructor-activity-panel').style.display).toBe('block');
+      expect(document.getElementById('instructor-summary-panel').style.display).toBe('block');
+    });
   });
 });
 

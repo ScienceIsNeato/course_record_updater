@@ -436,6 +436,7 @@ describe('PanelManager', () => {
       
       jest.useRealTimers();
     });
+
   });
 });
 
