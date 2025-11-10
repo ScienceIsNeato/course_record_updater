@@ -57,15 +57,15 @@
                     <h6 class="text-primary mb-3">Enrollment Information (Pre-Populated)</h6>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Total Enrollment:</label>
+                    <label class="form-label fw-bold" for="courseEnrollment">Total Enrollment:</label>
                     <input type="text" class="form-control-plaintext" id="courseEnrollment" readonly>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Withdrawals:</label>
+                    <label class="form-label fw-bold" for="courseWithdrawals">Withdrawals:</label>
                     <input type="text" class="form-control-plaintext" id="courseWithdrawals" readonly>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Assessment Due Date:</label>
+                    <label class="form-label fw-bold" for="courseDueDate">Assessment Due Date:</label>
                     <input type="text" class="form-control-plaintext" id="courseDueDate" readonly>
                     <small class="text-muted">Set by program admin</small>
                 </div>
@@ -331,7 +331,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Get status indicator and styling
                 const statusIndicator = getStatusIndicatorHtml(status, isComplete, needsWork);
                 const borderColorClass = getBorderColorClass(isApproved, needsWork, isComplete);
-                const successRateColorClass = getSuccessRateColorClass(percentage);
                 
                 html += `
                     <div class="card mb-3 border-start border-4 ${borderColorClass}">
@@ -503,7 +502,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Track if user has started editing (for auto-marking in_progress)
-    let hasEdited = false;
     let autoMarkTriggered = false;
     
     // Auto-track editing on form fields (updated field names from CEI demo feedback)
@@ -511,8 +509,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const field = document.getElementById(fieldId);
         if (field) {
             field.addEventListener('input', function() {
-                hasEdited = true;
-                
                 // Auto-mark as in_progress on first edit (debounced)
                 if (!autoMarkTriggered) {
                     autoMarkTriggered = true;
@@ -592,7 +588,6 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.hide();
             
             // Reset tracking state
-            hasEdited = false;
             autoMarkTriggered = false;
             
             alert('Assessment updated successfully!');
