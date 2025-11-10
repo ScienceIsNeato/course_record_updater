@@ -285,20 +285,38 @@ describe('audit_clo.js - DOM Integration', () => {
       expect(document.getElementById('statNCI').textContent).toBe('3');
     });
 
-    it('should handle fetch errors gracefully', async () => {
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    it('should handle individual status fetch failures and show 0', async () => {
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       
       // Clear previous state
       fetch.mockClear();
       
-      // Mock fetch to reject with network error for stats calls
+      // Mock fetch - some succeed, some fail
       fetch.mockImplementation((url) => {
-        if (url.includes('/api/outcomes/audit?status=')) {
-          return Promise.reject(new Error('Network error'));
+        if (url.includes('awaiting_approval')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ count: 5 })
+          });
         }
+        if (url.includes('approval_pending')) {
+          // This one fails with HTTP error
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error'
+          });
+        }
+        if (url.includes('approved')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ count: 10 })
+          });
+        }
+        // Others succeed with 0
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ count: 0, outcomes: [] })
+          json: () => Promise.resolve({ count: 0 })
         });
       });
 
@@ -315,16 +333,23 @@ describe('audit_clo.js - DOM Integration', () => {
       const event = new Event('DOMContentLoaded');
       document.dispatchEvent(event);
 
-      // Wait for async operations (updateStats is called from loadCLOs)
+      // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Should log error from updateStats but not crash
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Error'),
-        expect.any(Error)
+      // Should log warning for failed status
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to fetch stats for status approval_pending'),
+        expect.any(String)
       );
 
-      consoleErrorSpy.mockRestore();
+      // Successful stats should be updated
+      expect(document.getElementById('statAwaitingApproval').textContent).toBe('5');
+      expect(document.getElementById('statApproved').textContent).toBe('10');
+      
+      // Failed status should show 0
+      expect(document.getElementById('statNeedsRework').textContent).toBe('0');
+
+      consoleWarnSpy.mockRestore();
     });
   });
 
