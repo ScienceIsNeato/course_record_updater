@@ -177,8 +177,11 @@
           const courseId = task.course_id || '';
           const sectionId = task.section_id || '';
           const buttonText = this.isTaskComplete(task.status) ? 'Review' : 'Enter';
-          // Build URL with both course and section parameters
-          const url = `/assessments?course=${courseId}&section=${sectionId}`;
+          // Build URL with only non-empty parameters
+          const params = [];
+          if (courseId) params.push(`course=${courseId}`);
+          if (sectionId) params.push(`section=${sectionId}`);
+          const url = params.length > 0 ? `/assessments?${params.join('&')}` : '/assessments';
           return {
             course: task.course_number
               ? `${task.course_number} — ${task.course_title || ''}`
