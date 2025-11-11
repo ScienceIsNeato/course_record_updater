@@ -54,6 +54,30 @@ git commit --file=COMMIT_MSG.txt
 
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
+## 🎬 Demo & Workflow Walkthroughs
+
+Product demonstration materials for key workflows:
+- **[docs/workflow-walkthroughs/](docs/workflow-walkthroughs/)**: Workflow demonstration system
+- **[single_term_outcome_management.md](docs/workflow-walkthroughs/single_term_outcome_management.md)**: Complete 30-minute workflow demo
+
+### Interactive Demo
+```bash
+# Run interactive step-by-step demo
+python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md
+```
+
+### Manual Demo Setup
+```bash
+# Seed demo database
+python scripts/seed_db.py --demo --clear --env dev
+
+# Start server
+./restart_server.sh dev
+
+# Access: http://localhost:3001
+# Login: demo2025.admin@example.com / Demo2024!
+```
+
 ## 🧪 Manual Testing & UAT
 
 For comprehensive user acceptance testing of the authentication system:
@@ -128,12 +152,13 @@ python scripts/seed_db.py --clear
 
 **IMPORTANT:** All project documentation follows this structure:
 
+- **`docs/workflow-walkthroughs/`** - Demo materials, training guides, and product showcases
 - **`planning/documentation/`** - Technical specifications, requirements, and design documents
 - **`research/`** - Stakeholder analysis, data analysis, and external research materials
 - **Root level** - Only core project files (README, STATUS, PROJECT_OVERVIEW)
-- **NO `docs/` folder** - This was removed to prevent confusion
 
 When adding new documentation:
+- Demo/training materials → `docs/workflow-walkthroughs/`
 - Technical specs → `planning/documentation/`
 - User workflows → `planning/user_stories/[user_role]/`
 - Stakeholder research → `research/[client_name]/`

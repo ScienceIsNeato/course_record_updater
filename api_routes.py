@@ -4538,19 +4538,33 @@ def _validate_excel_import_request():
     logger.info("Request files: %s", list(request.files.keys()))
     logger.info("Request form: %s", dict(request.form))
 
-    # Check if file was uploaded
-    if "excel_file" not in request.files:
-        logger.warning("No excel_file in request.files")
-        raise ValueError("No Excel file provided")
+    # Check for demo file path first (takes precedence)
+    demo_file_path = request.form.get("demo_file_path")
+    if demo_file_path:
+        logger.info(f"Using demo file path: {demo_file_path}")
+        # Create a mock file object for compatibility
+        file = type(
+            "obj",
+            (object,),
+            {
+                "filename": demo_file_path,
+                "demo_path": demo_file_path,  # Store the actual path
+            },
+        )()
+    else:
+        # Check if file was uploaded
+        if "excel_file" not in request.files:
+            logger.warning("No excel_file in request.files")
+            raise ValueError("No Excel file provided")
 
-    file = request.files["excel_file"]
-    if not file.filename or file.filename == "":
-        logger.warning("Empty filename in uploaded file")
-        raise ValueError("No file selected")
+        file = request.files["excel_file"]
+        if not file.filename or file.filename == "":
+            logger.warning("Empty filename in uploaded file")
+            raise ValueError("No file selected")
 
-    logger.info(
-        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
-    )
+        logger.info(
+            f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
+        )
 
     # Get form parameters (need adapter_id for validation)
     import_params = {
@@ -4676,17 +4690,23 @@ def _process_excel_import(file, current_user, institution_id, import_params):
     import re
     import tempfile
 
-    # Sanitize filename for logging/display purposes only
-    safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
-    if not safe_filename or safe_filename.startswith("."):
-        safe_filename = f"upload_{hash(file.filename) % 10000}"
+    # Check if this is a demo file path (not an uploaded file)
+    if hasattr(file, "demo_path"):
+        # Use the demo file path directly
+        temp_filepath = file.demo_path
+        cleanup_temp = False
+        logger.info(f"Using demo file: {temp_filepath}")
+    else:
+        # Sanitize filename for logging/display purposes only
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"upload_{hash(file.filename) % 10000}"
 
-    # Use secure temporary file creation
-    temp_file_prefix = (
-        f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
-    )
+        # Use secure temporary file creation
+        temp_file_prefix = (
+            f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
+        )
 
-    try:
         # Create secure temporary file
         with tempfile.NamedTemporaryFile(
             mode="wb",
@@ -4696,7 +4716,9 @@ def _process_excel_import(file, current_user, institution_id, import_params):
         ) as temp_file:
             file.save(temp_file)
             temp_filepath = temp_file.name
+        cleanup_temp = True
 
+    try:
         # Import the Excel processing function
         from import_service import import_excel
 
@@ -4734,8 +4756,8 @@ def _process_excel_import(file, current_user, institution_id, import_params):
         )
 
     finally:
-        # Clean up temporary file
-        if os.path.exists(temp_filepath):
+        # Clean up temporary file (but not demo files)
+        if cleanup_temp and os.path.exists(temp_filepath):
             os.remove(temp_filepath)
 
 

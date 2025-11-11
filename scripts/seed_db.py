@@ -430,8 +430,8 @@ class DatabaseSeeder:
         return self.seeder.seed_baseline()
 
 
-class CEIDemoSeeder:
-    """Minimal seeding for CEI stakeholder demo"""
+class DemoSeeder:
+    """Minimal seeding for product demonstrations (2025)"""
 
     def __init__(self):
         self.created = {"institutions": [], "users": [], "programs": [], "terms": []}
@@ -440,19 +440,19 @@ class CEIDemoSeeder:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
-    def create_cei_institution(self):
-        """Create CEI institution"""
-        self.log("🏢 Creating CEI institution...")
+    def create_demo_institution(self):
+        """Create demo institution"""
+        self.log("🏢 Creating Demo University...")
 
-        existing = db.get_institution_by_short_name("CEI")
+        existing = db.get_institution_by_short_name("DEMO2025")
         if existing:
             return existing["institution_id"]
 
         schema = Institution.create_schema(
-            name="College of Eastern Idaho",
-            short_name="CEI",
-            admin_email="admin@cei.edu",
-            website_url="https://cei.edu",
+            name="Demo University",
+            short_name="DEMO2025",
+            admin_email="demo2025.admin@example.com",
+            website_url="https://demo.example.com",
             created_by="system",
         )
 
@@ -461,11 +461,11 @@ class CEIDemoSeeder:
             self.created["institutions"].append(inst_id)
         return inst_id
 
-    def create_leslie_account(self, institution_id):
-        """Create Leslie Jernberg institution admin account"""
-        self.log("👩‍💼 Creating Leslie Jernberg (Institution Admin)...")
+    def create_admin_account(self, institution_id):
+        """Create demo admin account"""
+        self.log("👩‍💼 Creating Demo Admin (Institution Admin)...")
 
-        email = "leslie.jernberg@cei.edu"
+        email = "demo2025.admin@example.com"
         password = "Demo2024!"
 
         existing = db.get_user_by_email(email)
@@ -586,16 +586,16 @@ class CEIDemoSeeder:
         else:
             self.log("   ℹ️  No new course-program links created")
 
-    def seed_cei_demo(self):
-        """Seed minimal data for CEI demo"""
-        self.log("🎬 Seeding CEI demo environment...")
+    def seed_demo(self):
+        """Seed minimal data for product demo"""
+        self.log("🎬 Seeding 2025 demo environment...")
 
-        inst_id = self.create_cei_institution()
+        inst_id = self.create_demo_institution()
         if not inst_id:
             return False
 
-        leslie_id = self.create_leslie_account(inst_id)
-        if not leslie_id:
+        admin_id = self.create_admin_account(inst_id)
+        if not admin_id:
             return False
 
         program_ids = self.create_demo_programs(inst_id)
@@ -604,28 +604,27 @@ class CEIDemoSeeder:
         # Link any existing courses to programs
         self.link_courses_to_programs(inst_id)
 
-        self.log("✅ CEI demo seeding completed!")
+        self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
 
     def print_summary(self):
         """Print demo seeding summary"""
         self.log("")
-        self.log("📊 CEI Demo Environment Ready:")
-        self.log(f"   Institution: CEI")
+        self.log("📊 Demo Environment Ready (2025):")
+        self.log(f"   Institution: Demo University")
         self.log(f"   Programs: {len(self.created['programs'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log("")
-        self.log("🔑 Demo Account:")
-        self.log("   Leslie Jernberg (Institution Admin)")
-        self.log("   Email: leslie.jernberg@cei.edu")
+        self.log("🔑 Demo Account Credentials:")
+        self.log("   Email:    demo2025.admin@example.com")
         self.log("   Password: Demo2024!")
         self.log("")
-        self.log("📝 Next Steps:")
+        self.log("🚀 Next Steps:")
         self.log("   1. Start server: ./restart_server.sh dev")
         self.log("   2. Navigate to: http://localhost:3001")
-        self.log("   3. Login with Leslie's credentials")
-        self.log("   4. Upload research/CEI/2024FA_test_data.xlsx")
+        self.log("   3. Login with the credentials above")
+        self.log("   4. Follow demo: docs/workflow-walkthroughs/single_term_outcome_management.md")
 
 
 def main():
@@ -633,13 +632,13 @@ def main():
     parser = argparse.ArgumentParser(
         description="Seed baseline E2E test data",
         epilog="Examples:\n"
-        "  python scripts/seed_db.py --cei-demo --clear --env dev\n"
+        "  python scripts/seed_db.py --demo --clear --env dev\n"
         "  python scripts/seed_db.py --clear --env e2e\n"
         "  python scripts/seed_db.py --env prod\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--clear", action="store_true", help="Clear database first")
-    parser.add_argument("--cei-demo", action="store_true", help="Seed minimal CEI demo environment")
+    parser.add_argument("--demo", action="store_true", help="Seed generic demo environment for product demonstrations")
     parser.add_argument(
         "--env",
         choices=["dev", "e2e", "prod"],
@@ -689,14 +688,14 @@ def main():
     globals()['User'] = User
     globals()['hash_password'] = hash_password
 
-    if args.cei_demo:
-        seeder = CEIDemoSeeder()
+    if args.demo:
+        seeder = DemoSeeder()
         
         if args.clear:
             seeder.log("🧹 Clearing database...")
             db.reset_database()
         
-        success = seeder.seed_cei_demo()
+        success = seeder.seed_demo()
         sys.exit(0 if success else 1)
     else:
         seeder = BaselineSeeder()

@@ -32,9 +32,26 @@
                     
                     <!-- File Selection -->
                     <div class="mb-3">
-                        <label for="excel_file" class="form-label">Select File:</label>
-                        <input type="file" class="form-control" id="excel_file" name="excel_file" required>
-                        <small class="form-text text-muted">The selected adapter determines valid file types.</small>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="use_demo_file" name="use_demo_file">
+                            <label class="form-check-label" for="use_demo_file">
+                                <strong>Use Demo Data</strong>
+                                <small class="text-muted d-block">Use pre-configured test data for demonstration</small>
+                            </label>
+                        </div>
+                        
+                        <div id="demo_file_path_group" style="display: none;">
+                            <label for="demo_file_path" class="form-label">Demo File Path:</label>
+                            <input type="text" class="form-control" id="demo_file_path" name="demo_file_path" 
+                                   value="test_data/canonical_seed.zip" readonly>
+                            <small class="form-text text-muted">Pre-configured demo data file</small>
+                        </div>
+                        
+                        <div id="manual_file_group">
+                            <label for="excel_file" class="form-label">Select File:</label>
+                            <input type="file" class="form-control" id="excel_file" name="excel_file">
+                            <small class="form-text text-muted">The selected adapter determines valid file types.</small>
+                        </div>
                     </div>
 
                     <!-- Import Format -->
