@@ -369,8 +369,19 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
       const promises = statuses.map(status =>
         fetch(`/api/outcomes/audit?status=${status}`)
-          .then(r => r.json())
+          .then(r => {
+            if (!r.ok) {
+              throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+            }
+            return r.json();
+          })
           .then(d => d.count || 0)
+          .catch(err => {
+            // Return 0 for individual status failures to allow graceful degradation
+            // eslint-disable-next-line no-console
+            console.warn(`Failed to fetch stats for status ${status}:`, err.message);
+            return 0;
+          })
       );
 
       const [awaiting, pending, approved, inProgress, nci] = await Promise.all(promises);
@@ -384,8 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (error) {
       // Log error to aid debugging, but allow graceful degradation
+      // Stats are nice-to-have, not critical functionality
       // eslint-disable-next-line no-console
-      console.error('Error updating stats:', error);
+      console.warn('Error updating dashboard stats (non-critical):', error.message || error);
     }
   }
 

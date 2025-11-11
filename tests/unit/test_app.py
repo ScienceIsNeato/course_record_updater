@@ -82,6 +82,44 @@ class TestFlaskAppSetup:
         assert len(app_module.app.name) > 0
 
 
+class TestDashboardRoute:
+    """Test dashboard route (Issue #30 fix)."""
+
+    def test_dashboard_route_returns_html_not_json(self):
+        """Test that /dashboard route returns HTML, not JSON (Issue #30)."""
+        with app_module.app.test_client() as client:
+            # Create a mock session with authenticated user
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+
+            # Mock auth service to return a test user
+            with patch("app.get_current_user") as mock_get_user:
+                mock_get_user.return_value = {
+                    "user_id": "test-user-id",
+                    "email": "test@example.com",
+                    "role": "instructor",
+                    "first_name": "Test",
+                    "last_name": "User",
+                    "institution_id": "test-institution",
+                }
+
+                response = client.get("/dashboard")
+
+                # Verify response is HTML, not JSON
+                assert response.status_code == 200
+                assert response.content_type.startswith("text/html")
+
+                # Verify HTML content contains expected elements
+                html = response.data.decode()
+                assert "Instructor Dashboard" in html or "Dashboard" in html
+                assert "<!DOCTYPE html>" in html
+                # Should NOT be JSON
+                assert not html.strip().startswith("{")
+                assert not html.strip().startswith("[")
+
+
 class TestLoggingSetup:
     """Test logging configuration."""
 

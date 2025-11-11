@@ -364,4 +364,128 @@ describe('InstructorDashboard', () => {
       expect(emptyMessage).toContain('panel-empty');
     });
   });
+
+  describe('branch coverage for conditional logic', () => {
+    it('handles null/missing timestamp in updateLastUpdated', () => {
+      InstructorDashboard.updateLastUpdated(null);
+      const target = document.getElementById('instructorLastUpdated');
+      expect(target.textContent).toContain('Last updated:');
+      // Should show current date when timestamp is null
+      expect(target.textContent).not.toBe('Last updated: Invalid Date');
+    });
+
+    it('handles missing elements gracefully in renderTeachingAssignments', () => {
+      document.body.innerHTML = ''; // Remove all elements
+      
+      // Should not throw
+      expect(() => InstructorDashboard.renderTeachingAssignments([])).not.toThrow();
+    });
+
+    it('handles missing elements gracefully in renderAssessmentTasks', () => {
+      document.body.innerHTML = ''; // Remove all elements
+      
+      // Should not throw
+      expect(() => InstructorDashboard.renderAssessmentTasks([])).not.toThrow();
+    });
+
+    it('handles missing elements gracefully in renderRecentActivity', () => {
+      document.body.innerHTML = ''; // Remove all elements
+      
+      // Should not throw
+      expect(() => InstructorDashboard.renderRecentActivity([])).not.toThrow();
+    });
+
+    it('handles missing elements gracefully in renderCourseSummary', () => {
+      document.body.innerHTML = ''; // Remove all elements
+      
+      // Should not throw
+      expect(() => InstructorDashboard.renderCourseSummary([], [])).not.toThrow();
+    });
+
+    it('handles missing elements gracefully in updateLastUpdated', () => {
+      document.body.innerHTML = ''; // Remove lastUpdated element
+      
+      // Should not throw
+      expect(() => InstructorDashboard.updateLastUpdated('2024-01-01T12:00:00Z')).not.toThrow();
+    });
+
+    it('handles zero assessment tasks correctly in updateHeader', () => {
+      const dataWithNoTasks = {
+        summary: { courses: 1, sections: 2, students: 50 },
+        assessment_tasks: []
+      };
+      
+      InstructorDashboard.updateHeader(dataWithNoTasks);
+      expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('0%');
+    });
+
+    it('identifies completed tasks with various status strings', () => {
+      expect(InstructorDashboard.isTaskComplete('completed')).toBe(true);
+      expect(InstructorDashboard.isTaskComplete('COMPLETED')).toBe(true);
+      expect(InstructorDashboard.isTaskComplete('complete')).toBe(true);
+      expect(InstructorDashboard.isTaskComplete('done')).toBe(true);
+      expect(InstructorDashboard.isTaskComplete('DONE')).toBe(true);
+      expect(InstructorDashboard.isTaskComplete(null)).toBe(false);
+      expect(InstructorDashboard.isTaskComplete('pending')).toBe(false);
+      expect(InstructorDashboard.isTaskComplete('in_progress')).toBe(false);
+    });
+
+    it('handles sections without courseId in renderCourseSummary', () => {
+      setBody(`
+        <div id="instructorSummaryContainer"></div>
+      `);
+
+      const assignments = [{
+        course_id: 'c1',
+        course_number: 'BIO101',
+        course_title: 'Biology',
+        sections: []
+      }];
+      
+      const sections = [
+        { enrollment: 30 }, // No course_id
+        { course_id: null, enrollment: 20 } // Null course_id
+      ];
+
+      window.panelManager = {
+        createSortableTable: jest.fn(() => {
+          const table = document.createElement('table');
+          return table;
+        })
+      };
+
+      InstructorDashboard.renderCourseSummary(assignments, sections);
+      
+      // Should not throw and should skip sections without course_id
+      const container = document.getElementById('instructorSummaryContainer');
+      expect(container).not.toBeNull();
+    });
+
+    it('handles missing activityList element during silent load', async () => {
+      document.body.innerHTML = ''; // Remove activityList
+      
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: sampleData })
+      });
+
+      // Should not throw
+      await expect(InstructorDashboard.loadData({ silent: true })).resolves.not.toThrow();
+      
+      global.fetch.mockRestore();
+    });
+
+    it('handles missing activityList element during error', async () => {
+      document.body.innerHTML = ''; // Remove activityList
+      
+      global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Should not throw
+      await expect(InstructorDashboard.loadData()).resolves.not.toThrow();
+      
+      global.fetch.mockRestore();
+      console.error.mockRestore();
+    });
+  });
 });

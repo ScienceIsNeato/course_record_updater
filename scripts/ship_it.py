@@ -78,21 +78,16 @@ class QualityGateExecutor:
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
         self.all_checks = [
-            ("black", "🎨 Code Formatting (black)"),
-            ("isort", "📚 Import Sorting (isort)"),
-            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
-            ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
-            ("js-format", "🎨 JavaScript Format Check (Prettier)"),
+            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
+            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
+            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
-            ("types", "🔧 Type Check (mypy)"),
-            ("imports", "📦 Import Analysis & Organization"),
             ("duplication", "🔄 Code Duplication Check"),
-            ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),
-            ("sonar-status", "📊 SonarCloud - Fetch Latest Results"),
+            ("sonar", "☁️ SonarCloud Analysis (quality gate validation)"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
@@ -103,19 +98,13 @@ class QualityGateExecutor:
         # Key optimization: Run coverage instead of tests (coverage includes tests)
         # This saves ~28s by avoiding duplicate test execution
         self.commit_checks = [
-            ("black", "🎨 Code Formatting (black)"),
-            ("isort", "📚 Import Sorting (isort)"),
-            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
-            ("js-lint", "🔍 JavaScript Lint Check (ESLint)"),
-            ("js-format", "🎨 JavaScript Format Check (Prettier)"),
+            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
+            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
+            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            ("types", "🔧 Type Check (mypy)"),
-            ("imports", "📦 Import Analysis & Organization"),
-            # Duplication check moved to PR validation (non-critical, saves 2.2s)
-            # ("duplication", "🔄 Code Duplication Check"),  # Moved to PR checks
-            # ("sonar-analyze", "🔍 SonarCloud - Trigger New Analysis"),  # Excluded from commit checks (too slow)
+            # Duplication and sonar excluded from commit checks (too slow)
         ]
 
         # Full checks for PR validation (all checks)
@@ -123,18 +112,14 @@ class QualityGateExecutor:
         
         # Integration test validation (component interactions using SQLite persistence)
         self.integration_checks = [
-            ("black", "🎨 Code Formatting (black)"),
-            ("isort", "📚 Import Sorting (isort)"),
-            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
         ]
         
         # Smoke test validation (requires running server + browser)
         self.smoke_checks = [
-            ("black", "🎨 Code Formatting (black)"),
-            ("isort", "📚 Import Sorting (isort)"),
-            ("lint", "🔍 Python Lint Check (flake8 critical errors)"),
+            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
         ]
@@ -153,6 +138,10 @@ class QualityGateExecutor:
         flag_mapping = {
             "integration": "integration-tests",
             "smoke": "smoke-tests",
+            "python-lint-format": "python-lint-format",
+            "js-lint-format": "js-lint-format",
+            "python-static-analysis": "python-static-analysis",
+            "sonar": "sonar",  # Unified sonar check (was sonar-analyze + sonar-status)
         }
         
         # Use mapped flag if available, otherwise use original flag
@@ -181,7 +170,7 @@ class QualityGateExecutor:
 
             # Auto-stage files after auto-fixers run successfully
             # Only auto-stage for tools that actually modify files and need staging
-            if result.returncode == 0 and check_flag in ["black", "isort"]:
+            if result.returncode == 0 and check_flag in ["black", "isort", "python-lint-format", "js-lint-format"]:
                 try:
                     subprocess.run(["git", "add", "."], capture_output=True, check=True)
                 except subprocess.CalledProcessError:
@@ -1538,10 +1527,10 @@ Examples:
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
 Validation Types:
-  commit - Fast checks for development cycle (excludes security & sonar-analyze, ~30s savings)
-  PR     - Full validation for pull requests (all checks including security & sonar-analyze)
+  commit - Fast checks for development cycle (excludes security & sonar, ~40s savings)
+  PR     - Full validation for pull requests (all checks including security & sonar)
 
-Available checks: black, isort, lint, js-lint, js-format, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check
+Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar, e2e, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -1558,7 +1547,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks black isort lint tests). Available: black, isort, lint, tests, coverage, security, sonar-analyze, sonar-status, types, imports, duplication, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar, e2e, integration, smoke, frontend-check",
     )
 
     parser.add_argument(

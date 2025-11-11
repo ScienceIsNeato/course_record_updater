@@ -107,7 +107,7 @@
 
 .status-expired {
     background-color: #f3f4f6;
-    color: #6b7280;
+    color: #4b5563; /* Darker gray-600 for better contrast (was gray-500) */
     border: 1px solid #d1d5db;
 }
 
@@ -366,8 +366,8 @@
 }
 
 .pagination .page-item.active .page-link {
-    background-color: #3b82f6;
-    border-color: #3b82f6;
+    background-color: #2563eb; /* Darker blue-600 for better contrast (was blue-500) */
+    border-color: #2563eb;
     color: white;
 }
 

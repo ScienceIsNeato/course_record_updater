@@ -1,0 +1,65 @@
+/**
+ * Dashboard Navigation Filter - Shared across all dashboard templates
+ *
+ * Provides panel filtering functionality for dashboard navigation buttons.
+ * Dynamically shows/hides panels based on the selected view and manages
+ * active button states.
+ *
+ * Usage:
+ *   Call configureDashboardFilter() with a mapping object that defines
+ *   which panels should be visible for each view.
+ */
+
+/**
+ * Configure and initialize dashboard filtering for a specific dashboard type.
+ *
+ * @param {Object} panelMapping - Maps view names to arrays of panel IDs
+ *   Example: {
+ *     'teaching': ['instructor-teaching-panel'],
+ *     'all': ['instructor-teaching-panel', 'instructor-assessment-panel']
+ *   }
+ * @param {string[]} allPanelIds - Complete list of all panel IDs for this dashboard
+ */
+function configureDashboardFilter(panelMapping, allPanelIds) {
+  /**
+   * Filter dashboard panels based on the selected view.
+   *
+   * @param {string} view - The view to display (e.g., 'teaching', 'all')
+   */
+  function filterDashboard(view) {
+    const visiblePanels = panelMapping[view] || panelMapping.all;
+
+    // Show/hide panels based on current view
+    allPanelIds.forEach(panelId => {
+      const panel = document.getElementById(panelId);
+      if (panel) {
+        if (visiblePanels.includes(panelId)) {
+          panel.style.display = 'block';
+        } else {
+          panel.style.display = 'none';
+        }
+      }
+    });
+
+    // Update active states on navigation buttons
+    document.querySelectorAll('.navbar-nav button.nav-link').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    const activeButton = document.getElementById(`dashboard-${view === 'all' ? 'view-all' : view}`);
+    if (activeButton) {
+      activeButton.classList.add('active');
+    }
+  }
+
+  // Initialize dashboard on page load - show all panels by default
+  document.addEventListener('DOMContentLoaded', () => {
+    filterDashboard('all');
+  });
+
+  // Expose filterDashboard globally for onclick handlers
+  window.filterDashboard = filterDashboard;
+}
+
+// Export for use in dashboard templates
+window.configureDashboardFilter = configureDashboardFilter;

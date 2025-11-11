@@ -13,8 +13,61 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Tuple
+
+
+def get_repo_metadata() -> str:
+    """
+    Get current repository state metadata for report freshness checking.
+    
+    Returns:
+        Formatted metadata string with commit, status, timestamp
+    """
+    try:
+        # Get current commit
+        commit_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        commit_sha = commit_result.stdout.strip()[:7]
+        
+        # Get current branch
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        branch = branch_result.stdout.strip()
+        
+        # Get git status (check if clean)
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        is_clean = len(status_result.stdout.strip()) == 0
+        status = "clean" if is_clean else "dirty (uncommitted changes)"
+        
+        # Get timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        return f"""╔════════════════════════════════════════════════════════════
+║ REPORT METADATA (Check freshness)
+║ Generated: {timestamp}
+║ Commit:    {commit_sha}
+║ Branch:    {branch}
+║ Status:    {status}
+╚════════════════════════════════════════════════════════════
+
+"""
+    except Exception as e:
+        return f"⚠️  Could not generate metadata: {e}\n\n"
 
 
 def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
@@ -96,7 +149,11 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
 
 def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
-    Parse coverage.xml (Python) to find uncovered lines.
+    Parse coverage.xml (Python) to find uncovered lines AND partially covered branches.
+    
+    This matches SonarCloud's "Coverage on New Code" metric which counts:
+    1. Lines with hits == 0 (completely uncovered)
+    2. Lines with branch="true" and condition-coverage < 100% (partially covered branches)
     
     Returns:
         Tuple of (uncovered_lines dict, all_covered_files set)
@@ -124,8 +181,26 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[D
                     line_num = int(line.get('number'))
                     hits = int(line.get('hits', 0))
                     
+                    # Track completely uncovered lines
                     if hits == 0:
                         uncovered_lines[filename].add(line_num)
+                        continue
+                    
+                    # Track partially covered branches (like SonarCloud does)
+                    is_branch = line.get('branch') == 'true'
+                    if is_branch:
+                        condition_coverage = line.get('condition-coverage', '100% (0/0)')
+                        # Parse "50% (1/2)" format
+                        if '(' in condition_coverage:
+                            try:
+                                # Extract "1/2" from "50% (1/2)"
+                                fraction = condition_coverage.split('(')[1].split(')')[0]
+                                covered, total = map(int, fraction.split('/'))
+                                # If not all branches covered, report this line
+                                if covered < total:
+                                    uncovered_lines[filename].add(line_num)
+                            except (ValueError, IndexError):
+                                pass  # Malformed coverage data, skip
         
         return dict(uncovered_lines), all_covered_files
     
@@ -136,11 +211,16 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[D
 
 def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
-    Parse lcov.info (JavaScript) to find uncovered lines.
+    Parse lcov.info (JavaScript) to find uncovered lines AND partially covered branches.
+    
+    This matches SonarCloud's "Coverage on New Code" metric which counts:
+    1. Lines with DA hits == 0 (completely uncovered)
+    2. Lines with BRDA hits == 0 or '-' (uncovered branch)
     
     LCOV format:
         SF:<source file path>
         DA:<line number>,<hit count>
+        BRDA:<line>,<block>,<branch>,<hits>
         end_of_record
     
     Returns:
@@ -182,6 +262,19 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tupl
                         hits = int(parts[1])
                         
                         if hits == 0:
+                            uncovered_lines[current_file].add(line_num)
+                    except (ValueError, IndexError):
+                        continue
+                
+                # Parse branch coverage: BRDA:<line>,<block>,<branch>,<hits>
+                elif line.startswith('BRDA:') and current_file:
+                    try:
+                        parts = line[5:].split(',')  # Remove 'BRDA:' and split
+                        line_num = int(parts[0])
+                        hits = parts[3]  # Can be a number or '-' for not executed
+                        
+                        # If branch not hit (0 or '-'), report this line
+                        if hits == '-' or hits == '0':
                             uncovered_lines[current_file].add(line_num)
                     except (ValueError, IndexError):
                         continue
@@ -234,7 +327,8 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     """Print or save a formatted report of coverage gaps."""
     
     if not pr_coverage_gaps:
-        message = "✅ All NEWLY ADDED lines in this PR are covered by tests!\n"
+        metadata = get_repo_metadata()
+        message = metadata + "✅ All NEWLY ADDED lines in this PR are covered by tests!\n"
         print(message)
         if output_file:
             Path(output_file).write_text(message)
@@ -267,7 +361,8 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     }
     
     if not production_gaps:
-        message = "✅ All production code in this PR is covered!\n(Test files excluded from coverage requirements)\n"
+        metadata = get_repo_metadata()
+        message = metadata + "✅ All production code in this PR is covered!\n(Test files excluded from coverage requirements)\n"
         print(message)
         if output_file:
             Path(output_file).write_text(message)
@@ -277,8 +372,12 @@ def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None)
     total_files = len(production_gaps)
     total_lines = sum(len(lines) for lines in production_gaps.values())
     
-    # Update header to reflect production-only count
-    lines[1] = f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests"
+    # Prepend metadata header
+    metadata = get_repo_metadata()
+    lines.insert(0, metadata)
+    
+    # Update header to reflect production-only count (adjust index due to metadata)
+    lines[2] = f"🔴 {total_lines} uncovered NEW lines across {total_files} files need tests"
     
     # Sort files by number of uncovered lines (most first)
     sorted_files = sorted(

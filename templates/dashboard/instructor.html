@@ -7,10 +7,10 @@
 {% endblock %}
 
 {% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-book-open me-1"></i>Teaching</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-tasks me-1"></i>Assessments</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-chart-line me-1"></i>Progress</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-teaching" onclick="filterDashboard('teaching')"><i class="fas fa-book-open me-1"></i>Teaching</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-assessments" onclick="filterDashboard('assessments')"><i class="fas fa-tasks me-1"></i>Assessments</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-progress" onclick="filterDashboard('progress')"><i class="fas fa-chart-line me-1"></i>Progress</button>
 {% endblock %}
 
 {% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
@@ -47,7 +47,7 @@
             Teaching Assignment
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-outline-secondary" disabled title="Feature coming soon: View student rosters by section">
                 <i class="fas fa-users"></i> View Rosters
             </button>
         </div>
@@ -71,7 +71,7 @@
             Assessment Tasks
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-success" title="Coming soon" onclick="return false;">
+            <button class="btn btn-sm btn-outline-success" disabled title="Feature coming soon: Mark multiple assessments complete at once">
                 <i class="fas fa-check"></i> Bulk Complete
             </button>
         </div>
@@ -131,8 +131,25 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard_navigation.js') }}"></script>
 <script src="{{ url_for('static', filename='instructor_dashboard.js') }}"></script>
 <script>
+    // Configure dashboard navigation for Instructor role
+    configureDashboardFilter(
+        {
+            'teaching': ['instructor-teaching-panel'],
+            'assessments': ['instructor-assessment-panel'],
+            'progress': ['instructor-activity-panel', 'instructor-summary-panel'],
+            'all': ['instructor-teaching-panel', 'instructor-assessment-panel', 'instructor-activity-panel', 'instructor-summary-panel']
+        },
+        [
+            'instructor-teaching-panel',
+            'instructor-assessment-panel',
+            'instructor-activity-panel',
+            'instructor-summary-panel'
+        ]
+    );
+
     // Instructor Data Management Functions (Export Only)
     function instructorQuickExport() {
         const format = document.querySelector('input[name="instructorExportFormat"]:checked').value;

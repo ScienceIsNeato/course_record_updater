@@ -306,7 +306,7 @@ class PanelManager {
    */
   hideStatPreview(statId) {
     const stat = this.statPreviews.get(statId);
-    if (!stat || !stat.preview) return;
+    if (!stat?.preview) return;
 
     stat.preview.classList.remove('show');
     setTimeout(() => {
@@ -472,71 +472,59 @@ class PanelManager {
         endpoint: '/api/institutions',
         title: 'Institutions',
         transform: data =>
-          (data.institutions &&
-            data.institutions.map(inst => ({
-              label: inst.name,
-              value: `${inst.user_count || 0} users`
-            }))) ||
-          []
+          data.institutions?.map(inst => ({
+            label: inst.name,
+            value: `${inst.user_count || 0} users`
+          })) || []
       },
       programs: {
         endpoint: '/api/programs',
         title: 'Programs',
         transform: data =>
-          (data.programs &&
-            data.programs.map(prog => ({
-              label: prog.name,
-              value: `${prog.course_count || 0} courses`
-            }))) ||
-          []
+          data.programs?.map(prog => ({
+            label: prog.name,
+            value: `${prog.course_count || 0} courses`
+          })) || []
       },
       courses: {
         endpoint: '/api/courses',
         title: 'Active Courses',
         transform: data =>
-          (data.courses &&
-            data.courses.map(course => ({
-              label: `${course.course_number}`,
-              value: course.title
-            }))) ||
-          []
+          data.courses?.map(course => ({
+            label: `${course.course_number}`,
+            value: course.title
+          })) || []
       },
       faculty: {
         endpoint: '/api/users?role=instructor',
         title: 'Faculty',
         transform: data =>
-          (data.users &&
-            data.users.map(user => ({
-              label:
-                (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
-                user.email,
-              value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
-            }))) ||
-          []
+          data.users?.map(user => ({
+            label:
+              (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
+              user.email,
+            value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
+          })) || []
       },
       sections: {
         endpoint: '/api/sections',
         title: 'Sections',
         transform: data =>
-          (data.sections &&
-            data.sections.map(section => ({
-              label: section.course_number
-                ? `${section.course_number} Section ${section.section_number || section.section_id || ''}`
-                : `Section ${section.section_number || section.section_id || ''}`,
-              value: `${section.enrollment || 0} students`
-            }))) ||
-          []
+          data.sections?.map(section => ({
+            label: section.course_number
+              ? `${section.course_number} Section ${section.section_number || section.section_id || ''}`
+              : `Section ${section.section_number || section.section_id || ''}`,
+            value: `${section.enrollment || 0} students`
+          })) || []
       },
       users: {
         endpoint: '/api/users',
         title: 'Recent Users',
         transform: data =>
-          (data.users &&
-            data.users.map(user => ({
-              label: `${user.first_name} ${user.last_name}`,
-              value: user.role.replace('_', ' ')
-            }))) ||
-          []
+          data.users?.map(user => ({
+            label: `${user.first_name} ${user.last_name}`,
+            value: user.role.replace('_', ' ')
+          })) || []
       }
     };
 

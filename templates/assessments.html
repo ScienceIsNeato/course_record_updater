@@ -57,15 +57,15 @@
                     <h6 class="text-primary mb-3">Enrollment Information (Pre-Populated)</h6>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Total Enrollment:</label>
+                    <label class="form-label fw-bold" for="courseEnrollment">Total Enrollment:</label>
                     <input type="text" class="form-control-plaintext" id="courseEnrollment" readonly>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Withdrawals:</label>
+                    <label class="form-label fw-bold" for="courseWithdrawals">Withdrawals:</label>
                     <input type="text" class="form-control-plaintext" id="courseWithdrawals" readonly>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-bold">Assessment Due Date:</label>
+                    <label class="form-label fw-bold" for="courseDueDate">Assessment Due Date:</label>
                     <input type="text" class="form-control-plaintext" id="courseDueDate" readonly>
                     <small class="text-muted">Set by program admin</small>
                 </div>
@@ -179,6 +179,71 @@
 
 {% block extra_js %}
 <script>
+// ========================================
+// Pure Utility Functions (Module Scope)
+// ========================================
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Get status badge HTML
+function getStatusBadge(status) {
+    const badges = {
+        'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
+        'assigned': '<span class="badge bg-info">Assigned</span>',
+        'in_progress': '<span class="badge bg-primary">In Progress</span>',
+        'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
+        'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
+        'approved': '<span class="badge bg-success">✓ Approved</span>'
+    };
+    return badges[status] || '';
+}
+
+// Check if CLO can be submitted for approval
+function canSubmitForApproval(status) {
+    return status === 'in_progress' || status === 'approval_pending';
+}
+
+// Helper function to get status indicator HTML
+function getStatusIndicatorHtml(status, isComplete, needsWork) {
+    if (status === 'approved') {
+        return '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>';
+    }
+    if (status === 'awaiting_approval') {
+        return '<span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Review</span>';
+    }
+    if (needsWork) {
+        return '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Needs Revision</span>';
+    }
+    if (isComplete) {
+        return '<span class="badge bg-info"><i class="fas fa-edit"></i> In Progress</span>';
+    }
+    return '';
+}
+
+// Helper function to get border color class
+function getBorderColorClass(isApproved, needsWork, isComplete) {
+    if (isApproved) return 'border-success';
+    if (needsWork) return 'border-danger';
+    if (isComplete) return 'border-info';
+    return 'border-secondary';
+}
+
+// Helper function to get success rate color class
+function getSuccessRateColorClass(percentage) {
+    if (percentage >= 80) return 'text-success';
+    if (percentage >= 60) return 'text-warning';
+    return 'text-danger';
+}
+
+// ========================================
+// DOM-Dependent Code (DOMContentLoaded)
+// ========================================
+
 document.addEventListener('DOMContentLoaded', function() {
     
     const courseSelect = document.getElementById('courseSelect');
@@ -331,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Get status indicator and styling
                 const statusIndicator = getStatusIndicatorHtml(status, isComplete, needsWork);
                 const borderColorClass = getBorderColorClass(isApproved, needsWork, isComplete);
-                const successRateColorClass = getSuccessRateColorClass(percentage);
                 
                 html += `
                     <div class="card mb-3 border-start border-4 ${borderColorClass}">
@@ -434,24 +498,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Get status badge HTML
-    function getStatusBadge(status) {
-        const badges = {
-            'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
-            'assigned': '<span class="badge bg-info">Assigned</span>',
-            'in_progress': '<span class="badge bg-primary">In Progress</span>',
-            'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
-            'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
-            'approved': '<span class="badge bg-success">✓ Approved</span>'
-        };
-        return badges[status] || '';
-    }
-    
-    // Check if CLO can be submitted
-    function canSubmitForApproval(status) {
-        return status === 'in_progress' || status === 'approval_pending';
-    }
-    
     // Submit CLO for approval
     async function submitCLOForApproval(outcomeId, description) {
         if (!confirm(`Submit "${description}" for approval?\n\nOnce submitted, it will be reviewed by an administrator.`)) {
@@ -503,7 +549,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Track if user has started editing (for auto-marking in_progress)
-    let hasEdited = false;
     let autoMarkTriggered = false;
     
     // Auto-track editing on form fields (updated field names from CEI demo feedback)
@@ -511,8 +556,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const field = document.getElementById(fieldId);
         if (field) {
             field.addEventListener('input', function() {
-                hasEdited = true;
-                
                 // Auto-mark as in_progress on first edit (debounced)
                 if (!autoMarkTriggered) {
                     autoMarkTriggered = true;
@@ -592,7 +635,6 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.hide();
             
             // Reset tracking state
-            hasEdited = false;
             autoMarkTriggered = false;
             
             alert('Assessment updated successfully!');
@@ -614,45 +656,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadOutcomes(this.value);
         loadCourseLevelData(this.value); // NEW: Load course-level assessment data
     });
-    
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // Helper function to get status indicator HTML
-    function getStatusIndicatorHtml(status, isComplete, needsWork) {
-        if (status === 'approved') {
-            return '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>';
-        }
-        if (status === 'awaiting_approval') {
-            return '<span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Review</span>';
-        }
-        if (needsWork) {
-            return '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Needs Revision</span>';
-        }
-        if (isComplete) {
-            return '<span class="badge bg-info"><i class="fas fa-edit"></i> In Progress</span>';
-        }
-        return '';
-    }
-    
-    // Helper function to get border color class
-    function getBorderColorClass(isApproved, needsWork, isComplete) {
-        if (isApproved) return 'border-success';
-        if (needsWork) return 'border-danger';
-        if (isComplete) return 'border-info';
-        return 'border-secondary';
-    }
-    
-    // Helper function to get success rate color class
-    function getSuccessRateColorClass(percentage) {
-        if (percentage >= 80) return 'text-success';
-        if (percentage >= 60) return 'text-warning';
-        return 'text-danger';
-    }
     
     // Course-Level Assessment Section Handlers (NEW from CEI demo feedback)
     const courseLevelSection = document.getElementById('courseLevelSection');

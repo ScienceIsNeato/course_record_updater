@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTableBody.addEventListener('click', async event => {
       const target = event.target;
       const row = target.closest('tr');
-      if (!row || !row.dataset || !row.dataset.courseId) {
+      if (!row?.dataset?.courseId) {
         // Ignore clicks that aren't on a button within a valid course row
         return;
       }

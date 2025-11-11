@@ -7,10 +7,10 @@
 {% endblock %}
 
 {% block nav_items %}
-<a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-book me-1"></i>Courses</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-users me-1"></i>Faculty</button>
-<button class="nav-link btn btn-link" type="button"><i class="fas fa-bullseye me-1"></i>CLOs</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-courses" onclick="filterDashboard('courses')"><i class="fas fa-book me-1"></i>Courses</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i class="fas fa-users me-1"></i>Faculty</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-clos" onclick="filterDashboard('clos')"><i class="fas fa-bullseye me-1"></i>CLOs</button>
 {% endblock %}
 
 {% block page_title %}📚 Program Administration{% endblock %}
@@ -180,9 +180,27 @@
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 <script src="{{ url_for('static', filename='panels.js') }}"></script>
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard_navigation.js') }}"></script>
 <script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
 <script src="{{ url_for('static', filename='courseManagement.js') }}"></script>
 <script>
+    // Configure dashboard navigation for Program Admin role
+    configureDashboardFilter(
+        {
+            'courses': ['program-courses-panel'],
+            'faculty': ['program-faculty-panel'],
+            'clos': ['program-clo-panel'],
+            'all': ['program-courses-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
+        },
+        [
+            'program-courses-panel',
+            'program-faculty-panel',
+            'program-clo-panel',
+            'program-assessment-panel',
+            'program-clo-audit-panel'
+        ]
+    );
+
     // Program Data Management Functions
     // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
     
