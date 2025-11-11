@@ -5,6 +5,8 @@ Tests instructor's ability to manage their own profile and view data.
 Each test creates its own test data programmatically.
 """
 
+import time
+
 import pytest
 from playwright.sync_api import Page
 
@@ -35,7 +37,8 @@ def test_tc_crud_inst_001_update_own_profile(
     # Step 1: Get institution ID from logged-in admin and create test instructor
     mocku_id = get_institution_id_from_user(authenticated_institution_admin_page)
 
-    test_email = "john.instructor@test.local"
+    # Use unique email per test run to avoid conflicts in parallel execution
+    test_email = f"john.instructor.{int(time.time() * 1000)}@test.local"
     test_password = "TestUser123!"
 
     instructor = create_test_user_via_api(
@@ -123,10 +126,15 @@ def test_tc_crud_inst_002_cannot_delete_users(
     # Create test instructor
     mocku_id = get_institution_id_from_user(authenticated_institution_admin_page)
 
+    # Use unique emails per test run to avoid conflicts in parallel execution
+    timestamp = int(time.time() * 1000)
+    instructor_email = f"test.instructor.{timestamp}@test.local"
+    other_user_email = f"other.user.{timestamp}@test.local"
+
     instructor = create_test_user_via_api(
         admin_page=authenticated_institution_admin_page,
         base_url=BASE_URL,
-        email="test.instructor@test.local",
+        email=instructor_email,
         first_name="Test",
         last_name="Instructor",
         role="instructor",
@@ -137,7 +145,7 @@ def test_tc_crud_inst_002_cannot_delete_users(
     other_user = create_test_user_via_api(
         admin_page=authenticated_institution_admin_page,
         base_url=BASE_URL,
-        email="other.user@test.local",
+        email=other_user_email,
         first_name="Other",
         last_name="User",
         role="instructor",
@@ -145,9 +153,7 @@ def test_tc_crud_inst_002_cannot_delete_users(
     )
 
     # Login as instructor
-    instructor_page = login_as_user(
-        page, BASE_URL, "test.instructor@test.local", "TestUser123!"
-    )
+    instructor_page = login_as_user(page, BASE_URL, instructor_email, "TestUser123!")
 
     # Get CSRF token
     csrf_token = instructor_page.evaluate(
@@ -182,10 +188,15 @@ def test_tc_crud_inst_003_cannot_edit_other_users(
     # Create test instructor
     mocku_id = get_institution_id_from_user(authenticated_institution_admin_page)
 
+    # Use unique emails per test run to avoid conflicts in parallel execution
+    timestamp = int(time.time() * 1000)
+    instructor_email = f"test.instructor2.{timestamp}@test.local"
+    other_user_email = f"other.user2.{timestamp}@test.local"
+
     instructor = create_test_user_via_api(
         admin_page=authenticated_institution_admin_page,
         base_url=BASE_URL,
-        email="test.instructor2@test.local",
+        email=instructor_email,
         first_name="Test",
         last_name="Instructor",
         role="instructor",
@@ -196,7 +207,7 @@ def test_tc_crud_inst_003_cannot_edit_other_users(
     other_user = create_test_user_via_api(
         admin_page=authenticated_institution_admin_page,
         base_url=BASE_URL,
-        email="other.user2@test.local",
+        email=other_user_email,
         first_name="Other",
         last_name="User",
         role="instructor",
@@ -204,9 +215,7 @@ def test_tc_crud_inst_003_cannot_edit_other_users(
     )
 
     # Login as instructor
-    instructor_page = login_as_user(
-        page, BASE_URL, "test.instructor2@test.local", "TestUser123!"
-    )
+    instructor_page = login_as_user(page, BASE_URL, instructor_email, "TestUser123!")
 
     # Get CSRF token
     csrf_token = instructor_page.evaluate(

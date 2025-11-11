@@ -266,8 +266,7 @@ def page(context: BrowserContext) -> Generator[Page, None, None]:
             # Filter out transient "Failed to fetch" errors during parallel test execution
             # These occur when page loads before session is fully established
             elif (
-                "Instructor dashboard load error" in error_text
-                or "Institution dashboard load error" in error_text
+                "Institution dashboard load error" in error_text
                 or "Program dashboard load error" in error_text
             ) and "Failed to fetch" in error_text:
                 print(
