@@ -4638,27 +4638,12 @@ def _check_excel_import_permissions(adapter_id, import_data_type):
 
 def _determine_target_institution(user_role, user_institution_id, adapter_id):
     """Determine the target institution for the import."""
-    if user_role == UserRole.SITE_ADMIN.value:
-        # Site admins can import for any institution - let adapter determine it
-        if adapter_id == "cei_excel_format_v1":
-            # CEI Excel adapter always imports for MockU institution (default test institution)
-            from database_service import create_default_mocku_institution
-
-            institution_id = create_default_mocku_institution()
-            if not institution_id:
-                raise ValueError("Failed to create/find MockU institution")
-            return institution_id
-        else:
-            # For other adapters, site admin needs to specify institution
-            # TODO: Add institution selection UI for site admins
-            raise ValueError(
-                "Site admin must specify target institution for non-CEI adapters"
-            )
-    else:
-        # Institution/program admins use their own institution
-        if not user_institution_id:
-            raise PermissionError("User has no associated institution")
-        return user_institution_id
+    # SECURITY & DESIGN: All users (including site admins) import into their own institution
+    # This enforces multi-tenant isolation and prevents cross-institution data injection
+    # The institution context comes from authentication, NOT from adapters or CSV data
+    if not user_institution_id:
+        raise PermissionError("User has no associated institution")
+    return user_institution_id
 
 
 def _validate_import_permissions(user_role, import_data_type):

@@ -606,6 +606,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> List[ConflictRecord]:
         """Handle import of a new course."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        course_data["institution_id"] = self.institution_id
+
         if not dry_run:
             create_course(course_data)
             self.stats["records_created"] += 1
@@ -828,6 +832,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> List[ConflictRecord]:
         """Handle import of a new user."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        user_data["institution_id"] = self.institution_id
+
         if not dry_run:
             create_user(user_data)
             self.stats["records_created"] += 1
@@ -910,7 +918,8 @@ class ImportService:
             # Extract and validate required data
             course_number = offering_data.get("course_number")
             term_name = offering_data.get("term_name")
-            institution_id = offering_data.get("institution_id") or self.institution_id
+            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
+            institution_id = self.institution_id
 
             if not course_number or not term_name:
                 self.stats["errors"].append(
@@ -1029,7 +1038,8 @@ class ImportService:
             course_number = section_data.get("course_number")
             term_name = section_data.get("term_name")
             section_number = section_data.get("section_number", "001")
-            institution_id = section_data.get("institution_id") or self.institution_id
+            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
+            institution_id = self.institution_id
             student_count = section_data.get("student_count", 0)
             instructor_email = section_data.get("instructor_email")
 

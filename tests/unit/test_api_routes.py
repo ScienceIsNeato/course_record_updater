@@ -4025,11 +4025,15 @@ class TestExcelImportHelpers:
     """Test helper functions for excel_import_api."""
 
     def test_check_excel_import_permissions_site_admin(self):
-        """Test _check_excel_import_permissions for site admin."""
+        """Test _check_excel_import_permissions for site admin - must have institution_id."""
         from unittest.mock import patch
+
+        import pytest
 
         from api_routes import _check_excel_import_permissions
 
+        # SECURITY: Site admins can no longer import without an institution context
+        # This enforces multi-tenant isolation - ALL users need institution_id
         mock_user = {
             "user_id": "admin1",
             "role": "site_admin",
@@ -4039,13 +4043,11 @@ class TestExcelImportHelpers:
         with patch("api_routes.get_current_user") as mock_get_user:
             mock_get_user.return_value = mock_user
 
-            # Site admin with MockU adapter - should succeed
-            user, inst_id = _check_excel_import_permissions(
-                "cei_excel_format_v1", "courses"
-            )
-
-            assert user == mock_user
-            # Institution ID will be determined by adapter
+            # Should fail because site admin has no institution_id
+            with pytest.raises(
+                PermissionError, match="User has no associated institution"
+            ):
+                _check_excel_import_permissions("cei_excel_format_v1", "courses")
 
     def test_check_excel_import_permissions_no_user(self):
         """Test _check_excel_import_permissions raises when no user."""
@@ -4061,54 +4063,9 @@ class TestExcelImportHelpers:
             with pytest.raises(PermissionError, match="Authentication required"):
                 _check_excel_import_permissions("cei_excel_format_v1", "courses")
 
-    def test_determine_target_institution_site_admin_mocku(self):
-        """Test _determine_target_institution for site admin with MockU adapter."""
-        from unittest.mock import patch
-
-        from api_routes import _determine_target_institution
-
-        # Function is imported inside _determine_target_institution
-        with patch(
-            "database_service.create_default_mocku_institution"
-        ) as mock_create_mocku:
-            mock_create_mocku.return_value = "mocku_inst_id"
-
-            result = _determine_target_institution(
-                "site_admin", None, "cei_excel_format_v1"
-            )
-
-            assert result == "mocku_inst_id"
-            mock_create_mocku.assert_called_once()
-
-    def test_determine_target_institution_site_admin_mocku_fails(self):
-        """Test _determine_target_institution when MockU creation fails."""
-        from unittest.mock import patch
-
-        import pytest
-
-        from api_routes import _determine_target_institution
-
-        # Function is imported inside _determine_target_institution
-        with patch(
-            "database_service.create_default_mocku_institution"
-        ) as mock_create_mocku:
-            mock_create_mocku.return_value = None
-
-            with pytest.raises(
-                ValueError, match="Failed to create/find MockU institution"
-            ):
-                _determine_target_institution("site_admin", None, "cei_excel_format_v1")
-
-    def test_determine_target_institution_site_admin_non_mocku(self):
-        """Test _determine_target_institution for site admin with non-MockU adapter."""
-        import pytest
-
-        from api_routes import _determine_target_institution
-
-        with pytest.raises(
-            ValueError, match="Site admin must specify target institution"
-        ):
-            _determine_target_institution("site_admin", None, "other_adapter")
+    # REMOVED: MockU-specific tests no longer apply after security fix
+    # Site admins now follow the same rules as all other users:
+    # They must have an institution_id and can only import into their own institution
 
     def test_determine_target_institution_institution_admin(self):
         """Test _determine_target_institution for institution admin."""
