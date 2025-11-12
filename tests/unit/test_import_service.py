@@ -285,8 +285,12 @@ class TestImportService:
         mock_registry.get_adapter_by_id.return_value = mock_adapter
         mock_get_registry.return_value = mock_registry
 
-        # Mock existing user
-        existing_user = {"email": "existing@example.com", "first_name": "Original"}
+        # Mock existing user (must have matching institution_id for multi-tenant isolation)
+        existing_user = {
+            "email": "existing@example.com",
+            "first_name": "Original",
+            "institution_id": self.institution_id,
+        }
 
         with (
             patch("import_service.get_user_by_email", return_value=existing_user),
@@ -520,13 +524,14 @@ class TestReportGeneration:
             patch("import_service.create_user") as mock_create_user,
         ):
 
-            # Mock existing user
+            # Mock existing user (must have matching institution_id)
             mock_get_user.return_value = {
                 "user_id": "user_123",
                 "email": "test@example.com",
                 "first_name": "John",
                 "last_name": "Old",
                 "role": "instructor",
+                "institution_id": "inst_123",
             }
 
             service = ImportService("inst_123")
@@ -538,7 +543,11 @@ class TestReportGeneration:
             assert len(conflicts) > 0  # Should detect conflicts
             assert service.stats["records_updated"] == 1
             assert service.stats["conflicts_resolved"] > 0
-            mock_update_user.assert_called_once_with("user_123", user_data)
+            # Check update_user was called (email should be removed from update data)
+            mock_update_user.assert_called_once()
+            call_args = mock_update_user.call_args[0]
+            assert call_args[0] == "user_123"
+            assert "email" not in call_args[1]  # Email should NOT be in update data
             mock_create_user.assert_not_called()  # Should not create new user
 
 
@@ -963,9 +972,19 @@ class TestImportServiceErrorHandling:
             )
         ]
 
+        # Mock course data and existing course for the new signature
+        course_data = {"course_number": "MATH-101", "course_title": "New Algebra"}
+        existing_course = {
+            "course_id": "course_123",
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+        }
+
         service._resolve_course_conflicts(
             ConflictStrategy.USE_THEIRS,
             detected_conflicts,
+            course_data,
+            existing_course,
             "MATH-101",
             dry_run=True,  # DRY RUN mode
             conflicts=[],
