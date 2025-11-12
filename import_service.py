@@ -903,6 +903,14 @@ class ImportService:
                 self.stats["records_skipped"] += 1
                 self._log(f"Term already exists: {term_name}")
             else:
+                # SECURITY: Override institution_id with authenticated user's institution
+                # Never trust institution_id from import data (multi-tenant isolation)
+                term_data["institution_id"] = self.institution_id
+
+                # BUG FIX: Remove id field from CSV data (often empty/invalid)
+                # Database will generate proper UUIDs on creation
+                term_data.pop("id", None)
+
                 if not dry_run:
                     create_term(term_data)
                     self.stats["records_created"] += 1
