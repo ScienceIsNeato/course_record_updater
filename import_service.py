@@ -516,6 +516,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> Tuple[bool, List[ConflictRecord]]:
         """Handle import of an existing course with conflict resolution."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        course_data["institution_id"] = self.institution_id
+
         course_number = course_data.get("course_number")
 
         # Detect conflicts by comparing fields
@@ -671,6 +675,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> Tuple[bool, List[ConflictRecord]]:
         """Handle import of an existing user with conflict resolution."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        user_data["institution_id"] = self.institution_id
+
         email = user_data.get("email")
 
         # Detect conflicts by comparing fields
