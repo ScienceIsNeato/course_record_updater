@@ -631,7 +631,27 @@ class ImportService:
         course_data.pop("course_id", None)
 
         if not dry_run:
-            create_course(course_data)
+            # DEBUG: Log before create
+            self.logger.info(
+                f"[DEBUG] About to create course: {course_number} with institution_id: {course_data.get('institution_id')}"
+            )
+            self.logger.info(f"[DEBUG] Course data keys: {list(course_data.keys())}")
+
+            course_id = create_course(course_data)
+
+            # DEBUG: Log after create
+            self.logger.info(f"[DEBUG] create_course returned: {course_id}")
+
+            # DEBUG: Verify in database immediately
+            verification = get_course_by_number(course_number, self.institution_id)
+            self.logger.info(
+                f"[DEBUG] Database verification - course exists: {verification is not None}"
+            )
+            if verification:
+                self.logger.info(
+                    f"[DEBUG] Verified course data: number={verification.get('course_number')}, inst={verification.get('institution_id')}"
+                )
+
             self.stats["records_created"] += 1
             self._log(f"Created course: {course_number}")
         else:
@@ -912,7 +932,26 @@ class ImportService:
                 term_data.pop("id", None)
 
                 if not dry_run:
-                    create_term(term_data)
+                    # DEBUG: Log before create
+                    self.logger.info(
+                        f"[DEBUG] About to create term: {term_name} with institution_id: {term_data.get('institution_id')}"
+                    )
+
+                    term_id = create_term(term_data)
+
+                    # DEBUG: Log after create
+                    self.logger.info(f"[DEBUG] create_term returned: {term_id}")
+
+                    # DEBUG: Verify in database immediately
+                    verification = get_term_by_name(term_name, self.institution_id)
+                    self.logger.info(
+                        f"[DEBUG] Database verification - term exists: {verification is not None}"
+                    )
+                    if verification:
+                        self.logger.info(
+                            f"[DEBUG] Verified term data: name={verification.get('name')}, inst={verification.get('institution_id')}"
+                        )
+
                     self.stats["records_created"] += 1
                     self._log(f"Created term: {term_name}")
                 else:
