@@ -198,6 +198,17 @@ start_flask_app() {
 }
 
 main() {
+    # AGGRESSIVE CLEANUP: Reset all the things
+    echo -e "${BLUE}🧹 Aggressive cleanup: Killing stale processes...${NC}"
+    pkill -f "python.*app.py" 2>/dev/null || true
+    sleep 0.5
+    
+    echo -e "${BLUE}🧹 Aggressive cleanup: Clearing Python bytecode cache...${NC}"
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    
+    echo -e "${GREEN}✅ Clean slate ready${NC}"
+    
     # Determine port based on environment
     local port
     case "$APP_ENV" in
