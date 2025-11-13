@@ -1237,14 +1237,15 @@ class TestCourseProgramLinkingFeature:
         self, mock_get_courses, mock_get_programs, mock_add_course
     ):
         """Test successful course-program linking based on prefix"""
+        # Use correct primary keys: course_id for courses, program_id for programs
         mock_get_courses.return_value = [
-            {"id": "c1", "course_number": "BIOL-101"},
-            {"id": "c2", "course_number": "BSN-202"},
-            {"id": "c3", "course_number": "ZOOL-303"},
+            {"course_id": "c1", "course_number": "BIOL-101"},
+            {"course_id": "c2", "course_number": "BSN-202"},
+            {"course_id": "c3", "course_number": "ZOOL-303"},
         ]
         mock_get_programs.return_value = [
-            {"id": "p1", "name": "Biological Sciences"},
-            {"id": "p2", "name": "Zoology"},
+            {"program_id": "p1", "name": "Biological Sciences"},
+            {"program_id": "p2", "name": "Zoology"},
         ]
 
         service = ImportService("inst-123")
@@ -1262,7 +1263,7 @@ class TestCourseProgramLinkingFeature:
     def test_link_courses_no_courses(self, mock_get_courses, mock_get_programs):
         """Test linking handles no courses gracefully"""
         mock_get_courses.return_value = []
-        mock_get_programs.return_value = [{"id": "p1", "name": "Test"}]
+        mock_get_programs.return_value = [{"program_id": "p1", "name": "Test"}]
 
         service = ImportService("inst-123")
         service._link_courses_to_programs()  # Should not crash
@@ -1271,7 +1272,9 @@ class TestCourseProgramLinkingFeature:
     @patch("database_service.get_all_courses")
     def test_link_courses_no_programs(self, mock_get_courses, mock_get_programs):
         """Test linking handles no programs gracefully"""
-        mock_get_courses.return_value = [{"id": "c1", "course_number": "BIOL-101"}]
+        mock_get_courses.return_value = [
+            {"course_id": "c1", "course_number": "BIOL-101"}
+        ]
         mock_get_programs.return_value = []
 
         service = ImportService("inst-123")

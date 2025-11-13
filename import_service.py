@@ -1303,7 +1303,8 @@ class ImportService:
                 return
 
             # Build program lookup by name
-            program_lookup = {p["name"]: p["id"] for p in programs}
+            # Program model uses program_id as primary key, not id
+            program_lookup = {p["name"]: p["program_id"] for p in programs}
 
             # Find default program (ends with "Default Program")
             default_program = next(
