@@ -1262,7 +1262,14 @@ class ImportService:
             return False
 
         try:
-            add_course_to_program_func(course["id"], program_id)
+            # Use course_id (not id) - Course model's primary key is course_id
+            course_id = course.get("course_id") or course.get("id")
+            if not course_id:
+                self.logger.warning(
+                    f"Course {course_number} missing course_id, cannot link"
+                )
+                return False
+            add_course_to_program_func(course_id, program_id)
             return True
         except Exception:
             # Already linked, that's fine
@@ -1298,13 +1305,25 @@ class ImportService:
             # Build program lookup by name
             program_lookup = {p["name"]: p["id"] for p in programs}
 
+            # Find default program (ends with "Default Program")
+            default_program = next(
+                (name for name in program_lookup.keys() if "Default Program" in name),
+                None,
+            )
+
             # Course prefix to program mapping
             course_mappings = {
                 "BIOL": "Biological Sciences",
                 "BSN": "Biological Sciences",
                 "ZOOL": "Zoology",
-                "CEI": "CEI Default Program",
+                "CS": default_program,  # Computer Science → Default
+                "EE": default_program,  # Electrical Engineering → Default
+                "GEN": default_program,  # General courses → Default
+                "CEI": default_program,  # Legacy CEI courses → Default
             }
+
+            # Remove None values if no default program found
+            course_mappings = {k: v for k, v in course_mappings.items() if v}
 
             linked_count = sum(
                 1

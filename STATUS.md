@@ -1,94 +1,112 @@
-# Current Status
+# Course Record Updater - Current Status
 
-## 🔍 ROOT CAUSE FOUND: Transaction Rollback Issue
+## Last Updated
+2025-11-13 03:23 PST
 
-### Investigation Complete (DEBUG Logging Added - Commit c1d8a34)
+## Current Task
+✅ **COMPLETED**: Fixed database persistence issue and security vulnerabilities
 
-Added comprehensive transaction tracing that **proved the root cause**:
+## Major Accomplishment: Root Cause Analysis & Fix
 
-**Evidence from Debug Logs:**
-- ✅ All 6 courses ARE created successfully
-- ✅ Immediate database verification confirms they exist
-- ✅ create_course() returns valid IDs
-- ✅ Correct institution_id used (matches authenticated user)
-- ❌ BUT records disappear from database after import completes
+### Problem Summary
+Data import operations appeared to fail (records not persisting), suspected transaction rollback.
 
-**Example Log Sequence:**
+### Root Cause Discovered
+**No rollback - wrong database file!**
+- `seed_db.py --env dev` wrote to `course_records_dev.db`
+- Flask/imports without `DATABASE_URL` set defaulted to `course_records.db`
+- Queries checked `course_records_dev.db` → no data visible
+- Records were persisting, just to a different file
+
+### Solution Implemented
+Added ENV-based `DATABASE_URL` configuration in `.envrc.template`:
+```bash
+case "${ENV}" in
+    development) export DATABASE_URL="${DATABASE_URL_DEV}" ;;
+    test)        export DATABASE_URL="${DATABASE_URL_E2E}" ;;
+    production)  export DATABASE_URL="${DATABASE_URL:-sqlite:///course_records.db}" ;;
+    *)           export DATABASE_URL="${DATABASE_URL_DEV}" ;;
+esac
 ```
-[DEBUG] About to create course: CS-101 with institution_id: 33b686b0...
-[DEBUG] create_course returned: 66cb947f-6abd-4e1d-8956-23cb46ed692d
-[DEBUG] Database verification - course exists: True
-[DEBUG] Verified course data: number=CS-101, inst=33b686b0...
+
+This ensures ALL operations (seeding, imports, Flask, tests) use the same database file based on ENV variable.
+
+### Security Hardening (Discovered During Investigation)
+
+**Multi-tenant Isolation Vulnerabilities Fixed:**
+
+1. **Import Service (`import_service.py`)**:
+   - ✅ Explicitly override `institution_id` from authenticated user in all entity handlers
+   - ✅ Remove primary key fields (id, course_id, user_id) before create/update to prevent conflicts
+   - ✅ Add institution_id scoping to `get_course_by_number()` calls
+   - ✅ Add cross-institution email conflict detection in `process_user_import()`
+   - ✅ Implement actual `update_course()` call in `_resolve_course_conflicts()`
+   - ✅ Remove non-updatable fields from `_prepare_user_update_data()`
+
+2. **API Routes (`api_routes.py`)**:
+   - ✅ Removed CEI-specific "MockU" hardcoded institution logic
+   - ✅ `_determine_target_institution()` now ALWAYS uses authenticated user's institution_id
+   - ✅ Added `demo_file_path` support for programmatic imports during demos
+
+### Demo System Improvements
+
+1. **Consolidated Documentation**:
+   - ✅ Single `single_term_outcome_management.md` workflow file
+   - ✅ Removed separate seed script (use: `python scripts/seed_db.py --demo --env dev`)
+   - ✅ Demo users now use `demo2025` prefix for isolation
+
+2. **Interactive Demo Runner** (`run_demo.py`):
+   - ✅ Named pipe (FIFO) mechanism for programmatic pause/continue
+   - ✅ Parses markdown for setup commands and interactive checkpoints
+   - ✅ Works for both humans and AI agents
+
+3. **UI Enhancements**:
+   - ✅ "Use Demo Data" checkbox to bypass native file dialog
+   - ✅ Pre-populates demo file path for programmatic imports
+
+### Verification
+```
+✅ 6 courses persisted to course_records_dev.db
+✅ 4 users created with proper institution_id
+✅ 2 terms created with proper institution_id
+✅ Data visible in dashboard after import
+✅ Multi-tenant isolation enforced
 ```
 
-**Then after import completes:**
-```sql
-SELECT COUNT(*) FROM courses;
--- Result: 0  ❌
-```
+### Test Updates
+- ✅ Updated `test_api_routes.py` to reflect new security model
+- ✅ Updated `test_import_service.py` to verify institution_id enforcement
+- ✅ Removed obsolete MockU-related test cases
 
-**Conclusion:** Session/transaction is being rolled back after import, despite successful operations.
+## Commit History
+- `c12cf5a` - fix: database persistence issue - ENV-based configuration and security hardening
 
-### Investigation Results
+## Next Steps
+1. **Continue demo development** - Run through `single_term_outcome_management.md` workflow
+2. **Test browser automation** - Verify run_demo.py works end-to-end with browser tools
+3. **Document findings** - Update demo documentation with any discovered issues
 
-See detailed analysis in:
-- `logs/transaction_rollback_findings.md` - Full investigation report
-- `logs/import_investigation_findings.md` - Earlier hypothesis tracking
+## Key Files Modified
+- `.envrc.template` - Added ENV-based DATABASE_URL switching
+- `import_service.py` - Security hardening for multi-tenant isolation
+- `api_routes.py` - Removed CEI-specific logic, enforced user institution_id
+- `scripts/seed_db.py` - Updated for demo2025 prefix
+- `docs/workflow-walkthroughs/single_term_outcome_management.md` - Consolidated demo
+- `docs/workflow-walkthroughs/scripts/run_demo.py` - Named pipe interaction
+- `templates/components/data_management_panel.html` - Demo data checkbox
+- `static/script.js` - Demo file path handling
+- `tests/unit/test_api_routes.py` - Security model updates
+- `tests/unit/test_import_service.py` - Institution_id enforcement tests
 
-**Tested scenarios:**
-1. Import with errors (4 user email conflicts) → rollback
-2. Import without errors (removed users) → still rollback  
-3. Import with Flask app context → still rollback
+## Environment Status
+- Server: Running on port 3001 (dev)
+- Database: `course_records_dev.db` (consistent across all operations)
+- Demo: Seeded with DEMO2025 institution
+- Credentials: `demo2025.admin@example.com` / `Demo2024!`
 
-**Root cause:** Not a creation failure - it's a transaction management issue. Records are in the session but session is rolled back or closed without commit.
-
----
-
-## 🎯 NEXT STEPS (User Direction Needed)
-
-### Option A: Add Explicit Commit
-Add `db.session.commit()` at end of `import_excel_file()` method
-
-### Option B: Fix Session Scope  
-Identify where `session_scope()` is used and ensure proper transaction boundaries
-
-### Option C: Independent Transactions
-Each entity type (users, courses, terms) in its own transaction so errors don't cascade
-
----
-
-## ✅ COMPLETED: Security & Import Bug Fixes (6 commits)
-
-All security vulnerabilities and import bugs fixed and verified:
-
-1. **51af4f8**: Initial multi-tenant security (CREATE paths)
-2. **339dde9**: Complete security fix (UPDATE paths)  
-3. **8014e2f**: Import bugs (update logic, primary keys, multi-tenant lookups)
-4. **95206fe**: Term import security (institution_id override, id cleanup)
-5. **c1d8a34**: Debug logging for transaction tracing
-
-**Status:** All quality gates passing. All unit tests passing.
-
----
-
-## 📋 Deferred Tasks
-
-### Demo System (Blocked by import fixes)
-- `run_demo.py` implemented with named pipe mechanism
-- `single_term_outcome_management.md` created
-- Waiting for import fixes before testing full demo flow
-
-### Functional Gaps (LOW priority)
-1. Course-level enrollment fields
-2. Course-level narratives
-3. Email deep linking
-
----
-
-## Recent Commits (feature/workflow-walkthroughs)
-
-- `c1d8a34`: debug: add transaction tracing for import persistence issue
-- `95206fe`: fix: add institution_id override and id cleanup for term imports
-- `8014e2f`: fix: import bugs - update logic, primary keys, multi-tenant lookups
-- `339dde9`: fix: complete institution_id override for UPDATE paths (SECURITY)
-- `51af4f8`: fix(security): enforce multi-tenant isolation in import system
+## Notes
+The root cause investigation demonstrated the importance of:
+1. Systematic debugging (checking which file is actually being written)
+2. Understanding environment variable inheritance across processes
+3. Not assuming "records disappeared" means rollback - verify file targets first
+4. Using ENV-based configuration for consistent behavior across all operations
