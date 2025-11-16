@@ -1,112 +1,136 @@
 # Course Record Updater - Current Status
 
 ## Last Updated
-2025-11-13 03:23 PST
+2025-11-15 03:25 PST
 
 ## Current Task
-✅ **COMPLETED**: Fixed database persistence issue and security vulnerabilities
+🔄 **IN PROGRESS**: Natural Key Architecture Implementation & Testing
 
-## Major Accomplishment: Root Cause Analysis & Fix
+## Natural Key Architecture Refactor (Nov 15, 2025)
 
-### Problem Summary
-Data import operations appeared to fail (records not persisting), suspected transaction rollback.
+### Problem Being Solved
+**Session invalidation across database reseeds**:
+- Sessions stored UUIDs (institution_id, user_id)
+- Database `--clear` operations generate new UUIDs
+- Old sessions become invalid even for same logical entities
+- Demo workflow breaks every time database is reseeded
 
-### Root Cause Discovered
-**No rollback - wrong database file!**
-- `seed_db.py --env dev` wrote to `course_records_dev.db`
-- Flask/imports without `DATABASE_URL` set defaulted to `course_records.db`
-- Queries checked `course_records_dev.db` → no data visible
-- Records were persisting, just to a different file
+### Solution: Hybrid Natural Key Architecture
+**Sessions store natural keys, database uses UUIDs, resolve on each request**
 
-### Solution Implemented
-Added ENV-based `DATABASE_URL` configuration in `.envrc.template`:
+### Changes Implemented (NOT YET COMMITTED)
+1. **`session/manager.py`**:
+   - Sessions now store `institution_short_name` instead of `institution_id`
+   - Sessions store `email` (already a natural key)
+
+2. **`login_service.py`**:
+   - Pass `institution_short_name` to session during login
+   - Fetch from institution record via `institution.get("short_name")`
+
+3. **`auth_service.py`**:
+   - Updated `get_current_institution_id()` to resolve `institution_short_name` → UUID
+   - Calls `db.get_institution_by_short_name(institution_short_name)`
+   - Returns resolved UUID for use in API/service layers
+
+4. **`ARCHITECTURE.md`**:
+   - Complete documentation of hybrid approach
+   - Design principles, testing workflow, migration path
+
+### Current State: NEEDS TESTING
+- ✅ Code changes implemented
+- ✅ Documentation written
+- ✅ Commit message prepared
+- ✅ Database reseeded (`python scripts/seed_db.py --demo --clear --env dev` @ 03:00 PST)
+- ✅ Dev server restarted via `./restart_server.sh dev`
+- ✅ Demo login succeeded (dashboard loads in browser)
+- ✅ API adapters + dashboard endpoints returning 200s (institution context resolver fixed @ 03:23 PST)
+- ✅ Edit Course modal now preloads program list and preselects assigned program IDs
+- ✅ Dashboard UI panels populate with data after API fixes (verified 03:54 PST)
+- ✅ Manual `/logout` route added to clear stale sessions before reseeds
+- ❌ Not yet committed (pending verification)
+- ❌ Session persistence still unverified after reseed
+
+### Next Steps (IMMEDIATE)
+1. **Clear database** - Start with clean slate ✅ (03:00 PST)
+2. **Reseed demo data** - `python scripts/seed_db.py --demo --clear --env dev` ✅
+3. **Restart server** - Ensure new code is loaded ✅ (`./restart_server.sh dev`)
+4. **Test fresh login** - Verify `institution_short_name` appears in session ✅ (login flow works end-to-end)
+5. **Verify dashboard** - Check data loads correctly ✅ Panels render after API calls
+6. **Test reseed persistence** - Reseed DB without logout, verify session still valid ⏳
+7. **Commit if successful** - Push natural key architecture ⏳
+
+### Expected Log Output After Fix
 ```bash
-case "${ENV}" in
-    development) export DATABASE_URL="${DATABASE_URL_DEV}" ;;
-    test)        export DATABASE_URL="${DATABASE_URL_E2E}" ;;
-    production)  export DATABASE_URL="${DATABASE_URL:-sqlite:///course_records.db}" ;;
-    *)           export DATABASE_URL="${DATABASE_URL_DEV}" ;;
-esac
+# Should see this:
+[Session Service] Creating session for user: <uuid>
+# Session should contain:
+session["institution_short_name"] = "DEMO2025"
+session["email"] = "demo2025.admin@example.com"
+
+# Resolution should work:
+[Auth Service] Resolving institution_short_name: DEMO2025
+[Database] Found institution with short_name=DEMO2025, returning id=<uuid>
 ```
 
-This ensures ALL operations (seeding, imports, Flask, tests) use the same database file based on ENV variable.
-
-### Security Hardening (Discovered During Investigation)
-
-**Multi-tenant Isolation Vulnerabilities Fixed:**
-
-1. **Import Service (`import_service.py`)**:
-   - ✅ Explicitly override `institution_id` from authenticated user in all entity handlers
-   - ✅ Remove primary key fields (id, course_id, user_id) before create/update to prevent conflicts
-   - ✅ Add institution_id scoping to `get_course_by_number()` calls
-   - ✅ Add cross-institution email conflict detection in `process_user_import()`
-   - ✅ Implement actual `update_course()` call in `_resolve_course_conflicts()`
-   - ✅ Remove non-updatable fields from `_prepare_user_update_data()`
-
-2. **API Routes (`api_routes.py`)**:
-   - ✅ Removed CEI-specific "MockU" hardcoded institution logic
-   - ✅ `_determine_target_institution()` now ALWAYS uses authenticated user's institution_id
-   - ✅ Added `demo_file_path` support for programmatic imports during demos
-
-### Demo System Improvements
-
-1. **Consolidated Documentation**:
-   - ✅ Single `single_term_outcome_management.md` workflow file
-   - ✅ Removed separate seed script (use: `python scripts/seed_db.py --demo --env dev`)
-   - ✅ Demo users now use `demo2025` prefix for isolation
-
-2. **Interactive Demo Runner** (`run_demo.py`):
-   - ✅ Named pipe (FIFO) mechanism for programmatic pause/continue
-   - ✅ Parses markdown for setup commands and interactive checkpoints
-   - ✅ Works for both humans and AI agents
-
-3. **UI Enhancements**:
-   - ✅ "Use Demo Data" checkbox to bypass native file dialog
-   - ✅ Pre-populates demo file path for programmatic imports
-
-### Verification
-```
-✅ 6 courses persisted to course_records_dev.db
-✅ 4 users created with proper institution_id
-✅ 2 terms created with proper institution_id
-✅ Data visible in dashboard after import
-✅ Multi-tenant isolation enforced
-```
-
-### Test Updates
-- ✅ Updated `test_api_routes.py` to reflect new security model
-- ✅ Updated `test_import_service.py` to verify institution_id enforcement
-- ✅ Removed obsolete MockU-related test cases
-
-## Commit History
-- `c12cf5a` - fix: database persistence issue - ENV-based configuration and security hardening
-
-## Next Steps
-1. **Continue demo development** - Run through `single_term_outcome_management.md` workflow
-2. **Test browser automation** - Verify run_demo.py works end-to-end with browser tools
-3. **Document findings** - Update demo documentation with any discovered issues
-
-## Key Files Modified
-- `.envrc.template` - Added ENV-based DATABASE_URL switching
-- `import_service.py` - Security hardening for multi-tenant isolation
-- `api_routes.py` - Removed CEI-specific logic, enforced user institution_id
-- `scripts/seed_db.py` - Updated for demo2025 prefix
-- `docs/workflow-walkthroughs/single_term_outcome_management.md` - Consolidated demo
-- `docs/workflow-walkthroughs/scripts/run_demo.py` - Named pipe interaction
-- `templates/components/data_management_panel.html` - Demo data checkbox
-- `static/script.js` - Demo file path handling
-- `tests/unit/test_api_routes.py` - Security model updates
-- `tests/unit/test_import_service.py` - Institution_id enforcement tests
+### Previous Work (Nov 13)
+- ✅ Fixed database persistence issue (ENV-based configuration)
+- ✅ Security hardening (multi-tenant isolation)
+- ✅ Demo system improvements
 
 ## Environment Status
-- Server: Running on port 3001 (dev)
-- Database: `course_records_dev.db` (consistent across all operations)
-- Demo: Seeded with DEMO2025 institution
-- Credentials: `demo2025.admin@example.com` / `Demo2024!`
+- Server: Running on port 3001 (dev) - restarted 03:23 PST
+- Database: `course_records_dev.db` - reseeded with demo data 03:00 PST
+- Last Commit: `c12cf5a` (Nov 13)
+- Uncommitted Changes: Natural key architecture refactor
+
+## Key Files Modified (Uncommitted)
+- `session/manager.py` - Store natural keys in session
+- `login_service.py` - Pass institution_short_name during login
+- `auth_service.py` - Resolve natural keys to UUIDs
+- `ARCHITECTURE.md` - New file documenting hybrid approach
+- `COMMIT_MSG.txt` - Prepared commit message
+
+## Recovery Plan
+Since we're mid-refactor and the server may be in a bad state:
+
+1. **Clear everything**:
+   ```bash
+   pkill -9 -f "python.*app.py"
+   rm -rf __pycache__ **/__pycache__ **/*.pyc
+   ```
+
+2. **Reseed database**:
+   ```bash
+   python scripts/seed_db.py --demo --clear --env dev
+   ```
+
+3. **Restart server**:
+   ```bash
+   ./restart_server.sh dev
+   ```
+
+4. **Test with FRESH browser session** (no old cookies):
+   - Navigate to http://localhost:3001/
+   - Should see splash screen (not auto-logged in)
+   - Login with demo2025.admin@example.com / Demo2024!
+   - Check logs for `institution_short_name` in session
+
+5. **Verify natural key architecture**:
+   - Dashboard should load with data
+   - Check logs: should resolve DEMO2025 → UUID
+   - Reseed database again
+   - Refresh browser - should STILL be logged in with data
+
+Steps 1–5 completed successfully on 2025-11-15 @ 03:23 PST; repeat if further debugging requires a clean slate.
+
+## Known Broken Behaviors (tracking list)
+- None currently. Previous issues addressed:
+  - Dashboard panels now load.
+  - `/logout` endpoint provides quick session reset for reseeds.
+  - Adapter registry no longer logs warnings when institution context is missing.
 
 ## Notes
-The root cause investigation demonstrated the importance of:
-1. Systematic debugging (checking which file is actually being written)
-2. Understanding environment variable inheritance across processes
-3. Not assuming "records disappeared" means rollback - verify file targets first
-4. Using ENV-based configuration for consistent behavior across all operations
+- This is a significant architectural change for session stability
+- Benefits: Sessions persist across database reseeds/recreations
+- Risk: If broken, users can't log in at all
+- Test thoroughly before committing

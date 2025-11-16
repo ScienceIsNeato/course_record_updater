@@ -848,6 +848,21 @@ class TestReminderLogin:
             assert response.status_code == 200
 
 
+class TestLogoutRoute:
+    """Test simple logout route."""
+
+    @patch("login_service.LoginService.logout_user")
+    def test_logout_route_redirects_to_login(self, mock_logout):
+        """GET /logout should clear session and redirect to /login."""
+        from app import app
+
+        with app.test_client() as client:
+            response = client.get("/logout", follow_redirects=False)
+            assert response.status_code == 302
+            assert response.headers["Location"].endswith("/login")
+            mock_logout.assert_called_once()
+
+
 class TestErrorPaths:
     """Test error handling paths where get_current_user returns None."""
 

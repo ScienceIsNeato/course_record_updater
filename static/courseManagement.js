@@ -141,6 +141,23 @@ async function loadProgramsForEditDropdown() {
 }
 
 /**
+ * Ensure program dropdown has real options loaded before interaction
+ */
+async function ensureProgramsLoaded(selectId, loaderFn) {
+  const select = document.getElementById(selectId);
+
+  if (!select) {
+    return;
+  }
+
+  const hasRealOptions = Array.from(select.options || []).some(option => option.value);
+
+  if (!hasRealOptions && typeof loaderFn === 'function') {
+    await loaderFn();
+  }
+}
+
+/**
  * Initialize Create Course Modal
  * Sets up form submission for new courses
  */
@@ -318,7 +335,7 @@ function initializeEditCourseModal() {
  * Open Edit Course Modal with pre-populated data
  * Called from course list when Edit button is clicked
  */
-function openEditCourseModal(courseId, courseData) {
+async function openEditCourseModal(courseId, courseData) {
   document.getElementById('editCourseId').value = courseId;
   document.getElementById('editCourseNumber').value = courseData.course_number || '';
   document.getElementById('editCourseTitle').value = courseData.course_title || '';
@@ -333,9 +350,11 @@ function openEditCourseModal(courseId, courseData) {
 
   // Select program IDs in multi-select
   const programSelect = document.getElementById('editCourseProgramIds');
-  if (programSelect && courseData.program_ids) {
+  if (programSelect) {
+    await ensureProgramsLoaded('editCourseProgramIds', loadProgramsForEditDropdown);
+    const selectedProgramIds = courseData.program_ids || [];
     Array.from(programSelect.options).forEach(option => {
-      option.selected = courseData.program_ids.includes(option.value);
+      option.selected = selectedProgramIds.includes(option.value);
     });
   }
 

@@ -172,7 +172,14 @@ class AuthService:
         if not SessionService.is_user_logged_in():
             return None
 
-        return SessionService.get_current_user()
+        user = SessionService.get_current_user()
+        if user and not user.get("institution_id"):
+            resolved_id, _ = _resolve_institution_id_from_user(user)
+            if resolved_id:
+                # Copy to avoid mutating the underlying session dict reference
+                user = dict(user)
+                user["institution_id"] = resolved_id
+        return user
 
     def _get_mock_user(self) -> Optional[Dict[str, Any]]:
         """Mock user for development and testing"""
@@ -633,18 +640,88 @@ def get_user_department() -> Optional[str]:
     return user.get("department") if user else None
 
 
-def get_current_institution_id() -> Optional[str]:
-    """Get current user's active institution ID (convenience function)."""
-    user = get_current_user()
-    if user:
-        # Get institution from user context
-        institution_id = user.get("institution_id") or user.get(
-            "primary_institution_id"
-        )
-        if institution_id:
-            return institution_id
+def _resolve_institution_id_from_user(
+    user: Optional[Dict[str, Any]],
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve institution UUID from available user/session context.
 
-    logger.warning("No institution context available for current user")
+    Returns:
+        Tuple of (institution_id, failure_reason). failure_reason is None when resolved.
+    """
+    if not user:
+        return None, "no_user"
+
+    institution_id = user.get("institution_id")
+    if institution_id:
+        return institution_id, None
+
+    primary_institution_id = user.get("primary_institution_id")
+    if primary_institution_id:
+        return primary_institution_id, None
+
+    institution_short_name = user.get("institution_short_name")
+    if not institution_short_name:
+        return None, "missing_short_name"
+
+    import database_service as db
+
+    institution = db.get_institution_by_short_name(institution_short_name)
+    if not institution:
+        return None, "not_found"
+
+    resolved_id = institution.get("institution_id") or institution.get("id")
+    if not resolved_id:
+        return None, "missing_id_field"
+
+    return resolved_id, None
+
+
+def get_current_institution_id() -> Optional[str]:
+    """
+    Get current user's active institution ID.
+
+    Resolution order:
+    1. Direct `institution_id` from user/session (when already resolved)
+    2. `primary_institution_id` fallback (legacy support)
+    3. Resolve `institution_short_name` → UUID via database lookup
+    """
+    user: Optional[Dict[str, Any]] = None
+    try:
+        from session import SessionService
+
+        if SessionService.is_user_logged_in():
+            user = SessionService.get_current_user()
+    except RuntimeError:
+        user = None
+
+    if user is None:
+        user = get_current_user()
+        if not user:
+            logger.warning("No current user available to resolve institution context")
+            return None
+    resolved_id, failure_reason = _resolve_institution_id_from_user(user)
+
+    if resolved_id:
+        return resolved_id
+
+    user_id = user.get("user_id") if user else None
+    if failure_reason == "missing_short_name":
+        logger.warning(
+            f"No institution context (short_name) available for user {user_id}"
+        )
+    elif failure_reason == "not_found":
+        logger.warning(
+            f"Institution not found for short_name: {user.get('institution_short_name') if user else 'unknown'}"
+        )
+    elif failure_reason == "missing_id_field":
+        logger.error(
+            f"Institution record missing ID fields for short_name: {user.get('institution_short_name') if user else 'unknown'}"
+        )
+    else:
+        logger.warning(
+            f"Unable to resolve institution context for user {user_id} (reason: {failure_reason})"
+        )
+
     return None
 
 

@@ -596,6 +596,21 @@ class TestAdapterRegistry:
         assert len(self.registry._adapter_instances) == 0
         assert self.registry._discovery_complete is False
 
+    @patch.object(AdapterRegistry, "_get_public_adapters")
+    @patch.object(AdapterRegistry, "get_adapters_for_institution")
+    def test_public_adapters_returned_when_no_institution(
+        self, mock_get_institution, mock_get_public
+    ):
+        """Ensure public adapters are returned when institution_id is missing."""
+        mock_get_public.return_value = [
+            {"id": "shared_adapter", "public": True, "name": "Public"}
+        ]
+
+        result = self.registry._get_public_and_institution_adapters(None)
+
+        assert result == mock_get_public.return_value
+        mock_get_institution.assert_not_called()
+
 
 class TestAdapterRegistrySingleton:
     """Test suite for adapter registry singleton"""

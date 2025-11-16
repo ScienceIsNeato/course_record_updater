@@ -186,6 +186,21 @@ def reminder_login():
     return render_template("auth/login.html")
 
 
+@app.route("/logout")
+def logout_view():
+    """
+    Simple GET endpoint to clear the current session and redirect to login.
+
+    Useful for local demo workflows where stale cookies need to be cleared
+    without relying on the dashboard dropdown (which may not load yet).
+    """
+    from login_service import LoginService
+
+    LoginService.logout_user()
+    flash("You have been logged out.", "info")
+    return redirect(url_for("login"))
+
+
 @app.route("/register")
 def register():
     """Registration page"""

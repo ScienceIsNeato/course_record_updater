@@ -458,11 +458,11 @@ describe('Course Management - Edit Course Modal', () => {
     jest.restoreAllMocks();
   });
 
-  test('openEditCourseModal should populate form and show modal', () => {
+  test('openEditCourseModal should populate form and show modal', async () => {
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    window.openEditCourseModal('course-123', {
+    await window.openEditCourseModal('course-123', {
       course_number: 'CS101',
       course_title: 'Intro to CS',
       department: 'Computer Science',
