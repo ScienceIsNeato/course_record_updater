@@ -126,18 +126,20 @@ class LoginService:
 
             # Fetch institution name if user has an institution
             institution_name = None
+            institution_short_name = None
             if user.get("institution_id"):
                 institution = db.get_institution_by_id(user["institution_id"])
                 if institution:
                     institution_name = institution.get("name")
+                    institution_short_name = institution.get("short_name")
 
-            # Create user session
+            # Create user session with natural keys for stability across reseeds
             SessionService.create_user_session(
                 {
                     "user_id": user["user_id"],
                     "email": user["email"],
                     "role": user["role"],
-                    "institution_id": user.get("institution_id"),
+                    "institution_short_name": institution_short_name,  # Natural key
                     "institution_name": institution_name,
                     "program_ids": user.get("program_ids", []),
                     "display_name": user.get(

@@ -88,6 +88,7 @@ from database_service import (
     delete_program,
     delete_term,
     delete_user,
+    duplicate_course_record,
     get_active_terms,
     get_all_courses,
     get_all_institutions,
@@ -1529,6 +1530,78 @@ def update_course_endpoint(course_id: str):
 
     except Exception as e:
         return handle_api_error(e, "Update course", "Failed to update course")
+
+
+@api.route("/courses/<course_id>/duplicate", methods=["POST"])
+@permission_required("manage_courses")
+def duplicate_course_endpoint(course_id: str):
+    """
+    Duplicate an existing course for the current institution.
+
+    Optional JSON payload can override:
+    - course_number
+    - course_title
+    - department
+    - credit_hours
+    - active
+    - program_ids (explicitly set program associations)
+    - duplicate_programs (bool) to control copying of original program links
+    """
+    try:
+        source_course = get_course_by_id(course_id)
+        if not source_course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        current_user = get_current_user()
+        if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
+            "institution_id"
+        ) != source_course.get("institution_id"):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        payload = request.get_json(silent=True) or {}
+        override_fields = {
+            key: payload.get(key)
+            for key in [
+                "course_number",
+                "course_title",
+                "department",
+                "credit_hours",
+                "active",
+            ]
+            if payload.get(key) is not None
+        }
+
+        if "program_ids" in payload:
+            override_fields["program_ids"] = payload.get("program_ids")
+
+        duplicate_programs = payload.get("duplicate_programs", True)
+
+        new_course_id = duplicate_course_record(
+            source_course,
+            overrides=override_fields,
+            duplicate_programs=duplicate_programs,
+        )
+
+        if not new_course_id:
+            return (
+                jsonify({"success": False, "error": "Failed to duplicate course"}),
+                500,
+            )
+
+        new_course = get_course_by_id(new_course_id)
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "course": new_course,
+                    "message": f"Course duplicated as {new_course.get('course_number')}",
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "Duplicate course", "Failed to duplicate course")
 
 
 @api.route("/courses/<course_id>", methods=["DELETE"])

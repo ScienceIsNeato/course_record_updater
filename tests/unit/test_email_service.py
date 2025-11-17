@@ -398,6 +398,65 @@ class TestEmailURLBuilding:
         assert "html_body" in call_args[1]
         assert "text_body" in call_args[1]
 
+
+class TestEmailLogging:
+    """Tests for email preview logging to disk."""
+
+    @patch("email_service.create_email_provider")
+    @patch("email_service.get_email_whitelist")
+    def test_logs_successful_email_preview(
+        self,
+        mock_get_whitelist,
+        mock_create_provider,
+        app_context,
+        tmp_path,
+    ):
+        """Ensure successful sends append preview entries."""
+        mock_whitelist = Mock()
+        mock_whitelist.is_allowed.return_value = True
+        mock_get_whitelist.return_value = mock_whitelist
+
+        mock_provider = Mock()
+        mock_provider.send_email.return_value = True
+        mock_create_provider.return_value = mock_provider
+
+        log_path = tmp_path / "emails.log"
+        app_context.config["EMAIL_LOG_PATH"] = str(log_path)
+
+        result = EmailService.send_verification_email(
+            email="test@example.com",
+            verification_token="token-123",
+            user_name="Demo User",
+        )
+
+        assert result is True
+        assert log_path.exists()
+        contents = log_path.read_text(encoding="utf-8")
+        assert "Email SENT" in contents
+        assert "test@example.com" in contents
+        assert "Verify your Course Record Updater account" in contents
+
+    def test_logs_blocked_email_preview(self, tmp_path, app_context):
+        """Ensure blocked emails are still recorded for storytelling/demo purposes."""
+        log_path = tmp_path / "blocked-emails.log"
+        app_context.config["EMAIL_LOG_PATH"] = str(log_path)
+
+        with pytest.raises(
+            EmailServiceError,
+            match="Cannot send emails to protected domain",
+        ):
+            EmailService.send_verification_email(
+                email="test@cei.test",
+                verification_token="token-456",
+                user_name="Blocked User",
+            )
+
+        assert log_path.exists()
+        contents = log_path.read_text(encoding="utf-8")
+        assert "Email BLOCKED" in contents
+        assert "test@cei.test" in contents
+        assert "Cannot send emails to protected domain" in contents
+
     def test_invitation_url_building(self, app_context):
         """Test invitation URL building"""
         url = EmailService._build_invitation_url("invite-token-789")

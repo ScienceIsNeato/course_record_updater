@@ -16,6 +16,7 @@ Features:
 
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -394,30 +395,43 @@ class EmailService:
             ) == "production" or current_app.config.get("PRODUCTION", False)
 
             if not is_production and EmailService._is_protected_email(to_email):
+                error_message = (
+                    f"Cannot send emails to protected domain ({to_email.split('@')[1] if '@' in to_email else to_email}) "
+                    f"in non-production environment"
+                )
                 logger.error(
-                    f"[Email Service] BLOCKED: Attempted to send email to protected domain in {current_app.config.get('ENV', 'development')} environment: {to_email}"
+                    f"[Email Service] BLOCKED: Attempted to send email to protected domain in "
+                    f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
                 )
-                raise EmailServiceError(
-                    f"Cannot send emails to protected domain ({to_email.split('@')[1] if '@' in to_email else to_email}) in non-production environment"
-                )
+                raise EmailServiceError(error_message)
 
             # WHITELIST PROTECTION: In non-production, only allow whitelisted emails
             if not is_production:
                 whitelist = get_email_whitelist()
                 if not whitelist.is_allowed(to_email):
-                    logger.error(
-                        f"[Email Service] BLOCKED: Email not on whitelist in {current_app.config.get('ENV', 'development')} environment: {to_email}"
-                    )
-                    raise EmailServiceError(
+                    error_message = (
                         f"Email address not on whitelist for non-production environment: {to_email}. "
                         f"Add to EMAIL_WHITELIST environment variable to allow."
                     )
+                    logger.error(
+                        f"[Email Service] BLOCKED: Email not on whitelist in "
+                        f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
+                    )
+                    raise EmailServiceError(error_message)
 
             # Get email provider (console or gmail based on config)
             provider = EmailService._get_email_provider()
 
             # Send email via provider
             success = provider.send_email(to_email, subject, html_body, text_body)
+
+            EmailService._log_email_preview(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                status="SENT" if success else "FAILED",
+            )
 
             if success:
                 logger.info(
@@ -430,14 +444,115 @@ class EmailService:
 
             return success
 
-        except EmailServiceError:
+        except EmailServiceError as exc:
+            EmailService._log_email_preview(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                status="BLOCKED",
+                error_message=str(exc),
+            )
             # Re-raise EmailServiceError (protection errors) to caller
             raise
         except Exception as e:
             logger.error(
                 f"[Email Service] Failed to send email to {logger.sanitize(to_email)}: {e}"
             )
+            EmailService._log_email_preview(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                status="FAILED",
+                error_message=str(e),
+            )
             return False
+
+    @staticmethod
+    def _get_email_log_path() -> Path:
+        """
+        Determine the log file destination for email previews.
+        """
+        try:
+            config = current_app.config
+        except RuntimeError:
+            config = {}
+
+        log_override = config.get("EMAIL_LOG_PATH")
+        if log_override:
+            return Path(log_override)
+
+        log_dir = config.get("LOG_DIR")
+        if log_dir:
+            return Path(log_dir) / "email.log"
+
+        return Path("logs") / "email.log"
+
+    @staticmethod
+    def _truncate_preview(content: Optional[str], limit: int = 400) -> str:
+        """
+        Trim preview text so log entries stay compact.
+        """
+        if not content:
+            return ""
+
+        normalized = content.replace("\r", "").strip()
+        if len(normalized) <= limit:
+            return normalized
+
+        return normalized[: limit - 3] + "..."
+
+    @staticmethod
+    def _log_email_preview(
+        *,
+        to_email: str,
+        subject: str,
+        text_body: str,
+        html_body: str,
+        status: str,
+        error_message: Optional[str] = None,
+    ) -> None:
+        """
+        Append a human-readable preview of the email to logs/email.log (or configured path).
+        """
+        try:
+            log_path = EmailService._get_email_log_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now(timezone.utc).isoformat()
+            sanitized_to = logger.sanitize(to_email, 120)
+            sanitized_subject = logger.sanitize(subject, 200)
+            error_text = logger.sanitize(error_message, 200) if error_message else None
+            text_preview = EmailService._truncate_preview(text_body)
+            html_preview = EmailService._truncate_preview(html_body)
+
+            lines = [
+                "",
+                f"=== Email {status} @ {timestamp} ===",
+                f"To: {sanitized_to}",
+                f"Subject: {sanitized_subject}",
+            ]
+
+            if error_text:
+                lines.append(f"Error: {error_text}")
+
+            if text_preview:
+                lines.append("Text Preview:")
+                lines.append(text_preview)
+
+            if html_preview:
+                lines.append("HTML Preview:")
+                lines.append(html_preview)
+
+            lines.append("---")
+
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write("\n".join(lines) + "\n")
+        except Exception as log_error:  # noqa: BLE001
+            logger.debug(
+                "[Email Service] Unable to write email preview log: %s", log_error
+            )
 
     @staticmethod
     def _build_verification_url(token: str) -> str:

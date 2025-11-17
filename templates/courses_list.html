@@ -173,6 +173,9 @@ async function loadCourses() {
                         <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>
                             <i class="fas fa-edit"></i> Edit
                         </button>
+                        <button class="btn btn-sm btn-outline-success mt-1 mt-lg-0" onclick='duplicateCourse("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
                     </td>
                 </tr>
             `;

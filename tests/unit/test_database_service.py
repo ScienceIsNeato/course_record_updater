@@ -1393,6 +1393,61 @@ def test_course_crud_operations():
     assert course is None
 
 
+def test_duplicate_course_record_preserves_metadata():
+    """Duplicate an existing course and ensure metadata/programs copy over."""
+    inst_id = database_service.create_institution(
+        {
+            "name": "Duplication University",
+            "short_name": "DU",
+            "admin_email": "admin@du.edu",
+            "created_by": "system",
+        }
+    )
+
+    program_id = database_service.create_program(
+        {
+            "institution_id": inst_id,
+            "program_name": "Life Sciences",
+            "program_code": "BIO",
+            "active": True,
+        }
+    )
+
+    course_id = database_service.create_course(
+        {
+            "course_number": "BIOL-201",
+            "course_title": "Cellular Biology",
+            "department": "Biology",
+            "credit_hours": 3,
+            "institution_id": inst_id,
+            "active": True,
+            "program_ids": [program_id],
+        }
+    )
+
+    source_course = database_service.get_course_by_id(course_id)
+    duplicated_course_id = database_service.duplicate_course_record(source_course)
+
+    assert duplicated_course_id is not None
+    assert duplicated_course_id != course_id
+
+    duplicated_course = database_service.get_course_by_id(duplicated_course_id)
+    assert duplicated_course["course_number"].startswith("BIOL-201-")
+    assert duplicated_course["program_ids"] == source_course["program_ids"]
+
+    # Override course number/credits and skip program duplication
+    override_course_id = database_service.duplicate_course_record(
+        source_course,
+        overrides={"course_number": "BIOL-201-VERSION2", "credit_hours": 4},
+        duplicate_programs=False,
+    )
+
+    override_course = database_service.get_course_by_id(override_course_id)
+    assert override_course["course_number"] == "BIOL-201-VERSION2"
+    assert override_course["credit_hours"] == 4
+    assert override_course.get("program_ids") == []
+
+
 def test_term_crud_operations():
     """Test Terms CRUD: update_term, archive_term, delete_term"""
     # Setup

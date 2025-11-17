@@ -1566,6 +1566,71 @@ class TestCourseEndpoints:
         assert "error" in data
         assert "not found" in data["error"].lower()
 
+    @patch("api_routes.duplicate_course_record")
+    @patch("api_routes.get_course_by_id")
+    def test_duplicate_course_success(
+        self, mock_get_course_by_id, mock_duplicate_course
+    ):
+        """Test POST /api/courses/<course_id>/duplicate succeeds."""
+        self._login_site_admin()
+        source_course = {
+            "course_id": "course-123",
+            "course_number": "BIOL-201",
+            "institution_id": "inst-123",
+            "program_ids": ["prog-1"],
+        }
+        duplicated_course = {
+            "course_id": "course-999",
+            "course_number": "BIOL-201-V2",
+            "institution_id": "inst-123",
+            "program_ids": ["prog-1"],
+        }
+
+        mock_get_course_by_id.side_effect = [source_course, duplicated_course]
+        mock_duplicate_course.return_value = "course-999"
+
+        response = self.client.post(
+            "/api/courses/course-123/duplicate",
+            json={"credit_hours": 4},
+            content_type="application/json",
+        )
+
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data["success"] is True
+        assert data["course"]["course_id"] == "course-999"
+        mock_duplicate_course.assert_called_once()
+
+    @patch("api_routes.get_course_by_id")
+    def test_duplicate_course_forbidden_for_other_institution(
+        self, mock_get_course_by_id
+    ):
+        """Test duplication blocked when user lacks institution access."""
+        self._login_site_admin(
+            {"role": "institution_admin", "institution_id": "inst-999"}
+        )
+        mock_get_course_by_id.return_value = {
+            "course_id": "course-123",
+            "course_number": "BIOL-201",
+            "institution_id": "inst-123",
+        }
+
+        response = self.client.post("/api/courses/course-123/duplicate", json={})
+        assert response.status_code == 403
+        data = json.loads(response.data)
+        assert data["success"] is False
+
+    @patch("api_routes.get_course_by_id")
+    def test_duplicate_course_not_found(self, mock_get_course_by_id):
+        """Test duplication returns 404 when course missing."""
+        self._login_site_admin()
+        mock_get_course_by_id.return_value = None
+
+        response = self.client.post("/api/courses/missing-course/duplicate", json={})
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data["success"] is False
+
 
 class TestTermEndpoints:
     """Test term management endpoints."""

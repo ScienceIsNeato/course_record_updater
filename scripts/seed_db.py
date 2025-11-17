@@ -430,11 +430,11 @@ class DatabaseSeeder:
         return self.seeder.seed_baseline()
 
 
-class DemoSeeder:
-    """Minimal seeding for product demonstrations (2025)"""
+class DemoSeeder(BaselineSeeder):
+    """Complete seeding for product demonstrations (2025)"""
 
     def __init__(self):
-        self.created = {"institutions": [], "users": [], "programs": [], "terms": []}
+        super().__init__()
 
     def log(self, message: str):
         """Log with [SEED] prefix"""
@@ -515,6 +515,82 @@ class DemoSeeder:
 
         return program_ids
 
+    def create_demo_courses(self, institution_id, program_ids):
+        """Create demo courses for Biology and Zoology programs"""
+        self.log("📖 Creating demo courses...")
+
+        # Map: [program_idx, course_number, course_title, credits]
+        courses_data = [
+            # Biological Sciences courses
+            {"program_idx": 0, "code": "BIOL-101", "name": "Introduction to Biology", "credits": 4},
+            {"program_idx": 0, "code": "BIOL-201", "name": "Cellular Biology", "credits": 4},
+            {"program_idx": 0, "code": "BIOL-301", "name": "Genetics", "credits": 3},
+            # Zoology courses  
+            {"program_idx": 1, "code": "ZOOL-101", "name": "Animal Diversity", "credits": 4},
+            {"program_idx": 1, "code": "ZOOL-205", "name": "Vertebrate Anatomy", "credits": 4},
+            {"program_idx": 1, "code": "ZOOL-310", "name": "Animal Behavior", "credits": 3},
+        ]
+
+        course_ids = []
+        for course_data in courses_data:
+            program_id = program_ids[course_data["program_idx"]]
+            program = db.get_program_by_id(program_id)
+
+            schema = Course.create_schema(
+                course_number=course_data["code"],
+                course_title=course_data["name"],
+                department=course_data["code"].split("-")[0],
+                institution_id=institution_id,
+                credit_hours=course_data["credits"],
+                program_ids=[program_id],
+                active=True,
+            )
+
+            course_id = db.create_course(schema)
+            if course_id:
+                course_ids.append(course_id)
+                self.created["courses"].append(course_id)
+
+        return course_ids
+
+    def create_demo_faculty(self, institution_id, program_ids):
+        """Create demo faculty members"""
+        self.log("👨‍🏫 Creating demo faculty...")
+
+        faculty_data = [
+            {"email": "dr.morgan@demo.example.com", "first_name": "Alex", "last_name": "Morgan", "program_idx": 0},
+            {"email": "prof.chen@demo.example.com", "first_name": "Sarah", "last_name": "Chen", "program_idx": 0},
+            {"email": "dr.patel@demo.example.com", "first_name": "Raj", "last_name": "Patel", "program_idx": 1},
+        ]
+
+        instructor_ids = []
+        password_hash = hash_password("Instructor123!")
+
+        for fac_data in faculty_data:
+            existing = db.get_user_by_email(fac_data["email"])
+            if existing:
+                instructor_ids.append(existing["user_id"])
+                continue
+
+            schema = User.create_schema(
+                email=fac_data["email"],
+                first_name=fac_data["first_name"],
+                last_name=fac_data["last_name"],
+                role="instructor",
+                institution_id=institution_id,
+                password_hash=password_hash,
+                account_status="active",
+                program_ids=[program_ids[fac_data["program_idx"]]],
+            )
+            schema["email_verified"] = True
+
+            user_id = db.create_user(schema)
+            if user_id:
+                instructor_ids.append(user_id)
+                self.created["users"].append(user_id)
+
+        return instructor_ids
+
     def create_demo_term(self, institution_id):
         """Create Fall 2024 term"""
         self.log("📅 Creating Fall 2024 term...")
@@ -538,6 +614,43 @@ class DemoSeeder:
         if term_id:
             self.created["terms"].append(term_id)
         return term_id
+
+    def create_demo_offerings_and_sections(self, institution_id, course_ids, term_id, instructor_ids):
+        """Create course offerings and sections for demo"""
+        self.log("📋 Creating demo offerings and sections...")
+
+        from models import CourseOffering, CourseSection
+
+        # Create offerings for all courses
+        offering_ids = []
+        for course_id in course_ids:
+            schema = CourseOffering.create_schema(
+                course_id=course_id,
+                term_id=term_id,
+                institution_id=institution_id,
+                status="active",
+            )
+            offering_id = db.create_course_offering(schema)
+            if offering_id:
+                offering_ids.append(offering_id)
+
+        # Create sections (one per offering, rotating through instructors)
+        section_count = 0
+        for i, offering_id in enumerate(offering_ids):
+            instructor_id = instructor_ids[i % len(instructor_ids)]
+
+            schema = CourseSection.create_schema(
+                offering_id=offering_id,
+                section_number=f"001",
+                instructor_id=instructor_id,
+                enrollment=0,
+                status="assigned",
+            )
+            section_id = db.create_course_section(schema)
+            if section_id:
+                section_count += 1
+
+        self.log(f"   ✅ Created {len(offering_ids)} offerings and {section_count} sections")
 
     def link_courses_to_programs(self, institution_id):
         """Link courses to programs based on course prefixes"""
@@ -587,7 +700,7 @@ class DemoSeeder:
             self.log("   ℹ️  No new course-program links created")
 
     def seed_demo(self):
-        """Seed minimal data for product demo"""
+        """Seed complete data for product demo - ready to showcase features!"""
         self.log("🎬 Seeding 2025 demo environment...")
 
         inst_id = self.create_demo_institution()
@@ -601,8 +714,10 @@ class DemoSeeder:
         program_ids = self.create_demo_programs(inst_id)
         term_id = self.create_demo_term(inst_id)
         
-        # Link any existing courses to programs
-        self.link_courses_to_programs(inst_id)
+        # Create complete demo data for showcasing features
+        course_ids = self.create_demo_courses(inst_id, program_ids)
+        instructor_ids = self.create_demo_faculty(inst_id, program_ids)
+        self.create_demo_offerings_and_sections(inst_id, course_ids, term_id, instructor_ids)
 
         self.log("✅ Demo seeding completed!")
         self.print_summary()
@@ -615,16 +730,23 @@ class DemoSeeder:
         self.log(f"   Institution: Demo University")
         self.log(f"   Programs: {len(self.created['programs'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
+        self.log(f"   Courses: {len(self.created['courses'])} created")
+        self.log(f"   Faculty: {len([u for u in self.created['users'] if 'instructor' in str(u)])} created")
         self.log("")
         self.log("🔑 Demo Account Credentials:")
         self.log("   Email:    demo2025.admin@example.com")
         self.log("   Password: Demo2024!")
         self.log("")
-        self.log("🚀 Next Steps:")
+        self.log("🚀 Ready to demo! The database is fully populated with:")
+        self.log("   ✓ Courses across multiple programs")
+        self.log("   ✓ Faculty members assigned to courses")
+        self.log("   ✓ Course offerings and sections")
+        self.log("")
+        self.log("🎬 Next Steps:")
         self.log("   1. Start server: ./restart_server.sh dev")
         self.log("   2. Navigate to: http://localhost:3001")
         self.log("   3. Login with the credentials above")
-        self.log("   4. Follow demo: docs/workflow-walkthroughs/single_term_outcome_management.md")
+        self.log("   4. Jump right into the killer features!")
 
 
 def main():

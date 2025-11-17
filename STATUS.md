@@ -1,136 +1,49 @@
 # Course Record Updater - Current Status
 
 ## Last Updated
-2025-11-15 03:25 PST
+2025-11-16 11:05 PST
 
 ## Current Task
-🔄 **IN PROGRESS**: Natural Key Architecture Implementation & Testing
+🔄 **IN PROGRESS**: CEI demo workflow hardening (feature/workflow-walkthroughs)
 
-## Natural Key Architecture Refactor (Nov 15, 2025)
+## Branch Snapshot
+- Branch: `feature/workflow-walkthroughs`
+- Latest commit: `fix: stabilize session context and adapter loading` (passes `python scripts/ship_it.py --checks tests`)
+- Goal: Convert the CEI-specific walkthrough into a reusable, end-to-end demo that ends with the audit sign-off.
 
-### Problem Being Solved
-**Session invalidation across database reseeds**:
-- Sessions stored UUIDs (institution_id, user_id)
-- Database `--clear` operations generate new UUIDs
-- Old sessions become invalid even for same logical entities
-- Demo workflow breaks every time database is reseeded
+## Recent Progress
+- ✅ Session/natural-key work merged into this branch with docs (`ARCHITECTURE.md`).
+- ✅ Course edit modal now loads/retains program selections; frontend + Jest tests updated.
+- ✅ `/logout` GET route + test landed to reset stale sessions quickly.
+- ✅ Adapter registry warning resolved and covered with tests.
+- ✅ Temporary checklist created at `planning/demo-walkthrough-checklist.md` (contains storyline beats, personas, and remaining tasks).
+- ✅ Email reminders now append previews to `logs/email.log` for demo storytelling (see `EmailService` + new unit tests).
+- ✅ Course duplication endpoint/UI added (`POST /api/courses/<id>/duplicate` + button in course list) with Jest + API/Python coverage; program selects now support multi-select inline with roadmap narrative.
+- ✅ Demo walkthrough narrative lives in `planning/demo_walkthrough.md`; build checklist/remaining tasks tracked separately in `planning/demo-walkthrough-checklist.md`.
 
-### Solution: Hybrid Natural Key Architecture
-**Sessions store natural keys, database uses UUIDs, resolve on each request**
+## Open Work (see checklist for detail)
+- 🔄 Phase 2: flesh out narrative for program refresh, course versioning, cross-program attachments, and Excel imports.
+- 🔄 Phase 3: document instructor invitation/reset flow, bulk reminder runbook, and instructor submission walkthrough.
+- 🔄 Phase 4: script end-of-term audit (data prerequisites, approve/reject flow, dashboard evidence).
+- ☐ Capture screenshots/log excerpts for each phase once flows are validated.
+- ☐ Decide final home for checklist (will delete or move once branch wraps).
 
-### Changes Implemented (NOT YET COMMITTED)
-1. **`session/manager.py`**:
-   - Sessions now store `institution_short_name` instead of `institution_id`
-   - Sessions store `email` (already a natural key)
+## Environment Status (Dev)
+- Database: `course_records_dev.db` reseeded via `python scripts/seed_db.py --demo --clear --env dev` before latest validation.
+- Server: `./restart_server.sh dev` (port 3001) with adapter/session fixes loaded.
+- Browser: Demo login with `demo2025.admin@example.com / Demo2024!` verified; dashboard panels populate.
+- Logs: `logs/server.log` clean—no adapter warnings after latest changes.
 
-2. **`login_service.py`**:
-   - Pass `institution_short_name` to session during login
-   - Fetch from institution record via `institution.get("short_name")`
+## Validation
+- Last run: `python scripts/ship_it.py --checks tests` (passes; includes pytest + JS unit tests).
+- Outstanding checks: rerun ship_it once new demo steps alter backend/frontend logic; add targeted tests for new flows as they appear.
 
-3. **`auth_service.py`**:
-   - Updated `get_current_institution_id()` to resolve `institution_short_name` → UUID
-   - Calls `db.get_institution_by_short_name(institution_short_name)`
-   - Returns resolved UUID for use in API/service layers
-
-4. **`ARCHITECTURE.md`**:
-   - Complete documentation of hybrid approach
-   - Design principles, testing workflow, migration path
-
-### Current State: NEEDS TESTING
-- ✅ Code changes implemented
-- ✅ Documentation written
-- ✅ Commit message prepared
-- ✅ Database reseeded (`python scripts/seed_db.py --demo --clear --env dev` @ 03:00 PST)
-- ✅ Dev server restarted via `./restart_server.sh dev`
-- ✅ Demo login succeeded (dashboard loads in browser)
-- ✅ API adapters + dashboard endpoints returning 200s (institution context resolver fixed @ 03:23 PST)
-- ✅ Edit Course modal now preloads program list and preselects assigned program IDs
-- ✅ Dashboard UI panels populate with data after API fixes (verified 03:54 PST)
-- ✅ Manual `/logout` route added to clear stale sessions before reseeds
-- ❌ Not yet committed (pending verification)
-- ❌ Session persistence still unverified after reseed
-
-### Next Steps (IMMEDIATE)
-1. **Clear database** - Start with clean slate ✅ (03:00 PST)
-2. **Reseed demo data** - `python scripts/seed_db.py --demo --clear --env dev` ✅
-3. **Restart server** - Ensure new code is loaded ✅ (`./restart_server.sh dev`)
-4. **Test fresh login** - Verify `institution_short_name` appears in session ✅ (login flow works end-to-end)
-5. **Verify dashboard** - Check data loads correctly ✅ Panels render after API calls
-6. **Test reseed persistence** - Reseed DB without logout, verify session still valid ⏳
-7. **Commit if successful** - Push natural key architecture ⏳
-
-### Expected Log Output After Fix
-```bash
-# Should see this:
-[Session Service] Creating session for user: <uuid>
-# Session should contain:
-session["institution_short_name"] = "DEMO2025"
-session["email"] = "demo2025.admin@example.com"
-
-# Resolution should work:
-[Auth Service] Resolving institution_short_name: DEMO2025
-[Database] Found institution with short_name=DEMO2025, returning id=<uuid>
-```
-
-### Previous Work (Nov 13)
-- ✅ Fixed database persistence issue (ENV-based configuration)
-- ✅ Security hardening (multi-tenant isolation)
-- ✅ Demo system improvements
-
-## Environment Status
-- Server: Running on port 3001 (dev) - restarted 03:23 PST
-- Database: `course_records_dev.db` - reseeded with demo data 03:00 PST
-- Last Commit: `c12cf5a` (Nov 13)
-- Uncommitted Changes: Natural key architecture refactor
-
-## Key Files Modified (Uncommitted)
-- `session/manager.py` - Store natural keys in session
-- `login_service.py` - Pass institution_short_name during login
-- `auth_service.py` - Resolve natural keys to UUIDs
-- `ARCHITECTURE.md` - New file documenting hybrid approach
-- `COMMIT_MSG.txt` - Prepared commit message
-
-## Recovery Plan
-Since we're mid-refactor and the server may be in a bad state:
-
-1. **Clear everything**:
-   ```bash
-   pkill -9 -f "python.*app.py"
-   rm -rf __pycache__ **/__pycache__ **/*.pyc
-   ```
-
-2. **Reseed database**:
-   ```bash
-   python scripts/seed_db.py --demo --clear --env dev
-   ```
-
-3. **Restart server**:
-   ```bash
-   ./restart_server.sh dev
-   ```
-
-4. **Test with FRESH browser session** (no old cookies):
-   - Navigate to http://localhost:3001/
-   - Should see splash screen (not auto-logged in)
-   - Login with demo2025.admin@example.com / Demo2024!
-   - Check logs for `institution_short_name` in session
-
-5. **Verify natural key architecture**:
-   - Dashboard should load with data
-   - Check logs: should resolve DEMO2025 → UUID
-   - Reseed database again
-   - Refresh browser - should STILL be logged in with data
-
-Steps 1–5 completed successfully on 2025-11-15 @ 03:23 PST; repeat if further debugging requires a clean slate.
-
-## Known Broken Behaviors (tracking list)
-- None currently. Previous issues addressed:
-  - Dashboard panels now load.
-  - `/logout` endpoint provides quick session reset for reseeds.
-  - Adapter registry no longer logs warnings when institution context is missing.
+## Next Actions
+1. Continue working through `planning/demo-walkthrough-checklist.md` (Phase 3+4 items) and capture required screenshots/logs.
+2. Leverage new email preview log when running bulk reminder flow; stash snippets with other demo artifacts.
+3. Once demo narrative is complete, prep summary + push branch (user will give push instructions).
 
 ## Notes
-- This is a significant architectural change for session stability
-- Benefits: Sessions persist across database reseeds/recreations
-- Risk: If broken, users can't log in at all
-- Test thoroughly before committing
+- Session persistence across reseeds is acceptable if we force re-login; no further work required there.
+- Treat CEI as “first customer,” but keep the demo script institution-agnostic for future reuse.
+- Checklist is temporary—cleanup before merge.

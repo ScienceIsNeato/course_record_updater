@@ -403,11 +403,60 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
   }
 }
 
+/**
+ * Duplicate an existing course and immediately open the edit modal for refinements.
+ */
+async function duplicateCourse(courseId, rawCourseData) {
+  const courseData =
+    typeof rawCourseData === 'string' ? JSON.parse(rawCourseData) : rawCourseData || {};
+  const confirmation = confirm(
+    `Create a duplicate of ${courseData.course_number || 'this course'}?\n\n` +
+      'A copy will be created and opened for editing.'
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const response = await fetch(`/api/courses/${courseId}/duplicate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRFToken': csrfToken })
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      alert(`Failed to duplicate course: ${error.error || 'Unknown error'}`);
+      return;
+    }
+
+    const result = await response.json();
+    alert(result.message || 'Course duplicated successfully!');
+
+    if (typeof window.loadCourses === 'function') {
+      window.loadCourses();
+    }
+
+    if (result.course) {
+      openEditCourseModal(result.course.course_id, result.course);
+    }
+  } catch (error) {
+    console.error('Error duplicating course:', error); // eslint-disable-line no-console
+    alert('Failed to duplicate course. Please try again.');
+  }
+}
+
 // Expose functions to window for inline onclick handlers and testing
 window.openEditCourseModal = openEditCourseModal;
 window.deleteCourse = deleteCourse;
+window.duplicateCourse = duplicateCourse;
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initCourseManagement, openEditCourseModal, deleteCourse };
+  module.exports = { initCourseManagement, openEditCourseModal, deleteCourse, duplicateCourse };
 }
