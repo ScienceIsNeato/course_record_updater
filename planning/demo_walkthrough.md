@@ -11,7 +11,7 @@
 | Role | Login | Notes |
 | --- | --- | --- |
 | Institution Admin | `demo2025.admin@example.com` / `Demo2024!` | Primary narrator; edits programs/courses, runs reminders & audits |
-| Biology Faculty | `faculty.biology@example.com` / `Demo2024!` | Receives invites/reminders, submits CLO evidence |
+| Biology Faculty | `faculty.biology@example.com` / `Demo2024!` | Receives invites/reminders, submits CLO data |
 | Nursing Faculty (optional) | `faculty.nursing@example.com` / `Demo2024!` | Provides “pending/missing evidence” contrast |
 
 ## Environment Reset
@@ -78,15 +78,23 @@ python scripts/seed_db.py --demo --clear --env dev
    - Capture UI screenshot for deck.
 
 ## Phase 4 – End-of-Semester Audit
+> **Fast Forward**: If skipping manual execution of Phase 3, run:
+> ```bash
+> python scripts/demo_fast_forward_to_semester_end.py --env dev
+> ```
+> This script simulates faculty submissions, sends reminders, and duplicates courses to establish the "Day 90" state.
+
 1. **Prereqs** – Ensure Biology has ≥1 submitted, ≥1 pending; Nursing missing evidence (seed already close).  
 2. **Audit workflow**  
-   - Dashboard → Audit Center, filter Program=Biology, Term=FA2024.  
-   - Approve BIOL-201 (note referencing natural key).  
-   - Reject Nursing submission citing missing evidence, mention rejection email/log.  
-   - Export CSV/PDF summary → save under `demo_artifacts/audit/`.
+   - Dashboard → Audit Center.
+   - **Filter**: Set Program="Biology", Term="Fall 2024" (using new filter logic).  
+   - **Review**: Approve BIOL-201 submission.  
+   - **Request Rework**: Send Nursing submission back with comment "Missing student samples" (check `logs/email.log` for notification).
+   - **NCI**: Mark dropped course as "Never Coming In" (new feature from CEI feedback).
+   - **Export**: Click "Export Current View" to get CSV of audit status. Save as `demo_artifacts/audit/audit_report.csv`.
 3. **Dashboard proof**  
-   - Assessment Progress panel: capture before/after counts.  
-   - CLO Audit widget: highlight natural-key context line.  
+   - Assessment Progress panel: capture before/after counts (Approved vs Needs Rework).  
+   - CLO Audit widget: highlight NCI status handling.  
    - Data Management panel: show adapter list (ties back to earlier adapter warning fix).
 
 ---
@@ -95,4 +103,3 @@ python scripts/seed_db.py --demo --clear --env dev
 - Always reseed + restart before major walkthrough changes.
 - Keep `logs/email.log` tailing to quote from during reminders/audits.
 - Archive artifacts under `artifacts/` and `demo_artifacts/` as you iterate so the final demo deck has receipts.
-
