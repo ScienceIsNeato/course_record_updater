@@ -19,6 +19,7 @@ from database_service import (
     get_course_by_id,
     get_course_outcome,
     get_course_outcomes,
+    get_term_by_name,
 )
 from logging_config import get_logger
 
@@ -134,6 +135,8 @@ def get_clos_for_audit():
     Query parameters:
     - status: Filter by specific status (default: awaiting_approval)
     - program_id: Filter by specific program (program admins only see their programs)
+    - term_id: Filter by specific term (matches /api/terms IDs)
+    - term_name: Optional convenience filter for term name when IDs unavailable
     """
     try:
         institution_id = get_current_institution_id()
@@ -142,6 +145,13 @@ def get_clos_for_audit():
         # Get query parameters
         status = request.args.get("status", "awaiting_approval")
         program_id = request.args.get("program_id")
+        term_id = request.args.get("term_id")
+        term_name = request.args.get("term_name")
+
+        if not term_id and term_name:
+            term = get_term_by_name(term_name, institution_id)
+            if term:
+                term_id = term.get("term_id")
 
         # Program admins can only see their programs
         if user.get("role") == "program_admin":
@@ -164,6 +174,7 @@ def get_clos_for_audit():
             status=status,
             institution_id=institution_id,
             program_id=program_id,
+            term_id=term_id,
         )
 
         return (
@@ -382,4 +393,3 @@ def get_clo_audit_details(outcome_id: str):
 
     except Exception as e:
         return handle_api_error(e, "Get CLO audit details", "Failed to load CLO audit details")
-

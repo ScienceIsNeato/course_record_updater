@@ -468,6 +468,7 @@ class TestGetCLOsByStatus:
             institution_id=institution_id,
             status=status,
             program_id=None,
+            term_id=None,
         )
 
     @patch("clo_workflow_service.CLOWorkflowService.get_outcome_with_details")
@@ -491,6 +492,7 @@ class TestGetCLOsByStatus:
             institution_id=institution_id,
             status=status,
             program_id=program_id,
+            term_id=None,
         )
 
     @patch("clo_workflow_service.db")

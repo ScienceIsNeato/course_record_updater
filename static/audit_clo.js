@@ -49,6 +49,110 @@ function escapeHtml(text) {
 }
 
 /**
+ * Format status for CSV export (plain text)
+ */
+function formatStatusLabel(status) {
+  const labels = {
+    unassigned: 'Unassigned',
+    assigned: 'Assigned',
+    in_progress: 'In Progress',
+    awaiting_approval: 'Awaiting Approval',
+    approval_pending: 'Needs Rework',
+    approved: 'Approved',
+    never_coming_in: 'Never Coming In'
+  };
+  return labels[status] || status || '';
+}
+
+/**
+ * Format date for CSV export (ISO string)
+ */
+function formatDateForCsv(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toISOString();
+}
+
+/**
+ * Escape CSV value
+ */
+function escapeForCsv(value) {
+  if (value === null || value === undefined) {
+    return '""';
+  }
+  const text = String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Calculate success rate based on students took/passed
+ */
+function calculateSuccessRate(clo) {
+  const took = typeof clo.students_took === 'number' ? clo.students_took : null;
+  const passed = typeof clo.students_passed === 'number' ? clo.students_passed : null;
+  if (!took || took <= 0 || passed === null || passed === undefined) {
+    return '';
+  }
+  return Math.round((passed / took) * 100);
+}
+
+/**
+ * Export current CLO list to CSV
+ */
+function exportCurrentViewToCsv(cloList) {
+  if (!Array.isArray(cloList) || cloList.length === 0) {
+    alert('No CLO records available to export for the selected filters.');
+    return false;
+  }
+
+  const headers = [
+    'Course',
+    'CLO Number',
+    'Status',
+    'Instructor',
+    'Submitted At',
+    'Students Took',
+    'Students Passed',
+    'Success Rate (%)',
+    'Term',
+    'Assessment Tool'
+  ];
+
+  const rows = cloList.map(clo => [
+    [clo.course_number || '', clo.course_title || ''].filter(Boolean).join(' - '),
+    clo.clo_number || '',
+    formatStatusLabel(clo.status),
+    clo.instructor_name || '',
+    formatDateForCsv(clo.submitted_at),
+    clo.students_took ?? '',
+    clo.students_passed ?? '',
+    calculateSuccessRate(clo),
+    clo.term_name || '',
+    clo.assessment_tool || ''
+  ]);
+
+  const csvLines = [
+    headers.map(escapeForCsv).join(','),
+    ...rows.map(row => row.map(escapeForCsv).join(','))
+  ];
+  const csvContent = csvLines.join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `clo_audit_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+/**
  * Approve CLO (extracted for testability)
  */
 async function approveCLO() {
@@ -171,7 +275,7 @@ function renderCLODetails(clo) {
                 ${statusBadge}
             </div>
         </div>
-        
+
         <div class="row mb-3">
             <div class="col-md-6">
                 <strong>Course:</strong> ${escapeHtml(clo.course_number || 'N/A')} - ${escapeHtml(clo.course_title || 'N/A')}
@@ -180,12 +284,12 @@ function renderCLODetails(clo) {
                 <strong>CLO Number:</strong> ${escapeHtml(clo.clo_number || 'N/A')}
             </div>
         </div>
-        
+
         <div class="mb-3">
             <strong>Description:</strong>
             <p>${escapeHtml(clo.description)}</p>
         </div>
-        
+
         <div class="row mb-3">
             <div class="col-md-6">
                 <strong>Instructor:</strong> ${escapeHtml(clo.instructor_name || 'N/A')}
@@ -194,9 +298,18 @@ function renderCLODetails(clo) {
                 <strong>Instructor Email:</strong> ${escapeHtml(clo.instructor_email || 'N/A')}
             </div>
         </div>
-        
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <strong>Term:</strong> ${escapeHtml(clo.term_name || '—')}
+            </div>
+            <div class="col-md-6">
+                <strong>Assessment Tool:</strong> ${escapeHtml(clo.assessment_tool || '—')}
+            </div>
+        </div>
+
         <hr>
-        
+
         <h6 class="mb-3">Assessment Data</h6>
         <div class="row mb-3">
             <div class="col-md-4">
@@ -218,7 +331,7 @@ function renderCLODetails(clo) {
                 </div>
             </div>
         </div>
-        
+
         ${
           clo.narrative
             ? `
@@ -229,7 +342,7 @@ function renderCLODetails(clo) {
         `
             : ''
         }
-        
+
         ${
           clo.feedback_comments
             ? `
@@ -240,7 +353,7 @@ function renderCLODetails(clo) {
         `
             : ''
         }
-        
+
         ${
           clo.reviewed_by_name
             ? `
@@ -264,6 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusFilter = document.getElementById('statusFilter');
   const sortBy = document.getElementById('sortBy');
   const sortOrder = document.getElementById('sortOrder');
+  const programFilter = document.getElementById('programFilter');
+  const termFilter = document.getElementById('termFilter');
+  const exportButton = document.getElementById('exportCsvBtn');
   const cloListContainer = document.getElementById('cloListContainer');
   const cloDetailModal = document.getElementById('cloDetailModal');
   const requestReworkModal = document.getElementById('requestReworkModal');
@@ -278,12 +394,23 @@ document.addEventListener('DOMContentLoaded', () => {
   globalThis.updateStats = updateStats;
 
   // Initialize
-  loadCLOs();
+  initialize();
 
   // Event listeners
   statusFilter.addEventListener('change', loadCLOs);
   sortBy.addEventListener('change', renderCLOList);
   sortOrder.addEventListener('change', renderCLOList);
+  if (programFilter) {
+    programFilter.addEventListener('change', loadCLOs);
+  }
+  if (termFilter) {
+    termFilter.addEventListener('change', loadCLOs);
+  }
+  if (exportButton) {
+    exportButton.addEventListener('click', () => {
+      exportCurrentViewToCsv(allCLOs);
+    });
+  }
 
   // Event delegation for CLO row clicks
   cloListContainer.addEventListener('click', e => {
@@ -313,6 +440,54 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /**
+   * Initialize filters (programs, terms)
+   */
+  async function initialize() {
+    try {
+      // Load programs
+      const progResponse = await fetch('/api/programs');
+      if (progResponse.ok) {
+        const data = await progResponse.json();
+        const programs = data.programs || [];
+        if (programFilter) {
+          programs.forEach(prog => {
+            const option = document.createElement('option');
+            option.value = prog.id;
+            option.textContent = prog.name;
+            programFilter.appendChild(option);
+          });
+        }
+      }
+
+      // Load terms
+      const termResponse = await fetch('/api/terms');
+      if (termResponse.ok) {
+        const data = await termResponse.json();
+        const terms = data.terms || [];
+        if (termFilter) {
+          // Sort terms by start date descending (newest first)
+          terms.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+
+          terms.forEach(term => {
+            const option = document.createElement('option');
+            option.value = term.term_id;
+            option.textContent = term.term_name;
+            termFilter.appendChild(option);
+          });
+        }
+      }
+
+      // Initial load of CLOs
+      await loadCLOs();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to initialize filters:', error);
+      // Fallback to loading CLOs even if filters fail
+      await loadCLOs();
+    }
+  }
+
+  /**
    * Load CLOs from API
    */
   async function loadCLOs() {
@@ -327,7 +502,16 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
       const status = statusFilter.value;
-      const url = status === 'all' ? '/api/outcomes/audit' : `/api/outcomes/audit?status=${status}`;
+      const programId = programFilter ? programFilter.value : '';
+      const termId = termFilter ? termFilter.value : '';
+
+      const params = new URLSearchParams();
+      if (status !== 'all') params.append('status', status);
+      if (programId) params.append('program_id', programId);
+      if (termId) params.append('term_id', termId);
+
+      const queryString = params.toString();
+      const url = queryString ? `/api/outcomes/audit?${queryString}` : '/api/outcomes/audit';
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -367,8 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
         'in_progress',
         'never_coming_in'
       ];
-      const promises = statuses.map(status =>
-        fetch(`/api/outcomes/audit?status=${status}`)
+
+      // Use current filters for stats too
+      const programId = programFilter ? programFilter.value : '';
+      const termId = termFilter ? termFilter.value : '';
+
+      const promises = statuses.map(status => {
+        const params = new URLSearchParams();
+        params.append('status', status);
+        if (programId) params.append('program_id', programId);
+        if (termId) params.append('term_id', termId);
+
+        return fetch(`/api/outcomes/audit?${params.toString()}`)
           .then(r => {
             if (!r.ok) {
               throw new Error(`HTTP ${r.status}: ${r.statusText}`);
@@ -381,8 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // eslint-disable-next-line no-console
             console.warn(`Failed to fetch stats for status ${status}:`, err.message);
             return 0;
-          })
-      );
+          });
+      });
 
       const [awaiting, pending, approved, inProgress, nci] = await Promise.all(promises);
 
@@ -635,6 +829,11 @@ if (typeof module !== 'undefined' && module.exports) {
     escapeHtml,
     renderCLODetails,
     approveCLO,
-    markAsNCI
+    markAsNCI,
+    formatStatusLabel,
+    formatDateForCsv,
+    escapeForCsv,
+    calculateSuccessRate,
+    exportCurrentViewToCsv
   };
 }
