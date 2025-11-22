@@ -33,7 +33,7 @@ class CLOWorkflowService:
         try:
             outcome = db.get_course_outcome(outcome_id)
             if not outcome:
-                logger.error(f"CLO not found: {outcome_id}")
+                logger.error(f"CLO not found: {logger.sanitize(outcome_id)}")
                 return False
 
             # Update status and submission metadata
@@ -47,10 +47,12 @@ class CLOWorkflowService:
             success = db.update_course_outcome(outcome_id, update_data)
             if success:
                 logger.info(
-                    f"CLO {outcome_id} submitted for approval by user {user_id}"
+                    f"CLO {logger.sanitize(outcome_id)} submitted for approval by user {logger.sanitize(user_id)}"
                 )
             else:
-                logger.error(f"Failed to update CLO {outcome_id} status")
+                logger.error(
+                    f"Failed to update CLO {logger.sanitize(outcome_id)} status"
+                )
 
             return success
 

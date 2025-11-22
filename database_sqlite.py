@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 from constants import DEFAULT_INSTITUTION_TIMEZONE
 from database_interface import DatabaseInterface
 from database_sql import SQLiteService
+from logging_config import get_logger
 from models_sql import (
     Course,
     CourseOffering,
@@ -27,7 +28,7 @@ from models_sql import (
     to_dict,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _ensure_uuid(value: Optional[str]) -> str:
@@ -267,7 +268,9 @@ class SQLiteDatabase(DatabaseInterface):
                 .first()
             )
             if existing:
-                logger.error("[SQLiteDatabase] Duplicate email %s", user.email)
+                logger.error(
+                    "[SQLiteDatabase] Duplicate email %s", logger.sanitize(user.email)
+                )
                 return None
             session.add(user)
             program_ids = payload.get("program_ids") or []
@@ -1424,7 +1427,7 @@ class SQLiteDatabase(DatabaseInterface):
                 else:
                     logger.warning(
                         "[SQLiteDatabase] Unknown attribute '%s' for UserInvitation; storing in extras.",
-                        key,
+                        logger.sanitize(key),
                     )
                     invitation.extras[key] = value
             invitation.updated_at = datetime.now(timezone.utc)
