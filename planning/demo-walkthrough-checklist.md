@@ -12,9 +12,9 @@
 
 ## Phase 2 – Institution & Program Configuration
 - ✅ Program/course editing path verified (stats cards update, modal loads programs).
-- 🔄 Program refresh copy tweaks + screenshot (`artifacts/program-refresh.png`).
+- ✅ Program refresh copy tweaks + screenshot (`artifacts/program-refresh.png`).
 - ✅ Course duplication storyline: logs verified in `demo_artifacts/phase2/course_duplication_logs.md`.
-- 🔄 Cross-program attachment proof (API/table filter) once duplicate captured.
+- ✅ Cross-program attachment proof (API/table filter) once duplicate captured.
 - ✅ Course import flow artifacts: logs verified in `demo_artifacts/phase2/import_logs.md`.
 
 ## Phase 3 – Faculty & Assessment Execution
@@ -24,7 +24,7 @@
 
 ## Phase 4 – Audit & Dashboards
 - ✅ Audit workflow filters, export, and NCI logic implemented + tested.
-- ✅ Data prerequisites validated (Setup script `scripts/demo_fast_forward_to_semester_end.py` creates submitted/pending mix).
+- ✅ Data prerequisites validated (Setup script `scripts/advance_demo.py` creates submitted/pending mix).
 - 🔄 Audit workflow screenshots + exported CSV/PDF stored under `demo_artifacts/audit/`.
 - 🔄 Dashboard evidence (Assessment Progress, CLO Audit widget, Data Management panel) before/after.
 

@@ -651,6 +651,7 @@ class SQLiteDatabase(DatabaseInterface):
         institution_id: str,
         status: str,
         program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status."""
         with self.sqlite.session_scope() as session:
@@ -673,6 +674,16 @@ class SQLiteDatabase(DatabaseInterface):
                 query = query.join(
                     course_program_table, Course.id == course_program_table.c.course_id
                 ).where(course_program_table.c.program_id == program_id)
+
+            # Add term filter if specified (join through course_offerings and course_sections)
+            if term_id:
+                from models_sql import CourseOffering, CourseSection
+
+                query = (
+                    query.join(CourseOffering, Course.id == CourseOffering.course_id)
+                    .join(CourseSection, CourseOffering.id == CourseSection.offering_id)
+                    .where(CourseSection.term_id == term_id)
+                )
 
             outcomes = session.execute(query).scalars().all()
             return [to_dict(outcome) for outcome in outcomes]

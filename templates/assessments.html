@@ -45,6 +45,9 @@
         </select>
     </div>
     
+    <!-- Success Message Alert -->
+    <div id="saveStatus" class="alert" style="display: none;" role="alert"></div>
+    
     <!-- Course-Level Assessment Section (NEW from CEI demo feedback) -->
     <div id="courseLevelSection" style="display: none;" class="card mb-4 border-primary">
         <div class="card-header bg-primary text-white">
@@ -755,11 +758,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(error.error || 'Failed to save course data');
                 }
                 
-                alert('Course data saved successfully!');
+                // Show success message
+                const statusEl = document.getElementById('saveStatus');
+                statusEl.textContent = 'Course data saved successfully!';
+                statusEl.className = 'alert alert-success';
+                statusEl.style.display = 'block';
+                
+                // Scroll to the status message
+                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 5000);
                 
             } catch (error) {
                 console.error('Error saving course data:', error);
-                alert('Failed to save course data: ' + error.message);
+                
+                // Show error message
+                const statusEl = document.getElementById('saveStatus');
+                statusEl.textContent = 'Failed to save course data: ' + error.message;
+                statusEl.className = 'alert alert-danger';
+                statusEl.style.display = 'block';
+                
+                // Scroll to the status message
+                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         });
     }

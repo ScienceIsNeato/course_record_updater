@@ -203,7 +203,11 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_outcomes_by_status(
-        self, institution_id: str, status: str, program_id: Optional[str] = None
+        self,
+        institution_id: str,
+        status: str,
+        program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status"""
         raise NotImplementedError
