@@ -184,13 +184,17 @@ def run_semester_end(app, db):
         logger.info(f"Created CLO {clo_num} for course {course_id}")
         return outcome_id
 
+    # Create CLOs for BIOL-101
     biol_clo1_id = ensure_clo(biol101_id, 1, "Analyze cell structures", "Lab Report")
-    ensure_clo(biol101_id, 2, "Explain metabolic pathways", "Final Exam")
+    biol_clo2_id = ensure_clo(biol101_id, 2, "Explain metabolic pathways", "Final Exam")
+    biol_clo3_id = ensure_clo(biol101_id, 3, "Apply scientific method", "Research Project")
     
+    # Create CLOs for ZOOL-101
     zool_clo1_id = ensure_clo(zool101_id, 1, "Identify vertebrate classes", "Field Observation")
+    zool_clo2_id = ensure_clo(zool101_id, 2, "Analyze animal behavior", "Lab Report")
 
-    # 4. Submit BIOL-101 CLO 1 (Approvable)
-    logger.info("Simulating BIOL-101 submission (Morgan)...")
+    # 4. Submit BIOL-101 CLO 1 → Awaiting Approval (good data, ready to approve)
+    logger.info("Simulating BIOL-101 CLO 1 submission (Morgan) → Awaiting Approval...")
     db.update_outcome_assessment(
         biol_clo1_id,
         students_took=25,
@@ -198,10 +202,22 @@ def run_semester_end(app, db):
         assessment_tool="Lab Report #4 - Microscopy"
     )
     CLOWorkflowService.submit_clo_for_approval(biol_clo1_id, morgan_id)
-    logger.info(f"BIOL-101 CLO 1 submitted. Status: Awaiting Approval")
+    logger.info(f"✓ BIOL-101 CLO 1: Awaiting Approval")
 
-    # 5. Submit ZOOL-101 CLO 1 (Rejectable)
-    logger.info("Simulating ZOOL-101 submission (Patel)...")
+    # 5. Submit & Approve BIOL-101 CLO 2 → Approved
+    logger.info("Simulating BIOL-101 CLO 2 submission and approval (Morgan) → Approved...")
+    db.update_outcome_assessment(
+        biol_clo2_id,
+        students_took=24,
+        students_passed=20,
+        assessment_tool="Final Exam - Metabolic Pathways Section"
+    )
+    CLOWorkflowService.submit_clo_for_approval(biol_clo2_id, morgan_id)
+    CLOWorkflowService.approve_clo(biol_clo2_id, admin_id)
+    logger.info(f"✓ BIOL-101 CLO 2: Approved")
+
+    # 6. Submit & Request Rework for ZOOL-101 CLO 1 → Needs Rework
+    logger.info("Simulating ZOOL-101 CLO 1 submission and rejection (Patel) → Needs Rework...")
     db.update_outcome_assessment(
         zool_clo1_id,
         students_took=0, 
@@ -209,9 +225,34 @@ def run_semester_end(app, db):
         assessment_tool="Pending tool"
     )
     CLOWorkflowService.submit_clo_for_approval(zool_clo1_id, patel_id)
-    logger.info(f"ZOOL-101 CLO 1 submitted. Status: Awaiting Approval")
+    CLOWorkflowService.request_rework(
+        zool_clo1_id, 
+        admin_id, 
+        "Please provide complete assessment data. Currently showing 0 students, which appears incomplete."
+    )
+    logger.info(f"✓ ZOOL-101 CLO 1: Needs Rework")
 
-    # 6. Simulate Course Duplication
+    # 7. Mark BIOL-101 CLO 3 as NCI → Never Coming In
+    logger.info("Marking BIOL-101 CLO 3 as Never Coming In...")
+    CLOWorkflowService.mark_as_nci(
+        biol_clo3_id,
+        admin_id,
+        "Instructor on extended leave; course not taught this semester."
+    )
+    logger.info(f"✓ BIOL-101 CLO 3: Never Coming In")
+
+    # 8. Submit ZOOL-101 CLO 2 → Awaiting Approval (second awaiting approval entry)
+    logger.info("Simulating ZOOL-101 CLO 2 submission (Patel) → Awaiting Approval...")
+    db.update_outcome_assessment(
+        zool_clo2_id,
+        students_took=18,
+        students_passed=15,
+        assessment_tool="Lab Report - Animal Behavior Analysis"
+    )
+    CLOWorkflowService.submit_clo_for_approval(zool_clo2_id, patel_id)
+    logger.info(f"✓ ZOOL-101 CLO 2: Awaiting Approval")
+
+    # 9. Simulate Course Duplication
     logger.info("Simulating Course Duplication for BIOL-101...")
     dup_course = db.get_course_by_number("BIOL-101-V2", institution_id)
     if not dup_course:
@@ -223,7 +264,7 @@ def run_semester_end(app, db):
     else:
         logger.info("Duplicate course BIOL-101-V2 already exists.")
 
-    # 7. Trigger Reminders
+    # 10. Trigger Reminders
     logger.info("Triggering Reminder Runbook...")
     try:
         # Access private _db_service to get sqlite session
