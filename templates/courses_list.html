@@ -170,7 +170,7 @@ async function loadCourses() {
                         <button class="btn btn-sm btn-outline-primary" onclick="viewCourse('${course.course_id}')">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>
+                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replaceAll("'", "&apos;")})'>
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </td>

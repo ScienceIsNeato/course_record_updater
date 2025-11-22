@@ -403,9 +403,9 @@ class PanelManager {
       // Handle fractions like "4/6"
       const parts = value.split('/');
       if (parts.length === 2) {
-        const numerator = parseInt(parts[0]);
-        const denominator = parseInt(parts[1]);
-        if (!isNaN(numerator) && !isNaN(denominator) && denominator > 0) {
+        const numerator = Number.parseInt(parts[0]);
+        const denominator = Number.parseInt(parts[1]);
+        if (!Number.isNaN(numerator) && !Number.isNaN(denominator) && denominator > 0) {
           return (numerator / denominator).toString();
         }
       }
@@ -503,7 +503,7 @@ class PanelManager {
             label:
               (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
               user.email,
-            value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
+            value: (user.department || user.role || 'instructor').replaceAll('_', ' ')
           })) || []
       },
       sections: {
@@ -523,7 +523,7 @@ class PanelManager {
         transform: data =>
           data.users?.map(user => ({
             label: `${user.first_name} ${user.last_name}`,
-            value: user.role.replace('_', ' ')
+            value: user.role.replaceAll('_', ' ')
           })) || []
       }
     };
@@ -582,7 +582,7 @@ class PanelManager {
         labelFn: user =>
           (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
           user.email,
-        valueFn: user => (user.role || 'user').replace(/_/g, ' ')
+        valueFn: user => (user.role || 'user').replaceAll('_', ' ')
       },
       faculty: {
         title: 'Faculty',
@@ -607,7 +607,7 @@ class PanelManager {
         getData: cache => cache.assessment_tasks || [],
         labelFn: task =>
           task.course_number || task.course_title || task.section_number || task.section_id,
-        valueFn: task => (task.status || 'pending').replace(/_/g, ' ')
+        valueFn: task => (task.status || 'pending').replaceAll('_', ' ')
       }
     };
 

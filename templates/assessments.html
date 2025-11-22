@@ -589,8 +589,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const outcomeId = document.getElementById('assessmentOutcomeId').value;
-        const studentsTook = parseInt(document.getElementById('studentsTook').value);
-        const studentsPassed = parseInt(document.getElementById('studentsPassed').value);
+        const studentsTook = Number.parseInt(document.getElementById('studentsTook').value);
+        const studentsPassed = Number.parseInt(document.getElementById('studentsPassed').value);
         const assessmentTool = document.getElementById('assessmentTool').value.trim();
         
         // Validation (updated from CEI demo feedback)
@@ -732,8 +732,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const data = {
-                    students_passed: parseInt(document.getElementById('courseStudentsPassed').value) || null,
-                    students_dfic: parseInt(document.getElementById('courseStudentsDFIC').value) || null,
+                    students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
+                    students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
                     cannot_reconcile: document.getElementById('cannotReconcile').checked,
                     reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
                     narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,

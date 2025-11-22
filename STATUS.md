@@ -1,95 +1,55 @@
-# Project Status
+# Course Record Updater - Current Status
 
-**Last Updated:** November 7, 2025  
-**Current Task:** PR #27 - Generic Adapter Test Data  
-**Branch:** `feature/issue-14-generic-adapter-test-data`  
-**GitHub Issue**: https://github.com/ScienceIsNeato/course_record_updater/issues/14  
-**Pull Request**: https://github.com/ScienceIsNeato/course_record_updater/pull/27
+## Last Updated
+2025-11-22 17:05 PST
 
----
+## Current Task
+🔄 **IN PROGRESS**: Fix ALL SonarCloud issues on main branch (fix/sonarcloud-cleanup-2025-11)
 
-## ✅ PR #27 READY FOR REVIEW (November 7, 2025)
+## Branch Snapshot
+- Branch: `fix/sonarcloud-cleanup-2025-11`
+- Base: `main` (up to date)
+- Latest commit: (initial branch creation)
+- Goal: Resolve all 15 Major SonarCloud code smell issues
 
-**Objective**: Create generic, institution-agnostic CSV test data for E2E tests.
+## SonarCloud Issues Summary
 
-### ✅ Core Deliverables COMPLETE:
-1. **Generic test data ZIP** - 3.9K file with 40 records across 10 entity types
-2. **CSV escaping fixed** - Using `csv.writer` for proper escaping 
-3. **Test constants organized** - Dataclasses in `tests/test_constants.py`
-4. **UX antipattern eliminated** - Removed artificial 3s delay from registration flow
+**Total Issues**: 15 Major Code Smells
+- 🟡 **JavaScript Issues** (7):
+  - 3x `static/programsList.js` - Use `.dataset` over `getAttribute()` (S7761)
+  - 2x `static/panels.js` - Use optional chain expressions (S6582)
+  - 1x `static/script.js` - Move function to outer scope (S7721)
+  - 1x `templates/programs_list.html` - Use `<output>` tag for status role (S6819)
+- 🟡 **CSS Contrast Issues** (8):
+  - 6x `static/admin.css` - Text contrast requirements (S7924)
+  - 2x `static/auth.css` - Text contrast requirements (S7924)
 
-### ✅ All Issues Addressed (9 commits):
-- `dceffb8` - Created generic test data generation script
-- `6fcfc08` - Updated E2E documentation  
-- `81f0820` - Fixed CSV escaping + parameterized strings
-- `77eed1f` - Refactored test data into dataclasses
-- `07fcb49` - Fixed mypy type error
-- `613920e` - Updated STATUS documentation
-- `aa78a03` - ~~Fixed UAT timeout~~ (reverted - was treating symptom not cause)
-- `0407378` - STATUS update
-- `[latest]` - **Proper fix**: Removed 3s setTimeout, pass message via query param
+## Recent Progress
+- ✅ Checked out main branch
+- ✅ Created new branch `fix/sonarcloud-cleanup-2025-11`
+- ✅ Ran SonarCloud analysis - identified 15 issues
+- 🔄 Ready to start fixing issues
 
-### ✅ Quality Gates (16/16 Local Checks Pass):
-- Code formatting (black, isort, prettier)
-- Linting (flake8, eslint, mypy)
-- Tests (unit: 84.30%, integration, smoke)
-  - **JavaScript**: 562/562 tests passing (including updated registration test)
-  - **E2E**: test_uat_001 passes in 29s with 5s timeout (was 15s)
-- Coverage (Python: 84.30%, JavaScript: 81.42%)
-- Security (bandit passes, safety timeout is transient)
-- Code quality (duplication: 1.33%)
+## Open Work
+- 🔄 Fix JavaScript code smells (3 files, 6 issues)
+- 🔄 Fix HTML accessibility issue (1 file, 1 issue)
+- 🔄 Fix CSS contrast issues (2 files, 8 issues)
+- 🔄 Verify all fixes with SonarCloud re-scan
+- 🔄 Commit and push for PR review
 
-### 🎯 Key Fix - UX Antipattern Elimination:
+## Environment Status (Main)
+- Database: `course_records.db`
+- Branch: `fix/sonarcloud-cleanup-2025-11`
 
-**Problem**: Registration had hardcoded `setTimeout(() => redirect('/login'), 3000)` that:
-- Blocked users for 3 seconds unnecessarily
-- Required 15s test timeout workaround (symptom treatment)
-- Was inconsistent with login flow (1s delay)
+## Validation
+- Last run: `python scripts/ship_it.py --checks sonar` (failed - 15 issues found)
+- Quality Gate: Ready to start fixes
 
-**Root Cause Fix**: 
-- Removed setTimeout entirely
-- Pass success message via query parameter (existing infrastructure)
-- Immediate redirect after API success
-- Test timeout: 15s → 5s (67% reduction)
-
-**Result**: Proper solution addresses root cause, not symptoms.
-
-### ⏳ Pending CI Analysis:
-1. **SonarCloud** - Fresh analysis triggered, waiting for results
-   - Old analysis showed issues in files NOT in this PR
-   - New code analysis should pass (no frontend changes)
-   
-2. **E2E Flakiness** - 4 login timeout errors during parallel setup
-   - 62/66 tests passed (94% pass rate)
-   - All failures are login fixture timeouts (infrastructure issue)
-   - Not introduced by this PR (test data changes don't affect login)
-
-### 📊 PR Summary:
-- **Files Changed**: 13 (scripts, tests, docs, frontend)
-- **Lines Added**: +1,920 / -120
-- **Test Data**: Generic, reusable, properly escaped CSV
-- **Code Quality**: All local gates passing
-- **UX Improvement**: Eliminated artificial blocking delay
-- **Blocking Issues**: None - ready for human review
-
-### 🎯 Next Steps:
-1. ✅ All local work complete
-2. ⏳ Await CI completion (SonarCloud analysis processing)
-3. 📋 Human review of PR
-4. ✅ Merge when approved
-
----
-
-## 📋 Recent Work Queue
-
-**Completed**: 
-- #18: Database Schema Validation ✅ 
-- #14: Generic Adapter Test Data ✅ (Pending merge)
-
-**Backlog**:
-- #23: API Refactoring
-- E2E login fixture timeout investigation (infrastructure)
-
----
-
-*Generated automatically after completing PR protocol and eliminating UX antipattern*
+## Next Actions
+1. Fix JavaScript `.dataset` issues in programsList.js (3 occurrences)
+2. Fix optional chain issues in panels.js (2 occurrences)
+3. Fix function scope issue in script.js (1 occurrence)
+4. Fix HTML accessibility issue in programs_list.html (1 occurrence)
+5. Fix CSS contrast issues in admin.css (6 occurrences) and auth.css (2 occurrences)
+6. Re-run SonarCloud analysis to verify all fixes
+7. Commit and prepare for PR

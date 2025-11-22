@@ -162,7 +162,7 @@ function initializeCreateCourseModal() {
       course_number: document.getElementById('courseNumber').value,
       course_title: document.getElementById('courseTitle').value,
       department: document.getElementById('courseDepartment').value,
-      credit_hours: parseInt(document.getElementById('courseCreditHours').value),
+      credit_hours: Number.parseInt(document.getElementById('courseCreditHours').value),
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('courseActive');
@@ -251,7 +251,7 @@ function initializeEditCourseModal() {
       course_number: document.getElementById('editCourseNumber').value,
       course_title: document.getElementById('editCourseTitle').value,
       department: document.getElementById('editCourseDepartment').value,
-      credit_hours: parseInt(document.getElementById('editCourseCreditHours').value),
+      credit_hours: Number.parseInt(document.getElementById('editCourseCreditHours').value),
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('editCourseActive');

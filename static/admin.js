@@ -894,11 +894,11 @@ function getInitials(firstName, lastName) {
 }
 
 function formatRole(role) {
-  return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return role.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function formatStatus(status) {
-  return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return status.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function getDisplayStatus(user) {

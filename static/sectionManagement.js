@@ -35,7 +35,7 @@ function initializeCreateSectionModal() {
       offering_id: document.getElementById('sectionOfferingId').value,
       section_number: document.getElementById('sectionNumber').value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? parseInt(enrollmentValue) : null,
+      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById('sectionStatus').value
     };
 
@@ -115,7 +115,7 @@ function initializeEditSectionModal() {
     const updateData = {
       section_number: document.getElementById('editSectionNumber').value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? parseInt(enrollmentValue) : null,
+      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById('editSectionStatus').value
     };
 

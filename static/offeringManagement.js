@@ -203,7 +203,7 @@ function initializeCreateOfferingModal() {
       course_id: document.getElementById('offeringCourseId').value,
       term_id: document.getElementById('offeringTermId').value,
       status: document.getElementById('offeringStatus').value,
-      capacity: capacityValue ? parseInt(capacityValue) : null
+      capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
 
     const createBtn = document.getElementById('createOfferingBtn');
@@ -280,7 +280,7 @@ function initializeEditOfferingModal() {
 
     const updateData = {
       status: document.getElementById('editOfferingStatus').value,
-      capacity: capacityValue ? parseInt(capacityValue) : null
+      capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');

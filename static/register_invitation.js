@@ -173,5 +173,5 @@ function showMessage(message, type) {
  * Format role for display
  */
 function formatRole(role) {
-  return role.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  return role.replaceAll('_', ' ').replace(/\b\w/g, char => char.toUpperCase());
 }
