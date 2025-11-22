@@ -792,15 +792,15 @@ function initializeImportForm() {
       }
     }
 
-    // Helper function to show success message and refresh
-    function showSuccessAndRefresh() {
-      // Reload immediately - the refreshed page with updated data IS the success indicator
-      // Flash messages will show import results if needed
-      globalThis.location.reload();
-    }
-
     // Start polling
     setTimeout(poll, 500); // Start after 500ms
+  }
+
+  // Helper function to show success message and refresh
+  function showSuccessAndRefresh() {
+    // Reload immediately - the refreshed page with updated data IS the success indicator
+    // Flash messages will show import results if needed
+    globalThis.location.reload();
   }
 
   function updateProgressBar(progress) {

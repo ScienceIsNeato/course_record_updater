@@ -1044,30 +1044,30 @@ globalThis.handleUserSelection = handleUserSelection;
 globalThis.handleInvitationSelection = handleInvitationSelection;
 
 function __setAdminState(state = {}) {
-  if (Object.prototype.hasOwnProperty.call(state, 'currentUsers')) {
+  if (Object.hasOwn(state, 'currentUsers')) {
     currentUsers = state.currentUsers;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentInvitations')) {
+  if (Object.hasOwn(state, 'currentInvitations')) {
     currentInvitations = state.currentInvitations;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'selectedUsers')) {
+  if (Object.hasOwn(state, 'selectedUsers')) {
     selectedUsers.clear();
     state.selectedUsers.forEach(id => selectedUsers.add(id));
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'selectedInvitations')) {
+  if (Object.hasOwn(state, 'selectedInvitations')) {
     selectedInvitations.clear();
     state.selectedInvitations.forEach(id => selectedInvitations.add(id));
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentPage')) {
+  if (Object.hasOwn(state, 'currentPage')) {
     currentPage = state.currentPage;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'totalItems')) {
+  if (Object.hasOwn(state, 'totalItems')) {
     totalItems = state.totalItems;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentTab')) {
+  if (Object.hasOwn(state, 'currentTab')) {
     currentTab = state.currentTab;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'filters')) {
+  if (Object.hasOwn(state, 'filters')) {
     filters = {
       search: state.filters.search || '',
       role: state.filters.role || '',
