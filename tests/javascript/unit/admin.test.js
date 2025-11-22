@@ -784,4 +784,16 @@ describe('admin module', () => {
     });
   });
 
+  it('covers all state properties in __setAdminState', () => {
+    admin.__setAdminState({
+      currentTab: 'users',
+      currentUsers: [],
+      currentInvitations: [],
+      selectedUsers: ['1'],
+      selectedInvitations: ['2'],
+      currentPage: 2,
+      totalItems: 100,
+      filters: { search: 'test' }
+    });
+  });
 });

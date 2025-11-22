@@ -459,6 +459,7 @@ describe('Institution Management - Delete Institution', () => {
   let mockFetch;
   let promptSpy;
   let alertSpy;
+  let consoleErrorSpy;
 
   beforeEach(() => {
     document.body.innerHTML =
@@ -467,6 +468,7 @@ describe('Institution Management - Delete Institution', () => {
     global.fetch = mockFetch;
     promptSpy = jest.spyOn(window, 'prompt');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
   });
 
   afterEach(() => {
@@ -529,6 +531,16 @@ describe('Institution Management - Delete Institution', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('Institution has active users')
     );
+  });
+
+  test('should handle network errors during delete', async () => {
+    promptSpy.mockReturnValue('i know what I\'m doing');
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await window.deleteInstitution('inst-123', 'Test University');
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 });
 

@@ -510,5 +510,14 @@ describe('Outcome Management - Delete Outcome', () => {
       expect.stringContaining('Outcome has assessment data')
     );
   });
+
+  test('should handle network errors during delete', async () => {
+    confirmSpy.mockReturnValue(true);
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await window.deleteOutcome('outcome-123', 'CS101', 'CLO1');
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
+  });
 });
 

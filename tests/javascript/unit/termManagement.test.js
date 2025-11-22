@@ -487,5 +487,14 @@ describe('Term Management - Delete Term', () => {
       expect.stringContaining('Term has active offerings')
     );
   });
+
+  test('should handle network errors during delete', async () => {
+    confirmSpy.mockReturnValue(true);
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await window.deleteTerm('term-123', 'Fall 2024');
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
+  });
 });
 
