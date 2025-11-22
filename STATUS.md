@@ -1,14 +1,14 @@
 # Course Record Updater - Current Status
 
 ## Last Updated
-2025-11-22 16:15 PST
+2025-11-22 16:20 PST
 
 ## Current Task
-🔄 **IN PROGRESS**: CEI demo workflow hardening - Phase 4 screenshot capture (feature/workflow-walkthroughs)
+🔄 **IN PROGRESS**: CEI demo workflow hardening - Phase 4 audit functionality verification (feature/workflow-walkthroughs)
 
 ## Branch Snapshot
 - Branch: `feature/workflow-walkthroughs`
-- Latest commit: `docs: update demo artifacts and scripts` (passes all quality gates)
+- Latest commit: `fix: add term_id support to database layer for CLO audit filtering` (passes all quality gates)
 - Goal: Convert the CEI-specific walkthrough into a reusable, end-to-end demo that ends with the audit sign-off.
 
 ## Recent Progress
@@ -18,11 +18,16 @@
     - Implemented improved success messaging with Bootstrap alerts (replaces alert() dialogs)
     - Verified save functionality and data persistence
     - Captured screenshots of completed workflow
-- 🔄 **Phase 4 Audit Dashboard**:
-    - Successfully logged in as admin (`demo2025.admin@example.com`)
-    - Navigated to CLO Audit & Approval interface (`/audit-clo`)
-    - Verified filtering by "Awaiting Approval" status
-    - Captured initial screenshots of audit interface with filter controls
+- ✅ **Phase 4 Audit Dashboard - Data Display Fixed**:
+    - **Root Cause**: Database layer was missing term_id parameter support
+      - API route and service layer were passing term_id for filtering
+      - Database threw "unexpected keyword argument 'term_id'" error
+      - This caused empty arrays, showing 0 CLOs on audit page
+    - **Fix**: Updated database_interface.py, database_sqlite.py, database_service.py
+    - **Result**: CLO Audit page now displays "awaiting_approval" CLOs correctly
+      - BIOL-101 CLO 1 (Alex Morgan) - visible
+      - ZOOL-101 CLO 1 (Raj Patel) - visible
+    - Screenshot: `demo_artifacts/phase4/audit_clo_with_data.png`
 - ✅ **Phase 2 Narrative Refined**:
     - Updated `planning/demo_walkthrough.md` with specific steps for Program Refresh, Cross-Program Attachment, and Import.
     - Verified logs for Import (`demo_artifacts/phase2/import_logs.md`) and Course Duplication.
