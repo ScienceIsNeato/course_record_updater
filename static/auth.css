@@ -113,7 +113,7 @@
 
 .auth-form .form-floating > label {
     padding: 1rem 1rem;
-    color: #4a5568; /* Darker gray-700 for better contrast (was gray-500) */
+    color: #2d3748; /* Gray-800 for better contrast */
     font-weight: 500;
 }
 
@@ -135,7 +135,7 @@
 .password-toggle .btn {
     border: none;
     background: none;
-    color: #718096;
+    color: #4a5568;
     padding: 0.25rem;
     font-size: 0.875rem;
 }
@@ -186,7 +186,7 @@
 
 .password-strength-text {
     font-size: 0.875rem;
-    color: #718096;
+    color: #4a5568;
     margin-bottom: 0.75rem;
 }
 
@@ -198,7 +198,7 @@
 
 .requirement {
     font-size: 0.75rem;
-    color: #718096;
+    color: #4a5568;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -277,7 +277,7 @@
 }
 
 .auth-form .form-check-label {
-    color: #4a5568;
+    color: #2d3748;
     font-size: 0.875rem;
     margin-left: 0.5rem;
 }
@@ -311,7 +311,7 @@
 
 .auth-footer p {
     margin-bottom: 1rem;
-    color: #718096;
+    color: #4a5568;
     font-size: 0.875rem;
 }
 
@@ -344,12 +344,12 @@
 
 .auth-messages .alert-danger {
     background-color: #fed7d7;
-    color: #9b2c2c;
+    color: #742a2a;
 }
 
 .auth-messages .alert-success {
     background-color: #c6f6d5;
-    color: #276749;
+    color: #22543d;
 }
 
 /* Success State */

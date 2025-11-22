@@ -796,13 +796,6 @@ function initializeImportForm() {
     setTimeout(poll, 500); // Start after 500ms
   }
 
-  // Helper function to show success message and refresh
-  function showSuccessAndRefresh() {
-    // Reload immediately - the refreshed page with updated data IS the success indicator
-    // Flash messages will show import results if needed
-    globalThis.location.reload();
-  }
-
   function updateProgressBar(progress) {
     const progressBar = document.getElementById('importProgressBar');
     const statusDiv = document.getElementById('importStatus');
@@ -905,3 +898,10 @@ function initializeImportForm() {
 }
 
 // Debug functionality removed - temporary development tools no longer needed
+
+// Helper function to show success message and refresh
+function showSuccessAndRefresh() {
+  // Reload immediately - the refreshed page with updated data IS the success indicator
+  // Flash messages will show import results if needed
+  globalThis.location.reload();
+}

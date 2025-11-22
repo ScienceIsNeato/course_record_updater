@@ -23,7 +23,7 @@
     background-color: #f8f9fa;
     border-bottom: 2px solid #dee2e6;
     font-weight: 600;
-    color: #495057;
+    color: #212529;
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -107,7 +107,7 @@
 
 .status-expired {
     background-color: #f3f4f6;
-    color: #4b5563; /* Darker gray-600 for better contrast (was gray-500) */
+    color: #1f2937; /* Gray-800 for better contrast */
     border: 1px solid #d1d5db;
 }
 
@@ -193,7 +193,7 @@
 }
 
 .action-btn.btn-cancel:hover {
-    background-color: #fef2f2;
+    background-color: #fee2e2;
     border-color: #ef4444;
     color: #b91c1c;
 }
@@ -203,7 +203,7 @@
 }
 
 .action-btn.btn-deactivate:hover {
-    background-color: #fffbeb;
+    background-color: #fef3c7;
     border-color: #f59e0b;
     color: #b45309;
 }
@@ -310,7 +310,7 @@
 }
 
 .loading-state p {
-    color: #6b7280;
+    color: #374151;
     margin-top: 1rem;
     margin-bottom: 0;
 }
@@ -352,7 +352,7 @@
 }
 
 .pagination .page-link {
-    color: #6b7280;
+    color: #374151;
     border: 1px solid #d1d5db;
     padding: 0.5rem 0.75rem;
     margin: 0 0.125rem;
@@ -366,8 +366,8 @@
 }
 
 .pagination .page-item.active .page-link {
-    background-color: #2563eb; /* Darker blue-600 for better contrast (was blue-500) */
-    border-color: #2563eb;
+    background-color: #1e40af; /* Blue-800 for high contrast */
+    border-color: #1e40af;
     color: white;
 }
 
@@ -432,7 +432,7 @@
 /* Last Active Timestamps */
 .last-active {
     font-size: 0.8125rem;
-    color: #6b7280;
+    color: #374151;
 }
 
 .last-active .time {

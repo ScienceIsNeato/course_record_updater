@@ -653,17 +653,15 @@ class PanelManager {
                 </h5>
                 <div class="panel-actions">
                     ${
-                      (config.actions &&
-                        config.actions
-                          .map(
-                            action => `
+                      config.actions
+                        ?.map(
+                          action => `
                         <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
                             ${action.icon} ${action.label}
                         </button>
                     `
-                          )
-                          .join('')) ||
-                      ''
+                        )
+                        .join('') || ''
                     }
                 </div>
                 <button class="panel-toggle">▼</button>
@@ -695,10 +693,9 @@ class PanelManager {
       .join('');
 
     const bodyRows =
-      (config.data &&
-        config.data
-          .map(
-            row => `
+      config.data
+        ?.map(
+          row => `
             <tr>
                 ${config.columns
                   .map(
@@ -711,9 +708,8 @@ class PanelManager {
                   .join('')}
             </tr>
         `
-          )
-          .join('')) ||
-      '';
+        )
+        .join('') || '';
 
     table.innerHTML = `
             <thead>
