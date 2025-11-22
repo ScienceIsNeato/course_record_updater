@@ -72,8 +72,8 @@ function initializeCreateTermModal() {
         alert(result.message || 'Term created successfully!');
 
         // Reload terms list if function exists
-        if (typeof window.loadTerms === 'function') {
-          window.loadTerms();
+        if (typeof globalThis.loadTerms === 'function') {
+          globalThis.loadTerms();
         }
       } else {
         const error = await response.json();
@@ -148,8 +148,8 @@ function initializeEditTermModal() {
         alert(result.message || 'Term updated successfully!');
 
         // Reload terms list
-        if (typeof window.loadTerms === 'function') {
-          window.loadTerms();
+        if (typeof globalThis.loadTerms === 'function') {
+          globalThis.loadTerms();
         }
       } else {
         const error = await response.json();
@@ -212,8 +212,8 @@ async function deleteTerm(termId, termName) {
     if (response.ok) {
       alert(`${termName} deleted successfully.`);
 
-      if (typeof window.loadTerms === 'function') {
-        window.loadTerms();
+      if (typeof globalThis.loadTerms === 'function') {
+        globalThis.loadTerms();
       }
     } else {
       const error = await response.json();
@@ -226,5 +226,5 @@ async function deleteTerm(termId, termName) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditTermModal = openEditTermModal;
-window.deleteTerm = deleteTerm;
+globalThis.openEditTermModal = openEditTermModal;
+globalThis.deleteTerm = deleteTerm;

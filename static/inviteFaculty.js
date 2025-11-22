@@ -13,11 +13,11 @@ function openInviteFacultyModal() {
   document.getElementById('inviteFacultyForm').reset();
 
   // Get dashboard data from the global cache
-  if (window.dashboardDataCache) {
-    dashboardData = window.dashboardDataCache;
+  if (globalThis.dashboardDataCache) {
+    dashboardData = globalThis.dashboardDataCache;
     populateTermDropdown();
-  } else if (window.InstitutionDashboard?.cache) {
-    dashboardData = window.InstitutionDashboard.cache;
+  } else if (globalThis.InstitutionDashboard?.cache) {
+    dashboardData = globalThis.InstitutionDashboard.cache;
     populateTermDropdown();
   }
 
@@ -235,8 +235,8 @@ async function submitFacultyInvitation(event) {
       );
 
       // Reload dashboard to show updated data
-      if (window.InstitutionDashboard?.loadData) {
-        window.InstitutionDashboard.loadData({ silent: true });
+      if (globalThis.InstitutionDashboard?.loadData) {
+        globalThis.InstitutionDashboard.loadData({ silent: true });
       }
     } else {
       alert(`❌ Failed to send invitation: ${data.error || 'Unknown error'}`);
@@ -253,7 +253,7 @@ async function submitFacultyInvitation(event) {
 }
 
 // Expose function to global scope for inline onclick handlers
-window.openInviteFacultyModal = openInviteFacultyModal;
+globalThis.openInviteFacultyModal = openInviteFacultyModal;
 
 // Attach event handlers when document loads
 document.addEventListener('DOMContentLoaded', () => {

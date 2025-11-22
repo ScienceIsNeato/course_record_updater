@@ -140,7 +140,7 @@ async function acceptInvitation() {
       showMessage('Account created successfully! Redirecting to login...', 'success');
       // Redirect to login page with success message after 1.5 seconds
       setTimeout(() => {
-        window.location.href = '/login?message=Account+created+successfully';
+        globalThis.location.href = '/login?message=Account+created+successfully';
       }, 1500);
     } else {
       showMessage(data.error || 'Failed to create account', 'danger');

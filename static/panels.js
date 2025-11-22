@@ -16,9 +16,9 @@
 let idCounter = 0;
 
 function generateSecureId(prefix = 'id') {
-  if (window.crypto?.getRandomValues) {
+  if (globalThis.crypto?.getRandomValues) {
     const array = new Uint32Array(1);
-    window.crypto.getRandomValues(array);
+    globalThis.crypto.getRandomValues(array);
     return `${prefix}-${Date.now()}-${array[0]}`;
   }
 
@@ -196,7 +196,7 @@ class PanelManager {
     });
 
     // Window resize events
-    window.addEventListener('resize', () => {
+    globalThis.addEventListener('resize', () => {
       this.hideAllStatPreviews();
     });
   }
@@ -459,7 +459,7 @@ class PanelManager {
    * Load stat preview data based on stat type
    */
   async loadStatPreviewData(statId) {
-    const cache = window.dashboardDataCache;
+    const cache = globalThis.dashboardDataCache;
     if (cache) {
       const cached = this.buildPreviewFromCache(statId, cache);
       if (cached) {
@@ -732,7 +732,7 @@ class PanelManager {
 let panelManager;
 document.addEventListener('DOMContentLoaded', () => {
   panelManager = new PanelManager();
-  window.panelManager = panelManager; // Export after initialization
+  globalThis.panelManager = panelManager; // Export after initialization
 });
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -986,12 +986,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Export for global use
-window.loadAuditLogs = loadAuditLogs;
-window.viewAllActivity = viewAllActivity;
-window.filterActivity = filterActivity;
-window.createAuditLogRow = createAuditLogRow;
-window.formatAuditTimestamp = formatAuditTimestamp;
-window.getActionBadge = getActionBadge;
-window.formatEntityDisplay = formatEntityDisplay;
-window.getAuditDetails = getAuditDetails;
-window.escapeHtml = escapeHtml;
+globalThis.loadAuditLogs = loadAuditLogs;
+globalThis.viewAllActivity = viewAllActivity;
+globalThis.filterActivity = filterActivity;
+globalThis.createAuditLogRow = createAuditLogRow;
+globalThis.formatAuditTimestamp = formatAuditTimestamp;
+globalThis.getActionBadge = getActionBadge;
+globalThis.formatEntityDisplay = formatEntityDisplay;
+globalThis.getAuditDetails = getAuditDetails;
+globalThis.escapeHtml = escapeHtml;

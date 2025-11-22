@@ -100,7 +100,7 @@ function initializeEventListeners() {
 
 // Initialize Filters
 function initializeFilters() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(globalThis.location.search);
   filters.search = urlParams.get('search') || '';
   filters.role = urlParams.get('role') || '';
   filters.status = urlParams.get('status') || '';
@@ -857,8 +857,8 @@ function updateURL() {
   if (filters.role) params.set('role', filters.role);
   if (filters.status) params.set('status', filters.status);
 
-  const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-  window.history.replaceState({}, '', newURL);
+  const newURL = globalThis.location.pathname + (params.toString() ? '?' + params.toString() : '');
+  globalThis.history.replaceState({}, '', newURL);
 }
 
 function showLoading(type) {
@@ -1035,13 +1035,13 @@ function debounce(func, wait) {
 }
 
 // Export functions for global use
-window.changePage = changePage;
-window.editUser = editUser;
-window.toggleUserStatus = toggleUserStatus;
-window.resendInvitation = resendInvitation;
-window.cancelInvitation = cancelInvitation;
-window.handleUserSelection = handleUserSelection;
-window.handleInvitationSelection = handleInvitationSelection;
+globalThis.changePage = changePage;
+globalThis.editUser = editUser;
+globalThis.toggleUserStatus = toggleUserStatus;
+globalThis.resendInvitation = resendInvitation;
+globalThis.cancelInvitation = cancelInvitation;
+globalThis.handleUserSelection = handleUserSelection;
+globalThis.handleInvitationSelection = handleInvitationSelection;
 
 function __setAdminState(state = {}) {
   if (Object.prototype.hasOwnProperty.call(state, 'currentUsers')) {

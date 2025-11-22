@@ -767,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize - call async function
     loadCourses().then(() => {
         // Auto-select course if provided in URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(globalThis.location.search);
         const courseParam = urlParams.get('course');
         if (courseParam && courseSelect) {
             courseSelect.value = courseParam;

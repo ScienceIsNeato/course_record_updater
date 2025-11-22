@@ -37,17 +37,17 @@ if (document.readyState === 'loading') {
 
 // Page Initialization
 function initializePage() {
-  const currentPath = window.location.pathname;
+  const currentPath = globalThis.location.pathname;
 
   // Check for URL parameter messages (e.g., ?message=Account+created+successfully)
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(globalThis.location.search);
   const messageParam = urlParams.get('message');
   if (messageParam) {
     showMessage(decodeURIComponent(messageParam), 'success');
     // Clean up URL without reloading
-    const url = new URL(window.location);
+    const url = new URL(globalThis.location);
     url.searchParams.delete('message');
-    window.history.replaceState({}, '', url);
+    globalThis.history.replaceState({}, '', url);
   }
 
   // Check for login page (including /reminder-login)
@@ -478,7 +478,7 @@ async function handleLogin(e) {
       // Redirect immediately - being on the dashboard IS the success indicator
       // No need to show message and force user to wait
       const redirectUrl = result.next_url || '/dashboard';
-      window.location.href = redirectUrl;
+      globalThis.location.href = redirectUrl;
     },
     onError: (response, result) => {
       if (response.status === 423) {
@@ -521,7 +521,7 @@ async function handleRegister(e) {
       const message = encodeURIComponent(
         'Account created successfully! Please check your email to verify your account.'
       );
-      window.location.href = `/login?message=${message}`;
+      globalThis.location.href = `/login?message=${message}`;
     }
   });
 }
@@ -685,17 +685,17 @@ function logout() {
       }
     })
       .then(() => {
-        window.location.href = '/login';
+        globalThis.location.href = '/login';
       })
       .catch(() => {
-        window.location.href = '/login';
+        globalThis.location.href = '/login';
       });
   }
 }
 
 // Show login modal function for main page
 function showLogin() {
-  window.location.href = '/login';
+  globalThis.location.href = '/login';
 }
 
 // Profile management functions
@@ -710,8 +710,8 @@ function handleChangePassword(event) {
 }
 
 // Export functions for global use
-window.logout = logout;
-window.showLogin = showLogin;
+globalThis.logout = logout;
+globalThis.showLogin = showLogin;
 
 const authTestExports = {
   initializePage,

@@ -2,7 +2,7 @@
 
 /* Auth Body Layout */
 .auth-body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -84,7 +84,7 @@
     content: '';
     width: 4px;
     height: 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
     border-radius: 2px;
     margin-right: 0.75rem;
 }
@@ -229,7 +229,7 @@
 }
 
 .auth-form .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
     border: none;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
@@ -344,12 +344,12 @@
 
 .auth-messages .alert-danger {
     background-color: #fed7d7;
-    color: #c53030;
+    color: #9b2c2c;
 }
 
 .auth-messages .alert-success {
     background-color: #c6f6d5;
-    color: #2f855a;
+    color: #276749;
 }
 
 /* Success State */

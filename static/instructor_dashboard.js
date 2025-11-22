@@ -67,7 +67,7 @@
         }
 
         this.cache = payload.data || {};
-        window.dashboardDataCache = this.cache;
+        globalThis.dashboardDataCache = this.cache;
         this.lastFetch = Date.now();
         this.render(this.cache);
       } catch (error) {
@@ -122,7 +122,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'instructor-teaching-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -162,7 +162,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'instructor-assessment-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -235,7 +235,7 @@
         sectionsByCourse.set(courseId, list);
       });
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'instructor-summary-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -312,13 +312,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     // Wait a bit for panelManager to be initialized
     setTimeout(() => {
-      if (typeof window.panelManager === 'undefined') {
+      if (typeof globalThis.panelManager === 'undefined') {
         // eslint-disable-next-line no-console
         console.warn('Panel manager not initialized');
         return;
       }
       InstructorDashboard.init();
-      window.InstructorDashboard = InstructorDashboard;
+      globalThis.InstructorDashboard = InstructorDashboard;
     }, 100);
   });
 

@@ -143,8 +143,8 @@ function initializeInviteUserModal() {
         showAlert('success', result.message || 'Invitation sent successfully!');
 
         // Reload user list if function exists
-        if (typeof window.loadUsers === 'function') {
-          window.loadUsers();
+        if (typeof globalThis.loadUsers === 'function') {
+          globalThis.loadUsers();
         }
       } else {
         // Handle API error
@@ -226,8 +226,8 @@ function initializeEditUserModal() {
         showAlert('success', result.message || 'User updated successfully!');
 
         // Reload user list
-        if (typeof window.loadUsers === 'function') {
-          window.loadUsers();
+        if (typeof globalThis.loadUsers === 'function') {
+          globalThis.loadUsers();
         }
       } else {
         const error = await response.json();
@@ -290,8 +290,8 @@ async function deactivateUser(userId, userName) {
     if (response.ok) {
       alert(`${userName} has been deactivated.`);
 
-      if (typeof window.loadUsers === 'function') {
-        window.loadUsers();
+      if (typeof globalThis.loadUsers === 'function') {
+        globalThis.loadUsers();
       }
     } else {
       const error = await response.json();
@@ -332,8 +332,8 @@ async function deleteUser(userId, userName) {
     if (response.ok) {
       alert(`${userName} has been permanently deleted.`);
 
-      if (typeof window.loadUsers === 'function') {
-        window.loadUsers();
+      if (typeof globalThis.loadUsers === 'function') {
+        globalThis.loadUsers();
       }
     } else {
       const error = await response.json();
@@ -346,6 +346,6 @@ async function deleteUser(userId, userName) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditUserModal = openEditUserModal;
-window.deactivateUser = deactivateUser;
-window.deleteUser = deleteUser;
+globalThis.openEditUserModal = openEditUserModal;
+globalThis.deactivateUser = deactivateUser;
+globalThis.deleteUser = deleteUser;

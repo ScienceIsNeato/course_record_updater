@@ -75,8 +75,8 @@ function initializeCreateSectionModal() {
         alert(result.message || 'Section created successfully!');
 
         // Reload sections list if function exists
-        if (typeof window.loadSections === 'function') {
-          window.loadSections();
+        if (typeof globalThis.loadSections === 'function') {
+          globalThis.loadSections();
         }
       } else {
         const error = await response.json();
@@ -153,8 +153,8 @@ function initializeEditSectionModal() {
         alert(result.message || 'Section updated successfully!');
 
         // Reload sections list
-        if (typeof window.loadSections === 'function') {
-          window.loadSections();
+        if (typeof globalThis.loadSections === 'function') {
+          globalThis.loadSections();
         }
       } else {
         const error = await response.json();
@@ -240,8 +240,8 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
     if (response.ok) {
       alert(`Section ${sectionNumber} of ${courseName} deleted successfully.`);
 
-      if (typeof window.loadSections === 'function') {
-        window.loadSections();
+      if (typeof globalThis.loadSections === 'function') {
+        globalThis.loadSections();
       }
     } else {
       const error = await response.json();
@@ -254,5 +254,5 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditSectionModal = openEditSectionModal;
-window.deleteSection = deleteSection;
+globalThis.openEditSectionModal = openEditSectionModal;
+globalThis.deleteSection = deleteSection;

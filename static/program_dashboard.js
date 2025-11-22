@@ -64,7 +64,7 @@
         }
 
         this.cache = payload.data || {};
-        window.dashboardDataCache = this.cache;
+        globalThis.dashboardDataCache = this.cache;
         this.lastFetch = Date.now();
         this.render(this.cache);
       } catch (error) {
@@ -138,7 +138,7 @@
         (programOverview || []).map(item => [item.program_id, item.assessment_progress])
       );
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'program-courses-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -198,7 +198,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'program-faculty-table',
         columns: [
           { key: 'name', label: 'Faculty', sortable: true },
@@ -250,7 +250,7 @@
         (programOverview || []).map(item => [item.program_id, item.assessment_progress])
       );
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'program-clo-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -305,7 +305,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'program-assessment-table',
         columns: [
           { key: 'program', label: 'Program', sortable: true },
@@ -381,13 +381,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     // Wait a bit for panelManager to be initialized
     setTimeout(() => {
-      if (typeof window.panelManager === 'undefined') {
+      if (typeof globalThis.panelManager === 'undefined') {
         // eslint-disable-next-line no-console
         console.warn('Panel manager not initialized');
         return;
       }
       ProgramDashboard.init();
-      window.ProgramDashboard = ProgramDashboard;
+      globalThis.ProgramDashboard = ProgramDashboard;
     }, 100);
   });
 

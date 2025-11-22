@@ -208,8 +208,8 @@ function initializeCreateCourseModal() {
         alert(result.message || 'Course created successfully!');
 
         // Reload courses list if function exists
-        if (typeof window.loadCourses === 'function') {
-          window.loadCourses();
+        if (typeof globalThis.loadCourses === 'function') {
+          globalThis.loadCourses();
         }
       } else {
         const error = await response.json();
@@ -295,8 +295,8 @@ function initializeEditCourseModal() {
         alert(result.message || 'Course updated successfully!');
 
         // Reload courses list
-        if (typeof window.loadCourses === 'function') {
-          window.loadCourses();
+        if (typeof globalThis.loadCourses === 'function') {
+          globalThis.loadCourses();
         }
       } else {
         const error = await response.json();
@@ -371,8 +371,8 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
     if (response.ok) {
       alert(`${courseNumber} deleted successfully.`);
 
-      if (typeof window.loadCourses === 'function') {
-        window.loadCourses();
+      if (typeof globalThis.loadCourses === 'function') {
+        globalThis.loadCourses();
       }
     } else {
       const error = await response.json();
@@ -385,8 +385,8 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditCourseModal = openEditCourseModal;
-window.deleteCourse = deleteCourse;
+globalThis.openEditCourseModal = openEditCourseModal;
+globalThis.deleteCourse = deleteCourse;
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {

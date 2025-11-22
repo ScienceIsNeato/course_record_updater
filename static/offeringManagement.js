@@ -242,8 +242,8 @@ function initializeCreateOfferingModal() {
         alert(result.message || 'Offering created successfully!');
 
         // Reload offerings list if function exists
-        if (typeof window.loadOfferings === 'function') {
-          window.loadOfferings();
+        if (typeof globalThis.loadOfferings === 'function') {
+          globalThis.loadOfferings();
         }
       } else {
         const error = await response.json();
@@ -317,8 +317,8 @@ function initializeEditOfferingModal() {
         alert(result.message || 'Offering updated successfully!');
 
         // Reload offerings list
-        if (typeof window.loadOfferings === 'function') {
-          window.loadOfferings();
+        if (typeof globalThis.loadOfferings === 'function') {
+          globalThis.loadOfferings();
         }
       } else {
         const error = await response.json();
@@ -377,8 +377,8 @@ async function deleteOffering(offeringId, courseName, termName) {
     if (response.ok) {
       alert(`Offering for ${courseName} in ${termName} deleted successfully.`);
 
-      if (typeof window.loadOfferings === 'function') {
-        window.loadOfferings();
+      if (typeof globalThis.loadOfferings === 'function') {
+        globalThis.loadOfferings();
       }
     } else {
       const error = await response.json();
@@ -391,8 +391,8 @@ async function deleteOffering(offeringId, courseName, termName) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditOfferingModal = openEditOfferingModal;
-window.deleteOffering = deleteOffering;
+globalThis.openEditOfferingModal = openEditOfferingModal;
+globalThis.deleteOffering = deleteOffering;
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {
