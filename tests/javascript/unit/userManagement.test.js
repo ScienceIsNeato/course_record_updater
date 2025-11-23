@@ -56,6 +56,8 @@ describe('User Management - Invite User Modal', () => {
             }
         };
 
+        global.loadUsers = jest.fn();
+
         // Trigger DOMContentLoaded to initialize event listeners
         document.dispatchEvent(new Event('DOMContentLoaded'));
     });
@@ -276,6 +278,7 @@ describe('User Management - Invite User Modal', () => {
             // Form should be reset
             expect(emailInput.value).toBe('');
             expect(roleSelect.value).toBe('');
+            expect(global.loadUsers).toHaveBeenCalled();
         });
 
         test('should display error message on API failure', async () => {
@@ -422,6 +425,8 @@ describe('User Management - Edit User Modal', () => {
             }
         };
 
+        global.loadUsers = jest.fn();
+
         document.dispatchEvent(new Event('DOMContentLoaded'));
     });
 
@@ -469,6 +474,7 @@ describe('User Management - Edit User Modal', () => {
                 body: expect.stringContaining('Jane')
             })
         );
+        expect(global.loadUsers).toHaveBeenCalled();
     });
 });
 
@@ -485,6 +491,7 @@ describe('User Management - Deactivate & Delete', () => {
         confirmSpy = jest.spyOn(window, 'confirm');
         promptSpy = jest.spyOn(window, 'prompt');
         alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+        global.loadUsers = jest.fn();
     });
 
     afterEach(() => {
@@ -514,6 +521,7 @@ describe('User Management - Deactivate & Delete', () => {
                 })
             );
             expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('deactivated'));
+            expect(global.loadUsers).toHaveBeenCalled();
         });
 
         test('should not deactivate if user cancels confirmation', async () => {
@@ -562,6 +570,7 @@ describe('User Management - Deactivate & Delete', () => {
                 })
             );
             expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('permanently deleted'));
+            expect(global.loadUsers).toHaveBeenCalled();
         });
 
         test('should not delete if confirmation text does not match', async () => {

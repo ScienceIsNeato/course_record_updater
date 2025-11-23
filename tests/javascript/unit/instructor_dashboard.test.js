@@ -489,3 +489,26 @@ describe('InstructorDashboard', () => {
     });
   });
 });
+
+describe('InstructorDashboard Initialization', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.useFakeTimers();
+  });
+  
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('should warn if panelManager is missing', () => {
+    delete global.panelManager;
+    delete window.panelManager;
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    
+    require('../../../static/instructor_dashboard');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    jest.advanceTimersByTime(200);
+    
+    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Panel manager not initialized'));
+  });
+});

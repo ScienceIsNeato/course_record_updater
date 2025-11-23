@@ -337,7 +337,7 @@ function executeDataExport() {
         let filename = '';
         if (disposition && disposition.includes('filename=')) {
             // Use replace with regex for browser compatibility (replaceAll not in older browsers)
-            filename = disposition.split('filename=')[1].replace(/"/g, '');
+            filename = disposition.split('filename=')[1].replaceAll('"', '');
         }
         
         return response.blob().then(blob => {

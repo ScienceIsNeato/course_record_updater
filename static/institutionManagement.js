@@ -77,8 +77,8 @@ function initializeCreateInstitutionModal() {
         alert(result.message || 'Institution created successfully!');
 
         // Reload institutions list if function exists
-        if (typeof window.loadInstitutions === 'function') {
-          window.loadInstitutions();
+        if (typeof globalThis.loadInstitutions === 'function') {
+          globalThis.loadInstitutions();
         }
       } else {
         const error = await response.json();
@@ -153,8 +153,8 @@ function initializeEditInstitutionModal() {
         alert(result.message || 'Institution updated successfully!');
 
         // Reload institutions list
-        if (typeof window.loadInstitutions === 'function') {
-          window.loadInstitutions();
+        if (typeof globalThis.loadInstitutions === 'function') {
+          globalThis.loadInstitutions();
         }
       } else {
         const error = await response.json();
@@ -226,8 +226,8 @@ async function deleteInstitution(institutionId, institutionName) {
     if (response.ok) {
       alert(`${institutionName} has been permanently deleted.`);
 
-      if (typeof window.loadInstitutions === 'function') {
-        window.loadInstitutions();
+      if (typeof globalThis.loadInstitutions === 'function') {
+        globalThis.loadInstitutions();
       }
     } else {
       const error = await response.json();
@@ -240,5 +240,5 @@ async function deleteInstitution(institutionId, institutionName) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditInstitutionModal = openEditInstitutionModal;
-window.deleteInstitution = deleteInstitution;
+globalThis.openEditInstitutionModal = openEditInstitutionModal;
+globalThis.deleteInstitution = deleteInstitution;

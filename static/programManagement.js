@@ -96,12 +96,12 @@ async function loadInstitutionsForDropdown() {
   }
 
   // Use user's institution from the page context (set in template)
-  if (window.userContext?.institutionId) {
+  if (globalThis.userContext?.institutionId) {
     select.innerHTML = '<option value="">Select Institution</option>';
 
     const option = document.createElement('option');
-    option.value = window.userContext.institutionId;
-    option.textContent = window.userContext.institutionName;
+    option.value = globalThis.userContext.institutionId;
+    option.textContent = globalThis.userContext.institutionName;
     option.selected = true; // Auto-select user's institution
     select.appendChild(option);
   }
@@ -164,8 +164,8 @@ function initializeCreateProgramModal() {
         alert(result.message || 'Program created successfully!');
 
         // Reload programs list if function exists
-        if (typeof window.loadPrograms === 'function') {
-          window.loadPrograms();
+        if (typeof globalThis.loadPrograms === 'function') {
+          globalThis.loadPrograms();
         }
       } else {
         const error = await response.json();
@@ -237,8 +237,8 @@ function initializeEditProgramModal() {
         alert(result.message || 'Program updated successfully!');
 
         // Reload programs list
-        if (typeof window.loadPrograms === 'function') {
-          window.loadPrograms();
+        if (typeof globalThis.loadPrograms === 'function') {
+          globalThis.loadPrograms();
         }
       } else {
         const error = await response.json();
@@ -300,12 +300,12 @@ async function deleteProgram(programId, programName) {
 
       // Refresh dashboard data if available
       if (
-        window.InstitutionDashboard &&
-        typeof window.InstitutionDashboard.refresh === 'function'
+        globalThis.InstitutionDashboard &&
+        typeof globalThis.InstitutionDashboard.refresh === 'function'
       ) {
-        window.InstitutionDashboard.refresh();
-      } else if (typeof window.loadPrograms === 'function') {
-        window.loadPrograms();
+        globalThis.InstitutionDashboard.refresh();
+      } else if (typeof globalThis.loadPrograms === 'function') {
+        globalThis.loadPrograms();
       }
     } else {
       const error = await response.json();
@@ -331,5 +331,5 @@ async function deleteProgram(programId, programName) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditProgramModal = openEditProgramModal;
-window.deleteProgram = deleteProgram;
+globalThis.openEditProgramModal = openEditProgramModal;
+globalThis.deleteProgram = deleteProgram;

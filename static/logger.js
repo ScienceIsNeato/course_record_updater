@@ -85,7 +85,7 @@ const Logger = {
 };
 
 // Make logger available globally
-window.Logger = Logger;
+globalThis.Logger = Logger;
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = Logger;

@@ -100,7 +100,7 @@ function initializeEventListeners() {
 
 // Initialize Filters
 function initializeFilters() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(globalThis.location.search);
   filters.search = urlParams.get('search') || '';
   filters.role = urlParams.get('role') || '';
   filters.status = urlParams.get('status') || '';
@@ -857,8 +857,8 @@ function updateURL() {
   if (filters.role) params.set('role', filters.role);
   if (filters.status) params.set('status', filters.status);
 
-  const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-  window.history.replaceState({}, '', newURL);
+  const newURL = globalThis.location.pathname + (params.toString() ? '?' + params.toString() : '');
+  globalThis.history.replaceState({}, '', newURL);
 }
 
 function showLoading(type) {
@@ -894,11 +894,11 @@ function getInitials(firstName, lastName) {
 }
 
 function formatRole(role) {
-  return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return role.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function formatStatus(status) {
-  return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return status.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
 function getDisplayStatus(user) {
@@ -1035,39 +1035,39 @@ function debounce(func, wait) {
 }
 
 // Export functions for global use
-window.changePage = changePage;
-window.editUser = editUser;
-window.toggleUserStatus = toggleUserStatus;
-window.resendInvitation = resendInvitation;
-window.cancelInvitation = cancelInvitation;
-window.handleUserSelection = handleUserSelection;
-window.handleInvitationSelection = handleInvitationSelection;
+globalThis.changePage = changePage;
+globalThis.editUser = editUser;
+globalThis.toggleUserStatus = toggleUserStatus;
+globalThis.resendInvitation = resendInvitation;
+globalThis.cancelInvitation = cancelInvitation;
+globalThis.handleUserSelection = handleUserSelection;
+globalThis.handleInvitationSelection = handleInvitationSelection;
 
 function __setAdminState(state = {}) {
-  if (Object.prototype.hasOwnProperty.call(state, 'currentUsers')) {
+  if (Object.hasOwn(state, 'currentUsers')) {
     currentUsers = state.currentUsers;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentInvitations')) {
+  if (Object.hasOwn(state, 'currentInvitations')) {
     currentInvitations = state.currentInvitations;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'selectedUsers')) {
+  if (Object.hasOwn(state, 'selectedUsers')) {
     selectedUsers.clear();
     state.selectedUsers.forEach(id => selectedUsers.add(id));
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'selectedInvitations')) {
+  if (Object.hasOwn(state, 'selectedInvitations')) {
     selectedInvitations.clear();
     state.selectedInvitations.forEach(id => selectedInvitations.add(id));
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentPage')) {
+  if (Object.hasOwn(state, 'currentPage')) {
     currentPage = state.currentPage;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'totalItems')) {
+  if (Object.hasOwn(state, 'totalItems')) {
     totalItems = state.totalItems;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'currentTab')) {
+  if (Object.hasOwn(state, 'currentTab')) {
     currentTab = state.currentTab;
   }
-  if (Object.prototype.hasOwnProperty.call(state, 'filters')) {
+  if (Object.hasOwn(state, 'filters')) {
     filters = {
       search: state.filters.search || '',
       role: state.filters.role || '',

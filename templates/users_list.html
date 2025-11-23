@@ -94,7 +94,7 @@ async function loadUsers() {
             'instructor': 1
         };
         
-        const currentUserRole = window.currentUser ? window.currentUser.role : 'instructor';
+        const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
         const currentUserLevel = roleHierarchy[currentUserRole] || 1;
         
         // Institution admins and site admins see everyone (no filtering)

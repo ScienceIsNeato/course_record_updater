@@ -1002,6 +1002,7 @@ if [[ "$RUN_SONAR_ANALYZE" == "true" ]]; then
           -Dsonar.qualitygate.wait=false
           -Dsonar.python.coverage.reportPaths=coverage.xml
           -Dsonar.python.xunit.reportPath=test-results.xml
+          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
         )
         
         # Configure PR analysis if running in GitHub Actions PR context

@@ -162,7 +162,7 @@ function initializeCreateCourseModal() {
       course_number: document.getElementById('courseNumber').value,
       course_title: document.getElementById('courseTitle').value,
       department: document.getElementById('courseDepartment').value,
-      credit_hours: parseInt(document.getElementById('courseCreditHours').value),
+      credit_hours: Number.parseInt(document.getElementById('courseCreditHours').value),
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('courseActive');
@@ -208,8 +208,8 @@ function initializeCreateCourseModal() {
         alert(result.message || 'Course created successfully!');
 
         // Reload courses list if function exists
-        if (typeof window.loadCourses === 'function') {
-          window.loadCourses();
+        if (typeof globalThis.loadCourses === 'function') {
+          globalThis.loadCourses();
         }
       } else {
         const error = await response.json();
@@ -251,7 +251,7 @@ function initializeEditCourseModal() {
       course_number: document.getElementById('editCourseNumber').value,
       course_title: document.getElementById('editCourseTitle').value,
       department: document.getElementById('editCourseDepartment').value,
-      credit_hours: parseInt(document.getElementById('editCourseCreditHours').value),
+      credit_hours: Number.parseInt(document.getElementById('editCourseCreditHours').value),
       program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('editCourseActive');
@@ -295,8 +295,8 @@ function initializeEditCourseModal() {
         alert(result.message || 'Course updated successfully!');
 
         // Reload courses list
-        if (typeof window.loadCourses === 'function') {
-          window.loadCourses();
+        if (typeof globalThis.loadCourses === 'function') {
+          globalThis.loadCourses();
         }
       } else {
         const error = await response.json();
@@ -371,8 +371,8 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
     if (response.ok) {
       alert(`${courseNumber} deleted successfully.`);
 
-      if (typeof window.loadCourses === 'function') {
-        window.loadCourses();
+      if (typeof globalThis.loadCourses === 'function') {
+        globalThis.loadCourses();
       }
     } else {
       const error = await response.json();
@@ -385,8 +385,8 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditCourseModal = openEditCourseModal;
-window.deleteCourse = deleteCourse;
+globalThis.openEditCourseModal = openEditCourseModal;
+globalThis.deleteCourse = deleteCourse;
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {

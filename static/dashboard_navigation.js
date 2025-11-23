@@ -58,8 +58,8 @@ function configureDashboardFilter(panelMapping, allPanelIds) {
   });
 
   // Expose filterDashboard globally for onclick handlers
-  window.filterDashboard = filterDashboard;
+  globalThis.filterDashboard = filterDashboard;
 }
 
 // Export for use in dashboard templates
-window.configureDashboardFilter = configureDashboardFilter;
+globalThis.configureDashboardFilter = configureDashboardFilter;

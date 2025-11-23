@@ -213,3 +213,39 @@ class TestUserUpdateMethods:
         assert user["first_name"] == "Updated"
         assert user["last_name"] == "Name"  # Unchanged
         assert user["email"] == "update-test@test.edu"  # Unchanged
+
+
+class TestUserCreation:
+    def test_create_user_duplicate_email(self):
+        """Test create_user returns None on duplicate email."""
+        db = SQLiteDatabase()
+        email = "duplicate@test.edu"
+
+        # Setup institution first
+        inst_id = db.create_new_institution_simple("Dup Inst", "DUP")
+
+        # Create first user
+        user1_id = db.create_user(
+            {
+                "email": email,
+                "password_hash": "hash",
+                "role": "instructor",
+                "first_name": "User1",
+                "last_name": "Test",
+                "institution_id": inst_id,
+            }
+        )
+        assert user1_id is not None
+
+        # Try to create duplicate
+        user2_id = db.create_user(
+            {
+                "email": email,
+                "password_hash": "hash",
+                "role": "instructor",
+                "first_name": "User2",
+                "last_name": "Test",
+                "institution_id": inst_id,
+            }
+        )
+        assert user2_id is None
