@@ -1,5 +1,5 @@
 const { BulkReminderManager } = require('../../../static/bulk_reminders');
-const { setBody } = require('../helpers/dom');
+const { setBody, flushPromises } = require('../helpers/dom');
 
 describe('BulkReminderManager', () => {
   let bulkReminders;
@@ -15,7 +15,7 @@ describe('BulkReminderManager', () => {
       <div id="bulkReminderModal">
         <div id="reminderStep1"></div>
         <div id="reminderStep2" style="display:none;">
-          <div id="statusMessages"></div>
+          <div id="reminderStatusMessages"></div>
         </div>
         <div id="reminderFooter1"></div>
         <div id="reminderFooter2" style="display:none;"></div>
@@ -207,6 +207,19 @@ describe('BulkReminderManager', () => {
       modal.dispatchEvent(event);
 
       expect(manager.resetModal).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('handles sendReminders network error', async () => {
+      global.fetch.mockRejectedValueOnce(new Error('Network error'));
+      bulkReminders.selectedInstructors = new Set(['i1']);
+
+      await bulkReminders.sendReminders();
+      await flushPromises();
+
+      const statusMessages = document.getElementById('reminderStatusMessages');
+      expect(statusMessages.textContent).toContain('Error: Network error');
     });
   });
 });

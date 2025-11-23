@@ -175,3 +175,8 @@ function showMessage(message, type) {
 function formatRole(role) {
   return role.replaceAll('_', ' ').replace(/\b\w/g, char => char.toUpperCase());
 }
+
+// Expose functions for testing
+globalThis.validateInvitation = validateInvitation;
+globalThis.acceptInvitation = acceptInvitation;
+globalThis.formatRole = formatRole;
