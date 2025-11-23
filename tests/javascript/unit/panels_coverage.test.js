@@ -86,5 +86,43 @@ describe('panels.js coverage', () => {
     
     expect(manager.focusPanel).toHaveBeenCalledWith('p1');
   });
+
+  test('DOMContentLoaded initializes panelManager', () => {
+    delete globalThis.panelManager;
+    
+    // Reload module to attach listener
+    require('../../../static/panels');
+    
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    
+    expect(globalThis.panelManager).toBeDefined();
+  });
+
+  test('loadAuditLogs handles network error', async () => {
+    // Setup DOM for loadAuditLogs (requires system-activity-panel to init)
+    document.body.innerHTML = `
+        <div id="system-activity-panel"></div>
+        <div id="activityTableContainer"></div>
+    `;
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    
+    // Mock fetch error
+    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+    
+    // Reload module to attach listeners
+    require('../../../static/panels');
+    
+    // Trigger loadAuditLogs via DOMContentLoaded
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    
+    // Wait for async execution
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Error loading audit logs'), expect.anything());
+    
+    // Verify error UI
+    const container = document.getElementById('activityTableContainer');
+    expect(container.innerHTML).toContain('alert-danger');
+  });
 });
 
