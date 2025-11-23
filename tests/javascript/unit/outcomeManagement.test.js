@@ -62,6 +62,8 @@ describe('Outcome Management - Create Outcome Modal', () => {
       }
     };
 
+    global.loadOutcomes = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -270,6 +272,7 @@ describe('Outcome Management - Create Outcome Modal', () => {
 
       // Form should be reset
       expect(courseSelect.value).toBe('');
+      expect(global.loadOutcomes).toHaveBeenCalled();
     });
 
     test('should display error message on API failure', async () => {
@@ -378,6 +381,8 @@ describe('Outcome Management - Edit Outcome Modal', () => {
       }
     };
 
+    global.loadOutcomes = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -439,6 +444,7 @@ describe('Outcome Management - Edit Outcome Modal', () => {
     const body = JSON.parse(callArgs[1].body);
     expect(body.active).toBe(false);
     expect(body.assessment_method).toBe('Final Project');
+    expect(global.loadOutcomes).toHaveBeenCalled();
   });
 });
 
@@ -453,6 +459,7 @@ describe('Outcome Management - Delete Outcome', () => {
     global.fetch = mockFetch;
     confirmSpy = jest.spyOn(window, 'confirm');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+    global.loadOutcomes = jest.fn();
   });
 
   afterEach(() => {
@@ -486,6 +493,7 @@ describe('Outcome Management - Delete Outcome', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('deleted successfully')
     );
+    expect(global.loadOutcomes).toHaveBeenCalled();
   });
 
   test('should not delete if user cancels confirmation', async () => {

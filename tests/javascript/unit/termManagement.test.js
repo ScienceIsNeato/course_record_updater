@@ -53,6 +53,8 @@ describe('Term Management - Create Term Modal', () => {
       }
     };
 
+    global.loadTerms = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -243,6 +245,7 @@ describe('Term Management - Create Term Modal', () => {
 
       // Form should be reset
       expect(nameInput.value).toBe('');
+      expect(global.loadTerms).toHaveBeenCalled();
     });
 
     test('should display error message on API failure', async () => {
@@ -355,6 +358,8 @@ describe('Term Management - Edit Term Modal', () => {
       }
     };
 
+    global.loadTerms = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -419,6 +424,7 @@ describe('Term Management - Edit Term Modal', () => {
     const body = JSON.parse(callArgs[1].body);
     expect(body.active).toBe(false);
     expect(body.end_date).toBe('2025-05-20');
+    expect(global.loadTerms).toHaveBeenCalled();
   });
 });
 
@@ -433,6 +439,7 @@ describe('Term Management - Delete Term', () => {
     global.fetch = mockFetch;
     confirmSpy = jest.spyOn(window, 'confirm');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
+    global.loadTerms = jest.fn();
   });
 
   afterEach(() => {
@@ -463,6 +470,7 @@ describe('Term Management - Delete Term', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('deleted successfully')
     );
+    expect(global.loadTerms).toHaveBeenCalled();
   });
 
   test('should not delete if user cancels confirmation', async () => {

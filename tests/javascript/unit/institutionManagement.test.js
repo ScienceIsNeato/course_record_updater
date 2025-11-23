@@ -53,6 +53,8 @@ describe('Institution Management - Create Institution Modal', () => {
       },
     };
 
+    global.loadInstitutions = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -268,6 +270,8 @@ describe('Institution Management - Create Institution Modal', () => {
 
       // Form should be reset
       expect(nameInput.value).toBe('');
+      
+      expect(global.loadInstitutions).toHaveBeenCalled();
     });
 
     test('should display error message on API failure', async () => {
@@ -389,6 +393,8 @@ describe('Institution Management - Edit Institution Modal', () => {
       },
     };
 
+    global.loadInstitutions = jest.fn();
+
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
   });
@@ -452,6 +458,7 @@ describe('Institution Management - Edit Institution Modal', () => {
         body: expect.stringContaining('Updated University'),
       })
     );
+    expect(global.loadInstitutions).toHaveBeenCalled();
   });
 });
 
@@ -469,6 +476,7 @@ describe('Institution Management - Delete Institution', () => {
     promptSpy = jest.spyOn(window, 'prompt');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    global.loadInstitutions = jest.fn();
   });
 
   afterEach(() => {
@@ -499,6 +507,7 @@ describe('Institution Management - Delete Institution', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('permanently deleted')
     );
+    expect(global.loadInstitutions).toHaveBeenCalled();
   });
 
   test('should not delete if confirmation text does not match', async () => {
