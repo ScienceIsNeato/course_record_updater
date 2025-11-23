@@ -153,15 +153,15 @@ describe('InstitutionDashboard', () => {
       global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
 
       const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       await InstitutionDashboard.refresh();
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalled();
       expect(showErrorSpy).toHaveBeenCalled();
 
       showErrorSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
       // Reset fetch mock for subsequent tests
       global.fetch = jest.fn();
     });
@@ -1221,11 +1221,11 @@ describe('InstitutionDashboard', () => {
     it('loadData() handles fetch errors gracefully', async () => {
       global.fetch.mockRejectedValue(new Error('Network error'));
       const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       await InstitutionDashboard.loadData();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Institution dashboard load error:',
         expect.any(Error)
       );

@@ -72,7 +72,7 @@
         this.render(this.cache);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Instructor dashboard load error:', error);
+        console.warn('Instructor dashboard load error:', error);
         this.showError(SELECTORS.teachingContainer, 'Unable to load teaching assignments');
         this.showError(SELECTORS.assessmentContainer, 'Unable to load assessment tasks');
         this.showError(SELECTORS.summaryContainer, 'Unable to build summary');

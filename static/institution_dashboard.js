@@ -131,7 +131,7 @@
         this.render(this.cache);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Institution dashboard load error:', error);
+        console.warn('Institution dashboard load error:', error);
         this.showError(SELECTORS.programContainer, 'Unable to load program data');
         this.showError(SELECTORS.facultyContainer, 'Unable to load faculty data');
         this.showError(SELECTORS.sectionContainer, 'Unable to load section data');
