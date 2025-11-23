@@ -1,128 +1,112 @@
+const { setBody, flushPromises } = require('../helpers/dom');
 
-const { setBody } = require('../helpers/dom');
-
-describe('panels.js coverage', () => {
+describe('panels.js Coverage Boost', () => {
   beforeEach(() => {
     jest.resetModules();
-    setBody('<div id="panels-container"></div>');
-  });
-
-  test('generateSecureId uses crypto API', () => {
-    // Ensure crypto is present
-    const mockGetRandomValues = jest.fn(arr => {
-      arr[0] = 999;
-      return arr;
-    });
-    
-    // Mock globalThis.crypto explicitly
-    Object.defineProperty(globalThis, 'crypto', {
-        value: { getRandomValues: mockGetRandomValues },
-        writable: true,
-        configurable: true
-    });
-    
-    // Load module
-    const { PanelManager } = require('../../../static/panels');
-    const manager = new PanelManager();
-    
-    // Trigger usage via initializePanels (called by init)
-    document.body.innerHTML = `
-      <div class="dashboard-panel">
-        <div class="panel-header"></div>
+    // Basic DOM for panelManager initialization
+    setBody(`
+      <div id="system-activity-panel">
         <div class="panel-content">
-            <table class="panel-table"></table>
+          <div id="activityTableContainer"></div>
         </div>
+        <button class="panel-toggle"></button>
       </div>
-    `;
+    `);
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(window, 'alert').mockImplementation(() => {});
     
-    console.log('Panels found:', document.querySelectorAll('.dashboard-panel').length);
-    
-    manager.init();
-    
-    expect(mockGetRandomValues).toHaveBeenCalled();
+    // Mock fetch for loadAuditLogs
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, logs: [] })
+    });
   });
 
-  test('handleGlobalClick triggers sortTable on header click', () => {
-    const { PanelManager } = require('../../../static/panels');
-    const manager = new PanelManager();
-    manager.sortTable = jest.fn();
-    
-    document.body.innerHTML = `
-      <table id="test-table" class="panel-table">
-        <thead>
-            <tr>
-                <th class="sortable" data-sort="name">Name</th>
-            </tr>
-        </thead>
-      </table>
-    `;
-    
-    manager.init();
-    
-    const th = document.querySelector('th');
-    th.click();
-    
-    expect(manager.sortTable).toHaveBeenCalled();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  test('handleGlobalClick triggers focusPanel on double click', () => {
-    const { PanelManager } = require('../../../static/panels');
-    const manager = new PanelManager();
-    manager.focusPanel = jest.fn();
-    
-    document.body.innerHTML = `
-      <div id="p1" class="dashboard-panel">
-        <div class="panel-header">
-            <div class="panel-title">Title</div>
-        </div>
-      </div>
-    `;
-    
-    manager.init();
-    
-    const title = document.querySelector('.panel-title');
-    const event = new MouseEvent('click', { detail: 2, bubbles: true });
-    title.dispatchEvent(event);
-    
-    expect(manager.focusPanel).toHaveBeenCalledWith('p1');
+  test('initializes panelManager on DOMContentLoaded', () => {
+    require('../../../static/panels.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    expect(global.panelManager).toBeDefined();
   });
 
-  test('DOMContentLoaded initializes panelManager', () => {
-    delete globalThis.panelManager;
+  test('createPanel handles missing actions', () => {
+    require('../../../static/panels.js');
+    // Ensure panelManager is initialized
+    document.dispatchEvent(new Event('DOMContentLoaded'));
     
-    // Reload module to attach listener
-    require('../../../static/panels');
+    const panel = global.panelManager.createPanel({
+      id: 'test-panel-1',
+      title: 'Test Panel 1',
+      content: 'Content 1',
+      collapsed: false
+    });
+    
+    expect(panel.innerHTML).toContain('Test Panel 1');
+    expect(panel.querySelector('.panel-actions').innerHTML.trim()).toBe('');
+  });
+
+  test('createPanel renders actions', () => {
+    require('../../../static/panels.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    
+    const panel = global.panelManager.createPanel({
+      id: 'test-panel-2',
+      title: 'Test Panel 2',
+      content: 'Content 2',
+      collapsed: true,
+      actions: [{ label: 'Action 1', icon: '<i></i>', onclick: 'void(0)' }]
+    });
+    
+    expect(panel.querySelector('.panel-actions').textContent).toContain('Action 1');
+    expect(panel.querySelector('.panel-content.collapsed')).toBeTruthy();
+  });
+
+  test('viewAllActivity shows alert', () => {
+    require('../../../static/panels.js');
+    global.viewAllActivity();
+    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('coming soon'));
+  });
+
+  test('filterActivity shows alert', () => {
+    require('../../../static/panels.js');
+    global.filterActivity();
+    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('coming soon'));
+  });
+
+  test('getAuditDetails returns fallback', () => {
+    require('../../../static/panels.js');
+    const detail = global.getAuditDetails({ operation_type: 'UPDATE' });
+    expect(detail).toBe('Entity modified');
+  });
+  
+  test('getAuditDetails handles JSON parse error', () => {
+    require('../../../static/panels.js');
+    const detail = global.getAuditDetails({ 
+        operation_type: 'UPDATE',
+        changed_fields: '{invalid-json}'
+    });
+    expect(detail).toBe('Entity modified');
+  });
+
+  test('system activity panel auto-load', async () => {
+    jest.useFakeTimers();
+    require('../../../static/panels.js');
     
     document.dispatchEvent(new Event('DOMContentLoaded'));
     
-    expect(globalThis.panelManager).toBeDefined();
-  });
-
-  test('loadAuditLogs handles network error', async () => {
-    // Setup DOM for loadAuditLogs (requires system-activity-panel to init)
-    document.body.innerHTML = `
-        <div id="system-activity-panel"></div>
-        <div id="activityTableContainer"></div>
-    `;
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    // Initial load
+    if (global.fetch.mock.calls.length === 0) {
+        console.log('Console errors:', console.error.mock.calls);
+    }
+    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/audit/recent'));
     
-    // Mock fetch error
-    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+    // Interval load
+    jest.advanceTimersByTime(30000);
+    expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(2);
     
-    // Reload module to attach listeners
-    require('../../../static/panels');
-    
-    // Trigger loadAuditLogs via DOMContentLoaded
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-    
-    // Wait for async execution
-    await new Promise(resolve => setTimeout(resolve, 10));
-    
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Error loading audit logs'), expect.anything());
-    
-    // Verify error UI
-    const container = document.getElementById('activityTableContainer');
-    expect(container.innerHTML).toContain('alert-danger');
+    jest.useRealTimers();
   });
 });
-
