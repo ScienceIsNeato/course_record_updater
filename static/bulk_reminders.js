@@ -308,9 +308,9 @@ class BulkReminderManager {
 
     // Get course_id if one instructor is selected and they have a single course
     let courseId = null;
-    if (this.selectedInstructors.size === 1 && window.dashboardDataCache) {
+    if (this.selectedInstructors.size === 1 && globalThis.dashboardDataCache) {
       const instructorId = Array.from(this.selectedInstructors)[0];
-      const sections = window.dashboardDataCache.sections || [];
+      const sections = globalThis.dashboardDataCache.sections || [];
       const instructorSections = sections.filter(s => s.instructor_id === instructorId);
       if (instructorSections.length === 1) {
         courseId = instructorSections[0].course_id;

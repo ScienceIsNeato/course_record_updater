@@ -76,7 +76,7 @@ class RegistrationService:
             PasswordValidationError: If password doesn't meet requirements
         """
         logger.info(
-            f"[Registration] Starting institution admin registration for {email}"
+            f"[Registration] Starting institution admin registration for {logger.sanitize(email)}"
         )
 
         try:
@@ -168,7 +168,7 @@ class RegistrationService:
 
             if not email_sent:
                 logger.warning(
-                    f"[Registration] Failed to send verification email to {email}"
+                    f"[Registration] Failed to send verification email to {logger.sanitize(email)}"
                 )
 
             return {
@@ -204,7 +204,7 @@ class RegistrationService:
             RegistrationError: If verification fails
         """
         logger.info(
-            f"[Registration] Processing email verification for token: {verification_token[:8]}..."
+            f"[Registration] Processing email verification for token: {logger.sanitize(verification_token[:8])}..."
         )
 
         try:
@@ -303,7 +303,9 @@ class RegistrationService:
         Raises:
             RegistrationError: If resend fails
         """
-        logger.info(f"[Registration] Resending verification email to {email}")
+        logger.info(
+            f"[Registration] Resending verification email to {logger.sanitize(email)}"
+        )
 
         try:
             # Find user by email
@@ -342,7 +344,7 @@ class RegistrationService:
 
             if not email_sent:
                 logger.warning(
-                    f"[Registration] Failed to resend verification email to {email}"
+                    f"[Registration] Failed to resend verification email to {logger.sanitize(email)}"
                 )
 
             return {

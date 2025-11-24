@@ -74,8 +74,8 @@ function initializeCreateOutcomeModal() {
         alert(result.message || 'Outcome created successfully!');
 
         // Reload outcomes list if function exists
-        if (typeof window.loadOutcomes === 'function') {
-          window.loadOutcomes();
+        if (typeof globalThis.loadOutcomes === 'function') {
+          globalThis.loadOutcomes();
         }
       } else {
         const error = await response.json();
@@ -151,8 +151,8 @@ function initializeEditOutcomeModal() {
         alert(result.message || 'Outcome updated successfully!');
 
         // Reload outcomes list
-        if (typeof window.loadOutcomes === 'function') {
-          window.loadOutcomes();
+        if (typeof globalThis.loadOutcomes === 'function') {
+          globalThis.loadOutcomes();
         }
       } else {
         const error = await response.json();
@@ -215,8 +215,8 @@ async function deleteOutcome(outcomeId, courseName, cloNumber) {
     if (response.ok) {
       alert(`${cloNumber} for ${courseName} deleted successfully.`);
 
-      if (typeof window.loadOutcomes === 'function') {
-        window.loadOutcomes();
+      if (typeof globalThis.loadOutcomes === 'function') {
+        globalThis.loadOutcomes();
       }
     } else {
       const error = await response.json();
@@ -229,5 +229,5 @@ async function deleteOutcome(outcomeId, courseName, cloNumber) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditOutcomeModal = openEditOutcomeModal;
-window.deleteOutcome = deleteOutcome;
+globalThis.openEditOutcomeModal = openEditOutcomeModal;
+globalThis.deleteOutcome = deleteOutcome;

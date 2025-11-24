@@ -16,9 +16,9 @@
 let idCounter = 0;
 
 function generateSecureId(prefix = 'id') {
-  if (window.crypto?.getRandomValues) {
+  if (globalThis.crypto?.getRandomValues) {
     const array = new Uint32Array(1);
-    window.crypto.getRandomValues(array);
+    globalThis.crypto.getRandomValues(array);
     return `${prefix}-${Date.now()}-${array[0]}`;
   }
 
@@ -196,7 +196,7 @@ class PanelManager {
     });
 
     // Window resize events
-    window.addEventListener('resize', () => {
+    globalThis.addEventListener('resize', () => {
       this.hideAllStatPreviews();
     });
   }
@@ -403,9 +403,9 @@ class PanelManager {
       // Handle fractions like "4/6"
       const parts = value.split('/');
       if (parts.length === 2) {
-        const numerator = parseInt(parts[0]);
-        const denominator = parseInt(parts[1]);
-        if (!isNaN(numerator) && !isNaN(denominator) && denominator > 0) {
+        const numerator = Number.parseInt(parts[0]);
+        const denominator = Number.parseInt(parts[1]);
+        if (!Number.isNaN(numerator) && !Number.isNaN(denominator) && denominator > 0) {
           return (numerator / denominator).toString();
         }
       }
@@ -459,7 +459,7 @@ class PanelManager {
    * Load stat preview data based on stat type
    */
   async loadStatPreviewData(statId) {
-    const cache = window.dashboardDataCache;
+    const cache = globalThis.dashboardDataCache;
     if (cache) {
       const cached = this.buildPreviewFromCache(statId, cache);
       if (cached) {
@@ -503,7 +503,7 @@ class PanelManager {
             label:
               (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
               user.email,
-            value: (user.department || user.role || 'instructor').replace(/_/g, ' ')
+            value: (user.department || user.role || 'instructor').replaceAll('_', ' ')
           })) || []
       },
       sections: {
@@ -523,7 +523,7 @@ class PanelManager {
         transform: data =>
           data.users?.map(user => ({
             label: `${user.first_name} ${user.last_name}`,
-            value: user.role.replace('_', ' ')
+            value: user.role.replaceAll('_', ' ')
           })) || []
       }
     };
@@ -582,7 +582,7 @@ class PanelManager {
         labelFn: user =>
           (user.full_name || `${user.first_name || ''} ${user.last_name || ''}`).trim() ||
           user.email,
-        valueFn: user => (user.role || 'user').replace(/_/g, ' ')
+        valueFn: user => (user.role || 'user').replaceAll('_', ' ')
       },
       faculty: {
         title: 'Faculty',
@@ -607,7 +607,7 @@ class PanelManager {
         getData: cache => cache.assessment_tasks || [],
         labelFn: task =>
           task.course_number || task.course_title || task.section_number || task.section_id,
-        valueFn: task => (task.status || 'pending').replace(/_/g, ' ')
+        valueFn: task => (task.status || 'pending').replaceAll('_', ' ')
       }
     };
 
@@ -653,17 +653,15 @@ class PanelManager {
                 </h5>
                 <div class="panel-actions">
                     ${
-                      (config.actions &&
-                        config.actions
-                          .map(
-                            action => `
+                      config.actions
+                        ?.map(
+                          action => `
                         <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
                             ${action.icon} ${action.label}
                         </button>
                     `
-                          )
-                          .join('')) ||
-                      ''
+                        )
+                        .join('') || ''
                     }
                 </div>
                 <button class="panel-toggle">▼</button>
@@ -695,10 +693,9 @@ class PanelManager {
       .join('');
 
     const bodyRows =
-      (config.data &&
-        config.data
-          .map(
-            row => `
+      config.data
+        ?.map(
+          row => `
             <tr>
                 ${config.columns
                   .map(
@@ -711,9 +708,8 @@ class PanelManager {
                   .join('')}
             </tr>
         `
-          )
-          .join('')) ||
-      '';
+        )
+        .join('') || '';
 
     table.innerHTML = `
             <thead>
@@ -732,7 +728,7 @@ class PanelManager {
 let panelManager;
 document.addEventListener('DOMContentLoaded', () => {
   panelManager = new PanelManager();
-  window.panelManager = panelManager; // Export after initialization
+  globalThis.panelManager = panelManager; // Export after initialization
 });
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -986,12 +982,12 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Export for global use
-window.loadAuditLogs = loadAuditLogs;
-window.viewAllActivity = viewAllActivity;
-window.filterActivity = filterActivity;
-window.createAuditLogRow = createAuditLogRow;
-window.formatAuditTimestamp = formatAuditTimestamp;
-window.getActionBadge = getActionBadge;
-window.formatEntityDisplay = formatEntityDisplay;
-window.getAuditDetails = getAuditDetails;
-window.escapeHtml = escapeHtml;
+globalThis.loadAuditLogs = loadAuditLogs;
+globalThis.viewAllActivity = viewAllActivity;
+globalThis.filterActivity = filterActivity;
+globalThis.createAuditLogRow = createAuditLogRow;
+globalThis.formatAuditTimestamp = formatAuditTimestamp;
+globalThis.getActionBadge = getActionBadge;
+globalThis.formatEntityDisplay = formatEntityDisplay;
+globalThis.getAuditDetails = getAuditDetails;
+globalThis.escapeHtml = escapeHtml;

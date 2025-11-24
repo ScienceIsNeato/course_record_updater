@@ -600,4 +600,59 @@ describe('auth module', () => {
       expect(alert.textContent).toContain('Request failed with status 400');
     });
   });
+
+  describe('Utilities and Navigation', () => {
+    it('cleans up URL message parameter', () => {
+      delete window.location;
+      window.location = {
+        search: '?message=Test+Msg',
+        pathname: '/login',
+        href: 'http://localhost/login?message=Test+Msg',
+        toString: () => 'http://localhost/login?message=Test+Msg',
+        assign: jest.fn()
+      };
+      window.history.replaceState = jest.fn();
+      
+      setBody('<div id="statusMessage" class="d-none"></div>');
+      
+      jest.resetModules();
+      require('../../../static/auth');
+      
+      expect(window.history.replaceState).toHaveBeenCalled();
+    });
+
+    it('showLogin redirects to /login', () => {
+      delete window.location;
+      window.location = {
+        search: '',
+        pathname: '/other',
+        href: 'http://localhost/other',
+        toString: () => 'http://localhost/other',
+        assign: jest.fn()
+      };
+      
+      const auth = require('../../../static/auth');
+      auth.showLogin();
+      expect(window.location.href).toBe('/login');
+    });
+
+    it('logout redirects to login on failure', async () => {
+      delete window.location;
+      window.location = {
+        search: '',
+        pathname: '/dashboard',
+        href: 'http://localhost/dashboard',
+        toString: () => 'http://localhost/dashboard',
+        assign: jest.fn()
+      };
+      
+      const auth = require('../../../static/auth');
+      global.fetch = jest.fn(() => Promise.reject('Network error'));
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+      
+      auth.logout();
+      await flushPromises();
+      expect(window.location.href).toContain('/login');
+    });
+  });
 });

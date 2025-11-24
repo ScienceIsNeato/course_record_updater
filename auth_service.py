@@ -747,14 +747,14 @@ def set_current_program_id(program_id: str) -> bool:
         accessible_programs = user.get("program_ids", [])
         if program_id not in accessible_programs:
             logger.warning(
-                f"User {user.get('user_id')} attempted to switch to unauthorized program {program_id}"
+                f"User {logger.sanitize(user.get('user_id'))} attempted to switch to unauthorized program {logger.sanitize(program_id)}"
             )
             return False
 
         # Update session context
         session["current_program_id"] = program_id
         logger.info(
-            f"User {user.get('user_id')} switched to program context: {program_id}"
+            f"User {logger.sanitize(user.get('user_id'))} switched to program context: {logger.sanitize(program_id)}"
         )
         return True
 
@@ -825,7 +825,7 @@ def require_program_access(
     if not can_access_program(program_id, institution_id):
         user = get_current_user()
         logger.warning(
-            f"Program access denied: User {user.get('user_id') if user else 'unknown'} cannot access program {program_id}"
+            f"Program access denied: User {logger.sanitize(user.get('user_id') if user else 'unknown')} cannot access program {logger.sanitize(program_id)}"
         )
         return (
             jsonify(

@@ -296,7 +296,7 @@ async function saveEditedSection() {
             },
             body: JSON.stringify({
                 instructor_id: instructorId || null,
-                enrollment_capacity: parseInt(capacity) || 0
+                enrollment_capacity: Number.parseInt(capacity) || 0
             })
         });
         

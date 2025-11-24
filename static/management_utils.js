@@ -125,8 +125,8 @@ function getCSRFToken() {
  */
 function showSuccess(message) {
   // Try to use existing showMessage if available
-  if (typeof window.showMessage === 'function') {
-    window.showMessage(message, 'success');
+  if (typeof globalThis.showMessage === 'function') {
+    globalThis.showMessage(message, 'success');
     return;
   }
 
@@ -141,8 +141,8 @@ function showSuccess(message) {
  */
 function showError(message) {
   // Try to use existing showMessage if available
-  if (typeof window.showMessage === 'function') {
-    window.showMessage(message, 'danger');
+  if (typeof globalThis.showMessage === 'function') {
+    globalThis.showMessage(message, 'danger');
     return;
   }
 
@@ -158,11 +158,11 @@ function showError(message) {
  * Common pattern after create/update/delete operations
  */
 function reloadDataTable() {
-  if (typeof window.loadTableData === 'function') {
-    window.loadTableData();
+  if (typeof globalThis.loadTableData === 'function') {
+    globalThis.loadTableData();
   } else {
     // Fallback to page reload
-    window.location.reload();
+    globalThis.location.reload();
   }
 }
 
@@ -209,7 +209,7 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 } else {
   // Expose to global scope for browser environments
-  window.ManagementUtils = {
+  globalThis.ManagementUtils = {
     loadSelectOptions,
     submitCRUDForm,
     getCSRFToken,

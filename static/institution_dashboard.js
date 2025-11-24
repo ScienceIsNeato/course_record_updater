@@ -73,8 +73,8 @@
           e.stopPropagation();
           const programId = target.getAttribute('data-program-id');
           const programName = target.getAttribute('data-program-name');
-          if (programId && programName && typeof window.deleteProgram === 'function') {
-            window.deleteProgram(programId, programName);
+          if (programId && programName && typeof globalThis.deleteProgram === 'function') {
+            globalThis.deleteProgram(programId, programName);
           }
         }
       });
@@ -83,8 +83,8 @@
       this.intervalId = setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
 
       // Cleanup on page unload
-      window.addEventListener('beforeunload', () => this.cleanup());
-      window.addEventListener('pagehide', () => this.cleanup());
+      globalThis.addEventListener('beforeunload', () => this.cleanup());
+      globalThis.addEventListener('pagehide', () => this.cleanup());
     },
 
     cleanup() {
@@ -126,12 +126,12 @@
         }
 
         this.cache = payload.data || {};
-        window.dashboardDataCache = this.cache;
+        globalThis.dashboardDataCache = this.cache;
         this.lastFetch = Date.now();
         this.render(this.cache);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Institution dashboard load error:', error);
+        console.warn('Institution dashboard load error:', error);
         this.showError(SELECTORS.programContainer, 'Unable to load program data');
         this.showError(SELECTORS.facultyContainer, 'Unable to load faculty data');
         this.showError(SELECTORS.sectionContainer, 'Unable to load section data');
@@ -198,7 +198,7 @@
             }
           }));
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-programs-table',
         columns: [
           { key: 'program', label: 'Program', sortable: true },
@@ -280,7 +280,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-faculty-table',
         columns: [
           { key: 'name', label: 'Faculty Name', sortable: true },
@@ -336,7 +336,7 @@
         }
       });
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-sections-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -414,7 +414,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-courses-table',
         columns: [
           { key: 'number', label: 'Course Number', sortable: true },
@@ -458,7 +458,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-terms-table',
         columns: [
           { key: 'term', label: 'Term Name', sortable: true },
@@ -523,7 +523,7 @@
         }
       });
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-offerings-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -567,7 +567,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-clos-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
@@ -630,7 +630,7 @@
         return;
       }
 
-      const table = window.panelManager.createSortableTable({
+      const table = globalThis.panelManager.createSortableTable({
         id: 'institution-assessment-table',
         columns: [
           { key: 'program', label: 'Program', sortable: true },
@@ -700,16 +700,16 @@
     handleEditSection(button) {
       const sectionId = button.dataset.sectionId;
       const sectionData = JSON.parse(button.dataset.sectionData);
-      if (typeof window.openEditSectionModal === 'function') {
-        window.openEditSectionModal(sectionId, sectionData);
+      if (typeof globalThis.openEditSectionModal === 'function') {
+        globalThis.openEditSectionModal(sectionId, sectionData);
       }
     },
 
     handleEditCourse(button) {
       const courseId = button.dataset.courseId;
       const courseData = JSON.parse(button.dataset.courseData);
-      if (typeof window.openEditCourseModal === 'function') {
-        window.openEditCourseModal(courseId, courseData);
+      if (typeof globalThis.openEditCourseModal === 'function') {
+        globalThis.openEditCourseModal(courseId, courseData);
       }
     },
 
@@ -751,12 +751,12 @@
   };
 
   // Expose InstitutionDashboard to window immediately so onclick handlers work
-  window.InstitutionDashboard = InstitutionDashboard;
+  globalThis.InstitutionDashboard = InstitutionDashboard;
 
   document.addEventListener('DOMContentLoaded', () => {
     // Wait a bit for panelManager to be initialized
     setTimeout(() => {
-      if (typeof window.panelManager === 'undefined') {
+      if (typeof globalThis.panelManager === 'undefined') {
         // eslint-disable-next-line no-console
         console.warn('Panel manager not initialized');
         return;

@@ -48,6 +48,15 @@ describe('InstitutionDashboard', () => {
     summary: { programs: 2, courses: 5, faculty: 3, sections: 7 },
     institutions: [{ name: 'Example University' }],
     terms: [{ name: 'Fall 2025', active: true }],
+    clos: [
+      {
+        id: 'clo1',
+        course: 'NURS101',
+        clo_number: '1',
+        description: 'Test CLO',
+        status: 'active'
+      }
+    ],
     program_overview: [
       {
         program_name: 'Nursing',
@@ -144,15 +153,15 @@ describe('InstitutionDashboard', () => {
       global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network error'));
 
       const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       await InstitutionDashboard.refresh();
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalled();
       expect(showErrorSpy).toHaveBeenCalled();
 
       showErrorSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
       // Reset fetch mock for subsequent tests
       global.fetch = jest.fn();
     });
@@ -1212,11 +1221,11 @@ describe('InstitutionDashboard', () => {
     it('loadData() handles fetch errors gracefully', async () => {
       global.fetch.mockRejectedValue(new Error('Network error'));
       const showErrorSpy = jest.spyOn(InstitutionDashboard, 'showError');
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       await InstitutionDashboard.loadData();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
         'Institution dashboard load error:',
         expect.any(Error)
       );
@@ -1254,5 +1263,28 @@ describe('InstitutionDashboard', () => {
       
       loadDataSpy.mockRestore();
     });
+  });
+});
+
+describe('InstitutionDashboard Initialization', () => {
+  beforeEach(() => {
+    jest.resetModules();
+    jest.useFakeTimers();
+  });
+  
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test('should warn if panelManager is missing', () => {
+    delete global.panelManager;
+    delete window.panelManager;
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    
+    require('../../../static/institution_dashboard');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    jest.advanceTimersByTime(200);
+    
+    expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Panel manager not initialized'));
   });
 });

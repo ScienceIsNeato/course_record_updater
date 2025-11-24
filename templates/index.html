@@ -341,7 +341,7 @@
                     currentUser = null;
                     updateNavigation(null);
                     // Optionally redirect or refresh page
-                    window.location.reload();
+                    globalThis.location.reload();
                 } else {
                     console.error('Logout failed');
                     alert('Logout failed. Please try again.');
@@ -353,9 +353,9 @@
         }
 
         // Make functions available globally
-        window.checkAuthStatus = checkAuthStatus;
-        window.showLogin = showLogin;
-        window.logout = logout;
+        globalThis.checkAuthStatus = checkAuthStatus;
+        globalThis.showLogin = showLogin;
+        globalThis.logout = logout;
     </script>
 </body>
 </html>

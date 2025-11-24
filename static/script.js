@@ -284,7 +284,7 @@ function handleDelete(row, courseId, courseNumber) {
   // Use simple confirm for now, prompt was complex
   const confirmationMessage = `Are you sure you want to delete course ${courseNumber} (ID: ${courseId})?`;
 
-  if (!window.confirm(confirmationMessage)) {
+  if (!globalThis.confirm(confirmationMessage)) {
     return;
   }
 
@@ -831,13 +831,6 @@ function initializeImportForm() {
       }
     }
 
-    // Helper function to show success message and refresh
-    function showSuccessAndRefresh() {
-      // Reload immediately - the refreshed page with updated data IS the success indicator
-      // Flash messages will show import results if needed
-      window.location.reload();
-    }
-
     // Start polling
     setTimeout(poll, 500); // Start after 500ms
   }
@@ -944,3 +937,10 @@ function initializeImportForm() {
 }
 
 // Debug functionality removed - temporary development tools no longer needed
+
+// Helper function to show success message and refresh
+function showSuccessAndRefresh() {
+  // Reload immediately - the refreshed page with updated data IS the success indicator
+  // Flash messages will show import results if needed
+  globalThis.location.reload();
+}

@@ -35,7 +35,7 @@ function initializeCreateSectionModal() {
       offering_id: document.getElementById('sectionOfferingId').value,
       section_number: document.getElementById('sectionNumber').value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? parseInt(enrollmentValue) : null,
+      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById('sectionStatus').value
     };
 
@@ -75,8 +75,8 @@ function initializeCreateSectionModal() {
         alert(result.message || 'Section created successfully!');
 
         // Reload sections list if function exists
-        if (typeof window.loadSections === 'function') {
-          window.loadSections();
+        if (typeof globalThis.loadSections === 'function') {
+          globalThis.loadSections();
         }
       } else {
         const error = await response.json();
@@ -115,7 +115,7 @@ function initializeEditSectionModal() {
     const updateData = {
       section_number: document.getElementById('editSectionNumber').value,
       instructor_id: instructorValue || null,
-      enrollment: enrollmentValue ? parseInt(enrollmentValue) : null,
+      enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById('editSectionStatus').value
     };
 
@@ -153,8 +153,8 @@ function initializeEditSectionModal() {
         alert(result.message || 'Section updated successfully!');
 
         // Reload sections list
-        if (typeof window.loadSections === 'function') {
-          window.loadSections();
+        if (typeof globalThis.loadSections === 'function') {
+          globalThis.loadSections();
         }
       } else {
         const error = await response.json();
@@ -240,8 +240,8 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
     if (response.ok) {
       alert(`Section ${sectionNumber} of ${courseName} deleted successfully.`);
 
-      if (typeof window.loadSections === 'function') {
-        window.loadSections();
+      if (typeof globalThis.loadSections === 'function') {
+        globalThis.loadSections();
       }
     } else {
       const error = await response.json();
@@ -254,5 +254,5 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
 }
 
 // Expose functions to window for inline onclick handlers and testing
-window.openEditSectionModal = openEditSectionModal;
-window.deleteSection = deleteSection;
+globalThis.openEditSectionModal = openEditSectionModal;
+globalThis.deleteSection = deleteSection;

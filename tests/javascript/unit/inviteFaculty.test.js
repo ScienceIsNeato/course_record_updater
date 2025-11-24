@@ -28,11 +28,19 @@ describe('inviteFaculty.js - Optional Chaining Coverage', () => {
     document.body.innerHTML = `
       <div id="inviteFacultyModal"></div>
       <form id="inviteFacultyForm">
-        <input type="text" />
+        <input type="hidden" name="csrf_token" value="test-csrf-token" />
+        <input type="email" id="inviteFacultyEmail" />
+        <input type="text" id="inviteFacultyFirstName" />
+        <input type="text" id="inviteFacultyLastName" />
+        <select id="inviteFacultyTerm"></select>
+        <select id="inviteFacultyOffering"><option value="">Select an offering</option></select>
+        <select id="inviteFacultySection"><option value="">Select a section</option></select>
+        <input type="checkbox" id="inviteFacultyReplaceExisting" />
+        <button type="submit" id="submitInviteBtn">
+            <span class="btn-text">Send Invitation</span>
+            <span class="btn-spinner d-none"></span>
+        </button>
       </form>
-      <select id="inviteFacultyTerm"></select>
-      <select id="inviteFacultyOffering"><option value="">Select an offering</option></select>
-      <select id="inviteFacultySection"><option value="">Select a section</option></select>
     `;
   });
 
@@ -477,5 +485,39 @@ describe('inviteFaculty.js - Optional Chaining Coverage', () => {
     expect(alert).toHaveBeenCalledWith(
       expect.stringContaining('Email already registered')
     );
+  });
+
+  it('should use InstitutionDashboard.cache if dashboardDataCache is missing', () => {
+    delete window.dashboardDataCache;
+    window.InstitutionDashboard = {
+      cache: { terms: [{ term_id: 't1', term_name: 'Term 1' }] }
+    };
+    
+    loadModuleAndInit();
+    window.openInviteFacultyModal();
+    
+    const options = document.getElementById('inviteFacultyTerm').options;
+    expect(options.length).toBeGreaterThan(1);
+  });
+
+  it('should reload dashboard data on success', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: async () => ({ success: true }) }));
+    window.InstitutionDashboard = { loadData: jest.fn() };
+    
+    loadModuleAndInit();
+    
+    // Mock inputs
+    document.getElementById('inviteFacultyEmail').value = 'test@test.com';
+    document.getElementById('inviteFacultyFirstName').value = 'First';
+    document.getElementById('inviteFacultyLastName').value = 'Last';
+    document.getElementById('inviteFacultyTerm').value = 't1';
+    
+    const form = document.getElementById('inviteFacultyForm');
+    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(submitEvent);
+    
+    await new Promise(resolve => setTimeout(resolve, 10)); // Wait for async handler
+    
+    expect(window.InstitutionDashboard.loadData).toHaveBeenCalled();
   });
 });
