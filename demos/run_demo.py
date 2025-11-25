@@ -375,93 +375,44 @@ class DemoRunner:
         return True
     
     def execute_browser_action(self, action: str, config: Dict) -> bool:
-        """Execute a browser automation action."""
+        """Execute an automated verification action (API/DB checks, not UI automation)."""
         try:
-            if action == 'browser_login':
-                return self.browser_login(
-                    config.get('url', '/login'),
-                    config.get('credentials', {})
-                )
-            elif action == 'browser_navigate':
-                return self.browser_navigate(config.get('url', '/'))
-            elif action == 'browser_logout':
-                return self.browser_logout()
-            elif action == 'browser_click':
-                return self.browser_click(config)
-            elif action == 'browser_select':
-                return self.browser_select(config)
-            elif action == 'browser_fill_assessment':
-                return self.browser_fill_assessment(config)
-            elif action == 'run_command':
-                cmd = config.get('command', '')
-                return self.run_command(cmd, "Automated")
+            if action == 'api_check':
+                endpoint = config.get('endpoint', '/api/health')
+                return self.api_check(endpoint)
+            elif action == 'none':
+                # No automated action needed, human performs UI action
+                return True
             else:
-                print(f"{YELLOW}Unknown action: {action}{NC}")
-                return True  # Don't fail on unknown actions
+                # Unknown action type - just show what would happen
+                print(f"{CYAN}  Automated check: {action}{NC}")
+                details = config.get('details', '')
+                if details:
+                    print(f"  {details}")
+                return True
         except Exception as e:
-            self.print_error(f"Browser action failed: {e}")
+            self.print_error(f"Automated check failed: {e}")
             return False
     
-    def browser_login(self, url: str, credentials: Dict) -> bool:
-        """Perform browser login."""
-        email = credentials.get('email', '')
-        password = credentials.get('password', '')
+    def api_check(self, endpoint: str) -> bool:
+        """Verify API endpoint responds correctly."""
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
-        full_url = base_url + url if url.startswith('/') else url
+        full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
         
-        print(f"  Navigating to {full_url}")
-        print(f"  Logging in as {email}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating login action for now]{NC}")
-        return True
-    
-    def browser_navigate(self, url: str) -> bool:
-        """Navigate to a URL."""
-        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
-        full_url = base_url + url if url.startswith('/') else url
+        print(f"  Checking API: {full_url}")
         
-        print(f"  Navigating to {full_url}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating navigation for now]{NC}")
-        return True
-    
-    def browser_logout(self) -> bool:
-        """Perform browser logout."""
-        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
-        logout_url = base_url + '/logout'
-        
-        print(f"  Logging out via {logout_url}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating logout for now]{NC}")
-        return True
-    
-    def browser_click(self, config: Dict) -> bool:
-        """Click an element."""
-        element = config.get('element', '')
-        
-        print(f"  Clicking {element}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating click for now]{NC}")
-        return True
-    
-    def browser_select(self, config: Dict) -> bool:
-        """Select an option from dropdown."""
-        element = config.get('element', '')
-        value = config.get('value', '')
-        
-        print(f"  Selecting '{value}' in {element}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating selection for now]{NC}")
-        return True
-    
-    def browser_fill_assessment(self, config: Dict) -> bool:
-        """Fill out assessment form."""
-        course = config.get('course', '')
-        
-        print(f"  Filling assessment form for {course}")
-        print(f"{YELLOW}  [Browser automation requires AI tool access]{NC}")
-        print(f"{YELLOW}  [Simulating form fill for now]{NC}")
-        return True
+        import urllib.request
+        try:
+            response = urllib.request.urlopen(full_url)
+            if response.status == 200:
+                print(f"{GREEN}  ✓ API responded: 200 OK{NC}")
+                return True
+            else:
+                print(f"{RED}  ✗ API returned: {response.status}{NC}")
+                return False
+        except Exception as e:
+            print(f"{RED}  ✗ API check failed: {e}{NC}")
+            return False
     
     def collect_artifacts(self, artifacts: Dict, step_num: int):
         """Collect screenshots and logs for this step."""

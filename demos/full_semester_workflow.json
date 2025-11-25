@@ -72,7 +72,7 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with the admin credentials provided below.",
         "automated": {
-          "action": "browser_login",
+          "action": "none",
           "url": "/login",
           "credentials": {
             "email": "demo2025.admin@example.com",
@@ -122,11 +122,8 @@
       "instructions": {
         "human": "1. Click 'Programs' in the navigation or dashboard\n2. Find 'Biological Sciences' in the table\n3. Click the Edit button (pencil icon)\n4. Change description to: 'Primary focus for Fall 2024 Accreditation Cycle.'\n5. Click Save",
         "automated": {
-          "action": "browser_edit_program",
-          "program_name": "Biological Sciences",
-          "updates": {
-            "description": "Primary focus for Fall 2024 Accreditation Cycle."
-          }
+          "action": "none",
+          "details": "Human performs UI edit, verification happens in post_commands"
         }
       },
       "urls": [
@@ -170,7 +167,7 @@
       "instructions": {
         "human": "Click 'Courses' in the navigation menu or dashboard to view the course listing.",
         "automated": {
-          "action": "browser_navigate",
+          "action": "none",
           "url": "/courses"
         }
       },
@@ -212,7 +209,7 @@
       "instructions": {
         "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-V2'\n   - Keep title and description\n   - In Programs dropdown, select BOTH 'Biological Sciences' AND 'Nursing' (multi-program attachment)\n4. Click 'Duplicate' button\n5. Verify 'BIOL-101-V2' appears in the course list",
         "automated": {
-          "action": "browser_duplicate_course",
+          "action": "none",
           "source_course": "BIOL-101",
           "new_course_number": "BIOL-101-V2",
           "programs": ["Biological Sciences", "Nursing"]
@@ -259,7 +256,7 @@
       "instructions": {
         "human": "Click the user dropdown in the header and select 'Logout'.",
         "automated": {
-          "action": "browser_logout"
+          "action": "none"
         }
       },
       "urls": [
@@ -300,7 +297,7 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with Dr. Morgan's credentials.",
         "automated": {
-          "action": "browser_login",
+          "action": "none",
           "url": "/login",
           "credentials": {
             "email": "dr.morgan@demo.example.com",
@@ -343,7 +340,7 @@
       "instructions": {
         "human": "Click 'Assessments' in the navigation menu to access the course assessment form.",
         "automated": {
-          "action": "browser_navigate",
+          "action": "none",
           "url": "/assessments"
         }
       },
@@ -385,7 +382,7 @@
       "instructions": {
         "human": "1. Select 'Fall 2024 - BIOL-101 - Section 001' from the course dropdown\n2. Fill in the following:\n   - Students Passed (A/B/C): 20\n   - Students D/F/Incomplete: 5\n   - What Went Well: 'Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques.'\n3. Click 'Save Course Data'\n4. Verify success message appears at bottom of page",
         "automated": {
-          "action": "browser_fill_assessment",
+          "action": "none",
           "course": "BIOL-101",
           "section": "001",
           "data": {
@@ -432,7 +429,7 @@
       "instructions": {
         "human": "Click the user dropdown and select 'Logout'.",
         "automated": {
-          "action": "browser_logout"
+          "action": "none"
         }
       },
       "urls": [
@@ -502,7 +499,7 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with admin credentials.",
         "automated": {
-          "action": "browser_login",
+          "action": "none",
           "url": "/login",
           "credentials": {
             "email": "demo2025.admin@example.com",
@@ -544,7 +541,7 @@
       "instructions": {
         "human": "Click 'CLO Audit' in the navigation menu to access the audit dashboard.",
         "automated": {
-          "action": "browser_navigate",
+          "action": "none",
           "url": "/audit-clo"
         }
       },
@@ -581,7 +578,7 @@
       "instructions": {
         "human": "1. In the Status filter dropdown, select 'Awaiting Approval'\n2. Table updates to show only CLOs awaiting approval (should be 2 CLOs)",
         "automated": {
-          "action": "browser_select",
+          "action": "none",
           "element": "statusFilter",
           "value": "awaiting_approval"
         }
@@ -614,7 +611,7 @@
       "instructions": {
         "human": "1. Click 'View' button on the first CLO in the 'Awaiting Approval' section\n2. Review the CLO details modal:\n   - Course information\n   - CLO description\n   - Assessment data\n   - Student performance metrics\n3. Note the action buttons: Approve, Request Rework, Mark as NCI, Close",
         "automated": {
-          "action": "browser_click",
+          "action": "none",
           "element": "view_clo_button",
           "index": 0
         }
@@ -645,7 +642,7 @@
       "instructions": {
         "human": "1. Close the CLO details modal if still open\n2. Click the 'Export Current View' button\n3. A CSV file will download automatically\n4. The CSV contains columns: Course, CLO Number, Description, Status, Instructor, Last Modified",
         "automated": {
-          "action": "browser_click",
+          "action": "none",
           "element": "exportCsvBtn"
         }
       },
@@ -676,7 +673,7 @@
       "instructions": {
         "human": "1. Change the Status filter to 'All Statuses'\n2. Observe all 5 CLOs now visible:\n   - 2 Awaiting Approval\n   - 1 Approved\n   - 1 Needs Rework\n   - 1 Never Coming In",
         "automated": {
-          "action": "browser_select",
+          "action": "none",
           "element": "statusFilter",
           "value": ""
         }
@@ -709,7 +706,7 @@
       "instructions": {
         "human": "1. Navigate back to the Dashboard\n2. Observe the 'Assessment Progress' panel\n3. Note the CLO approval statistics reflect the audit state:\n   - Approved count\n   - Pending count\n   - Needs Rework count\n   - NCI count",
         "automated": {
-          "action": "browser_navigate",
+          "action": "none",
           "url": "/dashboard"
         }
       },
