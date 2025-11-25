@@ -381,6 +381,19 @@ class DemoRunner:
         
         return True
     
+    def substitute_variables(self, text: str) -> str:
+        """Replace {{variable}} placeholders with context values."""
+        import re
+        pattern = r'\{\{(\w+)\}\}'
+        
+        def replace_var(match):
+            var_name = match.group(1)
+            if var_name in self.context_vars:
+                return self.context_vars[var_name]
+            return match.group(0)  # Return original if not found
+        
+        return re.sub(pattern, replace_var, text)
+    
     def execute_browser_action(self, action: str, config: Dict) -> bool:
         """Execute an automated action via API (when --auto) or skip (human does UI)."""
         try:
@@ -454,7 +467,7 @@ class DemoRunner:
     
     def api_put(self, config: Dict) -> bool:
         """Make a PUT API call."""
-        endpoint = config.get('endpoint', '')
+        endpoint = self.substitute_variables(config.get('endpoint', ''))
         data = config.get('data', {})
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
         full_url = base_url + endpoint if endpoint.startswith('/') else endpoint

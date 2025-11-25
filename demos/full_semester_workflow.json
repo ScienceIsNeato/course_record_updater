@@ -114,16 +114,23 @@
       "purpose": "Update program metadata to align with current accreditation cycle",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id, name, description FROM programs WHERE name='Biological Sciences' LIMIT 1\"",
-          "purpose": "Get current Biology program data",
-          "expected_output_contains": "Biological Sciences"
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE name='Biological Sciences' LIMIT 1\"",
+          "purpose": "Get Biology program ID",
+          "expected_output_contains": "-",
+          "capture_as": "program_id"
         }
       ],
       "instructions": {
         "human": "1. Click 'Programs' in the navigation or dashboard\n2. Find 'Biological Sciences' in the table\n3. Click the Edit button (pencil icon)\n4. Change description to: 'Primary focus for Fall 2024 Accreditation Cycle.'\n5. Click Save",
         "automated": {
-          "action": "none",
-          "details": "Human performs UI edit, verification happens in post_commands"
+          "action": "api_put",
+          "endpoint": "/api/management/programs/{{program_id}}",
+          "data": {
+            "description": "Primary focus for Fall 2024 Accreditation Cycle."
+          },
+          "description": "Update program description via API",
+          "capture_id_from_pre_command": 0,
+          "id_variable": "program_id"
         }
       },
       "urls": [
