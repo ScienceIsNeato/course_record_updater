@@ -54,6 +54,7 @@ class DemoRunner:
         self.context_vars = {}  # For variable substitution like {{course_id}}
         self.session = requests.Session()  # For maintaining auth cookies
         self.csrf_token = None  # CSRF token for API calls
+        self.errors = []  # Track all errors encountered during demo
         
     def load_demo(self) -> bool:
         """Load and parse the demo JSON file."""
@@ -179,7 +180,16 @@ class DemoRunner:
         
         # Demo complete
         self.print_header("Demo Complete!")
-        print(f"{GREEN}You've successfully completed the demo.{NC}\n")
+        
+        # Show error summary if any errors occurred
+        if self.errors:
+            print(f"{RED}{BOLD}❌ Error Summary:{NC}")
+            print(f"{RED}The following errors occurred during the demo:{NC}\n")
+            for i, error in enumerate(self.errors, 1):
+                print(f"{RED}  {i}. {error}{NC}")
+            print()
+        else:
+            print(f"{GREEN}✅ All steps completed successfully!{NC}\n")
         
         # Show talking points
         talking_points = self.demo_data.get('talking_points', [])
@@ -198,6 +208,8 @@ class DemoRunner:
         phase = step.get('phase', '')
         name = step.get('name', 'Unnamed Step')
         purpose = step.get('purpose', '')
+        
+        self.current_step = step_num  # Track for error reporting
         
         self.print_step(step_num, total_steps, phase, name)
         print(f"{CYAN}📋 Purpose:{NC} {purpose}\n")
@@ -327,6 +339,55 @@ class DemoRunner:
         print()
         return True
     
+    def show_manual_steps(self, action: str, automated: Dict, human_text: str):
+        """Show the manual UI steps equivalent to the automated action."""
+        print(f"{CYAN}📋 Equivalent Manual Execution Steps:{NC}")
+        
+        if action == 'api_post' and '/auth/login' in automated.get('endpoint', ''):
+            email = automated.get('data', {}).get('email', '')
+            print(f"  1. Navigate to http://localhost:3001/login")
+            print(f"  2. Enter email: {email}")
+            print(f"  3. Enter password: [from demo credentials]")
+            print(f"  4. Click 'Login' button")
+        elif action == 'api_post' and '/auth/logout' in automated.get('endpoint', ''):
+            print(f"  1. Click user dropdown in header")
+            print(f"  2. Click 'Logout'")
+        elif action == 'api_put' and '/programs/' in automated.get('endpoint', ''):
+            desc = automated.get('data', {}).get('description', '')
+            print(f"  1. Navigate to Programs page")
+            print(f"  2. Find 'Biological Sciences' in table")
+            print(f"  3. Click Edit button (pencil icon)")
+            print(f"  4. Change description to: \"{desc}\"")
+            print(f"  5. Click Save")
+        elif action == 'api_post' and '/duplicate' in automated.get('endpoint', ''):
+            new_number = automated.get('data', {}).get('new_course_number', '')
+            print(f"  1. Navigate to Courses page")
+            print(f"  2. Find BIOL-101 in table")
+            print(f"  3. Click Duplicate button (copy icon)")
+            print(f"  4. Change course number to: {new_number}")
+            print(f"  5. Select programs in dropdown")
+            print(f"  6. Click 'Duplicate' button")
+        elif action == 'api_put' and '/sections/' in automated.get('endpoint', ''):
+            data = automated.get('data', {})
+            print(f"  1. Navigate to Assessments page")
+            print(f"  2. Select course from dropdown")
+            print(f"  3. Fill in Students Passed: {data.get('students_passed', '')}")
+            print(f"  4. Fill in Students D/F/IC: {data.get('students_dfic', '')}")
+            print(f"  5. Fill in narrative: \"{data.get('narrative_celebrations', '')[:50]}...\"")
+            print(f"  6. Click 'Save Course Data'")
+        elif action == 'run_command':
+            cmd = automated.get('command', '')
+            print(f"  This is a background script, no manual UI equivalent")
+            print(f"  Script: {cmd}")
+        elif human_text:
+            # Fall back to human instructions if available
+            for line in human_text.split('\n')[:3]:  # Show first 3 lines
+                if line.strip():
+                    print(f"  {line.strip()}")
+        else:
+            print(f"  [No manual steps needed - navigation only]")
+        print()
+    
     def handle_instructions(self, step: Dict) -> bool:
         """Handle step instructions (human or automated)."""
         instructions = step.get('instructions', {})
@@ -334,11 +395,15 @@ class DemoRunner:
         inputs = step.get('inputs', {})
         expected_results = step.get('expected_results', [])
         
+        automated = instructions.get('automated', {})
+        action = automated.get('action', '')
+        
+        # Always show manual steps (for reference and documentation)
+        if action and action != 'none':
+            self.show_manual_steps(action, automated, instructions.get('human', ''))
+        
         if self.auto_mode:
             # Automated mode: execute automated action
-            automated = instructions.get('automated', {})
-            action = automated.get('action', '')
-            
             if action and action != 'none':
                 print(f"{CYAN}🤖 Automated Action:{NC} {action}")
                 if self.verify_only:
@@ -493,10 +558,9 @@ class DemoRunner:
         if config.get('description'):
             print(f"  {config['description']}")
         
-        # Debug: Show what we're actually sending
-        if self.context_vars:
-            print(f"  {YELLOW}Debug - Context vars: {list(self.context_vars.keys())}{NC}")
-            print(f"  {YELLOW}Debug - Substituted data: {substituted_data}{NC}")
+        # Show payload data (skip for login to avoid showing passwords)
+        if substituted_data and 'password' not in substituted_data:
+            print(f"  {CYAN}Payload: {json.dumps(substituted_data, indent=2)}{NC}")
         
         try:
             # Get CSRF token and add to headers
@@ -509,11 +573,15 @@ class DemoRunner:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
                 return True
             else:
+                error_msg = f"Step {self.current_step}: POST {endpoint} failed ({response.status_code})"
+                self.errors.append(error_msg)
                 print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
                 if response.text:
                     print(f"{RED}  Error: {response.text[:200]}{NC}")
                 return False
         except Exception as e:
+            error_msg = f"Step {self.current_step}: POST {endpoint} exception: {e}"
+            self.errors.append(error_msg)
             print(f"{RED}  ✗ API call failed: {e}{NC}")
             return False
     
@@ -539,6 +607,10 @@ class DemoRunner:
         if config.get('description'):
             print(f"  {config['description']}")
         
+        # Show payload data
+        if substituted_data:
+            print(f"  {CYAN}Payload: {json.dumps(substituted_data, indent=2)}{NC}")
+        
         try:
             # Get CSRF token and add to headers
             csrf_token = self.get_csrf_token()
@@ -550,11 +622,15 @@ class DemoRunner:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
                 return True
             else:
+                error_msg = f"Step {self.current_step}: PUT {endpoint} failed ({response.status_code})"
+                self.errors.append(error_msg)
                 print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
                 if response.text:
                     print(f"{RED}  Error: {response.text[:200]}{NC}")
                 return False
         except Exception as e:
+            error_msg = f"Step {self.current_step}: PUT {endpoint} exception: {e}"
+            self.errors.append(error_msg)
             print(f"{RED}  ✗ API call failed: {e}{NC}")
             return False
     
@@ -584,15 +660,10 @@ class DemoRunner:
             return False
     
     def collect_artifacts(self, artifacts: Dict, step_num: int):
-        """Collect screenshots and logs for this step."""
-        if self.verify_only:
-            return
-        
-        screenshots = artifacts.get('screenshots', [])
-        if screenshots:
-            print(f"{CYAN}📸 Artifacts to capture:{NC} {', '.join(screenshots)}")
-            # TODO: Implement actual screenshot capture
-            print(f"{YELLOW}[Screenshot capture would happen here]{NC}\n")
+        """Collect logs for this step (screenshots removed - not needed)."""
+        # Artifacts are now just for tracking purposes in JSON
+        # Actual log files are written by the application itself
+        pass
     
     def run_command(self, cmd: str, label: str = "Command") -> bool:
         """Run a shell command and return success status."""
