@@ -249,7 +249,7 @@
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT course_number, title FROM courses WHERE course_number='BIOL-101-V2'\"",
+          "command": "sqlite3 course_records_dev.db \"SELECT course_number, course_title FROM courses WHERE course_number='BIOL-101-V2'\"",
           "purpose": "Verify duplicated course exists",
           "expected_output_contains": "BIOL-101-V2"
         },

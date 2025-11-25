@@ -257,6 +257,8 @@ class DemoRunner:
             
             result = self.run_command_with_capture(cmd)
             if result is None:
+                error_msg = f"Step {self.current_step}: Pre-command failed: {cmd}"
+                self.errors.append(error_msg)
                 self.print_error(f"Command failed: {cmd}")
                 if self.fail_fast:
                     return False
@@ -272,10 +274,14 @@ class DemoRunner:
             
             # Verify output
             if expected and output != expected:
+                error_msg = f"Step {self.current_step}: Pre-command verification failed - Expected '{expected}', got '{output[:50]}...'"
+                self.errors.append(error_msg)
                 self.print_error(f"Expected: {expected}, Got: {output}")
                 if self.fail_fast:
                     return False
             elif expected_contains and expected_contains not in output:
+                error_msg = f"Step {self.current_step}: Pre-command verification failed - Expected output to contain '{expected_contains}'"
+                self.errors.append(error_msg)
                 self.print_error(f"Expected output to contain: {expected_contains}")
                 if self.fail_fast:
                     return False
@@ -306,6 +312,8 @@ class DemoRunner:
             
             result = self.run_command_with_capture(cmd)
             if result is None:
+                error_msg = f"Step {self.current_step}: Verification command failed: {cmd}"
+                self.errors.append(error_msg)
                 self.print_error(f"Verification command failed: {cmd}")
                 if self.fail_fast:
                     return False
@@ -320,6 +328,8 @@ class DemoRunner:
                 if output == expected:
                     print(f"    {GREEN}✅ PASS{NC}")
                 else:
+                    error_msg = f"Step {self.current_step}: Verification failed - Expected '{expected}', got '{output[:50]}...'"
+                    self.errors.append(error_msg)
                     print(f"    {RED}✗ FAIL{NC}")
                     if self.fail_fast:
                         return False
@@ -329,6 +339,8 @@ class DemoRunner:
                 if expected_contains in output:
                     print(f"    {GREEN}✅ PASS{NC}")
                 else:
+                    error_msg = f"Step {self.current_step}: Verification failed - Expected output to contain '{expected_contains}'"
+                    self.errors.append(error_msg)
                     print(f"    {RED}✗ FAIL{NC}")
                     if self.fail_fast:
                         return False
