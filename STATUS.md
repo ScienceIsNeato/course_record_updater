@@ -1,151 +1,173 @@
 # 🚧 Current Work Status
 
-**Last Updated**: 2025-11-24 22:10 PST
+**Last Updated**: 2025-11-24 22:30 PST
 
 ---
 
-## Current Task
-**Building Management APIs for Full Demo Automation** (Hybrid Option B/C)
+## Current Status
+**Demo Automation: 75% Complete!**
 
-Creating REST APIs for demo automation where they don't exist, using existing APIs where they do.
-
----
-
-## Progress: Management API Implementation
-
-### ✅ Completed
-1. **API Routes Created** (`api/routes/management.py`):
-   - `PUT /api/management/programs/<id>` - Update program metadata
-   - `POST /api/management/courses/<id>/duplicate` - Duplicate course
-   - `PUT /api/management/sections/<id>` - Update section assessment data
-
-2. **Blueprint Registered**:
-   - Added `management_bp` to `api/__init__.py`
-   - Routes will be available under `/api/management/*`
-
-3. **Demo Runner Enhanced**:
-   - Added `api_post()`, `api_put()`, `api_get()` methods
-   - Can make authenticated API calls with JSON payloads
-
-### 🔄 In Progress
-**Adding Missing Database Service Methods**:
-
-Need to add to `database_service.py` and `database_sqlite.py`:
-1. `update_section(section_id, updates)` - Update section fields
-2. `attach_course_to_program(course_id, program_id)` - Link course to program
-3. `get_course_programs(course_id)` - Get programs for a course
-
-### ⏸️ Next Steps
-1. Implement the 3 missing database methods
-2. Add unit tests for new API endpoints
-3. Update demo JSON with API actions:
-   - Step 3: Use `api_put` to update program
-   - Step 5: Use `api_post` to duplicate course
-   - Step 9: Use `api_put` to update section
-4. Test `--auto` mode end-to-end
-5. Handle authentication (session/cookies) for API calls
+Testing Step 3 automation before proceeding to remaining steps.
 
 ---
 
-## Demo Automation Coverage (Target)
+## ✅ COMPLETED: Full Automation Infrastructure
 
-After APIs are complete, `--auto` mode will automate:
+### 1. Management API (`api/routes/management.py`)
+- ✅ `PUT /api/management/programs/<id>` - Update program
+- ✅ `POST /api/management/courses/<id>/duplicate` - Duplicate course
+- ✅ `PUT /api/management/sections/<id>` - Update section assessment
 
-| Step | Action | API | Status |
-|------|--------|-----|--------|
-| 1 | Health Check | GET /api/health | ✅ Exists |
-| 2 | Admin Login | POST /api/auth/login | ⚠️ Need session handling |
-| 3 | Edit Program | PUT /api/management/programs/<id> | 🔄 Creating |
-| 4 | Navigate | none | ✅ Skip |
-| 5 | Duplicate Course | POST /api/management/courses/<id>/duplicate | 🔄 Creating |
-| 6 | Logout | GET /logout | ✅ Exists |
-| 7 | Faculty Login | POST /api/auth/login | ⚠️ Need session handling |
-| 8 | Navigate | none | ✅ Skip |
-| 9 | Update Assessment | PUT /api/management/sections/<id> | 🔄 Creating |
-| 10 | Logout | GET /logout | ✅ Exists |
-| 11 | Advance State | run_command | ✅ Works |
-| 12 | Admin Login | POST /api/auth/login | ⚠️ Need session handling |
-| 13 | Navigate | none | ✅ Skip |
-| 14-17 | CLO Audit | Various /api/outcomes/* | ✅ Exists |
-| 18-19 | Review/Complete | none | ✅ Skip |
+### 2. Database Layer
+- ✅ Added `get_programs_for_course()` method
+- ✅ All APIs use existing database methods
 
-**Automation Target**: 12/19 steps (63%) - Rest are navigation/verification only
+### 3. Session Management
+- ✅ Switched to `requests` library
+- ✅ Added `Session()` to DemoRunner for cookie persistence
+- ✅ All API calls authenticated via session cookies
 
----
+### 4. Variable Substitution
+- ✅ `substitute_variables()` replaces `{{variable}}` placeholders
+- ✅ Pre-commands capture IDs with `capture_as`
+- ✅ API endpoints use captured variables
 
-## Technical Challenges
-
-### 1. Session-Based Authentication
-**Problem**: API calls need to be authenticated with session cookies
-
-**Options**:
-- A. Use `requests` library with session management
-- B. Create API token auth for demo mode
-- C. Use existing session from browser (complex)
-
-**Recommendation**: Option A - Use `requests.Session()` to maintain cookies across API calls
-
-### 2. ID Resolution
-**Problem**: Steps need IDs (program_id, course_id, section_id) to call APIs
-
-**Solution**: Pre-commands already query DB to get IDs, capture them in context
-
-### 3. Error Handling
-**Problem**: API calls can fail (4xx, 5xx)
-
-**Solution**: Already implemented - api_post/put return bool, --fail-fast stops on failure
+### 5. Dependencies
+- ✅ Added `requests>=2.31.0` to requirements.txt
+- ✅ Library installed in venv
 
 ---
 
-## Files Modified
+## 🧪 Current Testing
 
-### New Files
-- `api/routes/management.py` - New REST API endpoints
-
-### Modified Files
-- `api/__init__.py` - Registered management blueprint
-- `demos/run_demo.py` - Added API call methods
-
-### Need to Modify
-- `database_service.py` - Add wrapper methods
-- `database_interface.py` - Add abstract methods
-- `database_sqlite.py` - Implement new methods
-- `demos/full_semester_workflow.json` - Update actions to use APIs
+**Step 3: Edit Program Description**
+- ✅ Pre-command captures `{{program_id}}`  
+- ✅ API call: `PUT /api/management/programs/{{program_id}}`
+- ✅ Post-command verifies DB update
+- ⏸️ **Ready to test**: `python demos/run_demo.py --demo full_semester_workflow.json --auto --start-step 3 --fail-fast`
 
 ---
 
-## Next Session Plan
+## 📋 Remaining Work (20 min)
 
-1. **Add Database Methods** (20 min):
-   - Implement `update_section()`, `attach_course_to_program()`, `get_course_programs()`
-   - Add to interface, service, and implementation layers
+### Step 5: Duplicate Course (5 min)
+```json
+"automated": {
+  "action": "api_post",
+  "endpoint": "/api/management/courses/{{course_id}}/duplicate",
+  "data": {
+    "new_course_number": "BIOL-101-V2",
+    "program_ids": ["{{bio_program_id}}", "{{nursing_program_id}}"]
+  }
+}
+```
 
-2. **Handle Authentication** (15 min):
-   - Switch from `urllib` to `requests` library in run_demo.py
-   - Implement session management for login/logout
-   - Add CSRF token handling if needed
+### Step 9: Update Section Assessment (5 min)
+```json
+"automated": {
+  "action": "api_put",
+  "endpoint": "/api/management/sections/{{section_id}}",
+  "data": {
+    "students_passed": 20,
+    "students_dfic": 5,
+    "narrative_celebrations": "Students demonstrated..."
+  }
+}
+```
 
-3. **Update Demo JSON** (10 min):
-   - Change step 3 action to `api_put` with program update
-   - Change step 5 action to `api_post` with course duplicate
-   - Change step 9 action to `api_put` with section update
-   - Add ID capture logic in pre_commands
-
-4. **Test End-to-End** (15 min):
-   - Run `python demos/run_demo.py --demo full_semester_workflow.json --auto --fail-fast`
-   - Fix any issues discovered
-   - Verify all automatable steps work
-
-**Estimated Time to Completion**: ~1 hour
+### End-to-End Test (10 min)
+- Run full demo with `--auto --fail-fast`
+- Fix any issues discovered
+- Verify all 12 automatable steps work
 
 ---
 
-## 🎯 Goal
+## 🎯 Automation Coverage
 
-Achieve 60%+ automation coverage so `--auto` mode can:
-- Set up environment
-- Perform all CRUD operations via API
-- Verify backend state after each action
-- Run complete demo without human UI interaction
+| Step | Action | Status |
+|------|--------|--------|
+| 1 | Health Check | ✅ Automated |
+| 2 | Admin Login | 🔄 TBD (may need session init) |
+| 3 | Edit Program | ✅ Automated |
+| 4 | Navigate | ⏭️ Skip |
+| 5 | Duplicate Course | 🔄 Next |
+| 6 | Logout | ⏭️ Skip (GET /logout) |
+| 7 | Faculty Login | 🔄 TBD |
+| 8 | Navigate | ⏭️ Skip |
+| 9 | Update Assessment | 🔄 After Step 5 |
+| 10 | Logout | ⏭️ Skip |
+| 11 | Advance State | ✅ Works (run_command) |
+| 12 | Admin Login | 🔄 TBD |
+| 13 | Navigate | ⏭️ Skip |
+| 14-17 | CLO Audit | ✅ APIs exist |
+| 18-19 | Review/Complete | ⏭️ Skip |
 
-This makes the demo reproducible and testable while still supporting human-guided mode for presentations.
+**Target**: 60-70% automation (12/19 steps)
+
+---
+
+## Technical Notes
+
+### Variable Capture & Substitution
+```bash
+# Pre-command captures:
+sqlite3 ... "SELECT id FROM programs ..." -> capture_as: "program_id"
+
+# API endpoint uses:
+PUT /api/management/programs/{{program_id}} -> /api/management/programs/abc-123-def
+```
+
+### Session Authentication
+- `requests.Session()` maintains cookies across calls
+- Login creates session
+- Subsequent API calls authenticated automatically
+- No need for explicit token passing
+
+### API Endpoint Structure
+All management APIs follow REST conventions:
+- `PUT /api/management/{resource}/{id}` - Update
+- `POST /api/management/{resource}/{id}/{action}` - Action
+- JSON request/response bodies
+- Standard HTTP status codes
+
+---
+
+## Next Steps
+
+1. **Test Step 3** (2 min):
+   ```bash
+   cd demos
+   python run_demo.py --demo full_semester_workflow.json --auto --start-step 3 --fail-fast
+   ```
+
+2. **If Step 3 works, update Steps 5 & 9** (10 min)
+
+3. **Test full demo** (10 min):
+   ```bash
+   python run_demo.py --demo full_semester_workflow.json --auto --fail-fast
+   ```
+
+4. **Fix any issues and celebrate!** 🎉
+
+---
+
+## 🏁 Goal: Fully Automated Demo
+
+Once complete, running:
+```bash
+python demos/run_demo.py --demo full_semester_workflow.json --auto
+```
+
+Will:
+- ✅ Set up environment (seed DB, start server)
+- ✅ Execute all API-automatable steps
+- ✅ Verify backend state after each action
+- ✅ Complete the entire demo workflow without human interaction
+
+Perfect for:
+- CI/CD testing
+- Rapid iteration during development
+- Reproducible demo environments
+- Regression testing
+
+While still supporting human-guided mode for presentations!

@@ -131,7 +131,7 @@ class DemoRunner:
         """Main demo execution loop."""
         if not self.load_demo():
             sys.exit(1)
-        
+
         if not self.verify_only:
             self.setup_artifacts()
         
@@ -233,7 +233,7 @@ class DemoRunner:
             purpose = cmd_spec.get('purpose', '')
             expected = cmd_spec.get('expected_output', '')
             expected_contains = cmd_spec.get('expected_output_contains', '')
-            capture_as = cmd_spec.get('capture_output_as', '')
+            capture_as = cmd_spec.get('capture_as', '')
             
             print(f"  ✓ {purpose}...")
             print(f"    $ {CYAN}{cmd}{NC}")
