@@ -357,9 +357,10 @@ class DemoRunner:
         
         if action == 'api_post' and '/auth/login' in automated.get('endpoint', ''):
             email = automated.get('data', {}).get('email', '')
+            password = automated.get('data', {}).get('password', '')
             print(f"  1. Navigate to http://localhost:3001/login")
             print(f"  2. Enter email: {email}")
-            print(f"  3. Enter password: [from demo credentials]")
+            print(f"  3. Enter password: {password}")
             print(f"  4. Click 'Login' button")
         elif action == 'api_post' and '/auth/logout' in automated.get('endpoint', ''):
             print(f"  1. Click user dropdown in header")
@@ -426,15 +427,7 @@ class DemoRunner:
                         if self.fail_fast:
                             return False
         else:
-            # Human mode: show instructions
-            human_instructions = instructions.get('human', '')
-            if human_instructions:
-                print(f"{CYAN}📖 Instructions:{NC}")
-                for line in human_instructions.split('\n'):
-                    print(f"  {line}")
-                print()
-            
-            # Show clickable URLs
+            # Human mode: show clickable URLs
             if urls:
                 print(f"{CYAN}🔗 Quick Links:{NC}")
                 for url_spec in urls:
