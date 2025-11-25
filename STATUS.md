@@ -220,6 +220,7 @@ python run_demo.py --demo full_semester_workflow.json --auto
 1. **No Screenshot Noise** - Removed all "[Screenshot capture would happen here]" messages
 2. **Manual Steps Displayed** - Every API action shows exact UI equivalent ("Click this, enter that")
 3. **Payload Visibility** - PUT/POST requests show the actual JSON being sent (except passwords)
-4. **Error Summary** - Comprehensive error list at demo end, or "✅ All steps completed successfully!"
+4. **Error Summary** - Comprehensive error list at demo end (now tracking ALL error types!), or "✅ All steps completed successfully!"
+5. **Bug Fix** - Corrected SQL column name in Step 5 verification (`title` → `course_title`)
 
-**First Run Ready**: All feedback incorporated, tested end-to-end, documented with pre-run checklist.
+**First Run Status**: ✅ All 19 steps pass cleanly with `--auto`, error summary working, comprehensive docs available.
