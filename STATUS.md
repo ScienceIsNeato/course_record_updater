@@ -180,7 +180,7 @@ While still supporting human-guided mode for presentations!
 
 ---
 
-## 🎉 DEMO AUTOMATION COMPLETE! 
+## 🎉 DEMO AUTOMATION COMPLETE! (v1.1) 
 
 **ALL 19 STEPS TESTED & WORKING! 🚀**
 
@@ -215,3 +215,11 @@ python run_demo.py --demo full_semester_workflow.json --auto
 ```
 
 **Expected Result**: All 19 steps complete, 8 API actions succeed (200/201 status codes), demo finishes in ~2-3 minutes.
+
+### ✨ Latest Improvements (v1.1)
+1. **No Screenshot Noise** - Removed all "[Screenshot capture would happen here]" messages
+2. **Manual Steps Displayed** - Every API action shows exact UI equivalent ("Click this, enter that")
+3. **Payload Visibility** - PUT/POST requests show the actual JSON being sent (except passwords)
+4. **Error Summary** - Comprehensive error list at demo end, or "✅ All steps completed successfully!"
+
+**First Run Ready**: All feedback incorporated, tested end-to-end, documented with pre-run checklist.
