@@ -468,8 +468,19 @@ class DemoRunner:
     
     def api_post(self, config: Dict) -> bool:
         """Make a POST API call."""
-        endpoint = config.get('endpoint', '')
+        endpoint = self.substitute_variables(config.get('endpoint', ''))
         data = config.get('data', {})
+        
+        # Substitute variables in data values
+        substituted_data = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                substituted_data[key] = self.substitute_variables(value)
+            elif isinstance(value, list):
+                substituted_data[key] = [self.substitute_variables(v) if isinstance(v, str) else v for v in value]
+            else:
+                substituted_data[key] = value
+        
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
         full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
         
@@ -482,7 +493,7 @@ class DemoRunner:
             csrf_token = self.get_csrf_token()
             headers = {'X-CSRFToken': csrf_token} if csrf_token else {}
             
-            response = self.session.post(full_url, json=data, headers=headers)
+            response = self.session.post(full_url, json=substituted_data, headers=headers)
             
             if response.status_code in [200, 201]:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
@@ -500,6 +511,17 @@ class DemoRunner:
         """Make a PUT API call."""
         endpoint = self.substitute_variables(config.get('endpoint', ''))
         data = config.get('data', {})
+        
+        # Substitute variables in data values
+        substituted_data = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                substituted_data[key] = self.substitute_variables(value)
+            elif isinstance(value, list):
+                substituted_data[key] = [self.substitute_variables(v) if isinstance(v, str) else v for v in value]
+            else:
+                substituted_data[key] = value
+        
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
         full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
         
@@ -512,7 +534,7 @@ class DemoRunner:
             csrf_token = self.get_csrf_token()
             headers = {'X-CSRFToken': csrf_token} if csrf_token else {}
             
-            response = self.session.put(full_url, json=data, headers=headers)
+            response = self.session.put(full_url, json=substituted_data, headers=headers)
             
             if response.status_code == 200:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")

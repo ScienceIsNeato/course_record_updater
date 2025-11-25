@@ -72,12 +72,13 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with the admin credentials provided below.",
         "automated": {
-          "action": "none",
-          "url": "/login",
-          "credentials": {
+          "action": "api_post",
+          "endpoint": "/api/auth/login",
+          "data": {
             "email": "demo2025.admin@example.com",
             "password": "Demo2024!"
-          }
+          },
+          "description": "Login as admin"
         }
       },
       "urls": [
@@ -208,30 +209,44 @@
       "purpose": "Demonstrate course versioning and multi-program attachment",
       "pre_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id, course_number, course_title FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
-          "purpose": "Get source course details",
-          "expected_output_contains": "BIOL-101"
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
+          "purpose": "Get source course ID",
+          "expected_output_contains": "b2ace1ec",
+          "capture_output_as": "course_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE name='Biological Sciences' LIMIT 1\"",
+          "purpose": "Get Biological Sciences program ID",
+          "capture_output_as": "bio_program_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE name='Zoology' LIMIT 1\"",
+          "purpose": "Get Zoology program ID",
+          "capture_output_as": "zoo_program_id"
         }
       ],
       "instructions": {
-        "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-V2'\n   - Keep title and description\n   - In Programs dropdown, select BOTH 'Biological Sciences' AND 'Nursing' (multi-program attachment)\n4. Click 'Duplicate' button\n5. Verify 'BIOL-101-V2' appears in the course list",
+        "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-V2'\n   - Keep title and description\n   - In Programs dropdown, select BOTH 'Biological Sciences' AND 'Zoology' (multi-program attachment)\n4. Click 'Duplicate' button\n5. Verify 'BIOL-101-V2' appears in the course list",
         "automated": {
-          "action": "none",
-          "source_course": "BIOL-101",
-          "new_course_number": "BIOL-101-V2",
-          "programs": ["Biological Sciences", "Nursing"]
+          "action": "api_post",
+          "endpoint": "/api/management/courses/{{course_id}}/duplicate",
+          "data": {
+            "new_course_number": "BIOL-101-V2",
+            "program_ids": ["{{bio_program_id}}", "{{zoo_program_id}}"]
+          },
+          "description": "Duplicate BIOL-101 and attach to both programs"
         }
       },
       "urls": [],
       "inputs": {
         "source_course": "BIOL-101 Introduction to Biology",
         "new_course_number": "BIOL-101-V2",
-        "programs": ["Biological Sciences", "Nursing"]
+        "programs": ["Biological Sciences", "Zoology"]
       },
       "expected_results": [
         "Success toast appears ('Course duplicated successfully')",
         "BIOL-101-V2 appears in the course table",
-        "New course is attached to both Biological Sciences and Nursing programs"
+        "New course is attached to both Biological Sciences and Zoology programs"
       ],
       "post_commands": [
         {
