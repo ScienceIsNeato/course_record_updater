@@ -26,6 +26,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+try:
+    import requests
+except ImportError:
+    print("Error: requests library not found. Install with: pip install requests")
+    sys.exit(1)
+
 # ANSI color codes
 BLUE = '\033[0;34m'
 GREEN = '\033[0;32m'
@@ -46,6 +52,7 @@ class DemoRunner:
         self.demo_data = None
         self.artifact_dir = None
         self.context_vars = {}  # For variable substitution like {{course_id}}
+        self.session = requests.Session()  # For maintaining auth cookies
         
     def load_demo(self) -> bool:
         """Load and parse the demo JSON file."""
@@ -407,14 +414,13 @@ class DemoRunner:
         
         print(f"  Checking API: {full_url}")
         
-        import urllib.request
         try:
-            response = urllib.request.urlopen(full_url)
-            if response.status == 200:
+            response = self.session.get(full_url)
+            if response.status_code == 200:
                 print(f"{GREEN}  ✓ API responded: 200 OK{NC}")
                 return True
             else:
-                print(f"{RED}  ✗ API returned: {response.status}{NC}")
+                print(f"{RED}  ✗ API returned: {response.status_code}{NC}")
                 return False
         except Exception as e:
             print(f"{RED}  ✗ API check failed: {e}{NC}")
@@ -422,9 +428,6 @@ class DemoRunner:
     
     def api_post(self, config: Dict) -> bool:
         """Make a POST API call."""
-        import urllib.request
-        import json
-        
         endpoint = config.get('endpoint', '')
         data = config.get('data', {})
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
@@ -435,20 +438,15 @@ class DemoRunner:
             print(f"  {config['description']}")
         
         try:
-            request = urllib.request.Request(
-                full_url,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
-                method='POST'
-            )
-            response = urllib.request.urlopen(request)
-            result = json.loads(response.read().decode('utf-8'))
+            response = self.session.post(full_url, json=data)
             
-            if response.status in [200, 201]:
-                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+            if response.status_code in [200, 201]:
+                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
                 return True
             else:
-                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
+                if response.text:
+                    print(f"{RED}  Error: {response.text[:200]}{NC}")
                 return False
         except Exception as e:
             print(f"{RED}  ✗ API call failed: {e}{NC}")
@@ -456,9 +454,6 @@ class DemoRunner:
     
     def api_put(self, config: Dict) -> bool:
         """Make a PUT API call."""
-        import urllib.request
-        import json
-        
         endpoint = config.get('endpoint', '')
         data = config.get('data', {})
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
@@ -469,20 +464,15 @@ class DemoRunner:
             print(f"  {config['description']}")
         
         try:
-            request = urllib.request.Request(
-                full_url,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
-                method='PUT'
-            )
-            response = urllib.request.urlopen(request)
-            result = json.loads(response.read().decode('utf-8'))
+            response = self.session.put(full_url, json=data)
             
-            if response.status == 200:
-                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+            if response.status_code == 200:
+                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
                 return True
             else:
-                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
+                if response.text:
+                    print(f"{RED}  Error: {response.text[:200]}{NC}")
                 return False
         except Exception as e:
             print(f"{RED}  ✗ API call failed: {e}{NC}")
@@ -490,9 +480,6 @@ class DemoRunner:
     
     def api_get(self, config: Dict) -> bool:
         """Make a GET API call."""
-        import urllib.request
-        import json
-        
         endpoint = config.get('endpoint', '')
         base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
         full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
@@ -502,14 +489,15 @@ class DemoRunner:
             print(f"  {config['description']}")
         
         try:
-            response = urllib.request.urlopen(full_url)
-            result = json.loads(response.read().decode('utf-8'))
+            response = self.session.get(full_url)
             
-            if response.status == 200:
-                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+            if response.status_code == 200:
+                print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
                 return True
             else:
-                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                print(f"{RED}  ✗ Failed: {response.status_code}{NC}")
+                if response.text:
+                    print(f"{RED}  Error: {response.text[:200]}{NC}")
                 return False
         except Exception as e:
             print(f"{RED}  ✗ API call failed: {e}{NC}")

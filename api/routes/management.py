@@ -110,12 +110,12 @@ def duplicate_course(course_id: str) -> tuple[Dict[str, Any], int]:
         # Attach to programs if specified
         if program_ids:
             for program_id in program_ids:
-                db.attach_course_to_program(new_course_id, program_id)
+                db.add_course_to_program(new_course_id, program_id)
         else:
             # Copy program attachments from source course
-            source_programs = db.get_course_programs(course_id)
+            source_programs = db.get_programs_for_course(course_id)
             for program in source_programs:
-                db.attach_course_to_program(new_course_id, program["id"])
+                db.add_course_to_program(new_course_id, program["id"])
         
         logger.info(f"Course {logger.sanitize(course_id)} duplicated to {logger.sanitize(new_course_number)} via API")
         return jsonify({
@@ -171,7 +171,7 @@ def update_section(section_id: str) -> tuple[Dict[str, Any], int]:
             return jsonify({"success": False, "error": "No fields to update"}), 400
         
         # Perform update
-        success = db.update_section(section_id, updates)
+        success = db.update_course_section(section_id, updates)
         
         if success:
             logger.info(f"Section {logger.sanitize(section_id)} updated via API")

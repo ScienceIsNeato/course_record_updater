@@ -553,6 +553,11 @@ def get_courses_by_program(program_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_courses_by_program(program_id)
 
 
+def get_programs_for_course(course_id: str) -> List[Dict[str, Any]]:
+    """Get all programs that a course is attached to."""
+    return _db_service.get_programs_for_course(course_id)
+
+
 def get_unassigned_courses(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_unassigned_courses(institution_id)
 

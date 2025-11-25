@@ -1248,6 +1248,14 @@ class SQLiteDatabase(DatabaseInterface):
                 return []
             return [to_dict(course) for course in program.courses]
 
+    def get_programs_for_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all programs that a course is attached to."""
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            if not course:
+                return []
+            return [to_dict(program) for program in course.programs]
+
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
             courses = (

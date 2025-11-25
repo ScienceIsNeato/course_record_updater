@@ -370,6 +370,11 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_programs_for_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all programs that a course is attached to"""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
