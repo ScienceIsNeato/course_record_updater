@@ -375,23 +375,29 @@ class DemoRunner:
         return True
     
     def execute_browser_action(self, action: str, config: Dict) -> bool:
-        """Execute an automated verification action (API/DB checks, not UI automation)."""
+        """Execute an automated action via API (when --auto) or skip (human does UI)."""
         try:
             if action == 'api_check':
                 endpoint = config.get('endpoint', '/api/health')
                 return self.api_check(endpoint)
+            elif action == 'api_post':
+                return self.api_post(config)
+            elif action == 'api_put':
+                return self.api_put(config)
+            elif action == 'api_get':
+                return self.api_get(config)
             elif action == 'none':
                 # No automated action needed, human performs UI action
                 return True
             else:
                 # Unknown action type - just show what would happen
-                print(f"{CYAN}  Automated check: {action}{NC}")
+                print(f"{CYAN}  Automated action: {action}{NC}")
                 details = config.get('details', '')
                 if details:
                     print(f"  {details}")
                 return True
         except Exception as e:
-            self.print_error(f"Automated check failed: {e}")
+            self.print_error(f"Automated action failed: {e}")
             return False
     
     def api_check(self, endpoint: str) -> bool:
@@ -412,6 +418,101 @@ class DemoRunner:
                 return False
         except Exception as e:
             print(f"{RED}  ✗ API check failed: {e}{NC}")
+            return False
+    
+    def api_post(self, config: Dict) -> bool:
+        """Make a POST API call."""
+        import urllib.request
+        import json
+        
+        endpoint = config.get('endpoint', '')
+        data = config.get('data', {})
+        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
+        full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
+        
+        print(f"  POST {full_url}")
+        if config.get('description'):
+            print(f"  {config['description']}")
+        
+        try:
+            request = urllib.request.Request(
+                full_url,
+                data=json.dumps(data).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            response = urllib.request.urlopen(request)
+            result = json.loads(response.read().decode('utf-8'))
+            
+            if response.status in [200, 201]:
+                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+                return True
+            else:
+                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                return False
+        except Exception as e:
+            print(f"{RED}  ✗ API call failed: {e}{NC}")
+            return False
+    
+    def api_put(self, config: Dict) -> bool:
+        """Make a PUT API call."""
+        import urllib.request
+        import json
+        
+        endpoint = config.get('endpoint', '')
+        data = config.get('data', {})
+        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
+        full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
+        
+        print(f"  PUT {full_url}")
+        if config.get('description'):
+            print(f"  {config['description']}")
+        
+        try:
+            request = urllib.request.Request(
+                full_url,
+                data=json.dumps(data).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='PUT'
+            )
+            response = urllib.request.urlopen(request)
+            result = json.loads(response.read().decode('utf-8'))
+            
+            if response.status == 200:
+                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+                return True
+            else:
+                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                return False
+        except Exception as e:
+            print(f"{RED}  ✗ API call failed: {e}{NC}")
+            return False
+    
+    def api_get(self, config: Dict) -> bool:
+        """Make a GET API call."""
+        import urllib.request
+        import json
+        
+        endpoint = config.get('endpoint', '')
+        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
+        full_url = base_url + endpoint if endpoint.startswith('/') else endpoint
+        
+        print(f"  GET {full_url}")
+        if config.get('description'):
+            print(f"  {config['description']}")
+        
+        try:
+            response = urllib.request.urlopen(full_url)
+            result = json.loads(response.read().decode('utf-8'))
+            
+            if response.status == 200:
+                print(f"{GREEN}  ✓ Success: {response.status}{NC}")
+                return True
+            else:
+                print(f"{RED}  ✗ Failed: {response.status}{NC}")
+                return False
+        except Exception as e:
+            print(f"{RED}  ✗ API call failed: {e}{NC}")
             return False
     
     def collect_artifacts(self, artifacts: Dict, step_num: int):
