@@ -234,7 +234,7 @@ class DemoRunner:
             purpose = cmd_spec.get('purpose', '')
             expected = cmd_spec.get('expected_output', '')
             expected_contains = cmd_spec.get('expected_output_contains', '')
-            capture_as = cmd_spec.get('capture_as', '')
+            capture_as = cmd_spec.get('capture_output_as', '') or cmd_spec.get('capture_as', '')  # Support both keys
             
             print(f"  ✓ {purpose}...")
             print(f"    $ {CYAN}{cmd}{NC}")
@@ -487,6 +487,11 @@ class DemoRunner:
         print(f"  POST {full_url}")
         if config.get('description'):
             print(f"  {config['description']}")
+        
+        # Debug: Show what we're actually sending
+        if self.context_vars:
+            print(f"  {YELLOW}Debug - Context vars: {list(self.context_vars.keys())}{NC}")
+            print(f"  {YELLOW}Debug - Substituted data: {substituted_data}{NC}")
         
         try:
             # Get CSRF token and add to headers
