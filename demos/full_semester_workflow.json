@@ -11,8 +11,9 @@
     "Audit approvals instantly feed dashboard KPIs—closed loop"
   ],
   "environment": {
+    "working_directory": "/Users/pacey/Documents/SourceCode/course_record_updater",
     "setup_commands": [
-      "cd /Users/pacey/Documents/SourceCode/course_record_updater && source venv/bin/activate && source .envrc",
+      "source venv/bin/activate && source .envrc",
       "python scripts/seed_db.py --demo --clear --env dev",
       "./restart_server.sh dev"
     ],
@@ -43,7 +44,7 @@
         {
           "command": "curl -s http://localhost:3001/api/health 2>&1 | head -20",
           "purpose": "Verify server is responding",
-          "expected_output_contains": "ok"
+          "expected_output_contains": "healthy"
         }
       ],
       "verification": {

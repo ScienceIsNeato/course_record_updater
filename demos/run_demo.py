@@ -76,12 +76,15 @@ class DemoRunner:
     
     def run_setup(self) -> bool:
         """Run environment setup commands."""
-        setup_commands = self.demo_data.get('environment', {}).get('setup_commands', [])
+        env_config = self.demo_data.get('environment', {})
+        setup_commands = env_config.get('setup_commands', [])
+        working_dir = env_config.get('working_directory', os.getcwd())
         
         if not setup_commands:
             return True
         
         self.print_header("Environment Setup")
+        print(f"Working Directory: {CYAN}{working_dir}{NC}\n")
         print("The following commands will prepare the demo environment:\n")
         
         for i, cmd in enumerate(setup_commands, 1):
@@ -97,19 +100,25 @@ class DemoRunner:
             print(f"{YELLOW}[VERIFY-ONLY MODE] Skipping setup execution{NC}\n")
             return True
         
-        print()
-        for cmd in setup_commands:
-            if not self.run_command(cmd, "Setup"):
-                if not self.auto_mode:
-                    response = input(f"{YELLOW}Setup command failed. Continue anyway? (y/n): {NC}").strip().lower()
-                    if response != 'y':
-                        return False
-                else:
-                    if self.fail_fast:
-                        return False
-        
-        self.print_success("Setup complete!")
-        return True
+        # Change to working directory for setup
+        original_dir = os.getcwd()
+        try:
+            os.chdir(working_dir)
+            print()
+            for cmd in setup_commands:
+                if not self.run_command(cmd, "Setup"):
+                    if not self.auto_mode:
+                        response = input(f"{YELLOW}Setup command failed. Continue anyway? (y/n): {NC}").strip().lower()
+                        if response != 'y':
+                            return False
+                    else:
+                        if self.fail_fast:
+                            return False
+            
+            self.print_success("Setup complete!")
+            return True
+        finally:
+            os.chdir(original_dir)
     
     def run_demo(self):
         """Main demo execution loop."""
@@ -377,13 +386,18 @@ class DemoRunner:
     def run_command(self, cmd: str, label: str = "Command") -> bool:
         """Run a shell command and return success status."""
         print(f"{CYAN}Running: {cmd}{NC}")
+        
+        # Get working directory from environment config
+        working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
+        
         try:
             result = subprocess.run(
                 cmd,
                 shell=True,
                 check=True,
                 capture_output=False,
-                text=True
+                text=True,
+                cwd=working_dir
             )
             print(f"{GREEN}✓ Success{NC}\n")
             return True
@@ -393,13 +407,17 @@ class DemoRunner:
     
     def run_command_with_capture(self, cmd: str) -> Optional[str]:
         """Run a command and capture its output."""
+        # Get working directory from environment config
+        working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
+        
         try:
             result = subprocess.run(
                 cmd,
                 shell=True,
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
+                cwd=working_dir
             )
             return result.stdout
         except subprocess.CalledProcessError:
