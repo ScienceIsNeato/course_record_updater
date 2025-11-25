@@ -180,10 +180,14 @@ While still supporting human-guided mode for presentations!
 
 ---
 
-## 🎉 LATEST: CSRF & Authentication Working!
+## 🎉 LATEST: Steps 2, 3, 5 Fully Automated!
 
-**Steps 2-3 Fully Automated:**
-- ✅ Step 2 (Login): `api_post` to `/api/auth/login` - Working!
-- ✅ Step 3 (Edit Program): `api_put` with `{{program_id}}` substitution - Working!
+**WORKING:**
+- ✅ Step 2 (Login): `api_post` to `/api/auth/login` - 200 OK
+- ✅ Step 3 (Edit Program): `api_put` with `{{program_id}}` substitution - 200 OK + DB verified  
+- ✅ Step 5 (Duplicate Course): `api_post` with 3 variable substitutions - 201 Created!
+  - Variable capture fixed: `capture_output_as` now recognized
+  - Course duplicated: BIOL-101 → BIOL-101-V2
+  - Multi-program attachment: Both Bio Sciences & Zoology ✓
 
-**Next**: Debug Step 5 variable substitution, then automate Steps 6-19.
+**Next**: Add automated actions for Steps 6-19, then full end-to-end test!

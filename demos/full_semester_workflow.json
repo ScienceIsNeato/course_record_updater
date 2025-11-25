@@ -211,7 +211,6 @@
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
           "purpose": "Get source course ID",
-          "expected_output_contains": "b2ace1ec",
           "capture_output_as": "course_id"
         },
         {
@@ -278,7 +277,10 @@
       "instructions": {
         "human": "Click the user dropdown in the header and select 'Logout'.",
         "automated": {
-          "action": "none"
+          "action": "api_post",
+          "endpoint": "/api/auth/logout",
+          "data": {},
+          "description": "Logout admin user"
         }
       },
       "urls": [
@@ -319,12 +321,13 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with Dr. Morgan's credentials.",
         "automated": {
-          "action": "none",
-          "url": "/login",
-          "credentials": {
+          "action": "api_post",
+          "endpoint": "/api/auth/login",
+          "data": {
             "email": "dr.morgan@demo.example.com",
             "password": "Instructor123!"
-          }
+          },
+          "description": "Login as Dr. Morgan (faculty)"
         }
       },
       "urls": [
@@ -398,20 +401,21 @@
         {
           "command": "sqlite3 course_records_dev.db \"SELECT cs.id FROM course_sections cs JOIN course_offerings co ON cs.offering_id = co.id JOIN courses c ON co.course_id = c.id WHERE c.course_number='BIOL-101' AND cs.section_number='001' LIMIT 1\"",
           "purpose": "Get BIOL-101 Section 001 ID",
-          "expected_output_contains": "-"
+          "expected_output_contains": "-",
+          "capture_output_as": "section_id"
         }
       ],
       "instructions": {
         "human": "1. Select 'Fall 2024 - BIOL-101 - Section 001' from the course dropdown\n2. Fill in the following:\n   - Students Passed (A/B/C): 20\n   - Students D/F/Incomplete: 5\n   - What Went Well: 'Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques.'\n3. Click 'Save Course Data'\n4. Verify success message appears at bottom of page",
         "automated": {
-          "action": "none",
-          "course": "BIOL-101",
-          "section": "001",
+          "action": "api_put",
+          "endpoint": "/api/management/sections/{{section_id}}",
           "data": {
             "students_passed": 20,
             "students_dfic": 5,
             "narrative_celebrations": "Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques."
-          }
+          },
+          "description": "Save assessment data for BIOL-101 Section 001"
         }
       },
       "urls": [],
@@ -451,7 +455,10 @@
       "instructions": {
         "human": "Click the user dropdown and select 'Logout'.",
         "automated": {
-          "action": "none"
+          "action": "api_post",
+          "endpoint": "/api/auth/logout",
+          "data": {},
+          "description": "Logout faculty user"
         }
       },
       "urls": [
@@ -521,12 +528,13 @@
       "instructions": {
         "human": "Navigate to the login page and sign in with admin credentials.",
         "automated": {
-          "action": "none",
-          "url": "/login",
-          "credentials": {
+          "action": "api_post",
+          "endpoint": "/api/auth/login",
+          "data": {
             "email": "demo2025.admin@example.com",
             "password": "Demo2024!"
-          }
+          },
+          "description": "Login as admin for audit phase"
         }
       },
       "urls": [
