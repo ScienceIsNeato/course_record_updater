@@ -1,0 +1,769 @@
+{
+  "demo_name": "Full Semester Assessment Workflow",
+  "demo_id": "full_semester_workflow",
+  "version": "1.0",
+  "description": "Complete semester lifecycle from program configuration through audit close-out, showcasing multi-tenant institution management, course setup, faculty invitations, assessment submission, and audit approval workflow.",
+  "estimated_duration_minutes": 20,
+  "talking_points": [
+    "Natural keys keep sessions stable across reseeds (/logout resets quickly)",
+    "Duplicate button accelerates version 2 courses and multi-program coverage",
+    "Email previews land in logs/email.log, so demos don't rely on external inboxes",
+    "Audit approvals instantly feed dashboard KPIs—closed loop"
+  ],
+  "environment": {
+    "setup_commands": [
+      "cd /Users/pacey/Documents/SourceCode/course_record_updater && source venv/bin/activate && source .envrc",
+      "python scripts/seed_db.py --demo --clear --env dev",
+      "./restart_server.sh dev"
+    ],
+    "base_url": "http://localhost:3001",
+    "cleanup_commands": []
+  },
+  "steps": [
+    {
+      "step_number": 1,
+      "phase": "Environment Setup",
+      "name": "Verify Server Health",
+      "purpose": "Confirm Flask server is running and responding",
+      "pre_commands": [],
+      "instructions": {
+        "human": "The server should already be running from environment setup. This step verifies it's responding.",
+        "automated": {
+          "action": "api_check",
+          "method": "GET",
+          "endpoint": "/api/health"
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "Health check returns 200 OK"
+      ],
+      "post_commands": [
+        {
+          "command": "curl -s http://localhost:3001/api/health 2>&1 | head -20",
+          "purpose": "Verify server is responding",
+          "expected_output_contains": "ok"
+        }
+      ],
+      "verification": {
+        "type": "api_check",
+        "expected_status": 200
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 2,
+      "phase": "Environment Setup",
+      "name": "Admin Login",
+      "purpose": "Establish admin session for program and course configuration",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM users WHERE email='demo2025.admin@example.com' AND role='institution_admin'\"",
+          "purpose": "Verify admin user exists in database",
+          "expected_output": "1"
+        }
+      ],
+      "instructions": {
+        "human": "Navigate to the login page and sign in with the admin credentials provided below.",
+        "automated": {
+          "action": "browser_login",
+          "url": "/login",
+          "credentials": {
+            "email": "demo2025.admin@example.com",
+            "password": "Demo2024!"
+          }
+        }
+      },
+      "urls": [
+        {
+          "label": "Login Page",
+          "url": "http://localhost:3001/login",
+          "clickable": true
+        }
+      ],
+      "inputs": {
+        "email": "demo2025.admin@example.com",
+        "password": "Demo2024!"
+      },
+      "expected_results": [
+        "Dashboard loads with welcome message",
+        "URL changes to /dashboard",
+        "Admin name visible in header dropdown"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/dashboard"
+      },
+      "artifacts": {
+        "screenshots": ["01_admin_dashboard.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 3,
+      "phase": "Program Configuration",
+      "name": "Edit Biology Program Description",
+      "purpose": "Update program metadata to align with current accreditation cycle",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT program_id, name, description FROM programs WHERE name='Biological Sciences' LIMIT 1\"",
+          "purpose": "Get current Biology program data",
+          "expected_output_contains": "Biological Sciences"
+        }
+      ],
+      "instructions": {
+        "human": "1. Click 'Programs' in the navigation or dashboard\n2. Find 'Biological Sciences' in the table\n3. Click the Edit button (pencil icon)\n4. Change description to: 'Primary focus for Fall 2024 Accreditation Cycle.'\n5. Click Save",
+        "automated": {
+          "action": "browser_edit_program",
+          "program_name": "Biological Sciences",
+          "updates": {
+            "description": "Primary focus for Fall 2024 Accreditation Cycle."
+          }
+        }
+      },
+      "urls": [
+        {
+          "label": "Programs Page",
+          "url": "http://localhost:3001/programs",
+          "clickable": true
+        }
+      ],
+      "inputs": {
+        "program_name": "Biological Sciences",
+        "new_description": "Primary focus for Fall 2024 Accreditation Cycle."
+      },
+      "expected_results": [
+        "Success toast appears ('Program updated successfully')",
+        "Program description updated in table",
+        "Modal closes automatically"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT description FROM programs WHERE name='Biological Sciences'\"",
+          "purpose": "Verify description was updated in database",
+          "expected_output_contains": "Fall 2024 Accreditation"
+        }
+      ],
+      "verification": {
+        "type": "db_check"
+      },
+      "artifacts": {
+        "screenshots": ["02_program_edit_modal.png", "02_program_updated.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 4,
+      "phase": "Course Management",
+      "name": "Navigate to Courses Page",
+      "purpose": "Access course management interface for duplication",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click 'Courses' in the navigation menu or dashboard to view the course listing.",
+        "automated": {
+          "action": "browser_navigate",
+          "url": "/courses"
+        }
+      },
+      "urls": [
+        {
+          "label": "Courses Page",
+          "url": "http://localhost:3001/courses",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Course table loads with multiple courses visible",
+        "BIOL-101 and ZOOL-101 courses visible in the list"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/courses"
+      },
+      "artifacts": {
+        "screenshots": ["03_courses_list.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 5,
+      "phase": "Course Management",
+      "name": "Duplicate BIOL-101 Course",
+      "purpose": "Demonstrate course versioning and multi-program attachment",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT course_id, course_number, title FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
+          "purpose": "Get source course details",
+          "expected_output_contains": "BIOL-101"
+        }
+      ],
+      "instructions": {
+        "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-V2'\n   - Keep title and description\n   - In Programs dropdown, select BOTH 'Biological Sciences' AND 'Nursing' (multi-program attachment)\n4. Click 'Duplicate' button\n5. Verify 'BIOL-101-V2' appears in the course list",
+        "automated": {
+          "action": "browser_duplicate_course",
+          "source_course": "BIOL-101",
+          "new_course_number": "BIOL-101-V2",
+          "programs": ["Biological Sciences", "Nursing"]
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "source_course": "BIOL-101 Introduction to Biology",
+        "new_course_number": "BIOL-101-V2",
+        "programs": ["Biological Sciences", "Nursing"]
+      },
+      "expected_results": [
+        "Success toast appears ('Course duplicated successfully')",
+        "BIOL-101-V2 appears in the course table",
+        "New course is attached to both Biological Sciences and Nursing programs"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT course_number, title FROM courses WHERE course_number='BIOL-101-V2'\"",
+          "purpose": "Verify duplicated course exists",
+          "expected_output_contains": "BIOL-101-V2"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM course_programs cp JOIN courses c ON cp.course_id = c.course_id WHERE c.course_number='BIOL-101-V2'\"",
+          "purpose": "Verify course is attached to 2 programs",
+          "expected_output": "2"
+        }
+      ],
+      "verification": {
+        "type": "db_check"
+      },
+      "artifacts": {
+        "screenshots": ["04_duplicate_modal.png", "04_course_duplicated.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 6,
+      "phase": "Faculty Management",
+      "name": "Logout as Admin",
+      "purpose": "End admin session before logging in as faculty",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click the user dropdown in the header and select 'Logout'.",
+        "automated": {
+          "action": "browser_logout"
+        }
+      },
+      "urls": [
+        {
+          "label": "Logout",
+          "url": "http://localhost:3001/logout",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Redirected to login page",
+        "Session cleared"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/login"
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": []
+      },
+      "pause_for_human": false
+    },
+    {
+      "step_number": 7,
+      "phase": "Faculty Assessment",
+      "name": "Login as Biology Faculty (Dr. Morgan)",
+      "purpose": "Establish faculty session for assessment submission",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM users WHERE email='dr.morgan@demo.example.com' AND role='instructor'\"",
+          "purpose": "Verify faculty user exists",
+          "expected_output": "1"
+        }
+      ],
+      "instructions": {
+        "human": "Navigate to the login page and sign in with Dr. Morgan's credentials.",
+        "automated": {
+          "action": "browser_login",
+          "url": "/login",
+          "credentials": {
+            "email": "dr.morgan@demo.example.com",
+            "password": "Instructor123!"
+          }
+        }
+      },
+      "urls": [
+        {
+          "label": "Login Page",
+          "url": "http://localhost:3001/login",
+          "clickable": true
+        }
+      ],
+      "inputs": {
+        "email": "dr.morgan@demo.example.com",
+        "password": "Instructor123!"
+      },
+      "expected_results": [
+        "Instructor dashboard loads",
+        "Dr. Morgan's courses visible (BIOL-101, ZOOL-101)"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/dashboard"
+      },
+      "artifacts": {
+        "screenshots": ["05_instructor_dashboard.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 8,
+      "phase": "Faculty Assessment",
+      "name": "Navigate to Assessments Page",
+      "purpose": "Access course assessment form",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click 'Assessments' in the navigation menu to access the course assessment form.",
+        "automated": {
+          "action": "browser_navigate",
+          "url": "/assessments"
+        }
+      },
+      "urls": [
+        {
+          "label": "Assessments Page",
+          "url": "http://localhost:3001/assessments",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Assessment form loads",
+        "Course dropdown populated with Dr. Morgan's courses"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/assessments"
+      },
+      "artifacts": {
+        "screenshots": ["06_assessment_form.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 9,
+      "phase": "Faculty Assessment",
+      "name": "Fill Out Assessment Form for BIOL-101",
+      "purpose": "Submit section-level assessment data and narrative",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT section_id FROM course_sections cs JOIN course_offerings co ON cs.offering_id = co.offering_id JOIN courses c ON co.course_id = c.course_id WHERE c.course_number='BIOL-101' AND cs.section_number='001' LIMIT 1\"",
+          "purpose": "Get BIOL-101 Section 001 ID",
+          "expected_output_contains": "-"
+        }
+      ],
+      "instructions": {
+        "human": "1. Select 'Fall 2024 - BIOL-101 - Section 001' from the course dropdown\n2. Fill in the following:\n   - Students Passed (A/B/C): 20\n   - Students D/F/Incomplete: 5\n   - What Went Well: 'Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques.'\n3. Click 'Save Course Data'\n4. Verify success message appears at bottom of page",
+        "automated": {
+          "action": "browser_fill_assessment",
+          "course": "BIOL-101",
+          "section": "001",
+          "data": {
+            "students_passed": 20,
+            "students_dfic": 5,
+            "narrative_celebrations": "Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques."
+          }
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "course": "Fall 2024 - BIOL-101 - Section 001",
+        "students_passed": "20",
+        "students_dfic": "5",
+        "narrative_celebrations": "Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques."
+      },
+      "expected_results": [
+        "Form fields populate with entered data",
+        "Success message appears: 'Course data saved successfully'",
+        "CLO assessment section appears with Update Assessment buttons"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT students_passed, students_dfic FROM course_sections cs JOIN course_offerings co ON cs.offering_id = co.offering_id JOIN courses c ON co.course_id = c.course_id WHERE c.course_number='BIOL-101' AND cs.section_number='001'\"",
+          "purpose": "Verify assessment data was saved",
+          "expected_output_contains": "20|5"
+        }
+      ],
+      "verification": {
+        "type": "db_check"
+      },
+      "artifacts": {
+        "screenshots": ["07_assessment_filled.png", "07_assessment_success.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 10,
+      "phase": "Faculty Assessment",
+      "name": "Logout as Faculty",
+      "purpose": "End faculty session before admin audit phase",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click the user dropdown and select 'Logout'.",
+        "automated": {
+          "action": "browser_logout"
+        }
+      },
+      "urls": [
+        {
+          "label": "Logout",
+          "url": "http://localhost:3001/logout",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Redirected to login page"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/login"
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": []
+      },
+      "pause_for_human": false
+    },
+    {
+      "step_number": 11,
+      "phase": "Audit Setup",
+      "name": "Advance Demo State to Semester End",
+      "purpose": "Populate database with submitted CLOs across all statuses for audit demonstration",
+      "pre_commands": [],
+      "instructions": {
+        "human": "This step runs automatically. It creates CLOs in various states:\n- 2 CLOs 'Awaiting Approval'\n- 1 CLO 'Approved'\n- 1 CLO 'Needs Rework'\n- 1 CLO 'Never Coming In'",
+        "automated": {
+          "action": "run_command",
+          "command": "cd /Users/pacey/Documents/SourceCode/course_record_updater && source venv/bin/activate && python scripts/advance_demo.py semester_end"
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "Script completes successfully",
+        "Log shows CLO creation for BIOL-101 and ZOOL-101",
+        "Database now contains 5 CLOs in various approval states"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT status, COUNT(*) FROM course_outcomes GROUP BY status\"",
+          "purpose": "Verify CLOs were created in multiple statuses",
+          "expected_output_contains": "awaiting_approval"
+        }
+      ],
+      "verification": {
+        "type": "command"
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": ["advance_demo_output.log"]
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 12,
+      "phase": "Admin Audit",
+      "name": "Login as Admin for Audit",
+      "purpose": "Establish admin session for CLO audit workflow",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Navigate to the login page and sign in with admin credentials.",
+        "automated": {
+          "action": "browser_login",
+          "url": "/login",
+          "credentials": {
+            "email": "demo2025.admin@example.com",
+            "password": "Demo2024!"
+          }
+        }
+      },
+      "urls": [
+        {
+          "label": "Login Page",
+          "url": "http://localhost:3001/login",
+          "clickable": true
+        }
+      ],
+      "inputs": {
+        "email": "demo2025.admin@example.com",
+        "password": "Demo2024!"
+      },
+      "expected_results": [
+        "Admin dashboard loads"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/dashboard"
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": []
+      },
+      "pause_for_human": false
+    },
+    {
+      "step_number": 13,
+      "phase": "Admin Audit",
+      "name": "Navigate to CLO Audit Page",
+      "purpose": "Access the CLO Audit & Approval dashboard",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Click 'CLO Audit' in the navigation menu to access the audit dashboard.",
+        "automated": {
+          "action": "browser_navigate",
+          "url": "/audit-clo"
+        }
+      },
+      "urls": [
+        {
+          "label": "CLO Audit Page",
+          "url": "http://localhost:3001/audit-clo",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "CLO Audit dashboard loads",
+        "Statistics cards show counts for each status",
+        "Table shows CLOs grouped by status (Awaiting Approval, Needs Rework, etc.)"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/audit-clo"
+      },
+      "artifacts": {
+        "screenshots": ["08_audit_dashboard.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 14,
+      "phase": "Admin Audit",
+      "name": "Filter by 'Awaiting Approval' Status",
+      "purpose": "View only CLOs that need review",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. In the Status filter dropdown, select 'Awaiting Approval'\n2. Table updates to show only CLOs awaiting approval (should be 2 CLOs)",
+        "automated": {
+          "action": "browser_select",
+          "element": "statusFilter",
+          "value": "awaiting_approval"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "status_filter": "Awaiting Approval"
+      },
+      "expected_results": [
+        "Table filters to show 2 CLOs",
+        "Statistics update to reflect filtered view",
+        "Both CLOs show 'Awaiting Approval' status badge"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check"
+      },
+      "artifacts": {
+        "screenshots": ["09_audit_filtered.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 15,
+      "phase": "Admin Audit",
+      "name": "View CLO Details",
+      "purpose": "Review CLO assessment data before approval",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. Click 'View' button on the first CLO in the 'Awaiting Approval' section\n2. Review the CLO details modal:\n   - Course information\n   - CLO description\n   - Assessment data\n   - Student performance metrics\n3. Note the action buttons: Approve, Request Rework, Mark as NCI, Close",
+        "automated": {
+          "action": "browser_click",
+          "element": "view_clo_button",
+          "index": 0
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "Modal opens showing CLO details",
+        "Assessment data is visible",
+        "Action buttons are present at bottom"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check"
+      },
+      "artifacts": {
+        "screenshots": ["10_clo_details_modal.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 16,
+      "phase": "Admin Audit",
+      "name": "Export Current View to CSV",
+      "purpose": "Generate audit report for record-keeping",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. Close the CLO details modal if still open\n2. Click the 'Export Current View' button\n3. A CSV file will download automatically\n4. The CSV contains columns: Course, CLO Number, Description, Status, Instructor, Last Modified",
+        "automated": {
+          "action": "browser_click",
+          "element": "exportCsvBtn"
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "CSV file downloads",
+        "File name format: clo_audit_export_YYYY-MM-DD.csv",
+        "CSV contains all CLOs currently filtered in the view"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check"
+      },
+      "artifacts": {
+        "screenshots": ["11_export_button.png"],
+        "logs": [],
+        "exports": ["clo_audit_export.csv"]
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 17,
+      "phase": "Admin Audit",
+      "name": "Filter by 'All Statuses'",
+      "purpose": "View complete CLO landscape across all statuses",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. Change the Status filter to 'All Statuses'\n2. Observe all 5 CLOs now visible:\n   - 2 Awaiting Approval\n   - 1 Approved\n   - 1 Needs Rework\n   - 1 Never Coming In",
+        "automated": {
+          "action": "browser_select",
+          "element": "statusFilter",
+          "value": ""
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "status_filter": "All Statuses"
+      },
+      "expected_results": [
+        "Table shows all 5 CLOs",
+        "CLOs grouped by status category",
+        "Statistics cards show correct counts for each status"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check"
+      },
+      "artifacts": {
+        "screenshots": ["12_all_statuses.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 18,
+      "phase": "Demo Completion",
+      "name": "Review Dashboard KPIs",
+      "purpose": "Show that audit actions feed back into dashboard metrics",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. Navigate back to the Dashboard\n2. Observe the 'Assessment Progress' panel\n3. Note the CLO approval statistics reflect the audit state:\n   - Approved count\n   - Pending count\n   - Needs Rework count\n   - NCI count",
+        "automated": {
+          "action": "browser_navigate",
+          "url": "/dashboard"
+        }
+      },
+      "urls": [
+        {
+          "label": "Dashboard",
+          "url": "http://localhost:3001/dashboard",
+          "clickable": true
+        }
+      ],
+      "inputs": {},
+      "expected_results": [
+        "Dashboard loads with updated metrics",
+        "Assessment Progress panel shows current state",
+        "CLO status distribution reflects audit work"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check",
+        "expected_url": "/dashboard"
+      },
+      "artifacts": {
+        "screenshots": ["13_dashboard_final.png"],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 19,
+      "phase": "Demo Completion",
+      "name": "Demo Complete",
+      "purpose": "Wrap up and highlight key takeaways",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Demo complete! Key points demonstrated:\n\n✅ Natural-key session model (stable across reseeds)\n✅ Program and course management (edit, duplicate, multi-program attachment)\n✅ Faculty invitation and assessment submission\n✅ CLO workflow with multiple approval states\n✅ Audit dashboard with filtering and export\n✅ Closed-loop feedback (audit actions → dashboard KPIs)\n\nThe system successfully manages a complete semester assessment cycle from configuration through audit close-out.",
+        "automated": {
+          "action": "none"
+        }
+      },
+      "urls": [],
+      "inputs": {},
+      "expected_results": [
+        "Demo objectives achieved",
+        "All phases completed successfully"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "none"
+      },
+      "artifacts": {
+        "screenshots": [],
+        "logs": []
+      },
+      "pause_for_human": true
+    }
+  ]
+}
+

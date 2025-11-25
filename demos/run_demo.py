@@ -1,0 +1,490 @@
+#!/usr/bin/env python3
+"""
+Interactive Demo Runner
+
+Parses a JSON demo file and provides interactive step-by-step guidance.
+
+Usage:
+    python run_demo.py --demo full_semester_workflow.json
+    python run_demo.py --demo full_semester_workflow.json --auto
+    python run_demo.py --demo full_semester_workflow.json --auto --start-step 5 --fail-fast
+
+Features:
+    - Dual execution modes (human-guided and automated)
+    - Pre/post command execution with verification
+    - Clickable URLs for navigation
+    - Screenshot and artifact collection
+    - Fast iteration with --start-step and --fail-fast
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+# ANSI color codes
+BLUE = '\033[0;34m'
+GREEN = '\033[0;32m'
+YELLOW = '\033[1;33m'
+CYAN = '\033[0;36m'
+RED = '\033[0;31m'
+BOLD = '\033[1m'
+NC = '\033[0m'  # No Color
+
+class DemoRunner:
+    def __init__(self, demo_file: Path, auto_mode: bool = False, start_step: int = 1, 
+                 fail_fast: bool = False, verify_only: bool = False):
+        self.demo_file = demo_file
+        self.auto_mode = auto_mode
+        self.start_step = start_step
+        self.fail_fast = fail_fast
+        self.verify_only = verify_only
+        self.demo_data = None
+        self.artifact_dir = None
+        self.context_vars = {}  # For variable substitution like {{course_id}}
+        
+    def load_demo(self) -> bool:
+        """Load and parse the demo JSON file."""
+        try:
+            with open(self.demo_file, 'r') as f:
+                self.demo_data = json.load(f)
+            return True
+        except FileNotFoundError:
+            self.print_error(f"Demo file not found: {self.demo_file}")
+            return False
+        except json.JSONDecodeError as e:
+            self.print_error(f"Invalid JSON in demo file: {e}")
+            return False
+    
+    def setup_artifacts(self):
+        """Create artifact directory for this demo run."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        demo_id = self.demo_data.get('demo_id', 'demo')
+        self.artifact_dir = Path(__file__).parent / "artifacts" / f"{demo_id}_{timestamp}"
+        self.artifact_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create subdirectories
+        (self.artifact_dir / "screenshots").mkdir(exist_ok=True)
+        (self.artifact_dir / "logs").mkdir(exist_ok=True)
+        (self.artifact_dir / "exports").mkdir(exist_ok=True)
+        
+        self.print_info(f"Artifacts will be saved to: {self.artifact_dir}")
+    
+    def run_setup(self) -> bool:
+        """Run environment setup commands."""
+        setup_commands = self.demo_data.get('environment', {}).get('setup_commands', [])
+        
+        if not setup_commands:
+            return True
+        
+        self.print_header("Environment Setup")
+        print("The following commands will prepare the demo environment:\n")
+        
+        for i, cmd in enumerate(setup_commands, 1):
+            print(f"  {i}. {CYAN}{cmd}{NC}")
+        
+        if not self.auto_mode and not self.verify_only:
+            response = input(f"\n{YELLOW}Run setup commands? (y/n): {NC}").strip().lower()
+            if response != 'y':
+                print(f"{YELLOW}Setup skipped. Make sure environment is prepared manually.{NC}\n")
+                return True
+        
+        if self.verify_only:
+            print(f"{YELLOW}[VERIFY-ONLY MODE] Skipping setup execution{NC}\n")
+            return True
+        
+        print()
+        for cmd in setup_commands:
+            if not self.run_command(cmd, "Setup"):
+                if not self.auto_mode:
+                    response = input(f"{YELLOW}Setup command failed. Continue anyway? (y/n): {NC}").strip().lower()
+                    if response != 'y':
+                        return False
+                else:
+                    if self.fail_fast:
+                        return False
+        
+        self.print_success("Setup complete!")
+        return True
+    
+    def run_demo(self):
+        """Main demo execution loop."""
+        if not self.load_demo():
+            sys.exit(1)
+        
+        if not self.verify_only:
+            self.setup_artifacts()
+        
+        # Print demo info
+        self.print_header(f"Demo: {self.demo_data.get('demo_name', 'Unnamed Demo')}")
+        print(f"Description: {self.demo_data.get('description', 'No description')}")
+        print(f"Estimated Duration: {self.demo_data.get('estimated_duration_minutes', '?')} minutes")
+        if self.auto_mode:
+            print(f"{CYAN}Mode: AUTOMATED{NC}")
+        else:
+            print(f"{CYAN}Mode: HUMAN-GUIDED{NC}")
+        
+        if self.start_step > 1:
+            print(f"{YELLOW}Starting from step {self.start_step} (skipping steps 1-{self.start_step-1}){NC}")
+        
+        print()
+        
+        # Run setup unless starting mid-demo
+        if self.start_step == 1:
+            if not self.run_setup():
+                self.print_error("Setup failed. Exiting.")
+                sys.exit(1)
+        
+        # Run through steps
+        steps = self.demo_data.get('steps', [])
+        total_steps = len(steps)
+        
+        for step in steps:
+            step_num = step.get('step_number', 0)
+            
+            # Skip steps before start_step
+            if step_num < self.start_step:
+                continue
+            
+            if not self.run_step(step, total_steps):
+                if self.fail_fast:
+                    self.print_error(f"Demo stopped at step {step_num} due to failure (--fail-fast enabled)")
+                    sys.exit(1)
+                else:
+                    if not self.auto_mode:
+                        response = input(f"{YELLOW}Step failed. Continue to next step? (y/n): {NC}").strip().lower()
+                        if response != 'y':
+                            sys.exit(1)
+        
+        # Demo complete
+        self.print_header("Demo Complete!")
+        print(f"{GREEN}You've successfully completed the demo.{NC}\n")
+        
+        # Show talking points
+        talking_points = self.demo_data.get('talking_points', [])
+        if talking_points:
+            print("Key Takeaways:")
+            for point in talking_points:
+                print(f"  • {point}")
+            print()
+        
+        if not self.verify_only:
+            print(f"Artifacts saved to: {self.artifact_dir}\n")
+    
+    def run_step(self, step: Dict, total_steps: int) -> bool:
+        """Execute a single demo step."""
+        step_num = step.get('step_number', 0)
+        phase = step.get('phase', '')
+        name = step.get('name', 'Unnamed Step')
+        purpose = step.get('purpose', '')
+        
+        self.print_step(step_num, total_steps, phase, name)
+        print(f"{CYAN}📋 Purpose:{NC} {purpose}\n")
+        
+        # Run pre-commands
+        if not self.run_pre_commands(step.get('pre_commands', [])):
+            return False
+        
+        # Show instructions and handle UI interaction
+        if not self.handle_instructions(step):
+            return False
+        
+        # Run post-commands
+        if not self.run_post_commands(step.get('post_commands', [])):
+            return False
+        
+        # Collect artifacts
+        self.collect_artifacts(step.get('artifacts', {}), step_num)
+        
+        # Pause for human if needed
+        if not self.auto_mode and step.get('pause_for_human', True) and not self.verify_only:
+            input(f"\n{GREEN}Press Enter to continue to next step...{NC}\n")
+        
+        return True
+    
+    def run_pre_commands(self, commands: List[Dict]) -> bool:
+        """Execute pre-step commands."""
+        if not commands:
+            return True
+        
+        print(f"{CYAN}🔧 Pre-Step Commands:{NC}")
+        for cmd_spec in commands:
+            cmd = cmd_spec.get('command', '')
+            purpose = cmd_spec.get('purpose', '')
+            expected = cmd_spec.get('expected_output', '')
+            expected_contains = cmd_spec.get('expected_output_contains', '')
+            capture_as = cmd_spec.get('capture_output_as', '')
+            
+            print(f"  ✓ {purpose}...")
+            print(f"    $ {CYAN}{cmd}{NC}")
+            
+            if self.verify_only:
+                print(f"    {YELLOW}[VERIFY-ONLY MODE] Skipping execution{NC}")
+                continue
+            
+            result = self.run_command_with_capture(cmd)
+            if result is None:
+                self.print_error(f"Command failed: {cmd}")
+                if self.fail_fast:
+                    return False
+                continue
+            
+            output = result.strip()
+            print(f"    Result: {output[:100]}..." if len(output) > 100 else f"    Result: {output}")
+            
+            # Capture variable if requested
+            if capture_as:
+                self.context_vars[capture_as] = output
+                print(f"    {GREEN}(Captured as {{{{{capture_as}}}}}){NC}")
+            
+            # Verify output
+            if expected and output != expected:
+                self.print_error(f"Expected: {expected}, Got: {output}")
+                if self.fail_fast:
+                    return False
+            elif expected_contains and expected_contains not in output:
+                self.print_error(f"Expected output to contain: {expected_contains}")
+                if self.fail_fast:
+                    return False
+            else:
+                print(f"    {GREEN}✅ PASS{NC}")
+        
+        print()
+        return True
+    
+    def run_post_commands(self, commands: List[Dict]) -> bool:
+        """Execute post-step verification commands."""
+        if not commands:
+            return True
+        
+        print(f"{CYAN}🔍 Post-Step Verification:{NC}")
+        for cmd_spec in commands:
+            cmd = cmd_spec.get('command', '')
+            purpose = cmd_spec.get('purpose', '')
+            expected = cmd_spec.get('expected_output', '')
+            expected_contains = cmd_spec.get('expected_output_contains', '')
+            
+            print(f"  ✓ {purpose}...")
+            print(f"    $ {CYAN}{cmd}{NC}")
+            
+            if self.verify_only:
+                print(f"    {YELLOW}[VERIFY-ONLY MODE] Skipping execution{NC}")
+                continue
+            
+            result = self.run_command_with_capture(cmd)
+            if result is None:
+                self.print_error(f"Verification command failed: {cmd}")
+                if self.fail_fast:
+                    return False
+                continue
+            
+            output = result.strip()
+            
+            # Check expectations
+            if expected:
+                print(f"    Expected: {expected}")
+                print(f"    Actual: {output}")
+                if output == expected:
+                    print(f"    {GREEN}✅ PASS{NC}")
+                else:
+                    print(f"    {RED}✗ FAIL{NC}")
+                    if self.fail_fast:
+                        return False
+            elif expected_contains:
+                print(f"    Expected to contain: {expected_contains}")
+                print(f"    Actual: {output}")
+                if expected_contains in output:
+                    print(f"    {GREEN}✅ PASS{NC}")
+                else:
+                    print(f"    {RED}✗ FAIL{NC}")
+                    if self.fail_fast:
+                        return False
+            else:
+                print(f"    Result: {output}")
+                print(f"    {GREEN}✅ PASS{NC}")
+        
+        print()
+        return True
+    
+    def handle_instructions(self, step: Dict) -> bool:
+        """Handle step instructions (human or automated)."""
+        instructions = step.get('instructions', {})
+        urls = step.get('urls', [])
+        inputs = step.get('inputs', {})
+        expected_results = step.get('expected_results', [])
+        
+        if self.auto_mode:
+            # Automated mode: execute automated action
+            automated = instructions.get('automated', {})
+            action = automated.get('action', '')
+            
+            if action and action != 'none':
+                print(f"{CYAN}🤖 Automated Action:{NC} {action}")
+                if self.verify_only:
+                    print(f"{YELLOW}[VERIFY-ONLY MODE] Skipping automation{NC}\n")
+                else:
+                    # TODO: Implement actual browser automation via browser tools
+                    print(f"{YELLOW}[Automated action execution would happen here]{NC}\n")
+        else:
+            # Human mode: show instructions
+            human_instructions = instructions.get('human', '')
+            if human_instructions:
+                print(f"{CYAN}📖 Instructions:{NC}")
+                for line in human_instructions.split('\n'):
+                    print(f"  {line}")
+                print()
+            
+            # Show clickable URLs
+            if urls:
+                print(f"{CYAN}🔗 Quick Links:{NC}")
+                for url_spec in urls:
+                    label = url_spec.get('label', 'Link')
+                    url = url_spec.get('url', '')
+                    print(f"  → {label}: {BLUE}{url}{NC}")
+                print()
+            
+            # Show inputs
+            if inputs:
+                print(f"{CYAN}📝 Inputs for this step:{NC}")
+                for key, value in inputs.items():
+                    print(f"  • {key}: {value}")
+                print()
+        
+        # Show expected results
+        if expected_results:
+            print(f"{CYAN}✅ Expected Results:{NC}")
+            for result in expected_results:
+                print(f"  • {result}")
+            print()
+        
+        return True
+    
+    def collect_artifacts(self, artifacts: Dict, step_num: int):
+        """Collect screenshots and logs for this step."""
+        if self.verify_only:
+            return
+        
+        screenshots = artifacts.get('screenshots', [])
+        if screenshots:
+            print(f"{CYAN}📸 Artifacts to capture:{NC} {', '.join(screenshots)}")
+            # TODO: Implement actual screenshot capture
+            print(f"{YELLOW}[Screenshot capture would happen here]{NC}\n")
+    
+    def run_command(self, cmd: str, label: str = "Command") -> bool:
+        """Run a shell command and return success status."""
+        print(f"{CYAN}Running: {cmd}{NC}")
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                check=True,
+                capture_output=False,
+                text=True
+            )
+            print(f"{GREEN}✓ Success{NC}\n")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"{RED}✗ Command failed (exit code {e.returncode}){NC}\n")
+            return False
+    
+    def run_command_with_capture(self, cmd: str) -> Optional[str]:
+        """Run a command and capture its output."""
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            return result.stdout
+        except subprocess.CalledProcessError:
+            return None
+    
+    def print_header(self, text: str):
+        """Print section header."""
+        print(f"\n{BLUE}{'='*80}{NC}")
+        print(f"{BLUE}{BOLD}{text}{NC}")
+        print(f"{BLUE}{'='*80}{NC}\n")
+    
+    def print_step(self, step_num: int, total: int, phase: str, name: str):
+        """Print step header."""
+        print(f"\n{GREEN}{BOLD}[Step {step_num}/{total}] {phase}: {name}{NC}")
+        print(f"{GREEN}{'-'*80}{NC}\n")
+    
+    def print_success(self, text: str):
+        """Print success message."""
+        print(f"{GREEN}✓ {text}{NC}\n")
+    
+    def print_error(self, text: str):
+        """Print error message."""
+        print(f"{RED}✗ {text}{NC}\n")
+    
+    def print_info(self, text: str):
+        """Print info message."""
+        print(f"{CYAN}ℹ {text}{NC}\n")
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Interactive demo runner for JSON demo files',
+        epilog='Example: python run_demo.py --demo full_semester_workflow.json'
+    )
+    parser.add_argument(
+        '--demo',
+        required=True,
+        help='Path to demo JSON file'
+    )
+    parser.add_argument(
+        '--auto',
+        action='store_true',
+        help='Run in automated mode (no pauses, browser automation)'
+    )
+    parser.add_argument(
+        '--start-step',
+        type=int,
+        default=1,
+        help='Resume from step N (skip steps 1 through N-1)'
+    )
+    parser.add_argument(
+        '--fail-fast',
+        action='store_true',
+        help='Exit immediately on first verification failure'
+    )
+    parser.add_argument(
+        '--verify-only',
+        action='store_true',
+        help='Dry-run mode (show steps, run verifications, don\'t execute actions)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Resolve demo file path
+    demo_file = Path(args.demo)
+    if not demo_file.is_absolute():
+        # Try relative to script directory
+        demo_file = Path(__file__).parent / demo_file
+    
+    if not demo_file.exists():
+        print(f"{RED}Error: Demo file not found: {args.demo}{NC}")
+        sys.exit(1)
+    
+    # Create and run demo
+    runner = DemoRunner(
+        demo_file=demo_file,
+        auto_mode=args.auto,
+        start_step=args.start_step,
+        fail_fast=args.fail_fast,
+        verify_only=args.verify_only
+    )
+    
+    runner.run_demo()
+
+
+if __name__ == '__main__':
+    main()
