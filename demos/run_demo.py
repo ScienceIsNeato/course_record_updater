@@ -53,6 +53,7 @@ class DemoRunner:
         self.artifact_dir = None
         self.context_vars = {}  # For variable substitution like {{course_id}}
         self.session = requests.Session()  # For maintaining auth cookies
+        self.csrf_token = None  # CSRF token for API calls
         
     def load_demo(self) -> bool:
         """Load and parse the demo JSON file."""
@@ -394,6 +395,32 @@ class DemoRunner:
         
         return re.sub(pattern, replace_var, text)
     
+    def get_csrf_token(self) -> str:
+        """Get CSRF token from the server."""
+        if self.csrf_token:
+            return self.csrf_token
+        
+        base_url = self.demo_data.get('environment', {}).get('base_url', 'http://localhost:3001')
+        
+        try:
+            # Get login page to establish session and get CSRF token
+            response = self.session.get(f"{base_url}/login")
+            
+            # Extract CSRF token from cookies or meta tag
+            if 'csrf_token' in self.session.cookies:
+                self.csrf_token = self.session.cookies['csrf_token']
+            else:
+                # Try to extract from HTML
+                import re
+                match = re.search(r'name="csrf_token".*?value="([^"]+)"', response.text)
+                if match:
+                    self.csrf_token = match.group(1)
+            
+            return self.csrf_token
+        except Exception as e:
+            print(f"{YELLOW}Warning: Could not get CSRF token: {e}{NC}")
+            return ""
+    
     def execute_browser_action(self, action: str, config: Dict) -> bool:
         """Execute an automated action via API (when --auto) or skip (human does UI)."""
         try:
@@ -451,7 +478,11 @@ class DemoRunner:
             print(f"  {config['description']}")
         
         try:
-            response = self.session.post(full_url, json=data)
+            # Get CSRF token and add to headers
+            csrf_token = self.get_csrf_token()
+            headers = {'X-CSRFToken': csrf_token} if csrf_token else {}
+            
+            response = self.session.post(full_url, json=data, headers=headers)
             
             if response.status_code in [200, 201]:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
@@ -477,7 +508,11 @@ class DemoRunner:
             print(f"  {config['description']}")
         
         try:
-            response = self.session.put(full_url, json=data)
+            # Get CSRF token and add to headers
+            csrf_token = self.get_csrf_token()
+            headers = {'X-CSRFToken': csrf_token} if csrf_token else {}
+            
+            response = self.session.put(full_url, json=data, headers=headers)
             
             if response.status_code == 200:
                 print(f"{GREEN}  ✓ Success: {response.status_code}{NC}")
