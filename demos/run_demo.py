@@ -433,6 +433,11 @@ class DemoRunner:
                 return self.api_put(config)
             elif action == 'api_get':
                 return self.api_get(config)
+            elif action == 'run_command':
+                cmd = config.get('command', '')
+                if cmd:
+                    return self.run_command(cmd, label="Automated command")
+                return False
             elif action == 'none':
                 # No automated action needed, human performs UI action
                 return True

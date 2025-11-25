@@ -493,7 +493,7 @@
         "human": "This step runs automatically. It creates CLOs in various states:\n- 2 CLOs 'Awaiting Approval'\n- 1 CLO 'Approved'\n- 1 CLO 'Needs Rework'\n- 1 CLO 'Never Coming In'",
         "automated": {
           "action": "run_command",
-          "command": "cd /Users/pacey/Documents/SourceCode/course_record_updater && source venv/bin/activate && python scripts/advance_demo.py semester_end"
+          "command": "source venv/bin/activate && python scripts/advance_demo.py semester_end"
         }
       },
       "urls": [],
