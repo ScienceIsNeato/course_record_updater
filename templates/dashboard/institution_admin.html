@@ -7,10 +7,14 @@
 {% endblock %}
 
 {% block nav_items %}
-<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-programs" onclick="filterDashboard('programs')"><i class="fas fa-graduation-cap me-1"></i>Programs</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i class="fas fa-users me-1"></i>Faculty</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-outcomes" onclick="filterDashboard('outcomes')"><i class="fas fa-chart-bar me-1"></i>Outcomes</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i
+        class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-programs" onclick="filterDashboard('programs')"><i
+        class="fas fa-graduation-cap me-1"></i>Programs</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i
+        class="fas fa-users me-1"></i>Faculty</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-outcomes" onclick="filterDashboard('outcomes')"><i
+        class="fas fa-chart-bar me-1"></i>Outcomes</button>
 {% endblock %}
 
 {% block page_title %}🏛️ Institution Administration{% endblock %}
@@ -283,7 +287,8 @@
 <!-- CRUD Management Modals -->
 
 <!-- Program Management Modals -->
-<div class="modal fade" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel" aria-hidden="true">
+<div class="modal fade" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -299,7 +304,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="programShortName" class="form-label">Short Name *</label>
-                        <input type="text" class="form-control" id="programShortName" name="short_name" required maxlength="10">
+                        <input type="text" class="form-control" id="programShortName" name="short_name" required
+                            maxlength="10">
                         <small class="form-text text-muted">Abbreviation, e.g., "CS", "NURS" (auto-uppercased)</small>
                     </div>
                     <div class="mb-3">
@@ -396,7 +402,8 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editCourseCreditHours" class="form-label">Credit Hours *</label>
-                            <input type="number" class="form-control" id="editCourseCreditHours" min="0" max="12" step="0.5" required>
+                            <input type="number" class="form-control" id="editCourseCreditHours" min="0" max="12"
+                                step="0.5" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editCourseDepartment" class="form-label">Department</label>
@@ -437,7 +444,8 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="termName" class="form-label">Term Name *</label>
-                        <input type="text" class="form-control" id="termName" name="name" required placeholder="e.g., FA2024">
+                        <input type="text" class="form-control" id="termName" name="name" required
+                            placeholder="e.g., FA2025">
                     </div>
                     <div class="mb-3">
                         <label for="termStartDate" class="form-label">Start Date *</label>
@@ -522,7 +530,8 @@
 </div>
 
 <!-- Offering Management Modals -->
-<div class="modal fade" id="createOfferingModal" tabindex="-1" aria-labelledby="createOfferingModalLabel" aria-hidden="true">
+<div class="modal fade" id="createOfferingModal" tabindex="-1" aria-labelledby="createOfferingModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -558,7 +567,8 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="offeringEnrolled" class="form-label">Currently Enrolled</label>
-                            <input type="number" class="form-control" id="offeringEnrolled" name="enrolled" min="0" value="0">
+                            <input type="number" class="form-control" id="offeringEnrolled" name="enrolled" min="0"
+                                value="0">
                         </div>
                     </div>
                 </div>
@@ -577,7 +587,8 @@
     </div>
 </div>
 
-<div class="modal fade" id="editOfferingModal" tabindex="-1" aria-labelledby="editOfferingModalLabel" aria-hidden="true">
+<div class="modal fade" id="editOfferingModal" tabindex="-1" aria-labelledby="editOfferingModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -630,7 +641,8 @@
 </div>
 
 <!-- Section Management Modals -->
-<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel" aria-hidden="true">
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -647,7 +659,8 @@
                     </div>
                     <div class="mb-3">
                         <label for="sectionName" class="form-label">Section Name *</label>
-                        <input type="text" class="form-control" id="sectionName" name="name" required placeholder="e.g., Section A">
+                        <input type="text" class="form-control" id="sectionName" name="name" required
+                            placeholder="e.g., Section A">
                     </div>
                     <div class="mb-3">
                         <label for="sectionInstructorId" class="form-label">Instructor</label>
@@ -662,7 +675,8 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="sectionEnrolled" class="form-label">Currently Enrolled</label>
-                            <input type="number" class="form-control" id="sectionEnrolled" name="enrolled" min="0" value="0">
+                            <input type="number" class="form-control" id="sectionEnrolled" name="enrolled" min="0"
+                                value="0">
                         </div>
                     </div>
                 </div>
@@ -731,7 +745,8 @@
 </div>
 
 <!-- Outcome Management Modals -->
-<div class="modal fade" id="createOutcomeModal" tabindex="-1" aria-labelledby="createOutcomeModalLabel" aria-hidden="true">
+<div class="modal fade" id="createOutcomeModal" tabindex="-1" aria-labelledby="createOutcomeModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -748,11 +763,13 @@
                     </div>
                     <div class="mb-3">
                         <label for="outcomeCloNumber" class="form-label">CLO Number *</label>
-                        <input type="number" class="form-control" id="outcomeCloNumber" name="clo_number" required min="1" placeholder="e.g., 1">
+                        <input type="number" class="form-control" id="outcomeCloNumber" name="clo_number" required
+                            min="1" placeholder="e.g., 1">
                     </div>
                     <div class="mb-3">
                         <label for="outcomeDescription" class="form-label">Description *</label>
-                        <textarea class="form-control" id="outcomeDescription" name="description" rows="3" required></textarea>
+                        <textarea class="form-control" id="outcomeDescription" name="description" rows="3"
+                            required></textarea>
                     </div>
                     <div class="mb-3">
                         <label for="outcomeAssessmentMethod" class="form-label">Assessment Method</label>
@@ -813,7 +830,8 @@
 </div>
 
 <!-- Invite Faculty Modal -->
-<div class="modal fade" id="inviteFacultyModal" tabindex="-1" aria-labelledby="inviteFacultyModalLabel" aria-hidden="true">
+<div class="modal fade" id="inviteFacultyModal" tabindex="-1" aria-labelledby="inviteFacultyModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -821,12 +839,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="inviteFacultyForm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="inviteFacultyEmail" class="form-label">Email Address *</label>
-                        <input type="email" class="form-control" id="inviteFacultyEmail" required 
-                               placeholder="instructor@example.com">
+                        <input type="email" class="form-control" id="inviteFacultyEmail" required
+                            placeholder="instructor@example.com">
                         <div class="form-text">Instructor will receive an invitation email at this address</div>
                     </div>
                     <div class="row">
@@ -839,10 +857,10 @@
                             <input type="text" class="form-control" id="inviteFacultyLastName" required>
                         </div>
                     </div>
-                    
+
                     <hr class="my-3">
                     <h6 class="mb-3">Course Assignment (Optional)</h6>
-                    
+
                     <div class="mb-3">
                         <label for="inviteFacultyTerm" class="form-label">Term</label>
                         <select class="form-control" id="inviteFacultyTerm">
@@ -850,32 +868,34 @@
                         </select>
                         <div class="form-text">Select a term to assign this instructor to a section</div>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="inviteFacultyOffering" class="form-label">Course Offering</label>
                         <select class="form-control" id="inviteFacultyOffering" disabled>
                             <option value="">Select term first</option>
                         </select>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="inviteFacultySection" class="form-label">Section</label>
                         <select class="form-control" id="inviteFacultySection" disabled>
                             <option value="">Select offering first</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="inviteFacultyReplaceExisting">
                         <label class="form-check-label" for="inviteFacultyReplaceExisting">
                             Replace existing instructor (if section already has one assigned)
                         </label>
                     </div>
-                    
+
                     <div class="alert alert-info mb-0">
                         <i class="fas fa-info-circle"></i>
-                        The instructor will receive an email with a link to complete their registration and set their password.
-                        If a section is selected, they will be automatically assigned to it upon accepting the invitation.
+                        The instructor will receive an email with a link to complete their registration and set their
+                        password.
+                        If a section is selected, they will be automatically assigned to it upon accepting the
+                        invitation.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -924,7 +944,7 @@
 
     // Institution Data Management Functions
     // Import functions are defined in the Excel import modal (templates/components/excel_import_modal.html)
-    
+
     function institutionQuickExport() {
         const format = document.querySelector('input[name="institutionExportFormat"]:checked').value;
         alert(`Quick Export (${format}) feature coming soon!`);
@@ -942,7 +962,7 @@
     }
 
     function managePrograms() {
-        alert('Program management list coming soon!');
+        window.location.href = '/programs';
     }
 
     function createCourse() {
@@ -951,7 +971,7 @@
     }
 
     function manageCourses() {
-        alert('Course management list coming soon!');
+        window.location.href = '/courses';
     }
 
     function createTerm() {
@@ -960,7 +980,7 @@
     }
 
     function manageTerms() {
-        alert('Term management list coming soon!');
+        window.location.href = '/terms';
     }
 
     function createOffering() {
@@ -978,7 +998,7 @@
     }
 
     function manageSections() {
-        alert('Section management list coming soon!');
+        window.location.href = '/sections';
     }
 
     function createOutcome() {
@@ -987,7 +1007,7 @@
     }
 
     function manageOutcomes() {
-        alert('Outcome management list coming soon!');
+        window.location.href = '/assessments';
     }
 
     // Configure dashboard navigation for Institution Admin role

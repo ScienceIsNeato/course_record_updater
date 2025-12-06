@@ -225,6 +225,139 @@ async function deleteTerm(termId, termName) {
   }
 }
 
+/**
+ * Load and display all terms in a table
+ */
+async function loadTerms() {
+  const container = document.getElementById('termsTableContainer');
+  container.innerHTML = `
+    <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+      <div class="spinner-border" aria-hidden="true">
+        <span class="visually-hidden">Loading terms...</span>
+      </div>
+    </output>
+  `;
+
+  try {
+    const response = await fetch('/api/terms', {
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to load terms');
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to load terms');
+    }
+
+    const terms = data.terms || [];
+
+    if (terms.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          No terms found. Create a term to get started.
+        </div>
+      `;
+      return;
+    }
+
+    // Build table
+    let html = `
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Term Name</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Status</th>
+              <th>Offerings</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    terms.forEach(term => {
+      const statusBadge = term.active
+        ? '<span class="badge bg-success">Active</span>'
+        : '<span class="badge bg-secondary">Inactive</span>';
+      const offeringsCount = term.offerings_count || 0;
+
+      html += `
+        <tr>
+          <td><strong>${escapeHtml(term.term_name || term.name || '-')}</strong></td>
+          <td>${formatDate(term.start_date)}</td>
+          <td>${formatDate(term.end_date)}</td>
+          <td>${statusBadge}</td>
+          <td>${offeringsCount}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-secondary" onclick='openEditTermModal("${term.term_id || term.id}", ${JSON.stringify(term).replaceAll("'", '&apos;')})'>
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-sm btn-outline-danger mt-1 mt-lg-0" onclick='deleteTerm("${term.term_id || term.id}", "${escapeHtml(term.term_name || term.name)}")'>
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading terms:', error); // eslint-disable-line no-console
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Error loading terms: ${escapeHtml(error.message)}
+      </div>
+    `;
+  }
+}
+
+/**
+ * Open create term modal
+ */
+function openCreateTermModal() {
+  const modal = new bootstrap.Modal(document.getElementById('createTermModal'));
+  modal.show();
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString) {
+  if (!dateString) return '-';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return dateString;
+  }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditTermModal = openEditTermModal;
 globalThis.deleteTerm = deleteTerm;
+globalThis.loadTerms = loadTerms;
+globalThis.openCreateTermModal = openCreateTermModal;

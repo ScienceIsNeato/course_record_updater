@@ -138,8 +138,19 @@ def index():
 @app.route("/login")
 def login():
     """Login page (supports deep linking via ?next parameter)"""
-    # Redirect to dashboard if already authenticated
-    if is_authenticated():
+    # Allow forcing login page even if authenticated (for broken sessions)
+    force_login = request.args.get("force") == "true"
+
+    # If forcing login, clear any existing session first
+    if force_login and is_authenticated():
+        from login_service import LoginService
+
+        LoginService.logout_user()
+        # Flash message to inform user
+        flash("Session cleared. Please log in again.", "info")
+
+    # Redirect to dashboard if already authenticated (unless forced)
+    if is_authenticated() and not force_login:
         return redirect(url_for(DASHBOARD_ENDPOINT))
 
     # Store 'next' URL in session for post-login redirect (fixes email deep link)
@@ -384,6 +395,42 @@ def sections_list():
         return redirect(url_for("login"))
 
     return render_template("sections_list.html", user=user)
+
+
+@app.route("/terms")
+@login_required
+def terms_list():
+    """Display all terms for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("terms_list.html", user=user)
+
+
+@app.route("/programs")
+@login_required
+def programs_list():
+    """Display all programs for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("programs_list.html", user=user)
+
+
+@app.route("/faculty")
+@login_required
+def faculty_list():
+    """Redirect to users list filtered for faculty/instructors"""
+    return redirect(url_for("users_list", role="instructor"))
+
+
+@app.route("/outcomes")
+@login_required
+def outcomes_page():
+    """Redirect to assessments/outcomes page"""
+    return redirect(url_for("assessments_page"))
 
 
 # Health check endpoint for parallel E2E testing
