@@ -135,23 +135,11 @@ function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
   return confirmMsg;
 }
 
-function buildImportFormData(
-  fileInput,
-  conflictStrategy,
-  dryRun,
-  adapterSelect,
-  deleteExistingDb,
-  useDemoFile,
-  demoFilePath
-) {
+function buildImportFormData(fileInput, conflictStrategy, dryRun, adapterSelect, deleteExistingDb) {
   const formData = new FormData();
 
-  // Handle demo file or uploaded file
-  if (useDemoFile?.checked && demoFilePath?.value) {
-    formData.append('demo_file_path', demoFilePath.value);
-  } else {
-    formData.append('file', fileInput.files[0]);
-  }
+  // Add uploaded file
+  formData.append('file', fileInput.files[0]);
 
   formData.append('conflict_strategy', conflictStrategy.value);
   formData.append('dry_run', dryRun?.checked ? 'true' : 'false');
@@ -631,26 +619,6 @@ function initializeImportForm() {
     dryRunCheckbox.addEventListener('change', updateButtonText);
   }
 
-  // Handle demo file toggle
-  const useDemoFileCheckbox = document.getElementById('use_demo_file');
-  const demoFilePathGroup = document.getElementById('demo_file_path_group');
-  const manualFileGroup = document.getElementById('manual_file_group');
-  const excelFileInput = document.getElementById('excel_file');
-
-  if (useDemoFileCheckbox) {
-    useDemoFileCheckbox.addEventListener('change', function () {
-      if (this.checked) {
-        demoFilePathGroup.style.display = 'block';
-        manualFileGroup.style.display = 'none';
-        excelFileInput.required = false;
-      } else {
-        demoFilePathGroup.style.display = 'none';
-        manualFileGroup.style.display = 'block';
-        excelFileInput.required = true;
-      }
-    });
-  }
-
   // Validate file only
   if (validateBtn) {
     validateBtn.addEventListener('click', async () => {
@@ -724,11 +692,8 @@ function initializeImportForm() {
       const conflictStrategy = document.querySelector('input[name="conflict_strategy"]:checked');
       const dryRun = document.getElementById('dry_run');
       const deleteExistingDb = document.getElementById('delete_existing_db');
-      const useDemoFile = document.getElementById('use_demo_file');
-      const demoFilePath = document.getElementById('demo_file_path');
-
-      // Validate form inputs (skip file validation if using demo file)
-      if (!useDemoFile?.checked && !validateImportForm(fileInput, conflictStrategy)) {
+      // Validate form inputs
+      if (!validateImportForm(fileInput, conflictStrategy)) {
         return;
       }
 
@@ -746,9 +711,7 @@ function initializeImportForm() {
         conflictStrategy,
         dryRun,
         adapterSelect,
-        deleteExistingDb,
-        useDemoFile,
-        demoFilePath
+        deleteExistingDb
       );
       await executeImport(formData, dryRun);
     });
