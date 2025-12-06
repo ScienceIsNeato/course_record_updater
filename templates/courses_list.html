@@ -75,6 +75,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="editCourseProgramIds" class="form-label">Programs *</label>
+                        <div id="selectedProgramsBadges" class="mb-2" style="min-height: 28px;">
+                            <small class="text-muted">Currently Selected: </small>
+                            <span id="selectedProgramsList" class="text-muted fst-italic">None</span>
+                        </div>
                         <select class="form-control" id="editCourseProgramIds" multiple size="5" required>
                             <!-- Programs will be loaded dynamically -->
                         </select>

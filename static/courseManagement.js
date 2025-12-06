@@ -335,6 +335,24 @@ function initializeEditCourseModal() {
  * Open Edit Course Modal with pre-populated data
  * Called from course list when Edit button is clicked
  */
+/**
+ * Update the visual display of selected programs in the modal
+ */
+function updateSelectedProgramsDisplay(programSelect) {
+  const listEl = document.getElementById('selectedProgramsList');
+  if (!listEl) return;
+
+  const selectedOptions = Array.from(programSelect.selectedOptions);
+  if (selectedOptions.length === 0) {
+    listEl.innerHTML = '<span class="text-muted fst-italic">None</span>';
+  } else {
+    const badges = selectedOptions
+      .map(option => `<span class="badge bg-primary me-1">${option.textContent}</span>`)
+      .join('');
+    listEl.innerHTML = badges;
+  }
+}
+
 async function openEditCourseModal(courseId, courseData) {
   document.getElementById('editCourseId').value = courseId;
   document.getElementById('editCourseNumber').value = courseData.course_number || '';
@@ -355,6 +373,14 @@ async function openEditCourseModal(courseId, courseData) {
     const selectedProgramIds = courseData.program_ids || [];
     Array.from(programSelect.options).forEach(option => {
       option.selected = selectedProgramIds.includes(option.value);
+    });
+
+    // Update selected programs display
+    updateSelectedProgramsDisplay(programSelect);
+
+    // Add change listener to update display when selection changes
+    programSelect.addEventListener('change', function () {
+      updateSelectedProgramsDisplay(this);
     });
   }
 
