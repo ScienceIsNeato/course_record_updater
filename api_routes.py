@@ -1077,6 +1077,70 @@ def update_user_profile_endpoint(user_id: str):
         )
 
 
+@api.route("/users/<user_id>/role", methods=["PATCH"])
+@permission_required("manage_users")
+def update_user_role_endpoint(user_id: str):
+    """
+    Update a user's role (admin only)
+
+    Allows institution admins to promote instructors to admins or demote admins to instructors.
+
+    Request body:
+    {
+        "role": "instructor" | "program_admin" | "institution_admin"
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data or "role" not in data:
+            return jsonify({"success": False, "error": "Role is required"}), 400
+
+        new_role = data["role"]
+        valid_roles = ["instructor", "program_admin", "institution_admin"]
+
+        if new_role not in valid_roles:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid role. Must be one of: {', '.join(valid_roles)}",
+                    }
+                ),
+                400,
+            )
+
+        # Get the user being updated
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Verify same institution
+        current_institution_id = get_current_institution_id()
+        if user.get("institution_id") != current_institution_id:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Update the role
+        success = update_user_role(user_id, new_role, program_ids=None)
+
+        if success:
+            updated_user = get_user_by_id(user_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "user": updated_user,
+                        "message": f"User role updated to {new_role}",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update role"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update user role", "Failed to update user role")
+
+
 @api.route("/users/<user_id>/deactivate", methods=["POST"])
 @permission_required("manage_users")
 def deactivate_user_endpoint(user_id: str):
