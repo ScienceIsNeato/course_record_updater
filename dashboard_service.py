@@ -235,12 +235,13 @@ class DashboardService:
         faculty = self._build_faculty_directory(raw["users"], raw["instructors"])
         offering_to_course = self._build_offering_to_course_mapping(raw["offerings"])
 
-        # Enrich sections and terms
+        # Enrich sections, terms, and offerings
         sections = self._enrich_sections_with_course_data(
             raw["sections"], course_index, offering_to_course
         )
         sections = self._enrich_sections_with_instructor_data(sections, raw["users"])
         terms = self._enrich_terms_with_offering_counts(raw["terms"], raw["offerings"])
+        offerings = self._enrich_offerings_with_section_data(raw["offerings"], sections)
 
         # Build metrics and aggregations
         program_metrics = self._build_program_metrics(
@@ -275,7 +276,7 @@ class DashboardService:
                 sections, institution_id, institution_name
             ),
             "offerings": self._with_institution(
-                raw["offerings"], institution_id, institution_name
+                offerings, institution_id, institution_name
             ),
             "terms": self._with_institution(terms, institution_id, institution_name),
             "clos": self._with_institution(all_clos, institution_id, institution_name),
@@ -1282,6 +1283,55 @@ class DashboardService:
             enriched_terms.append(enriched_term)
 
         return enriched_terms
+
+    def _enrich_offerings_with_section_data(
+        self,
+        offerings: List[Dict[str, Any]],
+        sections: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich offerings with section count and total enrollment.
+
+        Args:
+            offerings: List of offering dictionaries
+            sections: List of section dictionaries
+
+        Returns:
+            List of offerings enriched with section_count and total_enrollment
+        """
+        # Build section counts and enrollment per offering
+        offering_data: Dict[str, Dict[str, int]] = {}
+        for section in sections:
+            offering_id = section.get("offering_id")
+            if offering_id:
+                if offering_id not in offering_data:
+                    offering_data[offering_id] = {
+                        "section_count": 0,
+                        "total_enrollment": 0,
+                    }
+                offering_data[offering_id]["section_count"] += 1
+                offering_data[offering_id]["total_enrollment"] += section.get(
+                    "enrollment", 0
+                )
+
+        # Add counts to offerings
+        enriched_offerings = []
+        for offering in offerings:
+            offering_id = offering.get("offering_id") or offering.get("id")
+            enriched_offering = dict(offering)
+            if offering_id in offering_data:
+                enriched_offering["section_count"] = offering_data[offering_id][
+                    "section_count"
+                ]
+                enriched_offering["total_enrollment"] = offering_data[offering_id][
+                    "total_enrollment"
+                ]
+            else:
+                enriched_offering["section_count"] = 0
+                enriched_offering["total_enrollment"] = 0
+            enriched_offerings.append(enriched_offering)
+
+        return enriched_offerings
 
     def _enrich_single_section(
         self,

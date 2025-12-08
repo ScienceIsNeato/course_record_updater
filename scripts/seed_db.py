@@ -179,11 +179,11 @@ class BaselineSeeder:
 
         base_date = datetime.now(timezone.utc)
         terms_data = [
-            {"name": "Fall 2024", "code": "FA2024", "start_offset": -90, "end_offset": -1},
-            {"name": "Spring 2025", "code": "SP2025", "start_offset": 0, "end_offset": 120},
-            {"name": "Summer 2025", "code": "SU2025", "start_offset": 121, "end_offset": 180},
-            {"name": "Fall 2025", "code": "FA2025", "start_offset": 181, "end_offset": 300},
-            {"name": "Spring 2026", "code": "SP2026", "start_offset": 301, "end_offset": 420},
+            {"name": "Fall 2025", "code": "FA2025", "start_offset": -90, "end_offset": -1},
+            {"name": "Spring 2026", "code": "SP2026", "start_offset": 0, "end_offset": 120},
+            {"name": "Summer 2026", "code": "SU2026", "start_offset": 121, "end_offset": 180},
+            {"name": "Fall 2026", "code": "FA2026", "start_offset": 181, "end_offset": 300},
+            {"name": "Spring 2027", "code": "SP2027", "start_offset": 301, "end_offset": 420},
         ]
 
         term_ids = []
@@ -466,7 +466,7 @@ class DemoSeeder(BaselineSeeder):
         self.log("👩‍💼 Creating Demo Admin (Institution Admin)...")
 
         email = "demo2025.admin@example.com"
-        password = "Demo2024!"
+        password = "Demo2025!"
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -592,22 +592,22 @@ class DemoSeeder(BaselineSeeder):
         return instructor_ids
 
     def create_demo_term(self, institution_id):
-        """Create Fall 2024 term"""
-        self.log("📅 Creating Fall 2024 term...")
+        """Create Fall 2025 term"""
+        self.log("📅 Creating Fall 2025 term...")
 
         base_date = datetime.now(timezone.utc)
         start_date = base_date - timedelta(days=90)
         end_date = base_date + timedelta(days=30)
 
         schema = Term.create_schema(
-            name="Fall 2024",
+            name="Fall 2025",
             start_date=start_date.isoformat(),
             end_date=end_date.isoformat(),
             assessment_due_date=end_date.isoformat(),
             active=True,
         )
-        schema["term_name"] = "Fall 2024"
-        schema["term_code"] = "FA2024"
+        schema["term_name"] = "Fall 2025"
+        schema["term_code"] = "FA2025"
         schema["institution_id"] = institution_id
 
         term_id = db.create_term(schema)
@@ -735,7 +735,7 @@ class DemoSeeder(BaselineSeeder):
         self.log("")
         self.log("🔑 Demo Account Credentials:")
         self.log("   Email:    demo2025.admin@example.com")
-        self.log("   Password: Demo2024!")
+        self.log("   Password: Demo2025!")
         self.log("")
         self.log("🚀 Ready to demo! The database is fully populated with:")
         self.log("   ✓ Courses across multiple programs")

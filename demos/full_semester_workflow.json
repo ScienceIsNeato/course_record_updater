@@ -76,7 +76,7 @@
           "endpoint": "/api/auth/login",
           "data": {
             "email": "demo2025.admin@example.com",
-            "password": "Demo2024!"
+            "password": "Demo2025!"
           },
           "description": "Login as admin"
         }
@@ -90,7 +90,7 @@
       ],
       "inputs": {
         "email": "demo2025.admin@example.com",
-        "password": "Demo2024!"
+        "password": "Demo2025!"
       },
       "expected_results": [
         "Dashboard loads with welcome message",
@@ -103,7 +103,9 @@
         "expected_url": "/dashboard"
       },
       "artifacts": {
-        "screenshots": ["01_admin_dashboard.png"],
+        "screenshots": [
+          "01_admin_dashboard.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -127,7 +129,7 @@
           "action": "api_put",
           "endpoint": "/api/management/programs/{{program_id}}",
           "data": {
-            "description": "Primary focus for Fall 2024 Accreditation Cycle."
+            "description": "Primary focus for Fall 2025 Accreditation Cycle."
           },
           "description": "Update program description via API",
           "capture_id_from_pre_command": 0,
@@ -143,7 +145,7 @@
       ],
       "inputs": {
         "program_name": "Biological Sciences",
-        "new_description": "Primary focus for Fall 2024 Accreditation Cycle."
+        "new_description": "Primary focus for Fall 2025 Accreditation Cycle."
       },
       "expected_results": [
         "Success toast appears ('Program updated successfully')",
@@ -154,14 +156,17 @@
         {
           "command": "sqlite3 course_records_dev.db \"SELECT description FROM programs WHERE name='Biological Sciences'\"",
           "purpose": "Verify description was updated in database",
-          "expected_output_contains": "Fall 2024 Accreditation"
+          "expected_output_contains": "Fall 2025 Accreditation"
         }
       ],
       "verification": {
         "type": "db_check"
       },
       "artifacts": {
-        "screenshots": ["02_program_edit_modal.png", "02_program_updated.png"],
+        "screenshots": [
+          "02_program_edit_modal.png",
+          "02_program_updated.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -197,7 +202,9 @@
         "expected_url": "/courses"
       },
       "artifacts": {
-        "screenshots": ["03_courses_list.png"],
+        "screenshots": [
+          "03_courses_list.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -231,7 +238,10 @@
           "endpoint": "/api/management/courses/{{course_id}}/duplicate",
           "data": {
             "new_course_number": "BIOL-101-V2",
-            "program_ids": ["{{bio_program_id}}", "{{zoo_program_id}}"]
+            "program_ids": [
+              "{{bio_program_id}}",
+              "{{zoo_program_id}}"
+            ]
           },
           "description": "Duplicate BIOL-101 and attach to both programs"
         }
@@ -240,7 +250,10 @@
       "inputs": {
         "source_course": "BIOL-101 Introduction to Biology",
         "new_course_number": "BIOL-101-V2",
-        "programs": ["Biological Sciences", "Zoology"]
+        "programs": [
+          "Biological Sciences",
+          "Zoology"
+        ]
       },
       "expected_results": [
         "Success toast appears ('Course duplicated successfully')",
@@ -263,7 +276,10 @@
         "type": "db_check"
       },
       "artifacts": {
-        "screenshots": ["04_duplicate_modal.png", "04_course_duplicated.png"],
+        "screenshots": [
+          "04_duplicate_modal.png",
+          "04_course_duplicated.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -351,7 +367,9 @@
         "expected_url": "/dashboard"
       },
       "artifacts": {
-        "screenshots": ["05_instructor_dashboard.png"],
+        "screenshots": [
+          "05_instructor_dashboard.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -387,7 +405,9 @@
         "expected_url": "/assessments"
       },
       "artifacts": {
-        "screenshots": ["06_assessment_form.png"],
+        "screenshots": [
+          "06_assessment_form.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -406,7 +426,7 @@
         }
       ],
       "instructions": {
-        "human": "1. Select 'Fall 2024 - BIOL-101 - Section 001' from the course dropdown\n2. Fill in the following:\n   - Students Passed (A/B/C): 20\n   - Students D/F/Incomplete: 5\n   - What Went Well: 'Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques.'\n3. Click 'Save Course Data'\n4. Verify success message appears at bottom of page",
+        "human": "1. Select 'Fall 2025 - BIOL-101 - Section 001' from the course dropdown\n2. Fill in the following:\n   - Students Passed (A/B/C): 20\n   - Students D/F/Incomplete: 5\n   - What Went Well: 'Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques.'\n3. Click 'Save Course Data'\n4. Verify success message appears at bottom of page",
         "automated": {
           "action": "api_put",
           "endpoint": "/api/management/sections/{{section_id}}",
@@ -420,7 +440,7 @@
       },
       "urls": [],
       "inputs": {
-        "course": "Fall 2024 - BIOL-101 - Section 001",
+        "course": "Fall 2025 - BIOL-101 - Section 001",
         "students_passed": "20",
         "students_dfic": "5",
         "narrative_celebrations": "Students demonstrated strong understanding of cell biology fundamentals. Lab work showed particular excellence in microscopy techniques."
@@ -441,7 +461,10 @@
         "type": "db_check"
       },
       "artifacts": {
-        "screenshots": ["07_assessment_filled.png", "07_assessment_success.png"],
+        "screenshots": [
+          "07_assessment_filled.png",
+          "07_assessment_success.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -515,7 +538,9 @@
       },
       "artifacts": {
         "screenshots": [],
-        "logs": ["advance_demo_output.log"]
+        "logs": [
+          "advance_demo_output.log"
+        ]
       },
       "pause_for_human": true
     },
@@ -532,7 +557,7 @@
           "endpoint": "/api/auth/login",
           "data": {
             "email": "demo2025.admin@example.com",
-            "password": "Demo2024!"
+            "password": "Demo2025!"
           },
           "description": "Login as admin for audit phase"
         }
@@ -546,7 +571,7 @@
       ],
       "inputs": {
         "email": "demo2025.admin@example.com",
-        "password": "Demo2024!"
+        "password": "Demo2025!"
       },
       "expected_results": [
         "Admin dashboard loads"
@@ -594,7 +619,9 @@
         "expected_url": "/audit-clo"
       },
       "artifacts": {
-        "screenshots": ["08_audit_dashboard.png"],
+        "screenshots": [
+          "08_audit_dashboard.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -627,7 +654,9 @@
         "type": "ui_check"
       },
       "artifacts": {
-        "screenshots": ["09_audit_filtered.png"],
+        "screenshots": [
+          "09_audit_filtered.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -658,7 +687,9 @@
         "type": "ui_check"
       },
       "artifacts": {
-        "screenshots": ["10_clo_details_modal.png"],
+        "screenshots": [
+          "10_clo_details_modal.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -688,9 +719,13 @@
         "type": "ui_check"
       },
       "artifacts": {
-        "screenshots": ["11_export_button.png"],
+        "screenshots": [
+          "11_export_button.png"
+        ],
         "logs": [],
-        "exports": ["clo_audit_export.csv"]
+        "exports": [
+          "clo_audit_export.csv"
+        ]
       },
       "pause_for_human": true
     },
@@ -722,7 +757,9 @@
         "type": "ui_check"
       },
       "artifacts": {
-        "screenshots": ["12_all_statuses.png"],
+        "screenshots": [
+          "12_all_statuses.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -759,7 +796,9 @@
         "expected_url": "/dashboard"
       },
       "artifacts": {
-        "screenshots": ["13_dashboard_final.png"],
+        "screenshots": [
+          "13_dashboard_final.png"
+        ],
         "logs": []
       },
       "pause_for_human": true
@@ -794,4 +833,3 @@
     }
   ]
 }
-

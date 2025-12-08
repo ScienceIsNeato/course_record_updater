@@ -19,6 +19,7 @@
   /**
    * Escape HTML to prevent XSS
    */
+  // eslint-disable-next-line no-unused-vars
   function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

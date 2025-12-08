@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,24 +13,28 @@
         .flash-message {
             margin-top: 1rem;
         }
+
         .navbar-brand img {
-            max-height: 40px; /* Adjust logo height as needed */
+            max-height: 40px;
+            /* Adjust logo height as needed */
             margin-right: 10px;
         }
     </style>
 </head>
+
 <body>
     {# Bootstrap Navbar Header #}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/lassie_logo.svg') }}" alt="LASSIE Logo" height="30" class="d-inline-block align-text-top me-2">
+                <img src="{{ url_for('static', filename='images/lassie_logo.svg') }}" alt="LASSIE Logo" height="30"
+                    class="d-inline-block align-text-top me-2">
                 LASSIE
             </a>
-            
+
             <!-- Navigation Items (will be populated by JavaScript based on auth status) -->
             <div class="navbar-nav me-auto" id="navItems"></div>
-            
+
             <!-- User Info (will be populated by JavaScript if authenticated) -->
             <div class="navbar-nav" id="userInfo">
                 <div class="nav-item">
@@ -65,7 +70,8 @@
                         <!-- File Selection -->
                         <div class="col-md-6">
                             <label for="excel_file" class="form-label">Select Excel File (.xlsx, .xls):</label>
-                            <input type="file" class="form-control" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                            <input type="file" class="form-control" id="excel_file" name="excel_file"
+                                accept=".xlsx,.xls" required>
                         </div>
 
                         <!-- Import Adapter -->
@@ -112,7 +118,8 @@
                 <!-- Progress and Results -->
                 <div id="importProgress" class="mt-4" style="display: none;">
                     <div class="progress mb-3">
-                        <progress class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%" value="0" max="100"></progress>
+                        <progress class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"
+                            value="0" max="100"></progress>
                     </div>
                     <div id="importStatus" class="text-center">
                         <output class="spinner-border text-info">
@@ -133,7 +140,8 @@
             <div class="card-header">Course Management Dashboard</div>
             <div class="card-body">
                 <p class="text-muted">
-                    After importing your Excel data, you can manage courses, terms, sections, and instructors through the API endpoints.
+                    After importing your Excel data, you can manage courses, terms, sections, and instructors through
+                    the API endpoints.
                     A comprehensive dashboard interface will be added in future updates.
                 </p>
                 <div class="row">
@@ -199,16 +207,18 @@
     </div>
 
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='logger.js') }}"></script>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-    
+
     <script>
         // Authentication and Role-based UI Management
         let currentUser = null;
 
         // Check authentication status on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             checkAuthStatus();
         });
 
@@ -216,7 +226,7 @@
             try {
                 const response = await fetch('/api/auth/status');
                 const data = await response.json();
-                
+
                 if (data.success && data.authenticated) {
                     currentUser = data.user;
                     updateNavigation(data.user);
@@ -238,7 +248,7 @@
             if (user) {
                 // Show role-based navigation
                 navItems.innerHTML = getRoleBasedNavigation(user.role);
-                
+
                 // Show user info with dropdown
                 userInfo.innerHTML = `
                     <div class="nav-item dropdown">
@@ -256,7 +266,7 @@
                         </ul>
                     </div>
                 `;
-                
+
                 // Show role-appropriate content
                 showAuthenticatedContent(user);
             } else {
@@ -269,7 +279,7 @@
                         </button>
                     </div>
                 `;
-                
+
                 // Show public content
                 showPublicContent();
             }
@@ -277,7 +287,7 @@
 
         function getRoleBasedNavigation(role) {
             const baseNav = '<a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a>';
-            
+
             switch (role) {
                 case 'site_admin':
                     return baseNav + `
@@ -330,25 +340,29 @@
 
         async function logout() {
             try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
                 const response = await fetch('/api/auth/logout', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
                     }
                 });
-                
+
+                const data = await response.json();
+
                 if (response.ok) {
-                    currentUser = null;
-                    updateNavigation(null);
-                    // Optionally redirect or refresh page
-                    globalThis.location.reload();
+                    window.location.href = '/';
                 } else {
-                    console.error('Logout failed');
-                    alert('Logout failed. Please try again.');
+                    console.error('Logout failed:', data);
+                    // On logout failure, force a fresh login to clear broken session
+                    window.location.href = '/login?force=true';
                 }
             } catch (error) {
                 console.error('Logout error:', error);
-                alert('Logout failed. Please try again.');
+                // On error, force a fresh login to clear broken session
+                window.location.href = '/login?force=true';
             }
         }
 
@@ -358,4 +372,5 @@
         globalThis.logout = logout;
     </script>
 </body>
+
 </html>

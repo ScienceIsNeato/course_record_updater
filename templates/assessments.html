@@ -7,36 +7,42 @@
     .outcomes-list .card {
         transition: transform 0.2s, box-shadow 0.2s;
     }
+
     .outcomes-list .card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     }
+
     .bg-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
+
     .text-primary {
         color: #667eea !important;
     }
+
     .btn-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
     }
+
     .btn-primary:hover {
         background: linear-gradient(135deg, #5568d3 0%, #63398b 100%);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
+
     .border-start {
         border-left-width: 4px !important;
     }
 </style>
 {% endblock %}
 
+{% block page_title %}Course Assessments{% endblock %}
+{% block page_subtitle %}View and update outcome assessments for your sections{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <h1>Course Assessments</h1>
-    <p class="lead">View and update outcome assessments for your sections</p>
-    
     <!-- Course Selector -->
     <div class="mb-4">
         <label for="courseSelect" class="form-label">Select Course:</label>
@@ -44,10 +50,10 @@
             <option value="">Loading courses...</option>
         </select>
     </div>
-    
+
     <!-- Success Message Alert -->
     <div id="saveStatus" class="alert" style="display: none;" role="alert"></div>
-    
+
     <!-- Course-Level Assessment Section (NEW from CEI demo feedback) -->
     <div id="courseLevelSection" style="display: none;" class="card mb-4 border-primary">
         <div class="card-header bg-primary text-white">
@@ -73,7 +79,7 @@
                     <small class="text-muted">Set by program admin</small>
                 </div>
             </div>
-            
+
             <!-- Grade Outcomes (Instructor Input) -->
             <div class="row mb-4">
                 <div class="col-md-12">
@@ -81,14 +87,16 @@
                 </div>
                 <div class="col-md-6">
                     <label for="studentsPassed" class="form-label">Students Passed (A/B/C) *</label>
-                    <input type="number" class="form-control" id="courseStudentsPassed" min="0" placeholder="Number of students with A, B, or C">
+                    <input type="number" class="form-control" id="courseStudentsPassed" min="0"
+                        placeholder="Number of students with A, B, or C">
                 </div>
                 <div class="col-md-6">
                     <label for="studentsDFIC" class="form-label">Students D/F/Incomplete *</label>
-                    <input type="number" class="form-control" id="courseStudentsDFIC" min="0" placeholder="Number of students with D, F, or I">
+                    <input type="number" class="form-control" id="courseStudentsDFIC" min="0"
+                        placeholder="Number of students with D, F, or I">
                 </div>
             </div>
-            
+
             <!-- Reconciliation -->
             <div class="mb-4">
                 <div class="form-check">
@@ -99,36 +107,41 @@
                 </div>
                 <div id="reconciliationNoteContainer" style="display: none;" class="mt-2">
                     <label for="reconciliationNote" class="form-label">Reconciliation Note:</label>
-                    <textarea class="form-control" id="reconciliationNote" rows="2" placeholder="Explain why the numbers don't reconcile..."></textarea>
+                    <textarea class="form-control" id="reconciliationNote" rows="2"
+                        placeholder="Explain why the numbers don't reconcile..."></textarea>
                 </div>
             </div>
-            
+
             <!-- Course Narratives (NOT at CLO level - corrected from demo feedback) -->
             <div class="mb-3">
                 <h6 class="text-primary mb-3">Course Reflections</h6>
-                
+
                 <div class="mb-3">
                     <label for="narrativeCelebrations" class="form-label">What Went Well (Celebrations)?</label>
-                    <textarea class="form-control" id="narrativeCelebrations" rows="3" placeholder="Describe what worked well in this course..."></textarea>
+                    <textarea class="form-control" id="narrativeCelebrations" rows="3"
+                        placeholder="Describe what worked well in this course..."></textarea>
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="narrativeChallenges" class="form-label">What Was Difficult (Challenges)?</label>
-                    <textarea class="form-control" id="narrativeChallenges" rows="3" placeholder="Describe challenges encountered..."></textarea>
+                    <textarea class="form-control" id="narrativeChallenges" rows="3"
+                        placeholder="Describe challenges encountered..."></textarea>
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="narrativeChanges" class="form-label">What to Do Differently (Changes)?</label>
-                    <textarea class="form-control" id="narrativeChanges" rows="3" placeholder="Describe what you would change next time..."></textarea>
+                    <textarea class="form-control" id="narrativeChanges" rows="3"
+                        placeholder="Describe what you would change next time..."></textarea>
                 </div>
             </div>
-            
+
             <div class="text-end">
-                <button type="button" class="btn btn-primary" id="saveCourseData"><i class="fas fa-save"></i> Save Course Data</button>
+                <button type="button" class="btn btn-primary" id="saveCourseData"><i class="fas fa-save"></i> Save
+                    Course Data</button>
             </div>
         </div>
     </div>
-    
+
     <!-- Outcomes List -->
     <div id="outcomesContainer">
         <p class="text-muted">Select a course to view its outcomes</p>
@@ -136,7 +149,8 @@
 </div>
 
 <!-- Update Assessment Modal -->
-<div class="modal fade" id="updateAssessmentModal" tabindex="-1" aria-labelledby="updateAssessmentModalLabel" aria-hidden="true">
+<div class="modal fade" id="updateAssessmentModal" tabindex="-1" aria-labelledby="updateAssessmentModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -146,27 +160,30 @@
             <form id="updateAssessmentForm">
                 <div class="modal-body">
                     <input type="hidden" id="assessmentOutcomeId">
-                    
+
                     <div class="mb-3">
                         <div class="fw-bold mb-2">Outcome Description:</div>
                         <p id="assessmentOutcomeDescription" class="text-muted"></p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="studentsTook" class="form-label">Students Who Took This Assessment *</label>
-                        <input type="number" class="form-control" id="studentsTook" name="students_took" required min="0">
+                        <input type="number" class="form-control" id="studentsTook" name="students_took" required
+                            min="0">
                         <small class="text-muted">How many students took THIS specific CLO assessment?</small>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="studentsPassed" class="form-label">Students Who Passed This Assessment *</label>
-                        <input type="number" class="form-control" id="studentsPassed" name="students_passed" required min="0">
+                        <input type="number" class="form-control" id="studentsPassed" name="students_passed" required
+                            min="0">
                         <small class="text-muted">How many students passed THIS specific CLO assessment?</small>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="assessmentTool" class="form-label">Assessment Tool *</label>
-                        <input type="text" class="form-control" id="assessmentTool" name="assessment_tool" required maxlength="50" placeholder="e.g., Test #3, Lab 2, Final Project">
+                        <input type="text" class="form-control" id="assessmentTool" name="assessment_tool" required
+                            maxlength="50" placeholder="e.g., Test #3, Lab 2, Final Project">
                         <small class="text-muted">Brief description (50 characters max)</small>
                     </div>
                 </div>
@@ -182,193 +199,206 @@
 
 {% block extra_js %}
 <script>
-// ========================================
-// Pure Utility Functions (Module Scope)
-// ========================================
+    // ========================================
+    // Pure Utility Functions (Module Scope)
+    // ========================================
 
-// Helper function to escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Get status badge HTML
-function getStatusBadge(status) {
-    const badges = {
-        'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
-        'assigned': '<span class="badge bg-info">Assigned</span>',
-        'in_progress': '<span class="badge bg-primary">In Progress</span>',
-        'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
-        'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
-        'approved': '<span class="badge bg-success">✓ Approved</span>'
-    };
-    return badges[status] || '';
-}
-
-// Check if CLO can be submitted for approval
-function canSubmitForApproval(status) {
-    return status === 'in_progress' || status === 'approval_pending';
-}
-
-// Helper function to get status indicator HTML
-function getStatusIndicatorHtml(status, isComplete, needsWork) {
-    if (status === 'approved') {
-        return '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>';
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
-    if (status === 'awaiting_approval') {
-        return '<span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Review</span>';
+
+    // Get status badge HTML
+    function getStatusBadge(status) {
+        const badges = {
+            'unassigned': '<span class="badge bg-secondary">Unassigned</span>',
+            'assigned': '<span class="badge bg-info">Assigned</span>',
+            'in_progress': '<span class="badge bg-primary">In Progress</span>',
+            'awaiting_approval': '<span class="badge bg-warning">Awaiting Approval</span>',
+            'approval_pending': '<span class="badge bg-danger">Needs Rework</span>',
+            'approved': '<span class="badge bg-success">✓ Approved</span>'
+        };
+        return badges[status] || '';
     }
-    if (needsWork) {
-        return '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Needs Revision</span>';
+
+    // Check if CLO can be submitted for approval
+    function canSubmitForApproval(status) {
+        return status === 'in_progress' || status === 'approval_pending';
     }
-    if (isComplete) {
-        return '<span class="badge bg-info"><i class="fas fa-edit"></i> In Progress</span>';
+
+    // Helper function to get status indicator HTML
+    function getStatusIndicatorHtml(status, isComplete, needsWork) {
+        if (status === 'approved') {
+            return '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Approved</span>';
+        }
+        if (status === 'awaiting_approval') {
+            return '<span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Pending Review</span>';
+        }
+        if (needsWork) {
+            return '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Needs Revision</span>';
+        }
+        if (isComplete) {
+            return '<span class="badge bg-info"><i class="fas fa-edit"></i> In Progress</span>';
+        }
+        return '';
     }
-    return '';
-}
 
-// Helper function to get border color class
-function getBorderColorClass(isApproved, needsWork, isComplete) {
-    if (isApproved) return 'border-success';
-    if (needsWork) return 'border-danger';
-    if (isComplete) return 'border-info';
-    return 'border-secondary';
-}
+    // Helper function to get border color class
+    function getBorderColorClass(isApproved, needsWork, isComplete) {
+        if (isApproved) return 'border-success';
+        if (needsWork) return 'border-danger';
+        if (isComplete) return 'border-info';
+        return 'border-secondary';
+    }
 
-// Helper function to get success rate color class
-function getSuccessRateColorClass(percentage) {
-    if (percentage >= 80) return 'text-success';
-    if (percentage >= 60) return 'text-warning';
-    return 'text-danger';
-}
+    // Helper function to get success rate color class
+    function getSuccessRateColorClass(percentage) {
+        if (percentage >= 80) return 'text-success';
+        if (percentage >= 60) return 'text-warning';
+        return 'text-danger';
+    }
 
-// ========================================
-// DOM-Dependent Code (DOMContentLoaded)
-// ========================================
+    // ========================================
+    // DOM-Dependent Code (DOMContentLoaded)
+    // ========================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    const courseSelect = document.getElementById('courseSelect');
-    const outcomesContainer = document.getElementById('outcomesContainer');
-    const updateAssessmentModal = document.getElementById('updateAssessmentModal');
-    const updateAssessmentForm = document.getElementById('updateAssessmentForm');
-    
-    // Store sections data for enrollment lookup
-    let instructorSections = [];
-    
-    console.log('📢 ASSESSMENT JS: Elements found:', {
-        courseSelect: !!courseSelect,
-        outcomesContainer: !!outcomesContainer
-    });
-    
-    // Load instructor's courses
-    async function loadCourses() {
-        console.log('📢 loadCourses() START');
-        try {
-            // Get sections for instructor
-            console.log('📢 Fetching /api/sections...');
-            const sectionsResponse = await fetch('/api/sections');
-            console.log(`📢 /api/sections response: ${sectionsResponse.status}`);
-            if (!sectionsResponse.ok) throw new Error('Failed to load sections');
-            const sectionsData = await sectionsResponse.json();
-            const sections = sectionsData.sections || [];
-            instructorSections = sections; // Store for later use
-            console.log(`📢 Got ${sections.length} sections`);
-            if (sections.length > 0) {
-                console.log(`📢 First section FULL:`, JSON.stringify(sections[0], null, 2));
-                console.log(`📢 First section course_id:`, sections[0].course_id);
-                console.log(`📢 First section offering_id:`, sections[0].offering_id);
-                console.log(`📢 First section enrollment:`, sections[0].enrollment);
-            }
-            
-            // Get unique course IDs from sections
-            const courseIds = [...new Set(sections.map(s => s.course_id))];
-            console.log(`📢 Unique course IDs: ${courseIds.length}`, courseIds);
-            
-            // Get course details
-            console.log('📢 Fetching /api/courses...');
-            const coursesResponse = await fetch('/api/courses');
-            console.log(`📢 /api/courses response: ${coursesResponse.status}`);
-            if (!coursesResponse.ok) throw new Error('Failed to load courses');
-            const coursesData = await coursesResponse.json();
-            const allCourses = coursesData.courses || [];
-            console.log(`📢 Got ${allCourses.length} total courses`);
-            
-            // Filter to only courses instructor has sections for
-            const instructorCourses = allCourses.filter(c => courseIds.includes(c.course_id));
-            console.log(`📢 Filtered to ${instructorCourses.length} instructor courses`);
-            
-            // Populate dropdown with term and section info
-            courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
-            instructorCourses.forEach(course => {
-                // Find sections for this course
-                const courseSections = sections.filter(s => s.course_id === course.course_id);
-                courseSections.forEach(section => {
-                    const option = document.createElement('option');
-                    option.value = course.course_id;
-                    const termName = section.term_name || 'Unknown Term';
-                    const sectionNumber = section.section_number || '001';
-                    option.textContent = `${termName} - ${course.course_number} - Section ${sectionNumber}`;
-                    courseSelect.appendChild(option);
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const courseSelect = document.getElementById('courseSelect');
+        const outcomesContainer = document.getElementById('outcomesContainer');
+        const updateAssessmentModal = document.getElementById('updateAssessmentModal');
+        const updateAssessmentForm = document.getElementById('updateAssessmentForm');
+
+        // Store sections data for enrollment lookup
+        let instructorSections = [];
+
+        console.log('📢 ASSESSMENT JS: Elements found:', {
+            courseSelect: !!courseSelect,
+            outcomesContainer: !!outcomesContainer
+        });
+
+        // Load instructor's courses
+        async function loadCourses() {
+            console.log('📢 loadCourses() START');
+            try {
+                // Get sections for instructor
+                console.log('📢 Fetching /api/sections...');
+                const sectionsResponse = await fetch('/api/sections');
+                console.log(`📢 /api/sections response: ${sectionsResponse.status}`);
+                if (!sectionsResponse.ok) throw new Error('Failed to load sections');
+                const sectionsData = await sectionsResponse.json();
+                const sections = sectionsData.sections || [];
+                instructorSections = sections; // Store for later use
+                console.log(`📢 Got ${sections.length} sections`);
+                if (sections.length > 0) {
+                    console.log(`📢 First section FULL:`, JSON.stringify(sections[0], null, 2));
+                    console.log(`📢 First section course_id:`, sections[0].course_id);
+                    console.log(`📢 First section offering_id:`, sections[0].offering_id);
+                    console.log(`📢 First section enrollment:`, sections[0].enrollment);
+                }
+
+                // Reload sections data from API (call after saving to refresh stale data)
+                async function reloadSections() {
+                    try {
+                        const sectionsResponse = await fetch('/api/sections');
+                        if (!sectionsResponse.ok) throw new Error('Failed to reload sections');
+                        const sectionsData = await sectionsResponse.json();
+                        instructorSections = sectionsData.sections || [];
+                        console.log('📢 Sections reloaded:', instructorSections.length);
+                    } catch (error) {
+                        console.error('Error reloading sections:', error);
+                    }
+                }
+
+                // Get unique course IDs from sections
+                const courseIds = [...new Set(sections.map(s => s.course_id))];
+                console.log(`📢 Unique course IDs: ${courseIds.length}`, courseIds);
+
+                // Get course details
+                console.log('📢 Fetching /api/courses...');
+                const coursesResponse = await fetch('/api/courses');
+                console.log(`📢 /api/courses response: ${coursesResponse.status}`);
+                if (!coursesResponse.ok) throw new Error('Failed to load courses');
+                const coursesData = await coursesResponse.json();
+                const allCourses = coursesData.courses || [];
+                console.log(`📢 Got ${allCourses.length} total courses`);
+
+                // Filter to only courses instructor has sections for
+                const instructorCourses = allCourses.filter(c => courseIds.includes(c.course_id));
+                console.log(`📢 Filtered to ${instructorCourses.length} instructor courses`);
+
+                // Populate dropdown with term and section info
+                courseSelect.innerHTML = '<option value="">-- Select a course --</option>';
+                instructorCourses.forEach(course => {
+                    // Find sections for this course
+                    const courseSections = sections.filter(s => s.course_id === course.course_id);
+                    courseSections.forEach(section => {
+                        const option = document.createElement('option');
+                        option.value = course.course_id;
+                        const termName = section.term_name || 'Unknown Term';
+                        const sectionNumber = section.section_number || '001';
+                        option.textContent = `${termName} - ${course.course_number} - Section ${sectionNumber}`;
+                        courseSelect.appendChild(option);
+                    });
                 });
-            });
-            console.log('📢 loadCourses() COMPLETE');
-        } catch (error) {
-            console.error('❌ Error loading courses:', error);
-            courseSelect.innerHTML = '<option value="">Error loading courses</option>';
+                console.log('📢 loadCourses() COMPLETE');
+            } catch (error) {
+                console.error('❌ Error loading courses:', error);
+                courseSelect.innerHTML = '<option value="">Error loading courses</option>';
+            }
         }
-    }
-    
-    // Load outcomes for selected course
-    async function loadOutcomes(courseId) {
-        if (!courseId) {
-            outcomesContainer.innerHTML = '<p class="text-muted">Select a course to view its outcomes</p>';
-            return;
-        }
-        
-        outcomesContainer.innerHTML = '<p>Loading outcomes...</p>';
-        
-        try {
-            const response = await fetch(`/api/courses/${courseId}/outcomes`);
-            if (!response.ok) throw new Error('Failed to load outcomes');
-            
-            const data = await response.json();
-            const outcomes = data.outcomes || [];
-            
-            if (outcomes.length === 0) {
-                outcomesContainer.innerHTML = `
+
+        // Load outcomes for selected course
+        async function loadOutcomes(courseId) {
+            if (!courseId) {
+                outcomesContainer.innerHTML = '<p class="text-muted">Select a course to view its outcomes</p>';
+                return;
+            }
+
+            outcomesContainer.innerHTML = '<p>Loading outcomes...</p>';
+
+            try {
+                const response = await fetch(`/api/courses/${courseId}/outcomes`);
+                if (!response.ok) throw new Error('Failed to load outcomes');
+
+                const data = await response.json();
+                const outcomes = data.outcomes || [];
+
+                if (outcomes.length === 0) {
+                    outcomesContainer.innerHTML = `
                     <div class="alert alert-info">
                         No outcomes defined for ${data.course_number} - ${data.course_title}
                     </div>
                 `;
-                return;
-            }
-            
-            // Get section info for this course from instructor's sections
-            const courseSections = instructorSections.filter(s => s.course_id === courseId);
-            const section = courseSections.length > 0 ? courseSections[0] : null;
-            
-            // Get term info
-            let termName = 'Unknown Term';
-            if (section && section.term_name) {
-                termName = section.term_name;
-            } else if (section && section.term_id) {
-                // Fallback: fetch term from API if needed (but should be in section data)
-                termName = section.term_id;
-            }
-            
-            // Build course header with term and section info
-            const courseHeader = section 
-                ? `${termName} - ${data.course_number} - Section ${section.section_number || '001'}`
-                : `${data.course_number} - ${data.course_title}`;
-            
-            const enrollmentInfo = section && section.enrollment 
-                ? `<span class="text-muted">${section.enrollment} students enrolled</span>`
-                : '';
-            
-            // Display outcomes with update buttons
-            let html = `
+                    return;
+                }
+
+                // Get section info for this course from instructor's sections
+                const courseSections = instructorSections.filter(s => s.course_id === courseId);
+                const section = courseSections.length > 0 ? courseSections[0] : null;
+
+                // Get term info
+                let termName = 'Unknown Term';
+                if (section && section.term_name) {
+                    termName = section.term_name;
+                } else if (section && section.term_id) {
+                    // Fallback: fetch term from API if needed (but should be in section data)
+                    termName = section.term_id;
+                }
+
+                // Build course header with term and section info
+                const courseHeader = section
+                    ? `${termName} - ${data.course_number} - Section ${section.section_number || '001'}`
+                    : `${data.course_number} - ${data.course_title}`;
+
+                const enrollmentInfo = section && section.enrollment
+                    ? `<span class="text-muted">${section.enrollment} students enrolled</span>`
+                    : '';
+
+                // Display outcomes with update buttons
+                let html = `
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-primary text-white py-3">
                         <h4 class="mb-0"><i class="fas fa-graduation-cap"></i> ${courseHeader}</h4>
@@ -379,28 +409,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="text-muted mb-4">Complete assessments for each learning outcome below. Click "Update Assessment" to enter student performance data.</p>
                         <div class="outcomes-list">
             `;
-            
-            outcomes.forEach((outcome, index) => {
-                // Get assessment data (updated from CEI demo feedback)
-                const studentsTook = outcome.students_took || 0;
-                const studentsPassed = outcome.students_passed || 0;
-                const assessmentTool = outcome.assessment_tool || '';
-                const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
-                
-                // Get CLO status and feedback
-                const status = outcome.status || 'assigned';
-                const feedback = outcome.feedback_comments || '';
-                
-                // Determine if assessment is complete (has required new fields)
-                const isComplete = studentsTook > 0 && studentsPassed >= 0 && assessmentTool;
-                const isApproved = status === 'approved';
-                const needsWork = status === 'approval_pending' && feedback;
-                
-                // Get status indicator and styling
-                const statusIndicator = getStatusIndicatorHtml(status, isComplete, needsWork);
-                const borderColorClass = getBorderColorClass(isApproved, needsWork, isComplete);
-                
-                html += `
+
+                outcomes.forEach((outcome, index) => {
+                    // Get assessment data (updated from CEI demo feedback)
+                    const studentsTook = outcome.students_took || 0;
+                    const studentsPassed = outcome.students_passed || 0;
+                    const assessmentTool = outcome.assessment_tool || '';
+                    const percentage = studentsTook > 0 ? Math.round((studentsPassed / studentsTook) * 100) : 0;
+
+                    // Get CLO status and feedback
+                    const status = outcome.status || 'assigned';
+                    const feedback = outcome.feedback_comments || '';
+
+                    // Determine if assessment is complete (has required new fields)
+                    const isComplete = studentsTook > 0 && studentsPassed >= 0 && assessmentTool;
+                    const isApproved = status === 'approved';
+                    const needsWork = status === 'approval_pending' && feedback;
+
+                    // Get status indicator and styling
+                    const statusIndicator = getStatusIndicatorHtml(status, isComplete, needsWork);
+                    const borderColorClass = getBorderColorClass(isApproved, needsWork, isComplete);
+
+                    html += `
                     <div class="card mb-3 border-start border-4 ${borderColorClass}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-3">
@@ -472,333 +502,476 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 `;
-            });
-            
-            html += `
+                });
+
+                html += `
                         </div>
                     </div>
                 </div>
             `;
-            outcomesContainer.innerHTML = html;
-            
-            // Add click handlers for update buttons
-            document.querySelectorAll('.update-assessment-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    openUpdateAssessmentModal(this.dataset);
+                outcomesContainer.innerHTML = html;
+
+                // Add click handlers for update buttons
+                document.querySelectorAll('.update-assessment-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        openUpdateAssessmentModal(this.dataset);
+                    });
                 });
-            });
-            
-            // Add click handlers for submit buttons
-            document.querySelectorAll('.submit-clo-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    submitCLOForApproval(this.dataset.outcomeId, this.dataset.description);
+
+                // Add click handlers for submit buttons
+                document.querySelectorAll('.submit-clo-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        submitCLOForApproval(this.dataset.outcomeId, this.dataset.description);
+                    });
                 });
-            });
-            
-        } catch (error) {
-            console.error('Error loading outcomes:', error);
-            outcomesContainer.innerHTML = '<div class="alert alert-danger">Error loading outcomes</div>';
-        }
-    }
-    
-    // Submit CLO for approval
-    async function submitCLOForApproval(outcomeId, description) {
-        if (!confirm(`Submit "${description}" for approval?\n\nOnce submitted, it will be reviewed by an administrator.`)) {
-            return;
-        }
-        
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            
-            const response = await fetch(`/api/outcomes/${outcomeId}/submit`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                }
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to submit for approval');
+
+            } catch (error) {
+                console.error('Error loading outcomes:', error);
+                outcomesContainer.innerHTML = '<div class="alert alert-danger">Error loading outcomes</div>';
             }
-            
-            alert('CLO submitted for approval successfully!');
-            
-            // Reload outcomes for current course
-            const currentCourseId = courseSelect.value;
-            if (currentCourseId) {
-                await loadOutcomes(currentCourseId);
-            }
-            
-        } catch (error) {
-            console.error('Error submitting for approval:', error);
-            alert('Failed to submit for approval: ' + error.message);
         }
-    }
-    
-    // Open update assessment modal
-    function openUpdateAssessmentModal(outcomeData) {
-        document.getElementById('assessmentOutcomeId').value = outcomeData.outcomeId;
-        document.getElementById('assessmentOutcomeDescription').textContent = outcomeData.description;
-        
-        // Populate with existing values (updated field names from CEI demo feedback)
-        document.getElementById('studentsTook').value = outcomeData.studentsTook || '';
-        document.getElementById('studentsPassed').value = outcomeData.studentsPassed || '';
-        document.getElementById('assessmentTool').value = outcomeData.assessmentTool || '';
-        
-        const modal = new bootstrap.Modal(updateAssessmentModal);
-        modal.show();
-    }
-    
-    // Track if user has started editing (for auto-marking in_progress)
-    let autoMarkTriggered = false;
-    
-    // Auto-track editing on form fields (updated field names from CEI demo feedback)
-    ['studentsTook', 'studentsPassed', 'assessmentTool'].forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
-            field.addEventListener('input', function() {
-                // Auto-mark as in_progress on first edit (debounced)
-                if (!autoMarkTriggered) {
-                    autoMarkTriggered = true;
-                    const outcomeId = document.getElementById('assessmentOutcomeId').value;
-                    const status = document.querySelector(`.update-assessment-btn[data-outcome-id="${outcomeId}"]`)?.dataset?.status;
-                    
-                    // Only auto-mark if status is assigned or approval_pending
-                    if (status === 'assigned' || status === 'approval_pending') {
-                        setTimeout(() => autoMarkInProgress(outcomeId), 1000);
-                    }
-                }
-            });
-        }
-    });
-    
-    // Auto-mark CLO as in_progress
-    async function autoMarkInProgress(outcomeId) {
-        try {
-            // This will be called silently - no need to show success/error to user
-            // Note: The backend update_course_outcome will handle auto-marking
-            // We could add a dedicated endpoint, but for now the assessment update will trigger it
-            console.log(`Auto-marking outcome ${outcomeId} as in_progress`);
-        } catch (error) {
-            console.error('Error auto-marking in progress:', error);
-            // Silent fail - not critical
-        }
-    }
-    
-    // Handle assessment form submission
-    updateAssessmentForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const outcomeId = document.getElementById('assessmentOutcomeId').value;
-        const studentsTook = Number.parseInt(document.getElementById('studentsTook').value);
-        const studentsPassed = Number.parseInt(document.getElementById('studentsPassed').value);
-        const assessmentTool = document.getElementById('assessmentTool').value.trim();
-        
-        // Validation (updated from CEI demo feedback)
-        if (studentsPassed > studentsTook) {
-            alert('Students who passed cannot exceed students who took the assessment');
-            return;
-        }
-        
-        if (!assessmentTool || assessmentTool.length === 0) {
-            alert('Assessment tool is required');
-            return;
-        }
-        
-        if (assessmentTool.length > 50) {
-            alert('Assessment tool must be 50 characters or less');
-            return;
-        }
-        
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            
-            const response = await fetch(`/api/outcomes/${outcomeId}/assessment`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({
-                    students_took: studentsTook,
-                    students_passed: studentsPassed,
-                    assessment_tool: assessmentTool
-                })
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to update assessment');
-            }
-            
-            // Close modal and reload outcomes
-            const modal = bootstrap.Modal.getInstance(updateAssessmentModal);
-            modal.hide();
-            
-            // Reset tracking state
-            autoMarkTriggered = false;
-            
-            alert('Assessment updated successfully!');
-            
-            // Reload outcomes for current course
-            const currentCourseId = courseSelect.value;
-            if (currentCourseId) {
-                await loadOutcomes(currentCourseId);
-            }
-            
-        } catch (error) {
-            console.error('Error updating assessment:', error);
-            alert('Failed to update assessment: ' + error.message);
-        }
-    });
-    
-    // Course selection handler
-    courseSelect.addEventListener('change', function() {
-        loadOutcomes(this.value);
-        loadCourseLevelData(this.value); // NEW: Load course-level assessment data
-    });
-    
-    // Course-Level Assessment Section Handlers (NEW from CEI demo feedback)
-    const courseLevelSection = document.getElementById('courseLevelSection');
-    const cannotReconcileCheckbox = document.getElementById('cannotReconcile');
-    const reconciliationNoteContainer = document.getElementById('reconciliationNoteContainer');
-    const saveCourseDataBtn = document.getElementById('saveCourseData');
-    
-    // Toggle reconciliation note visibility
-    if (cannotReconcileCheckbox) {
-        cannotReconcileCheckbox.addEventListener('change', function() {
-            reconciliationNoteContainer.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                document.getElementById('reconciliationNote').value = '';
-            }
-        });
-    }
-    
-    // Load course-level data when course is selected
-    async function loadCourseLevelData(courseId) {
-        try {
-            // For now, use section data - in full implementation, this would be course-level
-            const section = instructorSections.find(s => s.course_id === courseId);
-            if (section) {
-                // Populate read-only enrollment fields
-                document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
-                document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
-                
-                // Format and display due date (added from CEI demo feedback)
-                if (section.due_date) {
-                    const dueDate = new Date(section.due_date);
-                    document.getElementById('courseDueDate').value = dueDate.toLocaleDateString();
-                } else {
-                    document.getElementById('courseDueDate').value = 'Not set';
-                }
-                
-                // Populate instructor input fields (if they exist)
-                document.getElementById('courseStudentsPassed').value = section.students_passed || '';
-                document.getElementById('courseStudentsDFIC').value = section.students_dfic || '';
-                document.getElementById('cannotReconcile').checked = section.cannot_reconcile || false;
-                document.getElementById('reconciliationNote').value = section.reconciliation_note || '';
-                
-                // Show/hide reconciliation note based on checkbox
-                reconciliationNoteContainer.style.display = section.cannot_reconcile ? 'block' : 'none';
-                
-                // Populate narratives
-                document.getElementById('narrativeCelebrations').value = section.narrative_celebrations || '';
-                document.getElementById('narrativeChallenges').value = section.narrative_challenges || '';
-                document.getElementById('narrativeChanges').value = section.narrative_changes || '';
-                
-                // Show the section
-                courseLevelSection.style.display = 'block';
-            }
-        } catch (error) {
-            console.error('Error loading course-level data:', error);
-        }
-    }
-    
-    // Save course-level data
-    if (saveCourseDataBtn) {
-        saveCourseDataBtn.addEventListener('click', async function() {
-            const courseId = courseSelect.value;
-            if (!courseId) {
-                alert('Please select a course first');
+
+        // Submit CLO for approval
+        async function submitCLOForApproval(outcomeId, description) {
+            if (!confirm(`Submit "${description}" for approval?\n\nOnce submitted, it will be reviewed by an administrator.`)) {
                 return;
             }
-            
+
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-                const section = instructorSections.find(s => s.course_id === courseId);
-                
-                if (!section) {
-                    alert('No section found for this course');
-                    return;
+
+                const response = await fetch(`/api/outcomes/${outcomeId}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to submit for approval');
                 }
-                
-                const data = {
-                    students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
-                    students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
-                    cannot_reconcile: document.getElementById('cannotReconcile').checked,
-                    reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
-                    narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
-                    narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
-                    narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
-                };
-                
-                const response = await fetch(`/api/sections/${section.section_id}`, {
+
+                alert('CLO submitted for approval successfully!');
+
+                // Reload outcomes for current course
+                const currentCourseId = courseSelect.value;
+                if (currentCourseId) {
+                    await loadOutcomes(currentCourseId);
+                }
+
+            } catch (error) {
+                console.error('Error submitting for approval:', error);
+                alert('Failed to submit for approval: ' + error.message);
+            }
+        }
+
+        // Open update assessment modal
+        function openUpdateAssessmentModal(outcomeData) {
+            document.getElementById('assessmentOutcomeId').value = outcomeData.outcomeId;
+            document.getElementById('assessmentOutcomeDescription').textContent = outcomeData.description;
+
+            // Populate with existing values (updated field names from CEI demo feedback)
+            document.getElementById('studentsTook').value = outcomeData.studentsTook || '';
+            document.getElementById('studentsPassed').value = outcomeData.studentsPassed || '';
+            document.getElementById('assessmentTool').value = outcomeData.assessmentTool || '';
+
+            const modal = new bootstrap.Modal(updateAssessmentModal);
+            modal.show();
+        }
+
+        // Track if user has started editing (for auto-marking in_progress)
+        let autoMarkTriggered = false;
+
+        // Auto-track editing on form fields (updated field names from CEI demo feedback)
+        ['studentsTook', 'studentsPassed', 'assessmentTool'].forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('input', function () {
+                    // Auto-mark as in_progress on first edit (debounced)
+                    if (!autoMarkTriggered) {
+                        autoMarkTriggered = true;
+                        const outcomeId = document.getElementById('assessmentOutcomeId').value;
+                        const status = document.querySelector(`.update-assessment-btn[data-outcome-id="${outcomeId}"]`)?.dataset?.status;
+
+                        // Only auto-mark if status is assigned or approval_pending
+                        if (status === 'assigned' || status === 'approval_pending') {
+                            setTimeout(() => autoMarkInProgress(outcomeId), 1000);
+                        }
+                    }
+                });
+            }
+        });
+
+        // Auto-mark CLO as in_progress
+        async function autoMarkInProgress(outcomeId) {
+            try {
+                // This will be called silently - no need to show success/error to user
+                // Note: The backend update_course_outcome will handle auto-marking
+                // We could add a dedicated endpoint, but for now the assessment update will trigger it
+                console.log(`Auto-marking outcome ${outcomeId} as in_progress`);
+            } catch (error) {
+                console.error('Error auto-marking in progress:', error);
+                // Silent fail - not critical
+            }
+        }
+
+        // Handle assessment form submission
+        updateAssessmentForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const outcomeId = document.getElementById('assessmentOutcomeId').value;
+            const studentsTook = Number.parseInt(document.getElementById('studentsTook').value);
+            const studentsPassed = Number.parseInt(document.getElementById('studentsPassed').value);
+            const assessmentTool = document.getElementById('assessmentTool').value.trim();
+
+            // Validation (updated from CEI demo feedback)
+            if (studentsPassed > studentsTook) {
+                alert('Students who passed cannot exceed students who took the assessment');
+                return;
+            }
+
+            if (!assessmentTool || assessmentTool.length === 0) {
+                alert('Assessment tool is required');
+                return;
+            }
+
+            if (assessmentTool.length > 50) {
+                alert('Assessment tool must be 50 characters or less');
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+                const response = await fetch(`/api/outcomes/${outcomeId}/assessment`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': csrfToken
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify({
+                        students_took: studentsTook,
+                        students_passed: studentsPassed,
+                        assessment_tool: assessmentTool
+                    })
                 });
-                
+
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to save course data');
+                    throw new Error(error.error || 'Failed to update assessment');
                 }
-                
-                // Show success message
-                const statusEl = document.getElementById('saveStatus');
-                statusEl.textContent = 'Course data saved successfully!';
-                statusEl.className = 'alert alert-success';
-                statusEl.style.display = 'block';
-                
-                // Scroll to the status message
-                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                
-                // Hide after 5 seconds
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
-                
+
+                // Close modal and reload outcomes
+                const modal = bootstrap.Modal.getInstance(updateAssessmentModal);
+                modal.hide();
+
+                // Reset tracking state
+                autoMarkTriggered = false;
+
+                alert('Assessment updated successfully!');
+
+                // Reload outcomes for current course
+                const currentCourseId = courseSelect.value;
+                if (currentCourseId) {
+                    await loadOutcomes(currentCourseId);
+                }
+
             } catch (error) {
-                console.error('Error saving course data:', error);
-                
-                // Show error message
-                const statusEl = document.getElementById('saveStatus');
-                statusEl.textContent = 'Failed to save course data: ' + error.message;
-                statusEl.className = 'alert alert-danger';
-                statusEl.style.display = 'block';
-                
-                // Scroll to the status message
-                statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                console.error('Error updating assessment:', error);
+                alert('Failed to update assessment: ' + error.message);
             }
         });
-    }
-    
-    // Initialize - call async function
-    loadCourses().then(() => {
-        // Auto-select course if provided in URL query parameter
-        const urlParams = new URLSearchParams(globalThis.location.search);
-        const courseParam = urlParams.get('course');
-        if (courseParam && courseSelect) {
-            courseSelect.value = courseParam;
-            loadOutcomes(courseParam);
-            loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+
+
+
+        // Track current course to detect changes
+        let currentCourseId = null;
+        let loadedCourseData = {}; // Store the data as it was loaded from server
+
+        // Course selection handler with auto-save
+        courseSelect.addEventListener('change', async function () {
+            const newCourseId = this.value;
+
+            // If switching from one course to another (not initial load)
+            if (currentCourseId && currentCourseId !== newCourseId) {
+                // Check if there are actual unsaved changes
+                const hasUnsavedChanges = checkForUnsavedChanges();
+
+                if (hasUnsavedChanges) {
+                    const shouldSave = confirm(
+                        'You have unsaved changes for the current course.\n\n' +
+                        'Would you like to save them before switching courses?'
+                    );
+
+                    if (shouldSave) {
+                        // Attempt to save current course data
+                        try {
+                            await saveCurrentCourseData();
+                            alert('Changes saved successfully!');
+                        } catch (error) {
+                            const shouldContinue = confirm(
+                                'Failed to save changes: ' + error.message + '\n\n' +
+                                'Do you still want to switch courses? (Unsaved changes will be lost)'
+                            );
+
+                            if (!shouldContinue) {
+                                // Revert dropdown to previous selection
+                                courseSelect.value = currentCourseId;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update current course tracker
+            currentCourseId = newCourseId;
+
+            // Load new course data
+            loadOutcomes(newCourseId);
+            loadCourseLevelData(newCourseId);
+        });
+
+        // Check if current form values differ from loaded values
+        function checkForUnsavedChanges() {
+            if (!courseLevelSection || courseLevelSection.style.display === 'none') {
+                return false;
+            }
+
+            // Get current form values
+            const currentData = {
+                students_passed: document.getElementById('courseStudentsPassed')?.value || '',
+                students_dfic: document.getElementById('courseStudentsDFIC')?.value || '',
+                cannot_reconcile: document.getElementById('cannotReconcile')?.checked || false,
+                reconciliation_note: document.getElementById('reconciliationNote')?.value || '',
+                narrative_celebrations: document.getElementById('narrativeCelebrations')?.value || '',
+                narrative_challenges: document.getElementById('narrativeChallenges')?.value || '',
+                narrative_changes: document.getElementById('narrativeChanges')?.value || ''
+            };
+
+            // Compare with loaded data
+            return (
+                currentData.students_passed !== loadedCourseData.students_passed ||
+                currentData.students_dfic !== loadedCourseData.students_dfic ||
+                currentData.cannot_reconcile !== loadedCourseData.cannot_reconcile ||
+                currentData.reconciliation_note !== loadedCourseData.reconciliation_note ||
+                currentData.narrative_celebrations !== loadedCourseData.narrative_celebrations ||
+                currentData.narrative_challenges !== loadedCourseData.narrative_challenges ||
+                currentData.narrative_changes !== loadedCourseData.narrative_changes
+            );
         }
-    }).catch(err => console.error('Failed to load courses:', err));
-});
+
+        // Save current course data
+        async function saveCurrentCourseData() {
+            const section = instructorSections.find(s => s.course_id === currentCourseId);
+
+            if (!section) {
+                throw new Error('No section found for current course');
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+            const data = {
+                students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
+                students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
+                cannot_reconcile: document.getElementById('cannotReconcile').checked,
+                reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
+                narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
+                narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
+                narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
+            };
+
+            const response = await fetch(`/api/sections/${section.section_id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to save course data');
+            }
+
+            // Update loaded data to match what was just saved
+            loadedCourseData = {
+                students_passed: data.students_passed?.toString() || '',
+                students_dfic: data.students_dfic?.toString() || '',
+                cannot_reconcile: data.cannot_reconcile,
+                reconciliation_note: data.reconciliation_note || '',
+                narrative_celebrations: data.narrative_celebrations || '',
+                narrative_challenges: data.narrative_challenges || '',
+                narrative_changes: data.narrative_changes || ''
+            };
+        }
+
+        // Course-Level Assessment Section Handlers (NEW from CEI demo feedback)
+        const courseLevelSection = document.getElementById('courseLevelSection');
+        const cannotReconcileCheckbox = document.getElementById('cannotReconcile');
+        const reconciliationNoteContainer = document.getElementById('reconciliationNoteContainer');
+        const saveCourseDataBtn = document.getElementById('saveCourseData');
+
+        // Toggle reconciliation note visibility
+        if (cannotReconcileCheckbox) {
+            cannotReconcileCheckbox.addEventListener('change', function () {
+                reconciliationNoteContainer.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked) {
+                    document.getElementById('reconciliationNote').value = '';
+                }
+            });
+        }
+
+        // Load course-level data when course is selected
+        async function loadCourseLevelData(courseId) {
+            try {
+                // For now, use section data - in full implementation, this would be course-level
+                const section = instructorSections.find(s => s.course_id === courseId);
+                if (section) {
+                    // Populate read-only enrollment fields
+                    document.getElementById('courseEnrollment').value = section.enrollment || 'Not set';
+                    document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
+
+                    // Format and display due date (added from CEI demo feedback)
+                    if (section.due_date) {
+                        const dueDate = new Date(section.due_date);
+                        document.getElementById('courseDueDate').value = dueDate.toLocaleDateString();
+                    } else {
+                        document.getElementById('courseDueDate').value = 'Not set';
+                    }
+
+                    // Populate instructor input fields (if they exist)
+                    document.getElementById('courseStudentsPassed').value = section.students_passed || '';
+                    document.getElementById('courseStudentsDFIC').value = section.students_dfic || '';
+                    document.getElementById('cannotReconcile').checked = section.cannot_reconcile || false;
+                    document.getElementById('reconciliationNote').value = section.reconciliation_note || '';
+
+                    // Show/hide reconciliation note based on checkbox
+                    reconciliationNoteContainer.style.display = section.cannot_reconcile ? 'block' : 'none';
+
+                    // Populate narratives
+                    document.getElementById('narrativeCelebrations').value = section.narrative_celebrations || '';
+                    document.getElementById('narrativeChallenges').value = section.narrative_challenges || '';
+                    document.getElementById('narrativeChanges').value = section.narrative_changes || '';
+
+                    // Store loaded data for dirty tracking
+                    loadedCourseData = {
+                        students_passed: (section.students_passed || '').toString(),
+                        students_dfic: (section.students_dfic || '').toString(),
+                        cannot_reconcile: section.cannot_reconcile || false,
+                        reconciliation_note: section.reconciliation_note || '',
+                        narrative_celebrations: section.narrative_celebrations || '',
+                        narrative_challenges: section.narrative_challenges || '',
+                        narrative_changes: section.narrative_changes || ''
+                    };
+
+                    // Show the section
+                    courseLevelSection.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading course-level data:', error);
+            }
+        }
+
+        // Save course-level data
+        if (saveCourseDataBtn) {
+            saveCourseDataBtn.addEventListener('click', async function () {
+                const courseId = courseSelect.value;
+                if (!courseId) {
+                    alert('Please select a course first');
+                    return;
+                }
+
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                    const section = instructorSections.find(s => s.course_id === courseId);
+
+                    if (!section) {
+                        alert('No section found for this course');
+                        return;
+                    }
+
+                    const data = {
+                        students_passed: Number.parseInt(document.getElementById('courseStudentsPassed').value) || null,
+                        students_dfic: Number.parseInt(document.getElementById('courseStudentsDFIC').value) || null,
+                        cannot_reconcile: document.getElementById('cannotReconcile').checked,
+                        reconciliation_note: document.getElementById('reconciliationNote').value.trim() || null,
+                        narrative_celebrations: document.getElementById('narrativeCelebrations').value.trim() || null,
+                        narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
+                        narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
+                    };
+
+                    const response = await fetch(`/api/sections/${section.section_id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error || 'Failed to save course data');
+                    }
+
+                    // Update loaded data to match what was just saved
+                    loadedCourseData = {
+                        students_passed: (data.students_passed || '').toString(),
+                        students_dfic: (data.students_dfic || '').toString(),
+                        cannot_reconcile: data.cannot_reconcile,
+                        reconciliation_note: data.reconciliation_note || '',
+                        narrative_celebrations: data.narrative_celebrations || '',
+                        narrative_challenges: data.narrative_challenges || '',
+                        narrative_changes: data.narrative_changes || ''
+                    };
+
+                    // Reload sections from API to refresh stale data
+                    await reloadSections();
+
+                    // Show success message
+                    const statusEl = document.getElementById('saveStatus');
+                    statusEl.textContent = 'Course data saved successfully!';
+                    statusEl.className = 'alert alert-success';
+                    statusEl.style.display = 'block';
+
+                    // Scroll to the status message
+                    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                    // Hide after 5 seconds
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 5000);
+
+                } catch (error) {
+                    console.error('Error saving course data:', error);
+
+                    // Show error message
+                    const statusEl = document.getElementById('saveStatus');
+                    statusEl.textContent = 'Failed to save course data: ' + error.message;
+                    statusEl.className = 'alert alert-danger';
+                    statusEl.style.display = 'block';
+
+                    // Scroll to the status message
+                    statusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            });
+        }
+
+        // Initialize - call async function
+        loadCourses().then(() => {
+            // Auto-select course if provided in URL query parameter
+            const urlParams = new URLSearchParams(globalThis.location.search);
+            const courseParam = urlParams.get('course');
+            if (courseParam && courseSelect) {
+                courseSelect.value = courseParam;
+                loadOutcomes(courseParam);
+                loadCourseLevelData(courseParam); // NEW: Load course-level data on auto-select
+            }
+        }).catch(err => console.error('Failed to load courses:', err));
+    });
 </script>
 {% endblock %}
-
