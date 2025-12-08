@@ -9,6 +9,7 @@ describe('offeringManagement.js Coverage Boost', () => {
       <form id="createOfferingForm">
         <select id="offeringCourseId"><option value="c1">Course</option></select>
         <select id="offeringTermId"><option value="t1">Term</option></select>
+        <select id="offeringProgramId"><option value="p1">Program</option></select>
         <input id="offeringCapacity" value="30">
         <input id="offeringStatus" type="checkbox">
         <button type="submit" id="createOfferingBtn">
@@ -22,6 +23,7 @@ describe('offeringManagement.js Coverage Boost', () => {
         <input id="editOfferingId" value="o1">
         <select id="editOfferingCourseId"><option value="c1">Course</option></select>
         <select id="editOfferingTermId"><option value="t1">Term</option></select>
+        <select id="editOfferingProgramId"><option value="p1">Program</option></select>
         <input id="editOfferingCapacity" value="30">
         <input id="editOfferingStatus" type="checkbox">
         <button type="submit" id="editOfferingBtn">

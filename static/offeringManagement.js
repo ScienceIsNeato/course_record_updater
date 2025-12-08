@@ -60,31 +60,36 @@ function setupModalListeners() {
 async function loadCoursesAndTermsForCreateDropdown() {
   const courseSelect = document.getElementById('offeringCourseId');
   const termSelect = document.getElementById('offeringTermId');
+  const programSelect = document.getElementById('offeringProgramId');
 
-  if (!courseSelect || !termSelect) {
+  if (!courseSelect || !termSelect || !programSelect) {
     return;
   }
 
   // Set loading state
   courseSelect.innerHTML = '<option value="">Loading courses...</option>';
   termSelect.innerHTML = '<option value="">Loading terms...</option>';
+  programSelect.innerHTML = '<option value="">Loading programs...</option>';
 
   try {
-    // Fetch courses and terms in parallel
-    const [coursesResponse, termsResponse] = await Promise.all([
+    // Fetch courses, terms, and programs in parallel
+    const [coursesResponse, termsResponse, programsResponse] = await Promise.all([
       fetch('/api/courses'),
-      fetch('/api/terms')
+      fetch('/api/terms'),
+      fetch('/api/management/programs')
     ]);
 
-    if (!coursesResponse.ok || !termsResponse.ok) {
+    if (!coursesResponse.ok || !termsResponse.ok || !programsResponse.ok) {
       throw new Error('Failed to fetch dropdown data');
     }
 
     const coursesData = await coursesResponse.json();
     const termsData = await termsResponse.json();
+    const programsData = await programsResponse.json();
 
     const courses = coursesData.courses || [];
     const terms = termsData.terms || [];
+    const programs = programsData.programs || [];
 
     // Populate courses dropdown
     courseSelect.innerHTML = '<option value="">Select Course</option>';
@@ -102,6 +107,15 @@ async function loadCoursesAndTermsForCreateDropdown() {
       option.value = term.term_id;
       option.textContent = term.name;
       termSelect.appendChild(option);
+    });
+
+    // Populate programs dropdown
+    programSelect.innerHTML = '<option value="">Select Program</option>';
+    programs.forEach(program => {
+      const option = document.createElement('option');
+      option.value = program.program_id || program.id;
+      option.textContent = program.name || program.program_name;
+      programSelect.appendChild(option);
     });
 
     if (courses.length === 0) {
@@ -123,63 +137,42 @@ async function loadCoursesAndTermsForCreateDropdown() {
  * Fetches from API and populates both select elements
  */
 async function loadCoursesAndTermsForEditDropdown() {
-  const courseSelect = document.getElementById('editOfferingCourseId');
-  const termSelect = document.getElementById('editOfferingTermId');
+  const programSelect = document.getElementById('editOfferingProgramId');
 
-  if (!courseSelect || !termSelect) {
+  if (!programSelect) {
     return;
   }
 
-  // Set loading state
-  courseSelect.innerHTML = '<option value="">Loading courses...</option>';
-  termSelect.innerHTML = '<option value="">Loading terms...</option>';
+  // Set loading state for programs only (course/term are display-only)
+  programSelect.innerHTML = '<option value="">Loading programs...</option>';
 
   try {
-    // Fetch courses and terms in parallel
-    const [coursesResponse, termsResponse] = await Promise.all([
-      fetch('/api/courses'),
-      fetch('/api/terms')
-    ]);
+    // Fetch programs
+    const programsResponse = await fetch('/api/management/programs');
 
-    if (!coursesResponse.ok || !termsResponse.ok) {
-      throw new Error('Failed to fetch dropdown data');
+    if (!programsResponse.ok) {
+      throw new Error('Failed to fetch programs');
     }
 
-    const coursesData = await coursesResponse.json();
-    const termsData = await termsResponse.json();
+    const programsData = await programsResponse.json();
+    const programs = programsData.programs || [];
 
-    const courses = coursesData.courses || [];
-    const terms = termsData.terms || [];
-
-    // Populate courses dropdown
-    courseSelect.innerHTML = '<option value="">Select Course</option>';
-    courses.forEach(course => {
+    // Populate programs dropdown
+    programSelect.innerHTML = '<option value="">Select Program</option>';
+    programs.forEach(program => {
       const option = document.createElement('option');
-      option.value = course.course_id;
-      option.textContent = `${course.course_number} - ${course.course_title}`;
-      courseSelect.appendChild(option);
+      option.value = program.program_id || program.id;
+      option.textContent = program.name || program.program_name;
+      programSelect.appendChild(option);
     });
 
-    // Populate terms dropdown
-    termSelect.innerHTML = '<option value="">Select Term</option>';
-    terms.forEach(term => {
-      const option = document.createElement('option');
-      option.value = term.term_id;
-      option.textContent = term.name;
-      termSelect.appendChild(option);
-    });
-
-    if (courses.length === 0) {
-      courseSelect.innerHTML = '<option value="">No courses available</option>';
-    }
-    if (terms.length === 0) {
-      termSelect.innerHTML = '<option value="">No terms available</option>';
+    if (programs.length === 0) {
+      programSelect.innerHTML = '<option value="">No programs available</option>';
     }
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error('Failed to load dropdown data:', error);
-    courseSelect.innerHTML = '<option value="">Error loading courses</option>';
-    termSelect.innerHTML = '<option value="">Error loading terms</option>';
+    console.error('Failed to load programs:', error);
+    programSelect.innerHTML = '<option value="">Error loading programs</option>';
   }
 }
 
@@ -202,6 +195,7 @@ function initializeCreateOfferingModal() {
     const offeringData = {
       course_id: document.getElementById('offeringCourseId').value,
       term_id: document.getElementById('offeringTermId').value,
+      program_id: document.getElementById('offeringProgramId').value,
       status: document.getElementById('offeringStatus').value,
       capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
@@ -279,6 +273,7 @@ function initializeEditOfferingModal() {
     const capacityValue = document.getElementById('editOfferingCapacity').value;
 
     const updateData = {
+      program_id: document.getElementById('editOfferingProgramId').value,
       status: document.getElementById('editOfferingStatus').value,
       capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
@@ -344,6 +339,15 @@ function openEditOfferingModal(offeringId, offeringData) {
   document.getElementById('editOfferingId').value = offeringId;
   document.getElementById('editOfferingStatus').value = offeringData.status || 'active';
   document.getElementById('editOfferingCapacity').value = offeringData.capacity || '';
+
+  // Set program (will be populated by loadCoursesAndTermsForEditDropdown)
+  const programSelect = document.getElementById('editOfferingProgramId');
+  if (programSelect && offeringData.program_id) {
+    // Wait a bit for dropdown to populate, then select
+    setTimeout(() => {
+      programSelect.value = offeringData.program_id;
+    }, 100);
+  }
 
   const modal = new bootstrap.Modal(document.getElementById('editOfferingModal'));
   modal.show();

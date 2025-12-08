@@ -30,6 +30,11 @@ describe('Offering Management - Create Offering Modal', () => {
           <option value="term-1">Fall 2024</option>
           <option value="term-2">Spring 2025</option>
         </select>
+        <select id="offeringProgramId" name="program_id" required>
+          <option value="">Select Program</option>
+          <option value="program-1">Computer Science</option>
+          <option value="program-2">Mathematics</option>
+        </select>
         <select id="offeringStatus" name="status" required>
           <option value="active" selected>Active</option>
           <option value="planning">Planning</option>
@@ -117,6 +122,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
       document.getElementById('offeringCapacity').value = '30';
 
@@ -147,6 +153,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-2';
       document.getElementById('offeringTermId').value = 'term-2';
+      document.getElementById('offeringProgramId').value = 'program-2';
       document.getElementById('offeringStatus').value = 'planning';
       document.getElementById('offeringCapacity').value = '50';
 
@@ -161,6 +168,7 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(body).toMatchObject({
         course_id: 'course-2',
         term_id: 'term-2',
+        program_id: 'program-2',
         status: 'planning',
         capacity: 50
       });
@@ -175,6 +183,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
       document.getElementById('offeringCapacity').value = '';
 
@@ -207,6 +216,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const btnText = document.querySelector('.btn-text');
       const btnSpinner = document.querySelector('.btn-spinner');
@@ -243,6 +253,7 @@ describe('Offering Management - Create Offering Modal', () => {
 
       courseSelect.value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -268,6 +279,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -287,6 +299,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -329,6 +342,11 @@ describe('Offering Management - Edit Offering Modal', () => {
     document.body.innerHTML = `
       <form id="editOfferingForm">
         <input type="hidden" id="editOfferingId" />
+        <select id="editOfferingProgramId" required>
+          <option value="">Select Program</option>
+          <option value="program-1">Computer Science</option>
+          <option value="program-2">Mathematics</option>
+        </select>
         <select id="editOfferingStatus" required>
           <option value="active">Active</option>
           <option value="planning">Planning</option>
@@ -389,6 +407,7 @@ describe('Offering Management - Edit Offering Modal', () => {
 
     const form = document.getElementById('editOfferingForm');
     document.getElementById('editOfferingId').value = 'offering-123';
+    document.getElementById('editOfferingProgramId').value = 'program-1';
     document.getElementById('editOfferingStatus').value = 'cancelled';
     document.getElementById('editOfferingCapacity').value = '25';
 
