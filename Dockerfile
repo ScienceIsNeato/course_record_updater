@@ -24,6 +24,10 @@ COPY *.py .
 COPY templates/ templates/
 COPY static/ static/
 COPY adapters/ adapters/
+COPY session/ session/
+COPY api/ api/
+COPY bulk_email_models/ bulk_email_models/
+COPY email_providers/ email_providers/
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app

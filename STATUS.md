@@ -65,23 +65,29 @@
 
 ---
 
-## Next Steps
+## Completed
 
 1. ✅ **Run quality gates** - All passing
-2. **Set up GCP project** as `loopcloser`
-3. **Create Mailtrap project** as "Loopcloser Tests"
+2. ✅ **Mailtrap configured** - Using existing sandbox
+3. ✅ **GCP project setup** - `loopcloser` project created
+4. ✅ **Dev environment deployed** - Live on Cloud Run!
+
+## Next Steps
+
+- Configure Cloudflare DNS for `dev.loopcloser.io`
+- Deploy staging and production environments
 
 > **Note:** Gmail test account remains `lassie.tests.instructor1.test@gmail.com` - can rename later if needed
 
 ---
 
-## Environment URLs (Target)
+## Environment URLs
 
 | Environment | URL | Status |
 |-------------|-----|--------|
 | Production | `https://loopcloser.io` | Not deployed |
 | Staging | `https://staging.loopcloser.io` | Not deployed |
-| Dev | `https://dev.loopcloser.io` | Not deployed |
+| Dev | https://loopcloser-dev-952626409962.us-central1.run.app | ✅ Live |
 
 ---
 
