@@ -141,6 +141,65 @@ Recommended security settings:
 
 ---
 
+---
+
+## 8. GitHub Secrets Required
+
+For CI/CD workflows to work, add these secrets to GitHub repo settings:
+
+| Secret | Description | How to Get |
+|--------|-------------|------------|
+| `GCP_SA_KEY` | GCP service account JSON key | See below |
+| `SONAR_TOKEN` | SonarCloud token | Already configured |
+| `SAFETY_API_KEY` | Safety vulnerability scanner | Already configured |
+| `ETHEREAL_USER` | Ethereal email for E2E tests | Already configured |
+| `ETHEREAL_PASS` | Ethereal password | Already configured |
+
+### Creating GCP Service Account Key
+
+```bash
+# Create service account
+gcloud iam service-accounts create github-actions \
+  --display-name="GitHub Actions" \
+  --project=loopcloser
+
+# Grant permissions
+gcloud projects add-iam-policy-binding loopcloser \
+  --member="serviceAccount:github-actions@loopcloser.iam.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding loopcloser \
+  --member="serviceAccount:github-actions@loopcloser.iam.gserviceaccount.com" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding loopcloser \
+  --member="serviceAccount:github-actions@loopcloser.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountUser"
+
+# Create and download key
+gcloud iam service-accounts keys create ~/github-actions-key.json \
+  --iam-account=github-actions@loopcloser.iam.gserviceaccount.com
+
+# Add contents of ~/github-actions-key.json as GCP_SA_KEY secret in GitHub
+```
+
+### Creating Secret in Secret Manager (for SECRET_KEY)
+
+```bash
+# Create a secret for the Flask SECRET_KEY
+openssl rand -hex 32 | gcloud secrets create loopcloser-secret-key \
+  --data-file=- \
+  --project=loopcloser
+
+# Grant Cloud Run access to the secret
+gcloud secrets add-iam-policy-binding loopcloser-secret-key \
+  --member="serviceAccount:952626409962-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project=loopcloser
+```
+
+---
+
 ## Cost Estimates
 
 Cloud Run free tier (monthly):

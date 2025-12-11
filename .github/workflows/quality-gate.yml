@@ -283,7 +283,7 @@ jobs:
         # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
         export ENV="test"
         export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
-        export LASSIE_DEFAULT_PORT_E2E="3002"
+        export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
         
         # Set Ethereal credentials from GitHub secrets for email verification
         export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"

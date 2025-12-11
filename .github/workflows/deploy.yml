@@ -1,0 +1,118 @@
+name: Deploy to Cloud Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  PROJECT_ID: loopcloser
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev/loopcloser/loopcloser-images
+  IMAGE_NAME: loopcloser-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Set environment-specific config
+      id: config
+      run: |
+        case "${{ github.event.inputs.environment }}" in
+          dev)
+            echo "service_name=loopcloser-dev" >> $GITHUB_OUTPUT
+            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "max_instances=2" >> $GITHUB_OUTPUT
+            echo "memory=512Mi" >> $GITHUB_OUTPUT
+            echo "cpu=1" >> $GITHUB_OUTPUT
+            ;;
+          staging)
+            echo "service_name=loopcloser-staging" >> $GITHUB_OUTPUT
+            echo "min_instances=0" >> $GITHUB_OUTPUT
+            echo "max_instances=4" >> $GITHUB_OUTPUT
+            echo "memory=512Mi" >> $GITHUB_OUTPUT
+            echo "cpu=1" >> $GITHUB_OUTPUT
+            ;;
+          prod)
+            echo "service_name=loopcloser-prod" >> $GITHUB_OUTPUT
+            echo "min_instances=1" >> $GITHUB_OUTPUT
+            echo "max_instances=10" >> $GITHUB_OUTPUT
+            echo "memory=1Gi" >> $GITHUB_OUTPUT
+            echo "cpu=2" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy ${{ steps.config.outputs.service_name }} \
+          --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} \
+          --region=${{ env.REGION }} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --set-env-vars="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db" \
+          --set-secrets="SECRET_KEY=loopcloser-secret-key:latest" \
+          --memory=${{ steps.config.outputs.memory }} \
+          --cpu=${{ steps.config.outputs.cpu }} \
+          --min-instances=${{ steps.config.outputs.min_instances }} \
+          --max-instances=${{ steps.config.outputs.max_instances }} \
+          --project=${{ env.PROJECT_ID }}
+
+    - name: Get Service URL
+      id: url
+      run: |
+        URL=$(gcloud run services describe ${{ steps.config.outputs.service_name }} \
+          --region=${{ env.REGION }} \
+          --project=${{ env.PROJECT_ID }} \
+          --format='value(status.url)')
+        echo "url=$URL" >> $GITHUB_OUTPUT
+
+    - name: Output deployment info
+      run: |
+        echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Service:** ${{ steps.config.outputs.service_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** ${{ steps.url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+
+    - name: Verify deployment
+      run: |
+        echo "Verifying deployment..."
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.url.outputs.url }}/)
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "✅ Deployment verified - HTTP 200"
+        else
+          echo "⚠️ Deployment returned HTTP $HTTP_STATUS"
+          exit 1
+        fi
+
