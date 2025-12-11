@@ -6,12 +6,12 @@ Simplified port configuration with just two environments: dev and e2e.
 ## Environment Variables
 
 ### Port Variables
-- `LASSIE_DEFAULT_PORT_DEV="3001"` - Development server port
-- `LASSIE_DEFAULT_PORT_E2E="3002"` - E2E test server port (local & CI)
+- `LOOPCLOSER_DEFAULT_PORT_DEV="3001"` - Development server port
+- `LOOPCLOSER_DEFAULT_PORT_E2E="3002"` - E2E test server port (local & CI)
 
 ### Removed Variables
-- ~~`LASSIE_DEFAULT_PORT_CI`~~ - Removed (CI uses e2e environment)
-- ~~`DEFAULT_PORT`~~ - Replaced with `LASSIE_DEFAULT_PORT_DEV`
+- ~~`LOOPCLOSER_DEFAULT_PORT_CI`~~ - Removed (CI uses e2e environment)
+- ~~`DEFAULT_PORT`~~ - Replaced with `LOOPCLOSER_DEFAULT_PORT_DEV`
 - ~~`COURSE_RECORD_UPDATER_PORT`~~ - No longer needed
 
 ## Configuration Files
@@ -19,8 +19,8 @@ Simplified port configuration with just two environments: dev and e2e.
 ### `.envrc.template`
 Template file with port configuration:
 ```bash
-export LASSIE_DEFAULT_PORT_DEV="3001"
-export LASSIE_DEFAULT_PORT_E2E="3002"
+export LOOPCLOSER_DEFAULT_PORT_DEV="3001"
+export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
 ```
 
 ### `.envrc`
@@ -31,12 +31,12 @@ Local file (gitignored) that sources template and adds secrets.
 ### `restart_server.sh`
 - **Input**: Environment argument (dev|e2e)
 - **Behavior**: Automatically selects correct port based on environment:
-  - `dev` → Uses `LASSIE_DEFAULT_PORT_DEV` (defaults to 3001)
-  - `e2e` → Uses `LASSIE_DEFAULT_PORT_E2E` (defaults to 3002)
+  - `dev` → Uses `LOOPCLOSER_DEFAULT_PORT_DEV` (defaults to 3001)
+  - `e2e` → Uses `LOOPCLOSER_DEFAULT_PORT_E2E` (defaults to 3002)
 - **No manual port setting needed**
 
 ### `run_uat.sh`
-- Reads `LASSIE_DEFAULT_PORT_E2E` (defaults to 3002)
+- Reads `LOOPCLOSER_DEFAULT_PORT_E2E` (defaults to 3002)
 - Calls `./restart_server.sh e2e` (which automatically uses correct port)
 - Cleanup uses same env var
 
@@ -64,7 +64,7 @@ Local file (gitignored) that sources template and adds secrets.
    - Scripts work even if env vars not set
 
 5. **Consistent Naming**:
-   - `LASSIE_DEFAULT_PORT_<ENV>` pattern
+   - `LOOPCLOSER_DEFAULT_PORT_<ENV>` pattern
    - Clear, descriptive variable names
 
 ## Why No Separate CI Environment?
@@ -93,7 +93,7 @@ Local file (gitignored) that sources template and adds secrets.
 ## Migration from 3-Environment Setup
 
 ### What Changed
-- **Removed**: `LASSIE_DEFAULT_PORT_CI` and CI environment
+- **Removed**: `LOOPCLOSER_DEFAULT_PORT_CI` and CI environment
 - **Simplified**: `restart_server.sh` now only handles dev and e2e
 - **Updated**: All documentation to reflect 2-environment approach
 - **CI**: Now uses e2e environment instead of separate ci environment

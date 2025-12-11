@@ -449,13 +449,13 @@ if __name__ == "__main__":
     # Port selection priority (for CI/multi-environment compatibility):
     # 1. PORT (standard env var, used by CI)
     # 2. DEFAULT_PORT (CI fallback)
-    # 3. LASSIE_DEFAULT_PORT_DEV (local dev default from .envrc)
+    # 3. LOOPCLOSER_DEFAULT_PORT_DEV (local dev default from .envrc)
     # 4. 3001 (hardcoded fallback)
     port = int(
         os.environ.get(
             "PORT",
             os.environ.get(
-                "DEFAULT_PORT", os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001)
+                "DEFAULT_PORT", os.environ.get("LOOPCLOSER_DEFAULT_PORT_DEV", 3001)
             ),
         )
     )

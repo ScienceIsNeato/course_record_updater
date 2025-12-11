@@ -145,7 +145,7 @@ export WTF_CSRF_ENABLED="false"
 
 # Set EMAIL_WHITELIST for E2E tests
 # Allow test domains used by E2E test suite
-export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io"
+export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io"
 
 # Unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
 # This overrides any EMAIL_PROVIDER=brevo from .envrc.template
@@ -171,8 +171,8 @@ echo ""
 echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""
 
-# Start server in E2E mode (restart_server.sh determines port from LASSIE_DEFAULT_PORT_E2E)
-E2E_PORT="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+# Start server in E2E mode (restart_server.sh determines port from LOOPCLOSER_DEFAULT_PORT_E2E)
+E2E_PORT="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
 echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
 if ! ./restart_server.sh e2e; then
     echo -e "${RED}❌ E2E server failed to start${NC}"
@@ -264,8 +264,8 @@ cleanup() {
     echo ""
     echo -e "${YELLOW}🧹 Cleaning up E2E test server...${NC}"
     
-    # Kill server on E2E port (from LASSIE_DEFAULT_PORT_E2E env var)
-    local e2e_port="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+    # Kill server on E2E port (from LOOPCLOSER_DEFAULT_PORT_E2E env var)
+    local e2e_port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
     local pids
     pids=$(lsof -ti:$e2e_port 2>/dev/null || true)
     if [[ -n "$pids" ]]; then

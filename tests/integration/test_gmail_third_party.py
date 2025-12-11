@@ -2,6 +2,7 @@
 Third-party integration tests for Gmail email delivery
 
 Sends test emails TO Bella's Gmail (lassie.tests.instructor1.test@gmail.com)
+# TODO: Rename Gmail account to loopcloser.tests.instructor1.test@gmail.com if needed
 using the configured SMTP provider. Manual inbox verification required.
 
 To run:

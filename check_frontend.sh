@@ -35,7 +35,7 @@ REQUIRED_ELEMENTS=(
     "password"
     "auth-container"
     "Welcome Back"
-    "LASSIE"
+    "Loopcloser"
 )
 
 MISSING_ELEMENTS=()
@@ -60,7 +60,7 @@ echo -e "${BLUE}🔍 Checking static assets...${NC}"
 STATIC_ASSETS=(
     "/static/script.js"
     "/static/style.css"
-    "/static/images/lassie_logo.svg"
+    "/static/images/loopcloser_logo.svg"
 )
 
 for asset in "${STATIC_ASSETS[@]}"; do

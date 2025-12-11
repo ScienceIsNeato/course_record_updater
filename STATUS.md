@@ -1,64 +1,94 @@
 # 🚧 Current Work Status
 
-**Last Updated**: 2025-12-06 (Current Session)
+**Last Updated**: 2025-12-09 (Current Session)
 
 ---
 
-## Current Task: UI/UX Demo Refinement (9/10 Complete)
+## Current Task: Complete Rebrand to Loopcloser ✅
 
-### ✅ Completed in This Session:
-1. ✅ Removed "Use Demo Data" toggle from production website
-2. ✅ Clarified invitation registration password requirements  
-3. ✅ Removed redundant View button from Users page
-4. ✅ Added role editing (promote/demote) to Users management
-5. ✅ Added `due_date` field to Section edit/create modals
-6. ✅ Display program(s) in Courses table on /courses page
-7. ✅ Show selected programs as badges in Edit Course modal
-8. ✅ Wired up Terms management view (removed "coming soon" alert)
-9. ✅ Added Program field to Course Offering creation/edit
+### ✅ Domain Registration Complete
+- **Domain**: `loopcloser.io` (registered on Cloudflare)
+- **Registrar**: Cloudflare (best price, free privacy, DNS included)
+- **Date**: 2025-12-09
 
-### 🔄 In Progress:
-- Fix Sections and Enrollment not populating in Offerings panel (final task)
+### ✅ Full Rebrand Complete
 
-### ⚠️  Known Issues:
-- Jest worker crashes in 2 test files (`management_error_handlers.test.js`, `offeringManagement_coverage.test.js`)
-- All 649 actual tests pass - worker exceptions appear to be infrastructure/pre-existing issues
-- Need to investigate and fix worker exceptions separately
+**Assets Updated:**
+- [x] Created new `loopcloser_logo.svg` (loop + arrow + checkmark concept)
+- [x] Created new `loopcloser_favicon.svg`
+- [x] Deleted old `lassie_logo.svg` and `lassie_favicon.svg`
 
----
+**Templates Updated:**
+- [x] `templates/index.html`
+- [x] `templates/dashboard/base_dashboard.html`
+- [x] `templates/splash.html`
+- [x] `templates/auth/login.html`
+- [x] `templates/auth/reset_password.html`
 
-## Session Summary
+**Core Application:**
+- [x] `app.py` - Port env var renamed
+- [x] `.envrc.template` - Port env vars renamed
+- [x] `package.json` - Name and description updated
 
-Working through systematic UI/UX improvements and bug fixes for demo hardening:
+**Scripts Updated:**
+- [x] `restart_server.sh`
+- [x] `run_uat.sh`
+- [x] `check_frontend.sh`
+- [x] `scripts/maintAInability-gate.sh`
+- [x] `scripts/test_mailtrap_smtp.py`
+- [x] `scripts/test_gmail_smtp.py`
 
-**Demo Improvements:**
-- Removed passwords obfuscation in demo output
-- Removed duplicate instruction sections
+**Tests Updated:**
+- [x] `tests/e2e/conftest.py`
+- [x] `tests/smoke/test_frontend_smoke.py`
+- [x] `tests/integration/test_gmail_third_party.py`
+- [x] `tests/integration/test_dashboard_api.py`
+- [x] `tests/e2e/test_mailtrap_scraper.py`
+- [x] `tests/e2e/test_email_flows_registration.py`
+- [x] `tests/e2e/test_email_flows_admin_reminders.py`
 
-**Users Management:**
-- Streamlined UI (removed redundant View button)
-- Added admin role management (promote/demote users)
-- Added program association for program admins
+**Documentation Updated:**
+- [x] `DEPLOYMENT.md`
+- [x] `docs/RUNBOOK.md`
+- [x] `deploy/environments/dev.env`
+- [x] `deploy/environments/staging.env`
+- [x] `deploy/environments/prod.env`
+- [x] `SMOKE_TESTING_GUIDE.md`
+- [x] `PORT_CONFIGURATION_SUMMARY.md`
+- [x] `EMAIL_SIMPLIFICATION_SUMMARY.md`
+- [x] `planning/EMAIL_SYSTEM_V1_IMPLEMENTATION.md`
+- [x] `planning/EMAIL_FLOWS_COMPLETE_MAP.md`
 
-**Courses Management:**
-- Display program affiliations in table
-- Visual program selection indicators in Edit modal
-
-**Sections Management:**
-- Added assessment due date field
-
-**Terms Management:**
-- Complete CRUD interface (was "coming soon" alert)
-- Full page with table, create/edit modals
-
-**Offerings Management:**
-- Program field for course offering association
-- Required field with validation
+**Not Updated (Historical Records):**
+- `research/CEI/CEI_Demo_otter_ai.txt` - Meeting transcript mentioning original name
+- `research/CEI/CEI_Demo_Follow_ups.md` - Historical strategy notes
 
 ---
 
 ## Next Steps
 
-1. Complete final task: Fix Sections/Enrollment population in Offerings panel
-2. Investigate Jest worker crashes (separate from current work)
-3. Update git status and prepare for commit
+1. ✅ **Run quality gates** - All passing
+2. **Set up GCP project** as `loopcloser`
+3. **Create Mailtrap project** as "Loopcloser Tests"
+
+> **Note:** Gmail test account remains `lassie.tests.instructor1.test@gmail.com` - can rename later if needed
+
+---
+
+## Environment URLs (Target)
+
+| Environment | URL | Status |
+|-------------|-----|--------|
+| Production | `https://loopcloser.io` | Not deployed |
+| Staging | `https://staging.loopcloser.io` | Not deployed |
+| Dev | `https://dev.loopcloser.io` | Not deployed |
+
+---
+
+## Quick Reference
+
+**Product Name**: Loopcloser  
+**Tagline**: Close the assessment loop  
+**Domain**: `loopcloser.io`  
+**GCP Project**: `loopcloser`  
+**Region**: `us-central1`

@@ -111,7 +111,7 @@ class TestDashboardFrontend:
             assert "loginForm" in page_source or "email" in page_source
         else:
             # On main page - check for expected content
-            assert "LASSIE" in page_source
+            assert "Loopcloser" in page_source
 
         # Check that page loaded successfully (title varies based on page)
         title = driver.title
@@ -127,7 +127,7 @@ class TestDashboardFrontend:
         print(f"Page URL: {driver.current_url}")
         print(f"Contains 'Welcome Back': {'Welcome Back' in page_source}")
         print(f"Contains 'loginForm': {'loginForm' in page_source}")
-        print(f"Contains 'LASSIE': {'LASSIE' in page_source}")
+        print(f"Contains 'Loopcloser': {'Loopcloser' in page_source}")
 
         # Skip this test if we're on the login page (authentication required)
         if "Welcome Back" in page_source or "loginForm" in page_source:

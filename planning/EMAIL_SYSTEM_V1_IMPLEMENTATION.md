@@ -43,10 +43,10 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
 | # | Email Address | Display Name | Role | Provider | Status |
 |---|--------------|--------------|------|----------|--------|
 | 1 | lassie.tests.instructor1.test@gmail.com | Bella Barkington | Instructor | Gmail | ✅ Created |
-| 2 | rufus@lassietests.mailtrap.io | Rufus McWoof | Instructor | Mailtrap | ⬜ Auto-configured |
-| 3 | fido@lassietests.mailtrap.io | Fido Fetchsworth | Program Admin | Mailtrap | ⬜ Auto-configured |
-| 4 | daisy@lassietests.mailtrap.io | Daisy Pawsalot | Institution Admin | Mailtrap | ⬜ Auto-configured |
-| 5 | system@lassietests.mailtrap.io | Lassie Test System | System Sender | Mailtrap | ⬜ Auto-configured |
+| 2 | rufus@loopclosertests.mailtrap.io | Rufus McWoof | Instructor | Mailtrap | ⬜ Auto-configured |
+| 3 | fido@loopclosertests.mailtrap.io | Fido Fetchsworth | Program Admin | Mailtrap | ⬜ Auto-configured |
+| 4 | daisy@loopclosertests.mailtrap.io | Daisy Pawsalot | Institution Admin | Mailtrap | ⬜ Auto-configured |
+| 5 | system@loopclosertests.mailtrap.io | Loopcloser Test System | System Sender | Mailtrap | ⬜ Auto-configured |
 
 **Why This Works:**
 - ✅ No more phone verification issues
@@ -68,7 +68,7 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
    - Verify email
 
 2. **Create Project**
-   - Name: "Lassie Tests"
+   - Name: "Loopcloser Tests"
    - Click "Create Project"
 
 3. **Get SMTP Credentials**
@@ -120,7 +120,7 @@ MAIL_USE_TLS=false
 MAIL_USE_SSL=false
 MAIL_USERNAME=<your-mailtrap-username>
 MAIL_PASSWORD=<your-mailtrap-password>
-MAIL_DEFAULT_SENDER=system@lassietests.mailtrap.io
+MAIL_DEFAULT_SENDER=system@loopclosertests.mailtrap.io
 MAIL_DEFAULT_SENDER_NAME=Course Record Updater (Test)
 MAIL_SUPPRESS_SEND=false  # Enable real sending to Mailtrap
 
@@ -159,17 +159,17 @@ python scripts/test_mailtrap_smtp.py
 
 📧 Configuration:
    Server: sandbox.smtp.mailtrap.io:2525
-   From: system@lassietests.mailtrap.io
+   From: system@loopclosertests.mailtrap.io
    Username: <your-username>
 
 📨 Sending 3 test emails...
    All emails will be caught in your Mailtrap inbox
 
-   → Sending to Rufus McWoof (rufus@lassietests.mailtrap.io)...
+   → Sending to Rufus McWoof (rufus@loopclosertests.mailtrap.io)...
       ✅ Sent successfully
-   → Sending to Fido Fetchsworth (fido@lassietests.mailtrap.io)...
+   → Sending to Fido Fetchsworth (fido@loopclosertests.mailtrap.io)...
       ✅ Sent successfully
-   → Sending to Daisy Pawsalot (daisy@lassietests.mailtrap.io)...
+   → Sending to Daisy Pawsalot (daisy@loopclosertests.mailtrap.io)...
       ✅ Sent successfully
 
 ============================================================
@@ -230,8 +230,8 @@ Enhance protected domain check in `email_service.py`:
 if not is_production:
     if "@gmail.com" in to_email:
         # Only allow our test accounts
-        if "lassie.tests" not in to_email or "test" not in to_email:
-            raise EmailServiceError("Only lassie.tests accounts allowed in dev")
+        if "loopcloser.tests" not in to_email or "test" not in to_email:
+            raise EmailServiceError("Only loopcloser.tests accounts allowed in dev")
     # Existing protected domain check continues...
 ```
 

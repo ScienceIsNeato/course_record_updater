@@ -108,8 +108,8 @@ export BASE_URL_DEV="http://localhost:3001"
 export BASE_URL_E2E="http://localhost:3002"
 
 # Port configuration
-export LASSIE_DEFAULT_PORT_DEV="3001"
-export LASSIE_DEFAULT_PORT_E2E="3002"
+export LOOPCLOSER_DEFAULT_PORT_DEV="3001"
+export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
 
 # =============================================================================
 # EMAIL PROVIDER SELECTION

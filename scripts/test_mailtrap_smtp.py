@@ -44,15 +44,15 @@ def test_mailtrap_api():
     # Test recipients
     test_recipients = [
         {
-            "email": "rufus@lassietests.mailtrap.io",
+            "email": "rufus@loopclosertests.mailtrap.io",
             "name": "Rufus McWoof"
         },
         {
-            "email": "fido@lassietests.mailtrap.io", 
+            "email": "fido@loopclosertests.mailtrap.io", 
             "name": "Fido Fetchsworth"
         },
         {
-            "email": "daisy@lassietests.mailtrap.io",
+            "email": "daisy@loopclosertests.mailtrap.io",
             "name": "Daisy Pawsalot"
         }
     ]

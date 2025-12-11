@@ -57,7 +57,7 @@ class TestNewUserRegistrationFlow:
         # browser.goto(f"{base_url}/register")
 
         # 2. Fill registration form
-        test_email = "sarah.johnson@lassietests.mailtrap.io"
+        test_email = "sarah.johnson@loopclosertests.mailtrap.io"
         # browser.fill("#name", "Dr. Sarah Johnson")
         # browser.fill("#email", test_email)
         # browser.fill("#password", "SecurePass123!")
@@ -148,7 +148,7 @@ class TestNewUserRegistrationFlow:
 
         Prevents verification email spam if user forgets they registered.
         """
-        # existing_email = "existing@lassietests.mailtrap.io"
+        # existing_email = "existing@loopclosertests.mailtrap.io"
 
         # # First registration (setup)
         # ... register account ...
@@ -206,7 +206,7 @@ class TestPasswordResetFlow:
         - Confirmation email confirms password changed
         """
         # Setup: Create existing user account
-        test_email = "mark.davis@lassietests.mailtrap.io"
+        test_email = "mark.davis@loopclosertests.mailtrap.io"
         old_password = "OldPass123!"
         new_password = "NewPass456!"
         # ... create user via registration ...
@@ -282,7 +282,7 @@ class TestPasswordResetFlow:
         Shows same success message but doesn't send email.
         Prevents account enumeration attacks.
         """
-        # nonexistent_email = "nonexistent@lassietests.mailtrap.io"
+        # nonexistent_email = "nonexistent@loopclosertests.mailtrap.io"
 
         # browser.goto(f"{base_url}/forgot-password")
         # browser.fill("#email", nonexistent_email)
@@ -341,7 +341,7 @@ class TestInvitationFlow:
         - Subject: "You're invited to join <Institution> on Course Record Updater"
         """
         # Setup: Log in as institution admin
-        admin_email = "alice.chen@lassietests.mailtrap.io"
+        admin_email = "alice.chen@loopclosertests.mailtrap.io"
         # ... login as admin ...
 
         # 1. Navigate to user management
@@ -351,7 +351,7 @@ class TestInvitationFlow:
         # browser.click("text='Invite User'")
 
         # 3. Fill invitation form
-        invitee_email = "bob.martinez@lassietests.mailtrap.io"
+        invitee_email = "bob.martinez@loopclosertests.mailtrap.io"
         invitee_role = "Instructor"
         personal_message = "Looking forward to working with you!"
         # browser.fill("#email", invitee_email)
