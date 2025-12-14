@@ -1,13 +1,11 @@
 """Unit tests for CLO audit workflow filtering and export."""
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from api.routes.clo_workflow import get_clos_for_audit
 from app import app
-from clo_workflow_service import CLOWorkflowService
 
 
 @pytest.fixture

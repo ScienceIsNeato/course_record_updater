@@ -23,7 +23,7 @@
 
 | Environment | URL | Purpose | Deploy Trigger |
 |-------------|-----|---------|----------------|
-| **Production** | `loopcloser.io` | Live system for CEI | Manual (workflow_dispatch) |
+| **Production** | `loopcloser.io` | Live production system | Manual (workflow_dispatch) |
 | **Staging** | `staging.loopcloser.io` | Pre-production validation | Manual (workflow_dispatch) |
 | **Dev** | `dev.loopcloser.io` | Development testing | Auto on merge to `develop` |
 

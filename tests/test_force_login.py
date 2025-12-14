@@ -5,7 +5,6 @@ Ensures users can recover from broken session states.
 """
 
 import pytest
-from flask import session
 
 
 class TestForceLogin:

@@ -5,9 +5,6 @@ Tests that the assessment page correctly detects unsaved changes
 and doesn't show false positives when data has been loaded from the server.
 """
 
-import json
-from unittest.mock import Mock, patch
-
 import pytest
 
 

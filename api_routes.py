@@ -6,6 +6,7 @@ These routes provide a proper REST API structure while maintaining backward comp
 with the existing single-page application.
 """
 
+import os
 import re
 import tempfile
 import traceback
@@ -4678,14 +4679,40 @@ def _validate_excel_import_request():
     # Check for demo file path first (takes precedence)
     demo_file_path = request.form.get("demo_file_path")
     if demo_file_path:
-        logger.info(f"Using demo file path: {demo_file_path}")
+        # SECURITY: Validate demo file path to prevent path traversal attacks
+        # Only allow paths within specific directories
+        allowed_prefixes = ["demos/", "test_data/", "tests/e2e/fixtures/"]
+
+        # Normalize path and check for traversal attempts
+        normalized_path = os.path.normpath(demo_file_path)
+        if ".." in normalized_path or normalized_path.startswith("/"):
+            logger.warning(f"Path traversal attempt blocked: {demo_file_path}")
+            raise ValueError("Invalid file path: path traversal not allowed")
+
+        # Check if path starts with an allowed prefix
+        path_allowed = any(
+            normalized_path.startswith(prefix) for prefix in allowed_prefixes
+        )
+        if not path_allowed:
+            logger.warning(
+                f"Demo file path outside allowed directories: {demo_file_path}"
+            )
+            raise ValueError(
+                f"Invalid file path: must be within {', '.join(allowed_prefixes)}"
+            )
+
+        # Verify the file actually exists
+        if not os.path.isfile(normalized_path):
+            raise ValueError(f"Demo file not found: {normalized_path}")
+
+        logger.info(f"Using validated demo file path: {normalized_path}")
         # Create a mock file object for compatibility
         file = type(
             "obj",
             (object,),
             {
-                "filename": demo_file_path,
-                "demo_path": demo_file_path,  # Store the actual path
+                "filename": normalized_path,
+                "demo_path": normalized_path,  # Store the actual path
             },
         )()
     else:

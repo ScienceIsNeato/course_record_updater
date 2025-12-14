@@ -1,12 +1,18 @@
 """
-Management API routes for demo automation.
-Provides REST APIs for CRUD operations on programs, courses, and sections.
+Course/Program/Section Management API Routes
+
+Provides REST APIs for administrative CRUD operations:
+- Programs: Update program metadata
+- Courses: Duplicate courses (with optional program assignment)
+- Sections: Update section metadata
+
+Used by demo automation and admin interfaces.
 """
 
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 import database_service as db
-from auth_service import permission_required, require_program_access
+from auth_service import permission_required
 from logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -89,7 +95,7 @@ def duplicate_course(course_id: str) -> tuple[Dict[str, Any], int]:
             return jsonify({"success": False, "error": "Source course not found"}), 404
         
         # Check if new course number already exists
-        existing = db.get_course_by_number(source_course["institution_id"], new_course_number)
+        existing = db.get_course_by_number(new_course_number, source_course["institution_id"])
         if existing:
             return jsonify({"success": False, "error": "Course number already exists"}), 409
         

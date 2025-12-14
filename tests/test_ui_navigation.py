@@ -1,5 +1,4 @@
 import pytest
-from flask import url_for
 
 import database_service
 from app import app

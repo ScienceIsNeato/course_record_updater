@@ -17,7 +17,6 @@ When making changes to the following file types, **automatically restart the dev
 
 // turbo
 ```bash
-cd /Users/pacey/Documents/SourceCode/course_record_updater
 ./restart_server.sh dev
 ```
 

@@ -631,7 +631,7 @@ class ImportService:
         course_data.pop("course_id", None)
 
         if not dry_run:
-            course_id = create_course(course_data)
+            _course_id = create_course(course_data)  # noqa: F841
             self.stats["records_created"] += 1
             self._log(f"Created course: {course_number}")
         else:
@@ -912,7 +912,7 @@ class ImportService:
                 term_data.pop("id", None)
 
                 if not dry_run:
-                    term_id = create_term(term_data)
+                    _term_id = create_term(term_data)  # noqa: F841
                     self.stats["records_created"] += 1
                     self._log(f"Created term: {term_name}")
                 else:

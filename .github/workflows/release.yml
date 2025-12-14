@@ -60,6 +60,8 @@ jobs:
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
     - name: Deploy to Production
+      # TODO: Issue #38 - DATABASE_URL uses ephemeral /tmp storage which loses data on container restart.
+      # Production deployment requires Cloud SQL or persistent volume. See docs/architecture/DATA_CASCADE.md
       run: |
         gcloud run deploy loopcloser-prod \
           --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag }} \

@@ -691,7 +691,8 @@ class SQLiteDatabase(DatabaseInterface):
                     .where(CourseSection.term_id == term_id)
                 )
 
-            outcomes = session.execute(query).scalars().all()
+            # Use distinct to prevent duplicates when joining through multiple sections
+            outcomes = session.execute(query.distinct()).scalars().all()
             return [to_dict(outcome) for outcome in outcomes]
 
     def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
