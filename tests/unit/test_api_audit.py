@@ -2,6 +2,8 @@
 Unit tests for Audit API routes.
 """
 
+# Patch permission_required BEFORE importing audit routes
+import sys
 from datetime import datetime
 from io import BytesIO
 from unittest.mock import MagicMock, patch
@@ -9,8 +11,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-# Patch permission_required BEFORE importing audit routes
 with patch("auth_service.permission_required", lambda perm: lambda f: f):
+    if "api.routes.audit" in sys.modules:
+        del sys.modules["api.routes.audit"]
     from api.routes.audit import audit_bp
 
 from audit_service import EntityType
