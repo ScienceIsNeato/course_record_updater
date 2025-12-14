@@ -1049,8 +1049,11 @@ class DashboardService:
         total = 0
         for section in sections:
             enrollment = section.get("enrollment")
-            if isinstance(enrollment, (int, float)):
-                total += int(enrollment)
+            if enrollment is not None:
+                try:
+                    total += int(enrollment)
+                except (ValueError, TypeError):
+                    continue
         return total
 
     def _build_activity_feed(

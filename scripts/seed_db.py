@@ -9,6 +9,7 @@ Tests create their own specific data (users, sections) via API calls.
 import argparse
 import os
 import sys
+import random
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -643,7 +644,7 @@ class DemoSeeder(BaselineSeeder):
                 offering_id=offering_id,
                 section_number=f"001",
                 instructor_id=instructor_id,
-                enrollment=0,
+                enrollment=random.randint(15, 35),
                 status="assigned",
             )
             section_id = db.create_course_section(schema)
