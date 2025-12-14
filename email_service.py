@@ -405,6 +405,18 @@ class EmailService:
                 )
                 raise EmailServiceError(error_message)
 
+            # WHITELIST PROTECTION: In local/test environments, only allow whitelisted emails
+            from email_providers import get_email_whitelist
+
+            whitelist = get_email_whitelist()
+            if not whitelist.is_allowed(to_email):
+                blocked_reason = whitelist.get_blocked_reason(to_email)
+                logger.error(
+                    f"[Email Service] BLOCKED by whitelist: {to_email} in "
+                    f"{current_app.config.get('ENV', 'local')} environment"
+                )
+                raise EmailServiceError(blocked_reason)
+
             # Get email provider (console or gmail based on config)
             provider = EmailService._get_email_provider()
 
