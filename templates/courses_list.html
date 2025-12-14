@@ -74,28 +74,25 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="editCourseProgramIds" class="form-label">Programs *</label>
-                        <div id="selectedProgramsBadges" class="mb-2" style="min-height: 28px;">
-                            <small class="text-muted">Currently Selected: </small>
-                            <span id="selectedProgramsList" class="text-muted fst-italic">None</span>
+                        <div class="mb-3">
+                            <label class="form-label">Programs (Read-Only)</label>
+                            <div id="readOnlyProgramsDisplay" class="p-3 bg-light rounded border">
+                                <span class="text-muted fst-italic">None</span>
+                            </div>
+                            <small class="form-text text-muted">Program associations are managed via course
+                                sections.</small>
                         </div>
-                        <select class="form-control" id="editCourseProgramIds" multiple size="5" required>
-                            <!-- Programs will be loaded dynamically -->
-                        </select>
-                        <small class="form-text text-muted">Select one or more programs this course belongs to (hold
-                            Ctrl/Cmd to select multiple)</small>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Save Changes</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Saving...
-                        </span>
-                    </button>
-                </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-text">Save Changes</span>
+                            <span class="btn-spinner d-none">
+                                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                                Saving...
+                            </span>
+                        </button>
+                    </div>
             </form>
         </div>
     </div>
@@ -189,7 +186,7 @@
                     <td>${escapeHtml(course.department || '-')}</td>
                     <td>${programsDisplay}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replaceAll("'", "&apos;")})'>
+                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replaceAll("'", "&apos;")}, \`${programsDisplay.replace(/`/g, "\\`")}\`)'>
                             <i class="fas fa-edit"></i> Edit
                         </button>
                         <button class="btn btn-sm btn-outline-success mt-1 mt-lg-0" onclick='duplicateCourse("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>

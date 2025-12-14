@@ -35,17 +35,10 @@ if (document.readyState === 'loading') {
  */
 function setupModalListeners() {
   const createModal = document.getElementById('createCourseModal');
-  const editModal = document.getElementById('editCourseModal');
 
   if (createModal) {
     createModal.addEventListener('show.bs.modal', () => {
       loadProgramsForCreateDropdown();
-    });
-  }
-
-  if (editModal) {
-    editModal.addEventListener('show.bs.modal', () => {
-      loadProgramsForEditDropdown();
     });
   }
 }
@@ -92,68 +85,6 @@ async function loadProgramsForCreateDropdown() {
     // eslint-disable-next-line no-console
     console.error('Failed to load programs for dropdown:', error);
     select.innerHTML = '<option value="">Error loading programs</option>';
-  }
-}
-
-/**
- * Load programs for edit course dropdown
- * Fetches programs from API based on user's institution
- */
-async function loadProgramsForEditDropdown() {
-  const select = document.getElementById('editCourseProgramIds');
-
-  if (!select) {
-    return;
-  }
-
-  // Clear existing options
-  select.innerHTML = '<option value="">Loading programs...</option>';
-
-  try {
-    const response = await fetch('/api/programs');
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch programs');
-    }
-
-    const data = await response.json();
-    const programs = data.programs || [];
-
-    // Populate dropdown
-    select.innerHTML = ''; // Clear loading message
-
-    if (programs.length === 0) {
-      select.innerHTML = '<option value="">No programs available</option>';
-      return;
-    }
-
-    programs.forEach(program => {
-      const option = document.createElement('option');
-      option.value = program.program_id;
-      option.textContent = `${program.name} (${program.short_name})`;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load programs for dropdown:', error);
-    select.innerHTML = '<option value="">Error loading programs</option>';
-  }
-}
-
-/**
- * Ensure program dropdown has real options loaded before interaction
- */
-async function ensureProgramsLoaded(selectId, loaderFn) {
-  const select = document.getElementById(selectId);
-
-  if (!select) {
-    return;
-  }
-
-  const hasRealOptions = Array.from(select.options || []).some(option => option.value);
-
-  if (!hasRealOptions && typeof loaderFn === 'function') {
-    await loaderFn();
   }
 }
 
@@ -260,16 +191,11 @@ function initializeEditCourseModal() {
 
     const courseId = document.getElementById('editCourseId').value;
 
-    // Get selected program IDs from multi-select
-    const programSelect = document.getElementById('editCourseProgramIds');
-    const selectedPrograms = Array.from(programSelect.selectedOptions).map(option => option.value);
-
     const updateData = {
       course_number: document.getElementById('editCourseNumber').value,
       course_title: document.getElementById('editCourseTitle').value,
       department: document.getElementById('editCourseDepartment').value,
       credit_hours: Number.parseInt(document.getElementById('editCourseCreditHours').value),
-      program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('editCourseActive');
         return checkbox?.checked !== undefined ? checkbox.checked : true;
@@ -335,25 +261,8 @@ function initializeEditCourseModal() {
  * Open Edit Course Modal with pre-populated data
  * Called from course list when Edit button is clicked
  */
-/**
- * Update the visual display of selected programs in the modal
- */
-function updateSelectedProgramsDisplay(programSelect) {
-  const listEl = document.getElementById('selectedProgramsList');
-  if (!listEl) return;
 
-  const selectedOptions = Array.from(programSelect.selectedOptions);
-  if (selectedOptions.length === 0) {
-    listEl.innerHTML = '<span class="text-muted fst-italic">None</span>';
-  } else {
-    const badges = selectedOptions
-      .map(option => `<span class="badge bg-primary me-1">${option.textContent}</span>`)
-      .join('');
-    listEl.innerHTML = badges;
-  }
-}
-
-async function openEditCourseModal(courseId, courseData) {
+async function openEditCourseModal(courseId, courseData, programsDisplayHtml) {
   document.getElementById('editCourseId').value = courseId;
   document.getElementById('editCourseNumber').value = courseData.course_number || '';
   document.getElementById('editCourseTitle').value = courseData.course_title || '';
@@ -366,22 +275,10 @@ async function openEditCourseModal(courseId, courseData) {
     activeCheckbox.checked = courseData.active !== undefined ? courseData.active : true;
   }
 
-  // Select program IDs in multi-select
-  const programSelect = document.getElementById('editCourseProgramIds');
-  if (programSelect) {
-    await ensureProgramsLoaded('editCourseProgramIds', loadProgramsForEditDropdown);
-    const selectedProgramIds = courseData.program_ids || [];
-    Array.from(programSelect.options).forEach(option => {
-      option.selected = selectedProgramIds.includes(option.value);
-    });
-
-    // Update selected programs display
-    updateSelectedProgramsDisplay(programSelect);
-
-    // Add change listener to update display when selection changes
-    programSelect.addEventListener('change', function () {
-      updateSelectedProgramsDisplay(this);
-    });
+  // Set Read-Only Programs Display
+  const programsDisplayEl = document.getElementById('readOnlyProgramsDisplay');
+  if (programsDisplayEl) {
+    programsDisplayEl.innerHTML = programsDisplayHtml || '<span class="text-muted">None</span>';
   }
 
   const modal = new bootstrap.Modal(document.getElementById('editCourseModal'));
