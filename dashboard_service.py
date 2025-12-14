@@ -1309,17 +1309,30 @@ class DashboardService:
                         "section_count": 0,
                         "total_enrollment": 0,
                     }
+
+                # Increment section count
                 offering_data[offering_id]["section_count"] += 1
-                offering_data[offering_id]["total_enrollment"] += section.get(
-                    "enrollment", 0
-                )
+
+                # Safely add enrollment
+                enrollment = section.get("enrollment")
+                if enrollment is not None:
+                    try:
+                        offering_data[offering_id]["total_enrollment"] += int(
+                            enrollment
+                        )
+                    except (ValueError, TypeError):
+                        # Log error but continue if enrollment is invalid
+                        self.logger.warning(
+                            f"Invalid enrollment value for section {section.get('section_id')}: {enrollment}"
+                        )
 
         # Add counts to offerings
         enriched_offerings = []
         for offering in offerings:
             offering_id = offering.get("offering_id") or offering.get("id")
             enriched_offering = dict(offering)
-            if offering_id in offering_data:
+
+            if offering_id and offering_id in offering_data:
                 enriched_offering["section_count"] = offering_data[offering_id][
                     "section_count"
                 ]
@@ -1329,6 +1342,7 @@ class DashboardService:
             else:
                 enriched_offering["section_count"] = 0
                 enriched_offering["total_enrollment"] = 0
+
             enriched_offerings.append(enriched_offering)
 
         return enriched_offerings
