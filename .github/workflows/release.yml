@@ -66,7 +66,7 @@ jobs:
           --region=${{ env.REGION }} \
           --platform=managed \
           --allow-unauthenticated \
-          --set-env-vars="APP_ENV=production,DATABASE_URL=sqlite:////tmp/loopcloser.db" \
+          --set-env-vars="APP_ENV=production,DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Strict" \
           --set-secrets="SECRET_KEY=loopcloser-secret-key:latest" \
           --memory=1Gi \
           --cpu=2 \

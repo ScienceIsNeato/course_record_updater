@@ -55,6 +55,7 @@ jobs:
             echo "max_instances=2" >> $GITHUB_OUTPUT
             echo "memory=512Mi" >> $GITHUB_OUTPUT
             echo "cpu=1" >> $GITHUB_OUTPUT
+            echo "email_whitelist=*@ethereal.email;*@mocku.test;*@loopclosertests.mailtrap.io" >> $GITHUB_OUTPUT
             ;;
           staging)
             echo "service_name=loopcloser-staging" >> $GITHUB_OUTPUT
@@ -62,6 +63,7 @@ jobs:
             echo "max_instances=4" >> $GITHUB_OUTPUT
             echo "memory=512Mi" >> $GITHUB_OUTPUT
             echo "cpu=1" >> $GITHUB_OUTPUT
+            echo "email_whitelist=*@ethereal.email;*@mocku.test;*@loopclosertests.mailtrap.io" >> $GITHUB_OUTPUT
             ;;
           prod)
             echo "service_name=loopcloser-prod" >> $GITHUB_OUTPUT
@@ -69,17 +71,22 @@ jobs:
             echo "max_instances=10" >> $GITHUB_OUTPUT
             echo "memory=1Gi" >> $GITHUB_OUTPUT
             echo "cpu=2" >> $GITHUB_OUTPUT
+            echo "email_whitelist=" >> $GITHUB_OUTPUT
             ;;
         esac
 
     - name: Deploy to Cloud Run
       run: |
+        ENV_VARS="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
+        if [[ -n "${{ steps.config.outputs.email_whitelist }}" ]]; then
+          ENV_VARS="${ENV_VARS},EMAIL_WHITELIST=${{ steps.config.outputs.email_whitelist }}"
+        fi
         gcloud run deploy ${{ steps.config.outputs.service_name }} \
           --image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }} \
           --region=${{ env.REGION }} \
           --platform=managed \
           --allow-unauthenticated \
-          --set-env-vars="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db" \
+          --set-env-vars="${ENV_VARS}" \
           --set-secrets="SECRET_KEY=loopcloser-secret-key:latest" \
           --memory=${{ steps.config.outputs.memory }} \
           --cpu=${{ steps.config.outputs.cpu }} \
