@@ -12,13 +12,10 @@ from email_providers.base_provider import EmailProvider
 from email_providers.brevo_provider import BrevoProvider
 from email_providers.ethereal_provider import EtherealProvider
 from email_providers.factory import create_email_provider
-from email_providers.whitelist import EmailWhitelist, get_email_whitelist
 
 __all__ = [
     "EmailProvider",
     "BrevoProvider",
     "EtherealProvider",
-    "EmailWhitelist",
     "create_email_provider",
-    "get_email_whitelist",
 ]

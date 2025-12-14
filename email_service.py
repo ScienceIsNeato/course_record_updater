@@ -26,7 +26,7 @@ from flask import current_app
 from constants import DEFAULT_BASE_URL
 
 # Import email provider infrastructure
-from email_providers import create_email_provider, get_email_whitelist
+from email_providers import create_email_provider
 from email_providers.base_provider import EmailProvider
 
 # Import centralized logging
@@ -404,20 +404,6 @@ class EmailService:
                     f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
                 )
                 raise EmailServiceError(error_message)
-
-            # WHITELIST PROTECTION: In non-production, only allow whitelisted emails
-            if not is_production:
-                whitelist = get_email_whitelist()
-                if not whitelist.is_allowed(to_email):
-                    error_message = (
-                        f"Email address not on whitelist for non-production environment: {to_email}. "
-                        f"Add to EMAIL_WHITELIST environment variable to allow."
-                    )
-                    logger.error(
-                        f"[Email Service] BLOCKED: Email not on whitelist in "
-                        f"{current_app.config.get('ENV', 'development')} environment: {to_email}"
-                    )
-                    raise EmailServiceError(error_message)
 
             # Get email provider (console or gmail based on config)
             provider = EmailService._get_email_provider()

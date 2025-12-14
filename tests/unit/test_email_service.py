@@ -127,16 +127,8 @@ class TestEmailProtection:
             )
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_safe_email_sending_verification(
-        self, mock_get_whitelist, mock_create_provider, app_context
-    ):
+    def test_safe_email_sending_verification(self, mock_create_provider, app_context):
         """Test that verification emails work for safe domains"""
-        # Mock whitelist to allow test@example.com
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
-
         # Mock provider
         mock_provider = Mock()
         mock_provider.send_email.return_value = True
@@ -150,16 +142,10 @@ class TestEmailProtection:
         assert result is True  # Should succeed (suppressed in test mode)
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
     def test_safe_email_sending_convenience_functions(
-        self, mock_get_whitelist, mock_create_provider, app_context
+        self, mock_create_provider, app_context
     ):
         """Test that convenience functions also respect protection"""
-        # Mock whitelist to allow test emails
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
-
         # Mock provider
         mock_provider = Mock()
         mock_provider.send_email.return_value = True
@@ -403,18 +389,13 @@ class TestEmailLogging:
     """Tests for email preview logging to disk."""
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
     def test_logs_successful_email_preview(
         self,
-        mock_get_whitelist,
         mock_create_provider,
         app_context,
         tmp_path,
     ):
         """Ensure successful sends append preview entries."""
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         mock_provider = Mock()
         mock_provider.send_email.return_value = True
@@ -488,15 +469,8 @@ class TestEmailSuppression:
     """Test email suppression in development mode"""
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_email_suppression_enabled(
-        self, mock_get_whitelist, mock_create_provider, app_context
-    ):
+    def test_email_suppression_enabled(self, mock_create_provider, app_context):
         """Test that emails are suppressed when MAIL_SUPPRESS_SEND is True"""
-        # Mock whitelist to allow test@example.com
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider
         mock_provider = Mock()
@@ -514,15 +488,8 @@ class TestEmailSuppression:
         assert result is True
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_email_suppression_logs_content(
-        self, mock_get_whitelist, mock_create_provider, app_context
-    ):
+    def test_email_suppression_logs_content(self, mock_create_provider, app_context):
         """Test that suppressed emails log their content"""
-        # Mock whitelist to allow test@example.com
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider
         mock_provider = Mock()
@@ -546,13 +513,8 @@ class TestProviderSending:
     """Test provider-based email sending"""
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_provider_sending_success(self, mock_get_whitelist, mock_create_provider):
+    def test_provider_sending_success(self, mock_create_provider):
         """Test email sending via provider"""
-        # Mock whitelist
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider
         mock_provider = Mock()
@@ -578,13 +540,8 @@ class TestProviderSending:
             mock_provider.send_email.assert_called_once()
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_provider_sending_failure(self, mock_get_whitelist, mock_create_provider):
+    def test_provider_sending_failure(self, mock_create_provider):
         """Test email sending failure via provider"""
-        # Mock whitelist
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider to fail
         mock_provider = Mock()
@@ -621,15 +578,8 @@ class TestConvenienceFunctions:
         assert callable(send_welcome_email)
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_convenience_functions_work(
-        self, mock_get_whitelist, mock_create_provider, app_context
-    ):
+    def test_convenience_functions_work(self, mock_create_provider, app_context):
         """Test that convenience functions work correctly"""
-        # Mock whitelist to allow test@example.com
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider
         mock_provider = Mock()
@@ -652,15 +602,8 @@ class TestCourseReminderEmail:
     """Test course assessment reminder email functionality."""
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
-    def test_send_course_assessment_reminder(
-        self, mock_get_whitelist, mock_create_provider, app_context
-    ):
+    def test_send_course_assessment_reminder(self, mock_create_provider, app_context):
         """Test sending course assessment reminder email."""
-        # Mock whitelist
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         # Mock provider
         mock_provider = Mock()
@@ -681,14 +624,10 @@ class TestCourseReminderEmail:
         mock_provider.send_email.assert_called_once()
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
     def test_send_course_assessment_reminder_failure(
-        self, mock_get_whitelist, mock_create_provider, app_context
+        self, mock_create_provider, app_context
     ):
         """Test course reminder handles send failure."""
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         mock_provider = Mock()
         mock_provider.send_email.return_value = False
@@ -706,14 +645,10 @@ class TestCourseReminderEmail:
         assert result is False
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
     def test_send_course_assessment_reminder_with_empty_names(
-        self, mock_get_whitelist, mock_create_provider, app_context
+        self, mock_create_provider, app_context
     ):
         """Test course reminder with minimal data."""
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         mock_provider = Mock()
         mock_provider.send_email.return_value = True
@@ -731,14 +666,10 @@ class TestCourseReminderEmail:
         assert result is True
 
     @patch("email_service.create_email_provider")
-    @patch("email_service.get_email_whitelist")
     def test_send_course_assessment_reminder_exception(
-        self, mock_get_whitelist, mock_create_provider, app_context
+        self, mock_create_provider, app_context
     ):
         """Test course reminder handles exceptions."""
-        mock_whitelist = Mock()
-        mock_whitelist.is_allowed.return_value = True
-        mock_get_whitelist.return_value = mock_whitelist
 
         mock_provider = Mock()
         mock_provider.send_email.side_effect = Exception("Test error")
