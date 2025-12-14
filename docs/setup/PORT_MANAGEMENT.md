@@ -96,3 +96,29 @@ cd /path/to/course_record_updater
 - Check if the server started successfully
 - Verify the correct port in your browser URL
 - Check firewall settings if accessing from another machine
+
+---
+
+## Two-Environment Configuration
+
+### Environment Variables
+- `LOOPCLOSER_DEFAULT_PORT_DEV="3001"` - Development server port
+- `LOOPCLOSER_DEFAULT_PORT_E2E="3002"` - E2E test server port (local & CI)
+
+### Configuration Files
+- **`.envrc.template`**: Template with port defaults
+- **`.envrc`**: Local file (gitignored) that sources template
+
+### Script Behavior
+
+| Script | Environment | Port |
+|--------|-------------|------|
+| `restart_server.sh dev` | Development | 3001 |
+| `restart_server.sh e2e` | E2E Testing | 3002 |
+| `run_uat.sh` | E2E Testing | 3002 |
+
+### Design Principles
+1. **Two Environments Only**: dev (3001) and e2e (3002)
+2. **Single Source of Truth**: Bash uses env vars, Python uses `constants.py`
+3. **Environment-Aware**: Port determined by environment flag
+4. **Fallback Defaults**: Scripts work even if env vars not set
