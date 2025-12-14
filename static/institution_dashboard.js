@@ -69,6 +69,14 @@
           e.preventDefault();
           e.stopPropagation();
           this.handleEditCourse(target);
+        } else if (action === 'edit-program') {
+          e.preventDefault();
+          e.stopPropagation();
+          const programId = target.getAttribute('data-program-id');
+          const programName = target.getAttribute('data-program-name');
+          if (programId && typeof globalThis.openEditProgramModal === 'function') {
+            globalThis.openEditProgramModal(programId, { name: programName });
+          }
         } else if (action === 'delete-program') {
           e.preventDefault();
           e.stopPropagation();
@@ -241,7 +249,10 @@
               <small class="text-muted">${completed}/${total} complete</small>`,
             progress_sort: percent,
             actions: `
-              <button class="btn btn-sm btn-outline-primary me-1" onclick="return false;">Manage</button>
+              <button class="btn btn-sm btn-outline-primary me-1" 
+                      data-action="edit-program" 
+                      data-program-id="${escapeHtml(String(program.program_id))}" 
+                      data-program-name="${escapeHtml(program.program_name || program.name || 'Unnamed Program')}">Manage</button>
               <button class="btn btn-sm btn-outline-danger" 
                       data-action="delete-program"
                       data-program-id="${escapeHtml(String(program.program_id))}"
