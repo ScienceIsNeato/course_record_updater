@@ -285,9 +285,12 @@ class TestImportBusinessLogic:
             return course_id
 
         mock_get_course.side_effect = mock_get_course_side_effect
+        # Mock user must include institution_id matching the import service's institution
+        # to avoid "email conflict: already exists in different institution" error
         mock_get_user.return_value = {
             "user_id": "test_user_123",
             "email": "test@mocku.test",
+            "institution_id": "coastal-state-college",  # Must match ImportService institution
         }
         mock_create_course.side_effect = mock_create_course_fn
 

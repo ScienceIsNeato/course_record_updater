@@ -163,9 +163,10 @@ def run_setup(setup: dict) -> bool:
     for cmd in setup['commands']:
         print(f"{CYAN}Running: {cmd}{NC}")
         try:
+            # nosec B602 - shell=True is intentional for demo script commands
             result = subprocess.run(
                 cmd,
-                shell=True,
+                shell=True,  # nosec B602
                 check=True,
                 capture_output=False,
                 text=True

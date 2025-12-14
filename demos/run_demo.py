@@ -678,9 +678,10 @@ class DemoRunner:
         working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
         
         try:
+            # nosec B602 - shell=True is intentional for demo script commands
             result = subprocess.run(
                 cmd,
-                shell=True,
+                shell=True,  # nosec B602
                 check=True,
                 capture_output=False,
                 text=True,
@@ -698,9 +699,10 @@ class DemoRunner:
         working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
         
         try:
+            # nosec B602 - shell=True is intentional for demo script commands
             result = subprocess.run(
                 cmd,
-                shell=True,
+                shell=True,  # nosec B602
                 check=True,
                 capture_output=True,
                 text=True,
