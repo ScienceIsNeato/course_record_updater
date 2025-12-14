@@ -42,6 +42,16 @@ def app_context(app):
         yield app
 
 
+@pytest.fixture(autouse=True)
+def mock_whitelist():
+    """Mock whitelist to allow all emails by default in tests."""
+    with patch("email_providers.get_email_whitelist") as mock_get_wl:
+        whitelist = Mock()
+        whitelist.is_allowed.return_value = True
+        mock_get_wl.return_value = whitelist
+        yield mock_get_wl
+
+
 class TestEmailProtection:
     """Test critical protection against sending emails to real institution/protected domains"""
 
@@ -125,6 +135,22 @@ class TestEmailProtection:
                 user_name="Student User",
                 institution_name="Test Institution",
             )
+
+    def test_whitelist_blocking(self, app_context):
+        """Test blocking by whitelist integration."""
+        with patch("email_providers.get_email_whitelist") as mock_get_wl:
+            whitelist = Mock()
+            whitelist.is_allowed.return_value = False
+            whitelist.get_blocked_reason.return_value = "Blocked by whitelist logic"
+            mock_get_wl.return_value = whitelist
+
+            with pytest.raises(EmailServiceError, match="Blocked by whitelist logic"):
+                EmailService._send_email(
+                    to_email="test@blocked.com",
+                    subject="Test",
+                    html_body="Body",
+                    text_body="Text",
+                )
 
     @patch("email_service.create_email_provider")
     def test_safe_email_sending_verification(self, mock_create_provider, app_context):
