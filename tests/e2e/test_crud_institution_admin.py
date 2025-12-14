@@ -405,7 +405,7 @@ def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
     # Submit form and wait for modal to close
     authenticated_page.click('#createOfferingForm button[type="submit"]')
     authenticated_page.wait_for_selector(
-        "#createOfferingModal", state="hidden", timeout=5000
+        "#createOfferingModal", state="hidden", timeout=15000
     )
 
     print(

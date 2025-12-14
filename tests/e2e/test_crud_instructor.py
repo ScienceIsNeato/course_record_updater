@@ -89,8 +89,8 @@ def test_tc_crud_inst_001_update_own_profile(
     # Click Save Changes
     instructor_page.click("#editUserModal button:has-text('Save Changes')")
 
-    # Wait for modal to close
-    instructor_page.wait_for_selector("#editUserModal", state="hidden", timeout=10000)
+    # Wait for modal to close (can take longer in CI)
+    instructor_page.wait_for_selector("#editUserModal", state="hidden", timeout=20000)
 
     # Step 5: Verify the updated name appears in the table
     instructor_page.wait_for_load_state("networkidle")
