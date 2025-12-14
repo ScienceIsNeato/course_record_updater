@@ -279,6 +279,19 @@
             outcomesContainer: !!outcomesContainer
         });
 
+        // Reload sections data from API (call after saving to refresh stale data)
+        async function reloadSections() {
+            try {
+                const sectionsResponse = await fetch('/api/sections');
+                if (!sectionsResponse.ok) throw new Error('Failed to reload sections');
+                const sectionsData = await sectionsResponse.json();
+                instructorSections = sectionsData.sections || [];
+                console.log('📢 Sections reloaded:', instructorSections.length);
+            } catch (error) {
+                console.error('Error reloading sections:', error);
+            }
+        }
+
         // Load instructor's courses
         async function loadCourses() {
             console.log('📢 loadCourses() START');
@@ -299,18 +312,7 @@
                     console.log(`📢 First section enrollment:`, sections[0].enrollment);
                 }
 
-                // Reload sections data from API (call after saving to refresh stale data)
-                async function reloadSections() {
-                    try {
-                        const sectionsResponse = await fetch('/api/sections');
-                        if (!sectionsResponse.ok) throw new Error('Failed to reload sections');
-                        const sectionsData = await sectionsResponse.json();
-                        instructorSections = sectionsData.sections || [];
-                        console.log('📢 Sections reloaded:', instructorSections.length);
-                    } catch (error) {
-                        console.error('Error reloading sections:', error);
-                    }
-                }
+
 
                 // Get unique course IDs from sections
                 const courseIds = [...new Set(sections.map(s => s.course_id))];

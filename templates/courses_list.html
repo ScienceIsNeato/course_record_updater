@@ -121,7 +121,7 @@
 
         try {
             // Fetch programs first to map IDs to names
-            const programsResponse = await fetch('/api/management/programs', {
+            const programsResponse = await fetch('/api/programs', {
                 headers: { 'Accept': 'application/json' }
             });
             const programsData = await programsResponse.json();
@@ -180,7 +180,7 @@
                 const programIds = course.program_ids || [];
                 const programNames = programIds.map(id => programMap.get(id) || 'Unknown').join(', ');
                 const programsDisplay = programNames || '<span class="text-muted">No programs</span>';
-                
+
                 html += `
                 <tr>
                     <td><strong>${escapeHtml(course.course_number || '-')}</strong></td>
