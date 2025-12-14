@@ -309,6 +309,14 @@ def authenticated_page(page: Page) -> Page:
     try:
         page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
         page.wait_for_load_state("networkidle")
+
+        # Verify session is properly established with institution context
+        # This prevents flaky tests where the session wasn't fully propagated
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=5000,
+        )
+
         return page
     except Exception as e:
         pytest.fail(f"Institution admin login failed: {str(e)}")
@@ -358,6 +366,13 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     try:
         page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
         page.wait_for_load_state("networkidle")
+
+        # Verify session is properly established with institution context
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=5000,
+        )
+
         return page
     except Exception as e:
         pytest.fail(f"Institution admin login failed: {str(e)}")
