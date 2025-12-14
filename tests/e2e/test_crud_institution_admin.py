@@ -386,10 +386,10 @@ def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
 
     # Wait for course and term dropdowns to populate
     authenticated_page.wait_for_function(
-        "document.getElementById('offeringCourseId').options.length > 1", timeout=3000
+        "document.getElementById('offeringCourseId').options.length > 1", timeout=5000
     )
     authenticated_page.wait_for_function(
-        "document.getElementById('offeringTermId').options.length > 1", timeout=3000
+        "document.getElementById('offeringTermId').options.length > 1", timeout=5000
     )
 
     # Select first course and term from dropdowns

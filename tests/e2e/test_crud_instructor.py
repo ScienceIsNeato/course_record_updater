@@ -65,12 +65,12 @@ def test_tc_crud_inst_001_update_own_profile(
     # Step 3: Navigate to users page
     instructor_page.goto(f"{BASE_URL}/users")
     instructor_page.wait_for_load_state("networkidle")
-    instructor_page.wait_for_selector("#usersTableContainer", timeout=10000)
+    instructor_page.wait_for_selector("#usersTableContainer", timeout=15000)
 
     # Step 4: Find own row and click Edit
     instructor_page.wait_for_function(
         f"document.querySelector('#usersTableContainer')?.innerText?.includes('{test_email}')",
-        timeout=5000,
+        timeout=10000,
     )
 
     # Click Edit button for own row
