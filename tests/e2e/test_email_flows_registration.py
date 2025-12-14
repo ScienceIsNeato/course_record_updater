@@ -57,7 +57,7 @@ class TestNewUserRegistrationFlow:
         # browser.goto(f"{base_url}/register")
 
         # 2. Fill registration form
-        test_email = "sarah.johnson@loopclosertests.mailtrap.io"
+        _test_email = "sarah.johnson@loopclosertests.mailtrap.io"  # noqa: F841
         # browser.fill("#name", "Dr. Sarah Johnson")
         # browser.fill("#email", test_email)
         # browser.fill("#password", "SecurePass123!")
@@ -206,9 +206,9 @@ class TestPasswordResetFlow:
         - Confirmation email confirms password changed
         """
         # Setup: Create existing user account
-        test_email = "mark.davis@loopclosertests.mailtrap.io"
-        old_password = "OldPass123!"
-        new_password = "NewPass456!"
+        _test_email = "mark.davis@loopclosertests.mailtrap.io"  # noqa: F841
+        _old_password = "OldPass123!"  # noqa: F841
+        _new_password = "NewPass456!"  # noqa: F841
         # ... create user via registration ...
 
         # 1. Navigate to forgot password
@@ -341,7 +341,7 @@ class TestInvitationFlow:
         - Subject: "You're invited to join <Institution> on Course Record Updater"
         """
         # Setup: Log in as institution admin
-        admin_email = "alice.chen@loopclosertests.mailtrap.io"
+        _admin_email = "alice.chen@loopclosertests.mailtrap.io"  # noqa: F841
         # ... login as admin ...
 
         # 1. Navigate to user management
@@ -351,9 +351,9 @@ class TestInvitationFlow:
         # browser.click("text='Invite User'")
 
         # 3. Fill invitation form
-        invitee_email = "bob.martinez@loopclosertests.mailtrap.io"
-        invitee_role = "Instructor"
-        personal_message = "Looking forward to working with you!"
+        _invitee_email = "bob.martinez@loopclosertests.mailtrap.io"  # noqa: F841
+        _invitee_role = "Instructor"  # noqa: F841
+        _personal_message = "Looking forward to working with you!"  # noqa: F841
         # browser.fill("#email", invitee_email)
         # browser.select_option("#role", invitee_role)
         # browser.fill("#message", personal_message)

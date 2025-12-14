@@ -535,7 +535,7 @@ class DemoSeeder(BaselineSeeder):
         course_ids = []
         for course_data in courses_data:
             program_id = program_ids[course_data["program_idx"]]
-            program = db.get_program_by_id(program_id)
+            _program = db.get_program_by_id(program_id)  # noqa: F841
 
             schema = Course.create_schema(
                 course_number=course_data["code"],
