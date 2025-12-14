@@ -1,7 +1,5 @@
 # Project Overview: Course Record Updater
 
-**Version:** 0.1 (Initial Draft)
-
 ## 1. Goal
 
 To replace the manual, error-prone process of transferring course information from various Word documents into a central Excel spreadsheet with a streamlined web application.
@@ -52,7 +50,6 @@ A web application built with Python (Flask) that allows:
 *   **Language:** Python 3
 *   **Web Framework:** Flask
 *   **Database:** SQLite (SQLAlchemy ORM)
-*   **DB Interaction:** `google-cloud-firestore` library (via Database Service)
 *   **Word Document Parsing:** `python-docx` library (within Adapters)
 *   **Frontend:** HTML, CSS, JavaScript (via Flask Templates)
 *   **Testing Framework:** `pytest` (Recommended)
@@ -82,9 +79,10 @@ A web application built with Python (Flask) that allows:
 *   **Separation of Concerns:** The architecture emphasizes separating parsing/validation (Adapters) from persistence (Database Service) to enhance testability and maintainability.
 *   **Incremental Development:** Focus on delivering functionality in small, well-tested milestones, starting with the core manual entry flow.
 
-## 8. Assumptions & Scope (v0.2)
+## 8. Current State
 
-*   **No Authentication:** The initial version will be publicly accessible without login.
-*   **Single Data Store:** All data resides in a single SQLite database file.
-*   **Adapter Focus:** Build the framework first, then specific adapters iteratively.
-*   **Deployment:** Target platform is Google Cloud Run.
+*   **Authentication:** Full role-based authentication (Site Admin, Institution Admin, Program Admin, Instructor)
+*   **Multi-Tenancy:** Institution-scoped data isolation
+*   **Database:** SQLite with SQLAlchemy ORM
+*   **Adapters:** Generic CSV adapter for bulk import/export
+*   **Deployment:** Target platform is Google Cloud Run
