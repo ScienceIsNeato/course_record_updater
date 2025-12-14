@@ -408,6 +408,17 @@ def terms_list():
     return render_template("terms_list.html", user=user)
 
 
+@app.route("/offerings")
+@login_required
+def offerings_list():
+    """Display all course offerings for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("offerings_list.html", user=user)
+
+
 @app.route("/programs")
 @login_required
 def programs_list():

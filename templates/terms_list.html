@@ -30,9 +30,10 @@
                 </button>
             </div>
         </div>
-        
+
         <div id="termsTableContainer">
-            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;"
+                aria-live="polite">
                 <div class="spinner-border" aria-hidden="true">
                     <span class="visually-hidden">Loading terms...</span>
                 </div>
@@ -60,8 +61,11 @@
                     <input type="date" class="form-control" id="editTermStartDate" required>
                 </div>
                 <div class="mb-3">
-                    <label for="editTermEndDate" class="form-label">End Date *</label>
                     <input type="date" class="form-control" id="editTermEndDate" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editTermAssessmentDueDate" class="form-label">Assessment Due Date</label>
+                    <input type="date" class="form-control" id="editTermAssessmentDueDate">
                 </div>
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="editTermActive">
@@ -88,15 +92,19 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="termName" class="form-label">Term Name *</label>
-                        <input type="text" class="form-control" id="termName" name="term_name" required placeholder="e.g., Fall 2025">
+                        <input type="text" class="form-control" id="termName" name="term_name" required
+                            placeholder="e.g., Fall 2025">
                     </div>
                     <div class="mb-3">
                         <label for="termStartDate" class="form-label">Start Date *</label>
                         <input type="date" class="form-control" id="termStartDate" name="start_date" required>
                     </div>
                     <div class="mb-3">
-                        <label for="termEndDate" class="form-label">End Date *</label>
                         <input type="date" class="form-control" id="termEndDate" name="end_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="termAssessmentDueDate" class="form-label">Assessment Due Date</label>
+                        <input type="date" class="form-control" id="termAssessmentDueDate" name="assessment_due_date">
                     </div>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="termActive" name="active" checked>
@@ -123,10 +131,9 @@
 {% block extra_js %}
 <script>
     // Load terms on page load
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         loadTerms();
     });
 </script>
 <script src="{{ url_for('static', filename='termManagement.js') }}"></script>
 {% endblock %}
-

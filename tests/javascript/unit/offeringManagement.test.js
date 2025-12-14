@@ -342,6 +342,8 @@ describe('Offering Management - Edit Offering Modal', () => {
     document.body.innerHTML = `
       <form id="editOfferingForm">
         <input type="hidden" id="editOfferingId" />
+        <input type="text" id="editOfferingCourse" />
+        <input type="text" id="editOfferingTerm" />
         <select id="editOfferingProgramId" required>
           <option value="">Select Program</option>
           <option value="program-1">Computer Science</option>

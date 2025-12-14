@@ -7,10 +7,14 @@
 {% endblock %}
 
 {% block nav_items %}
-<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-teaching" onclick="filterDashboard('teaching')"><i class="fas fa-book-open me-1"></i>Teaching</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-assessments" onclick="filterDashboard('assessments')"><i class="fas fa-tasks me-1"></i>Assessments</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-progress" onclick="filterDashboard('progress')"><i class="fas fa-chart-line me-1"></i>Progress</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i
+        class="fas fa-tachometer-alt me-1"></i>Dashboard</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-teaching" onclick="filterDashboard('teaching')"><i
+        class="fas fa-book-open me-1"></i>Teaching</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-assessments"
+    onclick="filterDashboard('assessments')"><i class="fas fa-tasks me-1"></i>Assessments</button>
+<button class="nav-link btn btn-link" type="button" id="dashboard-progress" onclick="filterDashboard('progress')"><i
+        class="fas fa-chart-line me-1"></i>Progress</button>
 {% endblock %}
 
 {% block page_title %}👨‍🏫 Instructor Dashboard{% endblock %}
@@ -46,11 +50,7 @@
             <span class="panel-icon">📚</span>
             Teaching Assignment
         </h5>
-        <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-secondary" disabled title="Feature coming soon: View student rosters by section">
-                <i class="fas fa-users"></i> View Rosters
-            </button>
-        </div>
+
         <button class="panel-toggle">▼</button>
     </div>
     <div class="panel-content">
@@ -71,7 +71,8 @@
             Assessment Tasks
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-success" disabled title="Feature coming soon: Mark multiple assessments complete at once">
+            <button class="btn btn-sm btn-outline-success" disabled
+                title="Feature coming soon: Mark multiple assessments complete at once">
                 <i class="fas fa-check"></i> Bulk Complete
             </button>
         </div>

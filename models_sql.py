@@ -242,6 +242,9 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     course_id = Column(String, ForeignKey(COURSES_ID), nullable=False)
     term_id = Column(String, ForeignKey("terms.id"), nullable=False)
     institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
+    program_id = Column(
+        String, ForeignKey("programs.id"), nullable=True
+    )  # Link to specific program context
     status = Column(String, default="active")
     capacity = Column(Integer)
     total_enrollment = Column(Integer, default=0)
@@ -296,6 +299,9 @@ class CourseSection(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     offering = relationship("CourseOffering", back_populates="sections")
     instructor = relationship("User", back_populates="sections")
+    outcomes = relationship(
+        "CourseSectionOutcome", back_populates="section", cascade=CASCADE_OPTIONS
+    )
 
 
 class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -305,6 +311,9 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     id = Column(String, primary_key=True, default=generate_uuid)
     course_id = Column(String, ForeignKey(COURSES_ID), nullable=False)
+    program_id = Column(
+        String, ForeignKey("programs.id"), nullable=True
+    )  # Filter for program-specific defaults
     clo_number = Column(String, nullable=False)
     description = Column(Text, nullable=False)
     assessment_method = Column(String)
@@ -342,6 +351,44 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     reviewed_by = relationship(
         "User", foreign_keys=[reviewed_by_user_id], backref="reviewed_outcomes"
     )
+
+
+class CourseSectionOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
+    """
+    Course Section Outcome (Instance).
+
+    Represents the instantiation of a CLO for a specific section, holding
+    the actual assessment data (students_took, students_passed, etc.).
+    """
+
+    __tablename__ = "course_section_outcomes"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    section_id = Column(String, ForeignKey("course_sections.id"), nullable=False)
+    outcome_id = Column(
+        String, ForeignKey("course_outcomes.id"), nullable=False
+    )  # The template
+
+    # Assessment Data (Instructor Input)
+    students_took = Column(Integer, nullable=True)
+    students_passed = Column(Integer, nullable=True)
+    assessment_tool = Column(String(50), nullable=True)
+
+    # Workflow Status
+    status = Column(String, default="assigned")
+    approval_status = Column(String, default="pending")
+
+    # Audit Trail
+    submitted_at = Column(DateTime(timezone=True))
+    submitted_by = Column(String)  # User ID
+    reviewed_at = Column(DateTime(timezone=True))
+    reviewed_by = Column(String)  # User ID
+    feedback_comments = Column(Text)
+
+    extras = Column(PickleType, default=dict)
+
+    section = relationship("CourseSection", back_populates="outcomes")
+    outcome = relationship("CourseOutcome")
 
 
 class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -407,8 +454,24 @@ def _get_model_data(model: Any) -> Dict[str, Any]:
         return _course_outcome_to_dict(model)
     elif model_type == UserInvitation:
         return _user_invitation_to_dict(model)
+    elif model_type == CourseSectionOutcome:
+        return _course_section_outcome_to_dict(model)
     else:
         return {}
+
+
+def _course_section_outcome_to_dict(model: CourseSectionOutcome) -> Dict[str, Any]:
+    """Convert CourseSectionOutcome model to dictionary."""
+    return {
+        "id": model.id,
+        "section_id": model.section_id,
+        "outcome_id": model.outcome_id,
+        "students_took": model.students_took,
+        "students_passed": model.students_passed,
+        "assessment_tool": model.assessment_tool,
+        "created_at": model.created_at,
+        "last_modified": model.updated_at,
+    }
 
 
 def _institution_to_dict(model: Institution) -> Dict[str, Any]:

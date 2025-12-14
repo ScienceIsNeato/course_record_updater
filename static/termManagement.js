@@ -8,11 +8,70 @@
  * - API communication with CSRF protection
  */
 
+let currentTerms = []; // Global state to store terms for edit access
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   initializeCreateTermModal();
   initializeEditTermModal();
 });
+
+/**
+ * Validate term dates
+ * Enforces sane date logic:
+ * - End > Start
+ * - Due > Start
+ * - Warnings for short/long terms or distant due dates
+ */
+function validateTermDates(start, end, due) {
+  if (!start || !end) return true; // Let required field check handle empty
+
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const dueDate = due ? new Date(due) : null;
+
+  // Basic sanity checks (Errors)
+  if (endDate <= startDate) {
+    alert('End date must be after start date.');
+    return false;
+  }
+
+  if (dueDate && dueDate <= startDate) {
+    alert('Assessment due date must be after start date.');
+    return false;
+  }
+
+  // Warnings (Confirmations)
+  const oneDay = 24 * 60 * 60 * 1000;
+  const durationDays = Math.round((endDate - startDate) / oneDay);
+
+  if (durationDays < 10) {
+    if (!confirm(`Term duration is very short (${durationDays} days). Is this correct?`)) {
+      return false;
+    }
+  }
+
+  if (durationDays > 365) {
+    if (!confirm(`Term duration is very long (${durationDays} days). Is this correct?`)) {
+      return false;
+    }
+  }
+
+  if (dueDate) {
+    const daysAfterEnd = Math.round((dueDate - endDate) / oneDay);
+    if (daysAfterEnd > 30) {
+      if (
+        !confirm(
+          `Assessment due date is more than a month (${daysAfterEnd} days) after the term ends. Is this correct?`
+        )
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
 
 /**
  * Initialize Create Term Modal
@@ -28,12 +87,23 @@ function initializeCreateTermModal() {
   form.addEventListener('submit', async e => {
     e.preventDefault();
 
+    const name = document.getElementById('termName').value;
+    const startDate = document.getElementById('termStartDate').value;
+    const endDate = document.getElementById('termEndDate').value;
+    const assessmentDueDate = document.getElementById('termAssessmentDueDate')?.value || '';
+    const active = document.getElementById('termActive').checked;
+
+    // Validate dates
+    if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
+      return;
+    }
+
     const termData = {
-      name: document.getElementById('termName').value,
-      start_date: document.getElementById('termStartDate').value,
-      end_date: document.getElementById('termEndDate').value,
-      assessment_due_date: document.getElementById('termAssessmentDueDate').value,
-      active: document.getElementById('termActive').checked
+      name,
+      start_date: startDate,
+      end_date: endDate,
+      assessment_due_date: assessmentDueDate,
+      active
     };
 
     const createBtn = document.getElementById('createTermBtn');
@@ -106,12 +176,23 @@ function initializeEditTermModal() {
     e.preventDefault();
 
     const termId = document.getElementById('editTermId').value;
+    const name = document.getElementById('editTermName').value;
+    const startDate = document.getElementById('editTermStartDate').value;
+    const endDate = document.getElementById('editTermEndDate').value;
+    const assessmentDueDate = document.getElementById('editTermAssessmentDueDate')?.value || '';
+    const active = document.getElementById('editTermActive').checked;
+
+    // Validate dates
+    if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
+      return;
+    }
+
     const updateData = {
-      name: document.getElementById('editTermName').value,
-      start_date: document.getElementById('editTermStartDate').value,
-      end_date: document.getElementById('editTermEndDate').value,
-      assessment_due_date: document.getElementById('editTermAssessmentDueDate').value,
-      active: document.getElementById('editTermActive').checked
+      name,
+      start_date: startDate,
+      end_date: endDate,
+      assessment_due_date: assessmentDueDate,
+      active
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -170,13 +251,27 @@ function initializeEditTermModal() {
 /**
  * Open Edit Term Modal with pre-populated data
  * Called from term list when Edit button is clicked
+ * Uses global currentTerms array to avoid passing JSON in HTML
  */
-function openEditTermModal(termId, termData) {
+function openEditTermModal(termId, termDataOverride) {
+  // Use override if provided (for tests), otherwise find in currentTerms
+  const termData = termDataOverride || currentTerms.find(t => (t.term_id || t.id) === termId);
+
+  if (!termData) {
+    console.error('Term not found:', termId); // eslint-disable-line no-console
+    return;
+  }
+
   document.getElementById('editTermId').value = termId;
-  document.getElementById('editTermName').value = termData.name || '';
+  document.getElementById('editTermName').value = termData.term_name || termData.name || '';
   document.getElementById('editTermStartDate').value = termData.start_date || '';
   document.getElementById('editTermEndDate').value = termData.end_date || '';
-  document.getElementById('editTermAssessmentDueDate').value = termData.assessment_due_date || '';
+
+  const dueDateInput = document.getElementById('editTermAssessmentDueDate');
+  if (dueDateInput) {
+    dueDateInput.value = termData.assessment_due_date || '';
+  }
+
   document.getElementById('editTermActive').checked =
     termData.active !== undefined ? termData.active : true;
 
@@ -253,9 +348,10 @@ async function loadTerms() {
       throw new Error(data.error || 'Failed to load terms');
     }
 
-    const terms = data.terms || [];
+    // Update global state
+    currentTerms = data.terms || [];
 
-    if (terms.length === 0) {
+    if (currentTerms.length === 0) {
       container.innerHTML = `
         <div class="alert alert-info">
           <i class="fas fa-info-circle me-2"></i>
@@ -282,24 +378,27 @@ async function loadTerms() {
           <tbody>
     `;
 
-    terms.forEach(term => {
+    currentTerms.forEach(term => {
       const statusBadge = term.active
         ? '<span class="badge bg-success">Active</span>'
         : '<span class="badge bg-secondary">Inactive</span>';
       const offeringsCount = term.offerings_count || 0;
+      const termId = term.term_id || term.id;
+      const termName = escapeHtml(term.term_name || term.name || '-');
 
+      // Note: passing just the ID to openEditTermModal now
       html += `
         <tr>
-          <td><strong>${escapeHtml(term.term_name || term.name || '-')}</strong></td>
+          <td><strong>${termName}</strong></td>
           <td>${formatDate(term.start_date)}</td>
           <td>${formatDate(term.end_date)}</td>
           <td>${statusBadge}</td>
           <td>${offeringsCount}</td>
           <td>
-            <button class="btn btn-sm btn-outline-secondary" onclick='openEditTermModal("${term.term_id || term.id}", ${JSON.stringify(term).replaceAll("'", '&apos;')})'>
+            <button class="btn btn-sm btn-outline-secondary" onclick='openEditTermModal("${termId}")'>
               <i class="fas fa-edit"></i> Edit
             </button>
-            <button class="btn btn-sm btn-outline-danger mt-1 mt-lg-0" onclick='deleteTerm("${term.term_id || term.id}", "${escapeHtml(term.term_name || term.name)}")'>
+            <button class="btn btn-sm btn-outline-danger mt-1 mt-lg-0" onclick='deleteTerm("${termId}", "${termName.replace(/'/g, "\\'")}")'>
               <i class="fas fa-trash"></i> Delete
             </button>
           </td>

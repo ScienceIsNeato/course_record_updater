@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Validate invitation on page load
   validateInvitation(token);
 
+  // Setup password toggles
+  setupPasswordToggles();
+
   // Handle form submission
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -180,3 +183,39 @@ function formatRole(role) {
 globalThis.validateInvitation = validateInvitation;
 globalThis.acceptInvitation = acceptInvitation;
 globalThis.formatRole = formatRole;
+
+/**
+ * Setup password visibility toggles
+ */
+function setupPasswordToggles() {
+  const togglePassword = document.getElementById('togglePassword');
+  const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+
+  if (togglePassword && passwordInput) {
+    togglePassword.addEventListener('click', () => {
+      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      passwordInput.setAttribute('type', type);
+
+      const icon = togglePassword.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+      }
+    });
+  }
+
+  if (toggleConfirmPassword && confirmPasswordInput) {
+    toggleConfirmPassword.addEventListener('click', () => {
+      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+      confirmPasswordInput.setAttribute('type', type);
+
+      const icon = toggleConfirmPassword.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+      }
+    });
+  }
+}
