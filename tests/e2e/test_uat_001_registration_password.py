@@ -222,6 +222,13 @@ class TestUAT001RegistrationAndPasswordManagement:
         # Institution admin sees "Institution Administration" heading
         expect(page.locator("h1, h2").filter(has_text="Institution")).to_be_visible()
 
+        # Verify session is properly established with institution context
+        # This prevents flaky tests where background requests (like adapters) fail
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=15000,
+        )
+
         # ====================================================================
         # STEP 5: Password Reset Request
         # ====================================================================
@@ -360,6 +367,13 @@ class TestUAT001RegistrationAndPasswordManagement:
         expect(page).to_have_url(f"{BASE_URL}/dashboard", timeout=5000)
         # Institution admin sees "Institution Administration" heading
         expect(page.locator("h1, h2").filter(has_text="Institution")).to_be_visible()
+
+        # Verify session is properly established with institution context
+        # This prevents flaky tests where background requests (like adapters) fail
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=15000,
+        )
 
         # Logout - open dropdown menu first, then click logout
         page.click('button:has-text("Institution Admin")')  # Open user dropdown
