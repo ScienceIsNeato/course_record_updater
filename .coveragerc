@@ -34,6 +34,8 @@ omit =
 
     # Utility scripts (not core application logic)
     scripts/*
+    demos/*
+    docs/workflow-walkthroughs/scripts/*
     generate_sample_docx.py
 
     # CLI entry points (tested via integration)
