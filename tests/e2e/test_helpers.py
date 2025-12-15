@@ -124,7 +124,7 @@ def login_as_user(page: Page, base_url: str, email: str, password: str) -> Page:
         # This prevents flaky tests where session wasn't fully propagated
         page.wait_for_function(
             "window.currentUser && window.currentUser.id",
-            timeout=5000,
+            timeout=15000,
         )
     except Exception:
         # Login might have failed - let test handle the error

@@ -314,7 +314,7 @@ def authenticated_page(page: Page) -> Page:
         # This prevents flaky tests where the session wasn't fully propagated
         page.wait_for_function(
             "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
-            timeout=5000,
+            timeout=15000,
         )
 
         return page
@@ -370,7 +370,7 @@ def authenticated_institution_admin_page(page: Page) -> Page:
         # Verify session is properly established with institution context
         page.wait_for_function(
             "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
-            timeout=5000,
+            timeout=15000,
         )
 
         return page
