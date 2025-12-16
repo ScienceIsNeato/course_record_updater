@@ -432,7 +432,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
     - name: Install JavaScript dependencies
-      run: npm ci --ignore-scripts
+      run: npm install
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
@@ -480,11 +480,11 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Install JavaScript dependencies
-      run: npm ci --ignore-scripts
+      run: npm install
     - name: Install sonar-scanner
       run: |
         # Install sonar-scanner CLI
-        wget -q --https-only --secure-protocol=TLSv1_2 --max-redirect=0 https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
+        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
         unzip -q sonar-scanner-cli-6.2.1.4610-linux-x64.zip
         sudo mv sonar-scanner-6.2.1.4610-linux-x64 /opt/sonar-scanner
         sudo ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
