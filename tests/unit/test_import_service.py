@@ -987,7 +987,6 @@ class TestImportServiceErrorHandling:
             existing_course,
             "MATH-101",
             dry_run=True,  # DRY RUN mode
-            conflicts=[],
         )
 
         # Should log dry run message (line 580)

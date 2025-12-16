@@ -1302,53 +1302,56 @@ class DashboardService:
         Returns:
             List of offerings enriched with section_count and total_enrollment
         """
-        # Build section counts and enrollment per offering
+        offering_data = self._build_offering_section_rollup(sections)
+        return [
+            self._apply_offering_section_rollup(offering, offering_data)
+            for offering in offerings
+        ]
+
+    def _build_offering_section_rollup(
+        self, sections: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, int]]:
+        """Build section_count/total_enrollment rollups keyed by offering_id."""
         offering_data: Dict[str, Dict[str, int]] = {}
         for section in sections:
             offering_id = section.get("offering_id")
-            if offering_id:
-                if offering_id not in offering_data:
-                    offering_data[offering_id] = {
-                        "section_count": 0,
-                        "total_enrollment": 0,
-                    }
+            if not offering_id:
+                continue
+            entry = offering_data.setdefault(
+                offering_id, {"section_count": 0, "total_enrollment": 0}
+            )
+            entry["section_count"] += 1
+            entry["total_enrollment"] += self._safe_int(
+                section.get("enrollment"), section.get("section_id")
+            )
+        return offering_data
 
-                # Increment section count
-                offering_data[offering_id]["section_count"] += 1
+    def _apply_offering_section_rollup(
+        self,
+        offering: Dict[str, Any],
+        offering_data: Dict[str, Dict[str, int]],
+    ) -> Dict[str, Any]:
+        """Apply rollup counts to a single offering (defaults to 0/0 when missing)."""
+        offering_id = offering.get("offering_id") or offering.get("id")
+        enriched_offering = dict(offering)
+        rollup = offering_data.get(offering_id) if offering_id else None
+        enriched_offering["section_count"] = rollup["section_count"] if rollup else 0
+        enriched_offering["total_enrollment"] = (
+            rollup["total_enrollment"] if rollup else 0
+        )
+        return enriched_offering
 
-                # Safely add enrollment
-                enrollment = section.get("enrollment")
-                if enrollment is not None:
-                    try:
-                        offering_data[offering_id]["total_enrollment"] += int(
-                            enrollment
-                        )
-                    except (ValueError, TypeError):
-                        # Log error but continue if enrollment is invalid
-                        self.logger.warning(
-                            f"Invalid enrollment value for section {section.get('section_id')}: {enrollment}"
-                        )
-
-        # Add counts to offerings
-        enriched_offerings = []
-        for offering in offerings:
-            offering_id = offering.get("offering_id") or offering.get("id")
-            enriched_offering = dict(offering)
-
-            if offering_id and offering_id in offering_data:
-                enriched_offering["section_count"] = offering_data[offering_id][
-                    "section_count"
-                ]
-                enriched_offering["total_enrollment"] = offering_data[offering_id][
-                    "total_enrollment"
-                ]
-            else:
-                enriched_offering["section_count"] = 0
-                enriched_offering["total_enrollment"] = 0
-
-            enriched_offerings.append(enriched_offering)
-
-        return enriched_offerings
+    def _safe_int(self, value: Any, context_id: Any = None) -> int:
+        """Convert value to int; log and return 0 if invalid."""
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            self.logger.warning(
+                f"Invalid enrollment value for section {context_id}: {value}"
+            )
+            return 0
 
     def _enrich_single_section(
         self,

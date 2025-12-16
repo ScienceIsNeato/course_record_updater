@@ -178,6 +178,19 @@ class TestIndexRoute:
             response = client.get("/login")
             assert response.status_code == 200
 
+    def test_login_force_clears_existing_session(self):
+        """Covers /login?force=true branch that logs out existing session."""
+        with app_module.app.test_client() as client:
+            # Make the request appear authenticated (AuthService session path)
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+            with patch("login_service.LoginService.logout_user") as mock_logout:
+                response = client.get("/login?force=true")
+                assert response.status_code == 200
+                mock_logout.assert_called_once()
+
     @patch("app.is_authenticated")
     def test_login_route_redirects_authenticated_user(self, mock_is_authenticated):
         """Test that login route redirects authenticated users."""
@@ -196,6 +209,56 @@ class TestIndexRoute:
         with app_module.app.test_client() as client:
             response = client.get("/register")
             assert response.status_code == 200
+
+
+class TestAuthenticatedRouteGuards:
+    def test_terms_list_redirects_when_no_user(self):
+        with app_module.app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+            with patch("app.get_current_user", return_value=None):
+                response = client.get("/terms")
+                assert response.status_code == 302
+                assert "/login" in response.location
+
+    def test_offerngs_list_redirects_when_no_user(self):
+        with app_module.app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+            with patch("app.get_current_user", return_value=None):
+                response = client.get("/offerings")
+                assert response.status_code == 302
+                assert "/login" in response.location
+
+    def test_programs_list_redirects_when_no_user(self):
+        with app_module.app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+            with patch("app.get_current_user", return_value=None):
+                response = client.get("/programs")
+                assert response.status_code == 302
+                assert "/login" in response.location
+
+    def test_faculty_and_outcomes_redirects(self):
+        with app_module.app.test_client() as client:
+            with client.session_transaction() as sess:
+                sess["user_id"] = "test-user-id"
+                sess["email"] = "test@example.com"
+                sess["role"] = "instructor"
+
+            response = client.get("/faculty")
+            assert response.status_code == 302
+            assert "/users" in response.location
+
+            response = client.get("/outcomes")
+            assert response.status_code == 302
+            assert "/assessments" in response.location
 
     @patch("app.is_authenticated")
     def test_forgot_password_route_renders_template(self, mock_is_authenticated):

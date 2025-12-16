@@ -28,6 +28,22 @@ Object.defineProperty(global, 'bootstrap', {
   value: { Modal: BootstrapModalMock }
 });
 
+// jsdom doesn't implement scrollTo; some dashboard code uses it.
+try {
+  Object.defineProperty(globalThis, 'scrollTo', { configurable: true, writable: true, value: jest.fn() });
+} catch {
+  // ignore
+}
+
+// jsdom navigation is limited; prevent hard failures when code calls location APIs.
+try {
+  Object.defineProperty(globalThis.location, 'assign', { configurable: true, value: jest.fn() });
+  Object.defineProperty(globalThis.location, 'replace', { configurable: true, value: jest.fn() });
+  Object.defineProperty(globalThis.location, 'reload', { configurable: true, value: jest.fn() });
+} catch {
+  // Ignore if jsdom marks these as non-configurable in this environment.
+}
+
 if (!HTMLElement.prototype.scrollIntoView) {
   HTMLElement.prototype.scrollIntoView = jest.fn();
 }
@@ -52,6 +68,7 @@ beforeEach(() => {
   document.head.innerHTML = '';
   global.fetch = jest.fn();
   global.confirm = jest.fn(() => true);
+  global.alert = jest.fn();
 });
 
 afterEach(() => {

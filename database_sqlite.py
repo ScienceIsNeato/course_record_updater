@@ -681,15 +681,13 @@ class SQLiteDatabase(DatabaseInterface):
                     course_program_table, Course.id == course_program_table.c.course_id
                 ).where(course_program_table.c.program_id == program_id)
 
-            # Add term filter if specified (join through course_offerings and course_sections)
+            # Add term filter if specified (filter via course_offerings.term_id)
             if term_id:
-                from models_sql import CourseOffering, CourseSection
+                from models_sql import CourseOffering
 
-                query = (
-                    query.join(CourseOffering, Course.id == CourseOffering.course_id)
-                    .join(CourseSection, CourseOffering.id == CourseSection.offering_id)
-                    .where(CourseSection.term_id == term_id)
-                )
+                query = query.join(
+                    CourseOffering, Course.id == CourseOffering.course_id
+                ).where(CourseOffering.term_id == term_id)
 
             # Use distinct to prevent duplicates when joining through multiple sections
             outcomes = session.execute(query.distinct()).scalars().all()

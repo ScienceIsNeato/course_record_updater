@@ -24,6 +24,7 @@ Base = declarative_base()  # type: ignore[valid-type,misc]
 
 # Constants for foreign key references
 COURSES_ID = "courses.id"
+PROGRAMS_ID = "programs.id"
 INSTITUTIONS_ID = "institutions.id"
 USERS_ID = "users.id"
 CASCADE_OPTIONS = "all, delete-orphan"
@@ -51,7 +52,7 @@ course_program_table = Table(
     "course_programs",
     Base.metadata,
     Column("course_id", String, ForeignKey(COURSES_ID), primary_key=True),
-    Column("program_id", String, ForeignKey("programs.id"), primary_key=True),
+    Column("program_id", String, ForeignKey(PROGRAMS_ID), primary_key=True),
 )
 
 
@@ -146,7 +147,7 @@ user_program_table = Table(
     "user_programs",
     Base.metadata,
     Column("user_id", String, ForeignKey(USERS_ID), primary_key=True),
-    Column("program_id", String, ForeignKey("programs.id"), primary_key=True),
+    Column("program_id", String, ForeignKey(PROGRAMS_ID), primary_key=True),
 )
 
 
@@ -243,7 +244,7 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     term_id = Column(String, ForeignKey("terms.id"), nullable=False)
     institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     program_id = Column(
-        String, ForeignKey("programs.id"), nullable=True
+        String, ForeignKey(PROGRAMS_ID), nullable=True
     )  # Link to specific program context
     status = Column(String, default="active")
     capacity = Column(Integer)
@@ -312,7 +313,7 @@ class CourseOutcome(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     id = Column(String, primary_key=True, default=generate_uuid)
     course_id = Column(String, ForeignKey(COURSES_ID), nullable=False)
     program_id = Column(
-        String, ForeignKey("programs.id"), nullable=True
+        String, ForeignKey(PROGRAMS_ID), nullable=True
     )  # Filter for program-specific defaults
     clo_number = Column(String, nullable=False)
     description = Column(Text, nullable=False)

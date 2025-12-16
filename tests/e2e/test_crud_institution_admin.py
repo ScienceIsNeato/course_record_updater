@@ -391,10 +391,14 @@ def test_tc_crud_ia_008_create_course_offerings(authenticated_page: Page):
     authenticated_page.wait_for_function(
         "document.getElementById('offeringTermId').options.length > 1", timeout=5000
     )
+    authenticated_page.wait_for_function(
+        "document.getElementById('offeringProgramId').options.length > 1", timeout=5000
+    )
 
-    # Select first course and term from dropdowns
+    # Select first course, term, and program from dropdowns
     authenticated_page.select_option("#offeringCourseId", index=1)
     authenticated_page.select_option("#offeringTermId", index=1)
+    authenticated_page.select_option("#offeringProgramId", index=1)
 
     # Fill optional fields if needed (capacity, enrolled)
     # Status is set to 'active' by default

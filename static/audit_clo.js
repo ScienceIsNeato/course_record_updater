@@ -94,7 +94,7 @@ function calculateSuccessRate(clo) {
   const took = typeof clo.students_took === 'number' ? clo.students_took : null;
   const passed = typeof clo.students_passed === 'number' ? clo.students_passed : null;
   if (!took || took <= 0 || passed === null || passed === undefined) {
-    return '';
+    return null;
   }
   return Math.round((passed / took) * 100);
 }
@@ -147,7 +147,7 @@ function exportCurrentViewToCsv(cloList) {
   link.download = `clo_audit_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   URL.revokeObjectURL(url);
   return true;
 }

@@ -692,48 +692,49 @@
         let currentCourseId = null;
         let loadedCourseData = {}; // Store the data as it was loaded from server
 
-        // Course selection handler with auto-save
-        courseSelect.addEventListener('change', async function () {
-            const newCourseId = this.value;
-
-            // If switching from one course to another (not initial load)
+        async function handleCourseSelectionChange(newCourseId) {
             if (currentCourseId && currentCourseId !== newCourseId) {
-                // Check if there are actual unsaved changes
-                const hasUnsavedChanges = checkForUnsavedChanges();
-
-                if (hasUnsavedChanges) {
-                    const shouldSave = confirm(
-                        'You have unsaved changes for the current course.\n\n' +
-                        'Would you like to save them before switching courses?'
-                    );
-
-                    if (shouldSave) {
-                        // Attempt to save current course data
-                        try {
-                            await saveCurrentCourseData();
-                            alert('Changes saved successfully!');
-                        } catch (error) {
-                            const shouldContinue = confirm(
-                                'Failed to save changes: ' + error.message + '\n\n' +
-                                'Do you still want to switch courses? (Unsaved changes will be lost)'
-                            );
-
-                            if (!shouldContinue) {
-                                // Revert dropdown to previous selection
-                                courseSelect.value = currentCourseId;
-                                return;
-                            }
-                        }
-                    }
+                const allowed = await handleCourseSwitchWithUnsavedChanges(currentCourseId);
+                if (!allowed) {
+                    courseSelect.value = currentCourseId;
+                    return;
                 }
             }
 
-            // Update current course tracker
             currentCourseId = newCourseId;
-
-            // Load new course data
             loadOutcomes(newCourseId);
             loadCourseLevelData(newCourseId);
+        }
+
+        async function handleCourseSwitchWithUnsavedChanges(previousCourseId) {
+            if (!checkForUnsavedChanges()) {
+                return true;
+            }
+
+            const shouldSave = confirm(
+                'You have unsaved changes for the current course.\n\n' +
+                'Would you like to save them before switching courses?'
+            );
+
+            if (!shouldSave) {
+                return true;
+            }
+
+            try {
+                await saveCurrentCourseData();
+                alert('Changes saved successfully!');
+                return true;
+            } catch (error) {
+                return confirm(
+                    'Failed to save changes: ' + error.message + '\n\n' +
+                    'Do you still want to switch courses? (Unsaved changes will be lost)'
+                );
+            }
+        }
+
+        // Course selection handler with auto-save
+        courseSelect.addEventListener('change', async function () {
+            await handleCourseSelectionChange(this.value);
         });
 
         // Check if current form values differ from loaded values

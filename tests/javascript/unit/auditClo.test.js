@@ -98,9 +98,9 @@ describe('audit_clo.js', () => {
         });
 
         test('returns empty string for invalid input', () => {
-            expect(calculateSuccessRate({})).toBe('');
-            expect(calculateSuccessRate({ students_took: 0 })).toBe('');
-            expect(calculateSuccessRate({ students_took: 10, students_passed: null })).toBe('');
+            expect(calculateSuccessRate({})).toBeNull();
+            expect(calculateSuccessRate({ students_took: 0 })).toBeNull();
+            expect(calculateSuccessRate({ students_took: 10, students_passed: null })).toBeNull();
         });
     });
 

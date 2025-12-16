@@ -13,6 +13,7 @@ describe('Dashboard Navigation', () => {
         <button class="nav-link" id="dashboard-teaching">Teaching</button>
         <button class="nav-link" id="dashboard-assessments">Assessments</button>
       </div>
+      <h1 id="page-title-text">Default</h1>
       <div id="instructor-teaching-panel" style="display: block;">Teaching</div>
       <div id="instructor-assessment-panel" style="display: block;">Assessment</div>
       <div id="instructor-activity-panel" style="display: block;">Activity</div>
@@ -55,6 +56,17 @@ describe('Dashboard Navigation', () => {
       window.configureDashboardFilter(panelMapping, allPanelIds);
 
       expect(typeof window.filterDashboard).toBe('function');
+    });
+
+    it('should update the page title when titleMapping contains view', () => {
+      const panelMapping = { teaching: ['instructor-teaching-panel'], all: ['instructor-teaching-panel'] };
+      const allPanelIds = ['instructor-teaching-panel'];
+      const titleMapping = { teaching: 'Teaching View' };
+
+      window.configureDashboardFilter(panelMapping, allPanelIds, titleMapping);
+      window.filterDashboard('teaching');
+
+      expect(document.getElementById('page-title-text').textContent).toBe('Teaching View');
     });
 
     it('should show only specified panels when filter is applied', () => {

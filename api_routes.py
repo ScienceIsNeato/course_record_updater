@@ -4642,7 +4642,7 @@ def excel_import_api():
 
         # Check user permissions
         current_user, institution_id = _check_excel_import_permissions(
-            import_params["adapter_id"], import_params["import_data_type"]
+            import_params["import_data_type"]
         )
 
         # Process the import
@@ -4676,59 +4676,7 @@ def _validate_excel_import_request():
     logger.info("Request files: %s", list(request.files.keys()))
     logger.info("Request form: %s", dict(request.form))
 
-    # Check for demo file path first (takes precedence)
-    demo_file_path = request.form.get("demo_file_path")
-    if demo_file_path:
-        # SECURITY: Validate demo file path to prevent path traversal attacks
-        # Only allow paths within specific directories
-        allowed_prefixes = ["demos/", "test_data/", "tests/e2e/fixtures/"]
-
-        # Normalize path and check for traversal attempts
-        normalized_path = os.path.normpath(demo_file_path)
-        if ".." in normalized_path or normalized_path.startswith("/"):
-            logger.warning(f"Path traversal attempt blocked: {demo_file_path}")
-            raise ValueError("Invalid file path: path traversal not allowed")
-
-        # Check if path starts with an allowed prefix
-        path_allowed = any(
-            normalized_path.startswith(prefix) for prefix in allowed_prefixes
-        )
-        if not path_allowed:
-            logger.warning(
-                f"Demo file path outside allowed directories: {demo_file_path}"
-            )
-            raise ValueError(
-                f"Invalid file path: must be within {', '.join(allowed_prefixes)}"
-            )
-
-        # Verify the file actually exists
-        if not os.path.isfile(normalized_path):
-            raise ValueError(f"Demo file not found: {normalized_path}")
-
-        logger.info(f"Using validated demo file path: {normalized_path}")
-        # Create a mock file object for compatibility
-        file = type(
-            "obj",
-            (object,),
-            {
-                "filename": normalized_path,
-                "demo_path": normalized_path,  # Store the actual path
-            },
-        )()
-    else:
-        # Check if file was uploaded
-        if "excel_file" not in request.files:
-            logger.warning("No excel_file in request.files")
-            raise ValueError("No Excel file provided")
-
-        file = request.files["excel_file"]
-        if not file.filename or file.filename == "":
-            logger.warning("Empty filename in uploaded file")
-            raise ValueError("No file selected")
-
-        logger.info(
-            f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
-        )
+    file = _get_excel_file_from_request()
 
     # Get form parameters (need adapter_id for validation)
     import_params = {
@@ -4779,7 +4727,67 @@ def _validate_excel_import_request():
     return file, import_params
 
 
-def _check_excel_import_permissions(adapter_id, import_data_type):
+ALLOWED_DEMO_FILE_PREFIXES = ("demos/", "test_data/", "tests/e2e/fixtures/")
+
+
+def _validate_demo_file_path(demo_file_path: str):
+    """Validate demo file path to prevent traversal and enforce allowed directories."""
+    normalized_path = os.path.normpath(demo_file_path)
+    if ".." in normalized_path or normalized_path.startswith("/"):
+        logger.warning("Path traversal attempt blocked: %s", demo_file_path)
+        raise ValueError("Invalid file path: path traversal not allowed")
+
+    if not any(
+        normalized_path.startswith(prefix) for prefix in ALLOWED_DEMO_FILE_PREFIXES
+    ):
+        logger.warning("Demo file path outside allowed directories: %s", demo_file_path)
+        raise ValueError(
+            f"Invalid file path: must be within {', '.join(ALLOWED_DEMO_FILE_PREFIXES)}"
+        )
+
+    if not os.path.isfile(normalized_path):
+        raise ValueError(f"Demo file not found: {normalized_path}")
+
+    logger.info("Using validated demo file path: %s", normalized_path)
+    return normalized_path
+
+
+def _get_excel_file_from_request():
+    """
+    Extract the Excel file from the request.
+
+    Priority:
+    1) demo_file_path (validated filesystem path)
+    2) uploaded excel_file (multipart upload)
+    """
+    demo_file_path = request.form.get("demo_file_path")
+    if demo_file_path:
+        normalized_path = _validate_demo_file_path(demo_file_path)
+        # Create a minimal mock file object for downstream compatibility.
+        return type(
+            "DemoFile",
+            (object,),
+            {"filename": normalized_path, "demo_path": normalized_path},
+        )()
+
+    if "excel_file" not in request.files:
+        logger.warning("No excel_file in request.files")
+        raise ValueError("No Excel file provided")
+
+    file = request.files["excel_file"]
+    if not file.filename:
+        logger.warning("Empty filename in uploaded file")
+        raise ValueError("No file selected")
+
+    logger.info(
+        "File received: %s, size: %s",
+        file.filename,
+        file.content_length if hasattr(file, "content_length") else "unknown",
+    )
+    return file
+
+
+def _check_excel_import_permissions(import_data_type):
     """Check user permissions for Excel import."""
     # Get current user and check authentication
     current_user = get_current_user()
@@ -4790,9 +4798,7 @@ def _check_excel_import_permissions(adapter_id, import_data_type):
     user_institution_id = current_user.get("institution_id")
 
     # Determine institution_id based on user role and adapter
-    institution_id = _determine_target_institution(
-        user_role, user_institution_id, adapter_id
-    )
+    institution_id = _determine_target_institution(user_institution_id)
 
     # Check role-based permissions
     _validate_import_permissions(user_role, import_data_type)
@@ -4800,7 +4806,7 @@ def _check_excel_import_permissions(adapter_id, import_data_type):
     return current_user, institution_id
 
 
-def _determine_target_institution(user_role, user_institution_id, adapter_id):
+def _determine_target_institution(user_institution_id):
     """Determine the target institution for the import."""
     # SECURITY & DESIGN: All users (including site admins) import into their own institution
     # This enforces multi-tenant isolation and prevents cross-institution data injection

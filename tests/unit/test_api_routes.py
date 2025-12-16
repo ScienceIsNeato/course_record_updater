@@ -4112,7 +4112,7 @@ class TestExcelImportHelpers:
             with pytest.raises(
                 PermissionError, match="User has no associated institution"
             ):
-                _check_excel_import_permissions("cei_excel_format_v1", "courses")
+                _check_excel_import_permissions("courses")
 
     def test_check_excel_import_permissions_no_user(self):
         """Test _check_excel_import_permissions raises when no user."""
@@ -4126,7 +4126,7 @@ class TestExcelImportHelpers:
             mock_get_user.return_value = None
 
             with pytest.raises(PermissionError, match="Authentication required"):
-                _check_excel_import_permissions("cei_excel_format_v1", "courses")
+                _check_excel_import_permissions("courses")
 
     # REMOVED: MockU-specific tests no longer apply after security fix
     # Site admins now follow the same rules as all other users:
@@ -4136,9 +4136,7 @@ class TestExcelImportHelpers:
         """Test _determine_target_institution for institution admin."""
         from api_routes import _determine_target_institution
 
-        result = _determine_target_institution(
-            "institution_admin", "inst123", "cei_excel_format_v1"
-        )
+        result = _determine_target_institution("inst123")
 
         assert result == "inst123"
 
@@ -4149,9 +4147,7 @@ class TestExcelImportHelpers:
         from api_routes import _determine_target_institution
 
         with pytest.raises(PermissionError, match="User has no associated institution"):
-            _determine_target_institution(
-                "institution_admin", None, "cei_excel_format_v1"
-            )
+            _determine_target_institution(None)
 
     def test_validate_import_permissions_site_admin_courses(self):
         """Test _validate_import_permissions for site admin importing courses."""
@@ -4180,6 +4176,150 @@ class TestExcelImportHelpers:
             PermissionError, match="institution_admin cannot import institutions"
         ):
             _validate_import_permissions("institution_admin", "institutions")
+
+
+class TestValidateExcelImportRequest:
+    def test_validate_excel_import_request_adapter_not_found(self):
+        """Covers adapter-not-found branch in _validate_excel_import_request."""
+        from api_routes import _validate_excel_import_request
+
+        class DummyFile:
+            filename = "test.xlsx"
+
+        with app.test_request_context(
+            "/api/import/excel",
+            method="POST",
+            data={"import_adapter": "missing_adapter", "import_data_type": "courses"},
+        ):
+            with (
+                patch(
+                    "api_routes._get_excel_file_from_request", return_value=DummyFile()
+                ),
+                patch("adapters.adapter_registry.AdapterRegistry") as mock_registry_cls,
+            ):
+                mock_registry_cls.return_value.get_adapter_by_id.return_value = None
+                with pytest.raises(ValueError, match="Adapter not found"):
+                    _validate_excel_import_request()
+
+    def test_validate_excel_import_request_adapter_info_missing(self):
+        """Covers adapter-info-missing branch in _validate_excel_import_request."""
+        from api_routes import _validate_excel_import_request
+
+        class DummyFile:
+            filename = "test.xlsx"
+
+        dummy_adapter = Mock()
+        dummy_adapter.get_adapter_info.return_value = None
+
+        with app.test_request_context(
+            "/api/import/excel",
+            method="POST",
+            data={
+                "import_adapter": "cei_excel_format_v1",
+                "import_data_type": "courses",
+            },
+        ):
+            with (
+                patch(
+                    "api_routes._get_excel_file_from_request", return_value=DummyFile()
+                ),
+                patch("adapters.adapter_registry.AdapterRegistry") as mock_registry_cls,
+            ):
+                mock_registry_cls.return_value.get_adapter_by_id.return_value = (
+                    dummy_adapter
+                )
+                with pytest.raises(ValueError, match="Adapter info not available"):
+                    _validate_excel_import_request()
+
+    def test_validate_excel_import_request_no_supported_formats(self):
+        """Covers supported_formats empty branch in _validate_excel_import_request."""
+        from api_routes import _validate_excel_import_request
+
+        class DummyFile:
+            filename = "test.xlsx"
+
+        dummy_adapter = Mock()
+        dummy_adapter.get_adapter_info.return_value = {"supported_formats": []}
+
+        with app.test_request_context(
+            "/api/import/excel",
+            method="POST",
+            data={
+                "import_adapter": "cei_excel_format_v1",
+                "import_data_type": "courses",
+            },
+        ):
+            with (
+                patch(
+                    "api_routes._get_excel_file_from_request", return_value=DummyFile()
+                ),
+                patch("adapters.adapter_registry.AdapterRegistry") as mock_registry_cls,
+            ):
+                mock_registry_cls.return_value.get_adapter_by_id.return_value = (
+                    dummy_adapter
+                )
+                with pytest.raises(ValueError, match="No supported formats defined"):
+                    _validate_excel_import_request()
+
+    def test_validate_excel_import_request_file_has_no_extension(self):
+        """Covers file extension empty branch in _validate_excel_import_request."""
+        from api_routes import _validate_excel_import_request
+
+        class DummyFile:
+            filename = "test"
+
+        dummy_adapter = Mock()
+        dummy_adapter.get_adapter_info.return_value = {"supported_formats": [".xlsx"]}
+
+        with app.test_request_context(
+            "/api/import/excel",
+            method="POST",
+            data={
+                "import_adapter": "cei_excel_format_v1",
+                "import_data_type": "courses",
+            },
+        ):
+            with (
+                patch(
+                    "api_routes._get_excel_file_from_request", return_value=DummyFile()
+                ),
+                patch("adapters.adapter_registry.AdapterRegistry") as mock_registry_cls,
+            ):
+                mock_registry_cls.return_value.get_adapter_by_id.return_value = (
+                    dummy_adapter
+                )
+                with pytest.raises(ValueError, match="File has no extension"):
+                    _validate_excel_import_request()
+
+    def test_validate_excel_import_request_file_extension_not_supported(self):
+        """Covers invalid extension branch in _validate_excel_import_request."""
+        from api_routes import _validate_excel_import_request
+
+        class DummyFile:
+            filename = "test.csv"
+
+        dummy_adapter = Mock()
+        dummy_adapter.get_adapter_info.return_value = {"supported_formats": [".xlsx"]}
+
+        with app.test_request_context(
+            "/api/import/excel",
+            method="POST",
+            data={
+                "import_adapter": "cei_excel_format_v1",
+                "import_data_type": "courses",
+            },
+        ):
+            with (
+                patch(
+                    "api_routes._get_excel_file_from_request", return_value=DummyFile()
+                ),
+                patch("adapters.adapter_registry.AdapterRegistry") as mock_registry_cls,
+            ):
+                mock_registry_cls.return_value.get_adapter_by_id.return_value = (
+                    dummy_adapter
+                )
+                with pytest.raises(ValueError, match=r"Invalid file format"):
+                    _validate_excel_import_request()
 
 
 class TestExcelImportEdgeCases:
@@ -4691,3 +4831,240 @@ class TestCourseReminderEndpoint:
         data = response.get_json()
         assert data["success"] is False
         assert "Failed to send reminder email" in data["error"]
+
+
+class TestUpdateUserRoleEndpoint:
+    """Test /api/users/<user_id>/role endpoint."""
+
+    def get_csrf_token(self, client):
+        """Get CSRF token using Flask-WTF's generate_csrf."""
+        from flask import session as flask_session
+        from flask_wtf.csrf import generate_csrf
+
+        with client.session_transaction() as sess:
+            raw_token = sess.get("csrf_token")
+
+        with client.application.test_request_context():
+            if raw_token:
+                flask_session["csrf_token"] = raw_token
+            return generate_csrf()
+
+    @pytest.fixture
+    def institution_admin_client(self, client):
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-1",
+            "email": "admin@example.com",
+            "role": "institution_admin",
+            "first_name": "Admin",
+            "last_name": "User",
+            "institution_id": "inst-123",
+        }
+        create_test_session(client, user_data)
+        return client
+
+    @patch("api_routes.get_current_institution_id")
+    def test_missing_role_returns_400(self, mock_get_inst, institution_admin_client):
+        mock_get_inst.return_value = "inst-123"
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 400
+        assert response.get_json()["error"] == "Role is required"
+
+    @patch("api_routes.get_current_institution_id")
+    def test_invalid_role_returns_400(self, mock_get_inst, institution_admin_client):
+        mock_get_inst.return_value = "inst-123"
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={"role": "site_admin"},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 400
+        assert response.get_json()["success"] is False
+        assert "Invalid role" in response.get_json()["error"]
+
+    @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_user_by_id")
+    def test_user_not_found_returns_404(
+        self, mock_get_user, mock_get_inst, institution_admin_client
+    ):
+        mock_get_inst.return_value = "inst-123"
+        mock_get_user.return_value = None
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={"role": "instructor"},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 404
+        assert response.get_json()["error"] == "User not found"
+
+    @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.get_user_by_id")
+    def test_institution_mismatch_returns_404(
+        self, mock_get_user, mock_get_inst, institution_admin_client
+    ):
+        mock_get_inst.return_value = "inst-123"
+        mock_get_user.return_value = {"user_id": "u1", "institution_id": "inst-999"}
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={"role": "instructor"},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 404
+        assert response.get_json()["error"] == "User not found"
+
+    @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.update_user_role")
+    @patch("api_routes.get_user_by_id")
+    def test_update_failure_returns_500(
+        self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
+    ):
+        mock_get_inst.return_value = "inst-123"
+        mock_get_user.return_value = {"user_id": "u1", "institution_id": "inst-123"}
+        mock_update_role.return_value = False
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={"role": "instructor"},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 500
+        assert response.get_json()["error"] == "Failed to update role"
+
+    @patch("api_routes.get_current_institution_id")
+    @patch("api_routes.update_user_role")
+    @patch("api_routes.get_user_by_id")
+    def test_success_returns_200(
+        self, mock_get_user, mock_update_role, mock_get_inst, institution_admin_client
+    ):
+        mock_get_inst.return_value = "inst-123"
+        mock_get_user.side_effect = [
+            {"user_id": "u1", "institution_id": "inst-123"},
+            {"user_id": "u1", "institution_id": "inst-123", "role": "instructor"},
+        ]
+        mock_update_role.return_value = True
+        response = institution_admin_client.patch(
+            "/api/users/u1/role",
+            json={"role": "instructor"},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert payload["success"] is True
+        assert "User role updated" in payload["message"]
+
+
+class TestDuplicateCourseEndpoint:
+    """Test /api/courses/<course_id>/duplicate endpoint."""
+
+    def get_csrf_token(self, client):
+        """Get CSRF token using Flask-WTF's generate_csrf."""
+        from flask import session as flask_session
+        from flask_wtf.csrf import generate_csrf
+
+        with client.session_transaction() as sess:
+            raw_token = sess.get("csrf_token")
+
+        with client.application.test_request_context():
+            if raw_token:
+                flask_session["csrf_token"] = raw_token
+            return generate_csrf()
+
+    @pytest.fixture
+    def institution_admin_client(self, client):
+        from tests.test_utils import create_test_session
+
+        user_data = {
+            "user_id": "admin-1",
+            "email": "admin@example.com",
+            "role": "institution_admin",
+            "first_name": "Admin",
+            "last_name": "User",
+            "institution_id": "inst-123",
+        }
+        create_test_session(client, user_data)
+        return client
+
+    @patch("api_routes.get_course_by_id")
+    def test_source_course_missing_returns_404(
+        self, mock_get_course, institution_admin_client
+    ):
+        mock_get_course.return_value = None
+        response = institution_admin_client.post(
+            "/api/courses/c1/duplicate",
+            json={},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 404
+        assert response.get_json()["success"] is False
+
+    @patch("api_routes.get_course_by_id")
+    @patch("api_routes.get_current_user")
+    def test_permission_denied_returns_403(
+        self, mock_get_user, mock_get_course, institution_admin_client
+    ):
+        mock_get_course.return_value = {"course_id": "c1", "institution_id": "inst-999"}
+        mock_get_user.return_value = {
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        response = institution_admin_client.post(
+            "/api/courses/c1/duplicate",
+            json={},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 403
+        assert response.get_json()["error"] == "Permission denied"
+
+    @patch("api_routes.duplicate_course_record")
+    @patch("api_routes.get_course_by_id")
+    @patch("api_routes.get_current_user")
+    def test_duplicate_failure_returns_500(
+        self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
+    ):
+        mock_get_course.return_value = {"course_id": "c1", "institution_id": "inst-123"}
+        mock_get_user.return_value = {
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        mock_duplicate.return_value = None
+        response = institution_admin_client.post(
+            "/api/courses/c1/duplicate",
+            json={"program_ids": ["p1"], "duplicate_programs": False},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 500
+        assert response.get_json()["error"] == "Failed to duplicate course"
+
+    @patch("api_routes.duplicate_course_record")
+    @patch("api_routes.get_course_by_id")
+    @patch("api_routes.get_current_user")
+    def test_duplicate_success_returns_201(
+        self, mock_get_user, mock_get_course, mock_duplicate, institution_admin_client
+    ):
+        mock_get_user.return_value = {
+            "role": "institution_admin",
+            "institution_id": "inst-123",
+        }
+        mock_get_course.side_effect = [
+            {"course_id": "c1", "institution_id": "inst-123"},
+            {
+                "course_id": "new-1",
+                "institution_id": "inst-123",
+                "course_number": "CS101-V2",
+            },
+        ]
+        mock_duplicate.return_value = "new-1"
+
+        response = institution_admin_client.post(
+            "/api/courses/c1/duplicate",
+            json={"program_ids": ["p1"], "duplicate_programs": False},
+            headers={"X-CSRFToken": self.get_csrf_token(institution_admin_client)},
+        )
+        assert response.status_code == 201
+        payload = response.get_json()
+        assert payload["success"] is True
+        assert payload["course"]["course_id"] == "new-1"

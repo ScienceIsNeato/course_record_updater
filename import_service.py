@@ -533,14 +533,13 @@ class ImportService:
             self.stats["conflicts_detected"] += len(detected_conflicts)
 
         # Handle conflict based on strategy
-        conflicts = self._resolve_course_conflicts(
+        self._resolve_course_conflicts(
             strategy,
             detected_conflicts,
             course_data,
             existing_course,
             course_number,
             dry_run,
-            conflicts,
         )
         return True, conflicts
 
@@ -579,39 +578,62 @@ class ImportService:
         existing_course: Dict[str, Any],
         course_number: str,
         dry_run: bool,
-        conflicts: List[ConflictRecord],
-    ) -> List[ConflictRecord]:
+    ) -> None:
         """Resolve course conflicts based on strategy."""
         if strategy == ConflictStrategy.USE_MINE:
-            self.stats["records_skipped"] += 1
-            self._log(f"Skipping existing course: {course_number}")
-            # Update conflict resolution status for USE_MINE
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
-        elif strategy == ConflictStrategy.USE_THEIRS:
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                # Update conflict resolution status
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
+            self._handle_course_conflicts_use_mine(detected_conflicts, course_number)
+            return
 
-            if not dry_run:
-                # BUG FIX: Implement actual course update
-                # Remove non-updatable fields (primary keys, identifiers)
-                update_data = course_data.copy()
-                for field in ["course_id", "id", "course_number"]:
-                    update_data.pop(field, None)
+        if strategy == ConflictStrategy.USE_THEIRS:
+            self._handle_course_conflicts_use_theirs(
+                detected_conflicts=detected_conflicts,
+                course_data=course_data,
+                existing_course=existing_course,
+                course_number=course_number,
+                dry_run=dry_run,
+            )
+            return
 
-                converted_course_data = _convert_datetime_fields(update_data)
-                update_course(existing_course.get("course_id"), converted_course_data)
-                self.stats["records_updated"] += 1
-                self._log(f"Updated course: {course_number}")
-            else:
-                self._log(f"DRY RUN: Would update course: {course_number}")
+    def _handle_course_conflicts_use_mine(
+        self, detected_conflicts: List[ConflictRecord], course_number: str
+    ) -> None:
+        """USE_MINE means keep existing record and skip import record."""
+        self.stats["records_skipped"] += 1
+        self._log(f"Skipping existing course: {course_number}")
+        self._mark_conflicts_resolved(detected_conflicts, ConflictStrategy.USE_MINE)
 
-        return conflicts
+    def _handle_course_conflicts_use_theirs(
+        self,
+        detected_conflicts: List[ConflictRecord],
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        course_number: str,
+        dry_run: bool,
+    ) -> None:
+        """USE_THEIRS means update existing record using import record fields."""
+        self._mark_conflicts_resolved(detected_conflicts, ConflictStrategy.USE_THEIRS)
+
+        if dry_run:
+            self._log(f"DRY RUN: Would update course: {course_number}")
+            return
+
+        update_data = course_data.copy()
+        for field in ["course_id", "id", "course_number"]:
+            update_data.pop(field, None)
+
+        converted_course_data = _convert_datetime_fields(update_data)
+        update_course(existing_course.get("course_id"), converted_course_data)
+        self.stats["records_updated"] += 1
+        self._log(f"Updated course: {course_number}")
+
+    def _mark_conflicts_resolved(
+        self, detected_conflicts: List[ConflictRecord], strategy: ConflictStrategy
+    ) -> None:
+        if not detected_conflicts:
+            return
+        self.stats["conflicts_resolved"] += len(detected_conflicts)
+        for conflict in detected_conflicts:
+            conflict.resolution = strategy.value
 
     def _handle_new_course(
         self,

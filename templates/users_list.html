@@ -217,9 +217,22 @@ function openEditUserModal(user) {
     document.getElementById('editUserFirstName').value = user.first_name || '';
     document.getElementById('editUserLastName').value = user.last_name || '';
     document.getElementById('editUserEmail').value = user.email || '';
-    document.getElementById('editUserRole').value = user.role || 'instructor';
+    const roleSelect = document.getElementById('editUserRole');
+    roleSelect.value = user.role || 'instructor';
+    // Remember original role so we can avoid unnecessary role updates (and avoid 403s for non-admins)
+    roleSelect.dataset.originalRole = roleSelect.value;
+
+    // Only institution/site admins should be able to change roles.
+    // Instructors (and other non-admins) can still update their own profile fields.
+    const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
+    const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
+    roleSelect.disabled = !canEditRoles;
     
-    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    const modalEl = document.getElementById('editUserModal');
+    const modal =
+        typeof bootstrap.Modal.getOrCreateInstance === 'function'
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
     modal.show();
 }
 
@@ -227,7 +240,8 @@ async function saveEditedUser() {
     const userId = document.getElementById('editUserId').value;
     const firstName = document.getElementById('editUserFirstName').value;
     const lastName = document.getElementById('editUserLastName').value;
-    const role = document.getElementById('editUserRole').value;
+    const roleSelect = document.getElementById('editUserRole');
+    const role = roleSelect.value;
     
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -251,24 +265,33 @@ async function saveEditedUser() {
             return;
         }
         
-        // Update role (separate endpoint)
-        const roleResponse = await fetch(`/api/users/${userId}/role`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken || ''
-            },
-            body: JSON.stringify({ role })
-        });
-        
-        if (!roleResponse.ok) {
-            const error = await roleResponse.json();
-            alert('Error updating user role: ' + (error.error || 'Unknown error'));
-            return;
+        // Update role (separate endpoint) - only if current user is allowed AND role actually changed.
+        const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
+        const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
+        const originalRole = roleSelect.dataset.originalRole || role;
+        if (canEditRoles && role !== originalRole) {
+            const roleResponse = await fetch(`/api/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken || ''
+                },
+                body: JSON.stringify({ role })
+            });
+            
+            if (!roleResponse.ok) {
+                const error = await roleResponse.json();
+                alert('Error updating user role: ' + (error.error || 'Unknown error'));
+                return;
+            }
         }
         
         // Success - close modal and reload
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+        const modalEl = document.getElementById('editUserModal');
+        const modal =
+            typeof bootstrap.Modal.getOrCreateInstance === 'function'
+                ? bootstrap.Modal.getOrCreateInstance(modalEl)
+                : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
         modal.hide();
         await loadUsers();
         

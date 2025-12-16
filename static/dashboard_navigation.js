@@ -34,10 +34,11 @@ function configureDashboardFilter(panelMapping, allPanelIds, titleMapping) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Update page title if mapping provided
-    if (titleMapping && titleMapping[view]) {
+    const viewTitle = titleMapping?.[view];
+    if (viewTitle) {
       const titleEl = document.getElementById('page-title-text');
       if (titleEl) {
-        titleEl.textContent = titleMapping[view];
+        titleEl.textContent = viewTitle;
       }
     }
 

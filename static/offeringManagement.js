@@ -80,43 +80,37 @@ async function loadCoursesAndTermsForCreateDropdown() {
     const terms = termsData.terms || [];
     const programs = programsData.programs || [];
 
-    // Populate courses dropdown
-    courseSelect.innerHTML = '<option value="">Select Course</option>';
-    courses.forEach(course => {
-      const option = document.createElement('option');
-      option.value = course.course_id;
-      option.textContent = `${course.course_number} - ${course.course_title}`;
-      courseSelect.appendChild(option);
-    });
+    populateSelectOptions(
+      courseSelect,
+      courses,
+      'Select Course',
+      course => course.course_id,
+      course => `${course.course_number} - ${course.course_title}`,
+      'No courses available'
+    );
 
-    // Populate terms dropdown
-    termSelect.innerHTML = '<option value="">Select Term</option>';
-    terms.forEach(term => {
-      const option = document.createElement('option');
-      option.value = term.term_id;
-      option.textContent = term.name;
-      termSelect.appendChild(option);
-    });
+    populateSelectOptions(
+      termSelect,
+      terms,
+      'Select Term',
+      term => term.term_id,
+      term => term.name,
+      'No terms available'
+    );
 
-    // Populate programs dropdown
-    programSelect.innerHTML = '<option value="">Select Program</option>';
-    programs.forEach(program => {
-      const option = document.createElement('option');
-      option.value = program.program_id || program.id;
-      option.textContent = program.name || program.program_name;
-      programSelect.appendChild(option);
-    });
-
-    if (courses.length === 0) {
-      courseSelect.innerHTML = '<option value="">No courses available</option>';
-    }
-    if (terms.length === 0) {
-      termSelect.innerHTML = '<option value="">No terms available</option>';
-    }
+    populateSelectOptions(
+      programSelect,
+      programs,
+      'Select Program',
+      program => program.program_id || program.id,
+      program => program.name || program.program_name,
+      'No programs available'
+    );
   } catch (error) {
     console.error('Failed to load dropdown data:', error);
     courseSelect.innerHTML = '<option value="">Error loading courses</option>';
     termSelect.innerHTML = '<option value="">Error loading terms</option>';
+    programSelect.innerHTML = '<option value="">Error loading programs</option>';
   }
 }
 
@@ -145,22 +139,50 @@ async function loadCoursesAndTermsForEditDropdown() {
     const programsData = await programsResponse.json();
     const programs = programsData.programs || [];
 
-    // Populate programs dropdown
-    programSelect.innerHTML = '<option value="">Select Program</option>';
-    programs.forEach(program => {
-      const option = document.createElement('option');
-      option.value = program.program_id || program.id;
-      option.textContent = program.name || program.program_name;
-      programSelect.appendChild(option);
-    });
-
-    if (programs.length === 0) {
-      programSelect.innerHTML = '<option value="">No programs available</option>';
-    }
+    populateSelectOptions(
+      programSelect,
+      programs,
+      'Select Program',
+      program => program.program_id || program.id,
+      program => program.name || program.program_name,
+      'No programs available'
+    );
   } catch (error) {
     console.error('Failed to load programs:', error);
     programSelect.innerHTML = '<option value="">Error loading programs</option>';
   }
+}
+
+function populateSelectOptions(selectEl, items, placeholderText, getValue, getLabel, emptyText) {
+  selectEl.innerHTML = `<option value="">${placeholderText}</option>`;
+
+  if (!items || items.length === 0) {
+    selectEl.innerHTML = `<option value="">${emptyText}</option>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const option = document.createElement('option');
+    option.value = getValue(item);
+    option.textContent = getLabel(item);
+    selectEl.appendChild(option);
+  });
+}
+
+function setButtonLoading(buttonEl, isLoading) {
+  const btnText = buttonEl.querySelector('.btn-text');
+  const btnSpinner = buttonEl.querySelector('.btn-spinner');
+
+  if (isLoading) {
+    btnText.classList.add('d-none');
+    btnSpinner.classList.remove('d-none');
+    buttonEl.disabled = true;
+    return;
+  }
+
+  btnText.classList.remove('d-none');
+  btnSpinner.classList.add('d-none');
+  buttonEl.disabled = false;
 }
 
 /**
@@ -178,23 +200,19 @@ function initializeCreateOfferingModal() {
     e.preventDefault();
 
     const capacityValue = document.getElementById('offeringCapacity').value;
+    const programIdValue = document.getElementById('offeringProgramId').value;
 
     const offeringData = {
       course_id: document.getElementById('offeringCourseId').value,
       term_id: document.getElementById('offeringTermId').value,
-      program_id: document.getElementById('offeringProgramId').value,
+      // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
+      program_id: programIdValue || null,
       status: document.getElementById('offeringStatus').value,
       capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
 
     const createBtn = document.getElementById('createOfferingBtn');
-    const btnText = createBtn.querySelector('.btn-text');
-    const btnSpinner = createBtn.querySelector('.btn-spinner');
-
-    // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
-    createBtn.disabled = true;
+    setButtonLoading(createBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -213,8 +231,12 @@ function initializeCreateOfferingModal() {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createOfferingModal'));
-        if (modal) {
+        const modalEl = document.getElementById('createOfferingModal');
+        if (modalEl && bootstrap?.Modal) {
+          const modal =
+            typeof bootstrap.Modal.getOrCreateInstance === 'function'
+              ? bootstrap.Modal.getOrCreateInstance(modalEl)
+              : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
           modal.hide();
         }
 
@@ -234,10 +256,7 @@ function initializeCreateOfferingModal() {
       console.error('Error creating offering:', error);
       alert('Failed to create offering. Please check your connection and try again.');
     } finally {
-      // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
-      createBtn.disabled = false;
+      setButtonLoading(createBtn, false);
     }
   });
 }
@@ -266,13 +285,7 @@ function initializeEditOfferingModal() {
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
-    const btnText = saveBtn.querySelector('.btn-text');
-    const btnSpinner = saveBtn.querySelector('.btn-spinner');
-
-    // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
-    saveBtn.disabled = true;
+    setButtonLoading(saveBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -310,10 +323,7 @@ function initializeEditOfferingModal() {
       console.error('Error updating offering:', error);
       alert('Failed to update offering. Please check your connection and try again.');
     } finally {
-      // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
-      saveBtn.disabled = false;
+      setButtonLoading(saveBtn, false);
     }
   });
 }

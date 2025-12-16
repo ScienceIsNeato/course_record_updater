@@ -15,6 +15,13 @@ require('../../../static/termManagement.js');
 describe('Term Management - Create Term Modal', () => {
   let mockFetch;
   let consoleErrorSpy;
+  let realLoadTerms;
+  let realLoadTermsImpl;
+
+  beforeAll(() => {
+    // termManagement.js is required at module load time; preserve real implementation once.
+    realLoadTermsImpl = global.loadTerms;
+  });
 
   beforeEach(() => {
     // Set up DOM
@@ -53,10 +60,15 @@ describe('Term Management - Create Term Modal', () => {
       }
     };
 
-    global.loadTerms = jest.fn();
-
     // Trigger DOMContentLoaded to initialize event listeners
     document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    // Restore real implementation (prior tests may have replaced it with a mock)
+    global.loadTerms = realLoadTermsImpl;
+
+    // Preserve real implementations before tests overwrite globals for assertions
+    realLoadTerms = global.loadTerms;
+    global.loadTerms = jest.fn();
   });
 
   afterEach(() => {
@@ -111,6 +123,205 @@ describe('Term Management - Create Term Modal', () => {
   });
 
   describe('Form Submission - API Call', () => {
+    test('should allow submit when start/end dates are missing (validation deferred to required fields)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, term_id: 'term-123' })
+      });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = ''; // missing
+      document.getElementById('termEndDate').value = ''; // missing
+      document.getElementById('termAssessmentDueDate').value = ''; // missing
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    test('should allow submit when due date is empty (no dueDate warnings)', async () => {
+      global.confirm = jest.fn(() => true);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, term_id: 'term-123' })
+      });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-12-15';
+      document.getElementById('termAssessmentDueDate').value = ''; // no due date
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    test('should allow submit when term duration is very short and user confirms', async () => {
+      global.confirm = jest.fn(() => true);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, term_id: 'term-123' })
+      });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Mini Term';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-08-05'; // 4 days
+      document.getElementById('termAssessmentDueDate').value = '2024-08-06';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    test('should allow submit when term duration is very long and user confirms', async () => {
+      global.confirm = jest.fn(() => true);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, term_id: 'term-123' })
+      });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Very Long Term';
+      document.getElementById('termStartDate').value = '2024-01-01';
+      document.getElementById('termEndDate').value = '2025-06-01'; // > 365 days
+      document.getElementById('termAssessmentDueDate').value = '2025-06-10';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    test('should allow submit when due date is far after end date and user confirms', async () => {
+      global.confirm = jest.fn(() => true);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, term_id: 'term-123' })
+      });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-12-15';
+      document.getElementById('termAssessmentDueDate').value = '2025-02-20'; // > 30 days after
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalled();
+    });
+
+    test('should block submit when end date is not after start date', async () => {
+      global.alert = jest.fn();
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-08-01'; // invalid
+      document.getElementById('termAssessmentDueDate').value = '2024-12-20';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.alert).toHaveBeenCalledWith('End date must be after start date.');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('should block submit when assessment due date is not after start date', async () => {
+      global.alert = jest.fn();
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-12-15';
+      document.getElementById('termAssessmentDueDate').value = '2024-08-01'; // invalid
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.alert).toHaveBeenCalledWith(
+        'Assessment due date must be after start date.'
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('should block submit when term duration is very short and user cancels confirmation', async () => {
+      global.confirm = jest.fn(() => false);
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Mini Term';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-08-05'; // 4 days
+      document.getElementById('termAssessmentDueDate').value = '2024-08-06';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('should block submit when term duration is very long and user cancels confirmation', async () => {
+      global.confirm = jest.fn(() => false);
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Very Long Term';
+      document.getElementById('termStartDate').value = '2024-01-01';
+      document.getElementById('termEndDate').value = '2025-06-01'; // > 365 days
+      document.getElementById('termAssessmentDueDate').value = '2025-06-10';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('should block submit when assessment due date is far after end date and user cancels confirmation', async () => {
+      global.confirm = jest.fn(() => false);
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+
+      const form = document.getElementById('createTermForm');
+      document.getElementById('termName').value = 'Fall 2024';
+      document.getElementById('termStartDate').value = '2024-08-01';
+      document.getElementById('termEndDate').value = '2024-12-15';
+      document.getElementById('termAssessmentDueDate').value = '2025-02-20'; // > 30 days after
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.confirm).toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
     test('should POST term data to /api/terms on form submit', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -316,6 +527,62 @@ describe('Term Management - Create Term Modal', () => {
 
       const callArgs = mockFetch.mock.calls[0];
       expect(callArgs[1].headers['X-CSRFToken']).toBe('test-csrf-token');
+    });
+  });
+
+  describe('Load Terms and Helpers', () => {
+    beforeEach(() => {
+      // Container used by loadTerms()
+      document.body.innerHTML += '<div id="termsTableContainer"></div>';
+    });
+
+    test('loadTerms should render empty state when no terms', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, terms: [] })
+      });
+
+      await realLoadTerms();
+      expect(document.getElementById('termsTableContainer').innerHTML).toContain('No terms found');
+    });
+
+    test('loadTerms should render table when terms exist', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          terms: [
+            {
+              term_id: 't1',
+              name: 'Fall 2024',
+              start_date: '2024-08-01',
+              end_date: '2024-12-15',
+              active: true,
+              offerings_count: 2
+            }
+          ]
+        })
+      });
+
+      await realLoadTerms();
+      const html = document.getElementById('termsTableContainer').innerHTML;
+      expect(html).toContain('Fall 2024');
+      expect(html).toContain('Offerings');
+      expect(html).toContain('Edit');
+    });
+
+    test('loadTerms should render error state when fetch fails', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({ ok: false });
+      await realLoadTerms();
+      expect(document.getElementById('termsTableContainer').innerHTML).toContain('Error loading terms');
+    });
+
+    test('openCreateTermModal should open modal via bootstrap.Modal', () => {
+      const mockModal = { show: jest.fn() };
+      global.bootstrap.Modal = jest.fn(() => mockModal);
+      global.openCreateTermModal();
+      expect(global.bootstrap.Modal).toHaveBeenCalled();
+      expect(mockModal.show).toHaveBeenCalled();
     });
   });
 });

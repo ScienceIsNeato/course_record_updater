@@ -26,51 +26,61 @@ document.addEventListener('DOMContentLoaded', () => {
 function validateTermDates(start, end, due) {
   if (!start || !end) return true; // Let required field check handle empty
 
+  const parsed = parseTermDates(start, end, due);
+
+  const errorMessage = getTermDateErrorMessage(parsed);
+  if (errorMessage) {
+    alert(errorMessage);
+    return false;
+  }
+
+  const warningMessage = getTermDateWarningMessage(parsed);
+  if (warningMessage && !confirm(warningMessage)) {
+    return false;
+  }
+
+  return true;
+}
+
+function parseTermDates(start, end, due) {
   const startDate = new Date(start);
   const endDate = new Date(end);
   const dueDate = due ? new Date(due) : null;
+  return { startDate, endDate, dueDate };
+}
 
-  // Basic sanity checks (Errors)
+function getTermDateErrorMessage({ startDate, endDate, dueDate }) {
   if (endDate <= startDate) {
-    alert('End date must be after start date.');
-    return false;
+    return 'End date must be after start date.';
   }
-
   if (dueDate && dueDate <= startDate) {
-    alert('Assessment due date must be after start date.');
-    return false;
+    return 'Assessment due date must be after start date.';
   }
+  return null;
+}
 
-  // Warnings (Confirmations)
+function getTermDateWarningMessage({ startDate, endDate, dueDate }) {
   const oneDay = 24 * 60 * 60 * 1000;
   const durationDays = Math.round((endDate - startDate) / oneDay);
 
   if (durationDays < 10) {
-    if (!confirm(`Term duration is very short (${durationDays} days). Is this correct?`)) {
-      return false;
-    }
+    return `Term duration is very short (${durationDays} days). Is this correct?`;
   }
 
   if (durationDays > 365) {
-    if (!confirm(`Term duration is very long (${durationDays} days). Is this correct?`)) {
-      return false;
-    }
+    return `Term duration is very long (${durationDays} days). Is this correct?`;
   }
 
-  if (dueDate) {
-    const daysAfterEnd = Math.round((dueDate - endDate) / oneDay);
-    if (daysAfterEnd > 30) {
-      if (
-        !confirm(
-          `Assessment due date is more than a month (${daysAfterEnd} days) after the term ends. Is this correct?`
-        )
-      ) {
-        return false;
-      }
-    }
+  if (!dueDate) {
+    return null;
   }
 
-  return true;
+  const daysAfterEnd = Math.round((dueDate - endDate) / oneDay);
+  if (daysAfterEnd > 30) {
+    return `Assessment due date is more than a month (${daysAfterEnd} days) after the term ends. Is this correct?`;
+  }
+
+  return null;
 }
 
 /**

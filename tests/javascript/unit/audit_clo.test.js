@@ -28,6 +28,68 @@ describe('audit_clo.js - Utility Functions', () => {
     jest.clearAllMocks();
   });
 
+  describe('calculateSuccessRate', () => {
+    it('should return null when missing or invalid inputs', () => {
+      expect(auditCloModule.calculateSuccessRate({ students_took: 0, students_passed: 0 })).toBeNull();
+      expect(auditCloModule.calculateSuccessRate({ students_took: null, students_passed: 1 })).toBeNull();
+      expect(auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: null })).toBeNull();
+    });
+
+    it('should return rounded percentage when valid', () => {
+      expect(auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: 8 })).toBe(80);
+      expect(auditCloModule.calculateSuccessRate({ students_took: 3, students_passed: 2 })).toBe(67);
+    });
+  });
+
+  describe('exportCurrentViewToCsv', () => {
+    beforeEach(() => {
+      global.alert = jest.fn();
+      global.URL.createObjectURL = jest.fn(() => 'blob:mock');
+      global.URL.revokeObjectURL = jest.fn();
+    });
+
+    it('should alert and return false when no records provided', () => {
+      const result = auditCloModule.exportCurrentViewToCsv([]);
+      expect(result).toBe(false);
+      expect(global.alert).toHaveBeenCalledWith(
+        'No CLO records available to export for the selected filters.'
+      );
+    });
+
+    it('should generate and download CSV when records exist', () => {
+      // Spy on link click
+      const clickSpy = jest.fn();
+      const originalCreateElement = document.createElement.bind(document);
+      jest.spyOn(document, 'createElement').mockImplementation(tag => {
+        const el = originalCreateElement(tag);
+        if (tag === 'a') {
+          el.click = clickSpy;
+        }
+        return el;
+      });
+
+      const result = auditCloModule.exportCurrentViewToCsv([
+        {
+          course_number: 'CS101',
+          course_title: 'Intro',
+          clo_number: '1',
+          status: 'approved',
+          instructor_name: 'Jane',
+          submitted_at: '2024-01-15T10:30:00Z',
+          students_took: 10,
+          students_passed: 8,
+          term_name: 'Fall 2024',
+          assessment_tool: 'Exam'
+        }
+      ]);
+
+      expect(result).toBe(true);
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalled();
+      expect(global.URL.revokeObjectURL).toHaveBeenCalled();
+    });
+  });
+
   describe('getStatusBadge', () => {
     it('should return correct badge for never_coming_in status', () => {
       const badge = auditCloModule.getStatusBadge('never_coming_in');
@@ -140,6 +202,7 @@ describe('audit_clo.js - Utility Functions', () => {
 
 describe('audit_clo.js - DOM Integration', () => {
   let statusFilter, sortBy, sortOrder, cloListContainer;
+  let programFilter, termFilter, exportButton;
   let cloDetailModal, requestReworkModal, requestReworkForm;
   let mockModalInstance;
 
@@ -150,6 +213,9 @@ describe('audit_clo.js - DOM Integration', () => {
       <select id="statusFilter"></select>
       <select id="sortBy"></select>
       <select id="sortOrder"></select>
+      <select id="programFilter"></select>
+      <select id="termFilter"></select>
+      <button id="exportCsvBtn"></button>
       <div id="cloListContainer"></div>
       <div id="cloDetailModal">
         <div id="cloDetailContent"></div>
@@ -174,6 +240,9 @@ describe('audit_clo.js - DOM Integration', () => {
     statusFilter = document.getElementById('statusFilter');
     sortBy = document.getElementById('sortBy');
     sortOrder = document.getElementById('sortOrder');
+    programFilter = document.getElementById('programFilter');
+    termFilter = document.getElementById('termFilter');
+    exportButton = document.getElementById('exportCsvBtn');
     cloListContainer = document.getElementById('cloListContainer');
     cloDetailModal = document.getElementById('cloDetailModal');
     requestReworkModal = document.getElementById('requestReworkModal');
@@ -195,6 +264,21 @@ describe('audit_clo.js - DOM Integration', () => {
 
     // Mock successful default fetch responses
     fetch.mockImplementation((url) => {
+      if (url === '/api/programs') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ programs: [{ id: 'p1', name: 'CS' }] })
+        });
+      }
+      if (url === '/api/terms') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              terms: [{ term_id: 't1', term_name: 'Fall 2024', start_date: '2024-08-01' }]
+            })
+        });
+      }
       if (url.includes('/api/outcomes/audit?status=')) {
         return Promise.resolve({
           ok: true,
@@ -212,6 +296,20 @@ describe('audit_clo.js - DOM Integration', () => {
         json: () => Promise.resolve({})
       });
     });
+  });
+
+  test('should wire export button to exportCurrentViewToCsv (alerts when no outcomes)', async () => {
+    // Load the script to trigger DOMContentLoaded
+    jest.resetModules();
+    require('../../../static/audit_clo.js');
+
+    // Trigger DOMContentLoaded
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+
+    exportButton.click();
+    expect(alert).toHaveBeenCalledWith(
+      'No CLO records available to export for the selected filters.'
+    );
   });
 
   describe('updateStats', () => {

@@ -343,12 +343,48 @@ def duplicate_course_record(
     if not source_course:
         return None
 
-    institution_id = source_course.get("institution_id")
+    institution_id = _get_institution_id_or_log(source_course)
     if not institution_id:
-        logger.error("[DB Service] Cannot duplicate course without institution context")
         return None
 
     overrides = overrides or {}
+    sanitized_overrides, program_ids_override = _sanitize_course_duplication_overrides(
+        overrides
+    )
+
+    base_number = sanitized_overrides.get("course_number") or source_course.get(
+        "course_number"
+    )
+    if not base_number:
+        logger.error(
+            "[DB Service] Source course missing course_number; cannot duplicate"
+        )
+        return None
+
+    sanitized_overrides.setdefault(
+        "course_number", _generate_unique_course_number(base_number, institution_id)
+    )
+
+    new_course_data = _build_course_duplication_payload(
+        source_course, institution_id, sanitized_overrides
+    )
+    new_course_data["program_ids"] = _resolve_course_duplication_program_ids(
+        source_course, program_ids_override, duplicate_programs
+    )
+
+    return create_course(new_course_data)
+
+
+def _get_institution_id_or_log(source_course: Dict[str, Any]) -> Optional[str]:
+    institution_id = source_course.get("institution_id")
+    if not institution_id:
+        logger.error("[DB Service] Cannot duplicate course without institution context")
+    return institution_id
+
+
+def _sanitize_course_duplication_overrides(
+    overrides: Dict[str, Any],
+) -> tuple[Dict[str, Any], Optional[Any]]:
     allowed_override_fields = {
         "course_number",
         "course_title",
@@ -361,25 +397,17 @@ def duplicate_course_record(
         for key, value in overrides.items()
         if key in allowed_override_fields and value is not None
     }
-
     program_ids_override = (
         overrides.get("program_ids") if "program_ids" in overrides else None
     )
+    return sanitized_overrides, program_ids_override
 
-    base_number = sanitized_overrides.get("course_number") or source_course.get(
-        "course_number"
-    )
-    if not base_number:
-        logger.error(
-            "[DB Service] Source course missing course_number; cannot duplicate"
-        )
-        return None
 
-    if "course_number" not in sanitized_overrides:
-        sanitized_overrides["course_number"] = _generate_unique_course_number(
-            base_number, institution_id
-        )
-
+def _build_course_duplication_payload(
+    source_course: Dict[str, Any],
+    institution_id: str,
+    sanitized_overrides: Dict[str, Any],
+) -> Dict[str, Any]:
     new_course_data: Dict[str, Any] = {
         "course_number": source_course.get("course_number"),
         "course_title": source_course.get("course_title"),
@@ -398,18 +426,19 @@ def duplicate_course_record(
     ) or source_course.get("id")
     extras["duplicated_from_course_number"] = source_course.get("course_number")
     new_course_data["extras"] = extras
+    return new_course_data
 
+
+def _resolve_course_duplication_program_ids(
+    source_course: Dict[str, Any],
+    program_ids_override: Optional[Any],
+    duplicate_programs: bool,
+) -> Any:
     if program_ids_override is not None:
-        program_ids = program_ids_override
-    elif duplicate_programs:
-        program_ids = source_course.get("program_ids") or []
-    else:
-        program_ids = []
-
-    if program_ids is not None:
-        new_course_data["program_ids"] = program_ids
-
-    return create_course(new_course_data)
+        return program_ids_override
+    if duplicate_programs:
+        return source_course.get("program_ids") or []
+    return []
 
 
 def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
