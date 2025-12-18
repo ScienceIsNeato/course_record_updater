@@ -30,7 +30,7 @@
 | Role | Contact |
 |------|---------|
 | Primary Developer | (Add contact) |
-| CEI Contact (Leslie) | (Add contact) |
+| Pilot Partner Contact | (Add contact) |
 | GCP Admin | (Add contact) |
 
 ### Important Links

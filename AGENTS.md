@@ -204,7 +204,7 @@ Verify tests after ANY modification (source, test, or config code).
 2. **Big Wins**: Target large contiguous uncovered blocks
 3. **Meaningful Testing**: Extend existing tests vs single-purpose error tests
 4. **Value Focus**: Ensure tests add genuine value beyond coverage metrics
-res
+
 ### Coverage Analysis Rules
 1. **ONLY use ship_it.py --checks coverage**: Never run direct pytest coverage commands
 2. **Coverage failures are UNIQUE TO THIS COMMIT**: If coverage decreased, it's due to current changeset
@@ -254,6 +254,27 @@ When ship_it.py fails due to unaddressed PR comments:
 - **Cross-Reference**: Mention related comments addressed in the same thematic fix
 - **Show Resolution**: Explain how the issue was fixed with code examples when helpful
 - **Strategic Context**: Connect individual fixes to broader conceptual themes
+
+### Comment Resolution Hygiene (Prevents Wasted Cycles)
+
+**Anti-Pattern:** Fix code → Push → Assume comment is resolved ❌
+**Correct:** Fix code → Reply to thread → Resolve thread → Push ✅
+
+**When fixing an issue from PR feedback:**
+1. Make the code fix
+2. IMMEDIATELY reply to the comment thread with what was fixed
+3. Click "Resolve conversation" (or ask reviewer to resolve if you can't)
+
+**When receiving automated tool comments (Cursor, SonarQube, etc):**
+1. Identify unique issues vs duplicates (tools often flag same issue 5x)
+2. Fix root cause once
+3. Bulk-reply to all related threads: "Fixed in [commit] - duplicate of [issue]"
+4. Resolve all duplicate threads in one pass
+
+**Before claiming PR is ready:**
+1. Run `gh pr view --comments` to list unresolved threads
+2. For each unresolved: verify fix exists OR respond with resolution
+3. Resolve all threads that have been addressed
 
 # factual_communication
 

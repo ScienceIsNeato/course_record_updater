@@ -95,6 +95,7 @@ class QualityGateExecutor:
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+            ("coverage-new-code", "📊 Coverage on New Code (80% threshold on PR changes)"),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
