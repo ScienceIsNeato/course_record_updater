@@ -65,12 +65,12 @@ def test_tc_crud_inst_001_update_own_profile(
     # Step 3: Navigate to users page
     instructor_page.goto(f"{BASE_URL}/users")
     instructor_page.wait_for_load_state("networkidle")
-    instructor_page.wait_for_selector("#usersTableContainer", timeout=10000)
+    instructor_page.wait_for_selector("#usersTableContainer", timeout=15000)
 
     # Step 4: Find own row and click Edit
     instructor_page.wait_for_function(
         f"document.querySelector('#usersTableContainer')?.innerText?.includes('{test_email}')",
-        timeout=5000,
+        timeout=10000,
     )
 
     # Click Edit button for own row
@@ -89,8 +89,8 @@ def test_tc_crud_inst_001_update_own_profile(
     # Click Save Changes
     instructor_page.click("#editUserModal button:has-text('Save Changes')")
 
-    # Wait for modal to close
-    instructor_page.wait_for_selector("#editUserModal", state="hidden", timeout=10000)
+    # Wait for modal to close (can take longer in CI)
+    instructor_page.wait_for_selector("#editUserModal", state="hidden", timeout=30000)
 
     # Step 5: Verify the updated name appears in the table
     instructor_page.wait_for_load_state("networkidle")

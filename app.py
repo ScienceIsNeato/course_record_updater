@@ -138,8 +138,19 @@ def index():
 @app.route("/login")
 def login():
     """Login page (supports deep linking via ?next parameter)"""
-    # Redirect to dashboard if already authenticated
-    if is_authenticated():
+    # Allow forcing login page even if authenticated (for broken sessions)
+    force_login = request.args.get("force") == "true"
+
+    # If forcing login, clear any existing session first
+    if force_login and is_authenticated():
+        from login_service import LoginService
+
+        LoginService.logout_user()
+        # Flash message to inform user
+        flash("Session cleared. Please log in again.", "info")
+
+    # Redirect to dashboard if already authenticated (unless forced)
+    if is_authenticated() and not force_login:
         return redirect(url_for(DASHBOARD_ENDPOINT))
 
     # Store 'next' URL in session for post-login redirect (fixes email deep link)
@@ -184,6 +195,21 @@ def reminder_login():
         session["next_after_login"] = next_url
 
     return render_template("auth/login.html")
+
+
+@app.route("/logout")
+def logout_view():
+    """
+    Simple GET endpoint to clear the current session and redirect to login.
+
+    Useful for local demo workflows where stale cookies need to be cleared
+    without relying on the dashboard dropdown (which may not load yet).
+    """
+    from login_service import LoginService
+
+    LoginService.logout_user()
+    flash("You have been logged out.", "info")
+    return redirect(url_for("login"))
 
 
 @app.route("/register")
@@ -371,6 +397,53 @@ def sections_list():
     return render_template("sections_list.html", user=user)
 
 
+@app.route("/terms")
+@login_required
+def terms_list():
+    """Display all terms for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("terms_list.html", user=user)
+
+
+@app.route("/offerings")
+@login_required
+def offerings_list():
+    """Display all course offerings for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("offerings_list.html", user=user)
+
+
+@app.route("/programs")
+@login_required
+def programs_list():
+    """Display all programs for the current user's institution"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    return render_template("programs_list.html", user=user)
+
+
+@app.route("/faculty")
+@login_required
+def faculty_list():
+    """Redirect to users list filtered for faculty/instructors"""
+    return redirect(url_for("users_list", role="instructor"))
+
+
+@app.route("/outcomes")
+@login_required
+def outcomes_page():
+    """Redirect to assessments/outcomes page"""
+    return redirect(url_for("assessments_page"))
+
+
 # Health check endpoint for parallel E2E testing
 # This endpoint is registered AFTER all other initialization, so when it responds
 # we know Flask is fully ready to serve requests (not just that the port is open)
@@ -387,13 +460,13 @@ if __name__ == "__main__":
     # Port selection priority (for CI/multi-environment compatibility):
     # 1. PORT (standard env var, used by CI)
     # 2. DEFAULT_PORT (CI fallback)
-    # 3. LASSIE_DEFAULT_PORT_DEV (local dev default from .envrc)
+    # 3. LOOPCLOSER_DEFAULT_PORT_DEV (local dev default from .envrc)
     # 4. 3001 (hardcoded fallback)
     port = int(
         os.environ.get(
             "PORT",
             os.environ.get(
-                "DEFAULT_PORT", os.environ.get("LASSIE_DEFAULT_PORT_DEV", 3001)
+                "DEFAULT_PORT", os.environ.get("LOOPCLOSER_DEFAULT_PORT_DEV", 3001)
             ),
         )
     )

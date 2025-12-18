@@ -235,12 +235,13 @@ class DashboardService:
         faculty = self._build_faculty_directory(raw["users"], raw["instructors"])
         offering_to_course = self._build_offering_to_course_mapping(raw["offerings"])
 
-        # Enrich sections and terms
+        # Enrich sections, terms, and offerings
         sections = self._enrich_sections_with_course_data(
             raw["sections"], course_index, offering_to_course
         )
         sections = self._enrich_sections_with_instructor_data(sections, raw["users"])
         terms = self._enrich_terms_with_offering_counts(raw["terms"], raw["offerings"])
+        offerings = self._enrich_offerings_with_section_data(raw["offerings"], sections)
 
         # Build metrics and aggregations
         program_metrics = self._build_program_metrics(
@@ -275,7 +276,7 @@ class DashboardService:
                 sections, institution_id, institution_name
             ),
             "offerings": self._with_institution(
-                raw["offerings"], institution_id, institution_name
+                offerings, institution_id, institution_name
             ),
             "terms": self._with_institution(terms, institution_id, institution_name),
             "clos": self._with_institution(all_clos, institution_id, institution_name),
@@ -1048,8 +1049,11 @@ class DashboardService:
         total = 0
         for section in sections:
             enrollment = section.get("enrollment")
-            if isinstance(enrollment, (int, float)):
-                total += int(enrollment)
+            if enrollment is not None:
+                try:
+                    total += int(enrollment)
+                except (ValueError, TypeError):
+                    continue
         return total
 
     def _build_activity_feed(
@@ -1282,6 +1286,72 @@ class DashboardService:
             enriched_terms.append(enriched_term)
 
         return enriched_terms
+
+    def _enrich_offerings_with_section_data(
+        self,
+        offerings: List[Dict[str, Any]],
+        sections: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich offerings with section count and total enrollment.
+
+        Args:
+            offerings: List of offering dictionaries
+            sections: List of section dictionaries
+
+        Returns:
+            List of offerings enriched with section_count and total_enrollment
+        """
+        offering_data = self._build_offering_section_rollup(sections)
+        return [
+            self._apply_offering_section_rollup(offering, offering_data)
+            for offering in offerings
+        ]
+
+    def _build_offering_section_rollup(
+        self, sections: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, int]]:
+        """Build section_count/total_enrollment rollups keyed by offering_id."""
+        offering_data: Dict[str, Dict[str, int]] = {}
+        for section in sections:
+            offering_id = section.get("offering_id")
+            if not offering_id:
+                continue
+            entry = offering_data.setdefault(
+                offering_id, {"section_count": 0, "total_enrollment": 0}
+            )
+            entry["section_count"] += 1
+            entry["total_enrollment"] += self._safe_int(
+                section.get("enrollment"), section.get("section_id")
+            )
+        return offering_data
+
+    def _apply_offering_section_rollup(
+        self,
+        offering: Dict[str, Any],
+        offering_data: Dict[str, Dict[str, int]],
+    ) -> Dict[str, Any]:
+        """Apply rollup counts to a single offering (defaults to 0/0 when missing)."""
+        offering_id = offering.get("offering_id") or offering.get("id")
+        enriched_offering = dict(offering)
+        rollup = offering_data.get(offering_id) if offering_id else None
+        enriched_offering["section_count"] = rollup["section_count"] if rollup else 0
+        enriched_offering["total_enrollment"] = (
+            rollup["total_enrollment"] if rollup else 0
+        )
+        return enriched_offering
+
+    def _safe_int(self, value: Any, context_id: Any = None) -> int:
+        """Convert value to int; log and return 0 if invalid."""
+        if value is None:
+            return 0
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            self.logger.warning(
+                f"Invalid enrollment value for section {context_id}: {value}"
+            )
+            return 0
 
     def _enrich_single_section(
         self,

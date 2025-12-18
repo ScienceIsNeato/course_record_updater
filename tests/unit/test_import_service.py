@@ -285,8 +285,12 @@ class TestImportService:
         mock_registry.get_adapter_by_id.return_value = mock_adapter
         mock_get_registry.return_value = mock_registry
 
-        # Mock existing user
-        existing_user = {"email": "existing@example.com", "first_name": "Original"}
+        # Mock existing user (must have matching institution_id for multi-tenant isolation)
+        existing_user = {
+            "email": "existing@example.com",
+            "first_name": "Original",
+            "institution_id": self.institution_id,
+        }
 
         with (
             patch("import_service.get_user_by_email", return_value=existing_user),
@@ -520,13 +524,14 @@ class TestReportGeneration:
             patch("import_service.create_user") as mock_create_user,
         ):
 
-            # Mock existing user
+            # Mock existing user (must have matching institution_id)
             mock_get_user.return_value = {
                 "user_id": "user_123",
                 "email": "test@example.com",
                 "first_name": "John",
                 "last_name": "Old",
                 "role": "instructor",
+                "institution_id": "inst_123",
             }
 
             service = ImportService("inst_123")
@@ -538,7 +543,11 @@ class TestReportGeneration:
             assert len(conflicts) > 0  # Should detect conflicts
             assert service.stats["records_updated"] == 1
             assert service.stats["conflicts_resolved"] > 0
-            mock_update_user.assert_called_once_with("user_123", user_data)
+            # Check update_user was called (email should be removed from update data)
+            mock_update_user.assert_called_once()
+            call_args = mock_update_user.call_args[0]
+            assert call_args[0] == "user_123"
+            assert "email" not in call_args[1]  # Email should NOT be in update data
             mock_create_user.assert_not_called()  # Should not create new user
 
 
@@ -963,12 +972,21 @@ class TestImportServiceErrorHandling:
             )
         ]
 
+        # Mock course data and existing course for the new signature
+        course_data = {"course_number": "MATH-101", "course_title": "New Algebra"}
+        existing_course = {
+            "course_id": "course_123",
+            "course_number": "MATH-101",
+            "course_title": "Algebra",
+        }
+
         service._resolve_course_conflicts(
             ConflictStrategy.USE_THEIRS,
             detected_conflicts,
+            course_data,
+            existing_course,
             "MATH-101",
             dry_run=True,  # DRY RUN mode
-            conflicts=[],
         )
 
         # Should log dry run message (line 580)
@@ -1218,14 +1236,15 @@ class TestCourseProgramLinkingFeature:
         self, mock_get_courses, mock_get_programs, mock_add_course
     ):
         """Test successful course-program linking based on prefix"""
+        # Use correct primary keys: course_id for courses, program_id for programs
         mock_get_courses.return_value = [
-            {"id": "c1", "course_number": "BIOL-101"},
-            {"id": "c2", "course_number": "BSN-202"},
-            {"id": "c3", "course_number": "ZOOL-303"},
+            {"course_id": "c1", "course_number": "BIOL-101"},
+            {"course_id": "c2", "course_number": "BSN-202"},
+            {"course_id": "c3", "course_number": "ZOOL-303"},
         ]
         mock_get_programs.return_value = [
-            {"id": "p1", "name": "Biological Sciences"},
-            {"id": "p2", "name": "Zoology"},
+            {"program_id": "p1", "name": "Biological Sciences"},
+            {"program_id": "p2", "name": "Zoology"},
         ]
 
         service = ImportService("inst-123")
@@ -1243,7 +1262,7 @@ class TestCourseProgramLinkingFeature:
     def test_link_courses_no_courses(self, mock_get_courses, mock_get_programs):
         """Test linking handles no courses gracefully"""
         mock_get_courses.return_value = []
-        mock_get_programs.return_value = [{"id": "p1", "name": "Test"}]
+        mock_get_programs.return_value = [{"program_id": "p1", "name": "Test"}]
 
         service = ImportService("inst-123")
         service._link_courses_to_programs()  # Should not crash
@@ -1252,7 +1271,9 @@ class TestCourseProgramLinkingFeature:
     @patch("database_service.get_all_courses")
     def test_link_courses_no_programs(self, mock_get_courses, mock_get_programs):
         """Test linking handles no programs gracefully"""
-        mock_get_courses.return_value = [{"id": "c1", "course_number": "BIOL-101"}]
+        mock_get_courses.return_value = [
+            {"course_id": "c1", "course_number": "BIOL-101"}
+        ]
         mock_get_programs.return_value = []
 
         service = ImportService("inst-123")

@@ -82,11 +82,16 @@ class SessionService:
             session.regenerate()
 
         # Store user data in session
-        session["user_id"] = user_data.get("user_id")
-        session["email"] = user_data.get("email")
+        # NOTE: We store natural keys (email, institution_short_name) instead of UUIDs
+        # to maintain session validity across database reseeds and recreations.
+        # UUIDs are resolved from natural keys on each request.
+        session["user_id"] = user_data.get("user_id")  # Still store for this session
+        session["email"] = user_data.get("email")  # Natural key for user
         session["role"] = user_data.get("role")
-        session["institution_id"] = user_data.get("institution_id")
-        session["institution_name"] = user_data.get("institution_name")
+        if user_data.get("institution_id"):
+            session["institution_id"] = user_data.get("institution_id")
+        session["institution_short_name"] = user_data.get("institution_short_name")  # Natural key
+        session["institution_name"] = user_data.get("institution_name")  # Display name
         session["program_ids"] = user_data.get("program_ids", [])
         session["display_name"] = (
             user_data.get("display_name")
@@ -183,9 +188,10 @@ class SessionService:
 
         return {
             "user_id": session.get("user_id"),
-            "email": session.get("email"),
+            "email": session.get("email"),  # Natural key for user lookup
             "role": session.get("role"),
             "institution_id": session.get("institution_id"),
+            "institution_short_name": session.get("institution_short_name"),  # Natural key
             "institution_name": session.get("institution_name"),
             "program_ids": session.get("program_ids", []),
             "display_name": session.get("display_name"),

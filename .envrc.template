@@ -69,7 +69,8 @@
 # =============================================================================
 # ENVIRONMENT
 # =============================================================================
-export ENV="development"  # development, staging, or production
+# Only set ENV if not already set (allows override from scripts like run_uat.sh)
+export ENV="${ENV:-development}"  # development, test, or production
 export PRODUCTION="false"  # Set to "true" only in production
 
 # =============================================================================
@@ -78,6 +79,24 @@ export PRODUCTION="false"  # Set to "true" only in production
 export DATABASE_TYPE="sqlite"
 export DATABASE_URL_DEV="sqlite:///course_records_dev.db"
 export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+
+# Automatically set DATABASE_URL based on ENV
+case "${ENV}" in
+    development)
+        export DATABASE_URL="${DATABASE_URL_DEV}"
+        ;;
+    test)
+        export DATABASE_URL="${DATABASE_URL_E2E}"
+        ;;
+    production)
+        # Production should set DATABASE_URL explicitly
+        export DATABASE_URL="${DATABASE_URL:-sqlite:///course_records.db}"
+        ;;
+    *)
+        # Default to dev
+        export DATABASE_URL="${DATABASE_URL_DEV}"
+        ;;
+esac
 
 # =============================================================================
 # FLASK CONFIGURATION
@@ -89,8 +108,8 @@ export BASE_URL_DEV="http://localhost:3001"
 export BASE_URL_E2E="http://localhost:3002"
 
 # Port configuration
-export LASSIE_DEFAULT_PORT_DEV="3001"
-export LASSIE_DEFAULT_PORT_E2E="3002"
+export LOOPCLOSER_DEFAULT_PORT_DEV="3001"
+export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
 
 # =============================================================================
 # EMAIL PROVIDER SELECTION

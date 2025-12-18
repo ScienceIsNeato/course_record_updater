@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Course Offering Management UI - Create, Edit, Delete Offerings
  *
@@ -8,28 +9,16 @@
  * - API communication with CSRF protection
  */
 
-// Initialize when DOM is ready
-// Handle case where DOM is already loaded (avoid race condition)
 function initOfferingManagement() {
-  // Safety check: only initialize if form elements exist
-  if (
-    !document.getElementById('createOfferingForm') &&
-    !document.getElementById('editOfferingForm')
-  ) {
-    return; // Forms not on page yet, skip initialization
+  // Only initialize forms if they exist (handling both dashboard and full list page)
+  const createForm = document.getElementById('createOfferingForm');
+  const editForm = document.getElementById('editOfferingForm');
+
+  if (createForm || editForm) {
+    initializeCreateOfferingModal();
+    initializeEditOfferingModal();
+    setupModalListeners();
   }
-
-  initializeCreateOfferingModal();
-  initializeEditOfferingModal();
-  setupModalListeners();
-}
-
-if (document.readyState === 'loading') {
-  // DOM still loading, wait for it
-  document.addEventListener('DOMContentLoaded', initOfferingManagement);
-} else {
-  // DOM already loaded, initialize immediately
-  initOfferingManagement();
 }
 
 /**
@@ -60,61 +49,68 @@ function setupModalListeners() {
 async function loadCoursesAndTermsForCreateDropdown() {
   const courseSelect = document.getElementById('offeringCourseId');
   const termSelect = document.getElementById('offeringTermId');
+  const programSelect = document.getElementById('offeringProgramId');
 
-  if (!courseSelect || !termSelect) {
+  if (!courseSelect || !termSelect || !programSelect) {
     return;
   }
 
   // Set loading state
   courseSelect.innerHTML = '<option value="">Loading courses...</option>';
   termSelect.innerHTML = '<option value="">Loading terms...</option>';
+  programSelect.innerHTML = '<option value="">Loading programs...</option>';
 
   try {
-    // Fetch courses and terms in parallel
-    const [coursesResponse, termsResponse] = await Promise.all([
+    // Fetch courses, terms, and programs in parallel
+    const [coursesResponse, termsResponse, programsResponse] = await Promise.all([
       fetch('/api/courses'),
-      fetch('/api/terms')
+      fetch('/api/terms'),
+      fetch('/api/programs')
     ]);
 
-    if (!coursesResponse.ok || !termsResponse.ok) {
+    if (!coursesResponse.ok || !termsResponse.ok || !programsResponse.ok) {
       throw new Error('Failed to fetch dropdown data');
     }
 
     const coursesData = await coursesResponse.json();
     const termsData = await termsResponse.json();
+    const programsData = await programsResponse.json();
 
     const courses = coursesData.courses || [];
     const terms = termsData.terms || [];
+    const programs = programsData.programs || [];
 
-    // Populate courses dropdown
-    courseSelect.innerHTML = '<option value="">Select Course</option>';
-    courses.forEach(course => {
-      const option = document.createElement('option');
-      option.value = course.course_id;
-      option.textContent = `${course.course_number} - ${course.course_title}`;
-      courseSelect.appendChild(option);
-    });
+    populateSelectOptions(
+      courseSelect,
+      courses,
+      'Select Course',
+      course => course.course_id,
+      course => `${course.course_number} - ${course.course_title}`,
+      'No courses available'
+    );
 
-    // Populate terms dropdown
-    termSelect.innerHTML = '<option value="">Select Term</option>';
-    terms.forEach(term => {
-      const option = document.createElement('option');
-      option.value = term.term_id;
-      option.textContent = term.name;
-      termSelect.appendChild(option);
-    });
+    populateSelectOptions(
+      termSelect,
+      terms,
+      'Select Term',
+      term => term.term_id,
+      term => term.name,
+      'No terms available'
+    );
 
-    if (courses.length === 0) {
-      courseSelect.innerHTML = '<option value="">No courses available</option>';
-    }
-    if (terms.length === 0) {
-      termSelect.innerHTML = '<option value="">No terms available</option>';
-    }
+    populateSelectOptions(
+      programSelect,
+      programs,
+      'Select Program',
+      program => program.program_id || program.id,
+      program => program.name || program.program_name,
+      'No programs available'
+    );
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('Failed to load dropdown data:', error);
     courseSelect.innerHTML = '<option value="">Error loading courses</option>';
     termSelect.innerHTML = '<option value="">Error loading terms</option>';
+    programSelect.innerHTML = '<option value="">Error loading programs</option>';
   }
 }
 
@@ -123,64 +119,70 @@ async function loadCoursesAndTermsForCreateDropdown() {
  * Fetches from API and populates both select elements
  */
 async function loadCoursesAndTermsForEditDropdown() {
-  const courseSelect = document.getElementById('editOfferingCourseId');
-  const termSelect = document.getElementById('editOfferingTermId');
+  const programSelect = document.getElementById('editOfferingProgramId');
 
-  if (!courseSelect || !termSelect) {
+  if (!programSelect) {
     return;
   }
 
-  // Set loading state
-  courseSelect.innerHTML = '<option value="">Loading courses...</option>';
-  termSelect.innerHTML = '<option value="">Loading terms...</option>';
+  // Set loading state for programs only (course/term are display-only)
+  programSelect.innerHTML = '<option value="">Loading programs...</option>';
 
   try {
-    // Fetch courses and terms in parallel
-    const [coursesResponse, termsResponse] = await Promise.all([
-      fetch('/api/courses'),
-      fetch('/api/terms')
-    ]);
+    // Fetch programs
+    const programsResponse = await fetch('/api/programs');
 
-    if (!coursesResponse.ok || !termsResponse.ok) {
-      throw new Error('Failed to fetch dropdown data');
+    if (!programsResponse.ok) {
+      throw new Error('Failed to fetch programs');
     }
 
-    const coursesData = await coursesResponse.json();
-    const termsData = await termsResponse.json();
+    const programsData = await programsResponse.json();
+    const programs = programsData.programs || [];
 
-    const courses = coursesData.courses || [];
-    const terms = termsData.terms || [];
-
-    // Populate courses dropdown
-    courseSelect.innerHTML = '<option value="">Select Course</option>';
-    courses.forEach(course => {
-      const option = document.createElement('option');
-      option.value = course.course_id;
-      option.textContent = `${course.course_number} - ${course.course_title}`;
-      courseSelect.appendChild(option);
-    });
-
-    // Populate terms dropdown
-    termSelect.innerHTML = '<option value="">Select Term</option>';
-    terms.forEach(term => {
-      const option = document.createElement('option');
-      option.value = term.term_id;
-      option.textContent = term.name;
-      termSelect.appendChild(option);
-    });
-
-    if (courses.length === 0) {
-      courseSelect.innerHTML = '<option value="">No courses available</option>';
-    }
-    if (terms.length === 0) {
-      termSelect.innerHTML = '<option value="">No terms available</option>';
-    }
+    populateSelectOptions(
+      programSelect,
+      programs,
+      'Select Program',
+      program => program.program_id || program.id,
+      program => program.name || program.program_name,
+      'No programs available'
+    );
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load dropdown data:', error);
-    courseSelect.innerHTML = '<option value="">Error loading courses</option>';
-    termSelect.innerHTML = '<option value="">Error loading terms</option>';
+    console.error('Failed to load programs:', error);
+    programSelect.innerHTML = '<option value="">Error loading programs</option>';
   }
+}
+
+function populateSelectOptions(selectEl, items, placeholderText, getValue, getLabel, emptyText) {
+  selectEl.innerHTML = `<option value="">${placeholderText}</option>`;
+
+  if (!items || items.length === 0) {
+    selectEl.innerHTML = `<option value="">${emptyText}</option>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const option = document.createElement('option');
+    option.value = getValue(item);
+    option.textContent = getLabel(item);
+    selectEl.appendChild(option);
+  });
+}
+
+function setButtonLoading(buttonEl, isLoading) {
+  const btnText = buttonEl.querySelector('.btn-text');
+  const btnSpinner = buttonEl.querySelector('.btn-spinner');
+
+  if (isLoading) {
+    btnText.classList.add('d-none');
+    btnSpinner.classList.remove('d-none');
+    buttonEl.disabled = true;
+    return;
+  }
+
+  btnText.classList.remove('d-none');
+  btnSpinner.classList.add('d-none');
+  buttonEl.disabled = false;
 }
 
 /**
@@ -198,22 +200,19 @@ function initializeCreateOfferingModal() {
     e.preventDefault();
 
     const capacityValue = document.getElementById('offeringCapacity').value;
+    const programIdValue = document.getElementById('offeringProgramId').value;
 
     const offeringData = {
       course_id: document.getElementById('offeringCourseId').value,
       term_id: document.getElementById('offeringTermId').value,
+      // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
+      program_id: programIdValue || null,
       status: document.getElementById('offeringStatus').value,
       capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
 
     const createBtn = document.getElementById('createOfferingBtn');
-    const btnText = createBtn.querySelector('.btn-text');
-    const btnSpinner = createBtn.querySelector('.btn-spinner');
-
-    // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
-    createBtn.disabled = true;
+    setButtonLoading(createBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -232,8 +231,12 @@ function initializeCreateOfferingModal() {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createOfferingModal'));
-        if (modal) {
+        const modalEl = document.getElementById('createOfferingModal');
+        if (modalEl && bootstrap?.Modal) {
+          const modal =
+            typeof bootstrap.Modal.getOrCreateInstance === 'function'
+              ? bootstrap.Modal.getOrCreateInstance(modalEl)
+              : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
           modal.hide();
         }
 
@@ -250,13 +253,10 @@ function initializeCreateOfferingModal() {
         alert(`Failed to create offering: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error creating offering:', error); // eslint-disable-line no-console
+      console.error('Error creating offering:', error);
       alert('Failed to create offering. Please check your connection and try again.');
     } finally {
-      // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
-      createBtn.disabled = false;
+      setButtonLoading(createBtn, false);
     }
   });
 }
@@ -279,18 +279,13 @@ function initializeEditOfferingModal() {
     const capacityValue = document.getElementById('editOfferingCapacity').value;
 
     const updateData = {
+      program_id: document.getElementById('editOfferingProgramId').value,
       status: document.getElementById('editOfferingStatus').value,
       capacity: capacityValue ? Number.parseInt(capacityValue) : null
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
-    const btnText = saveBtn.querySelector('.btn-text');
-    const btnSpinner = saveBtn.querySelector('.btn-spinner');
-
-    // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
-    saveBtn.disabled = true;
+    setButtonLoading(saveBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
@@ -325,13 +320,10 @@ function initializeEditOfferingModal() {
         alert(`Failed to update offering: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error updating offering:', error); // eslint-disable-line no-console
+      console.error('Error updating offering:', error);
       alert('Failed to update offering. Please check your connection and try again.');
     } finally {
-      // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
-      saveBtn.disabled = false;
+      setButtonLoading(saveBtn, false);
     }
   });
 }
@@ -344,6 +336,20 @@ function openEditOfferingModal(offeringId, offeringData) {
   document.getElementById('editOfferingId').value = offeringId;
   document.getElementById('editOfferingStatus').value = offeringData.status || 'active';
   document.getElementById('editOfferingCapacity').value = offeringData.capacity || '';
+
+  // Set display-only fields (Course/Term are immutable)
+  document.getElementById('editOfferingCourse').value =
+    offeringData.course_name || offeringData.course_title || '';
+  document.getElementById('editOfferingTerm').value = offeringData.term_name || '';
+
+  // Set program (will be populated by loadCoursesAndTermsForEditDropdown)
+  const programSelect = document.getElementById('editOfferingProgramId');
+  if (programSelect && offeringData.program_id) {
+    // Wait a bit for dropdown to populate, then select
+    setTimeout(() => {
+      programSelect.value = offeringData.program_id;
+    }, 500); // Increased timeout to ensure fetch completes
+  }
 
   const modal = new bootstrap.Modal(document.getElementById('editOfferingModal'));
   modal.show();
@@ -385,16 +391,137 @@ async function deleteOffering(offeringId, courseName, termName) {
       alert(`Failed to delete offering: ${error.error || 'Unknown error'}`);
     }
   } catch (error) {
-    console.error('Error deleting offering:', error); // eslint-disable-line no-console
+    console.error('Error deleting offering:', error);
     alert('Failed to delete offering. Please try again.');
+  }
+}
+
+/**
+ * Load and display offerings in the container
+ */
+async function loadOfferings() {
+  const container = document.getElementById('offeringsTableContainer');
+  if (!container) return; // Not on listings page
+
+  container.innerHTML = `
+      <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+        <div class="spinner-border" aria-hidden="true">
+          <span class="visually-hidden">Loading offerings...</span>
+        </div>
+      </output>
+    `;
+
+  try {
+    const response = await fetch('/api/offerings');
+    if (!response.ok) {
+      throw new Error('Failed to load offerings');
+    }
+    const data = await response.json();
+
+    // Look for the offerings list in multiple possible keys for robustness
+    const offerings = data.offerings || data || [];
+
+    if (offerings.length === 0) {
+      container.innerHTML = `
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            No course offerings found. Create an offering to get started.
+          </div>
+        `;
+      return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>Course</th>
+                <th>Term</th>
+                <th>Status</th>
+                <th>Sections</th>
+                <th>Enrollment</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+    offerings.forEach(offering => {
+      const courseName =
+        offering.course_name || offering.course_title || offering.course_number || 'Unknown Course';
+      const termName = offering.term_name || offering.term || 'Unknown Term';
+      const statusBadge =
+        offering.status === 'active'
+          ? '<span class="badge bg-success">Active</span>'
+          : `<span class="badge bg-secondary">${offering.status}</span>`;
+
+      // Safe JSON stringify for the edit button
+      const offeringJson = JSON.stringify(offering).replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+
+      html += `
+          <tr>
+            <td><strong>${courseName}</strong></td>
+            <td>${termName}</td>
+            <td>${statusBadge}</td>
+            <td>${offering.section_count || 0}</td>
+            <td>${offering.total_enrollment || 0}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary" onclick='openEditOfferingModal("${offering.offering_id || offering.id}", JSON.parse("${offeringJson}"))'>
+                <i class="fas fa-edit"></i> Edit
+              </button>
+              <button class="btn btn-sm btn-outline-danger" onclick='deleteOffering("${offering.offering_id || offering.id}", "${courseName}", "${termName}")'>
+                <i class="fas fa-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading offerings:', error);
+    container.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Error loading offerings: ${error.message}
+        </div>
+      `;
   }
 }
 
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditOfferingModal = openEditOfferingModal;
 globalThis.deleteOffering = deleteOffering;
+globalThis.loadOfferings = loadOfferings;
+globalThis.openCreateOfferingModal = () => {
+  const modal = new bootstrap.Modal(document.getElementById('createOfferingModal'));
+  modal.show();
+};
 
-// Export for testing (Node.js/Jest environment)
+// Initialize when DOM is ready
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOfferingManagement);
+  } else {
+    initOfferingManagement();
+  }
+}
+
+// Expose on window as well for test environment
+if (typeof window !== 'undefined') {
+  window.openEditOfferingModal = openEditOfferingModal;
+  window.deleteOffering = deleteOffering;
+  window.loadOfferings = loadOfferings;
+}
+
+// Export for testing
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initOfferingManagement, openEditOfferingModal, deleteOffering };
+  module.exports = {
+    initOfferingManagement,
+    openEditOfferingModal,
+    deleteOffering,
+    loadOfferings
+  };
 }

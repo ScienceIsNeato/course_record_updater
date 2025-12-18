@@ -301,6 +301,13 @@ class AdapterRegistry:
         # Get public adapters (available to everyone)
         public_adapters = self._get_public_adapters()
 
+        # If no institution context is provided, only public adapters are available.
+        if not institution_id:
+            logger.debug(
+                "No institution_id provided when fetching adapters; returning public adapters only"
+            )
+            return list(public_adapters)
+
         # Get institution-specific adapters
         institution_adapters = self.get_adapters_for_institution(institution_id)
 

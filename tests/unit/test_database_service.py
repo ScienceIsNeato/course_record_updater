@@ -1393,6 +1393,61 @@ def test_course_crud_operations():
     assert course is None
 
 
+def test_duplicate_course_record_preserves_metadata():
+    """Duplicate an existing course and ensure metadata/programs copy over."""
+    inst_id = database_service.create_institution(
+        {
+            "name": "Duplication University",
+            "short_name": "DU",
+            "admin_email": "admin@du.edu",
+            "created_by": "system",
+        }
+    )
+
+    program_id = database_service.create_program(
+        {
+            "institution_id": inst_id,
+            "program_name": "Life Sciences",
+            "program_code": "BIO",
+            "active": True,
+        }
+    )
+
+    course_id = database_service.create_course(
+        {
+            "course_number": "BIOL-201",
+            "course_title": "Cellular Biology",
+            "department": "Biology",
+            "credit_hours": 3,
+            "institution_id": inst_id,
+            "active": True,
+            "program_ids": [program_id],
+        }
+    )
+
+    source_course = database_service.get_course_by_id(course_id)
+    duplicated_course_id = database_service.duplicate_course_record(source_course)
+
+    assert duplicated_course_id is not None
+    assert duplicated_course_id != course_id
+
+    duplicated_course = database_service.get_course_by_id(duplicated_course_id)
+    assert duplicated_course["course_number"].startswith("BIOL-201-")
+    assert duplicated_course["program_ids"] == source_course["program_ids"]
+
+    # Override course number/credits and skip program duplication
+    override_course_id = database_service.duplicate_course_record(
+        source_course,
+        overrides={"course_number": "BIOL-201-VERSION2", "credit_hours": 4},
+        duplicate_programs=False,
+    )
+
+    override_course = database_service.get_course_by_id(override_course_id)
+    assert override_course["course_number"] == "BIOL-201-VERSION2"
+    assert override_course["credit_hours"] == 4
+    assert override_course.get("program_ids") == []
+
+
 def test_term_crud_operations():
     """Test Terms CRUD: update_term, archive_term, delete_term"""
     # Setup
@@ -1935,3 +1990,90 @@ def test_get_audit_logs_filtered_with_date_range():
     )
     assert isinstance(logs, list)
     # Should not error even with tight filters
+
+
+def test_generate_unique_course_number_increments_suffix_when_collisions():
+    """Covers _generate_unique_course_number loop when -V2/-V3 already exist."""
+    from unittest.mock import patch
+
+    with patch("database_service.get_course_by_number") as mock_get:
+        # Collision for V2 and V3, then available on V4
+        mock_get.side_effect = [
+            {"course_id": "existing"},
+            {"course_id": "existing"},
+            None,
+        ]
+        result = database_service._generate_unique_course_number("BIOL-201", "inst-1")
+
+    assert result == "BIOL-201-V4"
+
+
+def test_generate_unique_course_number_normalizes_base_number():
+    """Covers base_number normalization and default fallback."""
+    from unittest.mock import patch
+
+    with patch("database_service.get_course_by_number", return_value=None):
+        assert (
+            database_service._generate_unique_course_number("  cs101  ", "inst-1")
+            == "CS101-V2"
+        )
+        assert (
+            database_service._generate_unique_course_number("", "inst-1") == "COURSE-V2"
+        )
+
+
+def test_get_outcomes_by_status_with_program_and_term_filters():
+    """Covers database_sqlite.DatabaseService.get_outcomes_by_status program_id + term_id branches."""
+    inst_id = database_service.create_institution(
+        {
+            "name": "Outcome University",
+            "short_name": "OU",
+            "admin_email": "admin@ou.edu",
+            "created_by": "system",
+        }
+    )
+    program_id = database_service.create_program(
+        {"name": "Program", "short_name": "PROG", "institution_id": inst_id}
+    )
+    course_id = database_service.create_course(
+        {
+            "course_number": "OU-101",
+            "course_title": "Outcomes",
+            "institution_id": inst_id,
+        }
+    )
+    database_service.add_course_to_program(course_id, program_id)
+
+    term_id = database_service.create_term(
+        {
+            "term_name": "OU Term",
+            "start_date": "2025-01-01",
+            "end_date": "2025-02-01",
+            "institution_id": inst_id,
+        }
+    )
+    offering_id = database_service.create_course_offering(
+        {"course_id": course_id, "term_id": term_id, "institution_id": inst_id}
+    )
+    database_service.create_course_section(
+        {"offering_id": offering_id, "section_number": "001"}
+    )
+
+    outcome_id = database_service.create_course_outcome(
+        {
+            "course_id": course_id,
+            "institution_id": inst_id,
+            "clo_number": "1",
+            "description": "Outcome",
+            "status": "approved",
+        }
+    )
+    assert outcome_id is not None
+
+    results = database_service.get_outcomes_by_status(
+        institution_id=inst_id,
+        status="approved",
+        program_id=program_id,
+        term_id=term_id,
+    )
+    assert isinstance(results, list)

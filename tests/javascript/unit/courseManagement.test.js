@@ -423,6 +423,7 @@ describe('Course Management - Edit Course Modal', () => {
           <option value="prog-1">Computer Science</option>
           <option value="prog-2">Engineering</option>
         </select>
+        <div id="readOnlyProgramsDisplay"></div>
         <div class="form-check">
           <input type="checkbox" id="editCourseActive" name="active" />
           <label for="editCourseActive">Active</label>
@@ -439,16 +440,9 @@ describe('Course Management - Edit Course Modal', () => {
     mockFetch = jest.fn();
     global.fetch = mockFetch;
 
-    global.bootstrap = {
-      Modal: {
-        getInstance: jest.fn(() => ({
-          hide: jest.fn()
-        })),
-        prototype: {
-          show: jest.fn()
-        }
-      }
-    };
+    const modalCtor = jest.fn(() => ({ show: jest.fn(), hide: jest.fn() }));
+    modalCtor.getInstance = jest.fn(() => ({ hide: jest.fn() }));
+    global.bootstrap = { Modal: modalCtor };
 
     // Initialize course management (replaces DOMContentLoaded trigger)
     initCourseManagement();
@@ -458,18 +452,18 @@ describe('Course Management - Edit Course Modal', () => {
     jest.restoreAllMocks();
   });
 
-  test('openEditCourseModal should populate form and show modal', () => {
+  test('openEditCourseModal should populate form and show modal', async () => {
     const mockModal = { show: jest.fn() };
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
-    window.openEditCourseModal('course-123', {
+    await window.openEditCourseModal('course-123', {
       course_number: 'CS101',
       course_title: 'Intro to CS',
       department: 'Computer Science',
       credit_hours: 3,
       program_ids: ['prog-1'],
       active: true
-    });
+    }, '<span>Programs</span>');
 
     expect(document.getElementById('editCourseId').value).toBe('course-123');
     expect(document.getElementById('editCourseNumber').value).toBe('CS101');
@@ -477,7 +471,42 @@ describe('Course Management - Edit Course Modal', () => {
     expect(document.getElementById('editCourseDepartment').value).toBe('Computer Science');
     expect(document.getElementById('editCourseCreditHours').value).toBe('3');
     expect(document.getElementById('editCourseActive').checked).toBe(true);
+    expect(document.getElementById('readOnlyProgramsDisplay').innerHTML).toContain('Programs');
     expect(mockModal.show).toHaveBeenCalled();
+  });
+
+  test('duplicateCourse should exit early when user cancels', async () => {
+    global.confirm = jest.fn(() => false);
+    await window.duplicateCourse('course-123', { course_number: 'CS101' });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  test('duplicateCourse should alert and return when API fails', async () => {
+    global.confirm = jest.fn(() => true);
+    global.alert = jest.fn();
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'Nope' })
+    });
+
+    await window.duplicateCourse('course-123', { course_number: 'CS101' });
+    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Failed to duplicate course'));
+  });
+
+  test('duplicateCourse should open edit modal when duplication succeeds (raw JSON string)', async () => {
+    global.confirm = jest.fn(() => true);
+    global.alert = jest.fn();
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        message: 'Duplicated',
+        course: { course_id: 'new-1', course_number: 'CS101-V2', course_title: 'Intro' }
+      })
+    });
+
+    await window.duplicateCourse('course-123', JSON.stringify({ course_number: 'CS101' }));
+    expect(global.bootstrap.Modal).toHaveBeenCalled();
   });
 
   test('should PUT updated course data to /api/courses/<id>', async () => {

@@ -18,6 +18,23 @@ from pathlib import Path
 from typing import Dict, Set, Tuple
 
 
+EXCLUDED_NEW_CODE_PREFIXES = (
+    # Demo tooling / walkthrough scripts are intentionally excluded from coverage requirements
+    "demos/",
+    "docs/workflow-walkthroughs/scripts/",
+)
+
+
+def is_excluded_from_new_code_coverage(path: str) -> bool:
+    """
+    Return True if a file should be excluded from PR "new code coverage" targets.
+
+    Important: These exclusions should align with .coveragerc and sonar-project.properties so we don't
+    generate bogus "uncovered new code" requirements for demo/docs tooling.
+    """
+    return any(path.startswith(prefix) for prefix in EXCLUDED_NEW_CODE_PREFIXES)
+
+
 def get_repo_metadata() -> str:
     """
     Get current repository state metadata for report freshness checking.
@@ -90,24 +107,38 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
             text=True,
         )
         
+        diff_result = None
         if pr_result.returncode == 0 and pr_result.stdout.strip():
             pr_number = pr_result.stdout.strip()
             print(f"   Using PR #{pr_number} diff (matches SonarCloud)")
-            result = subprocess.run(
+            pr_diff_result = subprocess.run(
                 ["gh", "pr", "diff", pr_number],
                 capture_output=True,
                 text=True,
-                check=True
             )
+            
+            # Check if gh pr diff succeeded (can fail if PR diff >20k lines)
+            if pr_diff_result.returncode == 0:
+                diff_result = pr_diff_result
+            else:
+                print(f"   ⚠️  gh pr diff failed (PR too large), falling back to git diff")
+                diff_result = subprocess.run(
+                    ["git", "diff", base_branch, "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
         else:
             # Fallback to git diff
             print(f"   Using git diff vs {base_branch}")
-            result = subprocess.run(
+            diff_result = subprocess.run(
                 ["git", "diff", base_branch, "HEAD"],
                 capture_output=True,
                 text=True,
                 check=True
             )
+        
+        result = diff_result
         
         added_lines = defaultdict(set)
         current_file = None
@@ -118,6 +149,8 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
             if line.startswith('+++ b/'):
                 current_file = line[6:]  # Remove '+++ b/' prefix
                 current_line_number = 0
+                if current_file and is_excluded_from_new_code_coverage(current_file):
+                    current_file = None
             # Parse hunk headers to track line numbers: @@ -old_start,old_count +new_start,new_count @@
             elif line.startswith('@@') and current_file:
                 try:

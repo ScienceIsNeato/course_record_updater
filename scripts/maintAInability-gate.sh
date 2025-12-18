@@ -41,8 +41,8 @@ else
     "AGENT_HOME"
     "DATABASE_TYPE"
     "DATABASE_URL"
-    "LASSIE_DEFAULT_PORT_DEV"
-    "LASSIE_DEFAULT_PORT_E2E"
+    "LOOPCLOSER_DEFAULT_PORT_DEV"
+    "LOOPCLOSER_DEFAULT_PORT_E2E"
     "SONAR_TOKEN"
     "SAFETY_API_KEY"
     "GITHUB_PERSONAL_ACCESS_TOKEN"
@@ -95,6 +95,7 @@ RUN_JS_LINT=false
 RUN_JS_FORMAT=false
 RUN_JS_TESTS=false
 RUN_JS_COVERAGE=false
+RUN_COVERAGE_NEW_CODE=false
 RUN_ALL=false
 
 # Grouped check flags
@@ -133,6 +134,7 @@ else
       --js-format) RUN_JS_FORMAT=true ;;
       --js-tests) RUN_JS_TESTS=true ;;
       --js-coverage) RUN_JS_COVERAGE=true ;;
+      --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --help)
@@ -156,6 +158,7 @@ else
         echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
         echo "  ./scripts/maintAInability-gate.sh --js-lint    # Check JavaScript linting"
         echo "  ./scripts/maintAInability-gate.sh --js-format  # Check JavaScript formatting"
+        echo "  ./scripts/maintAInability-gate.sh --coverage-new-code # Check coverage on new/modified code (diff-cover)"
         echo "  ./scripts/maintAInability-gate.sh --smoke-tests # Run smoke tests (tests/smoke/)"
         echo "  ./scripts/maintAInability-gate.sh --frontend-check # Quick frontend validation"
         echo "  ./scripts/maintAInability-gate.sh --help    # Show this help"
@@ -750,6 +753,106 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
     add_failure "Test Coverage" "Coverage analysis failed" "Check pytest-cov installation and configuration. Debug output: $PWD/$COVERAGE_REPORT_FILE"
   fi
   fi  # Close the "else" block from test failure check
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# COVERAGE ON NEW CODE (DIFF-COVER) - 80% THRESHOLD ON PR/BRANCH CHANGES
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
+  echo "📊 Coverage on New Code (80% threshold on PR/branch changes)"
+
+  # Check if diff-cover is installed
+  if ! command -v diff-cover &> /dev/null; then
+    echo "❌ Coverage on New Code: FAILED (diff-cover not installed)"
+    echo ""
+    echo "🔧 Fix: Install diff-cover:"
+    echo "   pip install diff-cover"
+    echo ""
+    add_failure "Coverage on New Code" "diff-cover not installed" "Run 'pip install diff-cover' to install"
+  else
+    # Check if coverage.xml exists
+    if [[ ! -f "coverage.xml" ]]; then
+      echo "⚠️  No coverage.xml found. Generating coverage data first..."
+      
+      # Clean up old coverage data files to prevent race conditions
+      rm -f .coverage .coverage.*
+      
+      # Generate coverage.xml
+      python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
+    fi
+    
+    if [[ -f "coverage.xml" ]]; then
+      # Determine the comparison branch
+      # In CI, use origin/main; locally, try main or origin/main
+      if [[ "${CI:-false}" == "true" ]]; then
+        COMPARE_BRANCH="origin/main"
+      else
+        # Check if main exists locally
+        if git rev-parse --verify main &>/dev/null; then
+          COMPARE_BRANCH="main"
+        elif git rev-parse --verify origin/main &>/dev/null; then
+          COMPARE_BRANCH="origin/main"
+        else
+          COMPARE_BRANCH="HEAD~10"  # Fallback: compare against last 10 commits
+          echo "  ⚠️  No main branch found, comparing against last 10 commits"
+        fi
+      fi
+      
+      echo "  🔍 Comparing coverage against: $COMPARE_BRANCH"
+      echo ""
+      
+      # Run diff-cover
+      DIFF_COVER_OUTPUT=$(diff-cover coverage.xml --compare-branch="$COMPARE_BRANCH" --fail-under=80 2>&1)
+      DIFF_COVER_EXIT=$?
+      
+      # Write output to logs
+      mkdir -p logs
+      echo "$DIFF_COVER_OUTPUT" > logs/diff_coverage_report.txt
+      
+      # Extract summary
+      TOTAL_LINES=$(echo "$DIFF_COVER_OUTPUT" | grep "Total:" | awk '{print $2}')
+      MISSING_LINES=$(echo "$DIFF_COVER_OUTPUT" | grep "Missing:" | awk '{print $2}')
+      COVERAGE_PCT=$(echo "$DIFF_COVER_OUTPUT" | grep "Coverage:" | awk '{print $2}')
+      
+      if [[ $DIFF_COVER_EXIT -eq 0 ]]; then
+        echo "✅ Coverage on New Code: PASSED ($COVERAGE_PCT)"
+        echo ""
+        echo "📊 Summary:"
+        echo "   Total lines in diff: $TOTAL_LINES"
+        echo "   Missing coverage:    $MISSING_LINES lines"
+        echo "   Coverage:            $COVERAGE_PCT"
+        add_success "Coverage on New Code" "Coverage at $COVERAGE_PCT on modified lines (meets 80% threshold)"
+      else
+        echo "❌ Coverage on New Code: FAILED ($COVERAGE_PCT)"
+        echo ""
+        echo "📋 Coverage Report on Modified Files:"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        # Show files with missing coverage
+        echo "$DIFF_COVER_OUTPUT" | grep -E "^\S+\.py" | head -15 | while read line; do
+          echo "  $line"
+        done
+        
+        echo ""
+        echo "📊 Summary:"
+        echo "   Total lines in diff: $TOTAL_LINES"
+        echo "   Missing coverage:    $MISSING_LINES lines"
+        echo "   Coverage:            $COVERAGE_PCT (threshold: 80%)"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "💡 To pass this check, add tests for the SPECIFIC lines listed above."
+        echo "   Unlike global coverage, this only counts lines YOU modified."
+        echo ""
+        echo "📝 Full report: logs/diff_coverage_report.txt"
+        
+        add_failure "Coverage on New Code" "Coverage at $COVERAGE_PCT on modified lines (below 80% threshold)" "Add tests for the specific files/lines listed in logs/diff_coverage_report.txt"
+      fi
+    else
+      echo "❌ Coverage on New Code: FAILED (could not generate coverage.xml)"
+      add_failure "Coverage on New Code" "Failed to generate coverage.xml" "Run 'pytest --cov=. --cov-report=xml' first"
+    fi
+  fi
   echo ""
 fi
 
@@ -1578,7 +1681,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   NC='\033[0m' # No Color
   
   # Test configuration
-  TEST_PORT=${LASSIE_DEFAULT_PORT_DEV:-3001}
+  TEST_PORT=${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}
   TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   

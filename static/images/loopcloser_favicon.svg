@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Background -->
+  <circle cx="32" cy="32" r="30" fill="#667eea"/>
+  
+  <!-- "Closing the loop" circle with gap -->
+  <circle cx="32" cy="32" r="18" fill="none" stroke="white" stroke-width="4" stroke-dasharray="100 14" stroke-linecap="round" transform="rotate(-45, 32, 32)"/>
+  
+  <!-- Arrow completing the loop -->
+  <path d="M46,18 L52,24 L46,30" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Checkmark in center -->
+  <path d="M24,32 L29,37 L40,26" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+

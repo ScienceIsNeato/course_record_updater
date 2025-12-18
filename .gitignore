@@ -1,4 +1,3 @@
-.cursorrules
 .cursor
 .envrc
 .venv
@@ -62,3 +61,6 @@ cookies.txt
 # Security scan reports
 bandit-report.json
 safety-report.txt
+
+# Demo run artifacts (generated during demos, not source)
+demo_artifacts/

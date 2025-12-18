@@ -54,6 +54,30 @@ git commit --file=COMMIT_MSG.txt
 
 See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
+## 🎬 Demo & Workflow Walkthroughs
+
+Product demonstration materials for key workflows:
+- **[docs/workflow-walkthroughs/](docs/workflow-walkthroughs/)**: Workflow demonstration system
+- **[single_term_outcome_management.md](docs/workflow-walkthroughs/single_term_outcome_management.md)**: Complete 30-minute workflow demo
+
+### Interactive Demo
+```bash
+# Run interactive step-by-step demo
+python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_management.md
+```
+
+### Manual Demo Setup
+```bash
+# Seed demo database
+python scripts/seed_db.py --demo --clear --env dev
+
+# Start server
+./restart_server.sh dev
+
+# Access: http://localhost:3001
+# Login: demo2025.admin@example.com / Demo2024!
+```
+
 ## 🧪 Manual Testing & UAT
 
 For comprehensive user acceptance testing of the authentication system:
@@ -77,67 +101,39 @@ python scripts/seed_db.py --clear
 
 ```
 .
-├── adapters/             # Modules for parsing different input formats
-│   ├── __init__.py
-│   ├── base_adapter.py     # Base validation/parsing logic
-│   ├── dummy_adapter.py    # Example file adapter
-│   └── file_adapter_dispatcher.py # Handles loading specific file adapters
-├── planning/             # 📋 PROJECT PLANNING & DOCUMENTATION
-│   ├── documentation/      # Technical specifications and requirements
-│   │   ├── AUTH_REQUIREMENTS.md    # Authentication and authorization design
-│   │   ├── DATA_MODEL.md           # Database entities and relationships
-│   │   ├── DATA_ENTRY_STRATEGY.md  # Data input and validation approach
-│   │   ├── EXECUTION_PLAN.md       # Development milestones and timeline
-│   │   ├── PERMISSION_MATRIX.md    # User role permissions checklist
-│   │   ├── PRICING_STRATEGY.md     # Business model and pricing tiers
-│   │   └── STAKEHOLDER_QUESTIONS.md # Questions for client meetings
-│   ├── user_stories/       # User workflows by role
-│   │   ├── site_admin/           # Global admin user stories
-│   │   ├── institution_administrator/ # Institution-level user stories
-│   │   ├── program_administrator/     # Program-level user stories
-│   │   └── regular_user/             # Faculty/instructor user stories
-│   └── meetings/           # Meeting notes and decisions
-├── research/             # 🔍 STAKEHOLDER RESEARCH & ANALYSIS
-│   └── MockU/                # College of Eastern Idaho pilot research
-│       ├── README.md                 # MockU contact info and materials
-│       ├── VIDEO_ANALYSIS.md         # Analysis of stakeholder video
-│       ├── SPREADSHEET_ANALYSIS.md   # Analysis of current data structure
-│       ├── BRIDGE_STRATEGY.md        # Migration approach and Access export
-│       └── SESSION_SUMMARY.md        # Key insights and discoveries
-├── static/               # Static files (CSS, JavaScript)
-│   └── script.js
+├── docs/                 # 📚 ALL DOCUMENTATION
+│   ├── architecture/       # System design, site maps, data models
+│   ├── setup/              # Environment, deployment, CI guides
+│   ├── testing/            # Testing strategy, E2E, smoke, UAT
+│   ├── quality/            # SonarCloud, code quality guides
+│   ├── requirements/       # User stories, specs, requirements
+│   ├── demos/              # Demo scripts and walkthroughs
+│   ├── process/            # Development workflows, antipatterns
+│   └── decisions/          # Architecture decision records
+├── archive/              # 📦 HISTORICAL/LEGACY DOCS
+│   ├── planning/           # Old phase plans, timelines
+│   ├── legacy/             # Migration docs, V1 designs
+│   └── agent/              # AI agent context files
+├── adapters/             # Input format adapters
+├── api/                  # API route modules
+├── static/               # CSS, JavaScript
 ├── templates/            # Flask HTML templates
-│   └── index.html
 ├── tests/                # Unit and integration tests
-│   ├── __init__.py
-│   ├── test_base_adapter.py
-│   ├── test_database_service.py
-│   ├── test_dummy_adapter.py
-│   └── test_file_adapter_dispatcher.py
-├── .gitignore            # Git ignore file
+├── scripts/              # Utility and deployment scripts
 ├── app.py                # Main Flask application
-├── database_service.py   # Facade over SQLAlchemy-backed SQLite implementation
-├── PROJECT_OVERVIEW.md   # High-level project goals and architecture
-├── README.md             # This file
-├── requirements.txt      # Python dependencies
-├── STATUS.md             # Current development status and milestones
-└── venv/                 # Python virtual environment (if created)
+└── README.md             # This file
 ```
 
-### 📁 Documentation Organization Rules
+### 📁 Documentation Organization
 
-**IMPORTANT:** All project documentation follows this structure:
-
-- **`planning/documentation/`** - Technical specifications, requirements, and design documents
-- **`research/`** - Stakeholder analysis, data analysis, and external research materials
-- **Root level** - Only core project files (README, STATUS, PROJECT_OVERVIEW)
-- **NO `docs/` folder** - This was removed to prevent confusion
-
-When adding new documentation:
-- Technical specs → `planning/documentation/`
-- User workflows → `planning/user_stories/[user_role]/`
-- Stakeholder research → `research/[client_name]/`
-- Meeting notes → `planning/meetings/`
+| Category | Location | Contents |
+|----------|----------|----------|
+| **Architecture** | `docs/architecture/` | System design, data models, site maps |
+| **Setup** | `docs/setup/` | Environment, deployment, CI/CD guides |
+| **Testing** | `docs/testing/` | Test strategy, E2E, smoke testing |
+| **Requirements** | `docs/requirements/` | User stories, specifications |
+| **Demos** | `docs/demos/` | Demo scripts, walkthroughs |
+| **Legacy** | `archive/` | Old plans, migrations, PR notes |
 
 ## Setup and Running
 

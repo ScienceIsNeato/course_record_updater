@@ -65,6 +65,11 @@
                     <label for="editSectionCapacity" class="form-label">Enrollment Capacity</label>
                     <input type="number" class="form-control" id="editSectionCapacity" min="0">
                 </div>
+                <div class="mb-3">
+                    <label for="editSectionDueDate" class="form-label">Assessment Due Date</label>
+                    <input type="date" class="form-control" id="editSectionDueDate">
+                    <div class="form-text">Optional: When the instructor should submit their assessment</div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -116,6 +121,11 @@
                             <option value="closed">Closed</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sectionDueDate" class="form-label">Assessment Due Date</label>
+                        <input type="date" class="form-control" id="sectionDueDate" name="due_date">
+                        <div class="form-text">Optional: When the instructor should submit their assessment</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -254,6 +264,7 @@ async function editSection(sectionId, sectionData) {
     document.getElementById('editSectionId').value = sectionId;
     document.getElementById('editSectionNumber').value = sectionData.section_number || '';
     document.getElementById('editSectionCapacity').value = sectionData.enrollment_capacity || '';
+    document.getElementById('editSectionDueDate').value = sectionData.due_date ? sectionData.due_date.split('T')[0] : '';
     
     // Load instructors for dropdown
     try {
@@ -285,6 +296,7 @@ async function saveEditedSection() {
     const sectionId = document.getElementById('editSectionId').value;
     const instructorId = document.getElementById('editSectionInstructorId').value;
     const capacity = document.getElementById('editSectionCapacity').value;
+    const dueDate = document.getElementById('editSectionDueDate').value;
     
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -296,7 +308,8 @@ async function saveEditedSection() {
             },
             body: JSON.stringify({
                 instructor_id: instructorId || null,
-                enrollment_capacity: Number.parseInt(capacity) || 0
+                enrollment_capacity: Number.parseInt(capacity) || 0,
+                due_date: dueDate || null
             })
         });
         

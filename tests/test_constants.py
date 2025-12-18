@@ -223,79 +223,79 @@ TEST_COURSE_CS101_DUP = Course(
 )
 
 # Terms
-TEST_TERM_FA2024 = Term(
-    id="term-fa2024",
-    name="FA2024",
-    display_name="Fall 2024",
-    start_date="2024-08-26",
-    end_date="2024-12-15",
-    due_date="2024-12-20",
+TEST_TERM_FA2025 = Term(
+    id="term-fa2025",
+    name="FA2025",
+    display_name="Fall 2025",
+    start_date="2025-08-26",
+    end_date="2025-12-15",
+    due_date="2025-12-20",
 )
 
-TEST_TERM_SP2025 = Term(
-    id="term-sp2025",
-    name="SP2025",
-    display_name="Spring 2025",
-    start_date="2025-01-13",
-    end_date="2025-05-10",
-    due_date="2025-05-15",
+TEST_TERM_SP2026 = Term(
+    id="term-sp2026",
+    name="SP2026",
+    display_name="Spring 2026",
+    start_date="2026-01-13",
+    end_date="2026-05-10",
+    due_date="2026-05-15",
 )
 
-TEST_TERM_SU2023 = Term(
-    id="term-su2023",
-    name="SU2023",
-    display_name="Summer 2023",
-    start_date="2023-06-01",
-    end_date="2023-08-15",
-    due_date="2023-08-20",
+TEST_TERM_SU2024 = Term(
+    id="term-su2024",
+    name="SU2024",
+    display_name="Summer 2024",
+    start_date="2024-06-01",
+    end_date="2024-08-15",
+    due_date="2024-08-20",
     active=False,
 )
 
 # Course Offerings
-TEST_OFFERING_CS101_FA2024 = CourseOffering(
-    id="off-cs101-fa2024",
+TEST_OFFERING_CS101_FA2025 = CourseOffering(
+    id="off-cs101-fa2025",
     course_id=TEST_COURSE_CS101.id,
-    term_id=TEST_TERM_FA2024.id,
+    term_id=TEST_TERM_FA2025.id,
     status="active",
     capacity="75",
     enrollment="50",
     section_count="2",
 )
 
-TEST_OFFERING_MATH201_FA2024 = CourseOffering(
-    id="off-math201-fa2024",
+TEST_OFFERING_MATH201_FA2025 = CourseOffering(
+    id="off-math201-fa2025",
     course_id=TEST_COURSE_MATH201.id,
-    term_id=TEST_TERM_FA2024.id,
+    term_id=TEST_TERM_FA2025.id,
     status="active",
     capacity="60",
     enrollment="45",
     section_count="1",
 )
 
-TEST_OFFERING_ENG301_SP2025 = CourseOffering(
-    id="off-eng301-sp2025",
+TEST_OFFERING_ENG301_SP2026 = CourseOffering(
+    id="off-eng301-sp2026",
     course_id=TEST_COURSE_ENG301.id,
-    term_id=TEST_TERM_SP2025.id,
+    term_id=TEST_TERM_SP2026.id,
     status="active",
     capacity="40",
     enrollment="30",
     section_count="1",
 )
 
-TEST_OFFERING_CS202_FA2024 = CourseOffering(
-    id="off-cs202-fa2024",
+TEST_OFFERING_CS202_FA2025 = CourseOffering(
+    id="off-cs202-fa2025",
     course_id=TEST_COURSE_CS202.id,
-    term_id=TEST_TERM_FA2024.id,
+    term_id=TEST_TERM_FA2025.id,
     status="active",
     capacity="50",
     enrollment="50",
     section_count="1",
 )
 
-TEST_OFFERING_MATH401_SP2025 = CourseOffering(
-    id="off-math401-sp2025",
+TEST_OFFERING_MATH401_SP2026 = CourseOffering(
+    id="off-math401-sp2026",
     course_id=TEST_COURSE_MATH401.id,
-    term_id=TEST_TERM_SP2025.id,
+    term_id=TEST_TERM_SP2026.id,
     status="active",
     capacity="30",
     enrollment="0",
@@ -305,7 +305,7 @@ TEST_OFFERING_MATH401_SP2025 = CourseOffering(
 # Course Sections
 TEST_SECTION_1 = CourseSection(
     id="section-1",
-    offering_id=TEST_OFFERING_CS101_FA2024.id,
+    offering_id=TEST_OFFERING_CS101_FA2025.id,
     instructor_id=TEST_INSTRUCTOR_1.id,
     section_number="001",
     enrollment="25",
@@ -315,7 +315,7 @@ TEST_SECTION_1 = CourseSection(
 
 TEST_SECTION_2 = CourseSection(
     id="section-2",
-    offering_id=TEST_OFFERING_CS101_FA2024.id,
+    offering_id=TEST_OFFERING_CS101_FA2025.id,
     instructor_id=TEST_INSTRUCTOR_2.id,
     section_number="002",
     enrollment="25",
@@ -325,7 +325,7 @@ TEST_SECTION_2 = CourseSection(
 
 TEST_SECTION_3 = CourseSection(
     id="section-3",
-    offering_id=TEST_OFFERING_MATH201_FA2024.id,
+    offering_id=TEST_OFFERING_MATH201_FA2025.id,
     instructor_id=TEST_INSTRUCTOR_1.id,
     section_number="001",
     enrollment="45",
@@ -335,7 +335,7 @@ TEST_SECTION_3 = CourseSection(
 
 TEST_SECTION_4 = CourseSection(
     id="section-4",
-    offering_id=TEST_OFFERING_ENG301_SP2025.id,
+    offering_id=TEST_OFFERING_ENG301_SP2026.id,
     instructor_id=TEST_INSTRUCTOR_2.id,
     section_number="001",
     enrollment="30",
@@ -345,7 +345,7 @@ TEST_SECTION_4 = CourseSection(
 
 TEST_SECTION_5 = CourseSection(
     id="section-5",
-    offering_id=TEST_OFFERING_CS202_FA2024.id,
+    offering_id=TEST_OFFERING_CS202_FA2025.id,
     instructor_id=None,
     section_number="001",
     enrollment="50",
@@ -406,4 +406,4 @@ TEST_ASSESSMENT_DATA_EMPTY = "{}"
 TEST_ASSESSMENT_DATA_SAMPLE = '{"students_took":25,"students_passed":20}'
 
 # Timestamps
-CREATED_AT = "2024-01-01T00:00:00Z"
+CREATED_AT = "2025-01-01T00:00:00Z"

@@ -15,10 +15,10 @@ jobs:
     outputs:
       cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -27,7 +27,7 @@ jobs:
       run: echo "key=${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}" >> $GITHUB_OUTPUT
 
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: ~/.cache/pip
         key: ${{ steps.cache-key.outputs.key }}
@@ -44,13 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: ~/.cache/pip
         key: ${{ needs.setup.outputs.cache-key }}
@@ -71,13 +71,13 @@ jobs:
     needs: setup
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: ~/.cache/pip
         key: ${{ needs.setup.outputs.cache-key }}
@@ -112,13 +112,13 @@ jobs:
     needs: setup
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: ~/.cache/pip
         key: ${{ needs.setup.outputs.cache-key }}
@@ -188,13 +188,13 @@ jobs:
     needs: setup
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
       with:
         path: ~/.cache/pip
         key: ${{ needs.setup.outputs.cache-key }}
@@ -283,7 +283,7 @@ jobs:
         # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
         export ENV="test"
         export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
-        export LASSIE_DEFAULT_PORT_E2E="3002"
+        export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
         
         # Set Ethereal credentials from GitHub secrets for email verification
         export ETHEREAL_USER="${{ secrets.ETHEREAL_USER }}"
@@ -451,6 +451,55 @@ jobs:
       env:
         PYTHONPATH: .
 
+  coverage-new-code:
+    runs-on: ubuntu-latest
+    needs: [setup, unit-tests-with-coverage]
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full git history for diff-cover
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ needs.setup.outputs.cache-key }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+        pip install diff-cover
+    - name: Generate coverage data
+      run: |
+        # Generate fresh coverage.xml for diff-cover analysis
+        python -m pytest tests/unit/ -n auto --cov=. --cov-report=xml:coverage.xml --tb=no -q
+      env:
+        PYTHONPATH: .
+    - name: Check Coverage on New Code (80% threshold)
+      run: |
+        echo "📊 Checking coverage on new code vs origin/${{ github.base_ref }}"
+        diff-cover coverage.xml \
+          --compare-branch=origin/${{ github.base_ref }} \
+          --fail-under=80 \
+          --html-report=coverage-diff.html \
+          | tee logs/diff_coverage_report.txt
+      env:
+        PYTHONPATH: .
+    - name: Upload Coverage Diff Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-diff-report
+        path: |
+          coverage-diff.html
+          logs/diff_coverage_report.txt
   sonar:
     runs-on: ubuntu-latest
     needs: setup

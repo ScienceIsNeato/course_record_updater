@@ -238,6 +238,49 @@ class TestDashboardServiceScoped:
         assert data["sections"][0]["institution_id"] == "inst-1"
 
 
+class TestDashboardServiceEnrollmentHelpers:
+    def test_total_enrollment_handles_invalid_values(self, service):
+        """Covers DashboardService._total_enrollment int() conversion error branches."""
+        sections = [
+            {"enrollment": "10"},
+            {"enrollment": 5},
+            {"enrollment": None},
+            {"enrollment": "not-a-number"},
+            {"enrollment": {"bad": "type"}},
+        ]
+
+        assert service._total_enrollment(sections) == 15
+
+
+class TestDashboardServiceOfferingRollups:
+    def test_build_offering_section_rollup_handles_missing_offering_and_invalid_enrollment(
+        self, service
+    ):
+        sections = [
+            {
+                "section_id": "s-missing",
+                "enrollment": 10,
+            },  # missing offering_id (skipped)
+            {"section_id": "s1", "offering_id": "o1", "enrollment": "12"},
+            {"section_id": "s2", "offering_id": "o1", "enrollment": "bad"},
+            {"section_id": "s3", "offering_id": "o2", "enrollment": None},
+        ]
+
+        rollup = service._build_offering_section_rollup(sections)
+        assert rollup["o1"]["section_count"] == 2
+        assert rollup["o1"]["total_enrollment"] == 12  # bad becomes 0
+        assert rollup["o2"]["section_count"] == 1
+        assert rollup["o2"]["total_enrollment"] == 0
+
+    def test_apply_offering_section_rollup_defaults_to_zero(self, service):
+        offering_data = {"o1": {"section_count": 2, "total_enrollment": 5}}
+        enriched = service._apply_offering_section_rollup(
+            {"offering_id": "o2"}, offering_data
+        )
+        assert enriched["section_count"] == 0
+        assert enriched["total_enrollment"] == 0
+
+
 class TestDashboardServiceCLOEnrichment:
     """Test CLO data enrichment functionality."""
 

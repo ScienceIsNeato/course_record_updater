@@ -24,6 +24,7 @@ safety>=2.3.0              # Dependency vulnerability scanner
 # Code quality and complexity
 radon>=6.0.1               # Code complexity analysis
 xenon>=0.9.0               # Code complexity monitoring
+diff-cover>=10.0.0         # Coverage analysis on new/modified code (PR quality gate)
 
 # Development utilities
 pre-commit>=3.3.0          # Git hooks for quality checks

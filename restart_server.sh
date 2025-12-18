@@ -159,7 +159,7 @@ start_flask_app() {
     export ETHEREAL_SMTP_PORT="${ETHEREAL_SMTP_PORT:-587}"
     export ETHEREAL_IMAP_HOST="${ETHEREAL_IMAP_HOST:-imap.ethereal.email}"
     export ETHEREAL_IMAP_PORT="${ETHEREAL_IMAP_PORT:-993}"
-    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@lassietests.mailtrap.io}"
+    export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io}"
     
     # Debug: Check if env vars are set
     echo -e "${BLUE}📧 Email configuration:${NC}"
@@ -198,18 +198,29 @@ start_flask_app() {
 }
 
 main() {
+    # AGGRESSIVE CLEANUP: Reset all the things
+    echo -e "${BLUE}🧹 Aggressive cleanup: Killing stale processes...${NC}"
+    pkill -f "python.*app.py" 2>/dev/null || true
+    sleep 0.5
+    
+    echo -e "${BLUE}🧹 Aggressive cleanup: Clearing Python bytecode cache...${NC}"
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    
+    echo -e "${GREEN}✅ Clean slate ready${NC}"
+    
     # Determine port based on environment
     local port
     case "$APP_ENV" in
         dev)
-            port="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            port="${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}"
             ;;
         e2e|uat)
-            port="${LASSIE_DEFAULT_PORT_E2E:-3002}"
+            port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
             ;;
         *)
             # Default to dev port
-            port="${LASSIE_DEFAULT_PORT_DEV:-3001}"
+            port="${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}"
             ;;
     esac
     

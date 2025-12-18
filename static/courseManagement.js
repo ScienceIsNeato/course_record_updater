@@ -35,17 +35,10 @@ if (document.readyState === 'loading') {
  */
 function setupModalListeners() {
   const createModal = document.getElementById('createCourseModal');
-  const editModal = document.getElementById('editCourseModal');
 
   if (createModal) {
     createModal.addEventListener('show.bs.modal', () => {
       loadProgramsForCreateDropdown();
-    });
-  }
-
-  if (editModal) {
-    editModal.addEventListener('show.bs.modal', () => {
-      loadProgramsForEditDropdown();
     });
   }
 }
@@ -56,51 +49,6 @@ function setupModalListeners() {
  */
 async function loadProgramsForCreateDropdown() {
   const select = document.getElementById('courseProgramIds');
-
-  if (!select) {
-    return;
-  }
-
-  // Clear existing options
-  select.innerHTML = '<option value="">Loading programs...</option>';
-
-  try {
-    const response = await fetch('/api/programs');
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch programs');
-    }
-
-    const data = await response.json();
-    const programs = data.programs || [];
-
-    // Populate dropdown
-    select.innerHTML = ''; // Clear loading message
-
-    if (programs.length === 0) {
-      select.innerHTML = '<option value="">No programs available</option>';
-      return;
-    }
-
-    programs.forEach(program => {
-      const option = document.createElement('option');
-      option.value = program.program_id;
-      option.textContent = `${program.name} (${program.short_name})`;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error('Failed to load programs for dropdown:', error);
-    select.innerHTML = '<option value="">Error loading programs</option>';
-  }
-}
-
-/**
- * Load programs for edit course dropdown
- * Fetches programs from API based on user's institution
- */
-async function loadProgramsForEditDropdown() {
-  const select = document.getElementById('editCourseProgramIds');
 
   if (!select) {
     return;
@@ -243,16 +191,11 @@ function initializeEditCourseModal() {
 
     const courseId = document.getElementById('editCourseId').value;
 
-    // Get selected program IDs from multi-select
-    const programSelect = document.getElementById('editCourseProgramIds');
-    const selectedPrograms = Array.from(programSelect.selectedOptions).map(option => option.value);
-
     const updateData = {
       course_number: document.getElementById('editCourseNumber').value,
       course_title: document.getElementById('editCourseTitle').value,
       department: document.getElementById('editCourseDepartment').value,
       credit_hours: Number.parseInt(document.getElementById('editCourseCreditHours').value),
-      program_ids: selectedPrograms,
       active: (function () {
         const checkbox = document.getElementById('editCourseActive');
         return checkbox?.checked !== undefined ? checkbox.checked : true;
@@ -318,7 +261,8 @@ function initializeEditCourseModal() {
  * Open Edit Course Modal with pre-populated data
  * Called from course list when Edit button is clicked
  */
-function openEditCourseModal(courseId, courseData) {
+
+async function openEditCourseModal(courseId, courseData, programsDisplayHtml) {
   document.getElementById('editCourseId').value = courseId;
   document.getElementById('editCourseNumber').value = courseData.course_number || '';
   document.getElementById('editCourseTitle').value = courseData.course_title || '';
@@ -331,12 +275,10 @@ function openEditCourseModal(courseId, courseData) {
     activeCheckbox.checked = courseData.active !== undefined ? courseData.active : true;
   }
 
-  // Select program IDs in multi-select
-  const programSelect = document.getElementById('editCourseProgramIds');
-  if (programSelect && courseData.program_ids) {
-    Array.from(programSelect.options).forEach(option => {
-      option.selected = courseData.program_ids.includes(option.value);
-    });
+  // Set Read-Only Programs Display
+  const programsDisplayEl = document.getElementById('readOnlyProgramsDisplay');
+  if (programsDisplayEl) {
+    programsDisplayEl.innerHTML = programsDisplayHtml || '<span class="text-muted">None</span>';
   }
 
   const modal = new bootstrap.Modal(document.getElementById('editCourseModal'));
@@ -384,11 +326,60 @@ async function deleteCourse(courseId, courseNumber, courseTitle) {
   }
 }
 
+/**
+ * Duplicate an existing course and immediately open the edit modal for refinements.
+ */
+async function duplicateCourse(courseId, rawCourseData) {
+  const courseData =
+    typeof rawCourseData === 'string' ? JSON.parse(rawCourseData) : rawCourseData || {};
+  const confirmation = confirm(
+    `Create a duplicate of ${courseData.course_number || 'this course'}?\n\n` +
+      'A copy will be created and opened for editing.'
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  try {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const response = await fetch(`/api/courses/${courseId}/duplicate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken && { 'X-CSRFToken': csrfToken })
+      },
+      body: JSON.stringify({})
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      alert(`Failed to duplicate course: ${error.error || 'Unknown error'}`);
+      return;
+    }
+
+    const result = await response.json();
+    alert(result.message || 'Course duplicated successfully!');
+
+    if (typeof globalThis.loadCourses === 'function') {
+      globalThis.loadCourses();
+    }
+
+    if (result.course) {
+      openEditCourseModal(result.course.course_id, result.course);
+    }
+  } catch (error) {
+    console.error('Error duplicating course:', error); // eslint-disable-line no-console
+    alert('Failed to duplicate course. Please try again.');
+  }
+}
+
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditCourseModal = openEditCourseModal;
 globalThis.deleteCourse = deleteCourse;
+globalThis.duplicateCourse = duplicateCourse;
 
 // Export for testing (Node.js/Jest environment)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { initCourseManagement, openEditCourseModal, deleteCourse };
+  module.exports = { initCourseManagement, openEditCourseModal, deleteCourse, duplicateCourse };
 }

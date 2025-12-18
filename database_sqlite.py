@@ -19,6 +19,7 @@ from models_sql import (
     CourseOffering,
     CourseOutcome,
     CourseSection,
+    CourseSectionOutcome,
     Institution,
     Program,
     Term,
@@ -559,6 +560,7 @@ class SQLiteDatabase(DatabaseInterface):
             # Deprecated fields (removed in CEI demo follow-ups) - explicitly exclude
             "assessment_data",
             "narrative",
+            "program_id",
         }
         extras_dict = {k: v for k, v in payload.items() if k not in exclude_fields}
         extras_dict["outcome_id"] = outcome_id
@@ -566,6 +568,7 @@ class SQLiteDatabase(DatabaseInterface):
         outcome = CourseOutcome(
             id=outcome_id,
             course_id=payload.get("course_id"),
+            program_id=payload.get("program_id"),
             clo_number=payload.get("clo_number"),
             description=payload.get("description", ""),
             assessment_method=payload.get("assessment_method"),
@@ -654,6 +657,7 @@ class SQLiteDatabase(DatabaseInterface):
         institution_id: str,
         status: str,
         program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status."""
         with self.sqlite.session_scope() as session:
@@ -677,7 +681,16 @@ class SQLiteDatabase(DatabaseInterface):
                     course_program_table, Course.id == course_program_table.c.course_id
                 ).where(course_program_table.c.program_id == program_id)
 
-            outcomes = session.execute(query).scalars().all()
+            # Add term filter if specified (filter via course_offerings.term_id)
+            if term_id:
+                from models_sql import CourseOffering
+
+                query = query.join(
+                    CourseOffering, Course.id == CourseOffering.course_id
+                ).where(CourseOffering.term_id == term_id)
+
+            # Use distinct to prevent duplicates when joining through multiple sections
+            outcomes = session.execute(query.distinct()).scalars().all()
             return [to_dict(outcome) for outcome in outcomes]
 
     def get_sections_by_course(self, course_id: str) -> List[Dict[str, Any]]:
@@ -798,6 +811,7 @@ class SQLiteDatabase(DatabaseInterface):
             course_id=payload.get("course_id"),
             term_id=payload.get("term_id"),
             institution_id=payload.get("institution_id"),
+            program_id=payload.get("program_id"),
             status=payload.get("status", "active"),
             capacity=payload.get("capacity"),
             total_enrollment=payload.get("total_enrollment", 0),
@@ -1015,6 +1029,39 @@ class SQLiteDatabase(DatabaseInterface):
         )
         with self.sqlite.session_scope() as session:
             session.add(section)
+
+            # Auto-populate CLO Instances (CourseSectionOutcome) based on Templates (CourseOutcome)
+            # Find CLOs for the Course+Program of the Offering
+            if payload.get("offering_id"):
+                offering = session.get(CourseOffering, payload.get("offering_id"))
+                if offering:
+                    # Logic: Templates must match course_id AND program_id
+                    # We handle program_id=None as "Common/Default" if desired, OR strict match
+                    # User request implied "unique to COURSE+PROGRAM", so strict match is best.
+
+                    filters = [CourseOutcome.course_id == offering.course_id]
+                    if offering.program_id:
+                        filters.append(CourseOutcome.program_id == offering.program_id)
+                    else:
+                        filters.append(CourseOutcome.program_id.is_(None))
+
+                    templates = (
+                        session.execute(select(CourseOutcome).where(and_(*filters)))
+                        .scalars()
+                        .all()
+                    )
+
+                    for template in templates:
+                        instance = CourseSectionOutcome(
+                            section_id=section_id, outcome_id=template.id
+                        )
+                        session.add(instance)
+
+                    if templates:
+                        logger.info(
+                            f"Auto-populated {len(templates)} CLO instances for section {section_id}"
+                        )
+
             return section_id
 
     def update_course_section(
@@ -1236,6 +1283,14 @@ class SQLiteDatabase(DatabaseInterface):
             if not program:
                 return []
             return [to_dict(course) for course in program.courses]
+
+    def get_programs_for_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all programs that a course is attached to."""
+        with self.sqlite.session_scope() as session:
+            course = session.get(Course, course_id)
+            if not course:
+                return []
+            return [to_dict(program) for program in course.programs]
 
     def get_unassigned_courses(self, institution_id: str) -> List[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:

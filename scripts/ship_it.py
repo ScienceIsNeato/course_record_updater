@@ -87,10 +87,15 @@ class QualityGateExecutor:
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             ("security", "🔒 Security Audit (bandit, safety)"),
             ("duplication", "🔄 Code Duplication Check"),
+            # SonarCloud supports an analyze/status split for fast iteration.
+            # We also keep a unified "sonar" check for the common workflow.
+            ("sonar-analyze", "☁️ SonarCloud Analyze (trigger new scan)"),
+            ("sonar-status", "☁️ SonarCloud Status (fetch latest results)"),
             ("sonar", "☁️ SonarCloud Analysis (quality gate validation)"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+            ("coverage-new-code", "📊 Coverage on New Code (80% threshold on PR changes)"),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
@@ -152,8 +157,10 @@ class QualityGateExecutor:
             # E2E: 600s (IMAP verification is slow in CI)
             # Sonar: 600s (SonarCloud server-side processing can be slow)
             # Others: 300s (default)
-            if check_flag in ["e2e", "sonar"]:
+            if check_flag in ["e2e", "sonar", "sonar-analyze"]:
                 timeout_seconds = 600
+            elif check_flag in ["sonar-status"]:
+                timeout_seconds = 120
             else:
                 timeout_seconds = 300
             
@@ -168,14 +175,8 @@ class QualityGateExecutor:
 
             duration = time.time() - start_time
 
-            # Auto-stage files after auto-fixers run successfully
-            # Only auto-stage for tools that actually modify files and need staging
-            if result.returncode == 0 and check_flag in ["black", "isort", "python-lint-format", "js-lint-format"]:
-                try:
-                    subprocess.run(["git", "add", "."], capture_output=True, check=True)
-                except subprocess.CalledProcessError:
-                    # Ignore git add failures (might not be in a git repo, etc.)
-                    pass
+            # Intentionally do not auto-stage files.
+            # Staging should be an explicit developer action to avoid unexpected changes being committed.
 
             if result.returncode == 0:
                 return CheckResult(
@@ -1530,7 +1531,7 @@ Validation Types:
   commit - Fast checks for development cycle (excludes security & sonar, ~40s savings)
   PR     - Full validation for pull requests (all checks including security & sonar)
 
-Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar, e2e, integration, smoke, frontend-check
+Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar-analyze, sonar-status, sonar, e2e, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -1547,7 +1548,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar, e2e, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar-analyze, sonar-status, sonar, e2e, integration, smoke, frontend-check",
     )
 
     parser.add_argument(

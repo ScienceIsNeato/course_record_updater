@@ -1,43 +1,57 @@
-# Project Status
+# 🚧 Current Work Status
 
-**Last Updated:** 2025-11-23
-**Current Phase:** Phase 4 Hardening & Artifact Collection
+**Last Updated**: 2025-12-16 00:42 UTC
 
-## Current Task
-✅ **COMPLETED**: Fix 290/290 SonarCloud issues on main branch (`fix/sonarcloud-cleanup-2025-11`)
-- **Status**: PR #35 All Checks PASSED (Security, Reliability, Maintainability, Coverage, E2E)
-- **Next Step**: Merge PR #35 and proceed with Phase 4 artifact collection.
+---
 
-## SonarCloud Issues Summary
-| Severity | Initial Count | Current Count | Status |
-|----------|---------------|---------------|--------|
-| **Total**| **290**       | **0**         | ✅ **CLEAN** |
-| Security | 5             | 0             | ✅ Resolved (Log Injection) |
-| Reliability| 35          | 0             | ✅ Resolved (JS fixes) |
-| Maintainability| 250     | 0             | ✅ Resolved (Refactoring) |
+## Current Task: Monitoring CI Results for PR #37 🔬
 
-## Recent Progress
-- **Security Hardening**:
-  - Fixed log injection vulnerabilities in `auth_service.py`, `clo_workflow_service.py`, `database_sqlite.py`, `registration_service.py` by sanitizing user inputs.
-- **JavaScript Reliability**:
-  - Replaced `parseInt` with `Number.parseInt` and `isNaN` with `Number.isNaN` across all JS files.
-  - Fixed `String.prototype.replace` usage with `replaceAll` for global replacements.
-  - Addressed `Object.prototype.hasOwnProperty` issues.
-- **Maintainability**:
-  - Replaced `window.` with `globalThis.` for better environment compatibility (150+ instances).
-  - Fixed CSS contrast issues in `admin.css` and `auth.css` to meet accessibility standards.
-  - Refactored `static/panels.js` and `static/script.js` to fix scope and complexity issues.
-- **Test Coverage**:
-  - Added comprehensive coverage for `panels.js` (initialization, error handling).
-  - Added success callback coverage for all management modules (`user`, `course`, `section`, `offering`, `institution`).
-  - Achieved >80% coverage on New Code to pass Quality Gate.
-- **CI/CD**:
-  - Fixed flaky E2E tests by handling dashboard load errors gracefully (downgraded `console.error` to `warn`).
-  - Verified all 13/13 CI checks passed.
+**Latest Commit**: `ec1556d` - "fix: revert breaking npm ci and sonar config changes"
 
-## Open Work
-- **Phase 4 Artifacts**: Resume capture of screenshots and logs for the CLO audit workflow (filtering, export, NCI).
-- **Demo Script**: Finalize `advance_demo.py` for consistent state generation.
+**Status**: Hotfix pushed after `f5cefea` broke CI. Changes reverted:
+- ❌ `npm ci --ignore-scripts` → ✅ `npm install` (repo has no package-lock.json)
+- ❌ Sonar single-line exclusions → ✅ Multiline format (single-line broke parsing)
+- ❌ `wget` security flags → ✅ Plain wget (flags caused issues)
 
-## Blockers
-- None. PR #35 is ready for merge.
+CI is running on the hotfix; being monitored via `pr_status.py --watch 37` (terminal 4).
+
+---
+
+## What Was Successfully Fixed (Commit f5cefea)
+
+### Code Quality ✅
+- **GitHub Actions Security**: Pinned all actions to full commit SHAs
+- **Code Smells Eliminated**:
+  - `models_sql.py`: String literal → constant (S1192)
+  - `import_service.py`: Return-value consistency (S3516)
+  - `api_routes.py`: Unused param removal (S1172)
+  - `static/script.js`: Nested function hoisting (S7721)
+
+### Test Coverage ✅
+- Python: 84.43% (+2.57pp)
+- JavaScript: 84.88%
+- Added 100+ targeted unit tests
+- New test file: `tests/unit/test_management_routes.py`
+
+### E2E Stability ✅
+- Fixed offering creation modal test (populate required Program field)
+
+---
+
+## What Broke (Reverted in ec1556d)
+
+- Attempted npm security flags broke JS dependency install
+- Attempted Sonar config "simplification" broke analysis parsing
+- **Lesson**: Security hotspot fixes need local validation before push
+
+---
+
+## Known Remaining Issues (Post-CI)
+
+**Expected Sonar Failures**:
+- Coverage on New Code: 52% (target: 80%) - 193 uncovered NEW lines
+- New Duplication Density: 3.63% (target: <3%)
+
+**Next Steps** (if CI confirms):
+1. Continue coverage work OR
+2. Document Sonar metrics as "acceptable technical debt" for this PR

@@ -19,8 +19,9 @@
  *     'all': ['instructor-teaching-panel', 'instructor-assessment-panel']
  *   }
  * @param {string[]} allPanelIds - Complete list of all panel IDs for this dashboard
+ * @param {Object} [titleMapping] - Optional maps view names to page titles
  */
-function configureDashboardFilter(panelMapping, allPanelIds) {
+function configureDashboardFilter(panelMapping, allPanelIds, titleMapping) {
   /**
    * Filter dashboard panels based on the selected view.
    *
@@ -28,6 +29,18 @@ function configureDashboardFilter(panelMapping, allPanelIds) {
    */
   function filterDashboard(view) {
     const visiblePanels = panelMapping[view] || panelMapping.all;
+
+    // Scroll to top to ensure user notices the change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Update page title if mapping provided
+    const viewTitle = titleMapping?.[view];
+    if (viewTitle) {
+      const titleEl = document.getElementById('page-title-text');
+      if (titleEl) {
+        titleEl.textContent = viewTitle;
+      }
+    }
 
     // Show/hide panels based on current view
     allPanelIds.forEach(panelId => {

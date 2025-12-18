@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import nullcontext
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
 from constants import (
@@ -315,6 +316,131 @@ def get_course_by_id(course_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_course_by_id(course_id)
 
 
+def _generate_unique_course_number(base_number: str, institution_id: str) -> str:
+    """
+    Generate a duplicate-friendly course number (e.g., BIOL-201-V2, -V3, etc.)
+    that does not collide with existing records for the institution.
+    """
+    normalized = (base_number or "COURSE").strip().upper()
+    suffix_index = 2
+    candidate = f"{normalized}-V{suffix_index}"
+
+    while get_course_by_number(candidate, institution_id):
+        suffix_index += 1
+        candidate = f"{normalized}-V{suffix_index}"
+
+    return candidate
+
+
+def duplicate_course_record(
+    source_course: Dict[str, Any],
+    overrides: Optional[Dict[str, Any]] = None,
+    duplicate_programs: bool = True,
+) -> Optional[str]:
+    """
+    Clone an existing course (and optionally program assignments) for demo workflows.
+    """
+    if not source_course:
+        return None
+
+    institution_id = _get_institution_id_or_log(source_course)
+    if not institution_id:
+        return None
+
+    overrides = overrides or {}
+    sanitized_overrides, program_ids_override = _sanitize_course_duplication_overrides(
+        overrides
+    )
+
+    base_number = sanitized_overrides.get("course_number") or source_course.get(
+        "course_number"
+    )
+    if not base_number:
+        logger.error(
+            "[DB Service] Source course missing course_number; cannot duplicate"
+        )
+        return None
+
+    sanitized_overrides.setdefault(
+        "course_number", _generate_unique_course_number(base_number, institution_id)
+    )
+
+    new_course_data = _build_course_duplication_payload(
+        source_course, institution_id, sanitized_overrides
+    )
+    new_course_data["program_ids"] = _resolve_course_duplication_program_ids(
+        source_course, program_ids_override, duplicate_programs
+    )
+
+    return create_course(new_course_data)
+
+
+def _get_institution_id_or_log(source_course: Dict[str, Any]) -> Optional[str]:
+    institution_id = source_course.get("institution_id")
+    if not institution_id:
+        logger.error("[DB Service] Cannot duplicate course without institution context")
+    return institution_id
+
+
+def _sanitize_course_duplication_overrides(
+    overrides: Dict[str, Any],
+) -> tuple[Dict[str, Any], Optional[Any]]:
+    allowed_override_fields = {
+        "course_number",
+        "course_title",
+        "department",
+        "credit_hours",
+        "active",
+    }
+    sanitized_overrides = {
+        key: value
+        for key, value in overrides.items()
+        if key in allowed_override_fields and value is not None
+    }
+    program_ids_override = (
+        overrides.get("program_ids") if "program_ids" in overrides else None
+    )
+    return sanitized_overrides, program_ids_override
+
+
+def _build_course_duplication_payload(
+    source_course: Dict[str, Any],
+    institution_id: str,
+    sanitized_overrides: Dict[str, Any],
+) -> Dict[str, Any]:
+    new_course_data: Dict[str, Any] = {
+        "course_number": source_course.get("course_number"),
+        "course_title": source_course.get("course_title"),
+        "department": source_course.get("department"),
+        "credit_hours": source_course.get("credit_hours", 3),
+        "institution_id": institution_id,
+        "active": source_course.get("active", True),
+        "extras": deepcopy(source_course.get("extras") or {}),
+    }
+
+    new_course_data.update(sanitized_overrides)
+
+    extras = new_course_data.get("extras") or {}
+    extras["duplicated_from_course_id"] = source_course.get(
+        "course_id"
+    ) or source_course.get("id")
+    extras["duplicated_from_course_number"] = source_course.get("course_number")
+    new_course_data["extras"] = extras
+    return new_course_data
+
+
+def _resolve_course_duplication_program_ids(
+    source_course: Dict[str, Any],
+    program_ids_override: Optional[Any],
+    duplicate_programs: bool,
+) -> Any:
+    if program_ids_override is not None:
+        return program_ids_override
+    if duplicate_programs:
+        return source_course.get("program_ids") or []
+    return []
+
+
 def get_all_courses(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_all_courses(institution_id)
 
@@ -456,6 +582,11 @@ def get_courses_by_program(program_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_courses_by_program(program_id)
 
 
+def get_programs_for_course(course_id: str) -> List[Dict[str, Any]]:
+    """Get all programs that a course is attached to."""
+    return _db_service.get_programs_for_course(course_id)
+
+
 def get_unassigned_courses(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_unassigned_courses(institution_id)
 
@@ -521,6 +652,7 @@ def get_outcomes_by_status(
     institution_id: str,
     status: str,
     program_id: Optional[str] = None,
+    term_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get course outcomes filtered by status.
@@ -529,11 +661,14 @@ def get_outcomes_by_status(
         institution_id: Institution ID to filter by
         status: CLO status to filter by
         program_id: Optional program ID to further filter results
+        term_id: Optional term ID to further filter results
 
     Returns:
         List of course outcome dictionaries
     """
-    return _db_service.get_outcomes_by_status(institution_id, status, program_id)
+    return _db_service.get_outcomes_by_status(
+        institution_id, status, program_id, term_id
+    )
 
 
 def get_sections_by_course(course_id: str) -> List[Dict[str, Any]]:

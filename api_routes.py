@@ -6,6 +6,7 @@ These routes provide a proper REST API structure while maintaining backward comp
 with the existing single-page application.
 """
 
+import os
 import re
 import tempfile
 import traceback
@@ -88,6 +89,7 @@ from database_service import (
     delete_program,
     delete_term,
     delete_user,
+    duplicate_course_record,
     get_active_terms,
     get_all_courses,
     get_all_institutions,
@@ -1076,6 +1078,70 @@ def update_user_profile_endpoint(user_id: str):
         )
 
 
+@api.route("/users/<user_id>/role", methods=["PATCH"])
+@permission_required("manage_users")
+def update_user_role_endpoint(user_id: str):
+    """
+    Update a user's role (admin only)
+
+    Allows institution admins to promote instructors to admins or demote admins to instructors.
+
+    Request body:
+    {
+        "role": "instructor" | "program_admin" | "institution_admin"
+    }
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data or "role" not in data:
+            return jsonify({"success": False, "error": "Role is required"}), 400
+
+        new_role = data["role"]
+        valid_roles = ["instructor", "program_admin", "institution_admin"]
+
+        if new_role not in valid_roles:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid role. Must be one of: {', '.join(valid_roles)}",
+                    }
+                ),
+                400,
+            )
+
+        # Get the user being updated
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Verify same institution
+        current_institution_id = get_current_institution_id()
+        if user.get("institution_id") != current_institution_id:
+            return jsonify({"success": False, "error": "User not found"}), 404
+
+        # Update the role
+        success = update_user_role(user_id, new_role, program_ids=None)
+
+        if success:
+            updated_user = get_user_by_id(user_id)
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "user": updated_user,
+                        "message": f"User role updated to {new_role}",
+                    }
+                ),
+                200,
+            )
+        else:
+            return jsonify({"success": False, "error": "Failed to update role"}), 500
+
+    except Exception as e:
+        return handle_api_error(e, "Update user role", "Failed to update user role")
+
+
 @api.route("/users/<user_id>/deactivate", methods=["POST"])
 @permission_required("manage_users")
 def deactivate_user_endpoint(user_id: str):
@@ -1529,6 +1595,78 @@ def update_course_endpoint(course_id: str):
 
     except Exception as e:
         return handle_api_error(e, "Update course", "Failed to update course")
+
+
+@api.route("/courses/<course_id>/duplicate", methods=["POST"])
+@permission_required("manage_courses")
+def duplicate_course_endpoint(course_id: str):
+    """
+    Duplicate an existing course for the current institution.
+
+    Optional JSON payload can override:
+    - course_number
+    - course_title
+    - department
+    - credit_hours
+    - active
+    - program_ids (explicitly set program associations)
+    - duplicate_programs (bool) to control copying of original program links
+    """
+    try:
+        source_course = get_course_by_id(course_id)
+        if not source_course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        current_user = get_current_user()
+        if current_user.get("role") != UserRole.SITE_ADMIN.value and current_user.get(
+            "institution_id"
+        ) != source_course.get("institution_id"):
+            return jsonify({"success": False, "error": PERMISSION_DENIED_MSG}), 403
+
+        payload = request.get_json(silent=True) or {}
+        override_fields = {
+            key: payload.get(key)
+            for key in [
+                "course_number",
+                "course_title",
+                "department",
+                "credit_hours",
+                "active",
+            ]
+            if payload.get(key) is not None
+        }
+
+        if "program_ids" in payload:
+            override_fields["program_ids"] = payload.get("program_ids")
+
+        duplicate_programs = payload.get("duplicate_programs", True)
+
+        new_course_id = duplicate_course_record(
+            source_course,
+            overrides=override_fields,
+            duplicate_programs=duplicate_programs,
+        )
+
+        if not new_course_id:
+            return (
+                jsonify({"success": False, "error": "Failed to duplicate course"}),
+                500,
+            )
+
+        new_course = get_course_by_id(new_course_id)
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "course": new_course,
+                    "message": f"Course duplicated as {new_course.get('course_number')}",
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "Duplicate course", "Failed to duplicate course")
 
 
 @api.route("/courses/<course_id>", methods=["DELETE"])
@@ -4504,7 +4642,7 @@ def excel_import_api():
 
         # Check user permissions
         current_user, institution_id = _check_excel_import_permissions(
-            import_params["adapter_id"], import_params["import_data_type"]
+            import_params["import_data_type"]
         )
 
         # Process the import
@@ -4538,19 +4676,7 @@ def _validate_excel_import_request():
     logger.info("Request files: %s", list(request.files.keys()))
     logger.info("Request form: %s", dict(request.form))
 
-    # Check if file was uploaded
-    if "excel_file" not in request.files:
-        logger.warning("No excel_file in request.files")
-        raise ValueError("No Excel file provided")
-
-    file = request.files["excel_file"]
-    if not file.filename or file.filename == "":
-        logger.warning("Empty filename in uploaded file")
-        raise ValueError("No file selected")
-
-    logger.info(
-        f"File received: {file.filename}, size: {file.content_length if hasattr(file, 'content_length') else 'unknown'}"
-    )
+    file = _get_excel_file_from_request()
 
     # Get form parameters (need adapter_id for validation)
     import_params = {
@@ -4601,7 +4727,67 @@ def _validate_excel_import_request():
     return file, import_params
 
 
-def _check_excel_import_permissions(adapter_id, import_data_type):
+ALLOWED_DEMO_FILE_PREFIXES = ("demos/", "test_data/", "tests/e2e/fixtures/")
+
+
+def _validate_demo_file_path(demo_file_path: str):
+    """Validate demo file path to prevent traversal and enforce allowed directories."""
+    normalized_path = os.path.normpath(demo_file_path)
+    if ".." in normalized_path or normalized_path.startswith("/"):
+        logger.warning("Path traversal attempt blocked: %s", demo_file_path)
+        raise ValueError("Invalid file path: path traversal not allowed")
+
+    if not any(
+        normalized_path.startswith(prefix) for prefix in ALLOWED_DEMO_FILE_PREFIXES
+    ):
+        logger.warning("Demo file path outside allowed directories: %s", demo_file_path)
+        raise ValueError(
+            f"Invalid file path: must be within {', '.join(ALLOWED_DEMO_FILE_PREFIXES)}"
+        )
+
+    if not os.path.isfile(normalized_path):
+        raise ValueError(f"Demo file not found: {normalized_path}")
+
+    logger.info("Using validated demo file path: %s", normalized_path)
+    return normalized_path
+
+
+def _get_excel_file_from_request():
+    """
+    Extract the Excel file from the request.
+
+    Priority:
+    1) demo_file_path (validated filesystem path)
+    2) uploaded excel_file (multipart upload)
+    """
+    demo_file_path = request.form.get("demo_file_path")
+    if demo_file_path:
+        normalized_path = _validate_demo_file_path(demo_file_path)
+        # Create a minimal mock file object for downstream compatibility.
+        return type(
+            "DemoFile",
+            (object,),
+            {"filename": normalized_path, "demo_path": normalized_path},
+        )()
+
+    if "excel_file" not in request.files:
+        logger.warning("No excel_file in request.files")
+        raise ValueError("No Excel file provided")
+
+    file = request.files["excel_file"]
+    if not file.filename:
+        logger.warning("Empty filename in uploaded file")
+        raise ValueError("No file selected")
+
+    logger.info(
+        "File received: %s, size: %s",
+        file.filename,
+        file.content_length if hasattr(file, "content_length") else "unknown",
+    )
+    return file
+
+
+def _check_excel_import_permissions(import_data_type):
     """Check user permissions for Excel import."""
     # Get current user and check authentication
     current_user = get_current_user()
@@ -4612,9 +4798,7 @@ def _check_excel_import_permissions(adapter_id, import_data_type):
     user_institution_id = current_user.get("institution_id")
 
     # Determine institution_id based on user role and adapter
-    institution_id = _determine_target_institution(
-        user_role, user_institution_id, adapter_id
-    )
+    institution_id = _determine_target_institution(user_institution_id)
 
     # Check role-based permissions
     _validate_import_permissions(user_role, import_data_type)
@@ -4622,29 +4806,14 @@ def _check_excel_import_permissions(adapter_id, import_data_type):
     return current_user, institution_id
 
 
-def _determine_target_institution(user_role, user_institution_id, adapter_id):
+def _determine_target_institution(user_institution_id):
     """Determine the target institution for the import."""
-    if user_role == UserRole.SITE_ADMIN.value:
-        # Site admins can import for any institution - let adapter determine it
-        if adapter_id == "cei_excel_format_v1":
-            # CEI Excel adapter always imports for MockU institution (default test institution)
-            from database_service import create_default_mocku_institution
-
-            institution_id = create_default_mocku_institution()
-            if not institution_id:
-                raise ValueError("Failed to create/find MockU institution")
-            return institution_id
-        else:
-            # For other adapters, site admin needs to specify institution
-            # TODO: Add institution selection UI for site admins
-            raise ValueError(
-                "Site admin must specify target institution for non-CEI adapters"
-            )
-    else:
-        # Institution/program admins use their own institution
-        if not user_institution_id:
-            raise PermissionError("User has no associated institution")
-        return user_institution_id
+    # SECURITY & DESIGN: All users (including site admins) import into their own institution
+    # This enforces multi-tenant isolation and prevents cross-institution data injection
+    # The institution context comes from authentication, NOT from adapters or CSV data
+    if not user_institution_id:
+        raise PermissionError("User has no associated institution")
+    return user_institution_id
 
 
 def _validate_import_permissions(user_role, import_data_type):
@@ -4676,17 +4845,23 @@ def _process_excel_import(file, current_user, institution_id, import_params):
     import re
     import tempfile
 
-    # Sanitize filename for logging/display purposes only
-    safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
-    if not safe_filename or safe_filename.startswith("."):
-        safe_filename = f"upload_{hash(file.filename) % 10000}"
+    # Check if this is a demo file path (not an uploaded file)
+    if hasattr(file, "demo_path"):
+        # Use the demo file path directly
+        temp_filepath = file.demo_path
+        cleanup_temp = False
+        logger.info(f"Using demo file: {temp_filepath}")
+    else:
+        # Sanitize filename for logging/display purposes only
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"upload_{hash(file.filename) % 10000}"
 
-    # Use secure temporary file creation
-    temp_file_prefix = (
-        f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
-    )
+        # Use secure temporary file creation
+        temp_file_prefix = (
+            f"import_{current_user.get('user_id')}_{import_params['import_data_type']}_"
+        )
 
-    try:
         # Create secure temporary file
         with tempfile.NamedTemporaryFile(
             mode="wb",
@@ -4696,7 +4871,9 @@ def _process_excel_import(file, current_user, institution_id, import_params):
         ) as temp_file:
             file.save(temp_file)
             temp_filepath = temp_file.name
+        cleanup_temp = True
 
+    try:
         # Import the Excel processing function
         from import_service import import_excel
 
@@ -4734,8 +4911,8 @@ def _process_excel_import(file, current_user, institution_id, import_params):
         )
 
     finally:
-        # Clean up temporary file
-        if os.path.exists(temp_filepath):
+        # Clean up temporary file (but not demo files)
+        if cleanup_temp and os.path.exists(temp_filepath):
             os.remove(temp_filepath)
 
 

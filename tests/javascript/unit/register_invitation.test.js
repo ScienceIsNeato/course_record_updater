@@ -1,18 +1,19 @@
-
 const { setBody } = require('../helpers/dom');
-require('../../../static/register_invitation');
 
 describe('register_invitation.js', () => {
   let mockFetch;
   let consoleErrorSpy;
 
   beforeEach(() => {
+    jest.resetModules();
     setBody(`
       <input id="invitationToken" value="token-123">
       <input id="firstName" value="First">
       <input id="lastName" value="Last">
       <input id="password" value="password123">
+      <button type="button" id="togglePassword"><i class="fa-eye"></i></button>
       <input id="confirmPassword" value="password123">
+      <button type="button" id="toggleConfirmPassword"><i class="fa-eye"></i></button>
       <form id="acceptInvitationForm"></form>
       <div id="loadingInvitation"></div>
       <input id="email">
@@ -39,6 +40,10 @@ describe('register_invitation.js', () => {
     global.location = { href: '', pathname: '/register-invitation' };
 
     jest.useFakeTimers();
+
+    // Load module after DOM is ready (it attaches DOMContentLoaded handlers)
+    require('../../../static/register_invitation');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
   });
 
   afterEach(() => {
@@ -92,6 +97,37 @@ describe('register_invitation.js', () => {
 
   test('should format role correctly', () => {
     expect(global.formatRole('institution_admin')).toBe('Institution Admin');
+  });
+
+  test('password toggles should switch input type', () => {
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
+
+    expect(passwordInput.getAttribute('type')).toBe(null); // not set in fixture
+    passwordInput.setAttribute('type', 'password');
+    confirmInput.setAttribute('type', 'password');
+
+    document.getElementById('togglePassword').click();
+    expect(passwordInput.getAttribute('type')).toBe('text');
+
+    document.getElementById('toggleConfirmPassword').click();
+    expect(confirmInput.getAttribute('type')).toBe('text');
+  });
+
+  test('submit handler should block when passwords do not match', async () => {
+    jest.spyOn(HTMLFormElement.prototype, 'checkValidity').mockReturnValue(true);
+
+    document.getElementById('password').value = 'a';
+    document.getElementById('confirmPassword').value = 'b';
+
+    document
+      .getElementById('acceptInvitationForm')
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+
+    await Promise.resolve();
+
+    expect(document.getElementById('statusMessage').textContent).toContain('Passwords do not match');
+    expect(document.getElementById('confirmPassword').classList.contains('is-invalid')).toBe(true);
   });
 });
 

@@ -2,13 +2,16 @@
 Unit tests for Dashboard API routes.
 """
 
+# Patch login_required BEFORE importing dashboard routes
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
-# Patch login_required BEFORE importing dashboard routes
 with patch("auth_service.login_required", lambda f: f):
+    if "api.routes.dashboard" in sys.modules:
+        del sys.modules["api.routes.dashboard"]
     from api.routes.dashboard import dashboard_bp
 
 from dashboard_service import DashboardServiceError

@@ -336,6 +336,23 @@ class TestAuthServiceInstitutionFunctions:
         assert result == "inst-123"
         mock_get_institution.assert_not_called()
 
+    @patch("database_service.get_institution_by_short_name")
+    @patch("auth_service.get_current_user")
+    def test_get_current_institution_id_short_name_resolution(
+        self, mock_get_user, mock_get_institution
+    ):
+        """Test get_current_institution_id resolves UUID from short name."""
+        mock_get_user.return_value = {
+            "user_id": "dev-admin-123",
+            "institution_short_name": "DEMO2025",
+        }
+        mock_get_institution.return_value = {"institution_id": "inst-demo-uuid"}
+
+        from auth_service import get_current_institution_id
+
+        assert get_current_institution_id() == "inst-demo-uuid"
+        mock_get_institution.assert_called_once_with("DEMO2025")
+
     @patch("auth_service.get_current_user")
     def test_get_current_institution_id_primary_fallback(self, mock_get_user):
         """Test get_current_institution_id uses primary institution when provided."""

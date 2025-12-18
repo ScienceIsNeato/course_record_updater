@@ -1,130 +1,184 @@
 """
-Unit tests for EmailWhitelist
+Unit tests for EmailWhitelist functionality.
+
+Tests whitelist enforcement in local/test environments
+and bypass in dev/staging/production.
 """
 
-from email_providers.whitelist import EmailWhitelist, get_email_whitelist
+import os
+from unittest.mock import patch
+
+import pytest
+
+from email_providers.whitelist import (
+    EmailWhitelist,
+    get_email_whitelist,
+    reset_whitelist,
+)
 
 
 class TestEmailWhitelist:
-    """Test EmailWhitelist functionality"""
+    """Tests for EmailWhitelist class."""
 
-    def test_initialization_with_defaults(self):
-        """Test whitelist initialization with defaults"""
-        whitelist = EmailWhitelist()
-        assert whitelist.env in ("local", "development", "test")
+    def setup_method(self):
+        """Reset singleton before each test."""
+        reset_whitelist()
 
-    def test_initialization_with_explicit_values(self):
-        """Test whitelist initialization with explicit values"""
+    def teardown_method(self):
+        """Reset singleton after each test."""
+        reset_whitelist()
+
+    # =========================
+    # Environment Behavior Tests
+    # =========================
+
+    def test_whitelist_enforced_in_local_env(self):
+        """Whitelist should be enforced in local environment."""
+        whitelist = EmailWhitelist(env="local", whitelist_emails=["allowed@test.com"])
+
+        assert whitelist.whitelist_enforced is True
+        assert whitelist.is_allowed("allowed@test.com") is True
+        assert whitelist.is_allowed("blocked@random.com") is False
+
+    def test_whitelist_enforced_in_test_env(self):
+        """Whitelist should be enforced in test environment."""
+        whitelist = EmailWhitelist(env="test", whitelist_emails=["*@test.local"])
+
+        assert whitelist.whitelist_enforced is True
+        assert whitelist.is_allowed("anyone@test.local") is True
+        assert whitelist.is_allowed("anyone@other.com") is False
+
+    def test_whitelist_enforced_in_e2e_env(self):
+        """Whitelist should be enforced in e2e environment."""
+        whitelist = EmailWhitelist(env="e2e", whitelist_emails=["*@ethereal.email"])
+
+        assert whitelist.whitelist_enforced is True
+        assert whitelist.is_allowed("test@ethereal.email") is True
+        assert whitelist.is_allowed("real@gmail.com") is False
+
+    def test_whitelist_disabled_in_dev_env(self):
+        """Whitelist should NOT be enforced in dev environment."""
+        whitelist = EmailWhitelist(env="dev", whitelist_emails=["limited@test.com"])
+
+        assert whitelist.whitelist_enforced is False
+        assert whitelist.is_allowed("anyone@anywhere.com") is True
+        assert whitelist.is_allowed("any@random-domain.org") is True
+
+    def test_whitelist_disabled_in_staging_env(self):
+        """Whitelist should NOT be enforced in staging environment."""
+        whitelist = EmailWhitelist(env="staging", whitelist_emails=[])
+
+        assert whitelist.whitelist_enforced is False
+        assert whitelist.is_allowed("user@example.com") is True
+
+    def test_whitelist_disabled_in_production_env(self):
+        """Whitelist should NOT be enforced in production environment."""
+        whitelist = EmailWhitelist(env="production", whitelist_emails=[])
+
+        assert whitelist.whitelist_enforced is False
+        assert whitelist.is_allowed("customer@company.com") is True
+        assert whitelist.is_allowed("user@anydomain.net") is True
+
+    # =========================
+    # Pattern Matching Tests
+    # =========================
+
+    def test_exact_email_match(self):
+        """Exact email addresses should match."""
         whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["test1@example.com", "test2@example.com"],
+            env="test", whitelist_emails=["user1@test.com", "user2@test.com"]
         )
-        assert whitelist.env == "test"
-        assert whitelist.is_allowed("test1@example.com")
-        assert whitelist.is_allowed("test2@example.com")
 
-    def test_exact_match(self):
-        """Test exact email matching"""
+        assert whitelist.is_allowed("user1@test.com") is True
+        assert whitelist.is_allowed("user2@test.com") is True
+        assert whitelist.is_allowed("user3@test.com") is False
+
+    def test_domain_wildcard_match(self):
+        """Domain wildcards (*@domain.com) should match."""
         whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["allowed@example.com"],
+            env="test", whitelist_emails=["*@ethereal.email", "*@test.local"]
         )
-        assert whitelist.is_allowed("allowed@example.com")
-        assert not whitelist.is_allowed("notallowed@example.com")
 
-    def test_wildcard_domain(self):
-        """Test wildcard domain matching"""
+        assert whitelist.is_allowed("anyone@ethereal.email") is True
+        assert whitelist.is_allowed("user123@test.local") is True
+        assert whitelist.is_allowed("user@gmail.com") is False
+
+    def test_case_insensitive_matching(self):
+        """Email matching should be case-insensitive."""
         whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["*@example.com"],
+            env="test", whitelist_emails=["User@Test.Com", "*@ETHEREAL.EMAIL"]
         )
-        assert whitelist.is_allowed("anyone@example.com")
-        assert whitelist.is_allowed("test@example.com")
-        assert not whitelist.is_allowed("test@other.com")
 
-    def test_case_insensitive(self):
-        """Test case-insensitive matching"""
+        assert whitelist.is_allowed("USER@TEST.COM") is True
+        assert whitelist.is_allowed("user@test.com") is True
+        assert whitelist.is_allowed("Anyone@Ethereal.Email") is True
+
+    def test_whitespace_handling(self):
+        """Whitelist should handle whitespace in emails."""
         whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["test@example.com"],  # Store lowercase
-        )
-        assert whitelist.is_allowed("test@example.com")
-        assert whitelist.is_allowed("TEST@EXAMPLE.COM")
-
-    def test_filter_recipients(self):
-        """Test filtering recipient lists"""
-        whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["allowed@example.com", "*@test.com"],
+            env="test", whitelist_emails=["  user@test.com  ", "  *@ethereal.email  "]
         )
 
-        recipients = [
-            "allowed@example.com",
-            "blocked@example.com",
-            "test@test.com",
-            "another@test.com",
-        ]
+        assert whitelist.is_allowed("user@test.com") is True
+        assert whitelist.is_allowed("  user@test.com  ") is True
 
-        allowed, blocked = whitelist.filter_recipients(recipients)
+    # =========================
+    # Empty Whitelist Tests
+    # =========================
 
-        assert len(allowed) == 3
-        assert "allowed@example.com" in allowed
-        assert "test@test.com" in allowed
-        assert "another@test.com" in allowed
+    def test_empty_whitelist_blocks_all_in_test(self):
+        """Empty whitelist in test env should block all emails."""
+        whitelist = EmailWhitelist(env="test", whitelist_emails=[])
 
-        assert len(blocked) == 1
-        assert "blocked@example.com" in blocked
+        assert whitelist.is_allowed("any@email.com") is False
 
-    def test_get_safe_recipient_allowed(self):
-        """Test get_safe_recipient with allowed email"""
-        whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["allowed@example.com"],
-        )
-        assert (
-            whitelist.get_safe_recipient("allowed@example.com") == "allowed@example.com"
-        )
+    def test_empty_whitelist_allows_all_in_production(self):
+        """Empty whitelist in production should allow all emails."""
+        whitelist = EmailWhitelist(env="production", whitelist_emails=[])
 
-    def test_get_safe_recipient_with_fallback(self):
-        """Test get_safe_recipient with fallback"""
-        whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["allowed@example.com"],
-        )
-        result = whitelist.get_safe_recipient(
-            "blocked@example.com", fallback="allowed@example.com"
-        )
-        assert result == "allowed@example.com"
+        assert whitelist.is_allowed("any@email.com") is True
 
-    def test_get_safe_recipient_uses_first_whitelisted(self):
-        """Test get_safe_recipient uses first whitelisted email"""
-        whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=["first@example.com", "second@example.com"],
-        )
-        result = whitelist.get_safe_recipient("blocked@example.com")
-        assert result in ["first@example.com", "second@example.com"]
+    # =========================
+    # Blocked Reason Tests
+    # =========================
 
-    def test_get_safe_recipient_no_whitelist(self):
-        """Test get_safe_recipient with no whitelist returns original"""
-        whitelist = EmailWhitelist(
-            env="test",
-            whitelist_emails=[],
-        )
-        result = whitelist.get_safe_recipient("blocked@example.com")
-        assert result == "blocked@example.com"
+    def test_get_blocked_reason_returns_none_when_allowed(self):
+        """Should return None for allowed emails."""
+        whitelist = EmailWhitelist(env="test", whitelist_emails=["*@test.local"])
 
+        assert whitelist.get_blocked_reason("user@test.local") is None
 
-class TestEmailWhitelistSingleton:
-    """Test EmailWhitelist singleton"""
+    def test_get_blocked_reason_returns_message_when_blocked(self):
+        """Should return descriptive message for blocked emails."""
+        whitelist = EmailWhitelist(env="test", whitelist_emails=["*@test.local"])
 
-    def test_get_email_whitelist_returns_instance(self):
-        """Test that get_email_whitelist returns EmailWhitelist instance"""
+        reason = whitelist.get_blocked_reason("user@blocked.com")
+
+        assert reason is not None
+        assert "user@blocked.com" in reason
+        assert "test" in reason  # environment name
+        assert "*@test.local" in reason  # configured pattern
+
+    # =========================
+    # Singleton Tests
+    # =========================
+
+    @patch.dict(os.environ, {"ENV": "test", "EMAIL_WHITELIST": "*@test.com"})
+    def test_singleton_uses_environment_variables(self):
+        """Singleton should read from environment variables."""
+        reset_whitelist()
         whitelist = get_email_whitelist()
-        assert isinstance(whitelist, EmailWhitelist)
 
-    def test_get_email_whitelist_returns_same_instance(self):
-        """Test that get_email_whitelist returns same instance"""
-        whitelist1 = get_email_whitelist()
-        whitelist2 = get_email_whitelist()
-        assert whitelist1 is whitelist2
+        assert whitelist.env == "test"
+        assert whitelist.is_allowed("user@test.com") is True
+        assert whitelist.is_allowed("user@other.com") is False
+
+    def test_singleton_returns_same_instance(self):
+        """get_email_whitelist should return same instance."""
+        reset_whitelist()
+
+        with patch.dict(os.environ, {"ENV": "local", "EMAIL_WHITELIST": ""}):
+            whitelist1 = get_email_whitelist()
+            whitelist2 = get_email_whitelist()
+
+            assert whitelist1 is whitelist2

@@ -31,6 +31,7 @@ from database_service import (
     get_institution_by_short_name,
     get_term_by_name,
     get_user_by_email,
+    update_course,
     update_course_offering,
     update_user,
 )
@@ -488,8 +489,8 @@ class ImportService:
                 self.stats["errors"].append("Course missing course_number")
                 return False, conflicts
 
-            # Check if course already exists
-            existing_course = get_course_by_number(course_number)
+            # Check if course already exists (MUST scope by institution for multi-tenant isolation)
+            existing_course = get_course_by_number(course_number, self.institution_id)
 
             if existing_course:
                 return self._handle_existing_course(
@@ -516,6 +517,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> Tuple[bool, List[ConflictRecord]]:
         """Handle import of an existing course with conflict resolution."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        course_data["institution_id"] = self.institution_id
+
         course_number = course_data.get("course_number")
 
         # Detect conflicts by comparing fields
@@ -528,8 +533,13 @@ class ImportService:
             self.stats["conflicts_detected"] += len(detected_conflicts)
 
         # Handle conflict based on strategy
-        conflicts = self._resolve_course_conflicts(
-            strategy, detected_conflicts, course_number, dry_run, conflicts
+        self._resolve_course_conflicts(
+            strategy,
+            detected_conflicts,
+            course_data,
+            existing_course,
+            course_number,
+            dry_run,
         )
         return True, conflicts
 
@@ -564,39 +574,66 @@ class ImportService:
         self,
         strategy: ConflictStrategy,
         detected_conflicts: List[ConflictRecord],
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
         course_number: str,
         dry_run: bool,
-        conflicts: List[ConflictRecord],
-    ) -> List[ConflictRecord]:
+    ) -> None:
         """Resolve course conflicts based on strategy."""
         if strategy == ConflictStrategy.USE_MINE:
-            self.stats["records_skipped"] += 1
-            self._log(f"Skipping existing course: {course_number}")
-            # Update conflict resolution status for USE_MINE
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
-        elif strategy == ConflictStrategy.USE_THEIRS:
-            if detected_conflicts:
-                self.stats["conflicts_resolved"] += len(detected_conflicts)
-                # Update conflict resolution status
-                for conflict in detected_conflicts:
-                    conflict.resolution = strategy.value
+            self._handle_course_conflicts_use_mine(detected_conflicts, course_number)
+            return
 
-            if not dry_run:
-                # Update existing course with import data
-                # TODO: Implement proper update_course function
-                # converted_course_data = _convert_datetime_fields(course_data)
-                # update_course(existing_course_id, converted_course_data)
-                self.stats["records_updated"] += 1
-                self._log(
-                    f"Updated course: {course_number} (update logic needs implementation)"
-                )
-            else:
-                self._log(f"DRY RUN: Would update course: {course_number}")
+        if strategy == ConflictStrategy.USE_THEIRS:
+            self._handle_course_conflicts_use_theirs(
+                detected_conflicts=detected_conflicts,
+                course_data=course_data,
+                existing_course=existing_course,
+                course_number=course_number,
+                dry_run=dry_run,
+            )
+            return
 
-        return conflicts
+    def _handle_course_conflicts_use_mine(
+        self, detected_conflicts: List[ConflictRecord], course_number: str
+    ) -> None:
+        """USE_MINE means keep existing record and skip import record."""
+        self.stats["records_skipped"] += 1
+        self._log(f"Skipping existing course: {course_number}")
+        self._mark_conflicts_resolved(detected_conflicts, ConflictStrategy.USE_MINE)
+
+    def _handle_course_conflicts_use_theirs(
+        self,
+        detected_conflicts: List[ConflictRecord],
+        course_data: Dict[str, Any],
+        existing_course: Dict[str, Any],
+        course_number: str,
+        dry_run: bool,
+    ) -> None:
+        """USE_THEIRS means update existing record using import record fields."""
+        self._mark_conflicts_resolved(detected_conflicts, ConflictStrategy.USE_THEIRS)
+
+        if dry_run:
+            self._log(f"DRY RUN: Would update course: {course_number}")
+            return
+
+        update_data = course_data.copy()
+        for field in ["course_id", "id", "course_number"]:
+            update_data.pop(field, None)
+
+        converted_course_data = _convert_datetime_fields(update_data)
+        update_course(existing_course.get("course_id"), converted_course_data)
+        self.stats["records_updated"] += 1
+        self._log(f"Updated course: {course_number}")
+
+    def _mark_conflicts_resolved(
+        self, detected_conflicts: List[ConflictRecord], strategy: ConflictStrategy
+    ) -> None:
+        if not detected_conflicts:
+            return
+        self.stats["conflicts_resolved"] += len(detected_conflicts)
+        for conflict in detected_conflicts:
+            conflict.resolution = strategy.value
 
     def _handle_new_course(
         self,
@@ -606,8 +643,17 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> List[ConflictRecord]:
         """Handle import of a new course."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        course_data["institution_id"] = self.institution_id
+
+        # BUG FIX: Remove id/course_id fields from CSV data (they're often empty/invalid)
+        # Database will generate proper UUIDs on creation
+        course_data.pop("id", None)
+        course_data.pop("course_id", None)
+
         if not dry_run:
-            create_course(course_data)
+            _course_id = create_course(course_data)  # noqa: F841
             self.stats["records_created"] += 1
             self._log(f"Created course: {course_number}")
         else:
@@ -641,13 +687,23 @@ class ImportService:
                 self.stats["errors"].append("User missing email")
                 return False, conflicts
 
-            # Check if user already exists
+            # Check if user already exists IN THIS INSTITUTION (multi-tenant isolation)
             existing_user = get_user_by_email(email)
 
-            if existing_user:
+            # Only treat as "existing" if user belongs to the same institution
+            if (
+                existing_user
+                and existing_user.get("institution_id") == self.institution_id
+            ):
                 return self._handle_existing_user(
                     user_data, existing_user, strategy, dry_run, conflicts
                 )
+            elif existing_user:
+                # User exists but in different institution - this is an email conflict
+                self.stats["errors"].append(
+                    f"Email conflict: {email} already exists in a different institution"
+                )
+                return False, conflicts
             else:
                 conflicts = self._handle_new_user(user_data, email, dry_run, conflicts)
                 return True, conflicts
@@ -667,6 +723,10 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> Tuple[bool, List[ConflictRecord]]:
         """Handle import of an existing user with conflict resolution."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        user_data["institution_id"] = self.institution_id
+
         email = user_data.get("email")
 
         # Detect conflicts by comparing fields
@@ -731,6 +791,11 @@ class ImportService:
         import_role = user_data.get("role", "instructor")
 
         updated_data = user_data.copy()  # Don't modify original
+
+        # BUG FIX: Remove non-updatable fields (primary keys, identifiers)
+        # These should NEVER be updated and cause "NOT NULL constraint" errors
+        for field in ["id", "user_id", "email"]:
+            updated_data.pop(field, None)
 
         if self._should_preserve_role(existing_role, import_role):
             updated_data["role"] = existing_role
@@ -828,6 +893,15 @@ class ImportService:
         conflicts: List[ConflictRecord],
     ) -> List[ConflictRecord]:
         """Handle import of a new user."""
+        # SECURITY: Override institution_id with authenticated user's institution
+        # Never trust institution_id from import data (multi-tenant isolation)
+        user_data["institution_id"] = self.institution_id
+
+        # BUG FIX: Remove id/user_id fields from CSV data (they're often empty/invalid)
+        # Database will generate proper UUIDs on creation
+        user_data.pop("id", None)
+        user_data.pop("user_id", None)
+
         if not dry_run:
             create_user(user_data)
             self.stats["records_created"] += 1
@@ -851,8 +925,16 @@ class ImportService:
                 self.stats["records_skipped"] += 1
                 self._log(f"Term already exists: {term_name}")
             else:
+                # SECURITY: Override institution_id with authenticated user's institution
+                # Never trust institution_id from import data (multi-tenant isolation)
+                term_data["institution_id"] = self.institution_id
+
+                # BUG FIX: Remove id field from CSV data (often empty/invalid)
+                # Database will generate proper UUIDs on creation
+                term_data.pop("id", None)
+
                 if not dry_run:
-                    create_term(term_data)
+                    _term_id = create_term(term_data)  # noqa: F841
                     self.stats["records_created"] += 1
                     self._log(f"Created term: {term_name}")
                 else:
@@ -910,7 +992,8 @@ class ImportService:
             # Extract and validate required data
             course_number = offering_data.get("course_number")
             term_name = offering_data.get("term_name")
-            institution_id = offering_data.get("institution_id") or self.institution_id
+            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
+            institution_id = self.institution_id
 
             if not course_number or not term_name:
                 self.stats["errors"].append(
@@ -1029,7 +1112,8 @@ class ImportService:
             course_number = section_data.get("course_number")
             term_name = section_data.get("term_name")
             section_number = section_data.get("section_number", "001")
-            institution_id = section_data.get("institution_id") or self.institution_id
+            # SECURITY: Always use authenticated user's institution (multi-tenant isolation)
+            institution_id = self.institution_id
             student_count = section_data.get("student_count", 0)
             instructor_email = section_data.get("instructor_email")
 
@@ -1200,7 +1284,14 @@ class ImportService:
             return False
 
         try:
-            add_course_to_program_func(course["id"], program_id)
+            # Use course_id (not id) - Course model's primary key is course_id
+            course_id = course.get("course_id") or course.get("id")
+            if not course_id:
+                self.logger.warning(
+                    f"Course {course_number} missing course_id, cannot link"
+                )
+                return False
+            add_course_to_program_func(course_id, program_id)
             return True
         except Exception:
             # Already linked, that's fine
@@ -1234,15 +1325,28 @@ class ImportService:
                 return
 
             # Build program lookup by name
-            program_lookup = {p["name"]: p["id"] for p in programs}
+            # Program model uses program_id as primary key, not id
+            program_lookup = {p["name"]: p["program_id"] for p in programs}
+
+            # Find default program (ends with "Default Program")
+            default_program = next(
+                (name for name in program_lookup.keys() if "Default Program" in name),
+                None,
+            )
 
             # Course prefix to program mapping
             course_mappings = {
                 "BIOL": "Biological Sciences",
                 "BSN": "Biological Sciences",
                 "ZOOL": "Zoology",
-                "CEI": "CEI Default Program",
+                "CS": default_program,  # Computer Science → Default
+                "EE": default_program,  # Electrical Engineering → Default
+                "GEN": default_program,  # General courses → Default
+                "CEI": default_program,  # Legacy CEI courses → Default
             }
+
+            # Remove None values if no default program found
+            course_mappings = {k: v for k, v in course_mappings.items() if v}
 
             linked_count = sum(
                 1

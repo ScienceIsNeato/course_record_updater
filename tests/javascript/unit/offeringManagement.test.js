@@ -10,7 +10,12 @@
  */
 
 // Load the implementation
-const { initOfferingManagement } = require('../../../static/offeringManagement.js');
+const {
+  initOfferingManagement,
+  openEditOfferingModal,
+  deleteOffering,
+  loadOfferings
+} = require('../../../static/offeringManagement.js');
 
 describe('Offering Management - Create Offering Modal', () => {
   let mockFetch;
@@ -30,6 +35,11 @@ describe('Offering Management - Create Offering Modal', () => {
           <option value="term-1">Fall 2024</option>
           <option value="term-2">Spring 2025</option>
         </select>
+        <select id="offeringProgramId" name="program_id" required>
+          <option value="">Select Program</option>
+          <option value="program-1">Computer Science</option>
+          <option value="program-2">Mathematics</option>
+        </select>
         <select id="offeringStatus" name="status" required>
           <option value="active" selected>Active</option>
           <option value="planning">Planning</option>
@@ -42,6 +52,7 @@ describe('Offering Management - Create Offering Modal', () => {
         </button>
       </form>
       <div class="modal" id="createOfferingModal"></div>
+      <div class="modal" id="editOfferingModal"></div>
       <meta name="csrf-token" content="test-csrf-token">
     `;
 
@@ -52,14 +63,11 @@ describe('Offering Management - Create Offering Modal', () => {
     // Mock console.error
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-    // Mock Bootstrap Modal
-    global.bootstrap = {
-      Modal: {
-        getInstance: jest.fn(() => ({
-          hide: jest.fn()
-        }))
-      }
-    };
+    // Mock Bootstrap Modal (constructor + static helpers)
+    const ModalCtor = jest.fn(() => ({ show: jest.fn(), hide: jest.fn() }));
+    ModalCtor.getInstance = jest.fn(() => ({ hide: jest.fn() }));
+    ModalCtor.getOrCreateInstance = jest.fn(() => ({ hide: jest.fn() }));
+    global.bootstrap = { Modal: ModalCtor };
 
     // Initialize offering management (replaces DOMContentLoaded trigger)
     initOfferingManagement();
@@ -117,6 +125,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
       document.getElementById('offeringCapacity').value = '30';
 
@@ -147,6 +156,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-2';
       document.getElementById('offeringTermId').value = 'term-2';
+      document.getElementById('offeringProgramId').value = 'program-2';
       document.getElementById('offeringStatus').value = 'planning';
       document.getElementById('offeringCapacity').value = '50';
 
@@ -161,9 +171,31 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(body).toMatchObject({
         course_id: 'course-2',
         term_id: 'term-2',
+        program_id: 'program-2',
         status: 'planning',
         capacity: 50
       });
+    });
+
+    test('should send program_id as null when no program is selected', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, offering_id: 'offering-123' })
+      });
+
+      const form = document.getElementById('createOfferingForm');
+      document.getElementById('offeringCourseId').value = 'course-1';
+      document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = '';
+
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+      expect(body.program_id).toBeNull();
     });
 
     test('should handle empty capacity as null', async () => {
@@ -175,6 +207,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
       document.getElementById('offeringCapacity').value = '';
 
@@ -207,6 +240,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const btnText = document.querySelector('.btn-text');
       const btnSpinner = document.querySelector('.btn-spinner');
@@ -243,14 +277,15 @@ describe('Offering Management - Create Offering Modal', () => {
 
       courseSelect.value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Modal should be closed
-      expect(bootstrap.Modal.getInstance).toHaveBeenCalled();
+      // Modal should be closed (implementation prefers getOrCreateInstance if present)
+      expect(bootstrap.Modal.getOrCreateInstance).toHaveBeenCalled();
 
       // Form should be reset
       expect(courseSelect.value).toBe('');
@@ -268,6 +303,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -287,6 +323,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const form = document.getElementById('createOfferingForm');
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
+      document.getElementById('offeringProgramId').value = 'program-1';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -320,6 +357,169 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(callArgs[1].headers['X-CSRFToken']).toBe('test-csrf-token');
     });
   });
+
+  describe('Dropdown Loading (show.bs.modal handlers)', () => {
+    test('should load courses/terms/programs when createOfferingModal is shown', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            courses: [{ course_id: 'course-1', course_number: 'CS101', course_title: 'Intro' }]
+          })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ terms: [{ term_id: 'term-1', name: 'Fall 2024' }] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ programs: [{ program_id: 'program-1', name: 'Computer Science' }] })
+        });
+
+      // Trigger the Bootstrap modal show event (listener is attached by initOfferingManagement)
+      document.getElementById('createOfferingModal').dispatchEvent(new Event('show.bs.modal'));
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/courses');
+      expect(global.fetch).toHaveBeenCalledWith('/api/terms');
+      expect(global.fetch).toHaveBeenCalledWith('/api/programs');
+
+      expect(document.getElementById('offeringCourseId').options.length).toBeGreaterThan(1);
+      expect(document.getElementById('offeringTermId').options.length).toBeGreaterThan(1);
+      expect(document.getElementById('offeringProgramId').options.length).toBeGreaterThan(1);
+    });
+
+    test('should show error option text if create dropdown API fetch fails', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+
+      document.getElementById('createOfferingModal').dispatchEvent(new Event('show.bs.modal'));
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(document.getElementById('offeringCourseId').innerHTML).toContain('Error loading courses');
+      expect(document.getElementById('offeringTermId').innerHTML).toContain('Error loading terms');
+      expect(document.getElementById('offeringProgramId').innerHTML).toContain('Error loading programs');
+    });
+  });
+});
+
+describe('Offering Management - Edit / Delete / Listing Helpers', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+
+    document.body.innerHTML = `
+      <meta name="csrf-token" content="test-csrf-token">
+      <input id="editOfferingId" />
+      <select id="editOfferingStatus">
+        <option value="active">active</option>
+        <option value="scheduled">scheduled</option>
+      </select>
+      <input id="editOfferingCapacity" />
+      <input id="editOfferingCourse" />
+      <input id="editOfferingTerm" />
+      <select id="editOfferingProgramId"></select>
+      <div class="modal" id="editOfferingModal"></div>
+      <div id="offeringsTableContainer"></div>
+      <div class="modal" id="createOfferingModal"></div>
+    `;
+
+    global.fetch = jest.fn();
+    global.alert = jest.fn();
+    global.confirm = jest.fn(() => true);
+
+    const ModalCtor = jest.fn(() => ({ show: jest.fn(), hide: jest.fn() }));
+    ModalCtor.getInstance = jest.fn(() => ({ hide: jest.fn() }));
+    ModalCtor.getOrCreateInstance = jest.fn(() => ({ hide: jest.fn() }));
+    global.bootstrap = { Modal: ModalCtor };
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('openEditOfferingModal should populate fields and show modal', () => {
+    const offeringData = {
+      status: 'scheduled',
+      capacity: 25,
+      course_title: 'Intro',
+      term_name: 'Fall 2024',
+      program_id: 'program-1'
+    };
+
+    // Add program option so selecting works after timeout
+    const programSelect = document.getElementById('editOfferingProgramId');
+    programSelect.innerHTML = '<option value="program-1">Computer Science</option>';
+
+    openEditOfferingModal('offering-123', offeringData);
+
+    expect(document.getElementById('editOfferingId').value).toBe('offering-123');
+    expect(document.getElementById('editOfferingStatus').value).toBe('scheduled');
+    expect(document.getElementById('editOfferingCapacity').value).toBe('25');
+    expect(document.getElementById('editOfferingCourse').value).toBe('Intro');
+    expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
+
+    jest.advanceTimersByTime(500);
+    expect(document.getElementById('editOfferingProgramId').value).toBe('program-1');
+  });
+
+  test('deleteOffering should no-op when user cancels confirmation', async () => {
+    global.confirm = jest.fn(() => false);
+
+    await deleteOffering('offering-1', 'Course', 'Term');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('deleteOffering should call DELETE and alert on success', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    });
+
+    await deleteOffering('offering-1', 'Course', 'Term');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/offerings/offering-1',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+    expect(global.alert).toHaveBeenCalled();
+  });
+
+  test('loadOfferings should render empty-state when no offerings are returned', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ offerings: [] })
+    });
+
+    await loadOfferings();
+    expect(document.getElementById('offeringsTableContainer').innerHTML).toContain('No course offerings found');
+  });
+
+  test('loadOfferings should render table when offerings are returned', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        offerings: [
+          {
+            offering_id: 'off-1',
+            course_title: 'Intro',
+            term_name: 'Fall 2024',
+            status: 'active',
+            section_count: 2,
+            total_enrollment: 30
+          }
+        ]
+      })
+    });
+
+    await loadOfferings();
+    const html = document.getElementById('offeringsTableContainer').innerHTML;
+    expect(html).toContain('<table');
+    expect(html).toContain('Intro');
+    expect(html).toContain('Fall 2024');
+    expect(html).toContain('Active');
+  });
 });
 
 describe('Offering Management - Edit Offering Modal', () => {
@@ -329,6 +529,13 @@ describe('Offering Management - Edit Offering Modal', () => {
     document.body.innerHTML = `
       <form id="editOfferingForm">
         <input type="hidden" id="editOfferingId" />
+        <input type="text" id="editOfferingCourse" />
+        <input type="text" id="editOfferingTerm" />
+        <select id="editOfferingProgramId" required>
+          <option value="">Select Program</option>
+          <option value="program-1">Computer Science</option>
+          <option value="program-2">Mathematics</option>
+        </select>
         <select id="editOfferingStatus" required>
           <option value="active">Active</option>
           <option value="planning">Planning</option>
@@ -372,13 +579,41 @@ describe('Offering Management - Edit Offering Modal', () => {
 
     window.openEditOfferingModal('offering-123', {
       status: 'planning',
-      capacity: 40
+      capacity: 40,
+      course_title: 'Intro to CS',
+      term_name: 'Fall 2024'
     });
 
     expect(document.getElementById('editOfferingId').value).toBe('offering-123');
     expect(document.getElementById('editOfferingStatus').value).toBe('planning');
     expect(document.getElementById('editOfferingCapacity').value).toBe('40');
+    expect(document.getElementById('editOfferingCourse').value).toBe('Intro to CS');
+    expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
     expect(mockModal.show).toHaveBeenCalled();
+  });
+
+  test('openEditOfferingModal should set program select after dropdown is populated', () => {
+    jest.useFakeTimers();
+
+    const mockModal = { show: jest.fn() };
+    global.bootstrap.Modal = jest.fn(() => mockModal);
+
+    const programSelect = document.getElementById('editOfferingProgramId');
+    programSelect.value = '';
+
+    window.openEditOfferingModal('offering-123', {
+      status: 'active',
+      capacity: 10,
+      course_title: 'Intro',
+      term_name: 'Fall',
+      program_id: 'program-2'
+    });
+
+    // Program should be set after timer fires
+    jest.advanceTimersByTime(600);
+    expect(programSelect.value).toBe('program-2');
+
+    jest.useRealTimers();
   });
 
   test('should PUT updated offering data to /api/offerings/<id>', async () => {
@@ -389,6 +624,7 @@ describe('Offering Management - Edit Offering Modal', () => {
 
     const form = document.getElementById('editOfferingForm');
     document.getElementById('editOfferingId').value = 'offering-123';
+    document.getElementById('editOfferingProgramId').value = 'program-1';
     document.getElementById('editOfferingStatus').value = 'cancelled';
     document.getElementById('editOfferingCapacity').value = '25';
 

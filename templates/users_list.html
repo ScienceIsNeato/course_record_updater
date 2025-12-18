@@ -150,9 +150,6 @@ async function loadUsers() {
                     <td><span class="${roleBadgeClass}">${formatRole(user.role)}</span></td>
                     <td><span class="${statusBadgeClass}">${user.active ? 'Active' : 'Inactive'}</span></td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewUser('${user.user_id}')">
-                            <i class="fas fa-eye"></i> View
-                        </button>
                         <button class="btn btn-sm btn-outline-secondary edit-user-btn" data-user='${JSON.stringify(user).replace(/'/g, "&apos;")}'>
                             <i class="fas fa-edit"></i> Edit
                         </button>
@@ -220,8 +217,22 @@ function openEditUserModal(user) {
     document.getElementById('editUserFirstName').value = user.first_name || '';
     document.getElementById('editUserLastName').value = user.last_name || '';
     document.getElementById('editUserEmail').value = user.email || '';
+    const roleSelect = document.getElementById('editUserRole');
+    roleSelect.value = user.role || 'instructor';
+    // Remember original role so we can avoid unnecessary role updates (and avoid 403s for non-admins)
+    roleSelect.dataset.originalRole = roleSelect.value;
+
+    // Only institution/site admins should be able to change roles.
+    // Instructors (and other non-admins) can still update their own profile fields.
+    const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
+    const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
+    roleSelect.disabled = !canEditRoles;
     
-    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    const modalEl = document.getElementById('editUserModal');
+    const modal =
+        typeof bootstrap.Modal.getOrCreateInstance === 'function'
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
     modal.show();
 }
 
@@ -229,10 +240,14 @@ async function saveEditedUser() {
     const userId = document.getElementById('editUserId').value;
     const firstName = document.getElementById('editUserFirstName').value;
     const lastName = document.getElementById('editUserLastName').value;
+    const roleSelect = document.getElementById('editUserRole');
+    const role = roleSelect.value;
     
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-        const response = await fetch(`/api/users/${userId}/profile`, {
+        
+        // Update profile (name)
+        const profileResponse = await fetch(`/api/users/${userId}/profile`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -244,14 +259,42 @@ async function saveEditedUser() {
             })
         });
         
-        if (response.ok) {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
-            modal.hide();
-            await loadUsers(); // Reload the users list
-        } else {
-            const error = await response.json();
-            alert('Error updating user: ' + (error.error || 'Unknown error'));
+        if (!profileResponse.ok) {
+            const error = await profileResponse.json();
+            alert('Error updating user profile: ' + (error.error || 'Unknown error'));
+            return;
         }
+        
+        // Update role (separate endpoint) - only if current user is allowed AND role actually changed.
+        const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
+        const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
+        const originalRole = roleSelect.dataset.originalRole || role;
+        if (canEditRoles && role !== originalRole) {
+            const roleResponse = await fetch(`/api/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken || ''
+                },
+                body: JSON.stringify({ role })
+            });
+            
+            if (!roleResponse.ok) {
+                const error = await roleResponse.json();
+                alert('Error updating user role: ' + (error.error || 'Unknown error'));
+                return;
+            }
+        }
+        
+        // Success - close modal and reload
+        const modalEl = document.getElementById('editUserModal');
+        const modal =
+            typeof bootstrap.Modal.getOrCreateInstance === 'function'
+                ? bootstrap.Modal.getOrCreateInstance(modalEl)
+                : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.hide();
+        await loadUsers();
+        
     } catch (error) {
         console.error('Error updating user:', error);
         alert('Error updating user: ' + error.message);
@@ -280,6 +323,15 @@ async function saveEditedUser() {
                 <div class="mb-3">
                     <label for="editUserLastName" class="form-label">Last Name</label>
                     <input type="text" class="form-control" id="editUserLastName" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserRole" class="form-label">Role</label>
+                    <select class="form-select" id="editUserRole" required>
+                        <option value="instructor">Instructor</option>
+                        <option value="program_admin">Program Admin</option>
+                        <option value="institution_admin">Institution Admin</option>
+                    </select>
+                    <div class="form-text">Change user's role to promote/demote privileges</div>
                 </div>
             </div>
             <div class="modal-footer">

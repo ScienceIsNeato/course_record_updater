@@ -63,9 +63,9 @@
     <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <label for="statusFilter" class="form-label">Status Filter:</label>
+                   <div class="row g-3">
+                       <div class="col-lg-4 col-md-6">
+                           <label for="statusFilter" class="form-label">Status Filter</label>
                     <select class="form-select" id="statusFilter">
                         <option value="awaiting_approval">Awaiting Approval</option>
                         <option value="approval_pending">Needs Rework</option>
@@ -74,21 +74,41 @@
                         <option value="all">All Statuses</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="sortBy" class="form-label">Sort By:</label>
+                       <div class="col-lg-4 col-md-6">
+                           <label for="programFilter" class="form-label">Program</label>
+                           <select class="form-select" id="programFilter">
+                               <option value="">All Programs</option>
+                           </select>
+                       </div>
+                       <div class="col-lg-4 col-md-6">
+                           <label for="termFilter" class="form-label">Term</label>
+                           <select class="form-select" id="termFilter">
+                               <option value="">All Terms</option>
+                           </select>
+                       </div>
+                   </div>
+                   <div class="row g-3 mt-2">
+                       <div class="col-lg-4 col-md-6">
+                           <label for="sortBy" class="form-label">Sort By</label>
                     <select class="form-select" id="sortBy">
                         <option value="submitted_at">Submission Date</option>
                         <option value="course_number">Course Number</option>
                         <option value="instructor_name">Instructor</option>
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label for="sortOrder" class="form-label">Sort Order:</label>
+                       <div class="col-lg-4 col-md-6">
+                           <label for="sortOrder" class="form-label">Sort Order</label>
                     <select class="form-select" id="sortOrder">
                         <option value="desc">Newest First</option>
                         <option value="asc">Oldest First</option>
                     </select>
                 </div>
+                       <div class="col-lg-4 col-md-6 d-flex align-items-end justify-content-lg-end">
+                           <button class="btn btn-outline-primary w-100 w-lg-auto" type="button" id="exportCsvBtn">
+                               <i class="fas fa-download me-1"></i>
+                               Export Current View
+                           </button>
+                       </div>
             </div>
         </div>
     </div>
@@ -180,4 +200,3 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='audit_clo.js') }}"></script>
 {% endblock %}
-

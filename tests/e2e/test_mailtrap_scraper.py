@@ -31,7 +31,7 @@ def test_scraper_basic():
     print("\n🔍 Attempting to fetch latest email...")
 
     email = wait_for_email(
-        recipient_email="@lassietests.mailtrap.io",  # All test emails go here
+        recipient_email="@loopclosertests.mailtrap.io",  # All test emails go here
         timeout=10,  # Should be instant since emails already exist
     )
 

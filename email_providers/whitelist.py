@@ -1,8 +1,12 @@
 """
 Email Whitelist for Environment-Based Protection
 
-Prevents accidental email sending to real users in non-production environments.
+Prevents accidental email sending to real users in local/test environments.
 Configurable via EMAIL_WHITELIST environment variable.
+
+Environment behavior:
+- local, test: Whitelist enforced (blocks non-whitelisted emails)
+- dev, staging, production: Whitelist disabled (all emails allowed)
 """
 
 import os
@@ -12,10 +16,13 @@ from logging_config import get_logger
 
 logger = get_logger(__name__)
 
+# Environments where whitelist is enforced
+WHITELIST_ENFORCED_ENVS = {"local", "test", "e2e"}
+
 
 class EmailWhitelist:
     """
-    Manages email address whitelist for non-production environments
+    Manages email address whitelist for local/test environments.
     
     Usage:
         whitelist = EmailWhitelist()
@@ -30,47 +37,46 @@ class EmailWhitelist:
         Initialize email whitelist
         
         Args:
-            env: Environment name (local, dev, staging, production)
+            env: Environment name (local, test, dev, staging, production)
                  Defaults to ENV environment variable
-            whitelist_emails: List of allowed email addresses
+            whitelist_emails: List of allowed email addresses/patterns
                              Defaults to EMAIL_WHITELIST environment variable
         """
-        self.env = env or os.getenv("ENV", "local").lower()
+        self.env = (env or os.getenv("ENV", "local")).lower()
         
         # Load whitelist from environment or use provided list
         if whitelist_emails is None:
             whitelist_str = os.getenv("EMAIL_WHITELIST", "")
             whitelist_emails = [
-                email.strip()
+                email.strip().lower()
                 for email in whitelist_str.split(",")
                 if email.strip()
             ]
+        else:
+            # Normalize provided patterns
+            whitelist_emails = [e.strip().lower() for e in whitelist_emails if e.strip()]
         
         self.whitelist: Set[str] = set(whitelist_emails)
         
-        # Production has no restrictions
-        self.is_production = self.env == "production"
+        # Whitelist only enforced in local/test environments
+        self.whitelist_enforced = self.env in WHITELIST_ENFORCED_ENVS
         
         logger.info(
-            f"[EmailWhitelist] Initialized for {self.env} environment "
-            f"({len(self.whitelist)} whitelisted emails)"
-        )
-        logger.info(
-            f"[EmailWhitelist] Whitelist contents: {sorted(self.whitelist)}"
-        )
-        logger.info(
-            f"[EmailWhitelist] EMAIL_WHITELIST env var: {os.getenv('EMAIL_WHITELIST', 'NOT SET')}"
+            f"[EmailWhitelist] Initialized for '{self.env}' environment "
+            f"(whitelist {'ENFORCED' if self.whitelist_enforced else 'DISABLED'}, "
+            f"{len(self.whitelist)} patterns configured)"
         )
         
-        if not self.is_production and not self.whitelist:
+        if self.whitelist_enforced and not self.whitelist:
             logger.warning(
-                "[EmailWhitelist] No whitelist configured for non-production environment! "
-                "Set EMAIL_WHITELIST environment variable to allow email sending."
+                "[EmailWhitelist] No whitelist configured for local/test environment! "
+                "Set EMAIL_WHITELIST environment variable to allow email sending. "
+                "Example: EMAIL_WHITELIST=*@ethereal.email,*@test.local"
             )
 
     def is_allowed(self, email: str) -> bool:
         """
-        Check if an email address is allowed to receive emails
+        Check if an email address is allowed to receive emails.
         
         Args:
             email: Email address to check
@@ -78,96 +84,67 @@ class EmailWhitelist:
         Returns:
             True if email is allowed, False otherwise
         """
-        # Production: allow all emails
-        if self.is_production:
+        # Whitelist not enforced in dev/staging/production - allow all emails
+        if not self.whitelist_enforced:
             return True
         
-        # Non-production: check whitelist
+        # Local/test environments: check whitelist
         email_lower = email.lower().strip()
         
         # Exact match
         if email_lower in self.whitelist:
             return True
         
-        # Domain wildcard match (e.g., "*@ethereal.email")
-        for whitelisted in self.whitelist:
-            if whitelisted.startswith("*@"):
-                domain = whitelisted[2:]
+        # Domain wildcard match (e.g., "*@ethereal.email", "*@test.local")
+        for pattern in self.whitelist:
+            if pattern.startswith("*@"):
+                domain = pattern[2:].lower()
                 if email_lower.endswith(f"@{domain}"):
                     return True
         
+        logger.debug(
+            f"[EmailWhitelist] Email '{email}' not in whitelist for {self.env} environment"
+        )
         return False
 
-    def filter_recipients(self, recipients: List[str]) -> tuple[List[str], List[str]]:
+    def get_blocked_reason(self, email: str) -> Optional[str]:
         """
-        Filter a list of recipients based on whitelist
+        Get reason why an email is blocked, or None if allowed.
         
         Args:
-            recipients: List of email addresses
+            email: Email address to check
             
         Returns:
-            Tuple of (allowed_emails, blocked_emails)
-        """
-        allowed = []
-        blocked = []
-        
-        for email in recipients:
-            if self.is_allowed(email):
-                allowed.append(email)
-            else:
-                blocked.append(email)
-        
-        if blocked:
-            logger.warning(
-                f"[EmailWhitelist] Blocked {len(blocked)} emails in {self.env} environment: "
-                f"{', '.join(blocked[:3])}{'...' if len(blocked) > 3 else ''}"
-            )
-        
-        return allowed, blocked
-
-    def get_safe_recipient(self, email: str, fallback: Optional[str] = None) -> str:
-        """
-        Get a safe recipient email address
-        
-        If the email is not whitelisted, returns a fallback address.
-        Useful for testing where you want to redirect all emails.
-        
-        Args:
-            email: Intended recipient email
-            fallback: Fallback email if not whitelisted (uses first whitelisted email if None)
-            
-        Returns:
-            Safe email address to use
+            Reason string if blocked, None if allowed
         """
         if self.is_allowed(email):
-            return email
+            return None
         
-        # Use fallback or first whitelisted email
-        if fallback:
-            return fallback
-        elif self.whitelist:
-            return next(iter(self.whitelist))
-        else:
-            # No whitelist configured, return original (will likely be blocked)
-            logger.error(
-                f"[EmailWhitelist] No fallback available for {email} in {self.env} environment"
-            )
-            return email
+        return (
+            f"Email address '{email}' is not on the whitelist for the '{self.env}' environment. "
+            f"Add it to EMAIL_WHITELIST or use a whitelisted domain "
+            f"(configured: {sorted(self.whitelist)})"
+        )
 
 
-# Singleton instance for easy access
-_default_whitelist = None
+# Singleton instance
+_whitelist_instance: Optional[EmailWhitelist] = None
 
 
 def get_email_whitelist() -> EmailWhitelist:
     """
-    Get the default email whitelist instance
+    Get the singleton email whitelist instance.
     
     Returns:
-        EmailWhitelist instance configured from environment
+        EmailWhitelist: Singleton whitelist instance
     """
-    global _default_whitelist
-    if _default_whitelist is None:
-        _default_whitelist = EmailWhitelist()
-    return _default_whitelist
+    global _whitelist_instance
+    if _whitelist_instance is None:
+        _whitelist_instance = EmailWhitelist()
+    return _whitelist_instance
 
+
+def reset_whitelist() -> None:
+    """Reset the singleton instance (for testing)."""
+    global _whitelist_instance
+    _whitelist_instance = None

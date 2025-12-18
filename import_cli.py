@@ -89,11 +89,7 @@ Options:
         help="Import adapter to use (default: cei_excel_adapter)",
     )
 
-    parser.add_argument(
-        "--institution-id",
-        required=True,
-        help="Institution ID to import data for",
-    )
+    # Duplicate --institution-id removed
 
     parser.add_argument(
         "--verbose",
@@ -314,8 +310,8 @@ def main():
             institution_id=args.institution_id,
             conflict_strategy=conflict_strategy,
             dry_run=args.dry_run,
-            adapter_name=args.adapter,
-            delete_existing_db=args.delete_existing_db,
+            adapter_id=args.adapter,
+            # delete_existing_db=args.delete_existing_db, # Not supported by service
             verbose=args.verbose,
         )
 

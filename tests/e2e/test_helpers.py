@@ -118,6 +118,14 @@ def login_as_user(page: Page, base_url: str, email: str, password: str) -> Page:
     # Wait for redirect to dashboard
     try:
         page.wait_for_url(f"{base_url}/dashboard", timeout=5000)
+        page.wait_for_load_state("networkidle")
+
+        # Verify session is properly established (currentUser is set by page JS)
+        # This prevents flaky tests where session wasn't fully propagated
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.id",
+            timeout=15000,
+        )
     except Exception:
         # Login might have failed - let test handle the error
         pass

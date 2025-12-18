@@ -63,13 +63,13 @@ class TestAdminInstructorReminderSingleRecipient:
         - Reply-To: Program admin's email (optional)
         """
         # Setup: Log in as program admin
-        admin_email = "sarah.williams@lassietests.mailtrap.io"
-        admin_name = "Dr. Sarah Williams"
+        _admin_email = "sarah.williams@loopclosertests.mailtrap.io"  # noqa: F841
+        _admin_name = "Dr. Sarah Williams"  # noqa: F841
         # ... login as program admin ...
 
         # Setup: Instructor who needs to submit data
-        instructor_email = "michael.brown@lassietests.mailtrap.io"
-        instructor_name = "Prof. Michael Brown"
+        _instructor_email = "michael.brown@loopclosertests.mailtrap.io"  # noqa: F841
+        _instructor_name = "Prof. Michael Brown"  # noqa: F841
         # ... instructor account exists but hasn't submitted course data ...
 
         # 1. Navigate to course management dashboard
@@ -191,17 +191,20 @@ class TestAdminInstructorReminderBulkSend:
         - Email rate limiting respected (if applicable)
         """
         # Setup: Log in as program admin
-        admin_email = "sarah.williams@lassietests.mailtrap.io"
+        _admin_email = "sarah.williams@loopclosertests.mailtrap.io"  # noqa: F841
 
         # Setup: Multiple instructors needing reminders
         instructors = [
             {
-                "email": "instructor1@lassietests.mailtrap.io",
+                "email": "instructor1@loopclosertests.mailtrap.io",
                 "name": "Prof. Alice Adams",
             },
-            {"email": "instructor2@lassietests.mailtrap.io", "name": "Dr. Bob Baker"},
             {
-                "email": "instructor3@lassietests.mailtrap.io",
+                "email": "instructor2@loopclosertests.mailtrap.io",
+                "name": "Dr. Bob Baker",
+            },
+            {
+                "email": "instructor3@loopclosertests.mailtrap.io",
                 "name": "Prof. Carol Chen",
             },
         ]

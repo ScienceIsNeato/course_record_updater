@@ -124,6 +124,38 @@ function validateImportForm(fileInput, conflictStrategy) {
   return true;
 }
 
+function handleCompletedStatus(
+  progress,
+  shouldAutoRefresh,
+  hideProgress,
+  showImportResults,
+  showSuccessAndRefresh
+) {
+  hideProgress();
+
+  // Show final results
+  if (!progress.result) {
+    return;
+  }
+
+  showImportResults(progress.result, true);
+
+  // Auto-refresh if it was a real import (not dry run)
+  if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
+    showSuccessAndRefresh();
+  }
+}
+
+function handleRunningStatus(startTime, maxPollTime, pollInterval, poll, hideProgress, showError) {
+  if (Date.now() - startTime < maxPollTime) {
+    setTimeout(poll, pollInterval);
+    return;
+  }
+
+  hideProgress();
+  showError('Import is taking longer than expected. Please check the server logs.');
+}
+
 function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
   let confirmMsg = `This will ${conflictStrategy.value === 'use_theirs' ? 'modify' : 'potentially modify'} your database.`;
 
@@ -137,7 +169,10 @@ function buildConfirmationMessage(conflictStrategy, deleteExistingDb) {
 
 function buildImportFormData(fileInput, conflictStrategy, dryRun, adapterSelect, deleteExistingDb) {
   const formData = new FormData();
+
+  // Add uploaded file
   formData.append('file', fileInput.files[0]);
+
   formData.append('conflict_strategy', conflictStrategy.value);
   formData.append('dry_run', dryRun?.checked ? 'true' : 'false');
   formData.append('adapter_name', adapterSelect.value);
@@ -689,7 +724,6 @@ function initializeImportForm() {
       const conflictStrategy = document.querySelector('input[name="conflict_strategy"]:checked');
       const dryRun = document.getElementById('dry_run');
       const deleteExistingDb = document.getElementById('delete_existing_db');
-
       // Validate form inputs
       if (!validateImportForm(fileInput, conflictStrategy)) {
         return;
@@ -753,44 +787,25 @@ function initializeImportForm() {
 
         // Handle different progress statuses
         if (progress.status === 'completed') {
-          handleCompletedStatus(progress, shouldAutoRefresh);
+          handleCompletedStatus(
+            progress,
+            shouldAutoRefresh,
+            hideProgress,
+            showImportResults,
+            showSuccessAndRefresh
+          );
         } else if (progress.status === 'error') {
           // Handle error status inline
           hideProgress();
           showError('Import failed: ' + (progress.message || 'Unknown error'));
         } else if (progress.status === 'running' || progress.status === 'starting') {
-          handleRunningStatus(startTime, maxPollTime, pollInterval, poll);
+          handleRunningStatus(startTime, maxPollTime, pollInterval, poll, hideProgress, showError);
         }
       } catch (error) {
         hideProgress();
         showError('Lost connection to import progress. Import may still be running.');
       }
     };
-
-    // Helper function to handle completed status
-    function handleCompletedStatus(progress, shouldAutoRefresh) {
-      hideProgress();
-
-      // Show final results
-      if (progress.result) {
-        showImportResults(progress.result, true);
-
-        // Auto-refresh if it was a real import (not dry run)
-        if (shouldAutoRefresh && progress.result && progress.result.records_created > 0) {
-          showSuccessAndRefresh();
-        }
-      }
-    }
-
-    // Helper function to handle running status
-    function handleRunningStatus(startTime, maxPollTime, pollInterval, poll) {
-      if (Date.now() - startTime < maxPollTime) {
-        setTimeout(poll, pollInterval);
-      } else {
-        hideProgress();
-        showError('Import is taking longer than expected. Please check the server logs.');
-      }
-    }
 
     // Start polling
     setTimeout(poll, 500); // Start after 500ms

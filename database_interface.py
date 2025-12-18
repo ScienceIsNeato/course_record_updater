@@ -203,7 +203,11 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_outcomes_by_status(
-        self, institution_id: str, status: str, program_id: Optional[str] = None
+        self,
+        institution_id: str,
+        status: str,
+        program_id: Optional[str] = None,
+        term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status"""
         raise NotImplementedError
@@ -363,6 +367,11 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_courses_by_program(self, program_id: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_programs_for_course(self, course_id: str) -> List[Dict[str, Any]]:
+        """Get all programs that a course is attached to"""
         raise NotImplementedError
 
     @abstractmethod

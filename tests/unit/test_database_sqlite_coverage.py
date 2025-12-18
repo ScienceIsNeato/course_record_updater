@@ -249,3 +249,10 @@ class TestUserCreation:
             }
         )
         assert user2_id is None
+
+
+#
+# NOTE: status+program+term filtered outcomes live on the higher-level service in
+# `database_sqlite.DatabaseService` and are exercised via `database_service.get_outcomes_by_status`
+# tests (see `tests/unit/test_database_service.py`). SQLiteDatabase intentionally doesn't expose
+# that API.

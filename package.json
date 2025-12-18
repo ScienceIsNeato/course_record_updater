@@ -1,7 +1,7 @@
 {
-  "name": "lassie",
+  "name": "loopcloser",
   "version": "1.0.0",
-  "description": "LASSIE Learning Assessment Solutions",
+  "description": "Loopcloser - Close the Assessment Loop",
   "main": "static/script.js",
   "scripts": {
     "lint": "eslint static/**/*.js",
