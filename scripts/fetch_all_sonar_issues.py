@@ -41,7 +41,8 @@ def fetch_all_issues():
             response = requests.get(
                 f"{API_BASE}/issues/search",
                 auth=(SONAR_TOKEN, ""),
-                params=params
+                params=params,
+                timeout=30  # B113: Always set timeout on requests
             )
             
             if response.status_code != 200:

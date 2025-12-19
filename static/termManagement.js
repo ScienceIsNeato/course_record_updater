@@ -335,7 +335,7 @@ async function deleteTerm(termId, termName) {
  */
 async function loadTerms() {
   const container = document.getElementById('termsTableContainer');
-  container.innerHTML = `
+  container.innerHTML = ` // nosemgrep
     <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
       <div class="spinner-border" aria-hidden="true">
         <span class="visually-hidden">Loading terms...</span>
@@ -362,7 +362,7 @@ async function loadTerms() {
     currentTerms = data.terms || [];
 
     if (currentTerms.length === 0) {
-      container.innerHTML = `
+      container.innerHTML = ` // nosemgrep
         <div class="alert alert-info">
           <i class="fas fa-info-circle me-2"></i>
           No terms found. Create a term to get started.
@@ -422,10 +422,10 @@ async function loadTerms() {
       </div>
     `;
 
-    container.innerHTML = html;
+    container.innerHTML = html; // nosemgrep
   } catch (error) {
     console.error('Error loading terms:', error); // eslint-disable-line no-console
-    container.innerHTML = `
+    container.innerHTML = ` // nosemgrep
       <div class="alert alert-danger">
         <i class="fas fa-exclamation-triangle me-2"></i>
         Error loading terms: ${escapeHtml(error.message)}

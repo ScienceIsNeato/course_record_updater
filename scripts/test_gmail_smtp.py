@@ -39,7 +39,7 @@ def test_gmail_smtp():
     
     # Create Flask app context
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = "test-key"
+    app.config["SECRET_KEY"] = "test-key"  # nosec B105  # nosemgrep
     app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "587"))
     app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
@@ -70,7 +70,7 @@ def test_gmail_smtp():
         with app.app_context():
             success = EmailService.send_verification_email(
                 email=test_recipient,
-                verification_token="test-token-12345",
+                verification_token="test-token-12345",  # nosec B106
                 user_name="Bella Barkington"
             )
         

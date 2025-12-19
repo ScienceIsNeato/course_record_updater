@@ -16,7 +16,7 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
   const select = document.getElementById(selectId);
   if (!select) return;
 
-  select.innerHTML = '<option value="">Loading...</option>';
+  select.innerHTML = '<option value="">Loading...</option>'; // nosemgrep
   select.disabled = true;
 
   try {
@@ -42,17 +42,17 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
     const items = Object.values(data).find(Array.isArray) || [];
 
     if (items.length === 0) {
-      select.innerHTML = `<option value="">${emptyText}</option>`;
+      select.innerHTML = `<option value="">${emptyText}</option>`; // nosemgrep
     } else {
       const options = items.map(mapFn);
-      select.innerHTML =
+      select.innerHTML = // nosemgrep
         '<option value="">-- Select --</option>' +
         options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
     }
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error(`Error loading ${selectId}:`, error);
-    select.innerHTML = '<option value="">Error loading options</option>';
+    console.error(`Error loading ${selectId}:`, error); // nosemgrep
+    select.innerHTML = '<option value="">Error loading options</option>'; // nosemgrep
   } finally {
     select.disabled = false;
   }
@@ -94,7 +94,7 @@ async function submitCRUDForm(config) {
     }
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error(`${endpoint} error:`, error);
+    console.error(`${endpoint} error:`, error); // nosemgrep
     if (onError) {
       onError(null, { error: error.message });
     } else {

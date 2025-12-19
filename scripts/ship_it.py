@@ -28,7 +28,7 @@ See SONAR_ANALYSIS_RESULTS.md for the proper workflow.
 import argparse
 import concurrent.futures
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import time
 from dataclasses import dataclass
@@ -85,7 +85,8 @@ class QualityGateExecutor:
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            ("security", "🔒 Security Audit (bandit, safety)"),
+            ("security", "🔒 Security Audit (bandit, semgrep, safety)"),
+            ("complexity", "🧠 Complexity Analysis (radon/xenon)"),
             ("duplication", "🔄 Code Duplication Check"),
             # SonarCloud supports an analyze/status split for fast iteration.
             # We also keep a unified "sonar" check for the common workflow.
@@ -102,6 +103,7 @@ class QualityGateExecutor:
         # Fast checks for commit validation (optimized for <40s total time)
         # Key optimization: Run coverage instead of tests (coverage includes tests)
         # This saves ~28s by avoiding duplicate test execution
+        # Security runs in parallel, so doesn't add to total time
         self.commit_checks = [
             ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
@@ -109,7 +111,8 @@ class QualityGateExecutor:
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            # Duplication and sonar excluded from commit checks (too slow)
+            ("security", "🔒 Security Audit (bandit, semgrep, safety)"),  # Zero tolerance
+            # Duplication, sonar, complexity excluded from commit (slower or PR-level)
         ]
 
         # Full checks for PR validation (all checks)
@@ -165,7 +168,7 @@ class QualityGateExecutor:
                 timeout_seconds = 300
             
             # Run the individual check
-            result = subprocess.run(
+            result = subprocess.run(  # nosec
                 [self.script_path, f"--{actual_flag}"],
                 capture_output=True,
                 text=True,
@@ -617,15 +620,15 @@ def _get_pr_context():
     """
     import json
     import os
-    import subprocess
+    import subprocess  # nosec
 
     # Detect current PR number from branch or environment
     pr_number = os.getenv("PR_NUMBER")
     if not pr_number:
         # Try to get from current branch if we're in a PR
         try:
-            result = subprocess.run(
-                ["gh", "pr", "view", "--json", "number"],
+            result = subprocess.run(  # nosec
+                ["gh", "pr", "view", "--json", "number,url,title"],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -641,7 +644,7 @@ def _get_pr_context():
 
     # Get repository info
     try:
-        repo_result = subprocess.run(
+        repo_result = subprocess.run(  # nosec
             ["gh", "repo", "view", "--json", "owner,name"],
             capture_output=True,
             text=True,
@@ -716,7 +719,7 @@ def resolve_review_thread(thread_id):
     """
     try:
         import json
-        import subprocess
+        import subprocess  # nosec
         
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -734,7 +737,7 @@ def resolve_review_thread(thread_id):
         }
         """
         
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             [
                 "gh",
                 "api",
@@ -782,7 +785,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
     """
     try:
         import json
-        import subprocess
+        import subprocess  # nosec
         
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -804,7 +807,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
             }
             """
             
-            result = subprocess.run(
+            result = subprocess.run(  # nosec
                 [
                     "gh",
                     "api",
@@ -835,7 +838,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
         
         # For general comments, use REST API
         else:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec
                 [
                     "gh",
                     "api",
@@ -871,7 +874,7 @@ def check_pr_comments():
     try:
         import json
         import os
-        import subprocess
+        import subprocess  # nosec
 
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -919,7 +922,7 @@ def check_pr_comments():
         """
 
         # Execute GraphQL query
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             [
                 "gh",
                 "api",
@@ -1012,7 +1015,7 @@ def check_ci_status():
     """
     try:
         import json
-        import subprocess
+        import subprocess  # nosec
         
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
@@ -1027,7 +1030,7 @@ def check_ci_status():
         
         # Use statusCheckRollup first - it gives us individual job/check names
         # This matches what GitHub UI shows (e.g., "Quality Gate / e2e-tests")
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             [
                 "gh",
                 "pr",
@@ -1076,7 +1079,7 @@ def check_ci_status():
             }
         
         # Fallback to workflow runs API (less detailed, but better than nothing)
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             [
                 "gh",
                 "api",
@@ -1106,7 +1109,7 @@ def check_ci_status():
                 if line.strip():
                     try:
                         workflow_runs.append(json.loads(line))
-                    except:
+                    except Exception:  # nosec B110 - skip malformed JSON lines
                         pass
         
         # Analyze workflow run statuses
@@ -1149,9 +1152,9 @@ def check_ci_status():
 
 def _get_current_commit_sha():
     """Get the current git commit SHA."""
-    import subprocess
+    import subprocess  # nosec
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
@@ -1194,7 +1197,7 @@ def generate_pr_issues_report(ci_status, comments_data, quality_check_results, p
         try:
             with open(checklist_state_file, "r", encoding="utf-8") as f:
                 checklist_state = json.load(f)
-        except:
+        except Exception:  # nosec B110 - fallback to empty state if file corrupted
             pass
     
     failed_checks = [r for r in quality_check_results if r.status == CheckStatus.FAILED]

@@ -56,7 +56,7 @@ class SonarCloudQualityGateConfigurator:
             if method != "GET":
                 request.get_method = lambda: method  # type: ignore[method-assign]
 
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request) as response:  # nosec B310  # nosemgrep
                 return json.loads(response.read().decode())
 
         except urllib.error.HTTPError as e:
@@ -65,7 +65,7 @@ class SonarCloudQualityGateConfigurator:
                 try:
                     error_data = json.loads(e.read().decode())
                     print(f"   Error details: {error_data}")
-                except:
+                except Exception:  # nosec B110 - error details may not be parseable
                     pass
             return {}
         except Exception as e:

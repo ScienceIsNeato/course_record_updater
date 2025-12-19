@@ -12,7 +12,7 @@ Usage:
 """
 
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
@@ -37,7 +37,7 @@ def check_environment():
 def check_sonar_scanner():
     """Check if sonar-scanner is available."""
     try:
-        result = subprocess.run(["sonar-scanner", "--version"], 
+        result = subprocess.run(["sonar-scanner", "--version"],   # nosec
                               capture_output=True, text=True, check=True)
         print(f"✅ SonarScanner found: {result.stdout.strip()}")
         return True
@@ -55,7 +55,7 @@ def run_coverage_analysis():
     
     try:
         # Run pytest with coverage
-        _ = subprocess.run([
+        _ = subprocess.run([  # nosec
             "python", "-m", "pytest", 
             "tests/unit/", 
             "--cov=.", 
@@ -84,7 +84,7 @@ def run_sonar_analysis():
     ]
     
     try:
-        _ = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        _ = subprocess.run(cmd, check=True, capture_output=True, text=True)  # nosec
         print("✅ SonarCloud analysis completed successfully")
         print("🔗 View results: https://sonarcloud.io/project/overview?id=ScienceIsNeato_course_record_updater")
         return True

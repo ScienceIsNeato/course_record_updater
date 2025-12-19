@@ -20,7 +20,7 @@ Usage:
 import argparse
 import json
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
@@ -28,7 +28,7 @@ from pathlib import Path
 def get_pr_number():
     """Get current PR number from git context."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["gh", "pr", "view", "--json", "number"],
             capture_output=True,
             text=True,
@@ -36,21 +36,21 @@ def get_pr_number():
         )
         data = json.loads(result.stdout)
         return data.get("number")
-    except:
+    except Exception:  # nosec B110 - return None if not in PR context
         return None
 
 
 def get_current_commit():
     """Get current commit SHA."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
             check=True,
         )
         return result.stdout.strip()[:8]
-    except:
+    except Exception:  # nosec B110 - return None if git command fails
         return None
 
 
@@ -67,7 +67,7 @@ def load_checklist_state(pr_number, commit_sha):
         try:
             with open(state_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except:
+        except Exception:  # nosec B110 - fallback to empty state if file corrupted
             pass
     
     return {
@@ -247,7 +247,7 @@ def main():
                 from scripts.ship_it import reply_to_pr_comment
 
                 # Create reply body with commit reference
-                commit_sha_full = subprocess.run(
+                commit_sha_full = subprocess.run(  # nosec
                     ["git", "rev-parse", "HEAD"],
                     capture_output=True,
                     text=True,

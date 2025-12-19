@@ -7,9 +7,9 @@ NOT coverage of specific lines added. If you touch a file, ALL uncovered
 lines in that file count against you.
 """
 
-import subprocess
+import subprocess  # nosec B404
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET  # B314: Use defusedxml instead of xml.etree
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Set
@@ -18,7 +18,7 @@ from typing import Dict, Set
 def get_modified_files(base_branch: str = "origin/main") -> Set[str]:
     """Get list of files modified in PR."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["git", "diff", "--name-only", base_branch, "HEAD"],
             capture_output=True,
             text=True,

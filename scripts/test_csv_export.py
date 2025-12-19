@@ -56,8 +56,10 @@ def test_export():
             output_format="zip",
         )
 
-        # Export to temp file
-        output_path = "/tmp/generic_csv_test_export.zip"
+        # Export to temp file using secure tempfile (B108 fix)
+        import tempfile
+        temp_dir = tempfile.mkdtemp(prefix="csv_export_test_")
+        output_path = f"{temp_dir}/generic_csv_test_export.zip"
         logger.info(f"📦 Exporting to: {output_path}")
 
         result = export_service.export_data(config, output_path)

@@ -79,7 +79,7 @@ class BaselineSeeder:
         self.log("👑 Creating site administrator...")
 
         email = "siteadmin@system.local"
-        password = "SiteAdmin123!"
+        password = "SiteAdmin123!"  # nosec B105
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -121,7 +121,7 @@ class BaselineSeeder:
                 admin_ids.append(existing["user_id"])
                 continue
 
-            password_hash = hash_password("InstitutionAdmin123!")
+            password_hash = hash_password("InstitutionAdmin123!")  # nosec B106
             schema = User.create_schema(
                 email=admin_data["email"],
                 first_name=admin_data["first_name"],
@@ -256,7 +256,7 @@ class BaselineSeeder:
         ]
         
         instructor_ids = []
-        password_hash = hash_password("Instructor123!")
+        password_hash = hash_password("Instructor123!")  # nosec B106
         
         for inst_data in instructors_data:
             inst_id = institution_ids[inst_data["institution_idx"]]
@@ -295,7 +295,7 @@ class BaselineSeeder:
         if existing:
             return existing["user_id"]
         
-        password_hash = hash_password("ProgramAdmin123!")
+        password_hash = hash_password("ProgramAdmin123!")  # nosec B106
         schema = User.create_schema(
             email=email,
             first_name="Bob",
@@ -467,7 +467,7 @@ class DemoSeeder(BaselineSeeder):
         self.log("👩‍💼 Creating Demo Admin (Institution Admin)...")
 
         email = "demo2025.admin@example.com"
-        password = "Demo2025!"
+        password = "Demo2025!"  # nosec B105
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -565,7 +565,7 @@ class DemoSeeder(BaselineSeeder):
         ]
 
         instructor_ids = []
-        password_hash = hash_password("Instructor123!")
+        password_hash = hash_password("Instructor123!")  # nosec B106
 
         for fac_data in faculty_data:
             existing = db.get_user_by_email(fac_data["email"])
@@ -644,7 +644,7 @@ class DemoSeeder(BaselineSeeder):
                 offering_id=offering_id,
                 section_number=f"001",
                 instructor_id=instructor_id,
-                enrollment=random.randint(15, 35),
+                enrollment=random.randint(15, 35),  # nosec B311
                 status="assigned",
             )
             section_id = db.create_course_section(schema)
@@ -652,6 +652,68 @@ class DemoSeeder(BaselineSeeder):
                 section_count += 1
 
         self.log(f"   ✅ Created {len(offering_ids)} offerings and {section_count} sections")
+
+    def create_demo_clos(self, course_ids):
+        """Create Course Learning Outcomes (CLOs) for demo courses"""
+        self.log("🎯 Creating Course Learning Outcomes...")
+        
+        from models import CourseOutcome
+        from constants import CLOStatus
+        
+        # Get course info to match CLOs to courses
+        courses = []
+        for cid in course_ids:
+            course = db.get_course_by_id(cid)
+            if course:
+                courses.append(course)
+        
+        # CLO templates by course prefix
+        clo_templates = {
+            "BIOL": [
+                {"num": 1, "desc": "Apply scientific method to biological questions", "method": "Lab Report"},
+                {"num": 2, "desc": "Analyze cellular and molecular processes", "method": "Written Exam"},
+                {"num": 3, "desc": "Evaluate biological systems and interactions", "method": "Research Paper"},
+            ],
+            "ZOOL": [
+                {"num": 1, "desc": "Identify and classify animal species", "method": "Field Observation"},
+                {"num": 2, "desc": "Analyze animal behavior patterns", "method": "Lab Report"},
+                {"num": 3, "desc": "Evaluate ecological relationships", "method": "Final Exam"},
+            ],
+        }
+        
+        clo_count = 0
+        for course in courses:
+            course_num = course.get("course_number", "")
+            prefix = course_num.split("-")[0] if "-" in course_num else ""
+            
+            templates = clo_templates.get(prefix, [])
+            course_id = course.get("id") or course.get("course_id")
+            
+            for template in templates:
+                # Check if CLO already exists
+                existing = db.get_course_outcomes(course_id)
+                already_exists = any(
+                    str(clo.get("clo_number")) == str(template["num"])
+                    for clo in (existing or [])
+                )
+                
+                if already_exists:
+                    continue
+                
+                schema = CourseOutcome.create_schema(
+                    course_id=course_id,
+                    clo_number=str(template["num"]),
+                    description=template["desc"],
+                    assessment_method=template["method"],
+                )
+                schema["status"] = CLOStatus.ASSIGNED
+                schema["active"] = True
+                
+                outcome_id = db.create_course_outcome(schema)
+                if outcome_id:
+                    clo_count += 1
+        
+        self.log(f"   ✅ Created {clo_count} CLOs across demo courses")
 
     def link_courses_to_programs(self, institution_id):
         """Link courses to programs based on course prefixes"""
@@ -691,8 +753,7 @@ class DemoSeeder(BaselineSeeder):
                         db.add_course_to_program(course["id"], program_id)
                         linked_count += 1
                         self.log(f"   ✓ Linked {course_number} to {program_name}")
-                    except Exception as e:
-                        # Might already be linked, that's okay
+                    except Exception:  # nosec B110 - might already be linked
                         pass
         
         if linked_count > 0:
@@ -719,6 +780,7 @@ class DemoSeeder(BaselineSeeder):
         course_ids = self.create_demo_courses(inst_id, program_ids)
         instructor_ids = self.create_demo_faculty(inst_id, program_ids)
         self.create_demo_offerings_and_sections(inst_id, course_ids, term_id, instructor_ids)
+        self.create_demo_clos(course_ids)
 
         self.log("✅ Demo seeding completed!")
         self.print_summary()

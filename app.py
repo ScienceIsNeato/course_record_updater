@@ -488,4 +488,11 @@ if __name__ == "__main__":
     # SchemaValidationError if validation fails, blocking startup
     validate_schema_or_exit(db)
 
-    app.run(host="0.0.0.0", port=port, debug=use_debug)
+    # SECURITY: Only bind to all interfaces (0.0.0.0) in container/CI environments
+    # In local development, bind to localhost only to prevent network exposure
+    # B104: This is intentional for containerized deployments
+    bind_all = os.environ.get("BIND_ALL_INTERFACES", "false").lower() == "true"
+    host = (
+        "0.0.0.0" if bind_all else "127.0.0.1"  # nosec B104 - intentional for bind_all
+    )
+    app.run(host=host, port=port, debug=use_debug)

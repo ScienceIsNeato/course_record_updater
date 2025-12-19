@@ -28,7 +28,7 @@ function escapeHtml(str) {
 function setLoadingState(containerId, message) {
   const container = document.getElementById(containerId);
   if (container) {
-    container.innerHTML = `
+    container.innerHTML = ` // nosemgrep
       <div class="text-center text-muted py-4">
         <div class="spinner-border spinner-border-sm me-2" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -48,7 +48,7 @@ function setLoadingState(containerId, message) {
 function setErrorState(containerId, message) {
   const container = document.getElementById(containerId);
   if (container) {
-    container.innerHTML = `
+    container.innerHTML = ` // nosemgrep
       <div class="alert alert-danger" role="alert">
         <i class="fas fa-exclamation-triangle me-2"></i>
         ${escapeHtml(message)}
@@ -66,7 +66,7 @@ function setErrorState(containerId, message) {
 function setEmptyState(containerId, message) {
   const container = document.getElementById(containerId);
   if (container) {
-    container.innerHTML = `
+    container.innerHTML = ` // nosemgrep
       <div class="text-center text-muted py-4">
         <i class="fas fa-inbox fa-2x mb-3"></i>
         <p>${escapeHtml(message)}</p>

@@ -9,9 +9,9 @@ This script cross-references:
 Output: Surgical list of uncovered lines that were actually touched in this PR.
 """
 
-import subprocess
+import subprocess  # nosec B404
 import sys
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET  # B314: Use defusedxml instead of xml.etree
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -44,7 +44,7 @@ def get_repo_metadata() -> str:
     """
     try:
         # Get current commit
-        commit_result = subprocess.run(
+        commit_result = subprocess.run(  # nosec
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
@@ -53,7 +53,7 @@ def get_repo_metadata() -> str:
         commit_sha = commit_result.stdout.strip()[:7]
         
         # Get current branch
-        branch_result = subprocess.run(
+        branch_result = subprocess.run(  # nosec
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True,
             text=True,
@@ -62,7 +62,7 @@ def get_repo_metadata() -> str:
         branch = branch_result.stdout.strip()
         
         # Get git status (check if clean)
-        status_result = subprocess.run(
+        status_result = subprocess.run(  # nosec
             ["git", "status", "--porcelain"],
             capture_output=True,
             text=True,
@@ -101,7 +101,7 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
     
     try:
         # Try to get PR number and use gh pr diff (matches GitHub/SonarCloud view)
-        pr_result = subprocess.run(
+        pr_result = subprocess.run(  # nosec
             ["gh", "pr", "view", "--json", "number", "-q", ".number"],
             capture_output=True,
             text=True,
@@ -111,7 +111,7 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
         if pr_result.returncode == 0 and pr_result.stdout.strip():
             pr_number = pr_result.stdout.strip()
             print(f"   Using PR #{pr_number} diff (matches SonarCloud)")
-            pr_diff_result = subprocess.run(
+            pr_diff_result = subprocess.run(  # nosec
                 ["gh", "pr", "diff", pr_number],
                 capture_output=True,
                 text=True,
@@ -122,7 +122,7 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
                 diff_result = pr_diff_result
             else:
                 print(f"   ⚠️  gh pr diff failed (PR too large), falling back to git diff")
-                diff_result = subprocess.run(
+                diff_result = subprocess.run(  # nosec
                     ["git", "diff", base_branch, "HEAD"],
                     capture_output=True,
                     text=True,
@@ -131,7 +131,7 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
         else:
             # Fallback to git diff
             print(f"   Using git diff vs {base_branch}")
-            diff_result = subprocess.run(
+            diff_result = subprocess.run(  # nosec
                 ["git", "diff", base_branch, "HEAD"],
                 capture_output=True,
                 text=True,

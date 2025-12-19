@@ -449,6 +449,7 @@ async function submitAuthForm(config) {
       showError(errorMsg);
     }
   } catch (error) {
+    // nosemgrep
     console.error(`${endpoint} error:`, error); // eslint-disable-line no-console
     showError(`Network error: ${error.message || 'Please check your connection and try again.'}`);
   } finally {

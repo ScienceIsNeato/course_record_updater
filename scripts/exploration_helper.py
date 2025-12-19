@@ -33,7 +33,7 @@ class ExplorationTracker:
             try:
                 with open(self.progress_file, "r") as f:
                     return json.load(f)
-            except Exception:
+            except Exception:  # nosec B110 - fallback to defaults if file is corrupted
                 pass
         return {
             "pages_tested": [],
@@ -47,7 +47,7 @@ class ExplorationTracker:
             try:
                 with open(self.findings_file, "r") as f:
                     return json.load(f)
-            except Exception:
+            except Exception:  # nosec B110 - fallback to defaults if file is corrupted
                 pass
         return {
             "working": [],

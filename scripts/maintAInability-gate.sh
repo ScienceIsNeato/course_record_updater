@@ -857,35 +857,76 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SECURITY AUDIT (BANDIT + SAFETY)
+# SECURITY AUDIT (BANDIT + SEMGREP + SAFETY)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_SECURITY" == "true" ]]; then
-  echo "🔒 Security Audit (bandit + safety)"
+  echo "🔒 Security Audit (bandit + semgrep + safety)"
 
   SECURITY_PASSED=true
 
-  # Run bandit for security issues in code (main source files only, with timeout)
-  # Only fail on HIGH severity issues, ignore LOW/MEDIUM for now
-  echo "🔧 Running bandit security scan..."
-  BANDIT_OUTPUT=$(timeout 30s bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests -lll --format json 2>&1) || BANDIT_FAILED=true
+  # Run bandit for Python security issues - ZERO TOLERANCE for any severity
+  echo "  🔧 Running bandit security scan (Python)..."
   
-  # Save bandit report to file for GitHub Actions artifact upload
-  echo "$BANDIT_OUTPUT" > bandit-report.json
+  # Write to file first, use --quiet to suppress progress bar that corrupts JSON
+  bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./demos,./archives --format json --quiet 2>/dev/null > bandit-report.json || BANDIT_FAILED=true
+  
+  # Count issues by severity from the file
+  if [[ -f bandit-report.json ]]; then
+    BANDIT_HIGH=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='HIGH'))" 2>/dev/null || echo "0")
+    BANDIT_MED=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='MEDIUM'))" 2>/dev/null || echo "0")
+    BANDIT_LOW=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='LOW'))" 2>/dev/null || echo "0")
+    BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
+  else
+    BANDIT_TOTAL=0
+  fi
 
-  if [[ "$BANDIT_FAILED" == "true" ]]; then
+  if [[ "$BANDIT_TOTAL" -gt 0 ]]; then
     SECURITY_PASSED=false
-    echo "❌ Bandit security scan failed"
+    echo "  ❌ Bandit found $BANDIT_TOTAL issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED, Low: $BANDIT_LOW)"
+    echo ""
+    echo "  📋 Top issues:"
+    python3 -c "
+import json
+d=json.load(open('bandit-report.json'))
+for r in d.get('results',[])[:5]:
+    print(f\"    [{r.get('issue_severity','?')}] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:60]}...\")
+" 2>/dev/null || true
+    echo ""
+  else
+    echo "  ✅ Bandit: No Python security issues"
+  fi
 
-    # Try to extract meaningful security issues
-    SECURITY_ISSUES=$(echo "$BANDIT_OUTPUT" | grep -E "(HIGH|MEDIUM)" | head -5)
-    if [[ -n "$SECURITY_ISSUES" ]]; then
-      echo "📋 Security Issues Found:"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "$SECURITY_ISSUES" | sed 's/^/  /'
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  # Run Semgrep for comprehensive SAST (Python + JavaScript)
+  echo "  🔧 Running semgrep security scan (Python + JS)..."
+  if command -v semgrep &> /dev/null; then
+    SEMGREP_OUTPUT=$(timeout 60s semgrep scan --config=auto \
+      --exclude="venv" --exclude=".venv" --exclude="node_modules" \
+      --exclude="tests" --exclude="cursor-rules" --exclude="demos" --exclude="archives" \
+      --json --quiet 2>/dev/null) || SEMGREP_FAILED=true
+    
+    # Save semgrep report
+    echo "$SEMGREP_OUTPUT" > semgrep-report.json
+    
+    SEMGREP_COUNT=$(echo "$SEMGREP_OUTPUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results',[])))" 2>/dev/null || echo "0")
+    
+    if [[ "$SEMGREP_COUNT" -gt 0 ]]; then
+      SECURITY_PASSED=false
+      echo "  ❌ Semgrep found $SEMGREP_COUNT issues"
+      echo ""
+      echo "  📋 Top issues:"
+      echo "$SEMGREP_OUTPUT" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for r in d.get('results',[])[:5]:
+    rule = r.get('check_id','').split('.')[-1]
+    print(f\"    {r.get('path','')}:{r.get('start',{}).get('line','')} - {rule}\")
+" 2>/dev/null || true
+      echo ""
+    else
+      echo "  ✅ Semgrep: No security issues"
     fi
   else
-    echo "   ✅ Bandit security scan passed"
+    echo "  ⚠️ Semgrep not installed, skipping (pip install semgrep)"
   fi
 
   # Run safety scan for known vulnerabilities in dependencies
@@ -1034,11 +1075,92 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   fi
 
   if [[ "$SECURITY_PASSED" == "true" ]]; then
-    echo "✅ Security Check: PASSED (bandit + safety)"
+    echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
     add_success "Security Check" "No security vulnerabilities found"
   else
     echo "❌ Security Check: FAILED (security issues found)"
-    add_failure "Security Check" "Security vulnerabilities found" "See detailed output above and address security issues"
+    add_failure "Security Check" "Security vulnerabilities found" "Run './scripts/maintAInability-gate.sh --security' for details"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# COMPLEXITY ANALYSIS (RADON + XENON)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_COMPLEXITY" == "true" ]]; then
+  echo "🧠 Complexity Analysis (radon + xenon)"
+
+  COMPLEXITY_PASSED=true
+
+  # Check if radon is installed
+  if ! command -v radon &> /dev/null; then
+    echo "  ⚠️ radon not found, installing..."
+    pip install radon xenon --quiet
+  fi
+
+  # Run radon for cyclomatic complexity analysis
+  # Using exact numeric threshold: complexity > 15 fails
+  echo "  🔧 Running radon cyclomatic complexity analysis..."
+  
+  # Get complexity with scores (-s flag)
+  RADON_OUTPUT=$(radon cc . -s -nb --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
+  
+  # Extract average complexity
+  AVG_COMPLEXITY=$(echo "$RADON_OUTPUT" | grep "Average complexity" | awk '{print $3}' | tr -d '()')
+  
+  if [[ -z "$AVG_COMPLEXITY" ]]; then
+    AVG_COMPLEXITY="N/A"
+  fi
+  
+  # Check for functions with complexity > 15 (exact threshold)
+  # Format: "    F 123:0 funcname (17)"
+  FAILING_FUNCTIONS=$(echo "$RADON_OUTPUT" | grep -E "^\s+[FM] " | awk -F'[()]' '{name=$1; score=$2} score+0 > 15 {print score, name}' | sort -rn)
+  FAILING_COUNT=$(echo "$FAILING_FUNCTIONS" | grep -c "^[0-9]" 2>/dev/null || echo "0")
+  
+  if [[ "$FAILING_COUNT" -gt 0 ]]; then
+    echo "  ❌ Found $FAILING_COUNT functions with complexity > 15"
+    echo ""
+    echo "  🔴 Functions exceeding complexity threshold (max: 15):"
+    echo "$FAILING_FUNCTIONS" | head -10 | while read -r line; do
+      score=$(echo "$line" | awk '{print $1}')
+      rest=$(echo "$line" | cut -d' ' -f2-)
+      echo "    [$score] $rest"
+    done
+    echo ""
+    echo "  📋 Threshold: 15 (functions must have cyclomatic complexity ≤ 15)"
+    COMPLEXITY_PASSED=false
+  else
+    echo "  ✅ All functions have complexity ≤ 15"
+  fi
+  
+  # Run xenon for strict complexity thresholds
+  # --max-absolute C: No function above grade C (11-20)
+  # --max-modules B: Average module complexity at B or better
+  # --max-average B: Average project complexity at B or better
+  echo ""
+  echo "  🔧 Running xenon complexity threshold check..."
+  
+  XENON_OUTPUT=$(xenon --max-absolute C --max-modules B --max-average B \
+    --exclude "venv,tests,.venv,node_modules,cursor-rules,demos,archives" \
+    . 2>&1) || XENON_FAILED=true
+  
+  if [[ "$XENON_FAILED" == "true" ]]; then
+    echo "  ⚠️ Some functions exceed complexity thresholds:"
+    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | head -10 | sed 's/^/    /'
+    echo ""
+    echo "  💡 These functions should be refactored to reduce complexity."
+  else
+    echo "  ✅ All functions within acceptable complexity thresholds"
+  fi
+  
+  # Final result
+  echo ""
+  if [[ "$COMPLEXITY_PASSED" == "true" ]]; then
+    echo "✅ Complexity Analysis: PASSED (Average: $AVG_COMPLEXITY)"
+    add_success "Complexity Analysis" "Average complexity: $AVG_COMPLEXITY, all functions ≤ 15"
+  else
+    echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
+    add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
   fi
   echo ""
 fi

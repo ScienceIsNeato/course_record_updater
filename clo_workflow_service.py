@@ -260,7 +260,7 @@ class CLOWorkflowService:
                 "feedback": feedback,
             }
 
-            text_body = render_template(
+            text_body = render_template(  # nosemgrep
                 "emails/clo_rework_notification.txt", **template_context
             )
             html_body = render_template(

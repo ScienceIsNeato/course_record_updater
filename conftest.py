@@ -28,7 +28,9 @@ def _get_csrf_token_from_session_or_generate(client):
         with client.session_transaction() as sess:
             if "csrf_token" in sess:
                 raw_token = sess["csrf_token"]
-    except Exception:
+    except (
+        Exception
+    ):  # nosec B110 - intentionally ignoring session access errors during test setup
         pass
 
     # If no token exists, create one and store it
@@ -37,7 +39,9 @@ def _get_csrf_token_from_session_or_generate(client):
         try:
             with client.session_transaction() as sess:
                 sess["csrf_token"] = raw_token
-        except Exception:
+        except (
+            Exception
+        ):  # nosec B110 - intentionally ignoring session write errors during test setup
             pass
 
     # Generate the signed token from the raw token
@@ -102,7 +106,7 @@ def _configure_csrf_for_testing():
     original_test_client = app.test_client
 
     # Enable CSRF for all tests
-    app.config["TESTING"] = True
+    app.config["TESTING"] = True  # nosemgrep
     app.config["WTF_CSRF_ENABLED"] = True
 
     # Monkeypatch app.test_client() to return CSRF-aware clients

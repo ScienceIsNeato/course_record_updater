@@ -175,7 +175,7 @@ def get_blueprint_prefix(file_path: Path) -> str:
                 match = re.search(r'Blueprint\([^,]+,\s*url_prefix=["\']([^"\']+)["\']', content)
                 if match:
                     return match.group(1)
-        except Exception:
+        except Exception:  # nosec B110 - fallback if file parsing fails
             pass
     
     return ""

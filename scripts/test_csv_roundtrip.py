@@ -130,9 +130,9 @@ def main():
     institution_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"
     institution_name = "California Engineering Institute"
     
-    # Output paths
-    output_dir = Path("/tmp/csv_roundtrip_test")
-    output_dir.mkdir(exist_ok=True)
+    # Output paths using secure tempfile (B108 fix)
+    import tempfile
+    output_dir = Path(tempfile.mkdtemp(prefix="csv_roundtrip_test_"))
     
     export1_path = str(output_dir / "export1_before_import.zip")
     export2_path = str(output_dir / "export2_after_roundtrip.zip")

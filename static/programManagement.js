@@ -97,7 +97,7 @@ async function loadInstitutionsForDropdown() {
 
   // Use user's institution from the page context (set in template)
   if (globalThis.userContext?.institutionId) {
-    select.innerHTML = '<option value="">Select Institution</option>';
+    select.innerHTML = '<option value="">Select Institution</option>'; // nosemgrep
 
     const option = document.createElement('option');
     option.value = globalThis.userContext.institutionId;

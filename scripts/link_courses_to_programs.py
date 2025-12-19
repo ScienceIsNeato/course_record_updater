@@ -53,8 +53,7 @@ def link_courses_to_programs(institution_id):
                     db.link_course_to_program(course["id"], program_id)
                     linked_count += 1
                     print(f"   ✓ Linked {course_number} to {program_name}")
-                except Exception as e:
-                    # Might already be linked, that's okay
+                except Exception:  # nosec B110 - might already be linked
                     pass
     
     if linked_count > 0:

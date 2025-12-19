@@ -17,7 +17,7 @@ Usage:
 import argparse
 import glob
 import os
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
@@ -25,7 +25,7 @@ from pathlib import Path
 def get_pr_number():
     """Get current PR number from git context."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["gh", "pr", "view", "--json", "number"],
             capture_output=True,
             text=True,
@@ -41,7 +41,7 @@ def get_pr_number():
 def get_current_commit():
     """Get current commit SHA."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec
             ["git", "rev-parse", "HEAD"],
             capture_output=True,
             text=True,

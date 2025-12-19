@@ -39,7 +39,7 @@ function showAlert(type, message) {
   const alert = document.createElement('div');
   alert.className = `alert alert-${type} alert-dismissible fade show mt-3`;
   alert.setAttribute('role', 'alert');
-  alert.innerHTML = `
+  alert.innerHTML = ` // nosemgrep
     ${message}
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   `;

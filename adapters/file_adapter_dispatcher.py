@@ -116,7 +116,7 @@ class FileAdapterDispatcher:
         """Load and instantiate the specified adapter."""
         # Dynamically import the adapter module
         module_path = f"adapters.{adapter_name}"
-        module = importlib.import_module(module_path)
+        module = importlib.import_module(module_path)  # nosemgrep
 
         # Convert adapter_name (snake_case) to ClassName (CamelCase)
         class_name = "".join(word.capitalize() for word in adapter_name.split("_"))

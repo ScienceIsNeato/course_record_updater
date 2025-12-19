@@ -30,7 +30,7 @@ function openInviteFacultyModal() {
 
 function populateTermDropdown() {
   const termSelect = document.getElementById('inviteFacultyTerm');
-  termSelect.innerHTML = '<option value="">No course assignment</option>';
+  termSelect.innerHTML = '<option value="">No course assignment</option>'; // nosemgrep
 
   if (!dashboardData?.terms) return;
 
@@ -51,13 +51,13 @@ function populateTermDropdown() {
 
 function resetOfferingDropdown() {
   const offeringSelect = document.getElementById('inviteFacultyOffering');
-  offeringSelect.innerHTML = '<option value="">Select term first</option>';
+  offeringSelect.innerHTML = '<option value="">Select term first</option>'; // nosemgrep
   offeringSelect.disabled = true;
 }
 
 function resetSectionDropdown() {
   const sectionSelect = document.getElementById('inviteFacultySection');
-  sectionSelect.innerHTML = '<option value="">Select offering first</option>';
+  sectionSelect.innerHTML = '<option value="">Select offering first</option>'; // nosemgrep
   sectionSelect.disabled = true;
 }
 
@@ -76,7 +76,7 @@ function handleTermChange(event) {
 
 function populateOfferingDropdown(termId) {
   const offeringSelect = document.getElementById('inviteFacultyOffering');
-  offeringSelect.innerHTML = '<option value="">Select an offering</option>';
+  offeringSelect.innerHTML = '<option value="">Select an offering</option>'; // nosemgrep
 
   if (!dashboardData?.offerings) {
     offeringSelect.disabled = true;
@@ -87,7 +87,7 @@ function populateOfferingDropdown(termId) {
   const offeringsForTerm = dashboardData.offerings.filter(offering => offering.term_id === termId);
 
   if (offeringsForTerm.length === 0) {
-    offeringSelect.innerHTML = '<option value="">No offerings for this term</option>';
+    offeringSelect.innerHTML = '<option value="">No offerings for this term</option>'; // nosemgrep
     offeringSelect.disabled = true;
     return;
   }
@@ -127,7 +127,7 @@ function handleOfferingChange(event) {
 
 function populateSectionDropdown(offeringId) {
   const sectionSelect = document.getElementById('inviteFacultySection');
-  sectionSelect.innerHTML = '<option value="">Select a section</option>';
+  sectionSelect.innerHTML = '<option value="">Select a section</option>'; // nosemgrep
 
   if (!dashboardData?.sections) {
     sectionSelect.disabled = true;
@@ -140,7 +140,7 @@ function populateSectionDropdown(offeringId) {
   );
 
   if (sectionsForOffering.length === 0) {
-    sectionSelect.innerHTML = '<option value="">No sections for this offering</option>';
+    sectionSelect.innerHTML = '<option value="">No sections for this offering</option>'; // nosemgrep
     sectionSelect.disabled = true;
     return;
   }

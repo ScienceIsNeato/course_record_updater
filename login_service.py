@@ -197,8 +197,11 @@ class LoginService:
             # Even if there's an error, try to destroy the session
             try:
                 SessionService.destroy_session()
-            except Exception:
-                pass
+            except Exception as logout_err:  # nosec B110
+                logger.debug(
+                    "[Login Service] Secondary session destroy also failed: %s",
+                    logout_err,
+                )
 
             return {"logout_success": True, "message": "Logout completed"}
 

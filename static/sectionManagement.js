@@ -184,7 +184,7 @@ async function openEditSectionModal(sectionId, sectionData) {
 
   // Populate instructor dropdown
   const instructorSelect = document.getElementById('editSectionInstructorId');
-  instructorSelect.innerHTML = '<option value="">Unassigned</option>';
+  instructorSelect.innerHTML = '<option value="">Unassigned</option>'; // nosemgrep
 
   try {
     const response = await fetch('/api/users?role=instructor');

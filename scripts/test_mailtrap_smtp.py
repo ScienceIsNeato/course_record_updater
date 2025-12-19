@@ -100,7 +100,7 @@ def test_mailtrap_api():
                 "category": "Course Record Updater"
             }
             
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=30)  # B113
             
             if response.status_code == 200:
                 result = response.json()

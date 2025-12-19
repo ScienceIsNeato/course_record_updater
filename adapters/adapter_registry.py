@@ -91,6 +91,7 @@ class AdapterRegistry:
         try:
             # Import the module
             full_module_path = f"{self.adapter_module_path}.{module_name}"
+            # nosemgrep
             module = importlib.import_module(full_module_path)
 
             # Look for classes that inherit from FileBaseAdapter
@@ -193,8 +194,10 @@ class AdapterRegistry:
                         adapter_info["institution_id"] = institution.get(
                             "institution_id"
                         )
-                except Exception:
-                    pass  # If resolution fails, leave institution_id as None
+                except Exception as e:
+                    logger.debug(
+                        f"Could not resolve institution_id for {adapter_info.get('institution_short_name')}: {e}"
+                    )
 
             adapter_info["active"] = registration["active"]
             all_adapters.append(adapter_info)
@@ -250,9 +253,9 @@ class AdapterRegistry:
                         institution_adapters.append(
                             {**adapter_info_with_id, "active": registration["active"]}
                         )
-                except Exception:
-                    # If database lookup fails, skip this adapter
-                    pass
+                except Exception as e:
+                    # If database lookup fails, log and skip this adapter
+                    logger.debug(f"Could not lookup institution by short_name: {e}")
 
         logger.debug(
             f"Found {len(institution_adapters)} adapters for institution {institution_id}"

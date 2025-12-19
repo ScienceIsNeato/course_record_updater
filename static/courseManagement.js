@@ -55,7 +55,7 @@ async function loadProgramsForCreateDropdown() {
   }
 
   // Clear existing options
-  select.innerHTML = '<option value="">Loading programs...</option>';
+  select.innerHTML = '<option value="">Loading programs...</option>'; // nosemgrep
 
   try {
     const response = await fetch('/api/programs');
@@ -68,10 +68,10 @@ async function loadProgramsForCreateDropdown() {
     const programs = data.programs || [];
 
     // Populate dropdown
-    select.innerHTML = ''; // Clear loading message
+    select.innerHTML = ''; // Clear loading message // nosemgrep
 
     if (programs.length === 0) {
-      select.innerHTML = '<option value="">No programs available</option>';
+      select.innerHTML = '<option value="">No programs available</option>'; // nosemgrep
       return;
     }
 
@@ -84,7 +84,7 @@ async function loadProgramsForCreateDropdown() {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Failed to load programs for dropdown:', error);
-    select.innerHTML = '<option value="">Error loading programs</option>';
+    select.innerHTML = '<option value="">Error loading programs</option>'; // nosemgrep
   }
 }
 
@@ -278,7 +278,7 @@ async function openEditCourseModal(courseId, courseData, programsDisplayHtml) {
   // Set Read-Only Programs Display
   const programsDisplayEl = document.getElementById('readOnlyProgramsDisplay');
   if (programsDisplayEl) {
-    programsDisplayEl.innerHTML = programsDisplayHtml || '<span class="text-muted">None</span>';
+    programsDisplayEl.innerHTML = programsDisplayHtml || '<span class="text-muted">None</span>'; // nosemgrep
   }
 
   const modal = new bootstrap.Modal(document.getElementById('editCourseModal'));

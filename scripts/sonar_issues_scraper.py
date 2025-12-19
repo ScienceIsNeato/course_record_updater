@@ -57,7 +57,7 @@ class SonarCloudScraper:
             request = urllib.request.Request(url)
             request.add_header("Authorization", f"Basic {auth_header}")
 
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request) as response:  # nosec B310  # nosemgrep
                 return json.loads(response.read().decode())
 
         except urllib.error.HTTPError as e:

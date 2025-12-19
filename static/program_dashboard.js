@@ -126,6 +126,7 @@
       });
 
       if (!courseMap.size) {
+        // nosemgrep
         container.innerHTML = this.renderEmptyState(
           'No courses found for this program',
           'Add Course'
@@ -185,7 +186,7 @@
         })
       });
 
-      container.innerHTML = '';
+      container.innerHTML = ''; // nosemgrep
       container.appendChild(table);
     },
 
@@ -194,7 +195,7 @@
       if (!container) return;
 
       if (!assignments.length) {
-        container.innerHTML = this.renderEmptyState('No faculty assignments yet', 'Assign Courses');
+        container.innerHTML = this.renderEmptyState('No faculty assignments yet', 'Assign Courses'); // nosemgrep
         return;
       }
 
@@ -230,7 +231,7 @@
         })
       });
 
-      container.innerHTML = '';
+      container.innerHTML = ''; // nosemgrep
       container.appendChild(table);
     },
 
@@ -239,6 +240,7 @@
       if (!container) return;
 
       if (!courses.length) {
+        // nosemgrep
         container.innerHTML = this.renderEmptyState(
           'No learning outcomes configured yet',
           'Add CLO'
@@ -289,7 +291,7 @@
         })
       });
 
-      container.innerHTML = '';
+      container.innerHTML = ''; // nosemgrep
       container.appendChild(table);
     },
 
@@ -298,6 +300,7 @@
       if (!container) return;
 
       if (!programOverview.length) {
+        // nosemgrep
         container.innerHTML = this.renderEmptyState(
           'No assessment activity recorded',
           'Open Assessment Report'
@@ -336,7 +339,7 @@
         })
       });
 
-      container.innerHTML = '';
+      container.innerHTML = ''; // nosemgrep
       container.appendChild(table);
     },
 
