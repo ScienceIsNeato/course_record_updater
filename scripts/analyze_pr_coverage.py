@@ -87,6 +87,93 @@ def get_repo_metadata() -> str:
         return f"⚠️  Could not generate metadata: {e}\n\n"
 
 
+def _get_raw_diff_output(base_branch):
+    """Get raw diff output using gh pr diff or git diff."""
+    # Try to get PR number and use gh pr diff (matches GitHub/SonarCloud view)
+    pr_result = subprocess.run(  # nosec
+        ["gh", "pr", "view", "--json", "number", "-q", ".number"],
+        capture_output=True,
+        text=True,
+    )
+    
+    if pr_result.returncode == 0 and pr_result.stdout.strip():
+        pr_number = pr_result.stdout.strip()
+        print(f"   Using PR #{pr_number} diff (matches SonarCloud)")
+        pr_diff_result = subprocess.run(  # nosec
+            ["gh", "pr", "diff", pr_number],
+            capture_output=True,
+            text=True,
+        )
+        
+        # Check if gh pr diff succeeded
+        if pr_diff_result.returncode == 0:
+            return pr_diff_result
+            
+        print(f"   ⚠️  gh pr diff failed (PR too large), falling back to git diff")
+
+    # Fallback to git diff
+    print(f"   Using git diff vs {base_branch}")
+    return subprocess.run(  # nosec
+        ["git", "diff", base_branch, "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
+
+def _parse_hunk_header(line):
+    """Parse unified diff hunk header to extract new start line."""
+    try:
+        # Extract new file starting line number: @@ -old,count +new,count @@
+        parts = line.split('+')[1].split('@@')[0].strip()
+        if ',' in parts:
+            return int(parts.split(',')[0])
+        else:
+            return int(parts)
+    except (ValueError, IndexError):
+        return None
+
+
+def _parse_diff_lines(diff_text):
+    """Parse diff output to find added lines."""
+    added_lines = defaultdict(set)
+    current_file = None
+    current_line_number = 0
+    
+    for line in diff_text.split('\n'):
+        # Track current file
+        if line.startswith('+++ b/'):
+            current_file = line[6:]  # Remove '+++ b/' prefix
+            current_line_number = 0
+            if current_file and is_excluded_from_new_code_coverage(current_file):
+                current_file = None
+            continue
+
+        if not current_file:
+            continue
+
+        # Parse hunk headers to track line numbers
+        if line.startswith('@@'):
+            new_start = _parse_hunk_header(line)
+            if new_start is not None:
+                current_line_number = new_start
+            continue
+
+        # Track lines that were ADDED
+        if line.startswith('+') and not line.startswith('+++'):
+            added_lines[current_file].add(current_line_number)
+            current_line_number += 1
+            continue
+
+        # Track context/removed lines
+        if not line.startswith('---') and current_line_number > 0:
+            # Context line or removed line - advance line counter for context
+            if not line.startswith('-'):
+                current_line_number += 1
+    
+    return dict(added_lines)
+
+
 def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
     """
     Get ONLY lines ADDED (not modified, not context) in the current branch compared to base_branch.
@@ -100,80 +187,8 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
     print(f"🔍 Analyzing NEW lines added (PR diff)...")
     
     try:
-        # Try to get PR number and use gh pr diff (matches GitHub/SonarCloud view)
-        pr_result = subprocess.run(  # nosec
-            ["gh", "pr", "view", "--json", "number", "-q", ".number"],
-            capture_output=True,
-            text=True,
-        )
-        
-        diff_result = None
-        if pr_result.returncode == 0 and pr_result.stdout.strip():
-            pr_number = pr_result.stdout.strip()
-            print(f"   Using PR #{pr_number} diff (matches SonarCloud)")
-            pr_diff_result = subprocess.run(  # nosec
-                ["gh", "pr", "diff", pr_number],
-                capture_output=True,
-                text=True,
-            )
-            
-            # Check if gh pr diff succeeded (can fail if PR diff >20k lines)
-            if pr_diff_result.returncode == 0:
-                diff_result = pr_diff_result
-            else:
-                print(f"   ⚠️  gh pr diff failed (PR too large), falling back to git diff")
-                diff_result = subprocess.run(  # nosec
-                    ["git", "diff", base_branch, "HEAD"],
-                    capture_output=True,
-                    text=True,
-                    check=True
-                )
-        else:
-            # Fallback to git diff
-            print(f"   Using git diff vs {base_branch}")
-            diff_result = subprocess.run(  # nosec
-                ["git", "diff", base_branch, "HEAD"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-        
-        result = diff_result
-        
-        added_lines = defaultdict(set)
-        current_file = None
-        current_line_number = 0
-        
-        for line in result.stdout.split('\n'):
-            # Track current file
-            if line.startswith('+++ b/'):
-                current_file = line[6:]  # Remove '+++ b/' prefix
-                current_line_number = 0
-                if current_file and is_excluded_from_new_code_coverage(current_file):
-                    current_file = None
-            # Parse hunk headers to track line numbers: @@ -old_start,old_count +new_start,new_count @@
-            elif line.startswith('@@') and current_file:
-                try:
-                    # Extract new file starting line number
-                    parts = line.split('+')[1].split('@@')[0].strip()
-                    if ',' in parts:
-                        current_line_number = int(parts.split(',')[0])
-                    else:
-                        current_line_number = int(parts)
-                except (ValueError, IndexError):
-                    continue
-            # Track lines that were ADDED (start with +, but not +++ file markers)
-            elif current_file and line.startswith('+') and not line.startswith('+++'):
-                # This is a newly added line
-                added_lines[current_file].add(current_line_number)
-                current_line_number += 1
-            # Track context/removed lines to keep line numbering accurate
-            elif current_file and not line.startswith('---') and not line.startswith('@@') and current_line_number > 0:
-                # Context line or removed line - advance line counter for context
-                if not line.startswith('-'):
-                    current_line_number += 1
-        
-        return dict(added_lines)
+        result = _get_raw_diff_output(base_branch)
+        return _parse_diff_lines(result.stdout)
     
     except subprocess.CalledProcessError as e:
         print(f"❌ Error getting git diff: {e}", file=sys.stderr)
@@ -242,19 +257,48 @@ def get_uncovered_lines_from_xml(coverage_file: str = "coverage.xml") -> Tuple[D
         return {}, set()
 
 
+def _resolve_lcov_filename(line):
+    """Extract and normalize filename from LCOV SF record."""
+    abs_path = line[3:]  # Remove 'SF:' prefix
+    # Convert to relative path (remove workspace prefix if present)
+    current_file = abs_path.split('/')[-1] if '/' in abs_path else abs_path
+    # Try to get more context by keeping static/ prefix
+    if 'static/' in abs_path:
+        current_file = abs_path.split('static/')[-1]
+        return f"static/{current_file}"
+    return current_file
+
+
+def _process_lcov_da(line, current_file, uncovered_lines):
+    """Process LCOV DA (Line Coverage) record."""
+    try:
+        parts = line[3:].split(',')  # Remove 'DA:' and split
+        line_num = int(parts[0])
+        hits = int(parts[1])
+        
+        if hits == 0:
+            uncovered_lines[current_file].add(line_num)
+    except (ValueError, IndexError):
+        pass
+
+
+def _process_lcov_brda(line, current_file, uncovered_lines):
+    """Process LCOV BRDA (Branch Coverage) record."""
+    try:
+        parts = line[5:].split(',')  # Remove 'BRDA:' and split
+        line_num = int(parts[0])
+        hits = parts[3]  # Can be a number or '-' for not executed
+        
+        # If branch not hit (0 or '-'), report this line
+        if hits == '-' or hits == '0':
+            uncovered_lines[current_file].add(line_num)
+    except (ValueError, IndexError):
+        pass
+
+
 def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
     Parse lcov.info (JavaScript) to find uncovered lines AND partially covered branches.
-    
-    This matches SonarCloud's "Coverage on New Code" metric which counts:
-    1. Lines with DA hits == 0 (completely uncovered)
-    2. Lines with BRDA hits == 0 or '-' (uncovered branch)
-    
-    LCOV format:
-        SF:<source file path>
-        DA:<line number>,<hit count>
-        BRDA:<line>,<block>,<branch>,<hits>
-        end_of_record
     
     Returns:
         Tuple of (uncovered_lines dict, all_covered_files set)
@@ -276,41 +320,16 @@ def get_uncovered_lines_from_lcov(lcov_file: str = "coverage/lcov.info") -> Tupl
                 
                 # Track current source file
                 if line.startswith('SF:'):
-                    # Extract relative path from absolute path
-                    abs_path = line[3:]  # Remove 'SF:' prefix
-                    # Convert to relative path (remove workspace prefix if present)
-                    current_file = abs_path.split('/')[-1] if '/' in abs_path else abs_path
-                    # Try to get more context by keeping static/ prefix
-                    if 'static/' in abs_path:
-                        current_file = abs_path.split('static/')[-1]
-                        current_file = f"static/{current_file}"
-                    
+                    current_file = _resolve_lcov_filename(line)
                     all_covered_files.add(current_file)
                 
                 # Parse line coverage: DA:<line>,<hits>
                 elif line.startswith('DA:') and current_file:
-                    try:
-                        parts = line[3:].split(',')  # Remove 'DA:' and split
-                        line_num = int(parts[0])
-                        hits = int(parts[1])
-                        
-                        if hits == 0:
-                            uncovered_lines[current_file].add(line_num)
-                    except (ValueError, IndexError):
-                        continue
+                    _process_lcov_da(line, current_file, uncovered_lines)
                 
                 # Parse branch coverage: BRDA:<line>,<block>,<branch>,<hits>
                 elif line.startswith('BRDA:') and current_file:
-                    try:
-                        parts = line[5:].split(',')  # Remove 'BRDA:' and split
-                        line_num = int(parts[0])
-                        hits = parts[3]  # Can be a number or '-' for not executed
-                        
-                        # If branch not hit (0 or '-'), report this line
-                        if hits == '-' or hits == '0':
-                            uncovered_lines[current_file].add(line_num)
-                    except (ValueError, IndexError):
-                        continue
+                    _process_lcov_brda(line, current_file, uncovered_lines)
                 
                 # Reset on end of record
                 elif line == 'end_of_record':

@@ -22,6 +22,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
+    - name: Check for GCP credentials
+      id: check-creds
+      run: |
+        if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+          echo "::error::GCP_SA_KEY secret is not configured. Please add the service account key to repository secrets."
+          exit 1
+        fi
+        echo "has_credentials=true" >> $GITHUB_OUTPUT
+
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
       with:

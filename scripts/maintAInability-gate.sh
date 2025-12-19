@@ -86,6 +86,7 @@ RUN_INTEGRATION_TESTS=false
 RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
+RUN_SECURITY_LOCAL=false  # bandit+semgrep only, no safety (faster for commits)
 RUN_SONAR_ANALYZE=false
 RUN_SONAR_STATUS=false
 RUN_DUPLICATION=false
@@ -125,6 +126,7 @@ else
       --e2e) RUN_E2E_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
+      --security-local) RUN_SECURITY_LOCAL=true ;;  # Skip safety (for commit hooks)
       --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
       --sonar-status) RUN_SONAR_STATUS=true ;;
       --duplication) RUN_DUPLICATION=true ;;
@@ -859,8 +861,12 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SECURITY AUDIT (BANDIT + SEMGREP + SAFETY)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_SECURITY" == "true" ]]; then
-  echo "🔒 Security Audit (bandit + semgrep + safety)"
+if [[ "$RUN_SECURITY" == "true" ]] || [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+  if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+    echo "🔒 Security Audit (bandit + semgrep) [local mode - skipping safety]"
+  else
+    echo "🔒 Security Audit (bandit + semgrep + safety)"
+  fi
 
   SECURITY_PASSED=true
 
@@ -930,8 +936,12 @@ for r in d.get('results',[])[:5]:
   fi
 
   # Run safety scan for known vulnerabilities in dependencies
-  echo "🔧 Running safety dependency scan..."
-  echo "📋 Debug: Pre-execution checks:"
+  # Skip when using --security-local (for commit hooks - Safety is slow and requirements rarely change)
+  if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+    echo "  ⏭️  Skipping safety dependency scan (use --security for full check)"
+  else
+    echo "🔧 Running safety dependency scan..."
+    echo "📋 Debug: Pre-execution checks:"
   echo "  Safety executable: $(which safety 2>&1 || echo 'NOT FOUND')"
   echo "  Safety version: $(safety --version 2>&1 || echo 'VERSION CHECK FAILED')"
   echo "  Python version: $(python --version 2>&1)"
@@ -1073,10 +1083,16 @@ for r in d.get('results',[])[:5]:
   else
     echo "   ✅ Safety dependency check passed"
   fi
+  fi  # End of Safety scan conditional (skipped for --security-local)
 
   if [[ "$SECURITY_PASSED" == "true" ]]; then
-    echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
-    add_success "Security Check" "No security vulnerabilities found"
+    if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+      echo "✅ Security Check: PASSED (bandit + semgrep) [local mode]"
+      add_success "Security Check" "No security vulnerabilities found (local mode - safety skipped)"
+    else
+      echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
+      add_success "Security Check" "No security vulnerabilities found"
+    fi
   else
     echo "❌ Security Check: FAILED (security issues found)"
     add_failure "Security Check" "Security vulnerabilities found" "Run './scripts/maintAInability-gate.sh --security' for details"
@@ -1103,28 +1119,50 @@ if [[ "$RUN_COMPLEXITY" == "true" ]]; then
   echo "  🔧 Running radon cyclomatic complexity analysis..."
   
   # Get complexity with scores (-s flag)
-  RADON_OUTPUT=$(radon cc . -s -nb --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
+  # Radon analysis using JSON and Python for better parsing (shows filenames)
+  RADON_JSON=$(radon cc . --json --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
   
-  # Extract average complexity
-  AVG_COMPLEXITY=$(echo "$RADON_OUTPUT" | grep "Average complexity" | awk '{print $3}' | tr -d '()')
-  
-  if [[ -z "$AVG_COMPLEXITY" ]]; then
-    AVG_COMPLEXITY="N/A"
-  fi
-  
-  # Check for functions with complexity > 15 (exact threshold)
-  # Format: "    F 123:0 funcname (17)"
-  FAILING_FUNCTIONS=$(echo "$RADON_OUTPUT" | grep -E "^\s+[FM] " | awk -F'[()]' '{name=$1; score=$2} score+0 > 15 {print score, name}' | sort -rn)
-  FAILING_COUNT=$(echo "$FAILING_FUNCTIONS" | grep -c "^[0-9]" 2>/dev/null || echo "0")
-  
+  # Parse JSON with Python to get stats and failing files
+  PARSE_OUTPUT=$(python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    total_cc = 0
+    count = 0
+    failures = []
+    for f, blocks in data.items():
+        if isinstance(blocks, list):
+             for b in blocks:
+                 cc = b.get('complexity', 0)
+                 total_cc += cc
+                 count += 1
+                 if cc > 15:
+                     failures.append((cc, f, b.get('name','?'), b.get('lineno',0)))
+                 
+    avg = total_cc / count if count > 0 else 0
+    print(f'Average complexity: {avg:.2f}')
+    
+    failures.sort(key=lambda x: x[0], reverse=True)
+    print(len(failures))
+    for cc, f, name, line in failures:
+        print(f'[{cc}] {f}:{line} {name}')
+except Exception as e:
+    print(f'Average complexity: N/A')
+    print('0')
+    print(f'Error: {e}')
+" <<< "$RADON_JSON")
+
+  # Extract values from Python output
+  AVG_COMPLEXITY=$(echo "$PARSE_OUTPUT" | head -1 | awk -F': ' '{print $2}')
+  FAILING_COUNT=$(echo "$PARSE_OUTPUT" | sed -n '2p')
+  FAILING_FUNCTIONS=$(echo "$PARSE_OUTPUT" | tail -n +3)
+
   if [[ "$FAILING_COUNT" -gt 0 ]]; then
     echo "  ❌ Found $FAILING_COUNT functions with complexity > 15"
     echo ""
     echo "  🔴 Functions exceeding complexity threshold (max: 15):"
     echo "$FAILING_FUNCTIONS" | head -10 | while read -r line; do
-      score=$(echo "$line" | awk '{print $1}')
-      rest=$(echo "$line" | cut -d' ' -f2-)
-      echo "    [$score] $rest"
+      echo "    $line"
     done
     echo ""
     echo "  📋 Threshold: 15 (functions must have cyclomatic complexity ≤ 15)"

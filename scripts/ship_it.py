@@ -111,7 +111,7 @@ class QualityGateExecutor:
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            ("security", "🔒 Security Audit (bandit, semgrep, safety)"),  # Zero tolerance
+            ("security-local", "🔒 Security Audit (bandit, semgrep)"),  # Zero tolerance (safety skipped for speed)
             # Duplication, sonar, complexity excluded from commit (slower or PR-level)
         ]
 
@@ -445,23 +445,13 @@ class QualityGateExecutor:
 
         return lines
 
-    def _extract_test_failure_reason(self, output: str) -> str:
-        """Extract specific failure reason from pytest output."""
-        if not output:
-            return "Unknown test failure"
-
-        # Check for actual test failures first (highest priority)
-        failed_match = re.search(r"(\d+)\s+failed", output)
-        if failed_match:
-            failed_count = failed_match.group(1)
-            return f"Test failures: {failed_count} test(s) failed"
-
-        # Check for coverage threshold failure (80% gate)
-        if "coverage" in output.lower() and (
-            "threshold" in output.lower()
-            or "below" in output.lower()
-            or "fail" in output.lower()
-        ):
+    def _extract_coverage_failure_reason(self, output: str) -> str:
+        """Extract coverage failure details from output."""
+        output_lower = output.lower()
+        if "coverage" not in output_lower:
+            return None
+            
+        if "threshold" in output_lower or "below" in output_lower or "fail" in output_lower:
             # Try multiple patterns for coverage extraction
             coverage_match = re.search(
                 r"(\d+\.?\d*)%[^%]*(?:not met|below|fail)[^%]*(\d+\.?\d*)%", output
@@ -480,14 +470,30 @@ class QualityGateExecutor:
             if coverage_match and len(coverage_match.groups()) >= 2:
                 actual, threshold = coverage_match.groups()
                 return f"Coverage threshold not met: {actual}% < {threshold}%"
-            else:
-                return "Coverage threshold not met (below 80%)"
-
-        # Check for coverage-related failures without explicit threshold info
-        if "coverage" in output.lower() and (
-            "fail" in output.lower() or "error" in output.lower()
-        ):
+            
+            # Specific fallback for failures without parsed numbers
+            return "Coverage threshold not met (below 80%)"
+        
+        if "fail" in output_lower or "error" in output_lower:
             return "Coverage analysis failed or below 80% threshold"
+            
+        return None
+
+    def _extract_test_failure_reason(self, output: str) -> str:
+        """Extract specific failure reason from pytest output."""
+        if not output:
+            return "Unknown test failure"
+
+        # Check for actual test failures first (highest priority)
+        failed_match = re.search(r"(\d+)\s+failed", output)
+        if failed_match:
+            failed_count = failed_match.group(1)
+            return f"Test failures: {failed_count} test(s) failed"
+
+        # Check coverage issues
+        coverage_reason = self._extract_coverage_failure_reason(output)
+        if coverage_reason:
+            return coverage_reason
 
         # Check for import errors
         if "import" in output.lower() and "error" in output.lower():
@@ -999,37 +1005,40 @@ def check_pr_comments():
         return [], []
 
 
-def check_ci_status():
-    """
-    Check GitHub Actions CI status for the current PR.
+def _parse_rollup_items(statuses):
+    """Parse statusCheckRollup items to categorize jobs."""
+    failed = []
+    in_progress = []
+    pending = []
     
-    Returns:
-        Dictionary with CI status information:
-        {
-            "all_passed": bool,
-            "failed_jobs": list of job names,
-            "in_progress_jobs": list of job names,
-            "pending_jobs": list of job names,
-            "workflow_runs": list of workflow run info
-        }
-    """
+    for status in statuses:
+        state = status.get("state", "").lower() if status.get("state") else None
+        conclusion = status.get("conclusion", "").lower() if status.get("conclusion") else None
+        name = status.get("name", "Unknown")
+        
+        # For completed checks, use conclusion; for in-progress, use state
+        if conclusion == "failure" or conclusion == "error":
+            failed.append(name)
+        elif conclusion == "cancelled":
+            failed.append(name)
+        elif state == "pending" or state == "queued":
+            if "in progress" in name.lower() or "running" in name.lower():
+                in_progress.append(name)
+            else:
+                pending.append(name)
+        elif state == "in_progress" or status.get("status", "").upper() == "IN_PROGRESS":
+            in_progress.append(name)
+            
+    return failed, in_progress, pending
+
+
+def _get_ci_status_from_rollup(pr_number):
+    """Try to get CI status from GitHub statusCheckRollup."""
     try:
         import json
         import subprocess  # nosec
         
-        pr_number, owner, name = _get_pr_context()
-        if not pr_number:
-            return {
-                "all_passed": None,
-                "failed_jobs": [],
-                "in_progress_jobs": [],
-                "pending_jobs": [],
-                "workflow_runs": [],
-                "error": "Not in PR context"
-            }
-        
         # Use statusCheckRollup first - it gives us individual job/check names
-        # This matches what GitHub UI shows (e.g., "Quality Gate / e2e-tests")
         result = subprocess.run(  # nosec
             [
                 "gh",
@@ -1048,27 +1057,7 @@ def check_ci_status():
             pr_data = json.loads(result.stdout)
             statuses = pr_data.get("statusCheckRollup", [])
             
-            failed = []
-            in_progress = []
-            pending = []
-            
-            for status in statuses:
-                state = status.get("state", "").lower() if status.get("state") else None
-                conclusion = status.get("conclusion", "").lower() if status.get("conclusion") else None
-                name = status.get("name", "Unknown")
-                
-                # For completed checks, use conclusion; for in-progress, use state
-                if conclusion == "failure" or conclusion == "error":
-                    failed.append(name)
-                elif conclusion == "cancelled":
-                    failed.append(name)
-                elif state == "pending" or state == "queued":
-                    if "in progress" in name.lower() or "running" in name.lower():
-                        in_progress.append(name)
-                    else:
-                        pending.append(name)
-                elif state == "in_progress" or status.get("status", "").upper() == "IN_PROGRESS":
-                    in_progress.append(name)
+            failed, in_progress, pending = _parse_rollup_items(statuses)
             
             return {
                 "all_passed": len(failed) == 0 and len(pending) == 0 and len(in_progress) == 0,
@@ -1077,66 +1066,105 @@ def check_ci_status():
                 "pending_jobs": pending,
                 "workflow_runs": statuses,
             }
+    except Exception:  # nosec B110 - intentional fallback, failure acceptable
+        pass
+    return None
+
+
+def _get_ci_status_fallback(pr_number, owner, name):
+    """Fallback to workflow runs API if rollup fails."""
+    import json
+    import subprocess  # nosec
+    
+    # Fallback to workflow runs API (less detailed, but better than nothing)
+    result = subprocess.run(  # nosec
+        [
+            "gh",
+            "api",
+            f"repos/{owner}/{name}/actions/runs",
+            "--jq",
+            f'.workflow_runs[] | select(.pull_requests[]?.number == {pr_number}) | {{id, name, status, conclusion, created_at, html_url}}',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    
+    if result.returncode != 0:
+        return None
+    
+    # Parse workflow runs
+    workflow_runs = []
+    if result.stdout.strip():
+        for line in result.stdout.strip().split('\n'):
+            if line.strip():
+                try:
+                    workflow_runs.append(json.loads(line))
+                except Exception:  # nosec B110 - skip malformed JSON lines
+                    pass
+    
+    # Analyze workflow run statuses
+    failed = []
+    in_progress = []
+    pending = []
+    
+    for run in workflow_runs:
+        run_name = run.get("name", "Unknown")
+        status = run.get("status", "").lower()
+        conclusion = run.get("conclusion", "").lower()
         
-        # Fallback to workflow runs API (less detailed, but better than nothing)
-        result = subprocess.run(  # nosec
-            [
-                "gh",
-                "api",
-                f"repos/{owner}/{name}/actions/runs",
-                "--jq",
-                f'.workflow_runs[] | select(.pull_requests[]?.number == {pr_number}) | {{id, name, status, conclusion, created_at, html_url}}',
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        
-        if result.returncode != 0:
+        if conclusion == "failure" or conclusion == "cancelled":
+            failed.append(run_name)
+        elif status == "in_progress":
+            in_progress.append(run_name)
+        elif status == "queued" or status == "pending":
+            pending.append(run_name)
+    
+    return {
+        "all_passed": len(failed) == 0 and len(pending) == 0 and len(in_progress) == 0,
+        "failed_jobs": failed,
+        "in_progress_jobs": in_progress,
+        "pending_jobs": pending,
+        "workflow_runs": workflow_runs,
+    }
+
+
+def check_ci_status():
+    """
+    Check GitHub Actions CI status for the current PR.
+    
+    Returns:
+        Dictionary with CI status information.
+    """
+    try:
+        pr_number, owner, name = _get_pr_context()
+        if not pr_number:
             return {
                 "all_passed": None,
                 "failed_jobs": [],
                 "in_progress_jobs": [],
                 "pending_jobs": [],
                 "workflow_runs": [],
-                "error": "Could not fetch CI status"
+                "error": "Not in PR context"
             }
         
-        # Parse workflow runs (fallback only)
-        workflow_runs = []
-        if result.stdout.strip():
-            for line in result.stdout.strip().split('\n'):
-                if line.strip():
-                    try:
-                        workflow_runs.append(json.loads(line))
-                    except Exception:  # nosec B110 - skip malformed JSON lines
-                        pass
+        # Try primary method
+        status = _get_ci_status_from_rollup(pr_number)
+        if status:
+            return status
         
-        # Analyze workflow run statuses
-        failed = []
-        in_progress = []
-        pending = []
-        
-        for run in workflow_runs:
-            name = run.get("name", "Unknown")
-            status = run.get("status", "").lower()
-            conclusion = run.get("conclusion", "").lower()
+        # Try fallback method
+        status = _get_ci_status_fallback(pr_number, owner, name)
+        if status:
+            return status
             
-            if conclusion == "failure" or conclusion == "cancelled":
-                failed.append(name)
-            elif status == "in_progress":
-                in_progress.append(name)
-            elif status == "queued" or status == "pending":
-                pending.append(name)
-        
-        all_passed = len(failed) == 0 and len(pending) == 0 and len(in_progress) == 0
-        
         return {
-            "all_passed": all_passed,
-            "failed_jobs": failed,
-            "in_progress_jobs": in_progress,
-            "pending_jobs": pending,
-            "workflow_runs": workflow_runs,
+            "all_passed": None,
+            "failed_jobs": [],
+            "in_progress_jobs": [],
+            "pending_jobs": [],
+            "workflow_runs": [],
+            "error": "Could not fetch CI status"
         }
         
     except Exception as e:
@@ -1165,52 +1193,14 @@ def _get_current_commit_sha():
         return "unknown"
 
 
-def generate_pr_issues_report(ci_status, comments_data, quality_check_results, pr_number):
-    """
-    Generate a comprehensive PR issues report with checklist format.
-    
-    Args:
-        ci_status: CI status dictionary from check_ci_status()
-        comments_data: Tuple of (all_comments, new_comments) from check_pr_comments()
-        quality_check_results: List of CheckResult objects from quality gate execution
-        pr_number: PR number
-    
-    Returns:
-        Dictionary with report data and file path
-    """
-    import os
-    from datetime import datetime
-    
-    all_comments, new_comments = comments_data
-    commit_sha = _get_current_commit_sha()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Ensure logs directory exists
-    os.makedirs("logs", exist_ok=True)
-    
-    report_file = f"logs/pr_{pr_number}_issues_report_{commit_sha[:8]}.md"
-    
-    # Load existing checklist state if available
-    checklist_state_file = f"logs/pr_{pr_number}_checklist_state_{commit_sha[:8]}.json"
-    checklist_state = {}
-    if os.path.exists(checklist_state_file):
-        try:
-            with open(checklist_state_file, "r", encoding="utf-8") as f:
-                checklist_state = json.load(f)
-        except Exception:  # nosec B110 - fallback to empty state if file corrupted
-            pass
-    
-    failed_checks = [r for r in quality_check_results if r.status == CheckStatus.FAILED]
-    passed_checks = [r for r in quality_check_results if r.status == CheckStatus.PASSED]
-    
-    # Save full error output for each failed check
+def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
+    """Save full error output for each failed check to log files."""
     error_log_files = {}
     for check in failed_checks:
         check_flag = _get_check_flag_for_result(check.name)
         error_log_file = f"logs/pr_{pr_number}_error_{check_flag}_{commit_sha[:8]}.log"
         error_log_files[check.name] = error_log_file
         
-        # Write full error output to log file
         with open(error_log_file, "w", encoding="utf-8") as f:
             f.write(f"# Full Error Output: {check.name}\n\n")
             f.write(f"**PR**: #{pr_number}\n")
@@ -1231,6 +1221,244 @@ def generate_pr_issues_report(ci_status, comments_data, quality_check_results, p
                 f.write("```\n")
                 f.write(check.output)
                 f.write("\n```\n")
+    return error_log_files
+
+
+def _write_checklist_ci_section(f, ci_status, checklist_state, checklist_items, item_number):
+    """Write CI Status section to the checklist."""
+    if ci_status.get("all_passed") is not False:
+        return item_number
+
+    f.write(f"### {item_number}. CI Status Issues\n\n")
+    checklist_items.append({
+        "number": item_number,
+        "category": "CI Status",
+        "status": "pending",
+        "items": []
+    })
+    
+    if ci_status.get("failed_jobs"):
+        f.write("**Failed Jobs:**\n")
+        for job in ci_status.get("failed_jobs", []):
+            item_text = f"Fix failing CI job: {job}"
+            item_status = _get_item_status(checklist_state, item_text)
+            checkbox = "- [x]" if item_status == "completed" else "- [ ]"
+            status_icon = "✅" if item_status == "completed" else "❌"
+            f.write(f"{checkbox} {status_icon} Fix failing CI job: `{job}`\n")
+            checklist_items[-1]["items"].append(item_text)
+    
+    if ci_status.get("in_progress_jobs"):
+        f.write("\n**In Progress:**\n")
+        for job in ci_status.get("in_progress_jobs", []):
+            f.write(f"- [ ] ⏳ Wait for CI job to complete: `{job}`\n")
+            checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
+    
+    if ci_status.get("pending_jobs"):
+        f.write("\n**Pending:**\n")
+        for job in ci_status.get("pending_jobs", []):
+            f.write(f"- [ ] ⏸️  Wait for CI job to start: `{job}`\n")
+            checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
+    
+    f.write("\n")
+    return item_number + 1
+
+
+def _resolve_comment_location(comment):
+    """Resolve location string for a comment."""
+    if comment.get("path") and comment.get("line"):
+        return f"`{comment['path']}:{comment['line']}`"
+    elif comment.get("path"):
+        return f"`{comment['path']}`"
+    return ""
+
+
+def _write_single_comment_item(f, comment, location, is_new, checklist_state, checklist_items):
+    """Write a single comment item to the checklist."""
+    author = comment['author']
+    body = comment['body']
+    
+    item_text = f"Address comment from {author}"
+    if location:
+        item_text = f"Address comment from {author} at {location}"
+    
+    if is_new:
+        item_status = _get_item_status(checklist_state, item_text)
+        checkbox = "- [x]" if item_status == "completed" else "- [ ]"
+        status_icon = "✅" if item_status == "completed" else "🆕"
+        f.write(f"{checkbox} {status_icon} Address comment from `{author}`")
+    else:
+        f.write(f"- [ ] Address comment from `{author}`")
+        
+    if location:
+        f.write(f" at {location}")
+    f.write(f"\n")
+    f.write(f"  > {body[:200]}...\n\n")
+    checklist_items[-1]["items"].append(item_text)
+
+
+def _write_checklist_comments_section(f, comments_data, checklist_state, checklist_items, item_number):
+    """Write PR Comments section to the checklist."""
+    all_comments, new_comments = comments_data
+    if not all_comments:
+        return item_number
+
+    f.write(f"### {item_number}. PR Review Comments\n\n")
+    checklist_items.append({
+        "number": item_number,
+        "category": "PR Comments",
+        "status": "pending",
+        "items": []
+    })
+    
+    if new_comments:
+        f.write(f"**New Comments ({len(new_comments)}):**\n\n")
+        for comment in new_comments:
+            location = _resolve_comment_location(comment)
+            _write_single_comment_item(f, comment, location, True, checklist_state, checklist_items)
+            
+    if len(all_comments) > len(new_comments):
+        f.write(f"**Previously Seen Comments ({len(all_comments) - len(new_comments)}):**\n\n")
+        new_ids = {c.get('id') for c in new_comments} if new_comments else set()
+        
+        for comment in all_comments:
+            if not new_comments or comment.get('id') not in new_ids:
+                location = _resolve_comment_location(comment)
+                _write_single_comment_item(f, comment, location, False, checklist_state, checklist_items)
+    
+    f.write("\n")
+    return item_number + 1
+
+
+def _write_checklist_quality_section(f, failed_checks, error_log_files, checklist_state, checklist_items, item_number):
+    """Write Quality Gate Failures section to the checklist."""
+    if not failed_checks:
+        return item_number
+
+    f.write(f"### {item_number}. Quality Gate Failures\n\n")
+    checklist_items.append({
+        "number": item_number,
+        "category": "Quality Gates",
+        "status": "pending",
+        "items": []
+    })
+    
+    for check in failed_checks:
+        error_log_file = error_log_files.get(check.name, "")
+        item_text = f"Fix failing check: {check.name}"
+        item_status = _get_item_status(checklist_state, item_text)
+        checkbox = "- [x]" if item_status == "completed" else "- [ ]"
+        status_icon = "✅" if item_status == "completed" else "❌"
+        f.write(f"{checkbox} {status_icon} Fix failing check: **{check.name}**\n")
+        if check.error:
+            f.write(f"  - Error: {check.error[:200]}...\n")
+        f.write(f"  - Duration: {check.duration:.1f}s\n")
+        f.write(f"  - Run: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
+        if error_log_file:
+            f.write(f"  - 📄 Full error log: `{error_log_file}`\n")
+            f.write(f"  - View: `cat {error_log_file}` or `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
+        f.write("\n")
+        checklist_items[-1]["items"].append(f"Fix failing check: {check.name}")
+    
+    f.write("\n")
+    return item_number + 1
+
+
+def _write_report_summary(f, checklist_items, ci_status, comments_data, passed_checks, failed_checks):
+    """Write the report summary section."""
+    all_comments, new_comments = comments_data
+    f.write("---\n\n")
+    f.write("## 📊 Summary\n\n")
+    f.write(f"- **Total Checklist Items**: {sum(len(item['items']) for item in checklist_items)}\n")
+    f.write(f"- **CI Status**: {'✅ Passed' if ci_status.get('all_passed') is True else '❌ Failed' if ci_status.get('all_passed') is False else '⚠️ Unknown'}\n")
+    f.write(f"- **Outstanding Comments**: {len(all_comments)}\n")
+    f.write(f"  - New: {len(new_comments)}\n")
+    f.write(f"  - Previously Seen: {len(all_comments) - len(new_comments)}\n")
+    f.write(f"- **Quality Checks**: {len(passed_checks)} passed, {len(failed_checks)} failed\n\n")
+
+
+def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
+    """Write the detailed information sections."""
+    f.write("---\n\n")
+    f.write("## 📋 Detailed Information\n\n")
+    
+    # CI Status Details
+    f.write("### CI Status Details\n\n")
+    if ci_status.get("error"):
+        f.write(f"⚠️ Error: {ci_status.get('error')}\n\n")
+    else:
+        f.write(f"- **All Passed**: {ci_status.get('all_passed')}\n")
+        f.write(f"- **Failed Jobs**: {len(ci_status.get('failed_jobs', []))}\n")
+        f.write(f"- **In Progress**: {len(ci_status.get('in_progress_jobs', []))}\n")
+        f.write(f"- **Pending**: {len(ci_status.get('pending_jobs', []))}\n\n")
+    
+    # Comments Details
+    f.write("### PR Comments Details\n\n")
+    f.write(f"See `pr_comments_scratch.md` for full comment analysis.\n\n")
+    
+    # Quality Check Details
+    f.write("### Quality Check Details\n\n")
+    if failed_checks:
+        f.write("**Failed Checks:**\n\n")
+        for check in failed_checks:
+            error_log_file = error_log_files.get(check.name, "")
+            f.write(f"#### {check.name}\n\n")
+            f.write(f"- **Status**: Failed\n")
+            f.write(f"- **Duration**: {check.duration:.1f}s\n")
+            if check.error:
+                f.write(f"- **Error**: {check.error[:200]}...\n")
+            if error_log_file:
+                f.write(f"- **Full Error Log**: [`{error_log_file}`]({error_log_file})\n")
+                f.write(f"  - View with: `cat {error_log_file}`\n")
+                f.write(f"  - Or use: `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
+            f.write(f"- **Quick Run**: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
+            f.write(f"- **Truncated Output** (first 500 chars):\n```\n{check.output[:500]}...\n```\n\n")
+    else:
+        f.write("✅ All quality checks passed!\n\n")
+
+
+def generate_pr_issues_report(ci_status, comments_data, quality_check_results, pr_number):
+    """
+    Generate a comprehensive PR issues report with checklist format.
+    
+    Args:
+        ci_status: CI status dictionary from check_ci_status()
+        comments_data: Tuple of (all_comments, new_comments) from check_pr_comments()
+        quality_check_results: List of CheckResult objects from quality gate execution
+        pr_number: PR number
+    
+    Returns:
+        Dictionary with report data and file path
+    """
+    import os
+    import json
+    from datetime import datetime
+    
+    all_comments, new_comments = comments_data
+    commit_sha = _get_current_commit_sha()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Ensure logs directory exists
+    os.makedirs("logs", exist_ok=True)
+    
+    report_file = f"logs/pr_{pr_number}_issues_report_{commit_sha[:8]}.md"
+    
+    # Load existing checklist state if available
+    checklist_state_file = f"logs/pr_{pr_number}_checklist_state_{commit_sha[:8]}.json"
+    checklist_state = {}
+    if os.path.exists(checklist_state_file):
+        try:
+            with open(checklist_state_file, "r", encoding="utf-8") as f:
+                checklist_state = json.load(f)
+        except Exception:  # nosec B110 - fallback to empty state
+            pass
+    
+    failed_checks = [r for r in quality_check_results if r.status == CheckStatus.FAILED]
+    passed_checks = [r for r in quality_check_results if r.status == CheckStatus.PASSED]
+    
+    # Save full error output for each failed check
+    error_log_files = _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp)
+    
+    checklist_items = []
     
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(f"# Outstanding PR Issues Report\n\n")
@@ -1243,172 +1471,13 @@ def generate_pr_issues_report(ci_status, comments_data, quality_check_results, p
         f.write("## ✅ PR Issues Checklist\n\n")
         f.write("Address each item below before pushing commits. Do NOT push or re-run validation until all items are addressed.\n\n")
         
-        checklist_items = []
         item_number = 1
+        item_number = _write_checklist_ci_section(f, ci_status, checklist_state, checklist_items, item_number)
+        item_number = _write_checklist_comments_section(f, comments_data, checklist_state, checklist_items, item_number)
+        item_number = _write_checklist_quality_section(f, failed_checks, error_log_files, checklist_state, checklist_items, item_number)
         
-        # CI Status Issues
-        if ci_status.get("all_passed") is False:
-            f.write(f"### {item_number}. CI Status Issues\n\n")
-            checklist_items.append({
-                "number": item_number,
-                "category": "CI Status",
-                "status": "pending",
-                "items": []
-            })
-            
-            if ci_status.get("failed_jobs"):
-                f.write("**Failed Jobs:**\n")
-                for job in ci_status.get("failed_jobs", []):
-                    item_text = f"Fix failing CI job: {job}"
-                    # Check if item is already completed
-                    item_status = _get_item_status(checklist_state, item_text)
-                    checkbox = "- [x]" if item_status == "completed" else "- [ ]"
-                    status_icon = "✅" if item_status == "completed" else "❌"
-                    f.write(f"{checkbox} {status_icon} Fix failing CI job: `{job}`\n")
-                    checklist_items[-1]["items"].append(item_text)
-            
-            if ci_status.get("in_progress_jobs"):
-                f.write("\n**In Progress:**\n")
-                for job in ci_status.get("in_progress_jobs", []):
-                    f.write(f"- [ ] ⏳ Wait for CI job to complete: `{job}`\n")
-                    checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
-            
-            if ci_status.get("pending_jobs"):
-                f.write("\n**Pending:**\n")
-                for job in ci_status.get("pending_jobs", []):
-                    f.write(f"- [ ] ⏸️  Wait for CI job to start: `{job}`\n")
-                    checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
-            
-            f.write("\n")
-            item_number += 1
-        
-        # PR Comments
-        if all_comments:
-            f.write(f"### {item_number}. PR Review Comments\n\n")
-            checklist_items.append({
-                "number": item_number,
-                "category": "PR Comments",
-                "status": "pending",
-                "items": []
-            })
-            
-            if new_comments:
-                f.write(f"**New Comments ({len(new_comments)}):**\n\n")
-                for comment in new_comments:
-                    location = ""
-                    if comment.get("path") and comment.get("line"):
-                        location = f"`{comment['path']}:{comment['line']}`"
-                    elif comment.get("path"):
-                        location = f"`{comment['path']}`"
-                    
-                    item_text = f"Address comment from {comment['author']} at {location}" if location else f"Address comment from {comment['author']}"
-                    item_status = _get_item_status(checklist_state, item_text)
-                    checkbox = "- [x]" if item_status == "completed" else "- [ ]"
-                    status_icon = "✅" if item_status == "completed" else "🆕"
-                    f.write(f"{checkbox} {status_icon} Address comment from `{comment['author']}`")
-                    if location:
-                        f.write(f" at {location}")
-                    f.write(f"\n")
-                    f.write(f"  > {comment['body'][:200]}...\n\n")
-                    checklist_items[-1]["items"].append(item_text)
-            
-            if len(all_comments) > len(new_comments):
-                f.write(f"**Previously Seen Comments ({len(all_comments) - len(new_comments)}):**\n\n")
-                for comment in all_comments:
-                    if not new_comments or comment.get('id') not in {c.get('id') for c in new_comments}:
-                        location = ""
-                        if comment.get("path") and comment.get("line"):
-                            location = f"`{comment['path']}:{comment['line']}`"
-                        elif comment.get("path"):
-                            location = f"`{comment['path']}`"
-                        
-                        f.write(f"- [ ] Address comment from `{comment['author']}`")
-                        if location:
-                            f.write(f" at {location}")
-                        f.write(f"\n")
-                        f.write(f"  > {comment['body'][:200]}...\n\n")
-                        checklist_items[-1]["items"].append(f"Address comment from {comment['author']} at {location}")
-            
-            f.write("\n")
-            item_number += 1
-        
-        # Quality Check Failures
-        if failed_checks:
-            f.write(f"### {item_number}. Quality Gate Failures\n\n")
-            checklist_items.append({
-                "number": item_number,
-                "category": "Quality Gates",
-                "status": "pending",
-                "items": []
-            })
-            
-            for check in failed_checks:
-                error_log_file = error_log_files.get(check.name, "")
-                item_text = f"Fix failing check: {check.name}"
-                item_status = _get_item_status(checklist_state, item_text)
-                checkbox = "- [x]" if item_status == "completed" else "- [ ]"
-                status_icon = "✅" if item_status == "completed" else "❌"
-                f.write(f"{checkbox} {status_icon} Fix failing check: **{check.name}**\n")
-                if check.error:
-                    f.write(f"  - Error: {check.error[:200]}...\n")
-                f.write(f"  - Duration: {check.duration:.1f}s\n")
-                f.write(f"  - Run: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
-                if error_log_file:
-                    f.write(f"  - 📄 Full error log: `{error_log_file}`\n")
-                    f.write(f"  - View: `cat {error_log_file}` or `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
-                f.write("\n")
-                checklist_items[-1]["items"].append(f"Fix failing check: {check.name}")
-            
-            f.write("\n")
-            item_number += 1
-        
-        # Summary section
-        f.write("---\n\n")
-        f.write("## 📊 Summary\n\n")
-        f.write(f"- **Total Checklist Items**: {sum(len(item['items']) for item in checklist_items)}\n")
-        f.write(f"- **CI Status**: {'✅ Passed' if ci_status.get('all_passed') is True else '❌ Failed' if ci_status.get('all_passed') is False else '⚠️ Unknown'}\n")
-        f.write(f"- **Outstanding Comments**: {len(all_comments)}\n")
-        f.write(f"  - New: {len(new_comments)}\n")
-        f.write(f"  - Previously Seen: {len(all_comments) - len(new_comments)}\n")
-        f.write(f"- **Quality Checks**: {len(passed_checks)} passed, {len(failed_checks)} failed\n\n")
-        
-        # Detailed sections
-        f.write("---\n\n")
-        f.write("## 📋 Detailed Information\n\n")
-        
-        # CI Status Details
-        f.write("### CI Status Details\n\n")
-        if ci_status.get("error"):
-            f.write(f"⚠️ Error: {ci_status.get('error')}\n\n")
-        else:
-            f.write(f"- **All Passed**: {ci_status.get('all_passed')}\n")
-            f.write(f"- **Failed Jobs**: {len(ci_status.get('failed_jobs', []))}\n")
-            f.write(f"- **In Progress**: {len(ci_status.get('in_progress_jobs', []))}\n")
-            f.write(f"- **Pending**: {len(ci_status.get('pending_jobs', []))}\n\n")
-        
-        # Comments Details
-        f.write("### PR Comments Details\n\n")
-        f.write(f"See `pr_comments_scratch.md` for full comment analysis.\n\n")
-        
-        # Quality Check Details
-        f.write("### Quality Check Details\n\n")
-        if failed_checks:
-            f.write("**Failed Checks:**\n\n")
-            for check in failed_checks:
-                error_log_file = error_log_files.get(check.name, "")
-                f.write(f"#### {check.name}\n\n")
-                f.write(f"- **Status**: Failed\n")
-                f.write(f"- **Duration**: {check.duration:.1f}s\n")
-                if check.error:
-                    f.write(f"- **Error**: {check.error[:200]}...\n")
-                if error_log_file:
-                    f.write(f"- **Full Error Log**: [`{error_log_file}`]({error_log_file})\n")
-                    f.write(f"  - View with: `cat {error_log_file}`\n")
-                    f.write(f"  - Or use: `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
-                f.write(f"- **Quick Run**: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
-                f.write(f"- **Truncated Output** (first 500 chars):\n```\n{check.output[:500]}...\n```\n\n")
-        else:
-            f.write("✅ All quality checks passed!\n\n")
+        _write_report_summary(f, checklist_items, ci_status, comments_data, passed_checks, failed_checks)
+        _write_detailed_sections(f, ci_status, failed_checks, error_log_files)
     
     return {
         "file_path": report_file,

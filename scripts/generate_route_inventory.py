@@ -258,33 +258,33 @@ def map_route_to_template(route_path: str, source_file: str) -> str:
     return ""
 
 
-def determine_role_access(route_path: str, auth_info: Dict, source_file: str) -> List[str]:
-    """Determine which roles can access this route."""
-    # API routes are typically accessible based on permissions
-    if route_path.startswith("/api/"):
-        # Health check is public
-        if route_path == "/api/health" or route_path.endswith("/health"):
-            return ["public"]
-        
-        # Auth routes are public
-        if "/auth/" in route_path or route_path.startswith("/api/auth/"):
-            if "login" in route_path or "register" in route_path or "forgot-password" in route_path:
-                return ["public"]
-        
-        # Most API routes require login
-        if auth_info["login_required"]:
-            if auth_info["permission_required"] == "manage_users":
-                return ["site_admin"]
-            elif auth_info["permission_required"] == "audit_clo":
-                return ["institution_admin", "program_admin"]
-            else:
-                # Default: all authenticated roles
-                return ["site_admin", "institution_admin", "program_admin", "instructor"]
-        else:
+def _determine_api_role_access(route_path, auth_info):
+    """Determine role access for API routes."""
+    # Health check is public
+    if route_path == "/api/health" or route_path.endswith("/health"):
+        return ["public"]
+    
+    # Auth routes are public
+    if "/auth/" in route_path or route_path.startswith("/api/auth/"):
+        if "login" in route_path or "register" in route_path or "forgot-password" in route_path:
             return ["public"]
     
-    # Page routes
-    if route_path == "/" or route_path == "/login" or route_path == "/register":
+    # Most API routes require login
+    if auth_info["login_required"]:
+        if auth_info["permission_required"] == "manage_users":
+            return ["site_admin"]
+        elif auth_info["permission_required"] == "audit_clo":
+            return ["institution_admin", "program_admin"]
+        else:
+            # Default: all authenticated roles
+            return ["site_admin", "institution_admin", "program_admin", "instructor"]
+            
+    return ["public"]
+
+
+def _determine_page_role_access(route_path, auth_info):
+    """Determine role access for page routes."""
+    if route_path in ["/", "/login", "/register"]:
         return ["public"]
     
     if route_path == "/admin/users":
@@ -303,15 +303,18 @@ def determine_role_access(route_path: str, auth_info: Dict, source_file: str) ->
     return ["public"]
 
 
-def main():
-    """Generate route inventory."""
-    project_root = Path(__file__).parent.parent
-    output_dir = project_root / "logs" / "exploration"
-    output_dir.mkdir(parents=True, exist_ok=True)
+def determine_role_access(route_path: str, auth_info: Dict, source_file: str) -> List[str]:
+    """Determine which roles can access this route."""
+    # API routes are typically accessible based on permissions
+    if route_path.startswith("/api/"):
+        return _determine_api_role_access(route_path, auth_info)
     
+    return _determine_page_role_access(route_path, auth_info)
+
+
+def _extract_app_routes(project_root):
+    """Extract routes from app.py."""
     routes = []
-    
-    # Extract from app.py
     app_py = project_root / "app.py"
     if app_py.exists():
         print(f"Extracting routes from {app_py}")
@@ -319,26 +322,31 @@ def main():
         for route in app_routes:
             route["type"] = "page"
             route["blueprint"] = "app"
-            # Extract auth requirements
             if route.get("function_name"):
                 auth_info = extract_auth_requirements(app_py, route["function_name"])
                 route.update(auth_info)
-            routes.extend(app_routes)
-    
-    # Extract from api_routes.py
+        routes.extend(app_routes)
+    return routes
+
+def _extract_api_routes(project_root):
+    """Extract routes from api_routes.py."""
+    routes = []
     api_routes_py = project_root / "api_routes.py"
     if api_routes_py.exists():
         print(f"Extracting routes from {api_routes_py}")
         api_routes_list = extract_routes_regex(api_routes_py)
         for route in api_routes_list:
             route["type"] = "api"
-            route["path"] = "/api" + route["path"]  # Add /api prefix
+            route["path"] = "/api" + route["path"]
             if route.get("function_name"):
                 auth_info = extract_auth_requirements(api_routes_py, route["function_name"])
                 route.update(auth_info)
         routes.extend(api_routes_list)
-    
-    # Extract from api/routes/*.py
+    return routes
+
+def _extract_blueprint_routes(project_root):
+    """Extract routes from api/routes/*.py."""
+    routes = []
     api_routes_dir = project_root / "api" / "routes"
     if api_routes_dir.exists():
         for route_file in api_routes_dir.glob("*.py"):
@@ -357,8 +365,10 @@ def main():
                     auth_info = extract_auth_requirements(route_file, route["function_name"])
                     route.update(auth_info)
             routes.extend(blueprint_routes)
-    
-    # Deduplicate routes by path + methods
+    return routes
+
+def _deduplicate_routes(routes):
+    """Deduplicate routes by path + methods."""
     seen = set()
     unique_routes = []
     for route in routes:
@@ -366,8 +376,10 @@ def main():
         if key not in seen:
             seen.add(key)
             unique_routes.append(route)
-    
-    # Organize and enrich routes
+    return unique_routes
+
+def _enrich_routes(unique_routes):
+    """Organize and enrich routes with metadata."""
     organized_routes = []
     for route in unique_routes:
         route_path = route.get("path", "")
@@ -391,60 +403,90 @@ def main():
             "source_file": route.get("source_file", ""),
             "function_name": route.get("function_name", ""),
         })
+    return organized_routes
+
+def _write_page_routes_section(f, page_routes):
+    """Write page routes table."""
+    f.write(f"### Page Routes ({len(page_routes)} total)\n\n")
+    f.write("| Path | Methods | Template | Auth Required | Permission | Roles |\n")
+    f.write("|------|---------|----------|---------------|------------|-------|\n")
     
-    # Generate markdown report
-    output_file = output_dir / "route_inventory.md"
+    for route in sorted(page_routes, key=lambda x: x["path"]):
+        methods = ", ".join(route["methods"])
+        template = route["template"] or "N/A"
+        auth = "Yes" if route["login_required"] else "No"
+        permission = route["permission_required"] or "-"
+        roles = ", ".join(route["role_access"])
+        f.write(f"| `{route['path']}` | {methods} | `{template}` | {auth} | {permission} | {roles} |\n")
+
+
+def _write_api_routes_section(f, api_routes):
+    """Write API routes table."""
+    f.write(f"\n### API Routes ({len(api_routes)} total)\n\n")
+    f.write("| Path | Methods | Auth Required | Permission | Roles |\n")
+    f.write("|------|---------|---------------|------------|-------|\n")
+    
+    for route in sorted(api_routes, key=lambda x: x["path"]):
+        methods = ", ".join(route["methods"])
+        auth = "Yes" if route["login_required"] else "No"
+        permission = route["permission_required"] or "-"
+        roles = ", ".join(route["role_access"])
+        f.write(f"| `{route['path']}` | {methods} | {auth} | {permission} | {roles} |\n")
+
+
+def _write_role_routes_section(f, organized_routes):
+    """Write routes organized by role."""
+    f.write("\n## Routes by Role\n\n")
+    
+    for role in ["public", "instructor", "program_admin", "institution_admin", "site_admin"]:
+        role_routes = [
+            r for r in organized_routes
+            if role in r["role_access"] or (role == "public" and "public" in r["role_access"])
+        ]
+        if role_routes:
+            f.write(f"### {role.replace('_', ' ').title()}\n\n")
+            for route in sorted(role_routes, key=lambda x: (x["type"], x["path"])):
+                methods = ", ".join(route["methods"])
+                f.write(f"- `{route['path']}` ({methods}) - {route['type']}\n")
+            f.write("\n")
+
+
+def _write_markdown_report(output_file, organized_routes):
+    """Generate markdown report."""
+    page_routes = [r for r in organized_routes if r["type"] == "page"]
+    api_routes = [r for r in organized_routes if r["type"] == "api"]
+
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("# Route Inventory\n\n")
         f.write("Generated comprehensive inventory of all routes in the application.\n\n")
         f.write("## Route Organization\n\n")
         
-        # Group by type
-        page_routes = [r for r in organized_routes if r["type"] == "page"]
-        api_routes = [r for r in organized_routes if r["type"] == "api"]
-        
-        f.write(f"### Page Routes ({len(page_routes)} total)\n\n")
-        f.write("| Path | Methods | Template | Auth Required | Permission | Roles |\n")
-        f.write("|------|---------|----------|---------------|------------|-------|\n")
-        
-        for route in sorted(page_routes, key=lambda x: x["path"]):
-            methods = ", ".join(route["methods"])
-            template = route["template"] or "N/A"
-            auth = "Yes" if route["login_required"] else "No"
-            permission = route["permission_required"] or "-"
-            roles = ", ".join(route["role_access"])
-            f.write(f"| `{route['path']}` | {methods} | `{template}` | {auth} | {permission} | {roles} |\n")
-        
-        f.write(f"\n### API Routes ({len(api_routes)} total)\n\n")
-        f.write("| Path | Methods | Auth Required | Permission | Roles |\n")
-        f.write("|------|---------|---------------|------------|-------|\n")
-        
-        for route in sorted(api_routes, key=lambda x: x["path"]):
-            methods = ", ".join(route["methods"])
-            auth = "Yes" if route["login_required"] else "No"
-            permission = route["permission_required"] or "-"
-            roles = ", ".join(route["role_access"])
-            f.write(f"| `{route['path']}` | {methods} | {auth} | {permission} | {roles} |\n")
-        
-        # Organize by role
-        f.write("\n## Routes by Role\n\n")
-        
-        for role in ["public", "instructor", "program_admin", "institution_admin", "site_admin"]:
-            role_routes = [
-                r for r in organized_routes
-                if role in r["role_access"] or (role == "public" and "public" in r["role_access"])
-            ]
-            if role_routes:
-                f.write(f"### {role.replace('_', ' ').title()}\n\n")
-                for route in sorted(role_routes, key=lambda x: (x["type"], x["path"])):
-                    methods = ", ".join(route["methods"])
-                    f.write(f"- `{route['path']}` ({methods}) - {route['type']}\n")
-                f.write("\n")
-    
+        _write_page_routes_section(f, page_routes)
+        _write_api_routes_section(f, api_routes)
+        _write_role_routes_section(f, organized_routes)
+
     print(f"\nRoute inventory generated: {output_file}")
     print(f"Total routes found: {len(organized_routes)}")
     print(f"  - Page routes: {len(page_routes)}")
     print(f"  - API routes: {len(api_routes)}")
+
+
+def main():
+    """Generate route inventory."""
+    project_root = Path(__file__).parent.parent
+    output_dir = project_root / "logs" / "exploration"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    routes = []
+    routes.extend(_extract_app_routes(project_root))
+    routes.extend(_extract_api_routes(project_root))
+    routes.extend(_extract_blueprint_routes(project_root))
+    
+    unique_routes = _deduplicate_routes(routes)
+    organized_routes = _enrich_routes(unique_routes)
+    
+    output_file = output_dir / "route_inventory.md"
+    _write_markdown_report(output_file, organized_routes)
 
 
 if __name__ == "__main__":
