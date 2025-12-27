@@ -7,8 +7,6 @@
     facultyCount: 'programFacultyCount',
     studentCount: 'programStudentCount',
     sectionCount: 'programSectionCount',
-    lastUpdated: 'programLastUpdated',
-    refreshButton: 'programRefreshButton',
     coursesContainer: 'programCoursesContainer',
     facultyContainer: 'programFacultyContainer',
     cloContainer: 'programCloContainer',
@@ -27,10 +25,7 @@
         }
       });
 
-      const refreshButton = document.getElementById(SELECTORS.refreshButton);
-      if (refreshButton) {
-        refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
-      }
+      // Data auto-refreshes after mutations - no manual refresh button needed
 
       this.loadData();
       setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
@@ -146,8 +141,7 @@
           { key: 'sections', label: 'Sections', sortable: true },
           { key: 'enrollment', label: 'Students', sortable: true },
           { key: 'program', label: 'Program', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'progress', label: 'Progress', sortable: true }
         ],
         data: Array.from(courseMap.values()).map(course => {
           const courseId = course.course_id || course.id;
@@ -178,10 +172,7 @@
                 <div class="progress-bar bg-success" role="progressbar" style="width: ${Math.min(percent, 100)}%">${percent}%</div>
               </div>
               <small class="text-muted">${completed}/${total} complete</small>`,
-            progress_sort: percent,
-            actions: `<button class="btn btn-sm btn-outline-primary" onclick="return false;">
-                <i class="fas fa-edit"></i>
-              </button>`
+            progress_sort: percent
           };
         })
       });
@@ -258,8 +249,7 @@
           { key: 'course', label: 'Course', sortable: true },
           { key: 'clos', label: 'CLOs', sortable: true },
           { key: 'status', label: 'Status', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'progress', label: 'Progress', sortable: true }
         ],
         data: courses.map(course => {
           const programIdsFirst =
@@ -284,9 +274,7 @@
             clos_sort: cloCount.toString(),
             status,
             progress: `${percent}%`,
-            progress_sort: percent,
-            actions:
-              '<button class="btn btn-sm btn-outline-secondary" onclick="return false;">Manage</button>'
+            progress_sort: percent
           };
         })
       });

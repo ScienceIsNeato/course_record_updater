@@ -492,7 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   async function loadCLOs() {
     try {
-      cloListContainer.innerHTML = ` // nosemgrep
+      // nosemgrep
+      cloListContainer.innerHTML = `
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -530,7 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Log error to aid debugging
       // eslint-disable-next-line no-console
       console.error('Error loading CLOs:', error);
-      cloListContainer.innerHTML = ` // nosemgrep
+      // nosemgrep
+      cloListContainer.innerHTML = `
                 <div class="alert alert-danger">
                     <strong>Error:</strong> Failed to load CLOs. ${error.message}
                 </div>
@@ -600,7 +602,8 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderCLOList() {
     if (allCLOs.length === 0) {
-      cloListContainer.innerHTML = ` // nosemgrep
+      // nosemgrep
+      cloListContainer.innerHTML = `
                 <div class="text-center py-5">
                     <p class="text-muted">No CLOs found for the selected filter.</p>
                 </div>

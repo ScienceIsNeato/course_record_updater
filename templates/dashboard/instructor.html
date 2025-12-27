@@ -36,10 +36,7 @@
         [<span class="stat-number" id="instructorAssessmentProgress">0%</span> CLO Progress]
     </div>
     <div class="header-actions ms-auto">
-        <button type="button" class="btn btn-sm btn-outline-primary" id="instructorRefreshButton">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
-        <span class="last-updated" id="instructorLastUpdated">Last updated: --</span>
+        <!-- Removed manual refresh - data auto-refreshes after mutations -->
     </div>
 </div>
 
@@ -50,7 +47,11 @@
             <span class="panel-icon">📚</span>
             Teaching Assignment
         </h5>
-
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/courses'">
+                <i class="fas fa-list"></i> View Courses
+            </button>
+        </div>
         <button class="panel-toggle">▼</button>
     </div>
     <div class="panel-content">
@@ -71,9 +72,8 @@
             Assessment Tasks
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-success" disabled
-                title="Feature coming soon: Mark multiple assessments complete at once">
-                <i class="fas fa-check"></i> Bulk Complete
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/assessments'">
+                <i class="fas fa-tasks"></i> Complete Assessments
             </button>
         </div>
         <button class="panel-toggle">▼</button>

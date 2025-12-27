@@ -403,7 +403,8 @@ async function loadOfferings() {
   const container = document.getElementById('offeringsTableContainer');
   if (!container) return; // Not on listings page
 
-  container.innerHTML = ` // nosemgrep
+  // nosemgrep
+  container.innerHTML = `
       <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
         <div class="spinner-border" aria-hidden="true">
           <span class="visually-hidden">Loading offerings...</span>
@@ -422,7 +423,8 @@ async function loadOfferings() {
     const offerings = data.offerings || data || [];
 
     if (offerings.length === 0) {
-      container.innerHTML = ` // nosemgrep
+      // nosemgrep
+      container.innerHTML = `
           <div class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>
             No course offerings found. Create an offering to get started.
@@ -482,7 +484,8 @@ async function loadOfferings() {
     container.innerHTML = html; // nosemgrep
   } catch (error) {
     console.error('Error loading offerings:', error);
-    container.innerHTML = ` // nosemgrep
+    // nosemgrep
+    container.innerHTML = `
         <div class="alert alert-danger">
           <i class="fas fa-exclamation-triangle me-2"></i>
           Error loading offerings: ${error.message}

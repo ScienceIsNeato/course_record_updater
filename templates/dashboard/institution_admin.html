@@ -37,10 +37,7 @@
         [<span class="stat-number" id="sectionCount">0</span> Sections]
     </div>
     <div class="header-actions ms-auto">
-        <button type="button" class="btn btn-sm btn-outline-primary" id="institutionRefreshButton">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
-        <span class="last-updated" id="institutionLastUpdated">Last updated: --</span>
+        <!-- Removed manual refresh - data auto-refreshes after mutations -->
     </div>
 </div>
 
@@ -152,19 +149,19 @@
     </div>
 </div>
 
-<!-- Panel 5: Faculty Overview -->
+<!-- Panel 5: User Management -->
 <div class="dashboard-panel" id="institution-faculty-panel">
     <div class="panel-header">
         <h5 class="panel-title">
-            <span class="panel-icon">👨‍🏫</span>
-            Faculty Overview
+            <span class="panel-icon">👤</span>
+            User Management
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-success" onclick="openInviteFacultyModal()">
-                <i class="fas fa-user-plus"></i> Invite Faculty
+            <button class="btn btn-sm btn-primary" onclick="openInviteFacultyModal()">
+                <i class="fas fa-user-plus"></i> Invite User
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="openBulkReminderModal()">
-                <i class="fas fa-envelope"></i> Send Reminders
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/faculty'">
+                <i class="fas fa-list"></i> Manage Users
             </button>
         </div>
         <button class="panel-toggle">▼</button>
@@ -173,7 +170,7 @@
         <div id="facultyOverviewContainer">
             <div class="panel-loading">
                 <div class="spinner-border spinner-border-sm"></div>
-                Loading faculty...
+                Loading users...
             </div>
         </div>
     </div>
@@ -187,10 +184,10 @@
             Course Sections (Current Term)
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-primary" onclick="createSection()">
+            <button class="btn btn-sm btn-primary" onclick="createSection()">
                 <i class="fas fa-plus"></i> Add Section
             </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="manageSections()">
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/sections'">
                 <i class="fas fa-list"></i> Manage Sections
             </button>
         </div>
@@ -241,8 +238,8 @@
             Assessment Progress
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-outline-warning" onclick="openBulkReminderModal()">
-                <i class="fas fa-bell"></i> Send Reminders
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/offerings'">
+                <i class="fas fa-list"></i> Manage Offerings
             </button>
         </div>
         <button class="panel-toggle">▼</button>
@@ -265,7 +262,7 @@
             CLO Audit & Approval
         </h5>
         <div class="panel-actions">
-            <button class="btn btn-sm btn-primary" onclick="window.location.href='/audit-clo'">
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/audit-clo'">
                 <i class="fas fa-clipboard-check"></i> Review Submissions
             </button>
         </div>

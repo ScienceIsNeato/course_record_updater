@@ -7,8 +7,6 @@
     sectionCount: 'instructorSectionCount',
     studentCount: 'instructorStudentCount',
     assessmentProgress: 'instructorAssessmentProgress',
-    lastUpdated: 'instructorLastUpdated',
-    refreshButton: 'instructorRefreshButton',
     teachingContainer: 'instructorTeachingContainer',
     assessmentContainer: 'instructorAssessmentContainer',
     activityList: 'instructorActivityList',
@@ -27,10 +25,7 @@
         }
       });
 
-      const refreshButton = document.getElementById(SELECTORS.refreshButton);
-      if (refreshButton) {
-        refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
-      }
+      // Data auto-refreshes after mutations - no manual refresh button needed
 
       this.loadData();
       setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
@@ -128,21 +123,19 @@
         columns: [
           { key: 'course', label: 'Course', sortable: true },
           { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'students', label: 'Students', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'students', label: 'Students', sortable: true }
         ],
         data: assignments.map(assignment => {
           const sectionCount = Number(assignment.section_count ?? 0);
           const enrollment = Number(assignment.enrollment ?? 0);
-          const courseId = assignment.course_id || '';
+
           return {
             course:
               `${assignment.course_number || assignment.course_id || 'Course'} — ${assignment.course_title || ''}`.trim(),
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
             students: enrollment.toString(),
-            students_sort: enrollment.toString(),
-            actions: `<a href="/assessments?course=${courseId}" class="btn btn-sm btn-outline-primary">Enter</a>`
+            students_sort: enrollment.toString()
           };
         })
       });

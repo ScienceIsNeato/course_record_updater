@@ -977,7 +977,8 @@ function showMessage(message, type) {
   // Create new message
   const messageDiv = document.createElement('div');
   messageDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show admin-message-dynamic`;
-  messageDiv.innerHTML = ` // nosemgrep
+  // nosemgrep
+  messageDiv.innerHTML = `
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;

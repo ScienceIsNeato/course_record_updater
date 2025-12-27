@@ -471,6 +471,7 @@ class CLOWorkflowService:
             instructor = None
             instructor_name = None
             instructor_email = None
+            program_name = None
             if course:
                 instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
                 if instructor:
@@ -479,6 +480,13 @@ class CLOWorkflowService:
                     )
                     instructor_email = instructor.get("email")
 
+                # Get program name from course's programs
+                programs = db.get_programs_for_course(course_id)
+                if programs:
+                    program_name = programs[0].get("name") or programs[0].get(
+                        "program_name"
+                    )
+
             # Build enriched result
             result = {
                 **outcome,
@@ -486,6 +494,7 @@ class CLOWorkflowService:
                 "course_title": course.get("course_title") if course else None,
                 "instructor_name": instructor_name,
                 "instructor_email": instructor_email,
+                "program_name": program_name,
             }
 
             return result

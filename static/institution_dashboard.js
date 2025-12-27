@@ -8,8 +8,6 @@
     courseCount: 'courseCount',
     facultyCount: 'facultyCount',
     sectionCount: 'sectionCount',
-    lastUpdated: 'institutionLastUpdated',
-    refreshButton: 'institutionRefreshButton',
     programContainer: 'programManagementContainer',
     facultyContainer: 'facultyOverviewContainer',
     sectionContainer: 'courseSectionContainer',
@@ -40,10 +38,7 @@
         }
       });
 
-      const refreshButton = document.getElementById(SELECTORS.refreshButton);
-      if (refreshButton) {
-        refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
-      }
+      // Data auto-refreshes after mutations - no manual refresh button needed
 
       // Event delegation for action buttons
       document.addEventListener('click', e => {
@@ -215,8 +210,7 @@
           { key: 'faculty', label: 'Faculty', sortable: true },
           { key: 'students', label: 'Students', sortable: true },
           { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'progress', label: 'Progress', sortable: true }
         ],
         data: programs.map(program => {
           const progress = program.assessment_progress || {};
@@ -247,19 +241,7 @@
                 <div class="progress-bar" role="progressbar" style="width: ${Math.min(percent, 100)}%">${percent}%</div>
               </div>
               <small class="text-muted">${completed}/${total} complete</small>`,
-            progress_sort: percent,
-            actions: `
-              <button class="btn btn-sm btn-outline-primary me-1" 
-                      data-action="edit-program" 
-                      data-program-id="${escapeHtml(String(program.program_id))}" 
-                      data-program-name="${escapeHtml(program.program_name || program.name || 'Unnamed Program')}">Manage</button>
-              <button class="btn btn-sm btn-outline-danger" 
-                      data-action="delete-program"
-                      data-program-id="${escapeHtml(String(program.program_id))}"
-                      data-program-name="${escapeHtml(program.program_name || program.name || 'Unnamed Program')}">
-                <i class="fas fa-trash"></i>
-              </button>
-            `
+            progress_sort: percent
           };
         })
       });
@@ -355,8 +337,7 @@
           { key: 'section', label: 'Section', sortable: true },
           { key: 'faculty', label: 'Faculty', sortable: true },
           { key: 'enrollment', label: 'Enrollment', sortable: true },
-          { key: 'status', label: 'Status', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'status', label: 'Status', sortable: true }
         ],
         data: sections.map(section => {
           const course = courseLookup.get(section.course_id) || {};
@@ -365,39 +346,6 @@
           const instructor = section.instructor_name || section.instructor || 'Unassigned';
           const enrollment = section.enrollment ?? 0;
           const status = (section.status || 'scheduled').replace(/_/g, ' ');
-          const sectionId = section.section_id || section.id || '';
-          const sectionData = {
-            section_number: section.section_number || '',
-            instructor_id: section.instructor_id || '',
-            enrollment: Number(enrollment) || 0,
-            status: section.status || 'assigned'
-          };
-          const sectionDataJson = JSON.stringify(sectionData).replace(/"/g, '&quot;');
-          const courseId = section.course_id || '';
-          const instructorId = section.instructor_id || '';
-          const instructorEmail = section.instructor_email || '';
-
-          // Build action buttons - use data attributes instead of onclick
-          const sectionIdEscaped = escapeHtml(String(sectionId));
-          const courseIdEscaped = escapeHtml(String(courseId));
-          const instructorIdEscaped = escapeHtml(String(instructorId));
-          const instructorEscaped = escapeHtml(String(instructor));
-          const numberEscaped = escapeHtml(String(number));
-
-          let actionsHtml = `<button class="btn btn-sm btn-outline-primary" data-action="edit-section" data-section-id="${sectionIdEscaped}" data-section-data="${sectionDataJson}">Edit</button>`;
-
-          // Add reminder button if instructor is assigned
-          if (instructorId && instructorEmail) {
-            actionsHtml += ` <button class="btn btn-sm btn-outline-secondary" 
-              data-action="send-reminder" 
-              data-instructor-id="${instructorIdEscaped}" 
-              data-course-id="${courseIdEscaped}" 
-              data-instructor="${instructorEscaped}" 
-              data-course-number="${numberEscaped}"
-              title="Send reminder to ${instructorEscaped}">
-              <i class="fas fa-envelope"></i>
-            </button>`;
-          }
 
           return {
             course: number ? `${number} — ${title || ''}` : title || 'Course',
@@ -405,8 +353,7 @@
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
-            status: status.charAt(0).toUpperCase() + status.slice(1),
-            actions: actionsHtml
+            status: status.charAt(0).toUpperCase() + status.slice(1)
           };
         })
       });
@@ -432,27 +379,15 @@
           { key: 'number', label: 'Course Number', sortable: true },
           { key: 'title', label: 'Title', sortable: true },
           { key: 'credits', label: 'Credits', sortable: true },
-          { key: 'department', label: 'Department', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: 'department', label: 'Department', sortable: true }
         ],
         data: courses.map(course => {
-          const courseId = course.course_id || course.id || '';
-          const courseData = {
-            course_number: course.course_number || '',
-            course_title: course.course_title || course.title || '',
-            department: course.department || '',
-            credit_hours: Number(course.credit_hours || 0),
-            program_ids: course.program_ids || [],
-            active: course.active !== false
-          };
-          const courseDataJson = JSON.stringify(courseData).replace(/"/g, '&quot;');
           return {
             number: course.course_number || '-',
             title: course.course_title || course.title || '-',
             credits: (course.credit_hours ?? '-').toString(),
             credits_sort: (course.credit_hours ?? 0).toString(),
-            department: course.department || '-',
-            actions: `<button class="btn btn-sm btn-outline-primary" data-action="edit-course" data-course-id="${escapeHtml(String(courseId))}" data-course-data="${courseDataJson}">Edit</button>`
+            department: course.department || '-'
           };
         })
       });
@@ -615,20 +550,60 @@
         return;
       }
 
-      // For now, show a summary - full audit workflow is in dedicated audit page
-      const summary = `
-        <div class="alert alert-info">
-          <h6 class="alert-heading"><i class="fas fa-info-circle"></i> CLO Audit Summary</h6>
-          <p class="mb-1"><strong>${clos.length}</strong> total CLOs in system</p>
-          <p class="mb-0">
-            <a href="/audit-clo" class="btn btn-sm btn-primary">
-              <i class="fas fa-clipboard-check"></i> Go to Full Audit Page
-            </a>
-          </p>
-        </div>
-      `;
+      // Group CLOs by program and status
+      const programStats = new Map();
 
-      container.innerHTML = summary; // nosemgrep
+      clos.forEach(clo => {
+        const programName = clo.program_name || clo.program || 'Unknown Program';
+        const status = clo.status || 'unassigned';
+
+        if (!programStats.has(programName)) {
+          programStats.set(programName, {
+            program: programName,
+            unassigned: 0,
+            assigned: 0,
+            in_progress: 0,
+            awaiting_approval: 0,
+            approved: 0
+          });
+        }
+
+        const stats = programStats.get(programName);
+        if (status in stats) {
+          stats[status]++;
+        }
+      });
+
+      // Convert to table data
+      const tableData = Array.from(programStats.values()).map(stats => ({
+        program: stats.program,
+        unassigned: stats.unassigned.toString(),
+        unassigned_sort: stats.unassigned.toString(),
+        assigned: stats.assigned.toString(),
+        assigned_sort: stats.assigned.toString(),
+        inProgress: stats.in_progress.toString(),
+        inProgress_sort: stats.in_progress.toString(),
+        awaitingApproval: stats.awaiting_approval.toString(),
+        awaitingApproval_sort: stats.awaiting_approval.toString(),
+        approved: stats.approved.toString(),
+        approved_sort: stats.approved.toString()
+      }));
+
+      const table = globalThis.panelManager.createSortableTable({
+        id: 'institution-clo-audit-table',
+        columns: [
+          { key: 'program', label: 'Program', sortable: true },
+          { key: 'unassigned', label: 'Unassigned', sortable: true },
+          { key: 'assigned', label: 'Assigned', sortable: true },
+          { key: 'inProgress', label: 'In Progress', sortable: true },
+          { key: 'awaitingApproval', label: 'Awaiting Approval', sortable: true },
+          { key: 'approved', label: 'Approved', sortable: true }
+        ],
+        data: tableData
+      });
+
+      container.innerHTML = ''; // nosemgrep
+      container.appendChild(table);
     },
 
     renderAssessment(programOverview) {
@@ -637,10 +612,7 @@
 
       if (!programOverview.length) {
         // nosemgrep
-        container.innerHTML = this.renderEmptyState(
-          'No assessment data available',
-          'Send Reminder'
-        );
+        container.innerHTML = this.renderEmptyState('No assessment data available', 'View Details');
         return;
       }
 
@@ -649,23 +621,23 @@
         columns: [
           { key: 'program', label: 'Program', sortable: true },
           { key: 'courses', label: 'Courses', sortable: true },
-          { key: 'completed', label: 'Complete', sortable: true },
-          { key: 'total', label: 'Total', sortable: true },
-          { key: 'percent', label: 'Progress', sortable: true }
+          { key: 'sections', label: 'Sections', sortable: true },
+          { key: 'totalClos', label: 'Total CLOs', sortable: true },
+          { key: 'percent', label: 'Percent Complete', sortable: true }
         ],
         data: programOverview.map(program => {
           const progress = program.assessment_progress || {};
-          const completed = progress.completed ?? 0;
           const total = progress.total ?? 0;
           const percent = progress.percent_complete ?? 0;
+          const sectionCount = program.section_count ?? 0;
           return {
             program: program.program_name || program.name || 'Program',
             courses: (program.course_count ?? 0).toString(),
             courses_sort: (program.course_count ?? 0).toString(),
-            completed: completed.toString(),
-            completed_sort: completed.toString(),
-            total: total.toString(),
-            total_sort: total.toString(),
+            sections: sectionCount.toString(),
+            sections_sort: sectionCount.toString(),
+            totalClos: total.toString(),
+            totalClos_sort: total.toString(),
             percent: `${percent}%`,
             percent_sort: percent
           };
