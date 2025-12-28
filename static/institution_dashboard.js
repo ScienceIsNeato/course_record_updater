@@ -570,6 +570,7 @@
             unassigned: 0,
             assigned: 0,
             in_progress: 0,
+            approval_pending: 0,
             awaiting_approval: 0,
             approved: 0
           });
@@ -590,6 +591,8 @@
         assigned_sort: stats.assigned.toString(),
         inProgress: stats.in_progress.toString(),
         inProgress_sort: stats.in_progress.toString(),
+        needsRework: stats.approval_pending.toString(),
+        needsRework_sort: stats.approval_pending.toString(),
         awaitingApproval: stats.awaiting_approval.toString(),
         awaitingApproval_sort: stats.awaiting_approval.toString(),
         approved: stats.approved.toString(),
@@ -603,6 +606,7 @@
           { key: 'unassigned', label: 'Unassigned', sortable: true },
           { key: 'assigned', label: 'Assigned', sortable: true },
           { key: 'inProgress', label: 'In Progress', sortable: true },
+          { key: 'needsRework', label: 'Needs Rework', sortable: true },
           { key: 'awaitingApproval', label: 'Awaiting Approval', sortable: true },
           { key: 'approved', label: 'Approved', sortable: true }
         ],

@@ -356,6 +356,20 @@ function openEditOfferingModal(offeringId, offeringData) {
 }
 
 /**
+ * Handle click on Edit Offering button
+ * Extracts offering data from data attribute and opens modal
+ */
+function handleEditOfferingClick(button) {
+  try {
+    const offeringData = JSON.parse(button.dataset.offering);
+    openEditOfferingModal(offeringData.offering_id || offeringData.id, offeringData);
+  } catch (error) {
+    console.error('Error parsing offering data:', error);
+    alert('An error occurred. Please try refreshing the page.');
+  }
+}
+
+/**
  * Delete offering with confirmation
  * Shows confirmation dialog before deleting
  */
@@ -469,7 +483,10 @@ async function loadOfferings() {
             <td>${offering.section_count || 0}</td>
             <td>${offering.total_enrollment || 0}</td>
             <td>
-              <button class="btn btn-sm btn-outline-secondary" onclick='openEditOfferingModal("${offering.offering_id || offering.id}", JSON.parse("${offeringJson}"))'>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary" 
+                      data-offering='${offeringJson}'
+                      onclick="handleEditOfferingClick(this)">
                 <i class="fas fa-edit"></i> Edit
               </button>
               <button class="btn btn-sm btn-outline-danger" onclick='deleteOffering("${offering.offering_id || offering.id}", "${courseName}", "${termName}")'>
@@ -515,6 +532,7 @@ if (typeof document !== 'undefined') {
 // Expose on window as well for test environment
 if (typeof window !== 'undefined') {
   window.openEditOfferingModal = openEditOfferingModal;
+  window.handleEditOfferingClick = handleEditOfferingClick;
   window.deleteOffering = deleteOffering;
   window.loadOfferings = loadOfferings;
 }

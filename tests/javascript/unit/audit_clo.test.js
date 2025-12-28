@@ -1,6 +1,6 @@
 /**
  * Jest tests for audit_clo.js
- * 
+ *
  * Tests DOM manipulation, event handling, and async API interactions
  */
 
@@ -30,14 +30,24 @@ describe('audit_clo.js - Utility Functions', () => {
 
   describe('calculateSuccessRate', () => {
     it('should return null when missing or invalid inputs', () => {
-      expect(auditCloModule.calculateSuccessRate({ students_took: 0, students_passed: 0 })).toBeNull();
-      expect(auditCloModule.calculateSuccessRate({ students_took: null, students_passed: 1 })).toBeNull();
-      expect(auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: null })).toBeNull();
+      expect(
+        auditCloModule.calculateSuccessRate({ students_took: 0, students_passed: 0 })
+      ).toBeNull();
+      expect(
+        auditCloModule.calculateSuccessRate({ students_took: null, students_passed: 1 })
+      ).toBeNull();
+      expect(
+        auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: null })
+      ).toBeNull();
     });
 
     it('should return rounded percentage when valid', () => {
-      expect(auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: 8 })).toBe(80);
-      expect(auditCloModule.calculateSuccessRate({ students_took: 3, students_passed: 2 })).toBe(67);
+      expect(auditCloModule.calculateSuccessRate({ students_took: 10, students_passed: 8 })).toBe(
+        80
+      );
+      expect(auditCloModule.calculateSuccessRate({ students_took: 3, students_passed: 2 })).toBe(
+        67
+      );
     });
   });
 
@@ -263,7 +273,7 @@ describe('audit_clo.js - DOM Integration', () => {
     prompt.mockClear();
 
     // Mock successful default fetch responses
-    fetch.mockImplementation((url) => {
+    fetch.mockImplementation(url => {
       if (url === '/api/programs') {
         return Promise.resolve({
           ok: true,
@@ -315,7 +325,7 @@ describe('audit_clo.js - DOM Integration', () => {
   describe('updateStats', () => {
     it('should fetch and update all statistics including NCI', async () => {
       // Mock fetch responses for each status
-      fetch.mockImplementation((url) => {
+      fetch.mockImplementation(url => {
         if (url.includes('awaiting_approval')) {
           return Promise.resolve({
             ok: true,
@@ -384,13 +394,13 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should handle individual status fetch failures and show 0', async () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Clear previous state
       fetch.mockClear();
 
       // Mock fetch - some succeed, some fail
-      fetch.mockImplementation((url) => {
+      fetch.mockImplementation(url => {
         if (url.includes('awaiting_approval')) {
           return Promise.resolve({
             ok: true,
@@ -769,9 +779,6 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should approve CLO successfully', async () => {
-      // Mock confirm to accept
-      confirm.mockReturnValue(true);
-
       // Mock successful approve request
       fetch.mockResolvedValueOnce({
         ok: true,
@@ -779,9 +786,6 @@ describe('audit_clo.js - DOM Integration', () => {
       });
 
       await approveCLO();
-
-      // Verify confirm was called
-      expect(confirm).toHaveBeenCalledWith('Approve this CLO?\n\nCS101 - CLO 1');
 
       // Verify API call
       expect(fetch).toHaveBeenCalledWith(
@@ -794,9 +798,6 @@ describe('audit_clo.js - DOM Integration', () => {
         })
       );
 
-      // Verify success alert
-      expect(alert).toHaveBeenCalledWith('CLO approved successfully!');
-
       // Verify modal was closed
       expect(mockModalInstance.hide).toHaveBeenCalled();
 
@@ -804,20 +805,7 @@ describe('audit_clo.js - DOM Integration', () => {
       expect(global.window.loadCLOs).toHaveBeenCalled();
     });
 
-    it('should do nothing if confirmation is cancelled', async () => {
-      // Mock confirm to cancel
-      confirm.mockReturnValue(false);
-
-      await approveCLO();
-
-      // Verify no API call
-      expect(fetch).not.toHaveBeenCalled();
-    });
-
     it('should handle API error when approving', async () => {
-      // Mock confirm
-      confirm.mockReturnValue(true);
-
       // Mock API error
       fetch.mockResolvedValueOnce({
         ok: false,
@@ -839,9 +827,6 @@ describe('audit_clo.js - DOM Integration', () => {
         course_number: 'CS101',
         clo_number: 1
       };
-
-      // Mock confirm
-      confirm.mockReturnValue(true);
 
       await approveCLO();
 
@@ -1052,7 +1037,7 @@ describe('audit_clo.js - DOM Integration', () => {
         course_number: 'CS101',
         clo_number: 1,
         description: 'Test',
-        instructor_name: 'Jane <Test> O\'Brien & Co.',
+        instructor_name: "Jane <Test> O'Brien & Co.",
         instructor_email: 'jane+test@example.com',
         students_took: 0,
         students_passed: 0
@@ -1062,11 +1047,10 @@ describe('audit_clo.js - DOM Integration', () => {
 
       // HTML tags and ampersands should be escaped (textContent escapes <, >, &)
       expect(html).toContain('&lt;Test&gt;');
-      expect(html).toContain('O\'Brien'); // Single quotes are NOT escaped by textContent
+      expect(html).toContain("O'Brien"); // Single quotes are NOT escaped by textContent
       expect(html).toContain('&amp; Co.');
       // Email should be present
       expect(html).toContain('jane+test@example.com');
     });
   });
 });
-

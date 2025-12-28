@@ -155,13 +155,8 @@ function exportCurrentViewToCsv(cloList) {
 async function approveCLO() {
   if (!globalThis.currentCLO) return;
 
-  if (
-    !confirm(
-      `Approve this CLO?\n\n${globalThis.currentCLO.course_number} - CLO ${globalThis.currentCLO.clo_number}`
-    )
-  ) {
-    return;
-  }
+  // Removed confirmation dialog per request
+  // if (!confirm(...)) return;
 
   const outcomeId = globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
@@ -192,7 +187,8 @@ async function approveCLO() {
     modal.hide();
 
     // Show success
-    alert('CLO approved successfully!');
+    // Show success - Removed alert per request
+    // alert('CLO approved successfully!');
 
     // Reload list
     await globalThis.loadCLOs();
@@ -303,6 +299,13 @@ function renderCLODetails(clo) {
             <div class="col-md-6">
                 <strong>Assessment Tool:</strong> ${escapeHtml(clo.assessment_tool || '—')}
             </div>
+        </div>
+
+        <div class="mb-3">
+             <strong>Attachments:</strong><br>
+             <button class="btn btn-sm btn-outline-secondary" disabled>
+                <i class="fas fa-paperclip"></i> View Attachments (Coming Soon)
+             </button>
         </div>
 
         <hr>

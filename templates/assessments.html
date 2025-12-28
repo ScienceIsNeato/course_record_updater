@@ -568,6 +568,7 @@
                             <input type="number" class="form-control form-control-sm clo-input" 
                                    data-field="students_took" 
                                    data-outcome-id="${outcome.outcome_id}"
+                                   data-enrollment="${section.enrollment || 0}"
                                    value="${studentsTook}" 
                                    min="0" 
                                    placeholder="0"
@@ -685,6 +686,18 @@
                 const rate = Math.round((passed / took) * 100);
                 rateSpan.textContent = rate + '%';
                 rateSpan.className = 'fw-bold ' + (rate >= 80 ? 'text-success' : (rate >= 60 ? 'text-warning' : 'text-danger'));
+            }
+
+            // Soft validation for enrollment matching
+            const enrollment = parseInt(tookInput?.dataset.enrollment) || 0;
+            if (enrollment > 0 && took > enrollment) {
+                tookInput.classList.add('border-warning');
+                tookInput.title = `Warning: Value (${took}) exceeds official enrollment (${enrollment})`;
+                // Remove success border if it was there from autosave
+                tookInput.classList.remove('border-success');
+            } else {
+                tookInput.classList.remove('border-warning');
+                tookInput.title = '';
             }
         }
 

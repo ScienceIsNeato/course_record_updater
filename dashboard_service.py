@@ -560,12 +560,12 @@ class DashboardService:
             )
             courses.append(self._with_program([course], program, institution_id)[0])
 
-        program_summaries = self._build_instructor_program_summary(
-            program_lookup, courses
-        )
-
         # Enrich courses with CLO data for progress calculation
         enriched_courses = self._enrich_courses_with_clo_data(courses, load_clos=True)
+
+        program_summaries = self._build_instructor_program_summary(
+            program_lookup, enriched_courses
+        )
 
         teaching_assignments = self._build_teaching_assignments(
             enriched_courses, sections, courses_lookup
@@ -1098,8 +1098,8 @@ class DashboardService:
                 assessment_data = clo.get("assessment_data", {})
                 if assessment_data and isinstance(assessment_data, dict):
                     # Check if any meaningful data exists (not just an empty dict)
-                    if assessment_data.get("students_assessed") or assessment_data.get(
-                        "meeting_target"
+                    if assessment_data.get("students_took") or assessment_data.get(
+                        "students_passed"
                     ):
                         completed_clos += 1
 

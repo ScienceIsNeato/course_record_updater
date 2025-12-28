@@ -222,6 +222,18 @@ def register():
     return render_template("auth/register.html")
 
 
+@app.route("/terms-of-service")
+def terms_of_service():
+    """Terms of Service page"""
+    return render_template("legal/terms.html")
+
+
+@app.route("/privacy")
+def privacy_policy():
+    """Privacy Policy page"""
+    return render_template("legal/privacy.html")
+
+
 @app.route("/register/accept/<token>")
 def register_accept_invitation(token):
     """Accept invitation and complete registration"""

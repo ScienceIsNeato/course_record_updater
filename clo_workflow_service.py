@@ -646,6 +646,7 @@ class CLOWorkflowService:
             instructor_name = None
             instructor_email = None
             program_name = None
+            term_name = None
             if course:
                 instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
                 if instructor:
@@ -653,6 +654,26 @@ class CLOWorkflowService:
                         instructor
                     )
                     instructor_email = instructor.get("email")
+
+                    # Get term from instructor's section for this course
+                    # distinct from course-level lookup, we want the specific run
+                    try:
+                        sections = db.get_sections_by_instructor(instructor["user_id"])
+                        # Filter for this course
+                        relevant_sections = [
+                            s for s in sections if s.get("course_id") == course_id
+                        ]
+                        if relevant_sections:
+                            # Use the most recent section if multiple (or simply the first found)
+                            term_id = relevant_sections[0].get("term_id")
+                            if term_id:
+                                term = db.get_term_by_id(term_id)
+                                if term:
+                                    term_name = term.get("name")
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to resolve term for outcome {outcome_id}: {e}"
+                        )
 
                 # Get program name from course's programs
                 programs = db.get_programs_for_course(course_id)
@@ -669,6 +690,7 @@ class CLOWorkflowService:
                 "instructor_name": instructor_name,
                 "instructor_email": instructor_email,
                 "program_name": program_name,
+                "term_name": term_name,
             }
 
             return result

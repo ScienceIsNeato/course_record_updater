@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - LoopCloser</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
+</head>
+
+<body class="bg-light p-5">
+    <div class="container bg-white p-5 rounded shadow-sm" style="max-width: 800px;">
+        <h1 class="mb-4">Terms of Service</h1>
+        <p class="text-muted">Last Updated: December 28, 2025</p>
+
+        <h3>1. Acceptance of Terms</h3>
+        <p>By accessing or using LoopCloser, you agree to be bound by these Terms of Service. If you do not agree, you
+            may not use the service.</p>
+
+        <h3>2. Use of Service</h3>
+        <p>LoopCloser provides tools for course learning outcome management. You agree to use the service only for
+            lawful purposes and in accordance with these terms.</p>
+
+        <h3>3. User Accounts</h3>
+        <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities
+            that occur under your account.</p>
+
+        <h3>4. Data Privacy</h3>
+        <p>Your use of the service is also governed by our Privacy Policy. We collect and store assessment data to
+            facilitate the learning outcome management process.</p>
+
+        <h3>5. Termination</h3>
+        <p>We reserve the right to terminate or suspend your account at our sole discretion, without notice, for conduct
+            that we believe violates these Terms or is harmful to other users, us, or third parties, or for any other
+            reason.</p>
+
+        <h3>6. Changes to Terms</h3>
+        <p>We may modify these terms at any time. Your continued use of the service after any such changes constitutes
+            your acceptance of the new Terms of Service.</p>
+
+        <hr class="my-5">
+        <a href="{{ url_for('register') }}" class="btn btn-primary">Back to Registration</a>
+    </div>
+</body>
+
+</html>
