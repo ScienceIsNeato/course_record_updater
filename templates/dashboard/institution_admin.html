@@ -7,14 +7,10 @@
 {% endblock %}
 
 {% block nav_items %}
-<button class="nav-link btn btn-link" type="button" id="dashboard-view-all" onclick="filterDashboard('all')"><i
-        class="fas fa-tachometer-alt me-1"></i>Main Dashboard</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-programs" onclick="filterDashboard('programs')"><i
-        class="fas fa-graduation-cap me-1"></i>Program Management</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-faculty" onclick="filterDashboard('faculty')"><i
-        class="fas fa-users me-1"></i>Faculty Management</button>
-<button class="nav-link btn btn-link" type="button" id="dashboard-outcomes" onclick="filterDashboard('outcomes')"><i
-        class="fas fa-chart-bar me-1"></i>Outcome Management</button>
+<a class="nav-link btn btn-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Main Dashboard</a>
+<a class="nav-link btn btn-link" href="/programs"><i class="fas fa-graduation-cap me-1"></i>Program Management</a>
+<a class="nav-link btn btn-link" href="/faculty"><i class="fas fa-users me-1"></i>Faculty Management</a>
+<a class="nav-link btn btn-link" href="/outcomes"><i class="fas fa-chart-bar me-1"></i>Outcome Management</a>
 {% endblock %}
 
 {% block page_title %}<span id="page-title-text">🏛️ Institution Administration</span>{% endblock %}
@@ -127,7 +123,7 @@
     <div class="panel-header">
         <h5 class="panel-title">
             <span class="panel-icon">📋</span>
-            Course Offerings (Current Term)
+            Course Offerings
         </h5>
         <div class="panel-actions">
             <button class="btn btn-sm btn-primary" onclick="createOffering()">

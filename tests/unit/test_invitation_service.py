@@ -350,7 +350,7 @@ class TestInvitationServiceAcceptance:
             "id": "inv-123",
             "status": "sent",
             "expires_at": future_date.isoformat(),
-            "email": "instructor@example.com",
+            "email": "instructor.doe@example.com",
             "role": "instructor",
             "institution_id": "inst-123",
             "invited_by": "admin-123",
@@ -364,7 +364,9 @@ class TestInvitationServiceAcceptance:
 
         # Execute & Verify
         with pytest.raises(InvitationError, match="Failed to create user account"):
-            InvitationService.accept_invitation("token", "ValidPassword123!")
+            InvitationService.accept_invitation(
+                "token", "ValidPassword123!", display_name="Test User"
+            )
 
     @patch("invitation_service.db")
     def test_accept_invitation_status_expired(self, mock_db):

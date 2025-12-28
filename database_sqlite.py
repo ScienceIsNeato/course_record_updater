@@ -655,23 +655,22 @@ class SQLiteDatabase(DatabaseInterface):
     def get_outcomes_by_status(
         self,
         institution_id: str,
-        status: str,
+        status: Optional[str],
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Get course outcomes filtered by status."""
+        """Get course outcomes filtered by status (or all if status is None)."""
         with self.sqlite.session_scope() as session:
             # Build query with joins to get institution filtering
             query = (
                 select(CourseOutcome)
                 .join(Course, CourseOutcome.course_id == Course.id)
-                .where(
-                    and_(
-                        Course.institution_id == institution_id,
-                        CourseOutcome.status == status,
-                    )
-                )
+                .where(Course.institution_id == institution_id)
             )
+
+            # Add status filter only if specified (None = all statuses)
+            if status is not None:
+                query = query.where(CourseOutcome.status == status)
 
             # Add program filter if specified (Course has many-to-many relationship with Program)
             if program_id:
@@ -972,6 +971,19 @@ class SQLiteDatabase(DatabaseInterface):
                             Term.active.is_(True),
                         )
                     )
+                )
+                .scalars()
+                .all()
+            )
+            return [to_dict(term) for term in terms]
+
+    def get_all_terms(self, institution_id: str) -> List[Dict[str, Any]]:
+        with self.sqlite.session_scope() as session:
+            terms = (
+                session.execute(
+                    select(Term)
+                    .where(Term.institution_id == institution_id)
+                    .order_by(Term.start_date.desc())
                 )
                 .scalars()
                 .all()

@@ -1,10 +1,10 @@
 ---
-description: Automatically restart server after template/static file changes
+description: MANDATORY - Restart server after ANY code change before reporting completion
 ---
 
-# Auto-Restart Server After Changes
+# Server Restart After Changes (MANDATORY)
 
-When making changes to the following file types, **automatically restart the development server** before reporting completion to the user:
+**ALWAYS restart the development server after making ANY changes** before reporting completion to the user. Do NOT tell the user to "hard refresh" - restart the server instead.
 
 ## Files That Require Server Restart
 

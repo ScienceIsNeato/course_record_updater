@@ -1,21 +1,18 @@
 /**
- * CLO Audit & Approval Interface
- *
- * Handles the admin interface for reviewing and approving CLOs
- */
-
-/**
- * Get status badge HTML
+ * Get status badge HTML with color-coded scheme:
+ * Unassigned=grey, Assigned=black, In Progress=blue,
+ * Needs Rework=orange, Awaiting Approval=yellow-green, Approved=green, NCI=red
  */
 function getStatusBadge(status) {
   const badges = {
-    unassigned: '<span class="badge bg-secondary">Unassigned</span>',
-    assigned: '<span class="badge bg-info">Assigned</span>',
-    in_progress: '<span class="badge bg-primary">In Progress</span>',
-    awaiting_approval: '<span class="badge bg-warning">Awaiting Approval</span>',
-    approval_pending: '<span class="badge bg-danger">Needs Rework</span>',
-    approved: '<span class="badge bg-success">✓ Approved</span>',
-    never_coming_in: '<span class="badge bg-dark">NCI - Never Coming In</span>'
+    unassigned: '<span class="badge" style="background-color: #6c757d;">Unassigned</span>',
+    assigned: '<span class="badge" style="background-color: #212529;">Assigned</span>',
+    in_progress: '<span class="badge" style="background-color: #0d6efd;">In Progress</span>',
+    awaiting_approval:
+      '<span class="badge" style="background-color: #9acd32;">Awaiting Approval</span>',
+    approval_pending: '<span class="badge" style="background-color: #fd7e14;">Needs Rework</span>',
+    approved: '<span class="badge" style="background-color: #198754;">✓ Approved</span>',
+    never_coming_in: '<span class="badge" style="background-color: #dc3545;">NCI</span>'
   };
   return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
 }
@@ -452,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (programFilter) {
           programs.forEach(prog => {
             const option = document.createElement('option');
-            option.value = prog.id;
+            option.value = prog.program_id || prog.id; // API returns program_id
             option.textContent = prog.name;
             programFilter.appendChild(option);
           });
@@ -542,27 +539,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Update summary statistics
+   * Top stats are UNFILTERED source of truth for the institution (not affected by filter dropdowns)
    */
   async function updateStats() {
     try {
-      // Fetch stats for each status (added NCI from CEI demo feedback)
+      // Full CLO lifecycle: Unassigned → Assigned → In Progress → Needs Rework → Awaiting Approval → Approved → NCI
       const statuses = [
-        'awaiting_approval',
-        'approval_pending',
-        'approved',
+        'unassigned',
+        'assigned',
         'in_progress',
+        'approval_pending',
+        'awaiting_approval',
+        'approved',
         'never_coming_in'
       ];
 
-      // Use current filters for stats too
-      const programId = programFilter ? programFilter.value : '';
-      const termId = termFilter ? termFilter.value : '';
+      // Top stats are UNFILTERED - no program/term filters applied
+      // This provides source of truth totals for the institution
 
       const promises = statuses.map(status => {
         const params = new URLSearchParams();
         params.append('status', status);
-        if (programId) params.append('program_id', programId);
-        if (termId) params.append('term_id', termId);
+        // No filters - these are institution-wide totals
 
         return fetch(`/api/outcomes/audit?${params.toString()}`)
           .then(r => {
@@ -580,12 +578,19 @@ document.addEventListener('DOMContentLoaded', () => {
           });
       });
 
-      const [awaiting, pending, approved, inProgress, nci] = await Promise.all(promises);
+      const [unassigned, assigned, inProgress, pending, awaiting, approved, nci] =
+        await Promise.all(promises);
 
-      document.getElementById('statAwaitingApproval').textContent = awaiting;
-      document.getElementById('statNeedsRework').textContent = pending;
-      document.getElementById('statApproved').textContent = approved;
+      if (document.getElementById('statUnassigned')) {
+        document.getElementById('statUnassigned').textContent = unassigned;
+      }
+      if (document.getElementById('statAssigned')) {
+        document.getElementById('statAssigned').textContent = assigned;
+      }
       document.getElementById('statInProgress').textContent = inProgress;
+      document.getElementById('statNeedsRework').textContent = pending;
+      document.getElementById('statAwaitingApproval').textContent = awaiting;
+      document.getElementById('statApproved').textContent = approved;
       if (document.getElementById('statNCI')) {
         document.getElementById('statNCI').textContent = nci;
       }

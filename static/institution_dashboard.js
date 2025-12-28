@@ -379,6 +379,7 @@
           { key: 'number', label: 'Course Number', sortable: true },
           { key: 'title', label: 'Title', sortable: true },
           { key: 'credits', label: 'Credits', sortable: true },
+          { key: 'sections', label: 'Sections', sortable: true },
           { key: 'department', label: 'Department', sortable: true }
         ],
         data: courses.map(course => {
@@ -387,6 +388,8 @@
             title: course.course_title || course.title || '-',
             credits: (course.credit_hours ?? '-').toString(),
             credits_sort: (course.credit_hours ?? 0).toString(),
+            sections: (course.section_count ?? 0).toString(),
+            sections_sort: (course.section_count ?? 0).toString(),
             department: course.department || '-'
           };
         })
@@ -408,11 +411,12 @@
       const table = globalThis.panelManager.createSortableTable({
         id: 'institution-terms-table',
         columns: [
-          { key: 'term', label: 'Term Name', sortable: true },
+          { key: 'programs', label: 'Programs', sortable: true },
+          { key: 'courses', label: 'Courses', sortable: true },
+          { key: 'sections', label: 'Course Sections', sortable: true },
           { key: 'start_date', label: 'Start Date', sortable: true },
           { key: 'end_date', label: 'End Date', sortable: true },
-          { key: 'status', label: 'Status', sortable: true },
-          { key: 'offerings', label: 'Offerings', sortable: true }
+          { key: 'status', label: 'Status', sortable: true }
         ],
         data: terms.map(term => {
           // Format dates nicely
@@ -422,7 +426,12 @@
           const endDate = term.end_date ? new Date(term.end_date).toLocaleDateString() : 'N/A';
 
           return {
-            term: term.term_name || term.name || 'Unnamed Term',
+            programs: (term.program_count ?? 0).toString(),
+            programs_sort: (term.program_count ?? 0).toString(),
+            courses: (term.course_count ?? 0).toString(),
+            courses_sort: (term.course_count ?? 0).toString(),
+            sections: (term.section_count ?? 0).toString(),
+            sections_sort: (term.section_count ?? 0).toString(),
             start_date: startDate,
             start_date_sort: term.start_date || '',
             end_date: endDate,
@@ -431,9 +440,7 @@
               term.active || term.is_active
                 ? '<span class="badge bg-success">Active</span>'
                 : '<span class="badge bg-secondary">Inactive</span>',
-            status_sort: term.active || term.is_active ? '1' : '0',
-            offerings: (term.offering_count || 0).toString(),
-            offerings_sort: (term.offering_count || 0).toString()
+            status_sort: term.active || term.is_active ? '1' : '0'
           };
         })
       });

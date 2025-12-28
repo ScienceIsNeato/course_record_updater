@@ -13,6 +13,7 @@ from database_service import (
     get_all_institutions,
     get_all_instructors,
     get_all_sections,
+    get_all_terms,
     get_all_users,
     get_course_outcomes,
     get_courses_by_program,
@@ -171,19 +172,36 @@ class DashboardService:
             "instructors": get_all_instructors(institution_id) or [],
             "sections": get_all_sections(institution_id) or [],
             "offerings": get_all_course_offerings(institution_id) or [],
-            "terms": get_active_terms(institution_id) or [],
+            "offerings": get_all_course_offerings(institution_id) or [],
+            "terms": get_all_terms(institution_id) or [],
         }
 
     def _collect_clos_from_courses(
-        self, courses: List[Dict[str, Any]]
+        self,
+        courses: List[Dict[str, Any]],
+        program_index: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         """Collect all CLOs from courses, enriching them with course metadata."""
         all_clos = []
+        program_index = program_index or {}
+
         for course in courses:
+            # Resolve program name from course's program_ids
+            program_name = None
+            program_ids = course.get("program_ids") or []
+            if program_ids:
+                # Use first associated program for display context
+                pid = program_ids[0]
+                program = program_index.get(pid)
+                if program:
+                    program_name = program.get("name")
+
             for clo in course.get("clos", []):
                 clo_copy = dict(clo)
                 clo_copy["course_number"] = course.get("course_number", "")
                 clo_copy["course_title"] = course.get("course_title", "")
+                if program_name:
+                    clo_copy["program_name"] = program_name
                 all_clos.append(clo_copy)
         return all_clos
 
@@ -227,11 +245,15 @@ class DashboardService:
 
         # Enrich courses with CLO data
         courses = self._enrich_courses_with_clo_data(raw["courses"], load_clos=True)
-        all_clos = self._collect_clos_from_courses(courses)
 
         # Build indexes and mappings
-        course_index = self._index_by_keys(courses, ["course_id", "id"])
+        # Create program_index first so it can be used for CLO enrichment
         program_index = {self._get_program_id(p): p for p in raw["programs"]}
+
+        # Collect CLOs with program context
+        all_clos = self._collect_clos_from_courses(courses, program_index)
+
+        course_index = self._index_by_keys(courses, ["course_id", "id"])
         faculty = self._build_faculty_directory(raw["users"], raw["instructors"])
         offering_to_course = self._build_offering_to_course_mapping(raw["offerings"])
 
@@ -240,7 +262,15 @@ class DashboardService:
             raw["sections"], course_index, offering_to_course
         )
         sections = self._enrich_sections_with_instructor_data(sections, raw["users"])
-        terms = self._enrich_terms_with_offering_counts(raw["terms"], raw["offerings"])
+
+        # Enrich courses with section counts (new requirement)
+        courses = self._enrich_courses_with_section_counts(courses, sections)
+
+        # Enrich terms with detailed counts (new requirement)
+        terms = self._enrich_terms_with_detailed_counts(
+            raw["terms"], raw["offerings"], courses, sections
+        )
+
         offerings = self._enrich_offerings_with_section_data(raw["offerings"], sections)
 
         # Build metrics and aggregations
@@ -533,8 +563,12 @@ class DashboardService:
         program_summaries = self._build_instructor_program_summary(
             program_lookup, courses
         )
+
+        # Enrich courses with CLO data for progress calculation
+        enriched_courses = self._enrich_courses_with_clo_data(courses, load_clos=True)
+
         teaching_assignments = self._build_teaching_assignments(
-            courses, sections, courses_lookup
+            enriched_courses, sections, courses_lookup
         )
         assessment_tasks = self._build_assessment_tasks(sections, courses_lookup)
 
@@ -657,7 +691,12 @@ class DashboardService:
             directory[user_id] = record
 
         for user in users:
-            if user.get("role") not in {"instructor", "program_admin"}:
+            # Include institution_admin so they appear in User Management panel
+            if user.get("role") not in {
+                "instructor",
+                "program_admin",
+                "institution_admin",
+            }:
                 continue
             user_id = user.get("user_id") or user.get("id")
             if not user_id:
@@ -835,6 +874,23 @@ class DashboardService:
             )
             if assignment:
                 assignments.append(assignment)
+            else:
+                # Still include member in the directory even if no active assignments
+                user_id = member.get("user_id")
+                if user_id:
+                    assignments.append(
+                        {
+                            "user_id": user_id,
+                            "full_name": member.get("full_name")
+                            or self._full_name(member),
+                            "program_ids": [],
+                            "course_count": 0,
+                            "section_count": 0,
+                            "enrollment": 0,
+                            "program_summaries": [],
+                            "role": member.get("role"),  # Preserve role
+                        }
+                    )
 
         return assignments
 
@@ -960,6 +1016,30 @@ class DashboardService:
             if not course_id:
                 continue
             linked_sections = sections_by_course.get(course_id, [])
+            # Calculate CLO progress for this course
+            course_clos = course.get("clos", [])
+            total_clos = len(course_clos)
+            completed_clos = 0
+            for clo in course_clos:
+                # Check if CLO has assessment data filled in
+                # Using current field names: students_took, students_passed, assessment_tool
+                has_took = clo.get("students_took") is not None
+                has_passed = clo.get("students_passed") is not None
+                has_tool = (
+                    clo.get("assessment_tool") and clo.get("assessment_tool").strip()
+                )
+
+                # Also check status for submitted/approved CLOs
+                status = clo.get("status", "assigned")
+                is_submitted = status in ("awaiting_approval", "approved")
+
+                if is_submitted or (has_took and has_passed and has_tool):
+                    completed_clos += 1
+
+            percent_complete = (
+                round((completed_clos / total_clos) * 100, 1) if total_clos else 0
+            )
+
             assignments.append(
                 {
                     "course_id": course_id,
@@ -970,6 +1050,9 @@ class DashboardService:
                     "section_count": len(linked_sections),
                     "enrollment": self._total_enrollment(linked_sections),
                     "sections": [dict(section) for section in linked_sections],
+                    "clo_count": total_clos,
+                    "clos_completed": completed_clos,
+                    "percent_complete": percent_complete,
                 }
             )
         return assignments
@@ -1286,6 +1369,126 @@ class DashboardService:
             enriched_terms.append(enriched_term)
 
         return enriched_terms
+
+    def _enrich_terms_with_detailed_counts(
+        self,
+        terms: List[Dict[str, Any]],
+        offerings: List[Dict[str, Any]],
+        courses: List[Dict[str, Any]],
+        sections: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich terms with detailed counts: programs, courses, sections.
+
+        Args:
+            terms: List of term dictionaries
+            offerings: List of offering dictionaries
+            courses: List of course dictionaries
+            sections: List of section dictionaries
+
+        Returns:
+            List of terms enriched with program_count, course_count, section_count.
+        """
+        # Create lookups
+        course_lookup = {c.get("course_id") or c.get("id"): c for c in courses}
+
+        # Group offerings by term
+        term_offerings: Dict[str, List[Dict[str, Any]]] = {}
+        for offering in offerings:
+            term_id = offering.get("term_id")
+            if term_id:
+                if term_id not in term_offerings:
+                    term_offerings[term_id] = []
+                term_offerings[term_id].append(offering)
+
+        # Count sections per term
+        # Sections map to offerings, offerings map to terms
+        # But we also have enriched sections which might have more data,
+        # but easiest is to use offering's term_id via section's offering_id.
+        offering_term_map = {
+            o.get("offering_id"): o.get("term_id")
+            for o in offerings
+            if o.get("offering_id")
+        }
+
+        term_section_counts: Dict[str, int] = {}
+        for section in sections:
+            offering_id = section.get("offering_id")
+            term_id = offering_term_map.get(offering_id)
+            if term_id:
+                term_section_counts[term_id] = term_section_counts.get(term_id, 0) + 1
+
+        enriched_terms = []
+        for term in terms:
+            term_id = term.get("term_id") or term.get("id")
+            term_copy = dict(term)
+
+            term_specific_offerings = term_offerings.get(term_id, [])
+
+            # Calculate counts
+            unique_program_ids = set()
+            unique_course_ids = set()
+
+            for offering in term_specific_offerings:
+                # Get program(s) from Offering first, then fallback to Course
+                program_id = offering.get("program_id")
+                if program_id:
+                    unique_program_ids.add(program_id)
+
+                course_id = offering.get("course_id")
+                if course_id:
+                    unique_course_ids.add(course_id)
+
+                    # If program_id wasn't on offering, get it from the course
+                    # Courses can be linked to multiple programs (program_ids list)
+                    if not program_id and course_id in course_lookup:
+                        course = course_lookup[course_id]
+                        p_ids = course.get("program_ids", [])
+                        if isinstance(p_ids, list):
+                            unique_program_ids.update(p_ids)
+                        elif isinstance(p_ids, str):
+                            unique_program_ids.add(p_ids)
+
+                        # Also check legacy/single 'program_id' field on course
+                        p_id = course.get("program_id")
+                        if p_id:
+                            unique_program_ids.add(p_id)
+
+            term_copy["program_count"] = len(unique_program_ids)
+            term_copy["course_count"] = len(unique_course_ids)
+            term_copy["offering_count"] = len(term_specific_offerings)
+            term_copy["section_count"] = term_section_counts.get(term_id, 0)
+
+            enriched_terms.append(term_copy)
+
+        return enriched_terms
+
+    def _enrich_courses_with_section_counts(
+        self,
+        courses: List[Dict[str, Any]],
+        sections: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Add section_count to each course."""
+        # Map course_id -> section count
+        course_section_counts: Dict[str, int] = {}
+
+        # We need to map section -> offering -> course
+        # Sections already enriched with course_id in _enrich_sections_with_course_data
+        for section in sections:
+            course_id = section.get("course_id")
+            if course_id:
+                course_section_counts[course_id] = (
+                    course_section_counts.get(course_id, 0) + 1
+                )
+
+        enriched_courses = []
+        for course in courses:
+            course_copy = course.copy()
+            c_id = course.get("course_id") or course.get("id")
+            course_copy["section_count"] = course_section_counts.get(c_id, 0)
+            enriched_courses.append(course_copy)
+
+        return enriched_courses
 
     def _enrich_offerings_with_section_data(
         self,

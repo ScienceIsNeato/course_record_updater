@@ -514,6 +514,10 @@ def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
     return _db_service.get_active_terms(institution_id)
 
 
+def get_all_terms(institution_id: str) -> List[Dict[str, Any]]:
+    return _db_service.get_all_terms(institution_id)
+
+
 def get_term_by_id(term_id: str) -> Optional[Dict[str, Any]]:
     return _db_service.get_term_by_id(term_id)
 

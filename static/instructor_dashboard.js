@@ -38,7 +38,6 @@
     async loadData(options = {}) {
       const { silent = false } = options;
       if (!silent) {
-        this.setLoading(SELECTORS.teachingContainer, 'Loading teaching assignments...');
         this.setLoading(SELECTORS.assessmentContainer, 'Loading assessment tasks...');
         this.setLoading(SELECTORS.summaryContainer, 'Building summary...');
         const activityList = document.getElementById(SELECTORS.activityList);
@@ -68,7 +67,6 @@
       } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Instructor dashboard load error:', error);
-        this.showError(SELECTORS.teachingContainer, 'Unable to load teaching assignments');
         this.showError(SELECTORS.assessmentContainer, 'Unable to load assessment tasks');
         this.showError(SELECTORS.summaryContainer, 'Unable to build summary');
         const activityList = document.getElementById(SELECTORS.activityList);
@@ -80,8 +78,8 @@
 
     render(data) {
       this.updateHeader(data);
-      this.renderTeachingAssignments(data.teaching_assignments || []);
-      this.renderAssessmentTasks(data.assessment_tasks || []);
+      // Teaching panel removed, Assessment panel now uses course assignment data
+      this.renderAssessmentTasks(data.teaching_assignments || []);
       this.renderRecentActivity(data.assessment_tasks || []);
       this.renderCourseSummary(data.teaching_assignments || [], data.sections || []);
       const lastUpdated =
@@ -105,8 +103,8 @@
       }
     },
 
-    renderTeachingAssignments(assignments) {
-      const container = document.getElementById(SELECTORS.teachingContainer);
+    renderAssessmentTasks(assignments) {
+      const container = document.getElementById(SELECTORS.assessmentContainer);
       if (!container) return;
 
       if (!assignments.length) {
@@ -119,73 +117,34 @@
       }
 
       const table = globalThis.panelManager.createSortableTable({
-        id: 'instructor-teaching-table',
-        columns: [
-          { key: 'course', label: 'Course', sortable: true },
-          { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'students', label: 'Students', sortable: true }
-        ],
-        data: assignments.map(assignment => {
-          const sectionCount = Number(assignment.section_count ?? 0);
-          const enrollment = Number(assignment.enrollment ?? 0);
-
-          return {
-            course:
-              `${assignment.course_number || assignment.course_id || 'Course'} — ${assignment.course_title || ''}`.trim(),
-            sections: sectionCount.toString(),
-            sections_sort: sectionCount.toString(),
-            students: enrollment.toString(),
-            students_sort: enrollment.toString()
-          };
-        })
-      });
-
-      container.innerHTML = ''; // nosemgrep
-      container.appendChild(table);
-    },
-
-    renderAssessmentTasks(tasks) {
-      const container = document.getElementById(SELECTORS.assessmentContainer);
-      if (!container) return;
-
-      if (!tasks.length) {
-        // nosemgrep
-        container.innerHTML = this.renderEmptyState(
-          'No outstanding assessment tasks',
-          'Add Assessment'
-        );
-        return;
-      }
-
-      const table = globalThis.panelManager.createSortableTable({
         id: 'instructor-assessment-table',
         columns: [
           { key: 'course', label: 'Course', sortable: true },
-          { key: 'section', label: 'Section', sortable: true },
-          { key: 'due', label: 'Due Date', sortable: true },
-          { key: 'status', label: 'Status', sortable: true },
-          { key: 'action', label: 'Action', sortable: false }
+          { key: 'clos', label: 'CLOs', sortable: true },
+          { key: 'progress', label: 'Completion', sortable: true }
         ],
-        data: tasks.map(task => {
-          const status = (task.status || 'pending').replace(/_/g, ' ');
-          const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : '—';
-          const courseId = task.course_id || '';
-          const sectionId = task.section_id || '';
-          const buttonText = this.isTaskComplete(task.status) ? 'Review' : 'Enter';
-          // Build URL with only non-empty parameters
-          const params = [];
-          if (courseId) params.push(`course=${courseId}`);
-          if (sectionId) params.push(`section=${sectionId}`);
-          const url = params.length > 0 ? `/assessments?${params.join('&')}` : '/assessments';
+        data: assignments.map(assignment => {
+          const courseId = assignment.course_id || '';
+          const cloCount = Number(assignment.clo_count ?? 0);
+          const percent = Number(assignment.percent_complete ?? 0);
+          const completed = Number(assignment.clos_completed ?? 0);
+
+          // Build URL
+          const url = courseId ? `/assessments?course=${courseId}` : '/assessments';
+
           return {
-            course: task.course_number
-              ? `${task.course_number} — ${task.course_title || ''}`
-              : task.course_title || 'Course',
-            section: task.section_number || task.section_id || '—',
-            due: dueDate,
-            due_sort: task.due_date || '',
-            status: status.charAt(0).toUpperCase() + status.slice(1),
-            action: `<a href="${url}" class="btn btn-sm btn-outline-success">${buttonText}</a>`
+            course: assignment.course_number
+              ? `<a href="${url}" class="text-decoration-none fw-bold">${assignment.course_number} — ${assignment.course_title || ''}</a>`
+              : `<a href="${url}" class="text-decoration-none fw-bold">${assignment.course_title || 'Course'}</a>`,
+            clos: cloCount.toString(),
+            clos_sort: cloCount.toString(),
+            progress: `<div class="d-flex align-items-center">
+                <div class="progress flex-grow-1 me-2" style="height: 10px;">
+                  <div class="progress-bar" role="progressbar" style="width: ${Math.min(percent, 100)}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <span class="small text-muted">${percent}% (${completed}/${cloCount})</span>
+              </div>`,
+            progress_sort: percent
           };
         })
       });

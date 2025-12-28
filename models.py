@@ -79,6 +79,7 @@ ROLES = {
 
 # Status Enums
 SECTION_STATUSES = [
+    "unassigned",  # Created but no instructor assigned
     "assigned",  # Instructor assigned, not yet started
     "in_progress",  # Term active, assessments in progress
     "completed",  # All assessments submitted
@@ -209,6 +210,12 @@ class User(DataModel):
             raise ValueError(
                 f"Invalid account_status: {account_status}. Must be one of {ACCOUNT_STATUSES}"
             )
+
+        if not first_name or not first_name.strip():
+            raise ValueError("First name is required")
+
+        if not last_name or not last_name.strip():
+            raise ValueError("Last name is required")
 
         # Validate required fields based on role
         if role != "site_admin" and not institution_id:
@@ -535,6 +542,7 @@ class CourseSection(DataModel):
         instructor_id: Optional[str] = None,
         enrollment: Optional[int] = None,
         status: str = "assigned",
+        assessment_due_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a new course section record schema
@@ -545,6 +553,7 @@ class CourseSection(DataModel):
             instructor_id: Optional ID of assigned instructor
             enrollment: Number of enrolled students (was previously 'num_students')
             status: Section status from SECTION_STATUSES
+            assessment_due_date: Optional ISO 8601 date string for assessment deadline
 
         Returns:
             Dictionary containing the course section schema
@@ -566,6 +575,7 @@ class CourseSection(DataModel):
             "section_number": section_number.strip(),
             "enrollment": enrollment,
             "status": status,
+            "assessment_due_date": assessment_due_date,
             "grade_distribution": {},
             "assigned_date": (
                 CourseSection.current_timestamp() if instructor_id else None

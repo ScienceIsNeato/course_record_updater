@@ -2451,7 +2451,7 @@ class TestUserManagementAPI:
         response = self.client.post("/api/users", json={"email": "test@mocku.test"})
         assert response.status_code == 400
         data = response.get_json()
-        assert "Missing required fields" in data["error"]
+        assert "First Name is required" in data["error"]
 
     @patch("api_routes.get_current_user")
     @patch("api_routes.has_permission")

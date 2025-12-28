@@ -15,7 +15,6 @@ describe('InstructorDashboard', () => {
       <div id="instructorSectionCount"></div>
       <div id="instructorStudentCount"></div>
       <div id="instructorAssessmentProgress"></div>
-      <div id="instructorTeachingContainer"></div>
       <div id="instructorAssessmentContainer"></div>
       <ul id="instructorActivityList"></ul>
       <div id="instructorSummaryContainer"></div>
@@ -54,12 +53,12 @@ describe('InstructorDashboard', () => {
 
     expect(document.getElementById('instructorCourseCount').textContent).toBe('2');
     expect(document.getElementById('instructorAssessmentProgress').textContent).toBe('50%');
-    expect(document.getElementById('instructorTeachingContainer').querySelector('table')).not.toBeNull();
+    expect(document.getElementById('instructorAssessmentContainer').querySelector('table')).not.toBeNull();
   });
 
   it('shows error state for containers', () => {
-    InstructorDashboard.showError('instructorTeachingContainer', 'Unable to load');
-    expect(document.getElementById('instructorTeachingContainer').textContent).toContain('Unable to load');
+    InstructorDashboard.showError('instructorAssessmentContainer', 'Unable to load');
+    expect(document.getElementById('instructorAssessmentContainer').textContent).toContain('Unable to load');
   });
 
   it('handles different data scenarios', () => {
@@ -125,7 +124,6 @@ describe('InstructorDashboard', () => {
 
       await InstructorDashboard.loadData();
 
-      expect(showErrorSpy).toHaveBeenCalledWith('instructorTeachingContainer', 'Unable to load teaching assignments');
       expect(showErrorSpy).toHaveBeenCalledWith('instructorAssessmentContainer', 'Unable to load assessment tasks');
       expect(showErrorSpy).toHaveBeenCalledWith('instructorSummaryContainer', 'Unable to build summary');
 
@@ -178,7 +176,6 @@ describe('InstructorDashboard', () => {
 
       await InstructorDashboard.loadData({ silent: false });
 
-      expect(setLoadingSpy).toHaveBeenCalledWith('instructorTeachingContainer', 'Loading teaching assignments...');
       expect(setLoadingSpy).toHaveBeenCalledWith('instructorAssessmentContainer', 'Loading assessment tasks...');
       expect(setLoadingSpy).toHaveBeenCalledWith('instructorSummaryContainer', 'Building summary...');
 
@@ -324,9 +321,9 @@ describe('InstructorDashboard', () => {
 
   describe('loading and error state management', () => {
     it('sets loading state correctly', () => {
-      InstructorDashboard.setLoading('instructorTeachingContainer', 'Loading...');
+      InstructorDashboard.setLoading('instructorAssessmentContainer', 'Loading...');
 
-      const container = document.getElementById('instructorTeachingContainer');
+      const container = document.getElementById('instructorAssessmentContainer');
       expect(container.innerHTML).toContain('Loading...');
       expect(container.innerHTML).toContain('spinner-border');
     });
@@ -353,13 +350,6 @@ describe('InstructorDashboard', () => {
     it('handles null/missing timestamp in updateLastUpdated', () => {
       // Element was removed from UI - test graceful handling when element is missing
       expect(() => InstructorDashboard.updateLastUpdated(null)).not.toThrow();
-    });
-
-    it('handles missing elements gracefully in renderTeachingAssignments', () => {
-      document.body.innerHTML = ''; // Remove all elements
-
-      // Should not throw
-      expect(() => InstructorDashboard.renderTeachingAssignments([])).not.toThrow();
     });
 
     it('handles missing elements gracefully in renderAssessmentTasks', () => {

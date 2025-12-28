@@ -326,6 +326,176 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
+    def validate_course_submission(
+        course_id: str, section_id: str = None
+    ) -> Dict[str, Any]:
+        """
+        Validate all CLOs and course-level data are complete before submission.
+
+        Args:
+            course_id: The course ID to validate
+            section_id: Optional section ID to validate course-level data
+
+        Returns:
+            Dict with 'valid' bool and 'errors' list of error details
+        """
+        try:
+            outcomes = db.get_course_outcomes(course_id)
+
+            if not outcomes:
+                return {
+                    "valid": False,
+                    "errors": [
+                        {
+                            "outcome_id": None,
+                            "field": "course",
+                            "message": "No CLOs found for this course",
+                        }
+                    ],
+                }
+
+            errors = []
+
+            # Validate each CLO
+            for outcome in outcomes:
+                outcome_id = outcome.get("outcome_id") or outcome.get("id")
+                clo_number = outcome.get("clo_number", "?")
+
+                students_took = outcome.get("students_took")
+                students_passed = outcome.get("students_passed")
+                assessment_tool = outcome.get("assessment_tool") or ""
+
+                # Check required fields
+                if students_took is None:
+                    errors.append(
+                        {
+                            "outcome_id": outcome_id,
+                            "field": "students_took",
+                            "message": f"CLO {clo_number}: Students Took is required",
+                        }
+                    )
+
+                if students_passed is None:
+                    errors.append(
+                        {
+                            "outcome_id": outcome_id,
+                            "field": "students_passed",
+                            "message": f"CLO {clo_number}: Students Passed is required",
+                        }
+                    )
+
+                if not assessment_tool.strip():
+                    errors.append(
+                        {
+                            "outcome_id": outcome_id,
+                            "field": "assessment_tool",
+                            "message": f"CLO {clo_number}: Assessment Tool is required",
+                        }
+                    )
+
+                # Check logical constraint: passed can't exceed took
+                if (
+                    students_took is not None
+                    and students_passed is not None
+                    and students_passed > students_took
+                ):
+                    errors.append(
+                        {
+                            "outcome_id": outcome_id,
+                            "field": "students_passed",
+                            "message": f"CLO {clo_number}: Students Passed cannot exceed Students Took",
+                        }
+                    )
+
+            # Validate course-level section data if section provided
+            if section_id:
+                section = db.get_section_by_id(section_id)
+                if section:
+                    if section.get("students_passed") is None:
+                        errors.append(
+                            {
+                                "outcome_id": None,
+                                "field": "course_students_passed",
+                                "message": "Course: Students Passed (A/B/C) is required",
+                            }
+                        )
+                    if section.get("students_dfic") is None:
+                        errors.append(
+                            {
+                                "outcome_id": None,
+                                "field": "course_students_dfic",
+                                "message": "Course: Students D/F/Incomplete is required",
+                            }
+                        )
+
+            return {"valid": len(errors) == 0, "errors": errors}
+
+        except Exception as e:
+            logger.error(f"Error validating course submission: {e}")
+            return {
+                "valid": False,
+                "errors": [
+                    {
+                        "outcome_id": None,
+                        "field": "system",
+                        "message": f"Error validating submission: {str(e)}",
+                    }
+                ],
+            }
+
+    @staticmethod
+    def submit_course_for_approval(
+        course_id: str, user_id: str, section_id: str = None
+    ) -> Dict[str, Any]:
+        """
+        Submit all CLOs for a course for approval after validation.
+
+        Args:
+            course_id: The course ID to submit
+            user_id: The ID of the submitting user (instructor)
+            section_id: Optional section ID for course-level data validation
+
+        Returns:
+            Dict with 'success' bool and 'errors' list if validation fails
+        """
+        # First validate
+        validation = CLOWorkflowService.validate_course_submission(
+            course_id, section_id
+        )
+        if not validation["valid"]:
+            return {"success": False, "errors": validation["errors"]}
+
+        try:
+            # Get all CLOs for this course
+            outcomes = db.get_course_outcomes(course_id)
+
+            # Submit each CLO
+            submitted_count = 0
+            for outcome in outcomes:
+                outcome_id = outcome.get("outcome_id") or outcome.get("id")
+                if CLOWorkflowService.submit_clo_for_approval(outcome_id, user_id):
+                    submitted_count += 1
+
+            return {
+                "success": True,
+                "submitted_count": submitted_count,
+                "errors": [],
+            }
+
+        except Exception as e:
+            logger.error(f"Error submitting course for approval: {e}")
+            return {
+                "success": False,
+                "errors": [
+                    {
+                        "outcome_id": None,
+                        "field": "system",
+                        "message": f"Error submitting course: {str(e)}",
+                    }
+                ],
+            }
+
+    @staticmethod
     def get_clos_awaiting_approval(
         institution_id: str, program_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
@@ -364,7 +534,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def get_clos_by_status(
-        status: str,
+        status: Optional[str],
         institution_id: str,
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
@@ -373,7 +543,7 @@ class CLOWorkflowService:
         Get CLOs filtered by status.
 
         Args:
-            status: The CLO status to filter by
+            status: The CLO status to filter by, or None to get all statuses
             institution_id: The institution ID to filter by
             program_id: Optional program ID to filter by
             term_id: Optional term ID to filter by
@@ -414,12 +584,16 @@ class CLOWorkflowService:
         For multi-section courses, use the submitted_by_user_id to identify
         the correct instructor rather than picking arbitrarily from sections.
         """
+        # Unassigned CLOs don't have a responsible instructor yet
+        if outcome.get("status") == "unassigned":
+            return None
+
         instructor_id = outcome.get("submitted_by_user_id")
         if instructor_id:
             return db.get_user(instructor_id)
 
         # Fallback: if not submitted yet, try to get instructor from first section
-        # This is a best-effort attempt for unsubmitted CLOs
+        # This is a best-effort attempt for assigned but unsubmitted CLOs
         course_id = outcome.get("course_id")
         if not course_id:
             return None

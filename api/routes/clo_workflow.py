@@ -142,8 +142,9 @@ def get_clos_for_audit():
         institution_id = get_current_institution_id()
         user = get_current_user()
 
-        # Get query parameters
-        status = request.args.get("status", "awaiting_approval")
+        # Get query parameters (default to None = all statuses if not specified)
+        status_param = request.args.get("status")
+        status = None if status_param in (None, "all") else status_param
         program_id = request.args.get("program_id")
         term_id = request.args.get("term_id")
         term_name = request.args.get("term_name")
@@ -169,7 +170,7 @@ def get_clos_for_audit():
             if not program_id:
                 program_id = user_program_ids[0]
 
-        # Get CLOs by status
+        # Get CLOs by status (status is already None for "all" or a specific value)
         outcomes = CLOWorkflowService.get_clos_by_status(
             status=status,
             institution_id=institution_id,

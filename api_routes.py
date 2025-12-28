@@ -898,6 +898,19 @@ def create_user():
 
         # Validate required fields
         required_fields = ["email", "first_name", "last_name", "role"]
+
+        # Check for missing or empty fields
+        for field in required_fields:
+            if not data.get(field) or not str(data.get(field)).strip():
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": f"{field.replace('_', ' ').title()} is required",
+                        }
+                    ),
+                    400,
+                )
         missing_fields = [f for f in required_fields if not data.get(f)]
 
         if missing_fields:
@@ -1014,6 +1027,19 @@ def update_user_api(user_id: str):
         if not existing_user:
             return jsonify({"success": False, "error": USER_NOT_FOUND_MSG}), 404
 
+        # Validate name fields if present
+        for field in ["first_name", "last_name"]:
+            if field in data and not str(data.get(field)).strip():
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": f"{field.replace('_', ' ').title()} cannot be empty",
+                        }
+                    ),
+                    400,
+                )
+
         # Update user
         success = update_user(user_id, data)
 
@@ -1053,6 +1079,19 @@ def update_user_profile_endpoint(user_id: str):
         data = request.get_json(silent=True)
         if not data:
             return jsonify({"success": False, "error": NO_JSON_DATA_PROVIDED_MSG}), 400
+
+        # Validate name fields if present
+        for field in ["first_name", "last_name"]:
+            if field in data and not str(data.get(field)).strip():
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": f"{field.replace('_', ' ').title()} cannot be empty",
+                        }
+                    ),
+                    400,
+                )
 
         # Update profile
         success = update_user_profile(user_id, data)
@@ -2623,17 +2662,33 @@ def list_course_offerings():
         if course_id:
             sections = [s for s in sections if s.get("course_id") == course_id]
 
-        # Extract unique offerings
+        # Extract unique offerings and aggregate data
         offerings_dict = {}
         for section in sections:
             offering_id = section.get("offering_id")
-            if offering_id and offering_id not in offerings_dict:
+            if not offering_id:
+                continue
+
+            if offering_id not in offerings_dict:
                 offerings_dict[offering_id] = {
                     "offering_id": offering_id,
                     "course_id": section.get("course_id"),
                     "term_id": section.get("term_id"),
                     "status": section.get("status", "active"),
+                    # Enriched fields for dashboard display
+                    "course_number": section.get("course_number"),
+                    "course_title": section.get("course_title"),
+                    "term_name": section.get("term_name"),
+                    # Aggregated fields
+                    "section_count": 0,
+                    "total_enrollment": 0,
                 }
+
+            # Aggregate counts
+            offerings_dict[offering_id]["section_count"] += 1
+            offerings_dict[offering_id]["total_enrollment"] += (
+                section.get("enrollment") or 0
+            )
 
         offerings = list(offerings_dict.values())
 
@@ -3153,6 +3208,51 @@ def create_course_outcome_endpoint(course_id: str):
     except Exception as e:
         return handle_api_error(
             e, "Create course outcome", "Failed to create course outcome"
+        )
+
+
+@api.route("/courses/<course_id>/submit", methods=["POST"])
+@login_required
+def submit_course_for_approval_endpoint(course_id: str):
+    """
+    Submit all CLOs for a course for approval.
+
+    Validates all CLOs and course-level data before submitting.
+    Returns validation errors if any required fields are incomplete.
+
+    Request body (optional):
+    - section_id: Section ID for course-level data validation
+    """
+    from clo_workflow_service import CLOWorkflowService
+
+    try:
+        # Check if course exists
+        course = get_course_by_id(course_id)
+        if not course:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        # Get current user
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
+
+        # Get optional section_id from request body
+        data = request.get_json(silent=True) or {}
+        section_id = data.get("section_id")
+
+        # Submit course (validates first)
+        result = CLOWorkflowService.submit_course_for_approval(
+            course_id, user_id, section_id
+        )
+
+        if result["success"]:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        return handle_api_error(
+            e, "Submit course for approval", "Failed to submit course"
         )
 
 

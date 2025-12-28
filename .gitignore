@@ -60,6 +60,7 @@ cookies.txt
 
 # Security scan reports
 bandit-report.json
+semgrep-report.json
 safety-report.txt
 
 # Demo run artifacts (generated during demos, not source)

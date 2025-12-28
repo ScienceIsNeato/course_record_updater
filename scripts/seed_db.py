@@ -476,8 +476,8 @@ class DemoSeeder(BaselineSeeder):
         password_hash = hash_password(password)
         schema = User.create_schema(
             email=email,
-            first_name="Leslie",
-            last_name="Jernberg",
+            first_name="Demo",
+            last_name="Admin",
             role="institution_admin",
             institution_id=institution_id,
             password_hash=password_hash,
@@ -635,21 +635,76 @@ class DemoSeeder(BaselineSeeder):
             if offering_id:
                 offering_ids.append(offering_id)
 
-        # Create sections (one per offering, rotating through instructors)
+        # Create sections
         section_count = 0
         for i, offering_id in enumerate(offering_ids):
+            # Use cyclic instructor assignment for default selection
             instructor_id = instructor_ids[i % len(instructor_ids)]
+            
+            if i == 0:
+                # Biology 101 handling: 4 sections with specific enrollments
+                # Section 1: 25 students
+                s1_schema = CourseSection.create_schema(
+                    offering_id=offering_id,
+                    section_number="001",
+                    instructor_id=instructor_id,
+                    enrollment=25,
+                    status="assigned",
+                    assessment_due_date="2025-12-15T23:59:59",
+                )
+                if db.create_course_section(s1_schema):
+                    section_count += 1
+                
+                # Section 2: 25 students, next instructor
+                s2_schema = CourseSection.create_schema(
+                    offering_id=offering_id,
+                    section_number="002",
+                    instructor_id=instructor_ids[(i+1) % len(instructor_ids)],
+                    enrollment=25,
+                    status="assigned",
+                    assessment_due_date="2025-12-15T23:59:59",
+                )
+                if db.create_course_section(s2_schema):
+                    section_count += 1
 
-            schema = CourseSection.create_schema(
-                offering_id=offering_id,
-                section_number=f"001",
-                instructor_id=instructor_id,
-                enrollment=random.randint(15, 35),  # nosec B311
-                status="assigned",
-            )
-            section_id = db.create_course_section(schema)
-            if section_id:
-                section_count += 1
+                # Section 3: 13 students, next instructor
+                s3_schema = CourseSection.create_schema(
+                    offering_id=offering_id,
+                    section_number="003",
+                    instructor_id=instructor_ids[(i+2) % len(instructor_ids)],
+                    enrollment=13,
+                    status="assigned",
+                    assessment_due_date="2025-12-15T23:59:59",
+                )
+                if db.create_course_section(s3_schema):
+                    section_count += 1
+
+                # Section 4: Unassigned, 0 students
+                s4_schema = CourseSection.create_schema(
+                    offering_id=offering_id,
+                    section_number="004",
+                    instructor_id=None,
+                    enrollment=0,
+                    status="unassigned",
+                    assessment_due_date="2025-12-15T23:59:59",
+                )
+                if db.create_course_section(s4_schema):
+                    section_count += 1
+                    self.log("   ✓ Created specialized sections for Biology 101 (25, 25, 13, 0)")
+
+            else:
+                # Standard Logic for other courses
+                schema = CourseSection.create_schema(
+                    offering_id=offering_id,
+                    section_number="001",
+                    instructor_id=instructor_id,
+                    enrollment=random.randint(15, 35),  # nosec B311
+                    status="assigned",
+                    assessment_due_date="2025-12-15T23:59:59",
+                )
+                section_id = db.create_course_section(schema)
+                if section_id:
+                    section_count += 1
 
         self.log(f"   ✅ Created {len(offering_ids)} offerings and {section_count} sections")
 
@@ -714,6 +769,21 @@ class DemoSeeder(BaselineSeeder):
                     clo_count += 1
         
         self.log(f"   ✅ Created {clo_count} CLOs across demo courses")
+        
+        # Create one UNASSIGNED CLO for testing audit
+        if course_ids:
+            target_course_id = course_ids[0]
+            schema = CourseOutcome.create_schema(
+                course_id=target_course_id,
+                clo_number="99",
+                description="Bonus unassigned learning outcome",
+                assessment_method="Project",
+            )
+            schema["status"] = CLOStatus.UNASSIGNED
+            schema["active"] = True
+            
+            if db.create_course_outcome(schema):
+                self.log("   ✓ Created unassigned CLO #99")
 
     def link_courses_to_programs(self, institution_id):
         """Link courses to programs based on course prefixes"""
@@ -728,7 +798,7 @@ class DemoSeeder(BaselineSeeder):
             return
         
         # Build program lookup by name
-        program_lookup = {p["name"]: p["id"] for p in programs}
+        program_lookup = {p.get("name"): (p.get("program_id") or p.get("id")) for p in programs}
         
         # Course prefix to program mapping
         course_mappings = {
@@ -778,13 +848,106 @@ class DemoSeeder(BaselineSeeder):
         
         # Create complete demo data for showcasing features
         course_ids = self.create_demo_courses(inst_id, program_ids)
+        self.link_courses_to_programs(inst_id)  # Explicitly link programs
         instructor_ids = self.create_demo_faculty(inst_id, program_ids)
         self.create_demo_offerings_and_sections(inst_id, course_ids, term_id, instructor_ids)
         self.create_demo_clos(course_ids)
+        self.create_historical_data(inst_id, program_ids)
 
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
+
+    def create_historical_data(self, institution_id, program_ids):
+        """Create historical data (Spring 2025 inactive term)"""
+        self.log("📜 Creating historical data (Spring 2025)...")
+        from models import Term, Course, CourseOffering, CourseSection
+        from datetime import datetime, timedelta
+
+        # 1. Create Inactive Term (Spring 2025)
+        # Dates: Jan 2025 - May 2025 (Assuming current is Fall 2025)
+        start_date = datetime(2025, 1, 15)
+        end_date = datetime(2025, 5, 15)
+        
+        schema_term = Term.create_schema(
+            name="Spring 2025",
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+            assessment_due_date=end_date.isoformat(),
+            active=False,
+        )
+        schema_term["term_name"] = "Spring 2025" # Required by DB layer
+        schema_term["term_code"] = "SP2025"
+        schema_term["institution_id"] = institution_id
+        term_id = db.create_term(schema_term)
+        if term_id:
+            self.created["terms"].append(term_id)
+
+        # 2. Create a specific historical course
+        # Let's verify if we have programs; use first one
+        program_id = program_ids[0] if program_ids else None
+        
+        schema_course = Course.create_schema(
+            course_title="History of Science",
+            course_number="HIST-101",
+            department="History",
+            institution_id=institution_id,
+            credit_hours=3,
+            program_ids=[],
+        )
+        
+        hist_course_id = db.create_course(schema_course)
+        if hist_course_id:
+            self.created["courses"].append(hist_course_id)
+            if program_id:
+                 try:
+                     db.add_course_to_program(hist_course_id, program_id)
+                 except Exception:  # nosec
+                     pass
+
+            # 3. Create Offering for Spring 2025
+            schema_off = CourseOffering.create_schema(
+                course_id=hist_course_id,
+                term_id=term_id,
+                institution_id=institution_id,
+                status="archived", # or inactive
+            )
+            off_id = db.create_course_offering(schema_off)
+            
+            # 4. Create Section with enrollment
+            if off_id:
+                # Find an instructor (demo faculty created earlier)
+                # We need to fetch them or assume from self.created['users']
+                # Just pick one if available, or leave unassigned if none?
+                # The seed_demo created faculty.
+                # Let's retry getting them from DB to be safe or just create a new one?
+                # Better to reuse.
+                # Just create section with no instructor if ID not handy, or quickly lookup.
+                # I'll create one unassigned or assigned if I can grab an ID.
+                # For simplicity, assign to the admin or first user found? 
+                # I'll just leave instructor_id None for historical unless I query.
+                
+                schema_sec = CourseSection.create_schema(
+                    offering_id=off_id,
+                    section_number="001",
+                    instructor_id=None,
+                    enrollment=42,
+                    status="completed",
+                )
+                db.create_course_section(schema_sec)
+
+            # 5. Create CLOs for this course
+            from models import CourseOutcome
+            schema_clo = CourseOutcome.create_schema(
+                course_id=hist_course_id,
+                clo_number="1",
+                description="Analyze historical scientific events",
+                assessment_method="Essay",
+            )
+            schema_clo["active"] = True
+            db.create_course_outcome(schema_clo)
+            
+            self.log("   ✓ Created 'Spring 2025' term with HIST-101 course and data")
 
     def print_summary(self):
         """Print demo seeding summary"""

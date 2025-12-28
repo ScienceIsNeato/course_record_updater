@@ -93,43 +93,43 @@ describe('audit_clo.js - Utility Functions', () => {
   describe('getStatusBadge', () => {
     it('should return correct badge for never_coming_in status', () => {
       const badge = auditCloModule.getStatusBadge('never_coming_in');
-      expect(badge).toContain('badge bg-dark');
-      expect(badge).toContain('NCI - Never Coming In');
+      expect(badge).toContain('background-color: #dc3545');
+      expect(badge).toContain('NCI');
     });
 
     it('should return correct badge for unassigned status', () => {
       const badge = auditCloModule.getStatusBadge('unassigned');
-      expect(badge).toContain('badge bg-secondary');
+      expect(badge).toContain('background-color: #6c757d');
       expect(badge).toContain('Unassigned');
     });
 
     it('should return correct badge for assigned status', () => {
       const badge = auditCloModule.getStatusBadge('assigned');
-      expect(badge).toContain('badge bg-info');
+      expect(badge).toContain('background-color: #212529');
       expect(badge).toContain('Assigned');
     });
 
     it('should return correct badge for in_progress status', () => {
       const badge = auditCloModule.getStatusBadge('in_progress');
-      expect(badge).toContain('badge bg-primary');
+      expect(badge).toContain('background-color: #0d6efd');
       expect(badge).toContain('In Progress');
     });
 
     it('should return correct badge for awaiting_approval status', () => {
       const badge = auditCloModule.getStatusBadge('awaiting_approval');
-      expect(badge).toContain('badge bg-warning');
+      expect(badge).toContain('background-color: #9acd32');
       expect(badge).toContain('Awaiting Approval');
     });
 
     it('should return correct badge for approval_pending status', () => {
       const badge = auditCloModule.getStatusBadge('approval_pending');
-      expect(badge).toContain('badge bg-danger');
+      expect(badge).toContain('background-color: #fd7e14');
       expect(badge).toContain('Needs Rework');
     });
 
     it('should return correct badge for approved status', () => {
       const badge = auditCloModule.getStatusBadge('approved');
-      expect(badge).toContain('badge bg-success');
+      expect(badge).toContain('background-color: #198754');
       expect(badge).toContain('✓ Approved');
     });
 
@@ -384,11 +384,11 @@ describe('audit_clo.js - DOM Integration', () => {
     });
 
     it('should handle individual status fetch failures and show 0', async () => {
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
       // Clear previous state
       fetch.mockClear();
-      
+
       // Mock fetch - some succeed, some fail
       fetch.mockImplementation((url) => {
         if (url.includes('awaiting_approval')) {
@@ -443,7 +443,7 @@ describe('audit_clo.js - DOM Integration', () => {
       // Successful stats should be updated
       expect(document.getElementById('statAwaitingApproval').textContent).toBe('5');
       expect(document.getElementById('statApproved').textContent).toBe('10');
-      
+
       // Failed status should show 0
       expect(document.getElementById('statNeedsRework').textContent).toBe('0');
 
@@ -602,7 +602,7 @@ describe('audit_clo.js - DOM Integration', () => {
       };
       global.window.loadCLOs = jest.fn(() => Promise.resolve());
       global.window.updateStats = jest.fn(() => Promise.resolve());
-      
+
       // Clear mocks
       jest.clearAllMocks();
       fetch.mockClear();
@@ -643,7 +643,7 @@ describe('audit_clo.js - DOM Integration', () => {
 
       // Verify success alert
       expect(alert).toHaveBeenCalledWith('CLO marked as Never Coming In (NCI)');
-      
+
       // Verify reload functions called
       expect(global.window.loadCLOs).toHaveBeenCalled();
       expect(global.window.updateStats).toHaveBeenCalled();
@@ -760,7 +760,7 @@ describe('audit_clo.js - DOM Integration', () => {
       };
       global.window.loadCLOs = jest.fn(() => Promise.resolve());
       global.confirm = jest.fn();
-      
+
       // Clear mocks
       jest.clearAllMocks();
       fetch.mockClear();
@@ -771,18 +771,18 @@ describe('audit_clo.js - DOM Integration', () => {
     it('should approve CLO successfully', async () => {
       // Mock confirm to accept
       confirm.mockReturnValue(true);
-      
+
       // Mock successful approve request
       fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ success: true })
       });
-      
+
       await approveCLO();
-      
+
       // Verify confirm was called
       expect(confirm).toHaveBeenCalledWith('Approve this CLO?\n\nCS101 - CLO 1');
-      
+
       // Verify API call
       expect(fetch).toHaveBeenCalledWith(
         '/api/outcomes/test-123/approve',
@@ -793,61 +793,61 @@ describe('audit_clo.js - DOM Integration', () => {
           })
         })
       );
-      
+
       // Verify success alert
       expect(alert).toHaveBeenCalledWith('CLO approved successfully!');
-      
+
       // Verify modal was closed
       expect(mockModalInstance.hide).toHaveBeenCalled();
-      
+
       // Verify reload called
       expect(global.window.loadCLOs).toHaveBeenCalled();
     });
-    
+
     it('should do nothing if confirmation is cancelled', async () => {
       // Mock confirm to cancel
       confirm.mockReturnValue(false);
-      
+
       await approveCLO();
-      
+
       // Verify no API call
       expect(fetch).not.toHaveBeenCalled();
     });
-    
+
     it('should handle API error when approving', async () => {
       // Mock confirm
       confirm.mockReturnValue(true);
-      
+
       // Mock API error
       fetch.mockResolvedValueOnce({
         ok: false,
         json: () => Promise.resolve({ error: 'Database error' })
       });
-      
+
       await approveCLO();
-      
+
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Failed to approve CLO: Database error');
-      
+
       // Verify modal was not closed
       expect(mockModalInstance.hide).not.toHaveBeenCalled();
     });
-    
+
     it('should handle missing outcome_id', async () => {
       // Set currentCLO without outcome_id
       global.window.currentCLO = {
         course_number: 'CS101',
         clo_number: 1
       };
-      
+
       // Mock confirm
       confirm.mockReturnValue(true);
-      
+
       await approveCLO();
-      
+
       // Verify error alert
       expect(alert).toHaveBeenCalledWith('Error: CLO ID not found');
-      
+
       // Verify no API call
       expect(fetch).not.toHaveBeenCalled();
     });
@@ -945,8 +945,8 @@ describe('audit_clo.js - DOM Integration', () => {
 
       const html = renderCLODetails(clo);
 
-      expect(html).toContain('NCI - Never Coming In');
-      expect(html).toContain('badge bg-dark');
+      expect(html).toContain('NCI');
+      expect(html).toContain('background-color: #dc3545');
     });
 
     it('should display N/A for missing course info', () => {

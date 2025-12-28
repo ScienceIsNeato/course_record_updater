@@ -156,7 +156,7 @@ class TestIndexRoute:
             response = client.get("/")
             assert response.status_code == 200
             # Check that it renders the splash page
-            assert b"Learning Assessment Solutions" in response.data
+            assert b"Loopcloser" in response.data
             assert b"Get Started" in response.data
             assert b"Learn More" in response.data
 

@@ -16,107 +16,115 @@
         </div>
     </div>
 
-    <!-- Summary Stats (added NCI from CEI demo feedback) -->
+    <!-- Summary Stats in full CLO lifecycle with color coding -->
     <div class="row mb-4">
-        <div class="col-lg-2 col-md-4">
-            <div class="card border-warning">
-                <div class="card-body text-center">
-                    <h3 class="mb-0" id="statAwaitingApproval">-</h3>
-                    <p class="text-muted mb-0 small">Awaiting Approval</p>
+        <div class="col">
+            <div class="card" style="border-color: #6c757d; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statUnassigned" style="color: #6c757d;">-</h4>
+                    <p class="mb-0 small" style="color: #6c757d;">Unassigned</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-2 col-md-4">
-            <div class="card border-danger">
-                <div class="card-body text-center">
-                    <h3 class="mb-0" id="statNeedsRework">-</h3>
-                    <p class="text-muted mb-0 small">Needs Rework</p>
+        <div class="col">
+            <div class="card" style="border-color: #212529; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statAssigned" style="color: #212529;">-</h4>
+                    <p class="mb-0 small" style="color: #212529;">Assigned</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-2 col-md-4">
-            <div class="card border-success">
-                <div class="card-body text-center">
-                    <h3 class="mb-0" id="statApproved">-</h3>
-                    <p class="text-muted mb-0 small">Approved</p>
+        <div class="col">
+            <div class="card" style="border-color: #0d6efd; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statInProgress" style="color: #0d6efd;">-</h4>
+                    <p class="mb-0 small" style="color: #0d6efd;">In Progress</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-2 col-md-4">
-            <div class="card border-dark">
-                <div class="card-body text-center">
-                    <h3 class="mb-0" id="statNCI">-</h3>
-                    <p class="text-muted mb-0 small">Never Coming In</p>
+        <div class="col">
+            <div class="card" style="border-color: #fd7e14; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statNeedsRework" style="color: #fd7e14;">-</h4>
+                    <p class="mb-0 small" style="color: #fd7e14;">Needs Rework</p>
                 </div>
             </div>
         </div>
-        <div class="col-lg-2 col-md-4">
-            <div class="card border-primary">
-                <div class="card-body text-center">
-                    <h3 class="mb-0" id="statInProgress">-</h3>
-                    <p class="text-muted mb-0 small">In Progress</p>
+        <div class="col">
+            <div class="card" style="border-color: #9acd32; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statAwaitingApproval" style="color: #6b8e23;">-</h4>
+                    <p class="mb-0 small" style="color: #6b8e23;">Awaiting Approval</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #198754; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statApproved" style="color: #198754;">-</h4>
+                    <p class="mb-0 small" style="color: #198754;">Approved</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card" style="border-color: #dc3545; border-width: 2px;">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-0" id="statNCI" style="color: #dc3545;">-</h4>
+                    <p class="mb-0 small" style="color: #dc3545;">NCI</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Filters: Single row with Status, Program, Term -->
     <div class="card mb-4">
-        <div class="card-body">
-                   <div class="row g-3">
-                       <div class="col-lg-4 col-md-6">
-                           <label for="statusFilter" class="form-label">Status Filter</label>
-                    <select class="form-select" id="statusFilter">
-                        <option value="awaiting_approval">Awaiting Approval</option>
-                        <option value="approval_pending">Needs Rework</option>
-                        <option value="approved">Approved</option>
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="statusFilter" class="form-label mb-1">Status</label>
+                    <select class="form-select form-select-sm" id="statusFilter">
+                        <option value="all" selected>All Statuses</option>
+                        <option value="unassigned">Unassigned</option>
+                        <option value="assigned">Assigned</option>
                         <option value="in_progress">In Progress</option>
-                        <option value="all">All Statuses</option>
+                        <option value="approval_pending">Needs Rework</option>
+                        <option value="awaiting_approval">Awaiting Approval</option>
+                        <option value="approved">Approved</option>
+                        <option value="never_coming_in">Never Coming In</option>
                     </select>
                 </div>
-                       <div class="col-lg-4 col-md-6">
-                           <label for="programFilter" class="form-label">Program</label>
-                           <select class="form-select" id="programFilter">
-                               <option value="">All Programs</option>
-                           </select>
-                       </div>
-                       <div class="col-lg-4 col-md-6">
-                           <label for="termFilter" class="form-label">Term</label>
-                           <select class="form-select" id="termFilter">
-                               <option value="">All Terms</option>
-                           </select>
-                       </div>
-                   </div>
-                   <div class="row g-3 mt-2">
-                       <div class="col-lg-4 col-md-6">
-                           <label for="sortBy" class="form-label">Sort By</label>
-                    <select class="form-select" id="sortBy">
-                        <option value="submitted_at">Submission Date</option>
-                        <option value="course_number">Course Number</option>
-                        <option value="instructor_name">Instructor</option>
+                <div class="col-md-4">
+                    <label for="programFilter" class="form-label mb-1">Program</label>
+                    <select class="form-select form-select-sm" id="programFilter">
+                        <option value="">All Programs</option>
                     </select>
                 </div>
-                       <div class="col-lg-4 col-md-6">
-                           <label for="sortOrder" class="form-label">Sort Order</label>
-                    <select class="form-select" id="sortOrder">
-                        <option value="desc">Newest First</option>
-                        <option value="asc">Oldest First</option>
+                <div class="col-md-4">
+                    <label for="termFilter" class="form-label mb-1">Term</label>
+                    <select class="form-select form-select-sm" id="termFilter">
+                        <option value="">All Terms</option>
                     </select>
                 </div>
-                       <div class="col-lg-4 col-md-6 d-flex align-items-end justify-content-lg-end">
-                           <button class="btn btn-outline-primary w-100 w-lg-auto" type="button" id="exportCsvBtn">
-                               <i class="fas fa-download me-1"></i>
-                               Export Current View
-                           </button>
-                       </div>
             </div>
         </div>
     </div>
 
     <!-- CLO List -->
     <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Submitted CLOs</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Selected CLOs</h5>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label mb-0 small text-muted">Sort by:</label>
+                <select class="form-select form-select-sm" id="sortBy" style="width: auto;">
+                    <option value="course_number">Course</option>
+                    <option value="instructor_name">Instructor</option>
+                    <option value="submitted_at">Submission Date</option>
+                </select>
+                <select class="form-select form-select-sm" id="sortOrder" style="width: auto;">
+                    <option value="asc">A-Z</option>
+                    <option value="desc">Z-A</option>
+                </select>
+            </div>
         </div>
         <div class="card-body">
             <div id="cloListContainer">
@@ -159,7 +167,8 @@
 </div>
 
 <!-- Request Rework Modal -->
-<div class="modal fade" id="requestReworkModal" tabindex="-1" aria-labelledby="requestReworkModalLabel" aria-hidden="true">
+<div class="modal fade" id="requestReworkModal" tabindex="-1" aria-labelledby="requestReworkModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -172,16 +181,17 @@
                         <strong>Requesting rework for:</strong>
                         <p class="mb-0" id="reworkCloDescription"></p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="feedbackComments" class="form-label">Feedback Comments *</label>
                         <textarea class="form-control" id="feedbackComments" name="comments" rows="5" required
-                                  placeholder="Explain what needs to be revised or improved..."></textarea>
+                            placeholder="Explain what needs to be revised or improved..."></textarea>
                         <small class="text-muted">Be specific about what needs to be changed.</small>
                     </div>
-                    
+
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="sendEmailCheckbox" name="send_email" checked>
+                        <input class="form-check-input" type="checkbox" id="sendEmailCheckbox" name="send_email"
+                            checked>
                         <label class="form-check-label" for="sendEmailCheckbox">
                             Send email notification to instructor
                         </label>
