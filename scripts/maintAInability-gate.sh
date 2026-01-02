@@ -1896,7 +1896,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
     fi
     
     # Start server on test port in background
-    PORT=$TEST_PORT python src/app.py > logs/test_server.log 2>&1 &
+    PORT=$TEST_PORT python -m src.app > logs/test_server.log 2>&1 &
     SERVER_PID=$!
     
     # Wait for server to start
