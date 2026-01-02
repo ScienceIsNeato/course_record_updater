@@ -147,6 +147,15 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
+    - name: Seed Database for Smoke Tests
+      run: |
+        # Set environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
+        export PYTHONPATH=.
+        
+        # Seed baseline data for smoke tests
+        python scripts/seed_db.py --env dev --clear
     - name: Start Flask Server for Smoke Tests
       run: |
         # Set environment variables for SQLite
@@ -216,6 +225,15 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
+    - name: Seed Database for Integration Tests
+      run: |
+        # Set environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
+        export PYTHONPATH=.
+        
+        # Seed baseline data for integration tests
+        python scripts/seed_db.py --env dev --clear
     - name: Start Flask Server for Integration Tests
       run: |
         # Set environment variables for SQLite

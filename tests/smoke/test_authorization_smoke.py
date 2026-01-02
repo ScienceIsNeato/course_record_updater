@@ -253,7 +253,9 @@ class TestAPIEndpointSecuritySmoke:
                 return "protected content"
 
             # Test with no authentication - should redirect to login
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = False
 
                 result = protected_endpoint()
@@ -274,14 +276,18 @@ class TestAPIEndpointSecuritySmoke:
                 return "admin content"
 
             # Test with authenticated user but no permission
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = True
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = False
 
                     with patch(
-                        "auth_service.auth_service.get_current_user"
+                        "src.services.auth_service.auth_service.get_current_user"
                     ) as mock_get_user:
                         mock_get_user.return_value = {"user_id": "test-user"}
 
@@ -289,7 +295,9 @@ class TestAPIEndpointSecuritySmoke:
                             "auth_service.get_current_user",
                             return_value={"user_id": "test-user"},
                         ):
-                            with patch("auth_service.jsonify") as mock_jsonify:
+                            with patch(
+                                "src.services.auth_service.jsonify"
+                            ) as mock_jsonify:
                                 mock_jsonify.return_value = (MagicMock(), 403)
 
                                 result = admin_endpoint()
@@ -310,15 +318,19 @@ class TestAPIEndpointSecuritySmoke:
                 return "program content"
 
             # Test with authentication but invalid context
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = True
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     # Should be called with context and return False for invalid context
                     mock_has_perm.return_value = False
 
                     with patch(
-                        "auth_service.auth_service.get_current_user"
+                        "src.services.auth_service.auth_service.get_current_user"
                     ) as mock_get_user:
                         mock_get_user.return_value = {"user_id": "test-user"}
 
@@ -326,7 +338,9 @@ class TestAPIEndpointSecuritySmoke:
                             "auth_service.get_current_user",
                             return_value={"user_id": "test-user"},
                         ):
-                            with patch("auth_service.jsonify") as mock_jsonify:
+                            with patch(
+                                "src.services.auth_service.jsonify"
+                            ) as mock_jsonify:
                                 mock_jsonify.return_value = (MagicMock(), 403)
 
                                 result = program_endpoint()
