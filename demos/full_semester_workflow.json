@@ -15,7 +15,7 @@
     "setup_commands": [
       "source venv/bin/activate && source .envrc",
       "python scripts/seed_db.py --demo --clear --env dev",
-      "./restart_server.sh dev"
+      "./scripts/restart_server.sh dev"
     ],
     "base_url": "http://localhost:3001",
     "cleanup_commands": []

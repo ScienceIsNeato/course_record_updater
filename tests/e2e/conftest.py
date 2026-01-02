@@ -102,7 +102,7 @@ def setup_worker_environment(tmp_path_factory):
 
             # Start server in background
             server_process = subprocess.Popen(
-                ["python", "app.py"],
+                ["python", "-m", "src.app"],
                 env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
