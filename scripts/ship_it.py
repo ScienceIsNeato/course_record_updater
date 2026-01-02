@@ -96,7 +96,10 @@ class QualityGateExecutor:
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
-            ("coverage-new-code", "📊 Coverage on New Code (80% threshold on PR changes)"),
+            (
+                "coverage-new-code",
+                "📊 Coverage on New Code (80% threshold on PR changes)",
+            ),
             ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
@@ -108,35 +111,40 @@ class QualityGateExecutor:
             ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
             ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),  # Includes test execution
+            (
+                "coverage",
+                "📊 Test Coverage Analysis (80% threshold)",
+            ),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            ("security-local", "🔒 Security Audit (bandit, semgrep)"),  # Zero tolerance (safety skipped for speed)
+            (
+                "security-local",
+                "🔒 Security Audit (bandit, semgrep)",
+            ),  # Zero tolerance (safety skipped for speed)
             # Duplication, sonar, complexity excluded from commit (slower or PR-level)
         ]
 
         # Full checks for PR validation (all checks)
         self.pr_checks = self.all_checks
-        
+
         # Integration test validation (component interactions using SQLite persistence)
         self.integration_checks = [
             ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
         ]
-        
+
         # Smoke test validation (requires running server + browser)
         self.smoke_checks = [
             ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
         ]
-        
+
         # Full validation (everything)
-        self.full_checks = (
-            self.commit_checks +
-            [check for check in self.pr_checks if check not in self.commit_checks]
-        )
+        self.full_checks = self.commit_checks + [
+            check for check in self.pr_checks if check not in self.commit_checks
+        ]
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
         """Run a single quality check and return the result."""
@@ -151,7 +159,7 @@ class QualityGateExecutor:
             "python-static-analysis": "python-static-analysis",
             "sonar": "sonar",  # Unified sonar check (was sonar-analyze + sonar-status)
         }
-        
+
         # Use mapped flag if available, otherwise use original flag
         actual_flag = flag_mapping.get(check_flag, check_flag)
 
@@ -166,7 +174,7 @@ class QualityGateExecutor:
                 timeout_seconds = 120
             else:
                 timeout_seconds = 300
-            
+
             # Run the individual check
             result = subprocess.run(  # nosec
                 [self.script_path, f"--{actual_flag}"],
@@ -280,7 +288,9 @@ class QualityGateExecutor:
 
         finally:
             # Ensure executor is properly cleaned up
-            executor.shutdown(wait=True)
+            # If we've already aborted via sys.exit(1) in the failure block,
+            # this might still run but we use wait=False if we want true fail-fast
+            executor.shutdown(wait=False)
 
         return results
 
@@ -310,7 +320,7 @@ class QualityGateExecutor:
                 lines.append(f"   • {result.name}: Completed in {result.duration:.1f}s")
         lines.append("")
         return lines
-    
+
     def _extract_success_message(self, result: CheckResult) -> Optional[str]:
         """Extract success message from bash script output."""
         # For JavaScript coverage, extract the actual percentages from the detailed output
@@ -319,29 +329,29 @@ class QualityGateExecutor:
             statements_pct = None
             branches_pct = None
             functions_pct = None
-            
-            for line in result.output.split('\n'):
+
+            for line in result.output.split("\n"):
                 stripped = line.strip()
-                if stripped.startswith('Lines:'):
+                if stripped.startswith("Lines:"):
                     lines_pct = stripped.split()[1]
-                elif stripped.startswith('Statements:'):
+                elif stripped.startswith("Statements:"):
                     statements_pct = stripped.split()[1]
-                elif stripped.startswith('Branches:'):
+                elif stripped.startswith("Branches:"):
                     branches_pct = stripped.split()[1]
-                elif stripped.startswith('Functions:'):
+                elif stripped.startswith("Functions:"):
                     functions_pct = stripped.split()[1]
-            
+
             if lines_pct:
                 return f"Lines: {lines_pct} ✅ | Statements: {statements_pct} | Branches: {branches_pct} | Functions: {functions_pct}"
-        
+
         # For other checks, look for pattern: "   • {name}: {message}"
-        for line in result.output.split('\n'):
+        for line in result.output.split("\n"):
             stripped = line.strip()
-            if stripped.startswith('• '):
+            if stripped.startswith("• "):
                 # Extract message after first ": "
-                parts = stripped.split(': ', 1)
+                parts = stripped.split(": ", 1)
                 if len(parts) == 2:
-                    check_name = parts[0].replace('• ', '').strip()
+                    check_name = parts[0].replace("• ", "").strip()
                     message = parts[1].strip()
                     # Match if bash name is substring of result.name
                     if check_name in result.name or result.name in check_name:
@@ -450,8 +460,12 @@ class QualityGateExecutor:
         output_lower = output.lower()
         if "coverage" not in output_lower:
             return None
-            
-        if "threshold" in output_lower or "below" in output_lower or "fail" in output_lower:
+
+        if (
+            "threshold" in output_lower
+            or "below" in output_lower
+            or "fail" in output_lower
+        ):
             # Try multiple patterns for coverage extraction
             coverage_match = re.search(
                 r"(\d+\.?\d*)%[^%]*(?:not met|below|fail)[^%]*(\d+\.?\d*)%", output
@@ -470,13 +484,13 @@ class QualityGateExecutor:
             if coverage_match and len(coverage_match.groups()) >= 2:
                 actual, threshold = coverage_match.groups()
                 return f"Coverage threshold not met: {actual}% < {threshold}%"
-            
+
             # Specific fallback for failures without parsed numbers
             return "Coverage threshold not met (below 80%)"
-        
+
         if "fail" in output_lower or "error" in output_lower:
             return "Coverage analysis failed or below 80% threshold"
-            
+
         return None
 
     def _extract_test_failure_reason(self, output: str) -> str:
@@ -527,7 +541,7 @@ class QualityGateExecutor:
         """Execute quality checks in parallel and return exit code."""
         validation_name_map = {
             ValidationType.COMMIT: "COMMIT",
-            ValidationType.PR: "PR", 
+            ValidationType.PR: "PR",
             ValidationType.INTEGRATION: "INTEGRATION",
             ValidationType.SMOKE: "SMOKE",
             ValidationType.FULL: "FULL",
@@ -586,9 +600,13 @@ class QualityGateExecutor:
         # Run all checks in parallel (with or without fail-fast)
         check_names = [flag for flag, _ in checks_to_run]
         if fail_fast:
-            self.logger.info(f"🚀 Running checks in parallel with fail-fast [{', '.join(check_names)}]")
+            self.logger.info(
+                f"🚀 Running checks in parallel with fail-fast [{', '.join(check_names)}]"
+            )
         else:
-            self.logger.info(f"🚀 Running all checks in parallel (no fail-fast) [{', '.join(check_names)}]")
+            self.logger.info(
+                f"🚀 Running all checks in parallel (no fail-fast) [{', '.join(check_names)}]"
+            )
         all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
 
         total_duration = time.time() - start_time
@@ -620,7 +638,7 @@ class QualityGateExecutor:
 def _get_pr_context():
     """
     Get PR number and repository info from environment or git context.
-    
+
     Returns:
         Tuple of (pr_number, owner, name) or (None, None, None) if not in PR context
     """
@@ -668,13 +686,13 @@ def _get_pr_context():
 def _load_tracked_comments(pr_number):
     """
     Load previously tracked comment IDs from file.
-    
+
     Returns:
         Set of comment IDs that have been seen before
     """
     import json
     import os
-    
+
     tracking_file = f"logs/pr_{pr_number}_comments_tracked.json"
     if os.path.exists(tracking_file):
         try:
@@ -689,7 +707,7 @@ def _load_tracked_comments(pr_number):
 def _save_tracked_comments(pr_number, comment_ids):
     """
     Save tracked comment IDs to file.
-    
+
     Args:
         pr_number: PR number
         comment_ids: Set of comment IDs to track
@@ -699,12 +717,12 @@ def _save_tracked_comments(pr_number, comment_ids):
 
     # Ensure logs directory exists
     os.makedirs("logs", exist_ok=True)
-    
+
     tracking_file = f"logs/pr_{pr_number}_comments_tracked.json"
     data = {
         "pr_number": pr_number,
         "seen_comment_ids": list(comment_ids),
-        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S")
+        "last_updated": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
     try:
         with open(tracking_file, "w") as f:
@@ -716,21 +734,21 @@ def _save_tracked_comments(pr_number, comment_ids):
 def resolve_review_thread(thread_id):
     """
     Resolve a review thread via GitHub GraphQL API.
-    
+
     Args:
         thread_id: The GitHub review thread ID (e.g., "PRRT_kwDOOV6J2s5g4yRA")
-    
+
     Returns:
         True if successful, False otherwise
     """
     try:
         import json
         import subprocess  # nosec
-        
+
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
             return False
-        
+
         # GraphQL mutation to resolve a review thread
         mutation = """
         mutation($threadId: ID!) {
@@ -742,7 +760,7 @@ def resolve_review_thread(thread_id):
           }
         }
         """
-        
+
         result = subprocess.run(  # nosec
             [
                 "gh",
@@ -763,14 +781,19 @@ def resolve_review_thread(thread_id):
             text=True,
             check=False,
         )
-        
+
         if result.returncode == 0:
             data = json.loads(result.stdout)
-            if data.get("data", {}).get("resolveReviewThread", {}).get("thread", {}).get("isResolved"):
+            if (
+                data.get("data", {})
+                .get("resolveReviewThread", {})
+                .get("thread", {})
+                .get("isResolved")
+            ):
                 return True
-        
+
         return False
-        
+
     except Exception as e:
         print(f"⚠️  Could not resolve review thread {thread_id}: {e}")
         return False
@@ -779,24 +802,24 @@ def resolve_review_thread(thread_id):
 def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
     """
     Reply to a PR comment and optionally resolve the thread.
-    
+
     Args:
         comment_id: The comment ID to reply to (for general comments)
         body: The reply body text
         thread_id: The review thread ID (for inline comments)
         resolve_thread: Whether to resolve the thread after replying
-    
+
     Returns:
         True if successful, False otherwise
     """
     try:
         import json
         import subprocess  # nosec
-        
+
         pr_number, owner, name = _get_pr_context()
         if not pr_number:
             return False
-        
+
         # For review threads, add a reply to the thread
         if thread_id:
             # GraphQL mutation to add a reply to a review thread
@@ -812,7 +835,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
               }
             }
             """
-            
+
             result = subprocess.run(  # nosec
                 [
                     "gh",
@@ -835,13 +858,13 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
                 text=True,
                 check=False,
             )
-            
+
             if result.returncode == 0:
                 # Optionally resolve the thread
                 if resolve_thread:
                     resolve_review_thread(thread_id)
                 return True
-        
+
         # For general comments, use REST API
         else:
             result = subprocess.run(  # nosec
@@ -858,11 +881,11 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
                 text=True,
                 check=False,
             )
-            
+
             return result.returncode == 0
-        
+
         return False
-        
+
     except Exception as e:
         print(f"⚠️  Could not reply to PR comment: {e}")
         return False
@@ -871,7 +894,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
 def check_pr_comments():
     """
     Check for unresolved PR comments (both review threads and general PR comments).
-    
+
     Returns:
         Tuple of (all_unresolved_comments, new_comments) where:
         - all_unresolved_comments: List of all unresolved comment dictionaries
@@ -949,7 +972,7 @@ def check_pr_comments():
 
         data = json.loads(result.stdout)
         pr_data = data.get("data", {}).get("repository", {}).get("pullRequest", {})
-        
+
         # Process review threads (inline code comments)
         threads = pr_data.get("reviewThreads", {}).get("nodes", [])
         unresolved_threads = []
@@ -989,10 +1012,10 @@ def check_pr_comments():
 
         # Combine all unresolved comments
         all_unresolved = unresolved_threads + unresolved_general
-        
+
         # Identify new comments (not previously tracked)
         new_comments = [c for c in all_unresolved if c.get("id") not in tracked_ids]
-        
+
         # Update tracking file with all current comment IDs
         current_ids = {c.get("id") for c in all_unresolved if c.get("id")}
         if current_ids:
@@ -1010,12 +1033,14 @@ def _parse_rollup_items(statuses):
     failed = []
     in_progress = []
     pending = []
-    
+
     for status in statuses:
         state = status.get("state", "").lower() if status.get("state") else None
-        conclusion = status.get("conclusion", "").lower() if status.get("conclusion") else None
+        conclusion = (
+            status.get("conclusion", "").lower() if status.get("conclusion") else None
+        )
         name = status.get("name", "Unknown")
-        
+
         # For completed checks, use conclusion; for in-progress, use state
         if conclusion == "failure" or conclusion == "error":
             failed.append(name)
@@ -1026,9 +1051,11 @@ def _parse_rollup_items(statuses):
                 in_progress.append(name)
             else:
                 pending.append(name)
-        elif state == "in_progress" or status.get("status", "").upper() == "IN_PROGRESS":
+        elif (
+            state == "in_progress" or status.get("status", "").upper() == "IN_PROGRESS"
+        ):
             in_progress.append(name)
-            
+
     return failed, in_progress, pending
 
 
@@ -1037,7 +1064,7 @@ def _get_ci_status_from_rollup(pr_number):
     try:
         import json
         import subprocess  # nosec
-        
+
         # Use statusCheckRollup first - it gives us individual job/check names
         result = subprocess.run(  # nosec
             [
@@ -1052,15 +1079,17 @@ def _get_ci_status_from_rollup(pr_number):
             text=True,
             check=False,
         )
-        
+
         if result.returncode == 0:
             pr_data = json.loads(result.stdout)
             statuses = pr_data.get("statusCheckRollup", [])
-            
+
             failed, in_progress, pending = _parse_rollup_items(statuses)
-            
+
             return {
-                "all_passed": len(failed) == 0 and len(pending) == 0 and len(in_progress) == 0,
+                "all_passed": len(failed) == 0
+                and len(pending) == 0
+                and len(in_progress) == 0,
                 "failed_jobs": failed,
                 "in_progress_jobs": in_progress,
                 "pending_jobs": pending,
@@ -1075,7 +1104,7 @@ def _get_ci_status_fallback(pr_number, owner, name):
     """Fallback to workflow runs API if rollup fails."""
     import json
     import subprocess  # nosec
-    
+
     # Fallback to workflow runs API (less detailed, but better than nothing)
     result = subprocess.run(  # nosec
         [
@@ -1083,43 +1112,43 @@ def _get_ci_status_fallback(pr_number, owner, name):
             "api",
             f"repos/{owner}/{name}/actions/runs",
             "--jq",
-            f'.workflow_runs[] | select(.pull_requests[]?.number == {pr_number}) | {{id, name, status, conclusion, created_at, html_url}}',
+            f".workflow_runs[] | select(.pull_requests[]?.number == {pr_number}) | {{id, name, status, conclusion, created_at, html_url}}",
         ],
         capture_output=True,
         text=True,
         check=False,
     )
-    
+
     if result.returncode != 0:
         return None
-    
+
     # Parse workflow runs
     workflow_runs = []
     if result.stdout.strip():
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line.strip():
                 try:
                     workflow_runs.append(json.loads(line))
                 except Exception:  # nosec B110 - skip malformed JSON lines
                     pass
-    
+
     # Analyze workflow run statuses
     failed = []
     in_progress = []
     pending = []
-    
+
     for run in workflow_runs:
         run_name = run.get("name", "Unknown")
         status = run.get("status", "").lower()
         conclusion = run.get("conclusion", "").lower()
-        
+
         if conclusion == "failure" or conclusion == "cancelled":
             failed.append(run_name)
         elif status == "in_progress":
             in_progress.append(run_name)
         elif status == "queued" or status == "pending":
             pending.append(run_name)
-    
+
     return {
         "all_passed": len(failed) == 0 and len(pending) == 0 and len(in_progress) == 0,
         "failed_jobs": failed,
@@ -1132,7 +1161,7 @@ def _get_ci_status_fallback(pr_number, owner, name):
 def check_ci_status():
     """
     Check GitHub Actions CI status for the current PR.
-    
+
     Returns:
         Dictionary with CI status information.
     """
@@ -1145,28 +1174,28 @@ def check_ci_status():
                 "in_progress_jobs": [],
                 "pending_jobs": [],
                 "workflow_runs": [],
-                "error": "Not in PR context"
+                "error": "Not in PR context",
             }
-        
+
         # Try primary method
         status = _get_ci_status_from_rollup(pr_number)
         if status:
             return status
-        
+
         # Try fallback method
         status = _get_ci_status_fallback(pr_number, owner, name)
         if status:
             return status
-            
+
         return {
             "all_passed": None,
             "failed_jobs": [],
             "in_progress_jobs": [],
             "pending_jobs": [],
             "workflow_runs": [],
-            "error": "Could not fetch CI status"
+            "error": "Could not fetch CI status",
         }
-        
+
     except Exception as e:
         return {
             "all_passed": None,
@@ -1174,13 +1203,14 @@ def check_ci_status():
             "in_progress_jobs": [],
             "pending_jobs": [],
             "workflow_runs": [],
-            "error": f"Error checking CI status: {str(e)}"
+            "error": f"Error checking CI status: {str(e)}",
         }
 
 
 def _get_current_commit_sha():
     """Get the current git commit SHA."""
     import subprocess  # nosec
+
     try:
         result = subprocess.run(  # nosec
             ["git", "rev-parse", "HEAD"],
@@ -1200,7 +1230,7 @@ def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
         check_flag = _get_check_flag_for_result(check.name)
         error_log_file = f"logs/pr_{pr_number}_error_{check_flag}_{commit_sha[:8]}.log"
         error_log_files[check.name] = error_log_file
-        
+
         with open(error_log_file, "w", encoding="utf-8") as f:
             f.write(f"# Full Error Output: {check.name}\n\n")
             f.write(f"**PR**: #{pr_number}\n")
@@ -1209,13 +1239,13 @@ def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
             f.write(f"**Duration**: {check.duration:.1f}s\n")
             f.write(f"**Generated**: {timestamp}\n\n")
             f.write("---\n\n")
-            
+
             if check.error:
                 f.write("## Error\n\n")
                 f.write("```\n")
                 f.write(check.error)
                 f.write("\n```\n\n")
-            
+
             if check.output:
                 f.write("## Full Output\n\n")
                 f.write("```\n")
@@ -1224,19 +1254,23 @@ def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
     return error_log_files
 
 
-def _write_checklist_ci_section(f, ci_status, checklist_state, checklist_items, item_number):
+def _write_checklist_ci_section(
+    f, ci_status, checklist_state, checklist_items, item_number
+):
     """Write CI Status section to the checklist."""
     if ci_status.get("all_passed") is not False:
         return item_number
 
     f.write(f"### {item_number}. CI Status Issues\n\n")
-    checklist_items.append({
-        "number": item_number,
-        "category": "CI Status",
-        "status": "pending",
-        "items": []
-    })
-    
+    checklist_items.append(
+        {
+            "number": item_number,
+            "category": "CI Status",
+            "status": "pending",
+            "items": [],
+        }
+    )
+
     if ci_status.get("failed_jobs"):
         f.write("**Failed Jobs:**\n")
         for job in ci_status.get("failed_jobs", []):
@@ -1246,19 +1280,19 @@ def _write_checklist_ci_section(f, ci_status, checklist_state, checklist_items, 
             status_icon = "✅" if item_status == "completed" else "❌"
             f.write(f"{checkbox} {status_icon} Fix failing CI job: `{job}`\n")
             checklist_items[-1]["items"].append(item_text)
-    
+
     if ci_status.get("in_progress_jobs"):
         f.write("\n**In Progress:**\n")
         for job in ci_status.get("in_progress_jobs", []):
             f.write(f"- [ ] ⏳ Wait for CI job to complete: `{job}`\n")
             checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
-    
+
     if ci_status.get("pending_jobs"):
         f.write("\n**Pending:**\n")
         for job in ci_status.get("pending_jobs", []):
             f.write(f"- [ ] ⏸️  Wait for CI job to start: `{job}`\n")
             checklist_items[-1]["items"].append(f"Wait for CI job: {job}")
-    
+
     f.write("\n")
     return item_number + 1
 
@@ -1272,15 +1306,17 @@ def _resolve_comment_location(comment):
     return ""
 
 
-def _write_single_comment_item(f, comment, location, is_new, checklist_state, checklist_items):
+def _write_single_comment_item(
+    f, comment, location, is_new, checklist_state, checklist_items
+):
     """Write a single comment item to the checklist."""
-    author = comment['author']
-    body = comment['body']
-    
+    author = comment["author"]
+    body = comment["body"]
+
     item_text = f"Address comment from {author}"
     if location:
         item_text = f"Address comment from {author} at {location}"
-    
+
     if is_new:
         item_status = _get_item_status(checklist_state, item_text)
         checkbox = "- [x]" if item_status == "completed" else "- [ ]"
@@ -1288,7 +1324,7 @@ def _write_single_comment_item(f, comment, location, is_new, checklist_state, ch
         f.write(f"{checkbox} {status_icon} Address comment from `{author}`")
     else:
         f.write(f"- [ ] Address comment from `{author}`")
-        
+
     if location:
         f.write(f" at {location}")
     f.write(f"\n")
@@ -1296,52 +1332,66 @@ def _write_single_comment_item(f, comment, location, is_new, checklist_state, ch
     checklist_items[-1]["items"].append(item_text)
 
 
-def _write_checklist_comments_section(f, comments_data, checklist_state, checklist_items, item_number):
+def _write_checklist_comments_section(
+    f, comments_data, checklist_state, checklist_items, item_number
+):
     """Write PR Comments section to the checklist."""
     all_comments, new_comments = comments_data
     if not all_comments:
         return item_number
 
     f.write(f"### {item_number}. PR Review Comments\n\n")
-    checklist_items.append({
-        "number": item_number,
-        "category": "PR Comments",
-        "status": "pending",
-        "items": []
-    })
-    
+    checklist_items.append(
+        {
+            "number": item_number,
+            "category": "PR Comments",
+            "status": "pending",
+            "items": [],
+        }
+    )
+
     if new_comments:
         f.write(f"**New Comments ({len(new_comments)}):**\n\n")
         for comment in new_comments:
             location = _resolve_comment_location(comment)
-            _write_single_comment_item(f, comment, location, True, checklist_state, checklist_items)
-            
+            _write_single_comment_item(
+                f, comment, location, True, checklist_state, checklist_items
+            )
+
     if len(all_comments) > len(new_comments):
-        f.write(f"**Previously Seen Comments ({len(all_comments) - len(new_comments)}):**\n\n")
-        new_ids = {c.get('id') for c in new_comments} if new_comments else set()
-        
+        f.write(
+            f"**Previously Seen Comments ({len(all_comments) - len(new_comments)}):**\n\n"
+        )
+        new_ids = {c.get("id") for c in new_comments} if new_comments else set()
+
         for comment in all_comments:
-            if not new_comments or comment.get('id') not in new_ids:
+            if not new_comments or comment.get("id") not in new_ids:
                 location = _resolve_comment_location(comment)
-                _write_single_comment_item(f, comment, location, False, checklist_state, checklist_items)
-    
+                _write_single_comment_item(
+                    f, comment, location, False, checklist_state, checklist_items
+                )
+
     f.write("\n")
     return item_number + 1
 
 
-def _write_checklist_quality_section(f, failed_checks, error_log_files, checklist_state, checklist_items, item_number):
+def _write_checklist_quality_section(
+    f, failed_checks, error_log_files, checklist_state, checklist_items, item_number
+):
     """Write Quality Gate Failures section to the checklist."""
     if not failed_checks:
         return item_number
 
     f.write(f"### {item_number}. Quality Gate Failures\n\n")
-    checklist_items.append({
-        "number": item_number,
-        "category": "Quality Gates",
-        "status": "pending",
-        "items": []
-    })
-    
+    checklist_items.append(
+        {
+            "number": item_number,
+            "category": "Quality Gates",
+            "status": "pending",
+            "items": [],
+        }
+    )
+
     for check in failed_checks:
         error_log_file = error_log_files.get(check.name, "")
         item_text = f"Fix failing check: {check.name}"
@@ -1352,35 +1402,47 @@ def _write_checklist_quality_section(f, failed_checks, error_log_files, checklis
         if check.error:
             f.write(f"  - Error: {check.error[:200]}...\n")
         f.write(f"  - Duration: {check.duration:.1f}s\n")
-        f.write(f"  - Run: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
+        f.write(
+            f"  - Run: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n"
+        )
         if error_log_file:
             f.write(f"  - 📄 Full error log: `{error_log_file}`\n")
-            f.write(f"  - View: `cat {error_log_file}` or `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
+            f.write(
+                f"  - View: `cat {error_log_file}` or `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n"
+            )
         f.write("\n")
         checklist_items[-1]["items"].append(f"Fix failing check: {check.name}")
-    
+
     f.write("\n")
     return item_number + 1
 
 
-def _write_report_summary(f, checklist_items, ci_status, comments_data, passed_checks, failed_checks):
+def _write_report_summary(
+    f, checklist_items, ci_status, comments_data, passed_checks, failed_checks
+):
     """Write the report summary section."""
     all_comments, new_comments = comments_data
     f.write("---\n\n")
     f.write("## 📊 Summary\n\n")
-    f.write(f"- **Total Checklist Items**: {sum(len(item['items']) for item in checklist_items)}\n")
-    f.write(f"- **CI Status**: {'✅ Passed' if ci_status.get('all_passed') is True else '❌ Failed' if ci_status.get('all_passed') is False else '⚠️ Unknown'}\n")
+    f.write(
+        f"- **Total Checklist Items**: {sum(len(item['items']) for item in checklist_items)}\n"
+    )
+    f.write(
+        f"- **CI Status**: {'✅ Passed' if ci_status.get('all_passed') is True else '❌ Failed' if ci_status.get('all_passed') is False else '⚠️ Unknown'}\n"
+    )
     f.write(f"- **Outstanding Comments**: {len(all_comments)}\n")
     f.write(f"  - New: {len(new_comments)}\n")
     f.write(f"  - Previously Seen: {len(all_comments) - len(new_comments)}\n")
-    f.write(f"- **Quality Checks**: {len(passed_checks)} passed, {len(failed_checks)} failed\n\n")
+    f.write(
+        f"- **Quality Checks**: {len(passed_checks)} passed, {len(failed_checks)} failed\n\n"
+    )
 
 
 def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
     """Write the detailed information sections."""
     f.write("---\n\n")
     f.write("## 📋 Detailed Information\n\n")
-    
+
     # CI Status Details
     f.write("### CI Status Details\n\n")
     if ci_status.get("error"):
@@ -1390,11 +1452,11 @@ def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
         f.write(f"- **Failed Jobs**: {len(ci_status.get('failed_jobs', []))}\n")
         f.write(f"- **In Progress**: {len(ci_status.get('in_progress_jobs', []))}\n")
         f.write(f"- **Pending**: {len(ci_status.get('pending_jobs', []))}\n\n")
-    
+
     # Comments Details
     f.write("### PR Comments Details\n\n")
     f.write(f"See `pr_comments_scratch.md` for full comment analysis.\n\n")
-    
+
     # Quality Check Details
     f.write("### Quality Check Details\n\n")
     if failed_checks:
@@ -1407,41 +1469,51 @@ def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
             if check.error:
                 f.write(f"- **Error**: {check.error[:200]}...\n")
             if error_log_file:
-                f.write(f"- **Full Error Log**: [`{error_log_file}`]({error_log_file})\n")
+                f.write(
+                    f"- **Full Error Log**: [`{error_log_file}`]({error_log_file})\n"
+                )
                 f.write(f"  - View with: `cat {error_log_file}`\n")
-                f.write(f"  - Or use: `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n")
-            f.write(f"- **Quick Run**: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n")
-            f.write(f"- **Truncated Output** (first 500 chars):\n```\n{check.output[:500]}...\n```\n\n")
+                f.write(
+                    f"  - Or use: `python scripts/view_check_error.py {_get_check_flag_for_result(check.name)}`\n"
+                )
+            f.write(
+                f"- **Quick Run**: `python scripts/ship_it.py --checks {_get_check_flag_for_result(check.name)}`\n"
+            )
+            f.write(
+                f"- **Truncated Output** (first 500 chars):\n```\n{check.output[:500]}...\n```\n\n"
+            )
     else:
         f.write("✅ All quality checks passed!\n\n")
 
 
-def generate_pr_issues_report(ci_status, comments_data, quality_check_results, pr_number):
+def generate_pr_issues_report(
+    ci_status, comments_data, quality_check_results, pr_number
+):
     """
     Generate a comprehensive PR issues report with checklist format.
-    
+
     Args:
         ci_status: CI status dictionary from check_ci_status()
         comments_data: Tuple of (all_comments, new_comments) from check_pr_comments()
         quality_check_results: List of CheckResult objects from quality gate execution
         pr_number: PR number
-    
+
     Returns:
         Dictionary with report data and file path
     """
-    import os
     import json
+    import os
     from datetime import datetime
-    
+
     all_comments, new_comments = comments_data
     commit_sha = _get_current_commit_sha()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # Ensure logs directory exists
     os.makedirs("logs", exist_ok=True)
-    
+
     report_file = f"logs/pr_{pr_number}_issues_report_{commit_sha[:8]}.md"
-    
+
     # Load existing checklist state if available
     checklist_state_file = f"logs/pr_{pr_number}_checklist_state_{commit_sha[:8]}.json"
     checklist_state = {}
@@ -1451,41 +1523,58 @@ def generate_pr_issues_report(ci_status, comments_data, quality_check_results, p
                 checklist_state = json.load(f)
         except Exception:  # nosec B110 - fallback to empty state
             pass
-    
+
     failed_checks = [r for r in quality_check_results if r.status == CheckStatus.FAILED]
     passed_checks = [r for r in quality_check_results if r.status == CheckStatus.PASSED]
-    
+
     # Save full error output for each failed check
-    error_log_files = _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp)
-    
+    error_log_files = _save_check_error_logs(
+        failed_checks, pr_number, commit_sha, timestamp
+    )
+
     checklist_items = []
-    
+
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(f"# Outstanding PR Issues Report\n\n")
         f.write(f"**PR**: #{pr_number}\n")
         f.write(f"**Commit**: `{commit_sha}`\n")
         f.write(f"**Generated**: {timestamp}\n\n")
         f.write("---\n\n")
-        
+
         # Checklist section
         f.write("## ✅ PR Issues Checklist\n\n")
-        f.write("Address each item below before pushing commits. Do NOT push or re-run validation until all items are addressed.\n\n")
-        
+        f.write(
+            "Address each item below before pushing commits. Do NOT push or re-run validation until all items are addressed.\n\n"
+        )
+
         item_number = 1
-        item_number = _write_checklist_ci_section(f, ci_status, checklist_state, checklist_items, item_number)
-        item_number = _write_checklist_comments_section(f, comments_data, checklist_state, checklist_items, item_number)
-        item_number = _write_checklist_quality_section(f, failed_checks, error_log_files, checklist_state, checklist_items, item_number)
-        
-        _write_report_summary(f, checklist_items, ci_status, comments_data, passed_checks, failed_checks)
+        item_number = _write_checklist_ci_section(
+            f, ci_status, checklist_state, checklist_items, item_number
+        )
+        item_number = _write_checklist_comments_section(
+            f, comments_data, checklist_state, checklist_items, item_number
+        )
+        item_number = _write_checklist_quality_section(
+            f,
+            failed_checks,
+            error_log_files,
+            checklist_state,
+            checklist_items,
+            item_number,
+        )
+
+        _write_report_summary(
+            f, checklist_items, ci_status, comments_data, passed_checks, failed_checks
+        )
         _write_detailed_sections(f, ci_status, failed_checks, error_log_files)
-    
+
     return {
         "file_path": report_file,
         "checklist_items": checklist_items,
         "error_log_files": error_log_files,
         "summary": {
-            "total_items": sum(len(item['items']) for item in checklist_items),
-            "ci_passed": ci_status.get('all_passed'),
+            "total_items": sum(len(item["items"]) for item in checklist_items),
+            "ci_passed": ci_status.get("all_passed"),
             "comments_count": len(all_comments),
             "new_comments_count": len(new_comments),
             "failed_checks": len(failed_checks),
@@ -1510,12 +1599,12 @@ def _get_item_status(checklist_state, item_text):
     """Get status of a checklist item from state."""
     if not checklist_state or "items" not in checklist_state:
         return "pending"
-    
+
     item_text_lower = item_text.lower()
     for item_data in checklist_state["items"].values():
         if item_text_lower in item_data.get("text", "").lower():
             return item_data.get("status", "pending")
-    
+
     return "pending"
 
 
@@ -1537,37 +1626,45 @@ def write_pr_comments_scratch(comments, new_comments=None):
             f.write(
                 "4. **Cross-Reference Communication**: Reply to related comments together\n\n"
             )
-            
+
             if new_comments:
                 f.write(f"## 📬 New Comments ({len(new_comments)})\n\n")
                 f.write("These comments have not been seen before:\n\n")
                 for i, comment in enumerate(new_comments, 1):
-                    comment_id = comment.get('id', f'comment-{i}')
-                    author = comment.get('author', 'unknown')
+                    comment_id = comment.get("id", f"comment-{i}")
+                    author = comment.get("author", "unknown")
                     f.write(f"### 🆕 Comment #{comment_id} - {author}\n")
                     if comment.get("path") and comment.get("line"):
-                        f.write(f"**Location**: `{comment['path']}:{comment['line']}`\n")
+                        f.write(
+                            f"**Location**: `{comment['path']}:{comment['line']}`\n"
+                        )
                     elif comment.get("path"):
                         f.write(f"**Location**: `{comment['path']}`\n")
                     f.write(f"**Type**: {comment.get('type', 'comment')}\n")
                     f.write(f"**Created**: {comment.get('created_at', 'N/A')}\n\n")
-                    body = comment.get('body', '(no content)')
+                    body = comment.get("body", "(no content)")
                     f.write(f"**Content**:\n{body}\n\n")
                     f.write("**Conceptual Theme**: _[AI to classify]_\n")
                     f.write("**Risk Priority**: _[AI to assess]_\n")
                     f.write("**Related Comments**: _[AI to identify]_\n\n")
                     f.write("---\n\n")
-                
+
                 if len(comments) > len(new_comments):
-                    f.write(f"## 📋 All Outstanding Comments ({len(comments)} total)\n\n")
-                    f.write(f"({len(comments) - len(new_comments)} previously seen comments below)\n\n")
-            
+                    f.write(
+                        f"## 📋 All Outstanding Comments ({len(comments)} total)\n\n"
+                    )
+                    f.write(
+                        f"({len(comments) - len(new_comments)} previously seen comments below)\n\n"
+                    )
+
             f.write("## Comments to Address\n\n")
 
             for i, comment in enumerate(comments, 1):
-                comment_id = comment.get('id', f'comment-{i}')
-                author = comment.get('author', 'unknown')
-                is_new = new_comments and comment.get('id') in {c.get('id') for c in new_comments}
+                comment_id = comment.get("id", f"comment-{i}")
+                author = comment.get("author", "unknown")
+                is_new = new_comments and comment.get("id") in {
+                    c.get("id") for c in new_comments
+                }
                 prefix = "🆕 " if is_new else ""
                 f.write(f"### {prefix}Comment #{comment_id} - {author}\n")
                 if comment.get("path") and comment.get("line"):
@@ -1576,7 +1673,7 @@ def write_pr_comments_scratch(comments, new_comments=None):
                     f.write(f"**Location**: `{comment['path']}`\n")
                 f.write(f"**Type**: {comment.get('type', 'comment')}\n")
                 f.write(f"**Created**: {comment.get('created_at', 'N/A')}\n\n")
-                body = comment.get('body', '(no content)')
+                body = comment.get("body", "(no content)")
                 f.write(f"**Content**:\n{body}\n\n")
                 f.write("**Conceptual Theme**: _[AI to classify]_\n")
                 f.write("**Risk Priority**: _[AI to assess]_\n")
@@ -1638,55 +1735,63 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
             print("⚠️  Not in a PR context. Skipping PR-specific checks.")
             print("   Run this command from a branch with an associated PR.")
             # Fall through to regular validation
-        
+
         # Step 1: Run all quality checks in parallel (NO fail-fast)
         print("=" * 70)
         print("🔍 PR VALIDATION: Running all checks in parallel...")
         print("=" * 70)
         print()
-        
+
         executor = QualityGateExecutor()
         validation_type = ValidationType.PR
-        
+
         # Determine which checks to run
         if args.checks is None:
             checks_to_run = executor.pr_checks
         else:
-            available_checks = {flag: (flag, name) for flag, name in executor.all_checks}
-            checks_to_run = [available_checks[c] for c in args.checks if c in available_checks]
-        
+            available_checks = {
+                flag: (flag, name) for flag, name in executor.all_checks
+            }
+            checks_to_run = [
+                available_checks[c] for c in args.checks if c in available_checks
+            ]
+
         # Run checks without fail-fast to collect all results
         start_time = time.time()
         quality_results = executor.run_checks_parallel(checks_to_run, fail_fast=False)
         total_duration = time.time() - start_time
-        
+
         # Format and display results
-        executor.logger.info("\n" + executor.format_results(quality_results, total_duration))
-        
+        executor.logger.info(
+            "\n" + executor.format_results(quality_results, total_duration)
+        )
+
         # Step 2: Collect CI status and PR comments
         print()
         print("=" * 70)
         print("📊 Collecting PR context (CI status, comments)...")
         print("=" * 70)
         print()
-        
+
         ci_status = check_ci_status()
         comments_data = check_pr_comments()
-        
+
         # Step 3: Generate comprehensive report
         print()
         print("=" * 70)
         print("📝 Generating PR Issues Report...")
         print("=" * 70)
         print()
-        
-        report = generate_pr_issues_report(ci_status, comments_data, quality_results, pr_number)
-        
+
+        report = generate_pr_issues_report(
+            ci_status, comments_data, quality_results, pr_number
+        )
+
         # Write comments scratch file
         all_comments, new_comments = comments_data
         if all_comments:
             write_pr_comments_scratch(all_comments, new_comments)
-        
+
         # Step 4: Print summary
         print()
         print("=" * 70)
@@ -1699,17 +1804,23 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         print()
         print(f"📊 Summary:")
         print(f"  - Total Checklist Items: {report['summary']['total_items']}")
-        print(f"  - CI Status: {'✅ Passed' if report['summary']['ci_passed'] is True else '❌ Failed' if report['summary']['ci_passed'] is False else '⚠️ Unknown'}")
-        print(f"  - Outstanding Comments: {report['summary']['comments_count']} ({report['summary']['new_comments_count']} new)")
-        print(f"  - Quality Checks: {report['summary']['passed_checks']} passed, {report['summary']['failed_checks']} failed")
-        
-        if report.get('error_log_files'):
+        print(
+            f"  - CI Status: {'✅ Passed' if report['summary']['ci_passed'] is True else '❌ Failed' if report['summary']['ci_passed'] is False else '⚠️ Unknown'}"
+        )
+        print(
+            f"  - Outstanding Comments: {report['summary']['comments_count']} ({report['summary']['new_comments_count']} new)"
+        )
+        print(
+            f"  - Quality Checks: {report['summary']['passed_checks']} passed, {report['summary']['failed_checks']} failed"
+        )
+
+        if report.get("error_log_files"):
             print(f"\n📄 Error Logs Generated ({len(report['error_log_files'])}):")
-            for check_name, log_file in report['error_log_files'].items():
+            for check_name, log_file in report["error_log_files"].items():
                 check_flag = _get_check_flag_for_result(check_name)
                 print(f"  • {check_name}: {log_file}")
                 print(f"    View: python scripts/view_check_error.py {check_flag}")
-        
+
         print()
         print("💡 Next Steps:")
         print("   1. Review the checklist in the report file")
@@ -1720,10 +1831,10 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         print("   4. Do NOT push or re-run validation until all items are addressed")
         print("   5. After pushing commits and CI completes, re-run PR validation")
         print()
-        
+
         # Don't exit early - let the process complete normally
         # Exit code indicates if there were any failures, but don't block
-        sys.exit(0 if report['summary']['total_items'] == 0 else 1)
+        sys.exit(0 if report["summary"]["total_items"] == 0 else 1)
 
     # Convert validation type string to enum
     validation_type_map = {

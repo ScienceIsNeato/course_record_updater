@@ -9,8 +9,12 @@ from typing import Any, Dict, List, Tuple
 
 from flask import jsonify, request
 
-from src.services.auth_service import UserRole, get_current_institution_id, get_current_user
 from src.database.database_service import get_all_institutions
+from src.services.auth_service import (
+    UserRole,
+    get_current_institution_id,
+    get_current_user,
+)
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -44,16 +48,18 @@ def get_mimetype_for_extension(file_extension: str) -> str:
     return EXPORT_MIMETYPES.get(file_extension.lower(), "application/octet-stream")
 
 
-def resolve_institution_scope(require: bool = True) -> Tuple[Dict[str, Any], List[str], bool]:
+def resolve_institution_scope(
+    require: bool = True,
+) -> Tuple[Dict[str, Any], List[str], bool]:
     """
     Return the current user, accessible institution ids, and whether scope is global.
-    
+
     Args:
         require: If True, raises InstitutionContextMissingError when no scope is available
-        
+
     Returns:
         Tuple of (current_user, institution_ids, is_global)
-        
+
     Raises:
         InstitutionContextMissingError: If require=True and no institution scope is available
     """
@@ -100,7 +106,7 @@ def handle_api_error(
     # Only log the operation name and exception type, not the message
     logger.error(
         f"{operation_name} failed with {type(e).__name__}",
-        exc_info=True  # This logs the traceback without the raw exception message
+        exc_info=True,  # This logs the traceback without the raw exception message
     )
 
     # Return sanitized response to user
@@ -110,24 +116,23 @@ def handle_api_error(
 def validate_request_json(required_fields: List[str] = None) -> Dict[str, Any]:
     """
     Validate that request contains JSON data and optionally check for required fields.
-    
+
     Args:
         required_fields: List of field names that must be present in the JSON
-        
+
     Returns:
         Dict containing the JSON data
-        
+
     Raises:
         ValueError: If JSON is missing or required fields are not present
     """
     data = request.get_json()
     if not data:
         raise ValueError("No JSON data provided")
-    
+
     if required_fields:
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
             raise ValueError(f'Missing required fields: {", ".join(missing_fields)}')
-    
-    return data
 
+    return data

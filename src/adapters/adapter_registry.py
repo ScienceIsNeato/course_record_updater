@@ -41,7 +41,7 @@ class AdapterRegistry:
         self._discovery_complete = False
 
         # Adapter discovery configuration
-        self.adapter_module_path = "adapters"
+        self.adapter_module_path = "src.adapters"
         self.exclude_modules = [
             "__init__.py",
             "base_adapter.py",  # Old form-based adapter

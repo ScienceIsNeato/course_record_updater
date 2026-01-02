@@ -5,39 +5,39 @@ from unittest.mock import patch
 import pytest
 
 from src.api.routes.clo_workflow import get_clos_for_audit
-from src.app import src.app as app
+from src.app import app
 
 
 @pytest.fixture
 def mock_get_current_institution_id():
-    with patch("api.routes.clo_workflow.get_current_institution_id") as mock:
+    with patch("src.api.routes.clo_workflow.get_current_institution_id") as mock:
         mock.return_value = "inst-1"
         yield mock
 
 
 @pytest.fixture
 def mock_get_current_user():
-    with patch("api.routes.clo_workflow.get_current_user") as mock:
+    with patch("src.api.routes.clo_workflow.get_current_user") as mock:
         mock.return_value = {"role": "institution_admin", "user_id": "user-1"}
         yield mock
 
 
 @pytest.fixture
 def mock_clo_service():
-    with patch("api.routes.clo_workflow.CLOWorkflowService") as mock:
+    with patch("src.api.routes.clo_workflow.CLOWorkflowService") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_get_term_by_name():
-    with patch("api.routes.clo_workflow.get_term_by_name") as mock:
+    with patch("src.api.routes.clo_workflow.get_term_by_name") as mock:
         yield mock
 
 
 @pytest.fixture(autouse=True)
 def mock_permission_required():
     """Mock permission_required to bypass auth checks."""
-    with patch("auth_service.permission_required") as mock:
+    with patch("src.services.auth_service.permission_required") as mock:
         # Create a pass-through decorator
         def side_effect(permission):
             def decorator(f):

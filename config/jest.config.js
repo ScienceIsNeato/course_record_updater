@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'jsdom',
+  rootDir: '..',
   roots: ['<rootDir>/tests/javascript'],
   testMatch: ['**/*.test.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/javascript/setupTests.js'],
@@ -7,7 +8,7 @@ module.exports = {
   collectCoverageFrom: [
     'static/**/*.js'
   ],
-  coverageDirectory: '<rootDir>/coverage',
+  coverageDirectory: '<rootDir>/build/coverage',
   coverageReporters: ['lcov', 'text-summary'],
   coverageThreshold: {
     global: {

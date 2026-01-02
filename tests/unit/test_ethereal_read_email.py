@@ -13,7 +13,7 @@ from src.email_providers.ethereal_provider import EtherealProvider
 class TestEtherealProviderReadEmail:
     """Test Ethereal Provider read_email with mocked IMAP"""
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_success(self, mock_imap_class):
         """Test successful email reading via IMAP"""
         # Setup mock IMAP connection
@@ -58,7 +58,7 @@ class TestEtherealProviderReadEmail:
         mock_imap_class.assert_called_once_with("imap.ethereal.email", 993)
         mock_mail.login.assert_called_once_with("test@ethereal.email", "testpass")
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_with_unique_identifier(self, mock_imap_class):
         """Test reading email with unique identifier in body"""
         mock_mail = MagicMock()
@@ -95,7 +95,7 @@ class TestEtherealProviderReadEmail:
         assert result is not None
         assert "ABC123XYZ" in result["body"]
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_no_match_found(self, mock_imap_class):
         """Test reading email when no match is found"""
         mock_mail = MagicMock()
@@ -139,7 +139,7 @@ class TestEtherealProviderReadEmail:
 
         assert result is None
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_wrong_recipient(self, mock_imap_class):
         """Test reading email for wrong recipient"""
         provider = EtherealProvider()
@@ -160,7 +160,7 @@ class TestEtherealProviderReadEmail:
         # IMAP should not be called for wrong recipient
         mock_imap_class.assert_not_called()
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_imap_error(self, mock_imap_class):
         """Test handling IMAP connection errors"""
         mock_imap_class.side_effect = Exception("IMAP connection failed")
@@ -182,7 +182,7 @@ class TestEtherealProviderReadEmail:
         # Should return None on error and log it
         assert result is None
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_multipart_message(self, mock_imap_class):
         """Test reading multipart email with HTML and text"""
         mock_mail = MagicMock()
@@ -217,7 +217,7 @@ class TestEtherealProviderReadEmail:
         assert "Plain text version" in result["body"]
         assert "HTML version" in result["html_body"]
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_empty_inbox(self, mock_imap_class):
         """Test reading from empty inbox"""
         mock_mail = MagicMock()
@@ -240,7 +240,7 @@ class TestEtherealProviderReadEmail:
 
         assert result is None
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_invalid_fetch_result(self, mock_imap_class):
         """Test handling invalid fetch results"""
         mock_mail = MagicMock()
@@ -265,7 +265,7 @@ class TestEtherealProviderReadEmail:
 
         assert result is None
 
-    @patch("email_providers.ethereal_provider.imaplib.IMAP4_SSL")
+    @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
     def test_read_email_with_subject_filter(self, mock_imap_class):
         """Test filtering by subject substring"""
         mock_mail = MagicMock()

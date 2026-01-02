@@ -167,7 +167,7 @@ class AuthService:
 
     def _get_session_user(self) -> Optional[Dict[str, Any]]:
         """Session-based authentication"""
-        from session import SessionService
+        from data.session import SessionService
 
         if not SessionService.is_user_logged_in():
             return None
@@ -714,7 +714,7 @@ def get_current_institution_id() -> Optional[str]:
     """
     user: Optional[Dict[str, Any]] = None
     try:
-        from session import SessionService
+        from data.session import SessionService
 
         if SessionService.is_user_logged_in():
             user = SessionService.get_current_user()

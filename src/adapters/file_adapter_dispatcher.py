@@ -22,7 +22,7 @@ class FileAdapterDispatcher:
     Optionally uses BaseAdapter for post-parsing validation.
     """
 
-    ADAPTER_DIR = "adapters"
+    ADAPTER_DIR = "src/adapters"
     # Files to exclude during discovery
     EXCLUDE_FILES = ["__init__.py", "base_adapter.py", "file_adapter_dispatcher.py"]
 
@@ -104,7 +104,7 @@ class FileAdapterDispatcher:
 
         except ImportError:
             raise DispatcherError(
-                f"Adapter module 'adapters.{adapter_name}' not found."
+                f"Adapter module 'src.adapters.{adapter_name}' not found."
             )
         except Exception as e:
             # Catch other potential errors during instantiation or parsing
@@ -115,7 +115,7 @@ class FileAdapterDispatcher:
     def _load_adapter(self, adapter_name: str):
         """Load and instantiate the specified adapter."""
         # Dynamically import the adapter module
-        module_path = f"adapters.{adapter_name}"
+        module_path = f"src.adapters.{adapter_name}"
         module = importlib.import_module(module_path)  # nosemgrep
 
         # Convert adapter_name (snake_case) to ClassName (CamelCase)

@@ -47,7 +47,7 @@ class TestProgramContextUtilities:
 
     def test_get_current_program_id_no_user(self):
         """Test get_current_program_id when no user is logged in"""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             result = get_current_program_id()
             assert result is None
 
@@ -58,7 +58,9 @@ class TestProgramContextUtilities:
             "role": "program_admin",
             "program_ids": ["prog-123", "prog-456"],
         }
-        with patch("auth_service.get_current_user", return_value=mock_user):
+        with patch(
+            "src.services.auth_service.get_current_user", return_value=mock_user
+        ):
             result = get_current_program_id()
             assert result is None
 
@@ -70,17 +72,19 @@ class TestProgramContextUtilities:
             "program_ids": ["prog-123", "prog-456"],
             "current_program_id": "prog-123",
         }
-        with patch("auth_service.get_current_user", return_value=mock_user):
+        with patch(
+            "src.services.auth_service.get_current_user", return_value=mock_user
+        ):
             result = get_current_program_id()
             assert result == "prog-123"
 
     def test_set_current_program_id_no_user(self):
         """Test set_current_program_id when no user is logged in"""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             result = set_current_program_id("prog-123")
             assert result is False
 
-    @patch("auth_service.session", {})
+    @patch("src.services.auth_service.session", {})
     def test_set_current_program_id_unauthorized_program(self):
         """Test set_current_program_id with unauthorized program"""
         mock_user = {
@@ -88,7 +92,9 @@ class TestProgramContextUtilities:
             "role": "program_admin",
             "program_ids": ["prog-123", "prog-456"],
         }
-        with patch("auth_service.get_current_user", return_value=mock_user):
+        with patch(
+            "src.services.auth_service.get_current_user", return_value=mock_user
+        ):
             result = set_current_program_id("prog-999")  # Not in accessible list
             assert result is False
 
@@ -104,13 +110,15 @@ class TestProgramContextUtilities:
         }
 
         with app.test_request_context():
-            with patch("auth_service.get_current_user", return_value=mock_user):
+            with patch(
+                "src.services.auth_service.get_current_user", return_value=mock_user
+            ):
                 result = set_current_program_id("prog-123")
                 assert result is True
 
     def test_clear_current_program_id_no_user(self):
         """Test clear_current_program_id when no user is logged in"""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             result = clear_current_program_id()
             assert result is False
 
@@ -127,7 +135,9 @@ class TestProgramContextUtilities:
 
             session["current_program_id"] = "prog-123"
 
-            with patch("auth_service.get_current_user", return_value=mock_user):
+            with patch(
+                "src.services.auth_service.get_current_user", return_value=mock_user
+            ):
                 result = clear_current_program_id()
                 assert result is True
 
@@ -169,11 +179,13 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("api_routes.get_current_user", return_value=mock_user),
-                patch("api_routes.get_current_program_id", return_value="prog-123"),
-                patch("api_routes.get_program_by_id") as mock_get_program,
-                patch("auth_service.get_current_user", return_value=mock_user),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.api_routes.get_current_user", return_value=mock_user),
+                patch("src.api_routes.get_current_program_id", return_value="prog-123"),
+                patch("src.api_routes.get_program_by_id") as mock_get_program,
+                patch(
+                    "src.services.auth_service.get_current_user", return_value=mock_user
+                ),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
 
                 mock_get_program.side_effect = lambda pid: next(
@@ -203,11 +215,13 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("api_routes.get_current_user", return_value=mock_user),
-                patch("api_routes.get_program_by_id", return_value=mock_program),
-                patch("api_routes.set_current_program_id", return_value=True),
-                patch("auth_service.get_current_user", return_value=mock_user),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.api_routes.get_current_user", return_value=mock_user),
+                patch("src.api_routes.get_program_by_id", return_value=mock_program),
+                patch("src.api_routes.set_current_program_id", return_value=True),
+                patch(
+                    "src.services.auth_service.get_current_user", return_value=mock_user
+                ),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
 
                 _login_test_user(client, mock_user)
@@ -231,9 +245,11 @@ class TestProgramContextAPI:
 
         with app.app_context():
             with (
-                patch("api_routes.get_current_user", return_value=mock_user),
-                patch("auth_service.get_current_user", return_value=mock_user),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.api_routes.get_current_user", return_value=mock_user),
+                patch(
+                    "src.services.auth_service.get_current_user", return_value=mock_user
+                ),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
                 _login_test_user(client, mock_user)
 
@@ -248,12 +264,12 @@ class TestProgramContextAPI:
         """Test DELETE /api/context/program success"""
         with app.app_context():
             with (
-                patch("api_routes.clear_current_program_id", return_value=True),
+                patch("src.api_routes.clear_current_program_id", return_value=True),
                 patch(
-                    "auth_service.get_current_user",
+                    "src.services.auth_service.get_current_user",
                     return_value={"user_id": "test", "role": "site_admin"},
                 ),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
                 _login_test_user(client, {"user_id": "test", "role": "site_admin"})
 
@@ -296,13 +312,17 @@ class TestUnassignedCoursesAPI:
 
         with app.app_context():
             with (
-                patch("api_routes.get_current_institution_id", return_value="inst-123"),
-                patch("api_routes.get_unassigned_courses", return_value=mock_courses),
                 patch(
-                    "auth_service.get_current_user",
+                    "src.api_routes.get_current_institution_id", return_value="inst-123"
+                ),
+                patch(
+                    "src.api_routes.get_unassigned_courses", return_value=mock_courses
+                ),
+                patch(
+                    "src.services.auth_service.get_current_user",
                     return_value={"user_id": "test", "role": "site_admin"},
                 ),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
                 _login_test_user(client, {"user_id": "test", "role": "site_admin"})
 
@@ -318,13 +338,17 @@ class TestUnassignedCoursesAPI:
         """Test POST /api/courses/<course_id>/assign-default success"""
         with app.app_context():
             with (
-                patch("api_routes.get_current_institution_id", return_value="inst-123"),
-                patch("api_routes.assign_course_to_default_program", return_value=True),
                 patch(
-                    "auth_service.get_current_user",
+                    "src.api_routes.get_current_institution_id", return_value="inst-123"
+                ),
+                patch(
+                    "src.api_routes.assign_course_to_default_program", return_value=True
+                ),
+                patch(
+                    "src.services.auth_service.get_current_user",
                     return_value={"user_id": "test", "role": "site_admin"},
                 ),
-                patch("auth_service.has_permission", return_value=True),
+                patch("src.services.auth_service.has_permission", return_value=True),
             ):
                 _login_test_user(client, {"user_id": "test", "role": "site_admin"})
 
@@ -370,7 +394,7 @@ class TestContextValidationMiddleware:
         mock_user = {"user_id": "admin-123", "role": "site_admin"}
 
         with app.test_request_context("/api/courses", method="GET"):
-            with patch("api_routes.get_current_user", return_value=mock_user):
+            with patch("src.api_routes.get_current_user", return_value=mock_user):
                 from src.api_routes import validate_context
 
                 result = validate_context()
@@ -382,9 +406,9 @@ class TestContextValidationMiddleware:
 
         with app.test_request_context("/api/courses", method="GET"):
             with (
-                patch("api_routes.get_current_user", return_value=mock_user),
-                patch("api_routes.get_current_institution_id", return_value=None),
-                patch("api_routes.logger") as mock_logger,
+                patch("src.api_routes.get_current_user", return_value=mock_user),
+                patch("src.api_routes.get_current_institution_id", return_value=None),
+                patch("src.api_routes.logger") as mock_logger,
             ):
 
                 from src.api_routes import validate_context

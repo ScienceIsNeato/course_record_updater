@@ -22,10 +22,10 @@ logger = get_logger(__name__)
 class BrevoProvider(EmailProvider):
     """
     Brevo email provider for production transactional emails
-    
+
     Uses Brevo's REST API to send emails with excellent deliverability.
     Free tier: 300 emails/day, perfect for testing and small deployments.
-    
+
     Configuration requires:
     - api_key: Brevo API key (from https://app.brevo.com/settings/keys/api)
     - sender_email: Verified sender email address
@@ -52,13 +52,19 @@ class BrevoProvider(EmailProvider):
         """
         self._api_key = config.get("api_key") or os.getenv("BREVO_API_KEY")
         self._sender_email = config.get("sender_email") or config.get("default_sender")
-        self._sender_name = config.get("sender_name") or config.get("default_sender_name", "Course Record Updater")
+        self._sender_name = config.get("sender_name") or config.get(
+            "default_sender_name", "Course Record Updater"
+        )
 
         if not self._api_key:
-            raise ValueError("Brevo provider requires 'api_key' in config or BREVO_API_KEY env var")
-        
+            raise ValueError(
+                "Brevo provider requires 'api_key' in config or BREVO_API_KEY env var"
+            )
+
         if not self._sender_email:
-            raise ValueError("Brevo provider requires 'sender_email' or 'default_sender' in config")
+            raise ValueError(
+                "Brevo provider requires 'sender_email' or 'default_sender' in config"
+            )
 
         self._configured = True
         logger.info(
@@ -164,10 +170,10 @@ class BrevoProvider(EmailProvider):
     ) -> Optional[Dict[str, Any]]:
         """
         Read emails from Brevo - NOT SUPPORTED
-        
+
         Brevo is a sending service and does not provide inbox/IMAP access.
         Use Ethereal Email provider for E2E testing that requires email verification.
-        
+
         Raises:
             NotImplementedError: Always - Brevo doesn't support reading emails
         """
@@ -175,4 +181,3 @@ class BrevoProvider(EmailProvider):
             "Brevo is a sending service and does not support reading emails. "
             "Use Ethereal Email provider for E2E testing or Console provider for local testing."
         )
-

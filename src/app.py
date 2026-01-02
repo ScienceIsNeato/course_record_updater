@@ -5,23 +5,24 @@ import sys
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 
-from .api import register_blueprints  # New modular API structure
-
-# Import new API routes and services
-from .api_routes import api
+from src.database.database_service import check_db_connection, db
+from src.database.database_validator import validate_schema_or_exit
 from src.services.auth_service import (
     get_current_user,
     is_authenticated,
     login_required,
     permission_required,
 )
+from src.services.email_service import EmailService
 
 # Import constants
 from src.utils.constants import DASHBOARD_ENDPOINT
-from src.database.database_service import check_db_connection, db
-from src.database.database_validator import validate_schema_or_exit
-from src.services.email_service import EmailService
 from src.utils.logging_config import get_app_logger
+
+from .api import register_blueprints  # New modular API structure
+
+# Import new API routes and services
+from .api_routes import api
 
 # Unused imports removed
 
@@ -31,7 +32,7 @@ from src.utils.logging_config import get_app_logger
 # Initialize logger
 logger = get_app_logger()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
 # Initialize CSRF protection (disabled during testing)
 # Check if we're in test mode by looking for pytest in sys.modules
@@ -266,8 +267,8 @@ def reset_password_form(token):
     Validates token and displays password reset form.
     The form will POST to /api/auth/reset-password when submitted.
     """
-    from src.utils.logging_config import get_logger
     from src.services.password_reset_service import PasswordResetService
+    from src.utils.logging_config import get_logger
 
     logger = get_logger(__name__)
 

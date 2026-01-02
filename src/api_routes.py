@@ -27,44 +27,6 @@ from flask import (
 )
 
 import src.database.database_service as database_service
-
-# Import our services
-from src.services.audit_service import AuditService
-from src.services.auth_service import (
-    UserRole,
-    clear_current_program_id,
-    get_current_institution_id,
-    get_current_program_id,
-    get_current_user,
-    has_permission,
-    login_required,
-    permission_required,
-    set_current_program_id,
-)
-from src.utils.constants import (
-    COURSE_NOT_FOUND_MSG,
-    COURSE_OFFERING_NOT_FOUND_MSG,
-    FAILED_TO_CREATE_INSTITUTION_MSG,
-    INSTITUTION_CONTEXT_REQUIRED_MSG,
-    INSTITUTION_NOT_FOUND_MSG,
-    INVALID_EMAIL_FORMAT_MSG,
-    INVITATION_CREATED_AND_SENT_MSG,
-    INVITATION_CREATED_EMAIL_FAILED_MSG,
-    INVITATION_NOT_FOUND_MSG,
-    MISSING_REQUIRED_FIELD_EMAIL_MSG,
-    NO_DATA_PROVIDED_MSG,
-    NO_JSON_DATA_PROVIDED_MSG,
-    NOT_FOUND_MSG,
-    OUTCOME_NOT_FOUND_MSG,
-    PERMISSION_DENIED_MSG,
-    PROGRAM_NOT_FOUND_MSG,
-    SECTION_NOT_FOUND_MSG,
-    TERM_NOT_FOUND_MSG,
-    TIMEZONE_UTC_SUFFIX,
-    USER_NOT_AUTHENTICATED_MSG,
-    USER_NOT_FOUND_MSG,
-)
-from src.services.dashboard_service import DashboardService, DashboardServiceError
 from src.database.database_service import (
     add_course_to_program,
     archive_term,
@@ -130,10 +92,24 @@ from src.database.database_service import (
     update_user_profile,
     update_user_role,
 )
+from src.models.models import Program
+
+# Import our services
+from src.services.audit_service import AuditService
+from src.services.auth_service import (
+    UserRole,
+    clear_current_program_id,
+    get_current_institution_id,
+    get_current_program_id,
+    get_current_user,
+    has_permission,
+    login_required,
+    permission_required,
+    set_current_program_id,
+)
+from src.services.dashboard_service import DashboardService, DashboardServiceError
 from src.services.export_service import ExportConfig, create_export_service
 from src.services.import_service import import_excel
-from src.utils.logging_config import get_logger
-from src.models.models import Program
 from src.services.registration_service import (
     RegistrationError,
     get_registration_status,
@@ -141,6 +117,30 @@ from src.services.registration_service import (
     resend_verification_email,
     verify_email,
 )
+from src.utils.constants import (
+    COURSE_NOT_FOUND_MSG,
+    COURSE_OFFERING_NOT_FOUND_MSG,
+    FAILED_TO_CREATE_INSTITUTION_MSG,
+    INSTITUTION_CONTEXT_REQUIRED_MSG,
+    INSTITUTION_NOT_FOUND_MSG,
+    INVALID_EMAIL_FORMAT_MSG,
+    INVITATION_CREATED_AND_SENT_MSG,
+    INVITATION_CREATED_EMAIL_FAILED_MSG,
+    INVITATION_NOT_FOUND_MSG,
+    MISSING_REQUIRED_FIELD_EMAIL_MSG,
+    NO_DATA_PROVIDED_MSG,
+    NO_JSON_DATA_PROVIDED_MSG,
+    NOT_FOUND_MSG,
+    OUTCOME_NOT_FOUND_MSG,
+    PERMISSION_DENIED_MSG,
+    PROGRAM_NOT_FOUND_MSG,
+    SECTION_NOT_FOUND_MSG,
+    TERM_NOT_FOUND_MSG,
+    TIMEZONE_UTC_SUFFIX,
+    USER_NOT_AUTHENTICATED_MSG,
+    USER_NOT_FOUND_MSG,
+)
+from src.utils.logging_config import get_logger
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -3986,7 +3986,10 @@ def create_invitation_api():
         500: Server error
     """
     try:
-        from src.services.auth_service import get_current_institution_id, get_current_user
+        from src.services.auth_service import (
+            get_current_institution_id,
+            get_current_user,
+        )
         from src.services.invitation_service import InvitationService
 
         # Get request data (silent=True prevents 415 exception, returns None instead)
@@ -4500,7 +4503,10 @@ def create_invitation_public_api():
     Returns 201 with invitation_id on success.
     """
     try:
-        from src.services.auth_service import get_current_institution_id, get_current_user
+        from src.services.auth_service import (
+            get_current_institution_id,
+            get_current_user,
+        )
         from src.services.invitation_service import InvitationError, InvitationService
 
         payload = request.get_json(silent=True)

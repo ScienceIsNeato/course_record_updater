@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 from tests.test_utils import create_test_session
 
 
@@ -18,7 +18,7 @@ class TestAdapterEndpoints:
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
 
-    @patch("adapters.adapter_registry.get_adapter_registry")
+    @patch("src.adapters.adapter_registry.get_adapter_registry")
     def test_get_available_adapters_success(self, mock_get_registry):
         """Test fetching available adapters."""
         # Setup mock registry
@@ -55,7 +55,7 @@ class TestAdapterEndpoints:
         response = self.client.get("/api/adapters")
         assert response.status_code == 401  # API returns 401, not 302
 
-    @patch("api_routes._export_all_institutions")
+    @patch("src.api_routes._export_all_institutions")
     def test_export_data_site_admin(self, mock_export_all):
         """Test site admin export delegates to _export_all_institutions."""
         create_test_session(
@@ -71,7 +71,7 @@ class TestAdapterEndpoints:
         # Verify call
         mock_export_all.assert_called_once()
 
-    @patch("api_routes.create_export_service")
+    @patch("src.api_routes.create_export_service")
     def test_export_data_institution_admin_success(self, mock_create_service):
         """Test export data for institution admin."""
         create_test_session(
@@ -98,7 +98,7 @@ class TestAdapterEndpoints:
         mock_result.records_exported = 10
         mock_service.export_data.return_value = mock_result
 
-        with patch("api_routes.send_file") as mock_send_file:
+        with patch("src.api_routes.send_file") as mock_send_file:
             # Need to mock Path.exists/unlink or just ensure execution flow
             mock_send_file.return_value = "FILE RESPONSE"
 
@@ -137,7 +137,7 @@ class TestAdapterEndpoints:
         # Update assertion to match actual error message
         assert "Institution context required" in data["error"]
 
-    @patch("api_routes.create_export_service")
+    @patch("src.api_routes.create_export_service")
     def test_export_data_adapter_not_found(self, mock_create_service):
         """Test export fails if adapter is invalid."""
         create_test_session(
@@ -177,7 +177,7 @@ class TestExportHelpers:
         assert manifest["failed_exports"] == 1
         assert manifest["total_institutions"] == 1
 
-    @patch("api_routes._DEFAULT_EXPORT_EXTENSION", ".csv")
+    @patch("src.api_routes._DEFAULT_EXPORT_EXTENSION", ".csv")
     def test_get_adapter_file_extension(self):
         """Test extension resolution."""
         from src.api_routes import _get_adapter_file_extension
@@ -196,10 +196,10 @@ class TestExportHelpers:
         ext = _get_adapter_file_extension(mock_service, "unknown")
         assert ext == ".csv"
 
-    @patch("api_routes.get_all_institutions")
-    @patch("api_routes._create_system_export_zip")
-    @patch("api_routes.send_file")
-    @patch("api_routes.create_export_service")
+    @patch("src.api_routes.get_all_institutions")
+    @patch("src.api_routes._create_system_export_zip")
+    @patch("src.api_routes.send_file")
+    @patch("src.api_routes.create_export_service")
     def test_export_all_institutions_flow(
         self, mock_create_service, mock_send_file, mock_create_zip, mock_get_insts
     ):

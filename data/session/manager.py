@@ -17,7 +17,7 @@ from flask import current_app, session
 from flask_session import Session  # type: ignore
 
 # Local imports
-from logging_config import get_logger
+from src.utils.logging_config import get_logger
 
 from .config import FLASK_SESSION_CONFIG, get_session_lifetime
 from .security import SessionSecurity

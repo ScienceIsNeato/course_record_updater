@@ -11,9 +11,6 @@ from functools import wraps
 from flask import Blueprint, jsonify, request, session
 
 from src.api.utils import get_current_user, handle_api_error
-from src.services.auth_service import get_current_institution_id
-from src.services.clo_workflow_service import CLOWorkflowService
-from src.utils.constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
 from src.database.database_service import (
     get_all_courses,
     get_course_by_id,
@@ -21,6 +18,9 @@ from src.database.database_service import (
     get_course_outcomes,
     get_term_by_name,
 )
+from src.services.auth_service import get_current_institution_id
+from src.services.clo_workflow_service import CLOWorkflowService
+from src.utils.constants import OUTCOME_NOT_FOUND_MSG, PERMISSION_DENIED_MSG
 from src.utils.logging_config import get_logger
 
 
@@ -38,6 +38,7 @@ def lazy_permission_required(permission_name: str):
     Returns:
         Decorator function
     """
+
     def decorator(f):
         # Cache the wrapped function to avoid re-wrapping on every request
         _wrapped_function = None
@@ -63,6 +64,7 @@ def lazy_permission_required(permission_name: str):
             return _wrapped_function(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
@@ -300,9 +302,7 @@ def request_clo_rework(outcome_id: str):
             )
 
     except Exception as e:
-        return handle_api_error(
-            e, "Request CLO rework", "Failed to request CLO rework"
-        )
+        return handle_api_error(e, "Request CLO rework", "Failed to request CLO rework")
 
 
 @clo_workflow_bp.route("/<outcome_id>/mark-nci", methods=["POST"])
@@ -310,35 +310,35 @@ def request_clo_rework(outcome_id: str):
 def mark_clo_as_nci(outcome_id: str):
     """
     Mark a CLO as "Never Coming In" (NCI).
-    
+
     Use cases from CEI demo feedback:
     - Instructor left institution
     - Instructor non-responsive despite multiple reminders
     - Course cancelled/dropped after initial assignment
-    
+
     Changes status to NEVER_COMING_IN.
     """
     try:
         data = request.get_json(silent=True)
         reason = data.get("reason") if data else None
-        
+
         user = get_current_user()
         user_id = user.get("user_id")
-        
+
         # Verify outcome exists and belongs to current institution (efficient O(1) lookup)
         outcome = get_course_outcome(outcome_id)
         if not outcome:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
-        
+
         # Verify institution access
         institution_id = get_current_institution_id()
         course = get_course_by_id(outcome.get("course_id"))
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
-        
+
         # Mark as NCI
         success = CLOWorkflowService.mark_as_nci(outcome_id, user_id, reason)
-        
+
         if success:
             return (
                 jsonify(
@@ -354,11 +354,9 @@ def mark_clo_as_nci(outcome_id: str):
                 jsonify({"success": False, "error": "Failed to mark CLO as NCI"}),
                 500,
             )
-    
+
     except Exception as e:
-        return handle_api_error(
-            e, "Mark CLO as NCI", "Failed to mark CLO as NCI"
-        )
+        return handle_api_error(e, "Mark CLO as NCI", "Failed to mark CLO as NCI")
 
 
 @clo_workflow_bp.route("/<outcome_id>/audit-details", methods=["GET"])
@@ -393,4 +391,6 @@ def get_clo_audit_details(outcome_id: str):
             )
 
     except Exception as e:
-        return handle_api_error(e, "Get CLO audit details", "Failed to load CLO audit details")
+        return handle_api_error(
+            e, "Get CLO audit details", "Failed to load CLO audit details"
+        )

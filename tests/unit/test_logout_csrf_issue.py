@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 from flask import session
 
-from src.app import src.app as app
+from src.app import app
 
 
 class TestLogoutCSRFIssue:

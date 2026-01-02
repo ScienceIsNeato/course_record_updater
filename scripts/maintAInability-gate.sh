@@ -253,25 +253,25 @@ if [[ "$RUN_PYTHON_LINT_FORMAT" == "true" ]]; then
   
   # Auto-fix formatting with black
   echo "  🔧 Auto-fixing code formatting with black..."
-  if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
+  if black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     add_success "black" "Code formatting auto-fixed"
   else
-    add_failure "black" "Code formatting check" "Run: black --line-length 88 --target-version py39 *.py adapters/ tests/"
+    add_failure "black" "Code formatting check" "Run: black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py"
     GROUPED_PASSED=false
   fi
   
   # Auto-fix import sorting with isort
   echo "  📚 Auto-fixing import sorting with isort..."
-  if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
+  if isort --profile black src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     add_success "isort" "Import sorting auto-fixed"
   else
-    add_failure "isort" "Import sorting check" "Run: isort --profile black *.py adapters/ tests/"
+    add_failure "isort" "Import sorting check" "Run: isort --profile black src/ tests/ scripts/ conftest.py"
     GROUPED_PASSED=false
   fi
   
   # Run flake8 (critical errors only)
   echo "  🔍 Checking critical lint issues with flake8..."
-  if flake8 --select=E9,F63,F7,F82 --show-source --statistics *.py adapters/ tests/ 2>&1; then
+  if flake8 --select=E9,F63,F7,F82 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
     add_success "flake8" "No critical lint errors found"
   else
     add_failure "flake8" "Critical lint errors found" "Fix the errors above"
@@ -297,19 +297,23 @@ if [[ "$RUN_JS_LINT_FORMAT" == "true" ]]; then
   
   # Run ESLint (only check static JS files, not templates)
   echo "  🔍 Checking JavaScript with ESLint..."
-  if npx eslint "static/**/*.js" --max-warnings 0 2>&1; then
+  # Auto-fix JavaScript with ESLint
+  echo "  🔍 Auto-fixing JavaScript with ESLint..."
+  npx eslint "static/**/*.js" --fix 2>/dev/null || true
+  
+  if npx eslint "static/**/*.js" --max-warnings 0 2>&1 >/dev/null; then
     add_success "ESLint" "JavaScript code passes linting"
   else
     add_failure "ESLint" "JavaScript linting errors" "Run: npx eslint static/**/*.js --fix"
     GROUPED_PASSED=false
   fi
   
-  # Check Prettier formatting
-  echo "  🎨 Checking JavaScript formatting with Prettier..."
-  if npx prettier --check "static/**/*.js" 2>&1; then
-    add_success "Prettier" "JavaScript code is properly formatted"
+  # Auto-fix JavaScript formatting with Prettier
+  echo "  🎨 Auto-fixing JavaScript formatting with Prettier..."
+  if npx prettier --write "static/**/*.js" 2>&1 >/dev/null; then
+    add_success "Prettier" "JavaScript code formatted with Prettier"
   else
-    add_failure "Prettier" "JavaScript formatting issues" "Run: npx prettier --write 'static/**/*.js'"
+    add_failure "Prettier" "JavaScript formatting check" "Check Prettier installation and static/ folder"
     GROUPED_PASSED=false
   fi
   
@@ -332,7 +336,7 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   
   # Run mypy type checking
   echo "  🔧 Type checking with mypy..."
-  if mypy *.py adapters/ --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
+  if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
     add_success "mypy" "Type checking passed"
   else
     echo "⚠️  mypy found type issues (non-blocking)"
@@ -380,17 +384,17 @@ if [[ "$RUN_BLACK" == "true" ]]; then
 
   # Try to auto-fix formatting issues with black
   echo "🔧 Auto-fixing code formatting with black..."
-  if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
+  if black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     echo "   ✅ Black formatting applied"
   fi
 
   # Verify formatting
-  if black --check --line-length 88 --target-version py39 *.py adapters/ tests/ > /dev/null 2>&1; then
+  if black --check --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py > /dev/null 2>&1; then
     echo "✅ Black Check: PASSED (code formatting verified)"
     add_success "Black Check" "All Python files properly formatted with black"
   else
     echo "❌ Black Check: FAILED (formatting issues found)"
-    add_failure "Black Check" "Code formatting issues found" "Run 'black *.py adapters/ tests/' manually"
+    add_failure "Black Check" "Code formatting issues found" "Run 'black src/ tests/ scripts/ conftest.py' manually"
   fi
   echo ""
 fi
@@ -403,17 +407,17 @@ if [[ "$RUN_ISORT" == "true" ]]; then
 
   # Try to auto-fix import organization with isort
   echo "🔧 Auto-fixing import organization with isort..."
-  if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
+  if isort --profile black src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     echo "   ✅ Import organization applied"
   fi
 
   # Verify import organization
-  if isort --check-only --profile black *.py adapters/ tests/ > /dev/null 2>&1; then
+  if isort --check-only --profile black src/ tests/ scripts/ conftest.py > /dev/null 2>&1; then
     echo "✅ Isort Check: PASSED (import organization verified)"
     add_success "Isort Check" "All Python imports properly organized with isort"
   else
     echo "❌ Isort Check: FAILED (import organization issues found)"
-    add_failure "Isort Check" "Import organization issues found" "Run 'isort --profile black *.py adapters/ tests/' manually"
+    add_failure "Isort Check" "Import organization issues found" "Run 'isort --profile black src/ tests/ scripts/ conftest.py' manually"
   fi
   echo ""
 fi
@@ -626,7 +630,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
   TEST_EXIT_CODE=0
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
@@ -664,7 +668,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   else
   
   # Extract coverage percentage from output
-  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
+  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\(\.[0-9]\+\)\?%' | grep -o '[0-9]\+\(\.[0-9]\+\)\?%' | head -1 || echo "unknown")
   
   # Check if we got a valid coverage percentage
   if [[ "$COVERAGE" != "unknown" && "$COVERAGE" != "" ]]; then
@@ -781,7 +785,7 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
       rm -f .coverage .coverage.*
       
       # Generate coverage.xml
-      python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
+      python -m pytest tests/unit/ --cov=src --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
     fi
     
     if [[ -f "coverage.xml" ]]; then
@@ -1892,7 +1896,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
     fi
     
     # Start server on test port in background
-    PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
+    PORT=$TEST_PORT python src/app.py > logs/test_server.log 2>&1 &
     SERVER_PID=$!
     
     # Wait for server to start

@@ -7,10 +7,11 @@ Manages the submission, review, and approval workflow for Course Learning Outcom
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from src.utils.constants import CLOApprovalStatus, CLOStatus
 from src.database.database_service import db
-from .email_service import EmailService
+from src.utils.constants import CLOApprovalStatus, CLOStatus
 from src.utils.logging_config import get_logger
+
+from .email_service import EmailService
 
 logger = get_logger(__name__)
 

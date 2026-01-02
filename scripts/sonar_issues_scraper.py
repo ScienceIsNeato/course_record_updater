@@ -23,7 +23,12 @@ from typing import Dict, List, Optional, Tuple
 
 
 class SonarCloudScraper:
-    def __init__(self, project_key: str, organization: str = "scienceisneato", pull_request: str = None):
+    def __init__(
+        self,
+        project_key: str,
+        organization: str = "scienceisneato",
+        pull_request: str = None,
+    ):
         self.project_key = project_key
         self.organization = organization
         self.pull_request = pull_request
@@ -70,7 +75,7 @@ class SonarCloudScraper:
     def get_quality_gate_status(self) -> Tuple[str, List[Dict]]:
         """Get quality gate status and failed conditions"""
         params = {"projectKey": self.project_key}
-        
+
         # If checking a PR, add pullRequest parameter
         if self.pull_request:
             params["pullRequest"] = self.pull_request
@@ -136,7 +141,7 @@ class SonarCloudScraper:
             return []
 
         return response["duplications"]
-    
+
     def get_duplicated_files(self) -> List[Dict]:
         """Get files with duplications"""
         # Use measures API to get duplication metrics per file
@@ -154,20 +159,30 @@ class SonarCloudScraper:
         # Filter to only files with duplication
         duplicated_files = []
         for component in response["components"]:
-            measures = {m["metric"]: m.get("value", "0") for m in component.get("measures", [])}
+            measures = {
+                m["metric"]: m.get("value", "0") for m in component.get("measures", [])
+            }
             dup_lines = int(measures.get("duplicated_lines", "0"))
-            
-            if dup_lines > 0:
-                duplicated_files.append({
-                    "key": component["key"],
-                    "name": component["name"],
-                    "path": component.get("path", ""),
-                    "duplicated_lines": dup_lines,
-                    "duplicated_blocks": int(measures.get("duplicated_blocks", "0")),
-                    "density": float(measures.get("duplicated_lines_density", "0.0"))
-                })
 
-        return sorted(duplicated_files, key=lambda x: x["duplicated_lines"], reverse=True)
+            if dup_lines > 0:
+                duplicated_files.append(
+                    {
+                        "key": component["key"],
+                        "name": component["name"],
+                        "path": component.get("path", ""),
+                        "duplicated_lines": dup_lines,
+                        "duplicated_blocks": int(
+                            measures.get("duplicated_blocks", "0")
+                        ),
+                        "density": float(
+                            measures.get("duplicated_lines_density", "0.0")
+                        ),
+                    }
+                )
+
+        return sorted(
+            duplicated_files, key=lambda x: x["duplicated_lines"], reverse=True
+        )
 
     def format_issue(self, issue: Dict) -> str:
         """Format a single issue for display"""
@@ -261,20 +276,23 @@ class SonarCloudScraper:
 
         return False
 
-    def print_issues_summary(self, max_display: int = 50, output_file: Optional[str] = None):
+    def print_issues_summary(
+        self, max_display: int = 50, output_file: Optional[str] = None
+    ):
         """Print detailed issues breakdown and optionally write to file"""
+
         def output(text: str):
             """Helper to write to both stdout and file if specified"""
             print(text)
             if output_file:
-                with open(output_file, 'a', encoding='utf-8') as f:
-                    f.write(text + '\n')
-        
+                with open(output_file, "a", encoding="utf-8") as f:
+                    f.write(text + "\n")
+
         # Clear file at start if specified
         if output_file:
-            with open(output_file, 'w', encoding='utf-8') as f:
+            with open(output_file, "w", encoding="utf-8") as f:
                 f.write("")  # Clear file
-        
+
         output("\n🐛 Issues Breakdown:")
         output("-" * 40)
 
@@ -321,48 +339,52 @@ class SonarCloudScraper:
         """Print detailed duplication report"""
         print("\n🔄 Code Duplication Analysis")
         print("=" * 60)
-        
+
         duplicated_files = self.get_duplicated_files()
-        
+
         if not duplicated_files:
             print("✅ No duplications detected")
             return
-        
+
         total_dup_lines = sum(f["duplicated_lines"] for f in duplicated_files)
         print("\n📊 Summary:")
         print(f"  • {len(duplicated_files)} files with duplications")
         print(f"  • {total_dup_lines} total duplicated lines")
-        
+
         # Prepare output
         def output(text: str):
             print(text)
             if output_file:
                 with open(output_file, "a", encoding="utf-8") as f:
                     f.write(text + "\n")
-        
+
         if output_file:
             # Clear the file first
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write("🔄 SonarCloud Code Duplication Report\n")
                 f.write("=" * 70 + "\n\n")
-        
-        output(f"\n📁 Top {min(20, len(duplicated_files))} Files with Most Duplication:")
+
+        output(
+            f"\n📁 Top {min(20, len(duplicated_files))} Files with Most Duplication:"
+        )
         output("-" * 60)
-        
+
         for i, file_info in enumerate(duplicated_files[:20], 1):
             path = file_info["path"] or file_info["name"]
             dup_lines = file_info["duplicated_lines"]
             dup_blocks = file_info["duplicated_blocks"]
             density = file_info["density"]
-            
+
             output(f"\n{i:2d}. {path}")
-            output(f"    🔴 {dup_lines} duplicated lines in {dup_blocks} blocks ({density:.1f}% density)")
-            
+            output(
+                f"    🔴 {dup_lines} duplicated lines in {dup_blocks} blocks ({density:.1f}% density)"
+            )
+
             # Fetch specific duplication details for this file
             try:
                 params = {"key": file_info["key"]}
                 dup_response = self._make_api_request("duplications/show", params)
-                
+
                 if dup_response and "duplications" in dup_response:
                     for dup in dup_response["duplications"][:3]:  # Show first 3 blocks
                         blocks = dup.get("blocks", [])
@@ -373,16 +395,22 @@ class SonarCloudScraper:
                             to_line = to_block.get("from", "?")
                             to_file = to_block.get("_ref", "").split(":")[-1]
                             size = from_block.get("size", "?")
-                            
-                            output(f"      ↔ Lines {from_line}-{from_line + size - 1} duplicated in {to_file}:{to_line}")
+
+                            output(
+                                f"      ↔ Lines {from_line}-{from_line + size - 1} duplicated in {to_file}:{to_line}"
+                            )
             except Exception as e:
                 output(f"      ⚠ Could not fetch duplication details: {e}")
-        
+
         if len(duplicated_files) > 20:
-            output(f"\n  ... and {len(duplicated_files) - 20} more files with duplication")
-        
-        output(f"\n🔗 Full duplication view: https://sonarcloud.io/component_measures?id={self.project_key}&metric=duplicated_lines_density")
-    
+            output(
+                f"\n  ... and {len(duplicated_files) - 20} more files with duplication"
+            )
+
+        output(
+            f"\n🔗 Full duplication view: https://sonarcloud.io/component_measures?id={self.project_key}&metric=duplicated_lines_density"
+        )
+
     def print_actionable_summary(self):
         """Print actionable next steps"""
         print("\n💡 Next Steps:")
@@ -404,7 +432,7 @@ def main():
     parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if parent_dir not in sys.path:
         sys.path.insert(0, parent_dir)
-    
+
     from src.utils.constants import SONARCLOUD_PROJECT_KEY_DEFAULT
 
     parser = argparse.ArgumentParser(
@@ -449,7 +477,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     # Auto-detect PR number from GitHub Actions if not provided
     pull_request = args.pull_request
     if not pull_request:
@@ -458,7 +486,7 @@ def main():
             # Extract PR number from refs/pull/19/merge
             pull_request = github_ref.split("/")[2]
             print(f"🔍 Auto-detected PR #{pull_request} from GITHUB_REF")
-    
+
     scraper = SonarCloudScraper(args.project_key, pull_request=pull_request)
 
     # Print comprehensive analysis
@@ -467,17 +495,17 @@ def main():
     # Always show security issues for review, even if quality gate passes
     # Write to file for easy reference
     scraper.print_issues_summary(args.max_display, args.output_file)
-    
+
     # Generate duplication report if requested
     if args.duplication:
         scraper.print_duplication_report(args.duplication_output)
         print(f"\n📄 Duplication report written to: {args.duplication_output}")
-    
+
     scraper.print_actionable_summary()
-    
+
     if args.output_file:
         print(f"\n📄 Full issues list written to: {args.output_file}")
-    
+
     if not quality_gate_passed:
         sys.exit(1)
     else:

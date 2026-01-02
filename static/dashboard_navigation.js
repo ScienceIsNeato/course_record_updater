@@ -31,43 +31,45 @@ function configureDashboardFilter(panelMapping, allPanelIds, titleMapping) {
     const visiblePanels = panelMapping[view] || panelMapping.all;
 
     // Scroll to top to ensure user notices the change
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Update page title if mapping provided
     const viewTitle = titleMapping?.[view];
     if (viewTitle) {
-      const titleEl = document.getElementById('page-title-text');
+      const titleEl = document.getElementById("page-title-text");
       if (titleEl) {
         titleEl.textContent = viewTitle;
       }
     }
 
     // Show/hide panels based on current view
-    allPanelIds.forEach(panelId => {
+    allPanelIds.forEach((panelId) => {
       const panel = document.getElementById(panelId);
       if (panel) {
         if (visiblePanels.includes(panelId)) {
-          panel.style.display = 'block';
+          panel.style.display = "block";
         } else {
-          panel.style.display = 'none';
+          panel.style.display = "none";
         }
       }
     });
 
     // Update active states on navigation buttons
-    document.querySelectorAll('.navbar-nav button.nav-link').forEach(btn => {
-      btn.classList.remove('active');
+    document.querySelectorAll(".navbar-nav button.nav-link").forEach((btn) => {
+      btn.classList.remove("active");
     });
 
-    const activeButton = document.getElementById(`dashboard-${view === 'all' ? 'view-all' : view}`);
+    const activeButton = document.getElementById(
+      `dashboard-${view === "all" ? "view-all" : view}`,
+    );
     if (activeButton) {
-      activeButton.classList.add('active');
+      activeButton.classList.add("active");
     }
   }
 
   // Initialize dashboard on page load - show all panels by default
-  document.addEventListener('DOMContentLoaded', () => {
-    filterDashboard('all');
+  document.addEventListener("DOMContentLoaded", () => {
+    filterDashboard("all");
   });
 
   // Expose filterDashboard globally for onclick handlers

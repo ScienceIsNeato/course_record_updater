@@ -27,7 +27,7 @@ def uat_test_client():
     """
     Provide Flask test client configured for UAT testing.
     """
-    from src.app import src.app as app
+    from src.app import app
 
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "uat-test-secret-key"

@@ -19,12 +19,12 @@ dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/api/dashboard")
 def get_dashboard_data():
     """
     Get aggregated dashboard data for the current user.
-    
+
     Returns role-specific dashboard data including:
     - Summary statistics (courses, users, programs, etc.)
     - Recent activity
     - Relevant entities based on user's role and permissions
-    
+
     Returns:
         200: Dashboard data successfully retrieved
         500: Server error
@@ -37,4 +37,3 @@ def get_dashboard_data():
         return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
     except Exception as exc:
         return handle_api_error(exc, "Dashboard data", "Failed to load dashboard data")
-

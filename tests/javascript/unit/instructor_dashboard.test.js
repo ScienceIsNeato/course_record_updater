@@ -324,25 +324,26 @@ describe('InstructorDashboard', () => {
       InstructorDashboard.setLoading('instructorAssessmentContainer', 'Loading...');
 
       const container = document.getElementById('instructorAssessmentContainer');
-      expect(container.innerHTML).toContain('Loading...');
-      expect(container.innerHTML).toContain('spinner-border');
+      expect(container.textContent).toContain('Loading...');
+      expect(container.querySelector('.spinner-border')).toBeTruthy();
     });
 
     it('shows error state correctly', () => {
       InstructorDashboard.showError('instructorAssessmentContainer', 'Error occurred');
 
       const container = document.getElementById('instructorAssessmentContainer');
-      expect(container.innerHTML).toContain('Error occurred');
-      expect(container.innerHTML).toContain('fa-exclamation-triangle');
-      expect(container.innerHTML).toContain('alert-danger');
+      expect(container.textContent).toContain('Error occurred');
+      expect(container.querySelector('.fa-exclamation-triangle')).toBeTruthy();
+      expect(container.querySelector('.alert-danger')).toBeTruthy();
     });
 
     it('handles empty state rendering', () => {
-      const emptyMessage = InstructorDashboard.renderEmptyState('No data available', 'Refresh');
+      const emptyElement = InstructorDashboard.renderEmptyState('No data available', 'Refresh');
 
-      expect(emptyMessage).toContain('No data available');
-      expect(emptyMessage).toContain('Refresh');
-      expect(emptyMessage).toContain('panel-empty');
+      expect(emptyElement.tagName).toBe('DIV');
+      expect(emptyElement.textContent).toContain('No data available');
+      expect(emptyElement.textContent).toContain('Refresh');
+      expect(emptyElement.classList.contains('panel-empty')).toBe(true);
     });
   });
 

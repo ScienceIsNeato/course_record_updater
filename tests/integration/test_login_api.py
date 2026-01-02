@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from src.app import src.app as app
+from src.app import app
 
 
 @pytest.fixture
@@ -360,8 +360,8 @@ class TestUnlockAccountAPI:
     """Test account unlock API endpoint"""
 
     @patch("login_service.PasswordService")
-    @patch("auth_service.auth_service.get_current_user")
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_unlock_account_success(
         self, mock_module_get_user, mock_service_get_user, mock_password_service, client
     ):
@@ -386,8 +386,8 @@ class TestUnlockAccountAPI:
         assert data["unlock_success"] is True
         assert "has been unlocked" in data["message"]
 
-    @patch("auth_service.auth_service.get_current_user")
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_unlock_account_no_auth(
         self, mock_module_get_user, mock_service_get_user, client
     ):

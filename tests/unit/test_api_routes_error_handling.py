@@ -40,7 +40,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
         self._login_site_admin()
 
         # Test database failure path
-        with patch("api_routes.create_user_db", return_value=None):
+        with patch("src.api_routes.create_user_db", return_value=None):
             user_data = {
                 "email": "test@example.com",
                 "first_name": "Test",
@@ -64,7 +64,8 @@ class TestAPIErrorHandling(CommonAuthMixin):
 
         # Test exception handling
         with patch(
-            "database_service.get_users_by_role", side_effect=Exception("DB Error")
+            "src.database.database_service.get_users_by_role",
+            side_effect=Exception("DB Error"),
         ):
             response = self.client.get("/api/users?role=instructor")
 
@@ -83,7 +84,7 @@ class TestAPIErrorHandling(CommonAuthMixin):
     def test_create_course_database_failure(self):
         """Test course creation when database fails."""
         # Test unauthenticated request
-        with patch("api_routes.create_course", return_value=None):
+        with patch("src.api_routes.create_course", return_value=None):
             course_data = {
                 "course_number": "TEST-101",
                 "course_title": "Test Course",
@@ -98,7 +99,9 @@ class TestAPIErrorHandling(CommonAuthMixin):
     def test_get_course_by_number_not_found(self):
         """Test getting course by number when not found."""
         # Test unauthenticated request
-        with patch("database_service.get_course_by_number", return_value=None):
+        with patch(
+            "src.database.database_service.get_course_by_number", return_value=None
+        ):
             response = self.client.get("/api/courses/NONEXISTENT-101")
 
             # Real auth returns 401 for unauthenticated requests
@@ -109,11 +112,11 @@ class TestAPIErrorHandling(CommonAuthMixin):
         # Test unauthenticated request
         with (
             patch(
-                "api_routes.get_current_institution_id",
+                "src.api_routes.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
             patch(
-                "api_routes.get_courses_by_department",
+                "src.api_routes.get_courses_by_department",
                 side_effect=Exception("DB Error"),
             ),
         ):
@@ -158,7 +161,7 @@ class TestTermEndpoints(CommonAuthMixin):
     def test_create_term_database_failure(self):
         """Test term creation when database fails."""
         # Test unauthenticated request
-        with patch("database_service.create_term", return_value=None):
+        with patch("src.database.database_service.create_term", return_value=None):
             term_data = {
                 "name": "Test Term",
                 "start_date": "2024-01-15",
@@ -222,7 +225,8 @@ class TestImportEndpoints(CommonAuthMixin):
     def test_import_excel_service_exception(self):
         """Test Excel import when service raises exception."""
         with patch(
-            "import_service.import_excel", side_effect=Exception("Import failed")
+            "src.services.import_service.import_excel",
+            side_effect=Exception("Import failed"),
         ):
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(b"fake excel data")
@@ -301,10 +305,10 @@ class TestSectionEndpoints(CommonAuthMixin):
         # Test unauthenticated request
         with (
             patch(
-                "api_routes.get_current_institution_id",
+                "src.api_routes.get_current_institution_id",
                 return_value="westside-liberal-arts",
             ),
-            patch("api_routes.get_all_sections", side_effect=Exception("DB Error")),
+            patch("src.api_routes.get_all_sections", side_effect=Exception("DB Error")),
         ):
             response = self.client.get("/api/sections")
 
@@ -335,7 +339,9 @@ class TestSectionEndpoints(CommonAuthMixin):
     def test_create_section_database_failure(self):
         """Test section creation when database fails."""
         # Test unauthenticated request
-        with patch("database_service.create_course_section", return_value=None):
+        with patch(
+            "src.database.database_service.create_course_section", return_value=None
+        ):
             section_data = {
                 "course_number": "TEST-101",
                 "section_number": "001",
@@ -353,7 +359,7 @@ class TestSectionEndpoints(CommonAuthMixin):
         """Test get sections by instructor with exception."""
         # Test unauthenticated request
         with patch(
-            "api_routes.get_sections_by_instructor",
+            "src.api_routes.get_sections_by_instructor",
             side_effect=Exception("DB Error"),
         ):
             response = self.client.get(
@@ -374,7 +380,7 @@ class TestDashboardErrorHandling:
         self.app.register_blueprint(api, url_prefix="/api")
         self.client = self.app.test_client()
 
-    @patch("api_routes.get_current_user")
+    @patch("src.api_routes.get_current_user")
     def test_dashboard_no_user(self, mock_get_user):
         """Test dashboard with no current user."""
         # Test dashboard error paths
@@ -389,7 +395,7 @@ class TestDashboardErrorHandling:
             # Template errors are expected in unit tests
             pass
 
-    @patch("api_routes.get_current_user")
+    @patch("src.api_routes.get_current_user")
     def test_dashboard_unknown_role(self, mock_get_user):
         """Test dashboard with unknown role."""
         mock_get_user.return_value = {

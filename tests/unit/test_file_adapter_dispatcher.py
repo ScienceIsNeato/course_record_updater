@@ -17,7 +17,7 @@ from src.adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDis
 
 # Create dummy adapter files for discovery tests
 # Use pytest fixtures to manage temporary files/directories if preferred
-ADAPTERS_DIR = "adapters"
+ADAPTERS_DIR = "src/adapters"
 
 
 # Mock the docx.Document object
@@ -76,7 +76,7 @@ def test_discover_adapters_directory_not_found(mocker):
 def test_process_file_success(mocker, mock_docx_document):
     """Test successfully dispatching to a valid adapter."""
     adapter_name = "dummy_adapter"
-    module_to_import = f"adapters.{adapter_name}"
+    module_to_import = f"src.adapters.{adapter_name}"
 
     # Mock the dynamic import within the dispatcher module
     mock_module = MagicMock()
@@ -85,7 +85,7 @@ def test_process_file_success(mocker, mock_docx_document):
 
     # Mock the module import and capture the mock object
     mock_import = mocker.patch(
-        "adapters.file_adapter_dispatcher.importlib.import_module",
+        "src.adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
     # Mock hasattr and getattr to return the mock class
@@ -152,10 +152,10 @@ def test_process_file_success(mocker, mock_docx_document):
 def test_process_file_adapter_not_found(mocker, mock_docx_document):
     """Test when the requested adapter module cannot be imported."""
     adapter_name = "non_existent"
-    module_path = f"adapters.{adapter_name}"
+    module_path = f"src.adapters.{adapter_name}"
     # Mock importlib.import_module to raise ImportError for the specific path
     mocker.patch(
-        "adapters.file_adapter_dispatcher.importlib.import_module",
+        "src.adapters.file_adapter_dispatcher.importlib.import_module",
         side_effect=ImportError(f"No module named '{module_path}'"),
     )
 
@@ -178,7 +178,7 @@ def test_process_file_adapter_missing_parse_function(mocker, mock_docx_document)
     mock_instance = MagicMock()
     # Configure mocks
     mocker.patch(
-        "adapters.file_adapter_dispatcher.importlib.import_module",
+        "src.adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
     mocker.patch.object(
@@ -211,7 +211,7 @@ def test_process_file_adapter_parse_error(mocker, mock_docx_document):
     mock_instance = MagicMock()
     # Configure mocks
     mocker.patch(
-        "adapters.file_adapter_dispatcher.importlib.import_module",
+        "src.adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
     mocker.patch.object(mock_module, class_name, mock_class, create=True)
@@ -243,7 +243,7 @@ def test_process_file_base_validation_error(mocker, mock_docx_document):
     mock_instance = MagicMock()  # Define mock_instance here
 
     mocker.patch(
-        "adapters.file_adapter_dispatcher.importlib.import_module",
+        "src.adapters.file_adapter_dispatcher.importlib.import_module",
         return_value=mock_module,
     )
     mocker.patch.object(mock_module, class_name, mock_class, create=True)

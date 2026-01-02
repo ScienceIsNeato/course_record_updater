@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 from tests.test_utils import CommonAuthMixin
 
 
@@ -26,8 +26,8 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_courses_by_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_courses_by_program")
     def test_get_program_courses_integration(self, mock_get_courses, mock_get_program):
         """Test program courses retrieval endpoint integration"""
         mock_get_program.return_value = {
@@ -61,9 +61,9 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert len(data["courses"]) == 2
         assert data["count"] == 2
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_course_by_number")
-    @patch("api_routes.add_course_to_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_course_by_number")
+    @patch("src.api_routes.add_course_to_program")
     def test_add_course_to_program_integration(
         self, mock_add, mock_get_course, mock_get_program
     ):
@@ -89,10 +89,10 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert "CS101 added to program Computer Science" in data["message"]
         mock_add.assert_called_once_with("course1", "cs-program")
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
-    @patch("api_routes.remove_course_from_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api_routes.remove_course_from_program")
     def test_remove_course_from_program_integration(
         self, mock_remove, mock_get_programs, mock_get_institution, mock_get_program
     ):
@@ -118,8 +118,8 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert "course1 removed from program Computer Science" in data["message"]
         mock_remove.assert_called_once_with("course1", "cs-program")
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.bulk_add_courses_to_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.bulk_add_courses_to_program")
     def test_bulk_add_courses_integration(self, mock_bulk_add, mock_get_program):
         """Test bulk course addition endpoint integration"""
         mock_get_program.return_value = {"id": "cs-program", "name": "Computer Science"}
@@ -147,10 +147,10 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert data["details"]["success_count"] == 3
         assert data["details"]["failure_count"] == 1
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
-    @patch("api_routes.bulk_remove_courses_from_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api_routes.bulk_remove_courses_from_program")
     def test_bulk_remove_courses_integration(
         self,
         mock_bulk_remove,
@@ -182,8 +182,8 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is True
         assert "Bulk remove operation completed: 2 removed" in data["message"]
 
-    @patch("api_routes.get_course_by_number")
-    @patch("api_routes.get_program_by_id")
+    @patch("src.api_routes.get_course_by_number")
+    @patch("src.api_routes.get_program_by_id")
     def test_get_course_programs_integration(self, mock_get_program, mock_get_course):
         """Test course programs retrieval endpoint integration"""
         mock_get_course.return_value = {
@@ -239,7 +239,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert "Missing or invalid course_ids array" in data["error"]
 
-    @patch("api_routes.get_program_by_id")
+    @patch("src.api_routes.get_program_by_id")
     def test_program_not_found_integration(self, mock_get_program):
         """Test endpoints when program doesn't exist"""
         mock_get_program.return_value = None
@@ -264,13 +264,13 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_course_by_number")
-    @patch("api_routes.add_course_to_program")
-    @patch("api_routes.get_courses_by_program")
-    @patch("api_routes.remove_course_from_program")
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_course_by_number")
+    @patch("src.api_routes.add_course_to_program")
+    @patch("src.api_routes.get_courses_by_program")
+    @patch("src.api_routes.remove_course_from_program")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
     def test_complete_course_program_lifecycle(
         self,
         mock_get_programs,
@@ -336,11 +336,11 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
         assert remove_data["success"] is True
         assert "removed from program" in remove_data["message"]
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.bulk_add_courses_to_program")
-    @patch("api_routes.bulk_remove_courses_from_program")
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.bulk_add_courses_to_program")
+    @patch("src.api_routes.bulk_remove_courses_from_program")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
     def test_bulk_operations_workflow(
         self,
         mock_get_programs,

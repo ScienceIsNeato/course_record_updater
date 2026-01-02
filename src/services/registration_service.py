@@ -21,9 +21,10 @@ from flask import current_app
 
 # Import other services
 import src.database.database_service as db
-from .email_service import send_verification_email, send_welcome_email
-from src.utils.logging_config import get_logger
 from src.models.models import Institution, Program, User, UserInvitation
+from src.utils.logging_config import get_logger
+
+from .email_service import send_verification_email, send_welcome_email
 from .password_service import PasswordService, PasswordValidationError
 
 # Get standardized logger

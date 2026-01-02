@@ -4,19 +4,19 @@ Create backward compatibility shims for service modules.
 """
 
 SERVICE_MODULES = [
-    'auth_service',
-    'audit_service',
-    'dashboard_service',
-    'email_service',
-    'import_service',
-    'invitation_service',
-    'login_service',
-    'password_service',
-    'password_reset_service',
-    'registration_service',
-    'export_service',
-    'bulk_email_service',
-    'clo_workflow_service',
+    "auth_service",
+    "audit_service",
+    "dashboard_service",
+    "email_service",
+    "import_service",
+    "invitation_service",
+    "login_service",
+    "password_service",
+    "password_reset_service",
+    "registration_service",
+    "export_service",
+    "bulk_email_service",
+    "clo_workflow_service",
 ]
 
 SHIM_TEMPLATE = '''"""
@@ -34,8 +34,8 @@ warnings.warn(
 '''
 
 for module in SERVICE_MODULES:
-    with open(f'{module}.py', 'w') as f:
+    with open(f"{module}.py", "w") as f:
         f.write(SHIM_TEMPLATE.format(module=module))
-    print(f'Created shim for {module}')
+    print(f"Created shim for {module}")
 
-print(f'\n✅ Created {len(SERVICE_MODULES)} service shims')
+print(f"\n✅ Created {len(SERVICE_MODULES)} service shims")

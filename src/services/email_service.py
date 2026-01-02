@@ -22,12 +22,12 @@ from urllib.parse import urljoin
 
 from flask import current_app
 
-# Import constants to avoid duplication
-from src.utils.constants import DEFAULT_BASE_URL
-
 # Import email provider infrastructure
 from src.email_providers import create_email_provider
 from src.email_providers.base_provider import EmailProvider
+
+# Import constants to avoid duplication
+from src.utils.constants import DEFAULT_BASE_URL
 
 # Import centralized logging
 from src.utils.logging_config import get_logger

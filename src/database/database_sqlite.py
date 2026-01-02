@@ -10,10 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import selectinload
 
-from src.utils.constants import DEFAULT_INSTITUTION_TIMEZONE
 from src.database.database_interface import DatabaseInterface
 from src.database.database_sql import SQLiteService
-from src.utils.logging_config import get_logger
 from src.models.models_sql import (
     Course,
     CourseOffering,
@@ -28,6 +26,8 @@ from src.models.models_sql import (
     course_program_table,
     to_dict,
 )
+from src.utils.constants import DEFAULT_INSTITUTION_TIMEZONE
+from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,7 @@
 import pytest
 
 import src.database.database_service as database_service
-from src.app import src.app as app
+from src.app import app
 from src.models.models import Institution, User
 
 

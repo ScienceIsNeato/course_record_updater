@@ -2,9 +2,9 @@
  * Register via Invitation - Accept invitation and complete registration
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  const token = document.getElementById('invitationToken').value;
-  const form = document.getElementById('acceptInvitationForm');
+document.addEventListener("DOMContentLoaded", () => {
+  const token = document.getElementById("invitationToken").value;
+  const form = document.getElementById("acceptInvitationForm");
 
   // Validate invitation on page load
   validateInvitation(token);
@@ -13,21 +13,21 @@ document.addEventListener('DOMContentLoaded', () => {
   setupPasswordToggles();
 
   // Handle form submission
-  form.addEventListener('submit', async e => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     if (!form.checkValidity()) {
-      form.classList.add('was-validated');
+      form.classList.add("was-validated");
       return;
     }
 
     // Check password match
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
 
     if (password !== confirmPassword) {
-      showMessage('Passwords do not match', 'danger');
-      document.getElementById('confirmPassword').classList.add('is-invalid');
+      showMessage("Passwords do not match", "danger");
+      document.getElementById("confirmPassword").classList.add("is-invalid");
       return;
     }
 
@@ -40,28 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
  * Validate invitation token and load invitation details
  */
 async function validateInvitation(token) {
-  const loadingDiv = document.getElementById('loadingInvitation');
-  const form = document.getElementById('acceptInvitationForm');
-  const emailInput = document.getElementById('email');
-  const roleInput = document.getElementById('role');
+  const loadingDiv = document.getElementById("loadingInvitation");
+  const form = document.getElementById("acceptInvitationForm");
+  const emailInput = document.getElementById("email");
+  const roleInput = document.getElementById("role");
 
   try {
     const response = await fetch(`/api/auth/invitation-status/${token}`);
     const data = await response.json();
 
     if (!response.ok) {
-      showMessage(data.error || 'Invalid or expired invitation', 'danger');
-      loadingDiv.classList.add('d-none');
+      showMessage(data.error || "Invalid or expired invitation", "danger");
+      loadingDiv.classList.add("d-none");
       return;
     }
 
     // Populate form with invitation details
-    emailInput.value = data.invitee_email || '';
-    roleInput.value = formatRole(data.invitee_role || '');
+    emailInput.value = data.invitee_email || "";
+    roleInput.value = formatRole(data.invitee_role || "");
 
     // Pre-fill first and last name if provided in invitation
-    const firstNameInput = document.getElementById('firstName');
-    const lastNameInput = document.getElementById('lastName');
+    const firstNameInput = document.getElementById("firstName");
+    const lastNameInput = document.getElementById("lastName");
     if (firstNameInput && data.first_name) {
       firstNameInput.value = data.first_name;
     }
@@ -70,32 +70,35 @@ async function validateInvitation(token) {
     }
 
     // Populate invitation metadata
-    const invitationDetails = document.getElementById('invitationDetails');
-    const inviterNameEl = document.getElementById('inviterName');
-    const institutionNameEl = document.getElementById('institutionName');
-    const personalMessageEl = document.getElementById('personalMessage');
-    const personalMessageSection = document.getElementById('personalMessageSection');
+    const invitationDetails = document.getElementById("invitationDetails");
+    const inviterNameEl = document.getElementById("inviterName");
+    const institutionNameEl = document.getElementById("institutionName");
+    const personalMessageEl = document.getElementById("personalMessage");
+    const personalMessageSection = document.getElementById(
+      "personalMessageSection",
+    );
 
     // Display inviter and institution
-    inviterNameEl.textContent = data.inviter_name || data.inviter_email || 'A colleague';
-    institutionNameEl.textContent = data.institution_name || 'your institution';
+    inviterNameEl.textContent =
+      data.inviter_name || data.inviter_email || "A colleague";
+    institutionNameEl.textContent = data.institution_name || "your institution";
 
     // Display personal message if present
     if (data.personal_message) {
       personalMessageEl.textContent = data.personal_message;
-      personalMessageSection.classList.remove('d-none');
+      personalMessageSection.classList.remove("d-none");
     }
 
     // Show invitation details
-    invitationDetails.classList.remove('d-none');
+    invitationDetails.classList.remove("d-none");
 
     // Show form, hide loading
-    loadingDiv.classList.add('d-none');
-    form.classList.remove('d-none');
+    loadingDiv.classList.add("d-none");
+    form.classList.remove("d-none");
   } catch (error) {
-    console.error('Error validating invitation:', error); // eslint-disable-line no-console
-    showMessage('Failed to validate invitation. Please try again.', 'danger');
-    loadingDiv.classList.add('d-none');
+    console.error("Error validating invitation:", error); // eslint-disable-line no-console
+    showMessage("Failed to validate invitation. Please try again.", "danger");
+    loadingDiv.classList.add("d-none");
   }
 }
 
@@ -103,20 +106,20 @@ async function validateInvitation(token) {
  * Accept invitation and create account
  */
 async function acceptInvitation() {
-  const token = document.getElementById('invitationToken').value;
-  const firstName = document.getElementById('firstName').value;
-  const lastName = document.getElementById('lastName').value;
-  const password = document.getElementById('password').value;
-  const submitBtn = document.getElementById('submitBtn');
-  const btnText = submitBtn.querySelector('.btn-text');
-  const btnSpinner = submitBtn.querySelector('.btn-spinner');
+  const token = document.getElementById("invitationToken").value;
+  const firstName = document.getElementById("firstName").value;
+  const lastName = document.getElementById("lastName").value;
+  const password = document.getElementById("password").value;
+  const submitBtn = document.getElementById("submitBtn");
+  const btnText = submitBtn.querySelector(".btn-text");
+  const btnSpinner = submitBtn.querySelector(".btn-spinner");
 
   // Construct display name from first + last
   const displayName = `${firstName} ${lastName}`.trim();
 
   // Show loading state
-  btnText.classList.add('d-none');
-  btnSpinner.classList.remove('d-none');
+  btnText.classList.add("d-none");
+  btnSpinner.classList.remove("d-none");
   submitBtn.disabled = true;
 
   try {
@@ -124,40 +127,44 @@ async function acceptInvitation() {
     const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
-    const response = await fetch('/api/auth/accept-invitation', {
-      method: 'POST',
+    const response = await fetch("/api/auth/accept-invitation", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...(csrfToken && { 'X-CSRFToken': csrfToken })
+        "Content-Type": "application/json",
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
       },
       body: JSON.stringify({
         invitation_token: token,
         password,
-        display_name: displayName
-      })
+        display_name: displayName,
+      }),
     });
 
     const data = await response.json();
 
     if (response.ok) {
-      showMessage('Account created successfully! Redirecting to login...', 'success');
+      showMessage(
+        "Account created successfully! Redirecting to login...",
+        "success",
+      );
       // Redirect to login page with success message after 1.5 seconds
       setTimeout(() => {
-        globalThis.location.href = '/login?message=Account+created+successfully';
+        globalThis.location.href =
+          "/login?message=Account+created+successfully";
       }, 1500);
     } else {
-      showMessage(data.error || 'Failed to create account', 'danger');
+      showMessage(data.error || "Failed to create account", "danger");
       // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
+      btnText.classList.remove("d-none");
+      btnSpinner.classList.add("d-none");
       submitBtn.disabled = false;
     }
   } catch (error) {
-    console.error('Error accepting invitation:', error); // eslint-disable-line no-console
-    showMessage('Failed to create account. Please try again.', 'danger');
+    console.error("Error accepting invitation:", error); // eslint-disable-line no-console
+    showMessage("Failed to create account. Please try again.", "danger");
     // Restore button state
-    btnText.classList.remove('d-none');
-    btnSpinner.classList.add('d-none');
+    btnText.classList.remove("d-none");
+    btnSpinner.classList.add("d-none");
     submitBtn.disabled = false;
   }
 }
@@ -166,17 +173,19 @@ async function acceptInvitation() {
  * Show status message
  */
 function showMessage(message, type) {
-  const statusMessage = document.getElementById('statusMessage');
+  const statusMessage = document.getElementById("statusMessage");
   statusMessage.textContent = message;
   statusMessage.className = `alert alert-${type}`;
-  statusMessage.classList.remove('d-none');
+  statusMessage.classList.remove("d-none");
 }
 
 /**
  * Format role for display
  */
 function formatRole(role) {
-  return role.replaceAll('_', ' ').replace(/\b\w/g, char => char.toUpperCase());
+  return role
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // Expose functions for testing
@@ -188,33 +197,39 @@ globalThis.formatRole = formatRole;
  * Setup password visibility toggles
  */
 function setupPasswordToggles() {
-  const togglePassword = document.getElementById('togglePassword');
-  const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
-  const passwordInput = document.getElementById('password');
-  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const togglePassword = document.getElementById("togglePassword");
+  const toggleConfirmPassword = document.getElementById(
+    "toggleConfirmPassword",
+  );
+  const passwordInput = document.getElementById("password");
+  const confirmPasswordInput = document.getElementById("confirmPassword");
 
   if (togglePassword && passwordInput) {
-    togglePassword.addEventListener('click', () => {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
+    togglePassword.addEventListener("click", () => {
+      const type =
+        passwordInput.getAttribute("type") === "password" ? "text" : "password";
+      passwordInput.setAttribute("type", type);
 
-      const icon = togglePassword.querySelector('i');
+      const icon = togglePassword.querySelector("i");
       if (icon) {
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
+        icon.classList.toggle("fa-eye");
+        icon.classList.toggle("fa-eye-slash");
       }
     });
   }
 
   if (toggleConfirmPassword && confirmPasswordInput) {
-    toggleConfirmPassword.addEventListener('click', () => {
-      const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      confirmPasswordInput.setAttribute('type', type);
+    toggleConfirmPassword.addEventListener("click", () => {
+      const type =
+        confirmPasswordInput.getAttribute("type") === "password"
+          ? "text"
+          : "password";
+      confirmPasswordInput.setAttribute("type", type);
 
-      const icon = toggleConfirmPassword.querySelector('i');
+      const icon = toggleConfirmPassword.querySelector("i");
       if (icon) {
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
+        icon.classList.toggle("fa-eye");
+        icon.classList.toggle("fa-eye-slash");
       }
     });
   }

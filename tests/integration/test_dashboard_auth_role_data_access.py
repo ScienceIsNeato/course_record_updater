@@ -30,7 +30,7 @@ class TestDashboardAuthRoleDataAccess:
 
     def setup_method(self):
         """Set up test client and application context"""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -457,7 +457,7 @@ class TestDashboardDataConsistency:
 
     def setup_method(self):
         """Set up test client"""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True

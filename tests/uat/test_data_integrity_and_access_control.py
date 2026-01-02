@@ -360,7 +360,7 @@ class TestSiteAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -501,7 +501,7 @@ class TestInstitutionAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -761,7 +761,7 @@ class TestProgramAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -861,7 +861,7 @@ class TestInstructorAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -1019,7 +1019,7 @@ class TestNegativeAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from src.app import src.app as app
+        from src.app import app
 
         self.app = app
         self.app.config["TESTING"] = True

@@ -2,8 +2,8 @@
 
 // Constants for input types to avoid hard-coded strings
 const INPUT_TYPES = {
-  PASSWORD: 'password',
-  TEXT: 'text'
+  PASSWORD: "password",
+  TEXT: "text",
 };
 
 // CSRF Token Helper
@@ -17,7 +17,7 @@ function getCSRFToken() {
   // Fallback to meta tag if available
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
   if (csrfMeta) {
-    return csrfMeta.getAttribute('content');
+    return csrfMeta.getAttribute("content");
   }
 
   return null;
@@ -25,9 +25,9 @@ function getCSRFToken() {
 
 // DOM Content Loaded
 // Check if DOM is already loaded (script at end of body)
-if (document.readyState === 'loading') {
+if (document.readyState === "loading") {
   // DOM hasn't loaded yet, wait for it
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     initializePage();
   });
 } else {
@@ -41,23 +41,26 @@ function initializePage() {
 
   // Check for URL parameter messages (e.g., ?message=Account+created+successfully)
   const urlParams = new URLSearchParams(globalThis.location.search);
-  const messageParam = urlParams.get('message');
+  const messageParam = urlParams.get("message");
   if (messageParam) {
-    showMessage(decodeURIComponent(messageParam), 'success');
+    showMessage(decodeURIComponent(messageParam), "success");
     // Clean up URL without reloading
     const url = new URL(globalThis.location);
-    url.searchParams.delete('message');
-    globalThis.history.replaceState({}, '', url);
+    url.searchParams.delete("message");
+    globalThis.history.replaceState({}, "", url);
   }
 
   // Check for login page (including /reminder-login)
-  if (currentPath.includes('/login') || currentPath.includes('/reminder-login')) {
+  if (
+    currentPath.includes("/login") ||
+    currentPath.includes("/reminder-login")
+  ) {
     initializeLoginForm();
-  } else if (currentPath.includes('/register')) {
+  } else if (currentPath.includes("/register")) {
     initializeRegisterForm();
-  } else if (currentPath.includes('/forgot-password')) {
+  } else if (currentPath.includes("/forgot-password")) {
     initializeForgotPasswordForm();
-  } else if (currentPath.includes('/profile')) {
+  } else if (currentPath.includes("/profile")) {
     initializeProfileForm();
   }
 
@@ -68,116 +71,117 @@ function initializePage() {
 
 // Login Form
 function initializeLoginForm() {
-  const form = document.getElementById('loginForm');
+  const form = document.getElementById("loginForm");
   if (!form) return;
 
   // Prevent form from submitting normally (critical!)
-  form.addEventListener('submit', handleLogin, { capture: true });
+  form.addEventListener("submit", handleLogin, { capture: true });
 
   // Also add a safety net to prevent any GET submissions
-  form.method = 'post';
-  form.action = '#';
+  form.method = "post";
+  form.action = "#";
 
   // Real-time validation
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
 
   if (emailInput) {
-    emailInput.addEventListener('blur', validateEmail);
-    emailInput.addEventListener('input', clearValidation);
+    emailInput.addEventListener("blur", validateEmail);
+    emailInput.addEventListener("input", clearValidation);
   }
 
   if (passwordInput) {
-    passwordInput.addEventListener('blur', validateRequired);
-    passwordInput.addEventListener('input', clearValidation);
+    passwordInput.addEventListener("blur", validateRequired);
+    passwordInput.addEventListener("input", clearValidation);
   }
 }
 
 // Register Form
 function initializeRegisterForm() {
-  const form = document.getElementById('registerForm');
+  const form = document.getElementById("registerForm");
   if (!form) return;
 
-  form.addEventListener('submit', handleRegister);
+  form.addEventListener("submit", handleRegister);
 
   // Password strength indicator
-  const passwordInput = document.getElementById('password');
+  const passwordInput = document.getElementById("password");
   if (passwordInput) {
-    passwordInput.addEventListener('input', updatePasswordStrength);
-    passwordInput.addEventListener('blur', validatePassword);
+    passwordInput.addEventListener("input", updatePasswordStrength);
+    passwordInput.addEventListener("blur", validatePassword);
   }
 
   // Confirm password validation
-  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const confirmPasswordInput = document.getElementById("confirmPassword");
   if (confirmPasswordInput) {
-    confirmPasswordInput.addEventListener('input', validatePasswordMatch);
-    confirmPasswordInput.addEventListener('blur', validatePasswordMatch);
+    confirmPasswordInput.addEventListener("input", validatePasswordMatch);
+    confirmPasswordInput.addEventListener("blur", validatePasswordMatch);
   }
 
   // Terms checkbox validation
-  const agreeTerms = document.getElementById('agreeTerms');
-  const submitBtn = document.getElementById('registerBtn');
+  const agreeTerms = document.getElementById("agreeTerms");
+  const submitBtn = document.getElementById("registerBtn");
   if (agreeTerms && submitBtn) {
-    agreeTerms.addEventListener('change', function () {
+    agreeTerms.addEventListener("change", function () {
       submitBtn.disabled = !this.checked;
     });
   }
 
   // Real-time validation for all fields
-  const inputs = form.querySelectorAll('input[required]');
-  inputs.forEach(input => {
-    input.addEventListener('blur', function () {
-      if (this.type === 'email') {
+  const inputs = form.querySelectorAll("input[required]");
+  inputs.forEach((input) => {
+    input.addEventListener("blur", function () {
+      if (this.type === "email") {
         validateEmail.call(this);
-      } else if (this.type === 'url') {
+      } else if (this.type === "url") {
         validateUrl.call(this);
       } else {
         validateRequired.call(this);
       }
     });
-    input.addEventListener('input', clearValidation);
+    input.addEventListener("input", clearValidation);
   });
 }
 
 // Forgot Password Form
 function initializeForgotPasswordForm() {
-  const form = document.getElementById('forgotPasswordForm');
+  const form = document.getElementById("forgotPasswordForm");
   if (!form) return;
 
-  form.addEventListener('submit', handleForgotPassword);
+  form.addEventListener("submit", handleForgotPassword);
 
-  const emailInput = document.getElementById('email');
+  const emailInput = document.getElementById("email");
   if (emailInput) {
-    emailInput.addEventListener('blur', validateEmail);
-    emailInput.addEventListener('input', clearValidation);
+    emailInput.addEventListener("blur", validateEmail);
+    emailInput.addEventListener("input", clearValidation);
   }
 }
 
 // Profile Form
 function initializeProfileForm() {
-  const profileForm = document.getElementById('profileForm');
-  const passwordForm = document.getElementById('changePasswordForm');
+  const profileForm = document.getElementById("profileForm");
+  const passwordForm = document.getElementById("changePasswordForm");
 
   if (profileForm) {
-    profileForm.addEventListener('submit', handleUpdateProfile);
+    profileForm.addEventListener("submit", handleUpdateProfile);
   }
 
   if (passwordForm) {
-    passwordForm.addEventListener('submit', handleChangePassword);
+    passwordForm.addEventListener("submit", handleChangePassword);
 
     // Password strength for new password
-    const newPasswordInput = document.getElementById('newPassword');
+    const newPasswordInput = document.getElementById("newPassword");
     if (newPasswordInput) {
-      newPasswordInput.addEventListener('input', function () {
-        updatePasswordStrength.call(this, 'newPassword');
+      newPasswordInput.addEventListener("input", function () {
+        updatePasswordStrength.call(this, "newPassword");
       });
     }
 
     // Confirm password validation
-    const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
+    const confirmNewPasswordInput =
+      document.getElementById("confirmNewPassword");
     if (confirmNewPasswordInput) {
-      confirmNewPasswordInput.addEventListener('input', function () {
-        validatePasswordMatch.call(this, 'newPassword', 'confirmNewPassword');
+      confirmNewPasswordInput.addEventListener("input", function () {
+        validatePasswordMatch.call(this, "newPassword", "confirmNewPassword");
       });
     }
   }
@@ -187,23 +191,23 @@ function initializeProfileForm() {
 function initializePasswordToggles() {
   const toggleButtons = document.querySelectorAll('[id^="toggle"]');
 
-  toggleButtons.forEach(button => {
-    button.addEventListener('click', function (e) {
+  toggleButtons.forEach((button) => {
+    button.addEventListener("click", function (e) {
       e.preventDefault();
 
-      const targetId = this.id.replace('toggle', '').toLowerCase();
+      const targetId = this.id.replace("toggle", "").toLowerCase();
       const passwordInput =
         document.getElementById(targetId) ||
-        document.getElementById(targetId.replace('password', 'Password'));
-      const icon = this.querySelector('i');
+        document.getElementById(targetId.replace("password", "Password"));
+      const icon = this.querySelector("i");
 
       if (passwordInput && icon) {
         if (passwordInput.type === INPUT_TYPES.PASSWORD) {
           passwordInput.type = INPUT_TYPES.TEXT;
-          icon.className = 'fas fa-eye-slash';
+          icon.className = "fas fa-eye-slash";
         } else {
           passwordInput.type = INPUT_TYPES.PASSWORD;
-          icon.className = 'fas fa-eye';
+          icon.className = "fas fa-eye";
         }
       }
     });
@@ -213,14 +217,14 @@ function initializePasswordToggles() {
 // Form Validation
 function initializeFormValidation() {
   // Disable HTML5 validation, use custom validation
-  const forms = document.querySelectorAll('form[novalidate]');
-  forms.forEach(form => {
-    form.addEventListener('submit', function (e) {
+  const forms = document.querySelectorAll("form[novalidate]");
+  forms.forEach((form) => {
+    form.addEventListener("submit", function (e) {
       if (!this.checkValidity()) {
         e.preventDefault();
         e.stopPropagation();
       }
-      this.classList.add('was-validated');
+      this.classList.add("was-validated");
     });
   });
 }
@@ -231,10 +235,10 @@ function validateEmail() {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
   if (!email) {
-    setValidationState(this, false, 'Email is required');
+    setValidationState(this, false, "Email is required");
     return false;
   } else if (!emailRegex.test(email)) {
-    setValidationState(this, false, 'Please enter a valid email address');
+    setValidationState(this, false, "Please enter a valid email address");
     return false;
   } else {
     setValidationState(this, true);
@@ -244,7 +248,7 @@ function validateEmail() {
 
 function validateRequired() {
   const value = this.value.trim();
-  const fieldName = this.getAttribute('name') || this.getAttribute('id');
+  const fieldName = this.getAttribute("name") || this.getAttribute("id");
 
   if (!value) {
     setValidationState(this, false, `${fieldName} is required`);
@@ -259,7 +263,7 @@ function validateUrl() {
   const url = this.value.trim();
 
   if (url && !isValidUrl(url)) {
-    setValidationState(this, false, 'Please enter a valid URL');
+    setValidationState(this, false, "Please enter a valid URL");
     return false;
   } else {
     setValidationState(this, true);
@@ -272,10 +276,10 @@ function validatePassword() {
   const strength = getPasswordStrength(password);
 
   if (!password) {
-    setValidationState(this, false, 'Password is required');
+    setValidationState(this, false, "Password is required");
     return false;
   } else if (strength.score < 3) {
-    setValidationState(this, false, 'Password is too weak');
+    setValidationState(this, false, "Password is too weak");
     return false;
   } else {
     setValidationState(this, true);
@@ -283,14 +287,20 @@ function validatePassword() {
   }
 }
 
-function validatePasswordMatch(primaryId = 'password', confirmId = 'confirmPassword') {
+function validatePasswordMatch(
+  primaryId = "password",
+  confirmId = "confirmPassword",
+) {
   const primaryPassword = document.getElementById(primaryId);
   const confirmPassword = document.getElementById(confirmId);
 
   if (!primaryPassword || !confirmPassword) return false;
 
-  if (confirmPassword.value && confirmPassword.value !== primaryPassword.value) {
-    setValidationState(confirmPassword, false, 'Passwords do not match');
+  if (
+    confirmPassword.value &&
+    confirmPassword.value !== primaryPassword.value
+  ) {
+    setValidationState(confirmPassword, false, "Passwords do not match");
     return false;
   } else if (confirmPassword.value) {
     setValidationState(confirmPassword, true);
@@ -299,11 +309,11 @@ function validatePasswordMatch(primaryId = 'password', confirmId = 'confirmPassw
   return false;
 }
 
-function setValidationState(input, isValid, message = '') {
-  const feedback = input.parentNode.querySelector('.invalid-feedback');
+function setValidationState(input, isValid, message = "") {
+  const feedback = input.parentNode.querySelector(".invalid-feedback");
 
-  input.classList.remove('is-valid', 'is-invalid');
-  input.classList.add(isValid ? 'is-valid' : 'is-invalid');
+  input.classList.remove("is-valid", "is-invalid");
+  input.classList.add(isValid ? "is-valid" : "is-invalid");
 
   if (feedback) {
     feedback.textContent = message;
@@ -311,21 +321,21 @@ function setValidationState(input, isValid, message = '') {
 }
 
 function clearValidation() {
-  this.classList.remove('is-valid', 'is-invalid');
+  this.classList.remove("is-valid", "is-invalid");
 }
 
 // Password Strength
-function updatePasswordStrength(inputId = 'password') {
+function updatePasswordStrength(inputId = "password") {
   const passwordInput = document.getElementById(inputId);
   const password = passwordInput.value;
   const strength = getPasswordStrength(password);
 
   const fillElement =
-    document.getElementById(inputId + 'StrengthFill') ||
-    document.getElementById('passwordStrengthFill');
+    document.getElementById(inputId + "StrengthFill") ||
+    document.getElementById("passwordStrengthFill");
   const labelElement =
-    document.getElementById(inputId + 'StrengthLabel') ||
-    document.getElementById('passwordStrengthLabel');
+    document.getElementById(inputId + "StrengthLabel") ||
+    document.getElementById("passwordStrengthLabel");
 
   if (fillElement) {
     fillElement.className = `password-strength-fill ${strength.level}`;
@@ -342,7 +352,7 @@ function updatePasswordStrength(inputId = 'password') {
 
 function getPasswordStrength(password) {
   if (!password) {
-    return { score: 0, level: 'weak', label: 'Enter password' };
+    return { score: 0, level: "weak", label: "Enter password" };
   }
 
   let score = 0;
@@ -362,15 +372,15 @@ function getPasswordStrength(password) {
   if (!/123|abc|qwe/i.test(password)) score += 1; // No common sequences
 
   const levels = {
-    0: { level: 'weak', label: 'Too weak' },
-    1: { level: 'weak', label: 'Weak' },
-    2: { level: 'weak', label: 'Weak' },
-    3: { level: 'fair', label: 'Fair' },
-    4: { level: 'fair', label: 'Fair' },
-    5: { level: 'good', label: 'Good' },
-    6: { level: 'good', label: 'Good' },
-    7: { level: 'strong', label: 'Strong' },
-    8: { level: 'strong', label: 'Very Strong' }
+    0: { level: "weak", label: "Too weak" },
+    1: { level: "weak", label: "Weak" },
+    2: { level: "weak", label: "Weak" },
+    3: { level: "fair", label: "Fair" },
+    4: { level: "fair", label: "Fair" },
+    5: { level: "good", label: "Good" },
+    6: { level: "good", label: "Good" },
+    7: { level: "strong", label: "Strong" },
+    8: { level: "strong", label: "Very Strong" },
   };
 
   return { score, ...levels[Math.min(score, 8)] };
@@ -378,25 +388,25 @@ function getPasswordStrength(password) {
 
 function updatePasswordRequirements(password) {
   const requirements = [
-    { id: 'req-length', test: password.length >= 8 },
-    { id: 'req-uppercase', test: /[A-Z]/.test(password) },
-    { id: 'req-lowercase', test: /[a-z]/.test(password) },
-    { id: 'req-number', test: /[0-9]/.test(password) }
+    { id: "req-length", test: password.length >= 8 },
+    { id: "req-uppercase", test: /[A-Z]/.test(password) },
+    { id: "req-lowercase", test: /[a-z]/.test(password) },
+    { id: "req-number", test: /[0-9]/.test(password) },
   ];
 
-  requirements.forEach(req => {
+  requirements.forEach((req) => {
     const element = document.getElementById(req.id);
     if (element) {
-      const icon = element.querySelector('i');
+      const icon = element.querySelector("i");
       if (req.test) {
-        element.classList.add('met');
+        element.classList.add("met");
         if (icon) {
-          icon.className = 'fas fa-check text-success';
+          icon.className = "fas fa-check text-success";
         }
       } else {
-        element.classList.remove('met');
+        element.classList.remove("met");
         if (icon) {
-          icon.className = 'fas fa-times text-danger';
+          icon.className = "fas fa-times text-danger";
         }
       }
     }
@@ -405,7 +415,14 @@ function updatePasswordRequirements(password) {
 
 // Generic async form submission handler to reduce duplication
 async function submitAuthForm(config) {
-  const { form, submitBtn, endpoint, requestData, onSuccess, onError = null } = config;
+  const {
+    form,
+    submitBtn,
+    endpoint,
+    requestData,
+    onSuccess,
+    onError = null,
+  } = config;
   if (!validateForm(form)) {
     return;
   }
@@ -415,26 +432,28 @@ async function submitAuthForm(config) {
   try {
     const csrfToken = getCSRFToken();
     if (!csrfToken) {
-      showError('Security token missing. Please refresh the page and try again.');
+      showError(
+        "Security token missing. Please refresh the page and try again.",
+      );
       setLoadingState(submitBtn, false);
       return;
     }
 
     const response = await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
       },
-      body: JSON.stringify(requestData)
+      body: JSON.stringify(requestData),
     });
 
     let result;
     try {
       result = await response.json();
     } catch (parseError) {
-      console.error('Failed to parse response:', parseError); // eslint-disable-line no-console
-      showError('Server returned an invalid response. Please try again.');
+      console.error("Failed to parse response:", parseError); // eslint-disable-line no-console
+      showError("Server returned an invalid response. Please try again.");
       setLoadingState(submitBtn, false);
       return;
     }
@@ -445,13 +464,17 @@ async function submitAuthForm(config) {
       onError(response, result);
     } else {
       const errorMsg =
-        result.error || result.message || `Request failed with status ${response.status}`;
+        result.error ||
+        result.message ||
+        `Request failed with status ${response.status}`;
       showError(errorMsg);
     }
   } catch (error) {
     // nosemgrep
     console.error(`${endpoint} error:`, error); // eslint-disable-line no-console
-    showError(`Network error: ${error.message || 'Please check your connection and try again.'}`);
+    showError(
+      `Network error: ${error.message || "Please check your connection and try again."}`,
+    );
   } finally {
     setLoadingState(submitBtn, false);
   }
@@ -463,22 +486,22 @@ async function handleLogin(e) {
   e.stopPropagation();
 
   const form = e.target;
-  const submitBtn = document.getElementById('loginBtn');
+  const submitBtn = document.getElementById("loginBtn");
   const formData = new FormData(form);
 
   await submitAuthForm({
     form,
     submitBtn,
-    endpoint: '/api/auth/login',
+    endpoint: "/api/auth/login",
     requestData: {
-      email: formData.get('email'),
-      password: formData.get('password'),
-      remember_me: formData.get('rememberMe') === 'on'
+      email: formData.get("email"),
+      password: formData.get("password"),
+      remember_me: formData.get("rememberMe") === "on",
     },
-    onSuccess: result => {
+    onSuccess: (result) => {
       // Redirect immediately - being on the dashboard IS the success indicator
       // No need to show message and force user to wait
-      const redirectUrl = result.next_url || '/dashboard';
+      const redirectUrl = result.next_url || "/dashboard";
       globalThis.location.href = redirectUrl;
     },
     onError: (response, result) => {
@@ -489,11 +512,11 @@ async function handleLogin(e) {
         const errorMsg =
           result.error ||
           result.message ||
-          'Login failed. Please check your credentials and try again.';
-        console.error('Login error:', response.status, result); // eslint-disable-line no-console
+          "Login failed. Please check your credentials and try again.";
+        console.error("Login error:", response.status, result); // eslint-disable-line no-console
         showError(errorMsg);
       }
-    }
+    },
   });
 }
 
@@ -501,29 +524,29 @@ async function handleRegister(e) {
   e.preventDefault();
 
   const form = e.target;
-  const submitBtn = document.getElementById('registerBtn');
+  const submitBtn = document.getElementById("registerBtn");
   const formData = new FormData(form);
 
   await submitAuthForm({
     form,
     submitBtn,
-    endpoint: '/api/auth/register',
+    endpoint: "/api/auth/register",
     requestData: {
-      email: formData.get('email'),
-      password: formData.get('password'),
-      first_name: formData.get('firstName'),
-      last_name: formData.get('lastName'),
-      institution_name: formData.get('institutionName'),
-      institution_website: formData.get('institutionWebsite') || null
+      email: formData.get("email"),
+      password: formData.get("password"),
+      first_name: formData.get("firstName"),
+      last_name: formData.get("lastName"),
+      institution_name: formData.get("institutionName"),
+      institution_website: formData.get("institutionWebsite") || null,
     },
     onSuccess: () => {
       // Redirect immediately with success message as query parameter
       // The login page will display the message
       const message = encodeURIComponent(
-        'Account created successfully! Please check your email to verify your account.'
+        "Account created successfully! Please check your email to verify your account.",
       );
       globalThis.location.href = `/login?message=${message}`;
-    }
+    },
   });
 }
 
@@ -531,9 +554,9 @@ async function handleForgotPassword(e) {
   e.preventDefault();
 
   const form = e.target;
-  const submitBtn = document.getElementById('resetBtn');
+  const submitBtn = document.getElementById("resetBtn");
   const formData = new FormData(form);
-  const successState = document.getElementById('successState');
+  const successState = document.getElementById("successState");
 
   if (!validateForm(form)) {
     return;
@@ -542,31 +565,33 @@ async function handleForgotPassword(e) {
   setLoadingState(submitBtn, true);
 
   try {
-    const response = await fetch('/api/auth/forgot-password', {
-      method: 'POST',
+    const response = await fetch("/api/auth/forgot-password", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
       },
       body: JSON.stringify({
-        email: formData.get('email')
-      })
+        email: formData.get("email"),
+      }),
     });
 
     const result = await response.json();
 
     if (response.ok && result.success) {
-      form.style.display = 'none';
+      form.style.display = "none";
       if (successState) {
-        successState.classList.remove('d-none');
-        successState.classList.add('fade-in');
+        successState.classList.remove("d-none");
+        successState.classList.add("fade-in");
       }
     } else {
-      showError(result.error || 'Failed to send reset instructions. Please try again.');
+      showError(
+        result.error || "Failed to send reset instructions. Please try again.",
+      );
     }
   } catch (error) {
-    console.error('Forgot password error:', error); // eslint-disable-line no-console
-    showError('Network error. Please try again.');
+    console.error("Forgot password error:", error); // eslint-disable-line no-console
+    showError("Network error. Please try again.");
   } finally {
     setLoadingState(submitBtn, false);
   }
@@ -574,24 +599,24 @@ async function handleForgotPassword(e) {
 
 // Utility Functions
 function validateForm(form) {
-  const inputs = form.querySelectorAll('input[required]');
+  const inputs = form.querySelectorAll("input[required]");
   let isValid = true;
 
-  inputs.forEach(input => {
+  inputs.forEach((input) => {
     let fieldValid = false;
 
-    if (input.type === 'email') {
+    if (input.type === "email") {
       fieldValid = validateEmail.call(input);
-    } else if (input.type === 'password' && input.id === 'password') {
+    } else if (input.type === "password" && input.id === "password") {
       fieldValid = validatePassword.call(input);
-    } else if (input.type === 'password' && input.id.includes('confirm')) {
+    } else if (input.type === "password" && input.id.includes("confirm")) {
       fieldValid = validatePasswordMatch();
-    } else if (input.type === 'url') {
+    } else if (input.type === "url") {
       fieldValid = validateUrl.call(input);
-    } else if (input.type === 'checkbox') {
+    } else if (input.type === "checkbox") {
       fieldValid = input.checked;
       if (!fieldValid) {
-        setValidationState(input, false, 'This field is required');
+        setValidationState(input, false, "This field is required");
       }
     } else {
       fieldValid = validateRequired.call(input);
@@ -607,60 +632,60 @@ function validateForm(form) {
 
 function setLoadingState(button, loading) {
   if (loading) {
-    button.classList.add('loading');
+    button.classList.add("loading");
     button.disabled = true;
   } else {
-    button.classList.remove('loading');
+    button.classList.remove("loading");
     button.disabled = false;
   }
 }
 
 function showError(message) {
-  showMessage(message, 'error');
+  showMessage(message, "error");
 }
 
 function showSuccess(message) {
-  showMessage(message, 'success');
+  showMessage(message, "success");
 }
 
 function showMessage(message, type) {
   // Remove existing messages
-  const existingMessages = document.querySelectorAll('.auth-message-dynamic');
-  existingMessages.forEach(msg => msg.remove());
+  const existingMessages = document.querySelectorAll(".auth-message-dynamic");
+  existingMessages.forEach((msg) => msg.remove());
 
   // Create new message
-  const messageDiv = document.createElement('div');
-  messageDiv.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show auth-message-dynamic`;
+  const messageDiv = document.createElement("div");
+  messageDiv.className = `alert alert-${type === "error" ? "danger" : "success"} alert-dismissible fade show auth-message-dynamic`;
 
   // Use textContent to prevent XSS attacks
   const messageText = document.createTextNode(message);
   messageDiv.appendChild(messageText);
 
   // Add close button safely
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'btn-close';
-  closeButton.dataset.bsDismiss = 'alert';
-  closeButton.ariaLabel = 'Close';
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "btn-close";
+  closeButton.dataset.bsDismiss = "alert";
+  closeButton.ariaLabel = "Close";
   messageDiv.appendChild(closeButton);
 
   // Insert at top of form
-  const form = document.querySelector('.auth-form');
+  const form = document.querySelector(".auth-form");
   if (form) {
     form.insertBefore(messageDiv, form.firstChild);
-    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    messageDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 }
 
 function showAccountLockout() {
-  const modal = document.getElementById('lockoutModal');
+  const modal = document.getElementById("lockoutModal");
   if (modal) {
     // eslint-disable-next-line no-new
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
   } else {
     showError(
-      'Account is temporarily locked due to multiple failed login attempts. Please try again later.'
+      "Account is temporarily locked due to multiple failed login attempts. Please try again later.",
     );
   }
 }
@@ -677,26 +702,26 @@ function isValidUrl(string) {
 
 // Global logout function
 function logout() {
-  if (confirm('Are you sure you want to sign out?')) {
-    fetch('/api/auth/logout', {
-      method: 'POST',
+  if (confirm("Are you sure you want to sign out?")) {
+    fetch("/api/auth/logout", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
-      }
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
+      },
     })
       .then(() => {
-        globalThis.location.href = '/login';
+        globalThis.location.href = "/login";
       })
       .catch(() => {
-        globalThis.location.href = '/login';
+        globalThis.location.href = "/login";
       });
   }
 }
 
 // Show login modal function for main page
 function showLogin() {
-  globalThis.location.href = '/login';
+  globalThis.location.href = "/login";
 }
 
 // Profile management functions
@@ -704,10 +729,10 @@ function showLogin() {
 async function handleUpdateProfile(event) {
   event.preventDefault();
 
-  const form = document.getElementById('profileForm');
-  const btn = document.getElementById('updateProfileBtn');
-  const btnText = btn.querySelector('.btn-text');
-  const btnSpinner = btn.querySelector('.btn-spinner');
+  const form = document.getElementById("profileForm");
+  const btn = document.getElementById("updateProfileBtn");
+  const btnText = btn.querySelector(".btn-text");
+  const btnSpinner = btn.querySelector(".btn-spinner");
 
   // Validate form
   if (!validateForm(form)) {
@@ -716,55 +741,57 @@ async function handleUpdateProfile(event) {
 
   // Disable button and show spinner
   btn.disabled = true;
-  btnText.classList.add('d-none');
-  btnSpinner.classList.remove('d-none');
+  btnText.classList.add("d-none");
+  btnSpinner.classList.remove("d-none");
 
-  const firstName = document.getElementById('firstName').value;
-  const lastName = document.getElementById('lastName').value;
+  const firstName = document.getElementById("firstName").value;
+  const lastName = document.getElementById("lastName").value;
 
   try {
-    const response = await fetch('/api/auth/profile', {
-      method: 'PATCH',
+    const response = await fetch("/api/auth/profile", {
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
       },
       body: JSON.stringify({
         first_name: firstName,
-        last_name: lastName
-      })
+        last_name: lastName,
+      }),
     });
 
     const data = await response.json();
 
     if (response.ok && data.success) {
-      showMessage(data.message || 'Profile updated successfully', 'success');
+      showMessage(data.message || "Profile updated successfully", "success");
       // Update displayed name if present in navbar
-      const navbarName = document.querySelector('.navbar .nav-link i.fa-user-circle')?.nextSibling;
+      const navbarName = document.querySelector(
+        ".navbar .nav-link i.fa-user-circle",
+      )?.nextSibling;
       if (navbarName) {
         navbarName.textContent = ` ${firstName} ${lastName}`;
       }
     } else {
-      showMessage(data.error || 'Failed to update profile', 'error');
+      showMessage(data.error || "Failed to update profile", "error");
     }
   } catch (error) {
-    console.error('Profile update error:', error);
-    showMessage('An unexpected error occurred. Please try again.', 'error');
+    console.error("Profile update error:", error);
+    showMessage("An unexpected error occurred. Please try again.", "error");
   } finally {
     // Reset button state
     btn.disabled = false;
-    btnText.classList.remove('d-none');
-    btnSpinner.classList.add('d-none');
+    btnText.classList.remove("d-none");
+    btnSpinner.classList.add("d-none");
   }
 }
 
 async function handleChangePassword(event) {
   event.preventDefault();
 
-  const form = document.getElementById('changePasswordForm');
-  const btn = document.getElementById('changePasswordBtn');
-  const btnText = btn.querySelector('.btn-text');
-  const btnSpinner = btn.querySelector('.btn-spinner');
+  const form = document.getElementById("changePasswordForm");
+  const btn = document.getElementById("changePasswordBtn");
+  const btnText = btn.querySelector(".btn-text");
+  const btnSpinner = btn.querySelector(".btn-spinner");
 
   // Validate form
   if (!validateForm(form)) {
@@ -772,53 +799,53 @@ async function handleChangePassword(event) {
   }
 
   // Validate password match
-  const newPassword = document.getElementById('newPassword');
-  const confirmNewPassword = document.getElementById('confirmNewPassword');
+  const newPassword = document.getElementById("newPassword");
+  const confirmNewPassword = document.getElementById("confirmNewPassword");
 
   if (newPassword.value !== confirmNewPassword.value) {
-    setValidationState(confirmNewPassword, false, 'Passwords do not match');
+    setValidationState(confirmNewPassword, false, "Passwords do not match");
     return;
   }
 
   // Disable button and show spinner
   btn.disabled = true;
-  btnText.classList.add('d-none');
-  btnSpinner.classList.remove('d-none');
+  btnText.classList.add("d-none");
+  btnSpinner.classList.remove("d-none");
 
   try {
-    const response = await fetch('/api/auth/change-password', {
-      method: 'POST',
+    const response = await fetch("/api/auth/change-password", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken()
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
       },
       body: JSON.stringify({
-        current_password: document.getElementById('currentPassword').value,
-        new_password: newPassword.value
-      })
+        current_password: document.getElementById("currentPassword").value,
+        new_password: newPassword.value,
+      }),
     });
 
     const data = await response.json();
 
     if (response.ok && data.success) {
-      showMessage(data.message || 'Password changed successfully', 'success');
+      showMessage(data.message || "Password changed successfully", "success");
       form.reset();
       // Reset strength indicator
-      const strengthFill = document.getElementById('newPasswordStrengthFill');
-      const strengthLabel = document.getElementById('newPasswordStrengthLabel');
-      if (strengthFill) strengthFill.className = 'password-strength-fill';
-      if (strengthLabel) strengthLabel.textContent = 'Enter password';
+      const strengthFill = document.getElementById("newPasswordStrengthFill");
+      const strengthLabel = document.getElementById("newPasswordStrengthLabel");
+      if (strengthFill) strengthFill.className = "password-strength-fill";
+      if (strengthLabel) strengthLabel.textContent = "Enter password";
     } else {
-      showMessage(data.error || 'Failed to change password', 'error');
+      showMessage(data.error || "Failed to change password", "error");
     }
   } catch (error) {
-    console.error('Password change error:', error);
-    showMessage('An unexpected error occurred. Please try again.', 'error');
+    console.error("Password change error:", error);
+    showMessage("An unexpected error occurred. Please try again.", "error");
   } finally {
     // Reset button state
     btn.disabled = false;
-    btnText.classList.remove('d-none');
-    btnSpinner.classList.add('d-none');
+    btnText.classList.remove("d-none");
+    btnSpinner.classList.add("d-none");
   }
 }
 
@@ -855,9 +882,9 @@ const authTestExports = {
   showAccountLockout,
   isValidUrl,
   logout,
-  showLogin
+  showLogin,
 };
 
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = authTestExports;
 }

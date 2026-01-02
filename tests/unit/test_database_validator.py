@@ -87,7 +87,7 @@ class TestSQLAlchemySchemaValidation:
         TestBase.metadata.create_all(engine)
 
         # Temporarily replace Base with TestBase
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -124,7 +124,7 @@ class TestSQLAlchemySchemaValidation:
             age = Column(Integer)  # This doesn't exist in DB
 
         # Temporarily replace Base
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -169,7 +169,7 @@ class TestSQLAlchemySchemaValidation:
             name = Column(String)
 
         # Temporarily replace Base
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -201,7 +201,7 @@ class TestSQLAlchemySchemaValidation:
             id = Column(Integer, primary_key=True)
 
         # Temporarily replace Base
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -232,7 +232,7 @@ class TestSQLAlchemySchemaValidation:
         TestBase.metadata.create_all(engine)
 
         # Temporarily replace Base
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -260,7 +260,7 @@ class TestSQLAlchemySchemaValidation:
             missing_col = Column(String)  # Not in DB
 
         # Temporarily replace Base
-        import database_validator
+        from src.database import database_validator
 
         original_base = database_validator.Base
         database_validator.Base = TestBase
@@ -310,8 +310,7 @@ class TestSQLAlchemySchemaValidation:
 
     def test_get_all_models_fallback_to_metadata(self):
         """Should fallback to metadata approach when registry access fails."""
-        import database_validator
-
+        from src.database import database_validator
         from src.database.database_validator import _get_all_models
 
         # Mock Base to raise AttributeError when accessing registry
@@ -394,8 +393,7 @@ class TestSQLAlchemySchemaValidation:
 
     def test_validate_schema_or_exit_unexpected_error(self):
         """Should raise SchemaValidationError for unexpected errors."""
-        import database_validator
-
+        from src.database import database_validator
         from src.database.database_validator import (
             SchemaValidationError,
             validate_schema_or_exit,

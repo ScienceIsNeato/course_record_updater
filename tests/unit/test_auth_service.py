@@ -210,20 +210,22 @@ class TestUtilityFunctions:
 
     def test_get_user_role_with_no_user(self):
         """Test get_user_role when no user is available."""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             role = get_user_role()
             assert role is None
 
     def test_get_user_department_with_no_user(self):
         """Test get_user_department when no user is available."""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             department = get_user_department()
             assert department is None
 
     def test_get_user_department_with_no_department_field(self):
         """Test get_user_department when user has no department field."""
         mock_user = {"user_id": "123", "email": "test@example.com", "role": "user"}
-        with patch("auth_service.get_current_user", return_value=mock_user):
+        with patch(
+            "src.services.auth_service.get_current_user", return_value=mock_user
+        ):
             department = get_user_department()
             assert department is None
 
@@ -239,7 +241,7 @@ class TestAuthServiceIntegration:
         mock_service.has_permission.return_value = False
         mock_service.is_authenticated.return_value = False
 
-        with patch("auth_service.auth_service", mock_service):
+        with patch("src.services.auth_service.auth_service", mock_service):
             # Test that utility functions delegate to the service
             user = get_current_user()
             permission = has_permission("test")
@@ -318,8 +320,8 @@ class TestAuthBehaviorConsistency:
 class TestAuthServiceInstitutionFunctions:
     """Test auth service institution-related functions."""
 
-    @patch("database_service.get_institution_by_short_name")
-    @patch("auth_service.get_current_user")
+    @patch("src.database.database_service.get_institution_by_short_name")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_success(
         self, mock_get_user, mock_get_institution
     ):
@@ -336,8 +338,8 @@ class TestAuthServiceInstitutionFunctions:
         assert result == "inst-123"
         mock_get_institution.assert_not_called()
 
-    @patch("database_service.get_institution_by_short_name")
-    @patch("auth_service.get_current_user")
+    @patch("src.database.database_service.get_institution_by_short_name")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_short_name_resolution(
         self, mock_get_user, mock_get_institution
     ):
@@ -353,7 +355,7 @@ class TestAuthServiceInstitutionFunctions:
         assert get_current_institution_id() == "inst-demo-uuid"
         mock_get_institution.assert_called_once_with("DEMO2025")
 
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_primary_fallback(self, mock_get_user):
         """Test get_current_institution_id uses primary institution when provided."""
         mock_get_user.return_value = {
@@ -365,7 +367,7 @@ class TestAuthServiceInstitutionFunctions:
 
         assert get_current_institution_id() == "inst-primary"
 
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_missing_context(self, mock_get_user):
         """Test get_current_institution_id returns None when no context available."""
         mock_get_user.return_value = {
@@ -547,7 +549,9 @@ class TestAuthServiceCoverage:
         # Test site admin - should return all institutions
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+            patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_get_all_institutions,
         ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
@@ -586,8 +590,12 @@ class TestAuthServiceCoverage:
         # Test site admin
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_all_institutions") as mock_get_all_institutions,
-            patch("database_service.get_programs_by_institution") as mock_get_programs,
+            patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_get_all_institutions,
+            patch(
+                "src.database.database_service.get_programs_by_institution"
+            ) as mock_get_programs,
         ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
@@ -609,7 +617,9 @@ class TestAuthServiceCoverage:
         # Test institution admin
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_programs_by_institution") as mock_get_programs,
+            patch(
+                "src.database.database_service.get_programs_by_institution"
+            ) as mock_get_programs,
         ):
             mock_get_user.return_value = {
                 "user_id": "inst-admin-123",
@@ -693,7 +703,9 @@ class TestAuthServiceCoverage:
 
         with app.app_context():
             # Test permission denied
-            with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+            with patch(
+                "src.services.auth_service.auth_service.has_permission"
+            ) as mock_has_perm:
                 mock_has_perm.return_value = False
 
                 @permission_required("nonexistent_permission")
@@ -707,7 +719,9 @@ class TestAuthServiceCoverage:
                 assert response[1] == 403
 
             # Test role denied
-            with patch("auth_service.auth_service.has_role") as mock_has_role:
+            with patch(
+                "src.services.auth_service.auth_service.has_role"
+            ) as mock_has_role:
                 mock_has_role.return_value = False
 
                 @role_required("site_admin")

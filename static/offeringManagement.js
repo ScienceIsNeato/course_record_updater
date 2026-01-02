@@ -11,8 +11,8 @@
 
 function initOfferingManagement() {
   // Only initialize forms if they exist (handling both dashboard and full list page)
-  const createForm = document.getElementById('createOfferingForm');
-  const editForm = document.getElementById('editOfferingForm');
+  const createForm = document.getElementById("createOfferingForm");
+  const editForm = document.getElementById("editOfferingForm");
 
   if (createForm || editForm) {
     initializeCreateOfferingModal();
@@ -26,17 +26,17 @@ function initOfferingManagement() {
  * Populate dropdowns when modals are shown
  */
 function setupModalListeners() {
-  const createModal = document.getElementById('createOfferingModal');
-  const editModal = document.getElementById('editOfferingModal');
+  const createModal = document.getElementById("createOfferingModal");
+  const editModal = document.getElementById("editOfferingModal");
 
   if (createModal) {
-    createModal.addEventListener('show.bs.modal', () => {
+    createModal.addEventListener("show.bs.modal", () => {
       loadCoursesAndTermsForCreateDropdown();
     });
   }
 
   if (editModal) {
-    editModal.addEventListener('show.bs.modal', () => {
+    editModal.addEventListener("show.bs.modal", () => {
       loadCoursesAndTermsForEditDropdown();
     });
   }
@@ -47,9 +47,9 @@ function setupModalListeners() {
  * Fetches from API and populates both select elements
  */
 async function loadCoursesAndTermsForCreateDropdown() {
-  const courseSelect = document.getElementById('offeringCourseId');
-  const termSelect = document.getElementById('offeringTermId');
-  const programSelect = document.getElementById('offeringProgramId');
+  const courseSelect = document.getElementById("offeringCourseId");
+  const termSelect = document.getElementById("offeringTermId");
+  const programSelect = document.getElementById("offeringProgramId");
 
   if (!courseSelect || !termSelect || !programSelect) {
     return;
@@ -62,14 +62,15 @@ async function loadCoursesAndTermsForCreateDropdown() {
 
   try {
     // Fetch courses, terms, and programs in parallel
-    const [coursesResponse, termsResponse, programsResponse] = await Promise.all([
-      fetch('/api/courses'),
-      fetch('/api/terms'),
-      fetch('/api/programs')
-    ]);
+    const [coursesResponse, termsResponse, programsResponse] =
+      await Promise.all([
+        fetch("/api/courses"),
+        fetch("/api/terms"),
+        fetch("/api/programs"),
+      ]);
 
     if (!coursesResponse.ok || !termsResponse.ok || !programsResponse.ok) {
-      throw new Error('Failed to fetch dropdown data');
+      throw new Error("Failed to fetch dropdown data");
     }
 
     const coursesData = await coursesResponse.json();
@@ -83,34 +84,35 @@ async function loadCoursesAndTermsForCreateDropdown() {
     populateSelectOptions(
       courseSelect,
       courses,
-      'Select Course',
-      course => course.course_id,
-      course => `${course.course_number} - ${course.course_title}`,
-      'No courses available'
+      "Select Course",
+      (course) => course.course_id,
+      (course) => `${course.course_number} - ${course.course_title}`,
+      "No courses available",
     );
 
     populateSelectOptions(
       termSelect,
       terms,
-      'Select Term',
-      term => term.term_id,
-      term => term.name,
-      'No terms available'
+      "Select Term",
+      (term) => term.term_id,
+      (term) => term.name,
+      "No terms available",
     );
 
     populateSelectOptions(
       programSelect,
       programs,
-      'Select Program',
-      program => program.program_id || program.id,
-      program => program.name || program.program_name,
-      'No programs available'
+      "Select Program",
+      (program) => program.program_id || program.id,
+      (program) => program.name || program.program_name,
+      "No programs available",
     );
   } catch (error) {
-    console.error('Failed to load dropdown data:', error);
+    console.error("Failed to load dropdown data:", error);
     courseSelect.innerHTML = '<option value="">Error loading courses</option>'; // nosemgrep
     termSelect.innerHTML = '<option value="">Error loading terms</option>'; // nosemgrep
-    programSelect.innerHTML = '<option value="">Error loading programs</option>'; // nosemgrep
+    programSelect.innerHTML =
+      '<option value="">Error loading programs</option>'; // nosemgrep
   }
 }
 
@@ -119,7 +121,7 @@ async function loadCoursesAndTermsForCreateDropdown() {
  * Fetches from API and populates both select elements
  */
 async function loadCoursesAndTermsForEditDropdown() {
-  const programSelect = document.getElementById('editOfferingProgramId');
+  const programSelect = document.getElementById("editOfferingProgramId");
 
   if (!programSelect) {
     return;
@@ -130,10 +132,10 @@ async function loadCoursesAndTermsForEditDropdown() {
 
   try {
     // Fetch programs
-    const programsResponse = await fetch('/api/programs');
+    const programsResponse = await fetch("/api/programs");
 
     if (!programsResponse.ok) {
-      throw new Error('Failed to fetch programs');
+      throw new Error("Failed to fetch programs");
     }
 
     const programsData = await programsResponse.json();
@@ -142,18 +144,26 @@ async function loadCoursesAndTermsForEditDropdown() {
     populateSelectOptions(
       programSelect,
       programs,
-      'Select Program',
-      program => program.program_id || program.id,
-      program => program.name || program.program_name,
-      'No programs available'
+      "Select Program",
+      (program) => program.program_id || program.id,
+      (program) => program.name || program.program_name,
+      "No programs available",
     );
   } catch (error) {
-    console.error('Failed to load programs:', error);
-    programSelect.innerHTML = '<option value="">Error loading programs</option>'; // nosemgrep
+    console.error("Failed to load programs:", error);
+    programSelect.innerHTML =
+      '<option value="">Error loading programs</option>'; // nosemgrep
   }
 }
 
-function populateSelectOptions(selectEl, items, placeholderText, getValue, getLabel, emptyText) {
+function populateSelectOptions(
+  selectEl,
+  items,
+  placeholderText,
+  getValue,
+  getLabel,
+  emptyText,
+) {
   selectEl.innerHTML = `<option value="">${placeholderText}</option>`; // nosemgrep
 
   if (!items || items.length === 0) {
@@ -161,8 +171,8 @@ function populateSelectOptions(selectEl, items, placeholderText, getValue, getLa
     return;
   }
 
-  items.forEach(item => {
-    const option = document.createElement('option');
+  items.forEach((item) => {
+    const option = document.createElement("option");
     option.value = getValue(item);
     option.textContent = getLabel(item);
     selectEl.appendChild(option);
@@ -170,18 +180,18 @@ function populateSelectOptions(selectEl, items, placeholderText, getValue, getLa
 }
 
 function setButtonLoading(buttonEl, isLoading) {
-  const btnText = buttonEl.querySelector('.btn-text');
-  const btnSpinner = buttonEl.querySelector('.btn-spinner');
+  const btnText = buttonEl.querySelector(".btn-text");
+  const btnSpinner = buttonEl.querySelector(".btn-spinner");
 
   if (isLoading) {
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
+    btnText.classList.add("d-none");
+    btnSpinner.classList.remove("d-none");
     buttonEl.disabled = true;
     return;
   }
 
-  btnText.classList.remove('d-none');
-  btnSpinner.classList.add('d-none');
+  btnText.classList.remove("d-none");
+  btnSpinner.classList.add("d-none");
   buttonEl.disabled = false;
 }
 
@@ -190,71 +200,74 @@ function setButtonLoading(buttonEl, isLoading) {
  * Sets up form submission for new offerings
  */
 function initializeCreateOfferingModal() {
-  const form = document.getElementById('createOfferingForm');
+  const form = document.getElementById("createOfferingForm");
 
   if (!form) {
     return; // Form not on this page
   }
 
-  form.addEventListener('submit', async e => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const capacityValue = document.getElementById('offeringCapacity').value;
-    const programIdValue = document.getElementById('offeringProgramId').value;
+    const capacityValue = document.getElementById("offeringCapacity").value;
+    const programIdValue = document.getElementById("offeringProgramId").value;
 
     const offeringData = {
-      course_id: document.getElementById('offeringCourseId').value,
-      term_id: document.getElementById('offeringTermId').value,
+      course_id: document.getElementById("offeringCourseId").value,
+      term_id: document.getElementById("offeringTermId").value,
       // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
       program_id: programIdValue || null,
-      status: document.getElementById('offeringStatus').value,
-      capacity: capacityValue ? Number.parseInt(capacityValue) : null
+      status: document.getElementById("offeringStatus").value,
+      capacity: capacityValue ? Number.parseInt(capacityValue) : null,
     };
 
-    const createBtn = document.getElementById('createOfferingBtn');
+    const createBtn = document.getElementById("createOfferingBtn");
     setButtonLoading(createBtn, true);
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
-      const response = await fetch('/api/offerings', {
-        method: 'POST',
+      const response = await fetch("/api/offerings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRFToken': csrfToken })
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
         },
-        body: JSON.stringify(offeringData)
+        body: JSON.stringify(offeringData),
       });
 
       if (response.ok) {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modalEl = document.getElementById('createOfferingModal');
+        const modalEl = document.getElementById("createOfferingModal");
         if (modalEl && bootstrap?.Modal) {
           const modal =
-            typeof bootstrap.Modal.getOrCreateInstance === 'function'
+            typeof bootstrap.Modal.getOrCreateInstance === "function"
               ? bootstrap.Modal.getOrCreateInstance(modalEl)
-              : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+              : bootstrap.Modal.getInstance(modalEl) ||
+                new bootstrap.Modal(modalEl);
           modal.hide();
         }
 
         form.reset();
 
-        alert(result.message || 'Offering created successfully!');
+        alert(result.message || "Offering created successfully!");
 
         // Reload offerings list if function exists
-        if (typeof globalThis.loadOfferings === 'function') {
+        if (typeof globalThis.loadOfferings === "function") {
           globalThis.loadOfferings();
         }
       } else {
         const error = await response.json();
-        alert(`Failed to create offering: ${error.error || 'Unknown error'}`);
+        alert(`Failed to create offering: ${error.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error creating offering:', error);
-      alert('Failed to create offering. Please check your connection and try again.');
+      console.error("Error creating offering:", error);
+      alert(
+        "Failed to create offering. Please check your connection and try again.",
+      );
     } finally {
       setButtonLoading(createBtn, false);
     }
@@ -266,22 +279,22 @@ function initializeCreateOfferingModal() {
  * Sets up form submission for updating offerings
  */
 function initializeEditOfferingModal() {
-  const form = document.getElementById('editOfferingForm');
+  const form = document.getElementById("editOfferingForm");
 
   if (!form) {
     return; // Form not on this page
   }
 
-  form.addEventListener('submit', async function (e) {
+  form.addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const offeringId = document.getElementById('editOfferingId').value;
-    const capacityValue = document.getElementById('editOfferingCapacity').value;
+    const offeringId = document.getElementById("editOfferingId").value;
+    const capacityValue = document.getElementById("editOfferingCapacity").value;
 
     const updateData = {
-      program_id: document.getElementById('editOfferingProgramId').value,
-      status: document.getElementById('editOfferingStatus').value,
-      capacity: capacityValue ? Number.parseInt(capacityValue) : null
+      program_id: document.getElementById("editOfferingProgramId").value,
+      status: document.getElementById("editOfferingStatus").value,
+      capacity: capacityValue ? Number.parseInt(capacityValue) : null,
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -292,36 +305,40 @@ function initializeEditOfferingModal() {
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/offerings/${offeringId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRFToken': csrfToken })
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData),
       });
 
       if (response.ok) {
         const result = await response.json();
 
         // Success - close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editOfferingModal'));
+        const modal = bootstrap.Modal.getInstance(
+          document.getElementById("editOfferingModal"),
+        );
         if (modal) {
           modal.hide();
         }
 
-        alert(result.message || 'Offering updated successfully!');
+        alert(result.message || "Offering updated successfully!");
 
         // Reload offerings list
-        if (typeof globalThis.loadOfferings === 'function') {
+        if (typeof globalThis.loadOfferings === "function") {
           globalThis.loadOfferings();
         }
       } else {
         const error = await response.json();
-        alert(`Failed to update offering: ${error.error || 'Unknown error'}`);
+        alert(`Failed to update offering: ${error.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error updating offering:', error);
-      alert('Failed to update offering. Please check your connection and try again.');
+      console.error("Error updating offering:", error);
+      alert(
+        "Failed to update offering. Please check your connection and try again.",
+      );
     } finally {
       setButtonLoading(saveBtn, false);
     }
@@ -333,17 +350,20 @@ function initializeEditOfferingModal() {
  * Called from offering list when Edit button is clicked
  */
 function openEditOfferingModal(offeringId, offeringData) {
-  document.getElementById('editOfferingId').value = offeringId;
-  document.getElementById('editOfferingStatus').value = offeringData.status || 'active';
-  document.getElementById('editOfferingCapacity').value = offeringData.capacity || '';
+  document.getElementById("editOfferingId").value = offeringId;
+  document.getElementById("editOfferingStatus").value =
+    offeringData.status || "active";
+  document.getElementById("editOfferingCapacity").value =
+    offeringData.capacity || "";
 
   // Set display-only fields (Course/Term are immutable)
-  document.getElementById('editOfferingCourse').value =
-    offeringData.course_name || offeringData.course_title || '';
-  document.getElementById('editOfferingTerm').value = offeringData.term_name || '';
+  document.getElementById("editOfferingCourse").value =
+    offeringData.course_name || offeringData.course_title || "";
+  document.getElementById("editOfferingTerm").value =
+    offeringData.term_name || "";
 
   // Set program (will be populated by loadCoursesAndTermsForEditDropdown)
-  const programSelect = document.getElementById('editOfferingProgramId');
+  const programSelect = document.getElementById("editOfferingProgramId");
   if (programSelect && offeringData.program_id) {
     // Wait a bit for dropdown to populate, then select
     setTimeout(() => {
@@ -351,7 +371,9 @@ function openEditOfferingModal(offeringId, offeringData) {
     }, 500); // Increased timeout to ensure fetch completes
   }
 
-  const modal = new bootstrap.Modal(document.getElementById('editOfferingModal'));
+  const modal = new bootstrap.Modal(
+    document.getElementById("editOfferingModal"),
+  );
   modal.show();
 }
 
@@ -362,10 +384,13 @@ function openEditOfferingModal(offeringId, offeringData) {
 function handleEditOfferingClick(button) {
   try {
     const offeringData = JSON.parse(button.dataset.offering);
-    openEditOfferingModal(offeringData.offering_id || offeringData.id, offeringData);
+    openEditOfferingModal(
+      offeringData.offering_id || offeringData.id,
+      offeringData,
+    );
   } catch (error) {
-    console.error('Error parsing offering data:', error);
-    alert('An error occurred. Please try refreshing the page.');
+    console.error("Error parsing offering data:", error);
+    alert("An error occurred. Please try refreshing the page.");
   }
 }
 
@@ -376,7 +401,7 @@ function handleEditOfferingClick(button) {
 async function deleteOffering(offeringId, courseName, termName) {
   const confirmation = confirm(
     `Are you sure you want to delete the offering for ${courseName} in ${termName}?\n\n` +
-      'This action cannot be undone. All sections for this offering will be deleted.'
+      "This action cannot be undone. All sections for this offering will be deleted.",
   );
 
   if (!confirmation) {
@@ -384,29 +409,31 @@ async function deleteOffering(offeringId, courseName, termName) {
   }
 
   try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
 
     const response = await fetch(`/api/offerings/${offeringId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json',
-        ...(csrfToken && { 'X-CSRFToken': csrfToken })
-      }
+        "Content-Type": "application/json",
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
+      },
     });
 
     if (response.ok) {
       alert(`Offering for ${courseName} in ${termName} deleted successfully.`);
 
-      if (typeof globalThis.loadOfferings === 'function') {
+      if (typeof globalThis.loadOfferings === "function") {
         globalThis.loadOfferings();
       }
     } else {
       const error = await response.json();
-      alert(`Failed to delete offering: ${error.error || 'Unknown error'}`);
+      alert(`Failed to delete offering: ${error.error || "Unknown error"}`);
     }
   } catch (error) {
-    console.error('Error deleting offering:', error);
-    alert('Failed to delete offering. Please try again.');
+    console.error("Error deleting offering:", error);
+    alert("Failed to delete offering. Please try again.");
   }
 }
 
@@ -414,7 +441,7 @@ async function deleteOffering(offeringId, courseName, termName) {
  * Load and display offerings in the container
  */
 async function loadOfferings() {
-  const container = document.getElementById('offeringsTableContainer');
+  const container = document.getElementById("offeringsTableContainer");
   if (!container) return; // Not on listings page
 
   // nosemgrep
@@ -427,9 +454,9 @@ async function loadOfferings() {
     `;
 
   try {
-    const response = await fetch('/api/offerings');
+    const response = await fetch("/api/offerings");
     if (!response.ok) {
-      throw new Error('Failed to load offerings');
+      throw new Error("Failed to load offerings");
     }
     const data = await response.json();
 
@@ -463,17 +490,22 @@ async function loadOfferings() {
             <tbody>
       `;
 
-    offerings.forEach(offering => {
+    offerings.forEach((offering) => {
       const courseName =
-        offering.course_name || offering.course_title || offering.course_number || 'Unknown Course';
-      const termName = offering.term_name || offering.term || 'Unknown Term';
+        offering.course_name ||
+        offering.course_title ||
+        offering.course_number ||
+        "Unknown Course";
+      const termName = offering.term_name || offering.term || "Unknown Term";
       const statusBadge =
-        offering.status === 'active'
+        offering.status === "active"
           ? '<span class="badge bg-success">Active</span>'
           : `<span class="badge bg-secondary">${offering.status}</span>`;
 
       // Safe JSON stringify for the edit button
-      const offeringJson = JSON.stringify(offering).replace(/'/g, '&apos;').replace(/"/g, '&quot;');
+      const offeringJson = JSON.stringify(offering)
+        .replace(/'/g, "&apos;")
+        .replace(/"/g, "&quot;");
 
       html += `
           <tr>
@@ -497,10 +529,10 @@ async function loadOfferings() {
         `;
     });
 
-    html += '</tbody></table></div>';
+    html += "</tbody></table></div>";
     container.innerHTML = html; // nosemgrep
   } catch (error) {
-    console.error('Error loading offerings:', error);
+    console.error("Error loading offerings:", error);
     // nosemgrep
     container.innerHTML = `
         <div class="alert alert-danger">
@@ -516,21 +548,23 @@ globalThis.openEditOfferingModal = openEditOfferingModal;
 globalThis.deleteOffering = deleteOffering;
 globalThis.loadOfferings = loadOfferings;
 globalThis.openCreateOfferingModal = () => {
-  const modal = new bootstrap.Modal(document.getElementById('createOfferingModal'));
+  const modal = new bootstrap.Modal(
+    document.getElementById("createOfferingModal"),
+  );
   modal.show();
 };
 
 // Initialize when DOM is ready
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initOfferingManagement);
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initOfferingManagement);
   } else {
     initOfferingManagement();
   }
 }
 
 // Expose on window as well for test environment
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   window.openEditOfferingModal = openEditOfferingModal;
   window.handleEditOfferingClick = handleEditOfferingClick;
   window.deleteOffering = deleteOffering;
@@ -538,11 +572,11 @@ if (typeof window !== 'undefined') {
 }
 
 // Export for testing
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     initOfferingManagement,
     openEditOfferingModal,
     deleteOffering,
-    loadOfferings
+    loadOfferings,
   };
 }

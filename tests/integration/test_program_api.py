@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 from tests.test_utils import CommonAuthMixin
 
 
@@ -26,8 +26,8 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
     def test_list_programs_integration(self, mock_get_programs, mock_get_institution):
         """Test program listing endpoint integration"""
         mock_get_institution.return_value = "test-institution"
@@ -57,9 +57,9 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert len(data["programs"]) == 2
         assert data["programs"][0]["name"] == "Computer Science"
 
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_current_user")
-    @patch("api_routes.create_program")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_current_user")
+    @patch("src.api_routes.create_program")
     def test_create_program_integration(
         self, mock_create, mock_get_user, mock_get_institution
     ):
@@ -83,7 +83,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["program_id"] == "new-program-id"
         assert data["message"] == "Program created successfully"
 
-    @patch("api_routes.get_program_by_id")
+    @patch("src.api_routes.get_program_by_id")
     def test_get_program_integration(self, mock_get_program):
         """Test program retrieval endpoint integration"""
         mock_get_program.return_value = {
@@ -103,7 +103,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["program"]["name"] == "Computer Science"
         assert data["program"]["short_name"] == "CS"
 
-    @patch("api_routes.get_program_by_id")
+    @patch("src.api_routes.get_program_by_id")
     def test_get_program_not_found_integration(self, mock_get_program):
         """Test program retrieval when program doesn't exist"""
         mock_get_program.return_value = None
@@ -116,8 +116,8 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert data["error"] == "Program not found"
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.update_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.update_program")
     def test_update_program_integration(self, mock_update, mock_get_program):
         """Test program update endpoint integration"""
         mock_get_program.return_value = {
@@ -140,10 +140,10 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is True
         assert data["message"] == "Program updated successfully"
 
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_programs_by_institution")
-    @patch("api_routes.delete_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api_routes.delete_program")
     def test_delete_program_integration(
         self, mock_delete, mock_get_programs, mock_get_institution, mock_get_program
     ):
@@ -169,7 +169,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert data["success"] is True
         assert data["message"] == "Program deleted successfully and courses reassigned"
 
-    @patch("api_routes.get_program_by_id")
+    @patch("src.api_routes.get_program_by_id")
     def test_delete_default_program_prevented_integration(self, mock_get_program):
         """Test that default program deletion is prevented"""
         mock_get_program.return_value = {
@@ -210,7 +210,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         assert response.status_code == 400
         # The error is handled by the exception handler, so we get a generic error response
 
-    @patch("api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_current_institution_id")
     def test_list_programs_no_institution_integration(self, mock_get_institution):
         """Test program listing when no institution context available - should return system-wide programs for site admin"""
         mock_get_institution.return_value = None
@@ -235,13 +235,13 @@ class TestProgramWorkflow(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("api_routes.get_current_institution_id")
-    @patch("api_routes.get_current_user")
-    @patch("api_routes.create_program")
-    @patch("api_routes.get_program_by_id")
-    @patch("api_routes.update_program")
-    @patch("api_routes.get_programs_by_institution")
-    @patch("api_routes.delete_program")
+    @patch("src.api_routes.get_current_institution_id")
+    @patch("src.api_routes.get_current_user")
+    @patch("src.api_routes.create_program")
+    @patch("src.api_routes.get_program_by_id")
+    @patch("src.api_routes.update_program")
+    @patch("src.api_routes.get_programs_by_institution")
+    @patch("src.api_routes.delete_program")
     def test_complete_program_lifecycle(
         self,
         mock_delete,

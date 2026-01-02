@@ -12,7 +12,12 @@
  * @param {Function} mapFn - Function to map API data to {value, label} objects
  * @param {string} emptyText - Text to show when no options available
  */
-async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No options available') {
+async function loadSelectOptions(
+  selectId,
+  apiEndpoint,
+  mapFn,
+  emptyText = "No options available",
+) {
   const select = document.getElementById(selectId);
   if (!select) return;
 
@@ -21,11 +26,11 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
 
   try {
     const response = await fetch(apiEndpoint, {
-      credentials: 'include',
+      credentials: "include",
       headers: {
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
-      }
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
     });
 
     if (!response.ok) {
@@ -35,7 +40,7 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to load data');
+      throw new Error(data.error || "Failed to load data");
     }
 
     // Get the array from the response (might be in different keys)
@@ -47,7 +52,9 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
       const options = items.map(mapFn);
       select.innerHTML = // nosemgrep
         '<option value="">-- Select --</option>' +
-        options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+        options
+          .map((opt) => `<option value="${opt.value}">${opt.label}</option>`)
+          .join("");
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -69,18 +76,18 @@ async function loadSelectOptions(selectId, apiEndpoint, mapFn, emptyText = 'No o
  * @param {Function} config.onError - Optional error callback
  */
 async function submitCRUDForm(config) {
-  const { endpoint, method = 'POST', data, onSuccess, onError = null } = config;
+  const { endpoint, method = "POST", data, onSuccess, onError = null } = config;
 
   try {
     const response = await fetch(endpoint, {
       method,
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCSRFToken(),
-        'X-Requested-With': 'XMLHttpRequest'
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken(),
+        "X-Requested-With": "XMLHttpRequest",
       },
-      credentials: 'include',
-      body: JSON.stringify(data)
+      credentials: "include",
+      body: JSON.stringify(data),
     });
 
     const result = await response.json();
@@ -90,7 +97,7 @@ async function submitCRUDForm(config) {
     } else if (onError) {
       onError(response, result);
     } else {
-      showError(result.error || 'Operation failed. Please try again.');
+      showError(result.error || "Operation failed. Please try again.");
     }
   } catch (error) {
     // eslint-disable-next-line no-console
@@ -98,7 +105,7 @@ async function submitCRUDForm(config) {
     if (onError) {
       onError(null, { error: error.message });
     } else {
-      showError('Network error. Please try again.');
+      showError("Network error. Please try again.");
     }
   }
 }
@@ -111,12 +118,12 @@ function getCSRFToken() {
   // Try meta tag first
   const meta = document.querySelector('meta[name="csrf-token"]');
   if (meta) {
-    return meta.getAttribute('content');
+    return meta.getAttribute("content");
   }
 
   // Fallback to cookie
   const match = document.cookie.match(/csrf_token=([^;]+)/);
-  return match ? match[1] : '';
+  return match ? match[1] : "";
 }
 
 /**
@@ -125,8 +132,8 @@ function getCSRFToken() {
  */
 function showSuccess(message) {
   // Try to use existing showMessage if available
-  if (typeof globalThis.showMessage === 'function') {
-    globalThis.showMessage(message, 'success');
+  if (typeof globalThis.showMessage === "function") {
+    globalThis.showMessage(message, "success");
     return;
   }
 
@@ -141,8 +148,8 @@ function showSuccess(message) {
  */
 function showError(message) {
   // Try to use existing showMessage if available
-  if (typeof globalThis.showMessage === 'function') {
-    globalThis.showMessage(message, 'danger');
+  if (typeof globalThis.showMessage === "function") {
+    globalThis.showMessage(message, "danger");
     return;
   }
 
@@ -158,7 +165,7 @@ function showError(message) {
  * Common pattern after create/update/delete operations
  */
 function reloadDataTable() {
-  if (typeof globalThis.loadTableData === 'function') {
+  if (typeof globalThis.loadTableData === "function") {
     globalThis.loadTableData();
   } else {
     // Fallback to page reload
@@ -172,7 +179,7 @@ function reloadDataTable() {
  */
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal && typeof bootstrap !== 'undefined') {
+  if (modal && typeof bootstrap !== "undefined") {
     const bsModal = bootstrap.Modal.getInstance(modal);
     if (bsModal) {
       bsModal.hide();
@@ -189,14 +196,18 @@ function resetForm(formId) {
   if (form) {
     form.reset();
     // Clear Bootstrap validation classes
-    form.classList.remove('was-validated');
-    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
-    form.querySelectorAll('.is-valid').forEach(el => el.classList.remove('is-valid'));
+    form.classList.remove("was-validated");
+    form
+      .querySelectorAll(".is-invalid")
+      .forEach((el) => el.classList.remove("is-invalid"));
+    form
+      .querySelectorAll(".is-valid")
+      .forEach((el) => el.classList.remove("is-valid"));
   }
 }
 
 // Export functions for ES6 modules or global access
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     loadSelectOptions,
     submitCRUDForm,
@@ -205,7 +216,7 @@ if (typeof module !== 'undefined' && module.exports) {
     showError,
     reloadDataTable,
     closeModal,
-    resetForm
+    resetForm,
   };
 } else {
   // Expose to global scope for browser environments
@@ -217,6 +228,6 @@ if (typeof module !== 'undefined' && module.exports) {
     showError,
     reloadDataTable,
     closeModal,
-    resetForm
+    resetForm,
   };
 }

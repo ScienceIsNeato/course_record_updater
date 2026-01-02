@@ -11,7 +11,7 @@
 let currentTerms = []; // Global state to store terms for edit access
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   initializeCreateTermModal();
   initializeEditTermModal();
 });
@@ -51,10 +51,10 @@ function parseTermDates(start, end, due) {
 
 function getTermDateErrorMessage({ startDate, endDate, dueDate }) {
   if (endDate <= startDate) {
-    return 'End date must be after start date.';
+    return "End date must be after start date.";
   }
   if (dueDate && dueDate <= startDate) {
-    return 'Assessment due date must be after start date.';
+    return "Assessment due date must be after start date.";
   }
   return null;
 }
@@ -88,20 +88,21 @@ function getTermDateWarningMessage({ startDate, endDate, dueDate }) {
  * Sets up form submission for new terms
  */
 function initializeCreateTermModal() {
-  const form = document.getElementById('createTermForm');
+  const form = document.getElementById("createTermForm");
 
   if (!form) {
     return; // Form not on this page
   }
 
-  form.addEventListener('submit', async e => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const name = document.getElementById('termName').value;
-    const startDate = document.getElementById('termStartDate').value;
-    const endDate = document.getElementById('termEndDate').value;
-    const assessmentDueDate = document.getElementById('termAssessmentDueDate')?.value || '';
-    const active = document.getElementById('termActive').checked;
+    const name = document.getElementById("termName").value;
+    const startDate = document.getElementById("termStartDate").value;
+    const endDate = document.getElementById("termEndDate").value;
+    const assessmentDueDate =
+      document.getElementById("termAssessmentDueDate")?.value || "";
+    const active = document.getElementById("termActive").checked;
 
     // Validate dates
     if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
@@ -113,59 +114,63 @@ function initializeCreateTermModal() {
       start_date: startDate,
       end_date: endDate,
       assessment_due_date: assessmentDueDate,
-      active
+      active,
     };
 
-    const createBtn = document.getElementById('createTermBtn');
-    const btnText = createBtn.querySelector('.btn-text');
-    const btnSpinner = createBtn.querySelector('.btn-spinner');
+    const createBtn = document.getElementById("createTermBtn");
+    const btnText = createBtn.querySelector(".btn-text");
+    const btnSpinner = createBtn.querySelector(".btn-spinner");
 
     // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
+    btnText.classList.add("d-none");
+    btnSpinner.classList.remove("d-none");
     createBtn.disabled = true;
 
     try {
       const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
-      const response = await fetch('/api/terms', {
-        method: 'POST',
+      const response = await fetch("/api/terms", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRFToken': csrfToken })
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
         },
-        body: JSON.stringify(termData)
+        body: JSON.stringify(termData),
       });
 
       if (response.ok) {
         const result = await response.json();
 
         // Success - close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createTermModal'));
+        const modal = bootstrap.Modal.getInstance(
+          document.getElementById("createTermModal"),
+        );
         if (modal) {
           modal.hide();
         }
 
         form.reset();
 
-        alert(result.message || 'Term created successfully!');
+        alert(result.message || "Term created successfully!");
 
         // Reload terms list if function exists
-        if (typeof globalThis.loadTerms === 'function') {
+        if (typeof globalThis.loadTerms === "function") {
           globalThis.loadTerms();
         }
       } else {
         const error = await response.json();
-        alert(`Failed to create term: ${error.error || 'Unknown error'}`);
+        alert(`Failed to create term: ${error.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error creating term:', error); // eslint-disable-line no-console
-      alert('Failed to create term. Please check your connection and try again.');
+      console.error("Error creating term:", error); // eslint-disable-line no-console
+      alert(
+        "Failed to create term. Please check your connection and try again.",
+      );
     } finally {
       // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
+      btnText.classList.remove("d-none");
+      btnSpinner.classList.add("d-none");
       createBtn.disabled = false;
     }
   });
@@ -176,21 +181,22 @@ function initializeCreateTermModal() {
  * Sets up form submission for updating terms
  */
 function initializeEditTermModal() {
-  const form = document.getElementById('editTermForm');
+  const form = document.getElementById("editTermForm");
 
   if (!form) {
     return; // Form not on this page
   }
 
-  form.addEventListener('submit', async function (e) {
+  form.addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const termId = document.getElementById('editTermId').value;
-    const name = document.getElementById('editTermName').value;
-    const startDate = document.getElementById('editTermStartDate').value;
-    const endDate = document.getElementById('editTermEndDate').value;
-    const assessmentDueDate = document.getElementById('editTermAssessmentDueDate')?.value || '';
-    const active = document.getElementById('editTermActive').checked;
+    const termId = document.getElementById("editTermId").value;
+    const name = document.getElementById("editTermName").value;
+    const startDate = document.getElementById("editTermStartDate").value;
+    const endDate = document.getElementById("editTermEndDate").value;
+    const assessmentDueDate =
+      document.getElementById("editTermAssessmentDueDate")?.value || "";
+    const active = document.getElementById("editTermActive").checked;
 
     // Validate dates
     if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
@@ -202,16 +208,16 @@ function initializeEditTermModal() {
       start_date: startDate,
       end_date: endDate,
       assessment_due_date: assessmentDueDate,
-      active
+      active,
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
-    const btnText = saveBtn.querySelector('.btn-text');
-    const btnSpinner = saveBtn.querySelector('.btn-spinner');
+    const btnText = saveBtn.querySelector(".btn-text");
+    const btnSpinner = saveBtn.querySelector(".btn-spinner");
 
     // Show loading state
-    btnText.classList.add('d-none');
-    btnSpinner.classList.remove('d-none');
+    btnText.classList.add("d-none");
+    btnSpinner.classList.remove("d-none");
     saveBtn.disabled = true;
 
     try {
@@ -219,40 +225,44 @@ function initializeEditTermModal() {
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       const response = await fetch(`/api/terms/${termId}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRFToken': csrfToken })
+          "Content-Type": "application/json",
+          ...(csrfToken && { "X-CSRFToken": csrfToken }),
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData),
       });
 
       if (response.ok) {
         const result = await response.json();
 
         // Success - close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('editTermModal'));
+        const modal = bootstrap.Modal.getInstance(
+          document.getElementById("editTermModal"),
+        );
         if (modal) {
           modal.hide();
         }
 
-        alert(result.message || 'Term updated successfully!');
+        alert(result.message || "Term updated successfully!");
 
         // Reload terms list
-        if (typeof globalThis.loadTerms === 'function') {
+        if (typeof globalThis.loadTerms === "function") {
           globalThis.loadTerms();
         }
       } else {
         const error = await response.json();
-        alert(`Failed to update term: ${error.error || 'Unknown error'}`);
+        alert(`Failed to update term: ${error.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error('Error updating term:', error); // eslint-disable-line no-console
-      alert('Failed to update term. Please check your connection and try again.');
+      console.error("Error updating term:", error); // eslint-disable-line no-console
+      alert(
+        "Failed to update term. Please check your connection and try again.",
+      );
     } finally {
       // Restore button state
-      btnText.classList.remove('d-none');
-      btnSpinner.classList.add('d-none');
+      btnText.classList.remove("d-none");
+      btnSpinner.classList.add("d-none");
       saveBtn.disabled = false;
     }
   });
@@ -265,27 +275,31 @@ function initializeEditTermModal() {
  */
 function openEditTermModal(termId, termDataOverride) {
   // Use override if provided (for tests), otherwise find in currentTerms
-  const termData = termDataOverride || currentTerms.find(t => (t.term_id || t.id) === termId);
+  const termData =
+    termDataOverride ||
+    currentTerms.find((t) => (t.term_id || t.id) === termId);
 
   if (!termData) {
-    console.error('Term not found:', termId); // eslint-disable-line no-console
+    console.error("Term not found:", termId); // eslint-disable-line no-console
     return;
   }
 
-  document.getElementById('editTermId').value = termId;
-  document.getElementById('editTermName').value = termData.term_name || termData.name || '';
-  document.getElementById('editTermStartDate').value = termData.start_date || '';
-  document.getElementById('editTermEndDate').value = termData.end_date || '';
+  document.getElementById("editTermId").value = termId;
+  document.getElementById("editTermName").value =
+    termData.term_name || termData.name || "";
+  document.getElementById("editTermStartDate").value =
+    termData.start_date || "";
+  document.getElementById("editTermEndDate").value = termData.end_date || "";
 
-  const dueDateInput = document.getElementById('editTermAssessmentDueDate');
+  const dueDateInput = document.getElementById("editTermAssessmentDueDate");
   if (dueDateInput) {
-    dueDateInput.value = termData.assessment_due_date || '';
+    dueDateInput.value = termData.assessment_due_date || "";
   }
 
-  document.getElementById('editTermActive').checked =
+  document.getElementById("editTermActive").checked =
     termData.active !== undefined ? termData.active : true;
 
-  const modal = new bootstrap.Modal(document.getElementById('editTermModal'));
+  const modal = new bootstrap.Modal(document.getElementById("editTermModal"));
   modal.show();
 }
 
@@ -296,7 +310,7 @@ function openEditTermModal(termId, termDataOverride) {
 async function deleteTerm(termId, termName) {
   const confirmation = confirm(
     `Are you sure you want to delete "${termName}"?\n\n` +
-      'This action cannot be undone. All course offerings in this term will be deleted.'
+      "This action cannot be undone. All course offerings in this term will be deleted.",
   );
 
   if (!confirmation) {
@@ -304,29 +318,31 @@ async function deleteTerm(termId, termName) {
   }
 
   try {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    const csrfToken = document.querySelector(
+      'meta[name="csrf-token"]',
+    )?.content;
 
     const response = await fetch(`/api/terms/${termId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json',
-        ...(csrfToken && { 'X-CSRFToken': csrfToken })
-      }
+        "Content-Type": "application/json",
+        ...(csrfToken && { "X-CSRFToken": csrfToken }),
+      },
     });
 
     if (response.ok) {
       alert(`${termName} deleted successfully.`);
 
-      if (typeof globalThis.loadTerms === 'function') {
+      if (typeof globalThis.loadTerms === "function") {
         globalThis.loadTerms();
       }
     } else {
       const error = await response.json();
-      alert(`Failed to delete term: ${error.error || 'Unknown error'}`);
+      alert(`Failed to delete term: ${error.error || "Unknown error"}`);
     }
   } catch (error) {
-    console.error('Error deleting term:', error); // eslint-disable-line no-console
-    alert('Failed to delete term. Please try again.');
+    console.error("Error deleting term:", error); // eslint-disable-line no-console
+    alert("Failed to delete term. Please try again.");
   }
 }
 
@@ -334,7 +350,7 @@ async function deleteTerm(termId, termName) {
  * Load and display all terms in a table
  */
 async function loadTerms() {
-  const container = document.getElementById('termsTableContainer');
+  const container = document.getElementById("termsTableContainer");
   // nosemgrep
   container.innerHTML = `
     <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
@@ -345,18 +361,18 @@ async function loadTerms() {
   `;
 
   try {
-    const response = await fetch('/api/terms', {
-      headers: { Accept: 'application/json' }
+    const response = await fetch("/api/terms", {
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to load terms');
+      throw new Error("Failed to load terms");
     }
 
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to load terms');
+      throw new Error(data.error || "Failed to load terms");
     }
 
     // Update global state
@@ -390,13 +406,13 @@ async function loadTerms() {
           <tbody>
     `;
 
-    currentTerms.forEach(term => {
+    currentTerms.forEach((term) => {
       const statusBadge = term.active
         ? '<span class="badge bg-success">Active</span>'
         : '<span class="badge bg-secondary">Inactive</span>';
       const offeringsCount = term.offerings_count || 0;
       const termId = term.term_id || term.id;
-      const termName = escapeHtml(term.term_name || term.name || '-');
+      const termName = escapeHtml(term.term_name || term.name || "-");
 
       // Note: passing just the ID to openEditTermModal now
       html += `
@@ -426,7 +442,7 @@ async function loadTerms() {
 
     container.innerHTML = html; // nosemgrep
   } catch (error) {
-    console.error('Error loading terms:', error); // eslint-disable-line no-console
+    console.error("Error loading terms:", error); // eslint-disable-line no-console
     // nosemgrep
     container.innerHTML = `
       <div class="alert alert-danger">
@@ -441,7 +457,7 @@ async function loadTerms() {
  * Open create term modal
  */
 function openCreateTermModal() {
-  const modal = new bootstrap.Modal(document.getElementById('createTermModal'));
+  const modal = new bootstrap.Modal(document.getElementById("createTermModal"));
   modal.show();
 }
 
@@ -449,10 +465,14 @@ function openCreateTermModal() {
  * Format date for display
  */
 function formatDate(dateString) {
-  if (!dateString) return '-';
+  if (!dateString) return "-";
   try {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   } catch {
     return dateString;
   }
@@ -462,8 +482,8 @@ function formatDate(dateString) {
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
+  if (!text) return "";
+  const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }

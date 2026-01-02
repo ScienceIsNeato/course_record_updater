@@ -9,7 +9,7 @@ const Logger = {
     ERROR: 0,
     WARN: 1,
     INFO: 2,
-    DEBUG: 3
+    DEBUG: 3,
   },
 
   // Current log level (can be set via environment or config)
@@ -85,12 +85,12 @@ const Logger = {
    */
   setLevel: function (level) {
     this.currentLevel = level;
-  }
+  },
 };
 
 // Make logger available globally
 globalThis.Logger = Logger;
 
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = Logger;
 }

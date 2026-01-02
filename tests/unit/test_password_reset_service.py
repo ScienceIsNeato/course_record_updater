@@ -18,9 +18,9 @@ from src.services.password_service import PasswordValidationError
 class TestPasswordResetServiceRequest:
     """Test password reset request functionality"""
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_request_password_reset_success(
         self, mock_db, mock_password_service, mock_email_service
     ):
@@ -55,8 +55,8 @@ class TestPasswordResetServiceRequest:
         mock_db.update_user.assert_called_once()
         mock_email_service.send_password_reset_email.assert_called_once()
 
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_request_password_reset_nonexistent_user(
         self, mock_db, mock_password_service
     ):
@@ -72,8 +72,8 @@ class TestPasswordResetServiceRequest:
         assert result["request_success"] is True
         assert "If an account with this email exists" in result["message"]
 
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_request_password_reset_pending_account(
         self, mock_db, mock_password_service
     ):
@@ -90,7 +90,7 @@ class TestPasswordResetServiceRequest:
         with pytest.raises(PasswordResetError, match="Account is pending activation"):
             PasswordResetService.request_password_reset("test@example.com")
 
-    @patch("password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.PasswordService")
     def test_request_password_reset_rate_limit_exceeded(self, mock_password_service):
         """Test password reset request when rate limit exceeded"""
         # Setup
@@ -104,9 +104,9 @@ class TestPasswordResetServiceRequest:
         ):
             PasswordResetService.request_password_reset("test@example.com")
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_request_password_reset_email_service_error(
         self, mock_db, mock_password_service, mock_email_service
     ):
@@ -131,10 +131,12 @@ class TestPasswordResetServiceRequest:
         with pytest.raises(PasswordResetError, match="Email sending is restricted"):
             PasswordResetService.request_password_reset("test@mocku.test")
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
-    @patch("password_reset_service.PasswordResetService._check_reset_rate_limit")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
+    @patch(
+        "src.services.password_reset_service.PasswordResetService._check_reset_rate_limit"
+    )
     def test_request_password_reset_suspended_account(
         self, mock_rate_limit, mock_db, mock_password_service, mock_email_service
     ):
@@ -157,10 +159,12 @@ class TestPasswordResetServiceRequest:
         mock_password_service.generate_password_reset_token.assert_not_called()
         mock_email_service.send_password_reset_email.assert_not_called()
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
-    @patch("password_reset_service.PasswordResetService._check_reset_rate_limit")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
+    @patch(
+        "src.services.password_reset_service.PasswordResetService._check_reset_rate_limit"
+    )
     def test_request_password_reset_deactivated_account(
         self, mock_rate_limit, mock_db, mock_password_service, mock_email_service
     ):
@@ -183,10 +187,12 @@ class TestPasswordResetServiceRequest:
         mock_password_service.generate_password_reset_token.assert_not_called()
         mock_email_service.send_password_reset_email.assert_not_called()
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
-    @patch("password_reset_service.PasswordResetService._check_reset_rate_limit")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
+    @patch(
+        "src.services.password_reset_service.PasswordResetService._check_reset_rate_limit"
+    )
     def test_request_password_reset_unknown_account_status(
         self, mock_rate_limit, mock_db, mock_password_service, mock_email_service
     ):
@@ -213,9 +219,9 @@ class TestPasswordResetServiceRequest:
 class TestPasswordResetServiceReset:
     """Test password reset completion functionality"""
 
-    @patch("password_reset_service.EmailService")
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.EmailService")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_reset_password_success(
         self, mock_db, mock_password_service, mock_email_service
     ):
@@ -258,7 +264,7 @@ class TestPasswordResetServiceReset:
             "test@example.com"
         )
 
-    @patch("password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.PasswordService")
     def test_reset_password_invalid_token(self, mock_password_service):
         """Test password reset with invalid token"""
         # Setup
@@ -266,7 +272,7 @@ class TestPasswordResetServiceReset:
 
         # Execute & Verify
         with patch(
-            "password_reset_service.PasswordResetService._get_user_by_reset_token"
+            "src.services.password_reset_service.PasswordResetService._get_user_by_reset_token"
         ) as mock_get_user:
             mock_get_user.return_value = None
 
@@ -275,8 +281,8 @@ class TestPasswordResetServiceReset:
             ):
                 PasswordResetService.reset_password("invalid-token", "NewPassword123!")
 
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_reset_password_expired_token(self, mock_db, mock_password_service):
         """Test password reset with expired token"""
         # Setup
@@ -296,7 +302,7 @@ class TestPasswordResetServiceReset:
         with pytest.raises(PasswordResetError, match="Reset token has expired"):
             PasswordResetService.reset_password("expired-token", "NewPassword123!")
 
-    @patch("password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.PasswordService")
     def test_reset_password_weak_password(self, mock_password_service):
         """Test password reset with weak password"""
         # Setup
@@ -312,8 +318,8 @@ class TestPasswordResetServiceReset:
 class TestPasswordResetServiceValidation:
     """Test token validation functionality"""
 
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_validate_reset_token_valid(self, mock_db, mock_password_service):
         """Test validation of valid reset token"""
         # Setup
@@ -336,7 +342,7 @@ class TestPasswordResetServiceValidation:
         assert result["email"] == "test@example.com"
         assert result["message"] == "Reset token is valid."
 
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.db")
     def test_validate_reset_token_invalid(self, mock_db):
         """Test validation of invalid reset token"""
         # Setup
@@ -353,8 +359,8 @@ class TestPasswordResetServiceValidation:
 class TestPasswordResetServiceStatus:
     """Test reset status functionality"""
 
-    @patch("password_reset_service.PasswordService")
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.db")
     def test_get_reset_status_pending(self, mock_db, mock_password_service):
         """Test getting reset status when reset is pending"""
         # Setup
@@ -376,7 +382,7 @@ class TestPasswordResetServiceStatus:
         assert result["has_pending_reset"] is True
         assert result["expires_at"] == "2024-12-31T23:59:59"
 
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.db")
     def test_get_reset_status_no_user(self, mock_db):
         """Test getting reset status when user doesn't exist"""
         # Setup
@@ -389,7 +395,7 @@ class TestPasswordResetServiceStatus:
         assert result["has_pending_reset"] is False
         assert "No user found" in result["message"]
 
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.db")
     def test_get_reset_status_no_pending_reset(self, mock_db):
         """Test getting reset status when no reset is pending"""
         # Setup
@@ -410,7 +416,7 @@ class TestPasswordResetServiceStatus:
 class TestPasswordResetServiceHelpers:
     """Test helper methods"""
 
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.db")
     def test_get_user_by_reset_token_found(self, mock_db):
         """Test finding user by reset token"""
         # Setup
@@ -424,7 +430,7 @@ class TestPasswordResetServiceHelpers:
         assert result == expected_user
         mock_db.get_user_by_reset_token.assert_called_once_with("valid-token")
 
-    @patch("password_reset_service.db")
+    @patch("src.services.password_reset_service.db")
     def test_get_user_by_reset_token_not_found(self, mock_db):
         """Test finding user by reset token when not found"""
         # Setup
@@ -436,7 +442,7 @@ class TestPasswordResetServiceHelpers:
         # Verify
         assert result is None
 
-    @patch("password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.PasswordService")
     def test_check_reset_rate_limit_ok(self, mock_password_service):
         """Test rate limit check when under limit"""
         # Setup
@@ -450,7 +456,7 @@ class TestPasswordResetServiceHelpers:
             "test@example.com"
         )
 
-    @patch("password_reset_service.PasswordService")
+    @patch("src.services.password_reset_service.PasswordService")
     def test_check_reset_rate_limit_exceeded(self, mock_password_service):
         """Test rate limit check when limit exceeded"""
         # Setup
@@ -468,7 +474,9 @@ class TestPasswordResetServiceHelpers:
 class TestPasswordResetServiceConvenienceFunctions:
     """Test convenience functions"""
 
-    @patch("password_reset_service.PasswordResetService.request_password_reset")
+    @patch(
+        "src.services.password_reset_service.PasswordResetService.request_password_reset"
+    )
     def test_request_password_reset_convenience(self, mock_request):
         """Test request_password_reset convenience function"""
         # Setup
@@ -484,7 +492,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         assert result == expected_result
         mock_request.assert_called_once_with("test@example.com")
 
-    @patch("password_reset_service.PasswordResetService.reset_password")
+    @patch("src.services.password_reset_service.PasswordResetService.reset_password")
     def test_reset_password_convenience(self, mock_reset):
         """Test reset_password convenience function"""
         # Setup
@@ -500,7 +508,9 @@ class TestPasswordResetServiceConvenienceFunctions:
         assert result == expected_result
         mock_reset.assert_called_once_with("token", "password")
 
-    @patch("password_reset_service.PasswordResetService.validate_reset_token")
+    @patch(
+        "src.services.password_reset_service.PasswordResetService.validate_reset_token"
+    )
     def test_validate_reset_token_convenience(self, mock_validate):
         """Test validate_reset_token convenience function"""
         # Setup
@@ -516,7 +526,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         assert result == expected_result
         mock_validate.assert_called_once_with("token")
 
-    @patch("password_reset_service.PasswordResetService.get_reset_status")
+    @patch("src.services.password_reset_service.PasswordResetService.get_reset_status")
     def test_get_reset_status_convenience(self, mock_get_status):
         """Test get_reset_status convenience function"""
         # Setup

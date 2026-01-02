@@ -1996,7 +1996,7 @@ def test_generate_unique_course_number_increments_suffix_when_collisions():
     """Covers _generate_unique_course_number loop when -V2/-V3 already exist."""
     from unittest.mock import patch
 
-    with patch("database_service.get_course_by_number") as mock_get:
+    with patch("src.database.database_service.get_course_by_number") as mock_get:
         # Collision for V2 and V3, then available on V4
         mock_get.side_effect = [
             {"course_id": "existing"},
@@ -2012,7 +2012,7 @@ def test_generate_unique_course_number_normalizes_base_number():
     """Covers base_number normalization and default fallback."""
     from unittest.mock import patch
 
-    with patch("database_service.get_course_by_number", return_value=None):
+    with patch("src.database.database_service.get_course_by_number", return_value=None):
         assert (
             database_service._generate_unique_course_number("  cs101  ", "inst-1")
             == "CS101-V2"

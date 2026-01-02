@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 class EtherealProvider(EmailProvider):
     """
     Ethereal Email provider for E2E testing
-    
+
     Sends real SMTP emails to Ethereal.email test accounts.
     Emails never reach actual recipients but can be verified programmatically via IMAP.
     Ideal for automated E2E testing where you need to:
@@ -118,9 +118,15 @@ class EtherealProvider(EmailProvider):
 
         try:
             # Type guards for configuration
-            if not (self._smtp_host and self._smtp_port and self._username and self._password and self._from_email):
+            if not (
+                self._smtp_host
+                and self._smtp_port
+                and self._username
+                and self._password
+                and self._from_email
+            ):
                 raise ValueError("Provider not properly configured")
-            
+
             # Create MIME multipart message
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
@@ -171,12 +177,14 @@ class EtherealProvider(EmailProvider):
         except Exception as e:
             logger.error(f"[Ethereal Provider] IMAP connection failed: {e}")
             return None
-    
-    def _extract_email_body(self, email_message: email.message.Message) -> tuple[str, str]:
+
+    def _extract_email_body(
+        self, email_message: email.message.Message
+    ) -> tuple[str, str]:
         """Extract text and HTML body from email message"""
         body_text = ""
         body_html = ""
-        
+
         if email_message.is_multipart():
             for part in email_message.walk():
                 content_type = part.get_content_type()
@@ -189,9 +197,9 @@ class EtherealProvider(EmailProvider):
             payload = email_message.get_payload(decode=True)
             if isinstance(payload, bytes):
                 body_text = payload.decode("utf-8", errors="ignore")
-        
+
         return body_text, body_html
-    
+
     def _matches_search_criteria(
         self,
         subject: str,
@@ -203,14 +211,16 @@ class EtherealProvider(EmailProvider):
         """Check if email matches search criteria"""
         if subject_substring and subject_substring.lower() not in subject.lower():
             return False
-        
-        if unique_identifier and (unique_identifier not in subject and 
-                                   unique_identifier not in body_text and 
-                                   unique_identifier not in body_html):
+
+        if unique_identifier and (
+            unique_identifier not in subject
+            and unique_identifier not in body_text
+            and unique_identifier not in body_html
+        ):
             return False
-        
+
         return True
-    
+
     def _try_parse_email(
         self,
         num: bytes,
@@ -221,14 +231,22 @@ class EtherealProvider(EmailProvider):
         """Try to parse and check a single email"""
         try:
             # Convert bytes to str for IMAP fetch
-            num_str = num.decode('utf-8') if isinstance(num, bytes) else str(num)
+            num_str = num.decode("utf-8") if isinstance(num, bytes) else str(num)
             fetch_result = mail.fetch(num_str, "(RFC822)")
             # Type guard: ensure fetch_result is indexable tuple
-            if not fetch_result or not isinstance(fetch_result, tuple) or len(fetch_result) < 2:
+            if (
+                not fetch_result
+                or not isinstance(fetch_result, tuple)
+                or len(fetch_result) < 2
+            ):
                 return None
             _, msg_data = fetch_result
             # Type guard: ensure msg_data is indexable
-            if not msg_data or not isinstance(msg_data, (list, tuple)) or len(msg_data) == 0:
+            if (
+                not msg_data
+                or not isinstance(msg_data, (list, tuple))
+                or len(msg_data) == 0
+            ):
                 return None
             first_item = msg_data[0]
             # Type guard: ensure first_item is indexable tuple
@@ -239,19 +257,21 @@ class EtherealProvider(EmailProvider):
             if not isinstance(email_body, bytes):
                 return None
             email_message = email.message_from_bytes(email_body)
-            
+
             # Extract email details
             subject = email_message.get("Subject", "")
             from_addr = email_message.get("From", "")
             to_addr = email_message.get("To", "")
-            
+
             # Extract body content
             body_text, body_html = self._extract_email_body(email_message)
-            
+
             # Check if this email matches criteria
-            if not self._matches_search_criteria(subject, body_text, body_html, subject_substring, unique_identifier):
+            if not self._matches_search_criteria(
+                subject, body_text, body_html, subject_substring, unique_identifier
+            ):
                 return None
-            
+
             # Found a match!
             logger.info(f"[Ethereal Provider] Found matching email: {subject}")
             return {
@@ -264,57 +284,61 @@ class EtherealProvider(EmailProvider):
         except Exception as e:
             logger.debug(f"[Ethereal Provider] Error parsing email: {e}")
             return None
-    
+
     def _validate_imap_read_request(self, recipient_email: str) -> bool:
         """Validate IMAP read request and log errors if invalid"""
         if not self.validate_configuration():
-            logger.error("[Ethereal Provider] Provider not properly configured for IMAP")
+            logger.error(
+                "[Ethereal Provider] Provider not properly configured for IMAP"
+            )
             return False
-        
-        if not (self._imap_host and self._imap_port and self._username and self._password):
+
+        if not (
+            self._imap_host and self._imap_port and self._username and self._password
+        ):
             logger.error("[Ethereal Provider] Missing IMAP configuration")
             return False
-        
+
         if recipient_email.lower() != self._username.lower():
             logger.warning(
                 f"[Ethereal Provider] Can only read emails for configured account "
                 f"({self._username}), not {recipient_email}"
             )
             return False
-        
+
         return True
-    
+
     def _search_emails_once(
-        self, 
-        subject_substring: Optional[str], 
-        unique_identifier: Optional[str]
+        self, subject_substring: Optional[str], unique_identifier: Optional[str]
     ) -> Optional[Dict[str, Any]]:
         """Perform a single IMAP search iteration"""
         try:
             mail = self._connect_to_imap()
             if not mail:
                 return None
-            
+
             # Search for all emails
             _, message_numbers = mail.search(None, "ALL")
-            
+
             # Process emails in reverse order (newest first)
             for num in reversed(message_numbers[0].split()):
-                result = self._try_parse_email(num, mail, subject_substring, unique_identifier)
+                result = self._try_parse_email(
+                    num, mail, subject_substring, unique_identifier
+                )
                 if result:
                     mail.close()
                     mail.logout()
                     return result
-            
+
             # No match found, close connection
             mail.close()
             mail.logout()
-            
+
         except Exception as e:
             logger.debug(f"[Ethereal Provider] IMAP search iteration error: {e}")
-        
+
         return None
-    
+
     def read_email(
         self,
         recipient_email: str,
@@ -324,44 +348,43 @@ class EtherealProvider(EmailProvider):
     ) -> Optional[Dict[str, Any]]:
         """
         Read email from Ethereal IMAP inbox
-        
+
         Connects to Ethereal's IMAP server and searches for matching emails.
         Polls for up to `timeout` seconds if email not immediately found.
-        
+
         Args:
             recipient_email: Email address to check (must be configured account)
             subject_substring: Optional substring to match in subject
             unique_identifier: Optional unique string to find in email body/subject
             timeout: Maximum seconds to wait for email (polls every 2s)
-            
+
         Returns:
             Email dictionary if found, None otherwise
             Keys: subject, from, to, body, html_body
         """
         if not self._validate_imap_read_request(recipient_email):
             return None
-        
+
         logger.info(
             f"[Ethereal Provider] Searching IMAP for email "
             f"(subject={subject_substring}, identifier={unique_identifier})"
         )
-        
+
         start_time = time.time()
         poll_interval = 2
-        
+
         while time.time() - start_time < timeout:
             result = self._search_emails_once(subject_substring, unique_identifier)
             if result:
                 return result
-            
+
             # Wait before next poll
             elapsed = time.time() - start_time
             if elapsed < timeout:
                 time.sleep(min(poll_interval, timeout - elapsed))
-        
+
         logger.warning(
             f"[Ethereal Provider] Email not found after {timeout}s: "
             f"subject={subject_substring}, identifier={unique_identifier}"
         )
         return None
-

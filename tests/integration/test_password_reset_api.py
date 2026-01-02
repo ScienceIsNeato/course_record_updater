@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 
 
 @pytest.fixture

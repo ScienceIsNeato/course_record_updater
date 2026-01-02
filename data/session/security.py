@@ -12,7 +12,7 @@ from typing import Optional
 
 from flask import request, session
 
-from logging_config import get_logger
+from src.utils.logging_config import get_logger
 
 from .config import (
     CSRF_TOKEN_LENGTH,

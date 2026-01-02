@@ -18,7 +18,7 @@ echo -e "${BLUE}=====================${NC}"
 # Check if server is running
 if ! curl -s http://localhost:3001 > /dev/null 2>&1; then
     echo -e "${RED}❌ Server not running on port 3001${NC}"
-    echo -e "${YELLOW}💡 Start server with: ./restart_server.sh${NC}"
+    echo -e "${YELLOW}💡 Start server with: bash scripts/restart_server.sh${NC}"
     exit 1
 fi
 
@@ -94,4 +94,4 @@ else
 fi
 
 echo -e "${GREEN}🎉 Frontend check passed!${NC}"
-echo -e "${BLUE}💡 For comprehensive testing, run: ./run_smoke_tests.sh${NC}"
+echo -e "${BLUE}💡 For comprehensive testing, run: python scripts/ship_it.py --checks smoke${NC}"

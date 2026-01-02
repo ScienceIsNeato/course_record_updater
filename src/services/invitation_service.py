@@ -17,9 +17,10 @@ from typing import Any, Dict, List, Optional
 UTC_OFFSET = "+00:00"
 
 import src.database.database_service as db
+from src.models.models import INVITATION_STATUSES, User, UserInvitation
+
 from .auth_service import UserRole
 from .email_service import EmailService
-from src.models.models import INVITATION_STATUSES, User, UserInvitation
 from .password_service import PasswordService
 
 logger = logging.getLogger(__name__)

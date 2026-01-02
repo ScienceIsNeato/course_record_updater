@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 
 from src.bulk_email_models.bulk_email_job import BulkEmailJob
 from src.email_providers.email_manager import EmailManager
-from .email_service import EmailService
 from src.utils.logging_config import get_logger
+
+from .email_service import EmailService
 
 logger = get_logger(__name__)
 

@@ -180,7 +180,7 @@ class TestTermGeneratorExtended:
         generator = TermGenerator()
 
         # Mock datetime to test different months
-        with patch("term_utils.datetime") as mock_datetime:
+        with patch("src.utils.term_utils.datetime") as mock_datetime:
             # Test fall semester (September)
             mock_datetime.now.return_value = datetime(2024, 9, 15)
             current_term = generator.get_current_term()
@@ -319,7 +319,7 @@ class TestTermGeneratorCustomization:
         # Mock different months to test logic
         from unittest.mock import Mock, patch
 
-        with patch("term_utils.datetime") as mock_datetime:
+        with patch("src.utils.term_utils.datetime") as mock_datetime:
             # Test Spring term (January-May)
             mock_datetime.now.return_value = Mock(year=2024, month=3)
             assert generator.get_current_term() == "SP2024"

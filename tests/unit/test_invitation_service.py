@@ -16,8 +16,8 @@ from src.services.invitation_service import InvitationError, InvitationService
 class TestInvitationServiceCreation:
     """Test invitation creation functionality"""
 
-    @patch("invitation_service.db")
-    @patch("invitation_service.secrets.token_urlsafe")
+    @patch("src.services.invitation_service.db")
+    @patch("src.services.invitation_service.secrets.token_urlsafe")
     def test_create_invitation_success(self, mock_token, mock_db):
         """Test successful invitation creation"""
         # Setup
@@ -47,7 +47,7 @@ class TestInvitationServiceCreation:
         assert invitation_data["invited_by"] == "user-123"
         assert invitation_data["email"] == "instructor@example.com"
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_create_invitation_invalid_role(self, mock_db):
         """Test invitation creation with invalid role"""
         # Execute & Verify
@@ -60,7 +60,7 @@ class TestInvitationServiceCreation:
                 institution_id="inst-123",
             )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_create_invitation_user_exists(self, mock_db):
         """Test invitation creation when user already exists"""
         # Setup
@@ -76,7 +76,7 @@ class TestInvitationServiceCreation:
                 institution_id="inst-123",
             )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_create_invitation_pending_exists(self, mock_db):
         """Test invitation creation when pending invitation exists"""
         # Setup
@@ -93,7 +93,7 @@ class TestInvitationServiceCreation:
                 institution_id="inst-123",
             )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_create_invitation_with_program_ids(self, mock_db):
         """Test invitation creation with program IDs"""
         # Setup
@@ -117,7 +117,7 @@ class TestInvitationServiceCreation:
         assert invitation_data["program_ids"] == ["prog-1", "prog-2"]
         assert invitation_data["personal_message"] == "Welcome to the team!"
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_create_invitation_database_failure(self, mock_db):
         """Test invitation creation with database failure"""
         # Setup
@@ -139,8 +139,8 @@ class TestInvitationServiceCreation:
 class TestInvitationServiceEmail:
     """Test invitation email functionality"""
 
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.db")
     def test_send_invitation_success(self, mock_db, mock_email_service):
         """Test successful invitation email sending"""
         # Setup
@@ -172,8 +172,8 @@ class TestInvitationServiceEmail:
         assert update_call[1]["status"] == "sent"
         assert "sent_at" in update_call[1]
 
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.db")
     def test_send_invitation_institution_not_found(self, mock_db, mock_email_service):
         """Test invitation email when institution not found"""
         # Setup
@@ -200,8 +200,8 @@ class TestInvitationServiceEmail:
         assert result is True
         mock_email_service.send_invitation_email.assert_called_once()
 
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.db")
     def test_send_invitation_email_failure(self, mock_db, mock_email_service):
         """Test invitation email sending failure"""
         # Setup
@@ -230,9 +230,9 @@ class TestInvitationServiceEmail:
 class TestInvitationServiceAcceptance:
     """Test invitation acceptance functionality"""
 
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.PasswordService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.PasswordService")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_success(
         self, mock_db, mock_password_service, mock_email_service
     ):
@@ -281,7 +281,7 @@ class TestInvitationServiceAcceptance:
         mock_db.update_invitation.assert_called_once()
         mock_email_service.send_welcome_email.assert_called_once()
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_invalid_token(self, mock_db):
         """Test invitation acceptance with invalid token"""
         # Setup
@@ -291,7 +291,7 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="Invalid invitation token"):
             InvitationService.accept_invitation("invalid-token", "password123")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_already_accepted(self, mock_db):
         """Test invitation acceptance when already accepted"""
         # Setup
@@ -302,7 +302,7 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="already been accepted"):
             InvitationService.accept_invitation("token", "password123")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_expired(self, mock_db):
         """Test invitation acceptance when expired"""
         # Setup
@@ -322,8 +322,8 @@ class TestInvitationServiceAcceptance:
         # Verify invitation was marked as expired
         mock_db.update_invitation.assert_called_once()
 
-    @patch("invitation_service.PasswordService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.PasswordService")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_weak_password(self, mock_db, mock_password_service):
         """Test invitation acceptance with weak password"""
         # Setup
@@ -338,8 +338,8 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="Password too weak"):
             InvitationService.accept_invitation("token", "weak")
 
-    @patch("invitation_service.PasswordService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.PasswordService")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_user_creation_failure(
         self, mock_db, mock_password_service
     ):
@@ -368,7 +368,7 @@ class TestInvitationServiceAcceptance:
                 "token", "ValidPassword123!", display_name="Test User"
             )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_status_expired(self, mock_db):
         """Test invitation acceptance when status is already 'expired'"""
         # Setup
@@ -379,7 +379,7 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="Invitation has expired"):
             InvitationService.accept_invitation("token", "ValidPassword123!")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_unknown_status(self, mock_db):
         """Test invitation acceptance with unknown/cancelled status"""
         # Setup
@@ -392,10 +392,12 @@ class TestInvitationServiceAcceptance:
         with pytest.raises(InvitationError, match="not available for acceptance"):
             InvitationService.accept_invitation("token", "ValidPassword123!")
 
-    @patch("invitation_service.InvitationService._assign_instructor_to_section")
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.PasswordService")
-    @patch("invitation_service.db")
+    @patch(
+        "src.services.invitation_service.InvitationService._assign_instructor_to_section"
+    )
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.PasswordService")
+    @patch("src.services.invitation_service.db")
     def test_accept_invitation_with_section_assignment(
         self,
         mock_db,
@@ -442,7 +444,7 @@ class TestInvitationServiceAcceptance:
 class TestInvitationServiceManagement:
     """Test invitation management functionality"""
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_resend_invitation_success(self, mock_db):
         """Test successful invitation resending"""
         # Setup
@@ -470,7 +472,7 @@ class TestInvitationServiceManagement:
             assert result is True
             mock_send.assert_called_once_with(invitation)
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_resend_invitation_not_found(self, mock_db):
         """Test resending invitation that doesn't exist"""
         # Setup
@@ -480,7 +482,7 @@ class TestInvitationServiceManagement:
         with pytest.raises(InvitationError, match="not found"):
             InvitationService.resend_invitation("inv-123")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_resend_invitation_wrong_status(self, mock_db):
         """Test resending invitation with wrong status"""
         # Setup
@@ -491,7 +493,7 @@ class TestInvitationServiceManagement:
         with pytest.raises(InvitationError, match="Cannot resend"):
             InvitationService.resend_invitation("inv-123")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_resend_invitation_expired_extends_expiry(self, mock_db):
         """Test resending expired invitation extends expiry"""
         # Setup
@@ -524,7 +526,7 @@ class TestInvitationServiceManagement:
                 new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
             assert new_expires_at > datetime.now(timezone.utc)
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_get_invitation_status_success(self, mock_db):
         """Test getting invitation status"""
         # Setup
@@ -548,7 +550,7 @@ class TestInvitationServiceManagement:
         assert result["invitee_role"] == "instructor"
         assert result["is_expired"] is False
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_get_invitation_status_expired(self, mock_db):
         """Test getting status of expired invitation"""
         # Setup
@@ -572,7 +574,7 @@ class TestInvitationServiceManagement:
         assert result["is_expired"] is True
         mock_db.update_invitation.assert_called_once()
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_list_invitations_success(self, mock_db):
         """Test listing invitations"""
         # Setup
@@ -591,7 +593,7 @@ class TestInvitationServiceManagement:
         assert result == invitations
         mock_db.list_invitations.assert_called_once_with("inst-123", "sent", 10, 0)
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_cancel_invitation_success(self, mock_db):
         """Test successful invitation cancellation"""
         # Setup
@@ -608,7 +610,7 @@ class TestInvitationServiceManagement:
         update_call = mock_db.update_invitation.call_args[0][1]
         assert update_call["status"] == "cancelled"
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_cancel_invitation_not_found(self, mock_db):
         """Test cancelling invitation that doesn't exist"""
         # Setup
@@ -618,7 +620,7 @@ class TestInvitationServiceManagement:
         with pytest.raises(InvitationError, match="not found"):
             InvitationService.cancel_invitation("inv-123")
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_cancel_invitation_wrong_status(self, mock_db):
         """Test cancelling invitation with wrong status"""
         # Setup
@@ -633,9 +635,9 @@ class TestInvitationServiceManagement:
 class TestInvitationServiceIntegration:
     """Integration tests for invitation service"""
 
-    @patch("invitation_service.EmailService")
-    @patch("invitation_service.PasswordService")
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.EmailService")
+    @patch("src.services.invitation_service.PasswordService")
+    @patch("src.services.invitation_service.db")
     def test_complete_invitation_flow(
         self, mock_db, mock_password_service, mock_email_service
     ):
@@ -713,7 +715,7 @@ class TestInvitationServiceIntegration:
             "status": "sent",
         }
 
-        with patch("invitation_service.db") as mock_db:
+        with patch("src.services.invitation_service.db") as mock_db:
             # Should add timezone to naive datetime (line 271)
             # Won't raise error since future date
             InvitationService._check_and_handle_expiry(invitation)
@@ -725,7 +727,7 @@ class TestInvitationServiceIntegration:
 class TestInvitationServiceAssignInstructor:
     """Test _assign_instructor_to_section helper method"""
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_assign_instructor_success(self, mock_db):
         """Test successful instructor assignment to section"""
         mock_db.get_section_by_id.return_value = {
@@ -742,7 +744,7 @@ class TestInvitationServiceAssignInstructor:
             "section-123", {"instructor_id": "user-789"}
         )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_assign_instructor_section_not_found(self, mock_db):
         """Test assignment when section doesn't exist"""
         mock_db.get_section_by_id.return_value = None
@@ -754,7 +756,7 @@ class TestInvitationServiceAssignInstructor:
 
         mock_db.update_course_section.assert_not_called()
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_assign_instructor_already_assigned_no_replace(self, mock_db):
         """Test assignment when section already has instructor and replace_existing=False"""
         mock_db.get_section_by_id.return_value = {
@@ -769,7 +771,7 @@ class TestInvitationServiceAssignInstructor:
 
         mock_db.update_course_section.assert_not_called()
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_assign_instructor_already_assigned_with_replace(self, mock_db):
         """Test assignment when section has instructor but replace_existing=True"""
         mock_db.get_section_by_id.return_value = {
@@ -786,7 +788,7 @@ class TestInvitationServiceAssignInstructor:
             "section-123", {"instructor_id": "new-instructor"}
         )
 
-    @patch("invitation_service.db")
+    @patch("src.services.invitation_service.db")
     def test_assign_instructor_database_error(self, mock_db):
         """Test assignment with database exception"""
         mock_db.get_section_by_id.side_effect = Exception("Database error")

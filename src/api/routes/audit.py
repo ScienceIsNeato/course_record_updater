@@ -70,10 +70,14 @@ def get_recent_logs():
 
     except ValueError as e:
         # Don't log user-controlled exception message
-        logger.error(f"Fetch recent audit logs failed with {type(e).__name__}", exc_info=True)
+        logger.error(
+            f"Fetch recent audit logs failed with {type(e).__name__}", exc_info=True
+        )
         return jsonify({"success": False, "error": "Invalid parameter"}), 400
     except Exception as e:
-        return handle_api_error(e, "Fetch recent audit logs", "Failed to fetch audit logs")
+        return handle_api_error(
+            e, "Fetch recent audit logs", "Failed to fetch audit logs"
+        )
 
 
 @audit_bp.route("/entity/<entity_type>/<entity_id>", methods=["GET"])
@@ -130,7 +134,7 @@ def get_entity_history(entity_type: str, entity_id: str):
         return handle_api_error(
             e,
             f"Fetch entity history for {entity_type}/{entity_id}",
-            "Failed to fetch entity history"
+            "Failed to fetch entity history",
         )
 
 
@@ -210,9 +214,7 @@ def get_user_activity(user_id: str):
 
     except Exception as e:
         return handle_api_error(
-            e,
-            f"Fetch user activity for {user_id}",
-            "Failed to fetch user activity"
+            e, f"Fetch user activity for {user_id}", "Failed to fetch user activity"
         )
 
 
@@ -325,4 +327,3 @@ def export_logs():
 
     except Exception as e:
         return handle_api_error(e, "Export audit logs", "Failed to export audit logs")
-

@@ -11,37 +11,40 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.orm import Session
 
 from src.api.utils import handle_api_error
-from src.services.auth_service import get_current_user  # Still need for mocking in tests
-from src.services.bulk_email_service import BulkEmailService
 from src.database.database_factory import get_database_service
+from src.services.auth_service import (  # Still need for mocking in tests
+    get_current_user,
+)
+from src.services.bulk_email_service import BulkEmailService
 from src.utils.logging_config import get_logger
 
 
 def lazy_permission_required(permission_name: str):
     """
     Lazy permission decorator that resolves auth_service at RUNTIME, not import time.
-    
+
     This allows tests to mock permission_required before the decorator is evaluated.
     The standard @permission_required decorator captures the function at import time,
     making it impossible to mock in tests.
-    
+
     The actual permission decorator is applied ONCE (on first request), not on every request,
     to avoid performance overhead of re-wrapping.
-    
+
     Args:
         permission_name: The permission required (e.g., "manage_programs")
-    
+
     Returns:
         Decorator function
     """
+
     def decorator(f):
         # Cache the wrapped function to avoid re-wrapping on every request
         _wrapped_function = None
-        
+
         @wraps(f)
         def decorated_function(*args, **kwargs):
             nonlocal _wrapped_function
-            
+
             # Only wrap once (on first request)
             if _wrapped_function is None:
                 # Import auth_service at RUNTIME, not import time
@@ -51,15 +54,17 @@ def lazy_permission_required(permission_name: str):
 
                 # Get the actual permission_required decorator
                 actual_decorator = runtime_permission_required(permission_name)
-                
+
                 # Apply it ONCE and cache the result
                 _wrapped_function = actual_decorator(f)
-            
+
             # Call the cached wrapped function
             return _wrapped_function(*args, **kwargs)
-        
+
         return decorated_function
+
     return decorator
+
 
 # Create blueprint
 bulk_email_bp = Blueprint("bulk_email", __name__, url_prefix="/api/bulk-email")
@@ -127,7 +132,9 @@ def send_instructor_reminders():
         personal_message = data.get("personal_message")
         term = data.get("term")
         deadline = data.get("deadline")
-        course_id = data.get("course_id")  # Optional course ID for deep-linking to assessments
+        course_id = data.get(
+            "course_id"
+        )  # Optional course ID for deep-linking to assessments
 
         # Get current user
         current_user = get_current_user()

@@ -7,6 +7,8 @@ from contextlib import nullcontext
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
+from src.database.database_factory import get_database_service, refresh_database_service
+from src.models.models_sql import Base
 from src.utils.constants import (
     COURSE_OFFERINGS_COLLECTION,
     COURSE_OUTCOMES_COLLECTION,
@@ -18,8 +20,6 @@ from src.utils.constants import (
     TERMS_COLLECTION,
     USERS_COLLECTION,
 )
-from src.database.database_factory import get_database_service, refresh_database_service
-from src.models.models_sql import Base
 
 logger = logging.getLogger(__name__)
 

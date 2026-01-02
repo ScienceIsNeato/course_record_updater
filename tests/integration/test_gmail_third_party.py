@@ -17,7 +17,7 @@ from datetime import datetime
 
 import pytest
 
-from src.app import src.app as app as flask_app
+from src.app import app as flask_app
 from src.services.email_service import EmailService
 
 

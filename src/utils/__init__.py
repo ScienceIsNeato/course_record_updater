@@ -8,13 +8,13 @@ from .term_utils import *  # noqa: F401, F403
 
 __all__ = [
     # From constants
-    'DEFAULT_PROGRAM_NAME',
-    'DASHBOARD_ENDPOINT',
-    'CSRF_ERROR_MESSAGE',
+    "DEFAULT_PROGRAM_NAME",
+    "DASHBOARD_ENDPOINT",
+    "CSRF_ERROR_MESSAGE",
     # From logging_config
-    'get_logger',
-    'get_app_logger',
+    "get_logger",
+    "get_app_logger",
     # From term_utils
-    'parse_term_name',
-    'format_term_name',
+    "parse_term_name",
+    "format_term_name",
 ]

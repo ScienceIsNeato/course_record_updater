@@ -10,9 +10,9 @@
     "format:check": "prettier --check static/**/*.js",
     "quality:js": "npm run lint && npm run format:check && npm run test:coverage",
     "test": "npm run test:js",
-    "test:js": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:js": "jest -c config/jest.config.js",
+    "test:watch": "jest -c config/jest.config.js --watch",
+    "test:coverage": "jest -c config/jest.config.js --coverage"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

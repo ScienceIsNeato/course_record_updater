@@ -40,7 +40,7 @@ class TestPasswordHashing:
         with pytest.raises(PasswordValidationError):
             hash_password("weak")
 
-    @patch("password_service.bcrypt.hashpw")
+    @patch("src.services.password_service.bcrypt.hashpw")
     def test_hash_password_bcrypt_exception(self, mock_hashpw):
         """Test hash_password exception handling when bcrypt fails"""
         # Setup mock to raise exception
@@ -309,7 +309,7 @@ class TestAccountLockout:
         email = "test@example.com"
 
         # Mock time to simulate lockout expiry
-        with patch("password_service.datetime") as mock_datetime:
+        with patch("src.services.password_service.datetime") as mock_datetime:
             # Set initial time
             initial_time = datetime.now(timezone.utc)
             mock_datetime.now.return_value = initial_time
@@ -364,7 +364,7 @@ class TestRateLimiting:
         email = "test@example.com"
 
         # Mock time to simulate window expiry
-        with patch("password_service.time") as mock_time:
+        with patch("src.services.password_service.time") as mock_time:
             # Set initial time
             initial_time = 1000.0
             mock_time.time.return_value = initial_time

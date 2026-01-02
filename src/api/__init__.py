@@ -11,10 +11,10 @@ from flask import Flask
 def register_blueprints(app: Flask) -> None:
     """
     Register all API blueprints with the Flask application.
-    
+
     This function is called during application initialization to register
     all API route modules.
-    
+
     Args:
         app: Flask application instance
     """
@@ -42,8 +42,7 @@ def register_blueprints(app: Flask) -> None:
     # from src.api.routes.users import users_bp
     # from src.api.routes.institutions import institutions_bp
     # from src.api.routes.import_export import import_export_bp
-    
+
     # app.register_blueprint(audit_bp)
     # app.register_blueprint(terms_bp)
     # ... etc
-

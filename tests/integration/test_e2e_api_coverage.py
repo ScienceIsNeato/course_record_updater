@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 from tests.test_utils import CommonAuthMixin, create_test_session
 
 
@@ -150,10 +150,10 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
         create_test_session(self.client, user_data)
         return user_data
 
-    @patch("database_service.delete_user")
-    @patch("database_service.get_user_by_id")
-    @patch("auth_service.auth_service.has_permission")
-    @patch("auth_service.auth_service.get_current_user")
+    @patch("src.database.database_service.delete_user")
+    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.services.auth_service.auth_service.has_permission")
+    @patch("src.services.auth_service.auth_service.get_current_user")
     def test_program_admin_cannot_delete_higher_role_user_403(
         self, mock_current_user, mock_has_perm, mock_get_user, mock_delete
     ):
@@ -198,10 +198,10 @@ class TestRoleHierarchyUserDeletion(CommonAuthMixin):
         # Verify deletion was never attempted
         mock_delete.assert_not_called()
 
-    @patch("database_service.delete_user")
-    @patch("database_service.get_user_by_id")
-    @patch("auth_service.auth_service.has_permission")
-    @patch("auth_service.auth_service.get_current_user")
+    @patch("src.database.database_service.delete_user")
+    @patch("src.database.database_service.get_user_by_id")
+    @patch("src.services.auth_service.auth_service.has_permission")
+    @patch("src.services.auth_service.auth_service.get_current_user")
     def test_program_admin_cannot_delete_equal_role_user_403(
         self, mock_current_user, mock_has_perm, mock_get_user, mock_delete
     ):

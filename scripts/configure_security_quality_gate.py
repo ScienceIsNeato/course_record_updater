@@ -32,7 +32,13 @@ class SonarCloudQualityGateConfigurator:
             print("💡 Get your token from: https://sonarcloud.io/account/security")
             sys.exit(1)
 
-    def _make_api_request(self, endpoint: str, params: Dict[str, str] = None, method: str = "GET", data: str = None) -> Dict:
+    def _make_api_request(
+        self,
+        endpoint: str,
+        params: Dict[str, str] = None,
+        method: str = "GET",
+        data: str = None,
+    ) -> Dict:
         """Make authenticated request to SonarCloud API"""
         if params is None:
             params = {}
@@ -52,7 +58,7 @@ class SonarCloudQualityGateConfigurator:
             request = urllib.request.Request(url, data=data.encode() if data else None)
             request.add_header("Authorization", f"Basic {auth_header}")
             request.add_header("Content-Type", "application/x-www-form-urlencoded")
-            
+
             if method != "GET":
                 request.get_method = lambda: method  # type: ignore[method-assign]
 
@@ -87,7 +93,7 @@ class SonarCloudQualityGateConfigurator:
     def create_security_quality_gate(self) -> bool:
         """Create a new quality gate with security rating enforcement"""
         print("🔧 Creating security-focused quality gate...")
-        
+
         # Check if quality gate already exists
         existing_gates = self.get_quality_gates()
         existing_gate = None
@@ -95,7 +101,7 @@ class SonarCloudQualityGateConfigurator:
             if gate.get("name") == "Security-Enforced Quality Gate":
                 existing_gate = gate
                 break
-        
+
         if existing_gate:
             print(f"✅ Using existing quality gate with ID: {existing_gate['id']}")
             quality_gate_id = existing_gate["id"]
@@ -104,22 +110,24 @@ class SonarCloudQualityGateConfigurator:
             data = {
                 "name": "Security-Enforced Quality Gate",
                 "description": "Quality gate that enforces A rating for security",
-                "organization": self.organization
+                "organization": self.organization,
             }
-            
-            response = self._make_api_request("qualitygates/create", data=urllib.parse.urlencode(data), method="POST")
-            
+
+            response = self._make_api_request(
+                "qualitygates/create", data=urllib.parse.urlencode(data), method="POST"
+            )
+
             if not response:
                 print("❌ Failed to create quality gate")
                 return False
-                
+
             quality_gate_id = response.get("id")
             if not quality_gate_id:
                 print("❌ No quality gate ID returned")
                 return False
-                
+
             print(f"✅ Created quality gate with ID: {quality_gate_id}")
-        
+
         # Add security-focused conditions
         conditions = [
             {"metric": "vulnerabilities", "op": "GT", "error": "0"},
@@ -129,39 +137,43 @@ class SonarCloudQualityGateConfigurator:
             {"metric": "security_hotspots_reviewed", "op": "LT", "error": "100"},
             {"metric": "new_security_hotspots_reviewed", "op": "LT", "error": "100"},
         ]
-        
+
         for condition in conditions:
             condition_data = {
                 "gateId": quality_gate_id,
                 "organization": self.organization,
-                **condition
+                **condition,
             }
-            
-            response = self._make_api_request("qualitygates/create_condition", 
-                                            data=urllib.parse.urlencode(condition_data), 
-                                            method="POST")
-            
+
+            response = self._make_api_request(
+                "qualitygates/create_condition",
+                data=urllib.parse.urlencode(condition_data),
+                method="POST",
+            )
+
             if response:
                 print(f"✅ Added condition: {condition['metric']}")
             else:
                 print(f"⚠️  Failed to add condition: {condition['metric']}")
-        
+
         return quality_gate_id
 
     def assign_quality_gate_to_project(self, quality_gate_id: str) -> bool:
         """Assign quality gate to the project"""
-        print(f"🔗 Assigning quality gate {quality_gate_id} to project {self.project_key}...")
-        
+        print(
+            f"🔗 Assigning quality gate {quality_gate_id} to project {self.project_key}..."
+        )
+
         data = {
             "projectKey": self.project_key,
             "gateId": quality_gate_id,
-            "organization": self.organization
+            "organization": self.organization,
         }
-        
-        response = self._make_api_request("qualitygates/select", 
-                                        data=urllib.parse.urlencode(data), 
-                                        method="POST")
-        
+
+        response = self._make_api_request(
+            "qualitygates/select", data=urllib.parse.urlencode(data), method="POST"
+        )
+
         if response:
             print("✅ Quality gate assigned to project")
             return True
@@ -173,26 +185,26 @@ class SonarCloudQualityGateConfigurator:
         """Main method to configure security enforcement"""
         print("🔍 SonarCloud Security Quality Gate Configuration")
         print("=" * 60)
-        
+
         # Check current quality gate
         current_gate = self.get_project_quality_gate()
         if current_gate:
             print(f"📋 Current quality gate: {current_gate.get('name', 'Unknown')}")
         else:
             print("📋 No quality gate currently assigned")
-        
+
         # Create security-focused quality gate
         quality_gate_id = self.create_security_quality_gate()
         if not quality_gate_id:
             print("❌ Failed to create security quality gate")
             return False
-        
+
         # Assign to project
         if self.assign_quality_gate_to_project(quality_gate_id):
             print("\n🎉 Security quality gate configured successfully!")
             print("🔒 Quality gate will now fail if:")
             print("   • Security rating is not A")
-            print("   • New security rating is not A") 
+            print("   • New security rating is not A")
             print("   • Security hotspots are not 100% reviewed")
             print("   • Any vulnerabilities exist")
             print("   • Any new vulnerabilities exist")
@@ -204,13 +216,15 @@ class SonarCloudQualityGateConfigurator:
 
 def main():
     project_key = "ScienceIsNeato_course_record_updater"
-    
+
     configurator = SonarCloudQualityGateConfigurator(project_key)
-    
+
     success = configurator.configure_security_enforcement()
-    
+
     if success:
-        print(f"\n🔗 View your project: https://sonarcloud.io/project/overview?id={project_key}")
+        print(
+            f"\n🔗 View your project: https://sonarcloud.io/project/overview?id={project_key}"
+        )
         sys.exit(0)
     else:
         print("\n❌ Configuration failed")

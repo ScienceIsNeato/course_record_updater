@@ -15,7 +15,7 @@ from src.services.clo_workflow_service import CLOWorkflowService
 class TestValidateCourseSubmission:
     """Test course-level submission validation."""
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_all_clos_complete_success(self, mock_db):
         """Test validation passes when all CLOs have required fields."""
         course_id = "course-123"
@@ -41,7 +41,7 @@ class TestValidateCourseSubmission:
         assert result["valid"] is True
         assert result["errors"] == []
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_missing_students_took(self, mock_db):
         """Test validation fails when students_took is missing."""
         course_id = "course-123"
@@ -63,7 +63,7 @@ class TestValidateCourseSubmission:
         assert "clo-1" in result["errors"][0]["outcome_id"]
         assert "students_took" in result["errors"][0]["field"]
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_missing_students_passed(self, mock_db):
         """Test validation fails when students_passed is missing."""
         course_id = "course-123"
@@ -83,7 +83,7 @@ class TestValidateCourseSubmission:
         assert result["valid"] is False
         assert any("students_passed" in e["field"] for e in result["errors"])
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_missing_assessment_tool(self, mock_db):
         """Test validation fails when assessment_tool is missing."""
         course_id = "course-123"
@@ -103,7 +103,7 @@ class TestValidateCourseSubmission:
         assert result["valid"] is False
         assert any("assessment_tool" in e["field"] for e in result["errors"])
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_students_passed_exceeds_took(self, mock_db):
         """Test validation fails when students_passed > students_took."""
         course_id = "course-123"
@@ -123,7 +123,7 @@ class TestValidateCourseSubmission:
         assert result["valid"] is False
         assert any("exceed" in e["message"].lower() for e in result["errors"])
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_multiple_clo_errors(self, mock_db):
         """Test validation returns errors for multiple incomplete CLOs."""
         course_id = "course-123"
@@ -158,7 +158,7 @@ class TestValidateCourseSubmission:
         # clo-1 has 3 errors, clo-3 has 1 error
         assert len(result["errors"]) >= 4
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_empty_course(self, mock_db):
         """Test validation fails for course with no CLOs."""
         course_id = "course-123"
@@ -169,7 +169,7 @@ class TestValidateCourseSubmission:
         assert result["valid"] is False
         assert any("no clos" in e["message"].lower() for e in result["errors"])
 
-    @patch("clo_workflow_service.db")
+    @patch("src.services.clo_workflow_service.db")
     def test_validate_database_error(self, mock_db):
         """Test validation handles database errors gracefully."""
         mock_db.get_course_outcomes.side_effect = Exception("Database error")
@@ -183,9 +183,13 @@ class TestValidateCourseSubmission:
 class TestSubmitCourseForApproval:
     """Test submitting entire course for approval."""
 
-    @patch("clo_workflow_service.CLOWorkflowService.validate_course_submission")
-    @patch("clo_workflow_service.CLOWorkflowService.submit_clo_for_approval")
-    @patch("clo_workflow_service.db")
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.validate_course_submission"
+    )
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.submit_clo_for_approval"
+    )
+    @patch("src.services.clo_workflow_service.db")
     def test_submit_course_success(self, mock_db, mock_submit_clo, mock_validate):
         """Test successful course submission."""
         course_id = "course-123"
@@ -203,7 +207,9 @@ class TestSubmitCourseForApproval:
         assert result["success"] is True
         assert mock_submit_clo.call_count == 2
 
-    @patch("clo_workflow_service.CLOWorkflowService.validate_course_submission")
+    @patch(
+        "src.services.clo_workflow_service.CLOWorkflowService.validate_course_submission"
+    )
     def test_submit_course_validation_fails(self, mock_validate):
         """Test course submission fails when validation fails."""
         mock_validate.return_value = {

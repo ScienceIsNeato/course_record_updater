@@ -43,7 +43,9 @@ def test_export():
         logger.info(f"✅ Found adapter: {adapter.get_adapter_info()['name']}")
 
         # Use MockU institution (from seed_db.py)
-        inst_id = "2560a0b3-1357-4e60-bd0c-f73722e2b08d"  # California Engineering Institute
+        inst_id = (
+            "2560a0b3-1357-4e60-bd0c-f73722e2b08d"  # California Engineering Institute
+        )
         inst_name = "California Engineering Institute"
         logger.info(f"📍 Using institution: {inst_name}")
 
@@ -58,6 +60,7 @@ def test_export():
 
         # Export to temp file using secure tempfile (B108 fix)
         import tempfile
+
         temp_dir = tempfile.mkdtemp(prefix="csv_export_test_")
         output_path = f"{temp_dir}/generic_csv_test_export.zip"
         logger.info(f"📦 Exporting to: {output_path}")
@@ -82,7 +85,9 @@ def test_export():
             # Check for manifest
             if "manifest.json" in files:
                 manifest = json.loads(zf.read("manifest.json"))
-                logger.info(f"   ✅ Manifest found (version {manifest['format_version']})")
+                logger.info(
+                    f"   ✅ Manifest found (version {manifest['format_version']})"
+                )
                 logger.info(f"   📊 Entity counts:")
                 for entity, count in manifest["entity_counts"].items():
                     if count > 0:
@@ -97,7 +102,9 @@ def test_export():
                 if csv_file in files:
                     content = zf.read(csv_file).decode("utf-8")
                     lines = content.strip().split("\n")
-                    logger.info(f"   ✅ {csv_file}: {len(lines) - 1} records (+ header)")
+                    logger.info(
+                        f"   ✅ {csv_file}: {len(lines) - 1} records (+ header)"
+                    )
                 else:
                     logger.warning(f"   ⚠️  {csv_file} missing")
 
@@ -119,4 +126,3 @@ def test_export():
 
 if __name__ == "__main__":
     sys.exit(test_export())
-

@@ -13,8 +13,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import src.database.database_service as db
+from data.session import SessionService
+
 from .password_service import AccountLockedError, PasswordService
-from session import SessionService
 
 logger = logging.getLogger(__name__)
 

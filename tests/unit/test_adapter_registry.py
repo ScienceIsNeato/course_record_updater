@@ -179,9 +179,9 @@ class TestAdapterRegistry:
         self.registry._adapter_instances.clear()
         self.registry._discovery_complete = False
 
-    @patch("adapters.adapter_registry.importlib.import_module")
-    @patch("adapters.adapter_registry.inspect.getmembers")
-    @patch("adapters.adapter_registry.Path.glob")
+    @patch("src.adapters.adapter_registry.importlib.import_module")
+    @patch("src.adapters.adapter_registry.inspect.getmembers")
+    @patch("src.adapters.adapter_registry.Path.glob")
     def test_discover_adapters_success(self, mock_glob, mock_getmembers, mock_import):
         """Test successful adapter discovery"""
         # Mock file discovery
@@ -204,8 +204,8 @@ class TestAdapterRegistry:
         assert "mock_adapter_a" in self.registry._adapters
         assert self.registry._discovery_complete is True
 
-    @patch("adapters.adapter_registry.importlib.import_module")
-    @patch("adapters.adapter_registry.Path.glob")
+    @patch("src.adapters.adapter_registry.importlib.import_module")
+    @patch("src.adapters.adapter_registry.Path.glob")
     def test_discover_adapters_import_error(self, mock_glob, mock_import):
         """Test adapter discovery with import error"""
         # Mock file discovery
@@ -379,7 +379,7 @@ class TestAdapterRegistry:
         self.registry._discovery_complete = True
 
         # Institution admin should see the institution-specific adapter (not public)
-        with patch("adapters.adapter_registry.logger") as mock_logger:
+        with patch("src.adapters.adapter_registry.logger") as mock_logger:
             adapters = self.registry.get_adapters_for_user(
                 "institution_admin", "institution_a"
             )

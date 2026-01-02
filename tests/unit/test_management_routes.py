@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 from tests.test_utils import create_test_session
 
 
@@ -57,7 +57,7 @@ class TestManagementUpdateProgram:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_not_found(self, mock_get_program, client):
         create_site_admin_session(client)
         mock_get_program.return_value = None
@@ -71,7 +71,7 @@ class TestManagementUpdateProgram:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_no_fields_to_update(self, mock_get_program, client):
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
@@ -85,8 +85,8 @@ class TestManagementUpdateProgram:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.update_program")
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.update_program")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_success(self, mock_get_program, mock_update, client):
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
@@ -102,8 +102,8 @@ class TestManagementUpdateProgram:
         assert data["success"] is True
         assert data["program_id"] == "prog-1"
 
-    @patch("api.routes.management.db.update_program")
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.update_program")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_success_multiple_fields(
         self, mock_get_program, mock_update, client
     ):
@@ -123,8 +123,8 @@ class TestManagementUpdateProgram:
         assert updates["short_name"] == "NEW"
         assert updates["description"] == "Desc"
 
-    @patch("api.routes.management.db.update_program")
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.update_program")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_update_failed(self, mock_get_program, mock_update, client):
         create_site_admin_session(client)
         mock_get_program.return_value = {"id": "prog-1", "name": "Old"}
@@ -139,7 +139,7 @@ class TestManagementUpdateProgram:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_program_by_id")
+    @patch("src.api.routes.management.db.get_program_by_id")
     def test_update_program_exception_handled(self, mock_get_program, client):
         """Covers exception handler branch."""
         create_site_admin_session(client)
@@ -169,7 +169,7 @@ class TestManagementDuplicateCourse:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_source_not_found(self, mock_get_course, client):
         create_site_admin_session(client)
         mock_get_course.return_value = None
@@ -183,8 +183,8 @@ class TestManagementDuplicateCourse:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_course_by_number")
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.get_course_by_number")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_number_exists(
         self, mock_get_course, mock_get_by_number, client
     ):
@@ -205,9 +205,9 @@ class TestManagementDuplicateCourse:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.create_course")
-    @patch("api.routes.management.db.get_course_by_number")
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.create_course")
+    @patch("src.api.routes.management.db.get_course_by_number")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_create_failed(
         self, mock_get_course, mock_get_by_number, mock_create, client
     ):
@@ -229,10 +229,10 @@ class TestManagementDuplicateCourse:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.add_course_to_program")
-    @patch("api.routes.management.db.create_course")
-    @patch("api.routes.management.db.get_course_by_number")
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.add_course_to_program")
+    @patch("src.api.routes.management.db.create_course")
+    @patch("src.api.routes.management.db.get_course_by_number")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_success_with_program_ids(
         self, mock_get_course, mock_get_by_number, mock_create, mock_add, client
     ):
@@ -257,11 +257,11 @@ class TestManagementDuplicateCourse:
         mock_add.assert_any_call("course-2", "p1")
         mock_add.assert_any_call("course-2", "p2")
 
-    @patch("api.routes.management.db.get_programs_for_course")
-    @patch("api.routes.management.db.add_course_to_program")
-    @patch("api.routes.management.db.create_course")
-    @patch("api.routes.management.db.get_course_by_number")
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.get_programs_for_course")
+    @patch("src.api.routes.management.db.add_course_to_program")
+    @patch("src.api.routes.management.db.create_course")
+    @patch("src.api.routes.management.db.get_course_by_number")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_success_copies_programs_from_source(
         self,
         mock_get_course,
@@ -292,7 +292,7 @@ class TestManagementDuplicateCourse:
         mock_add.assert_any_call("course-2", "p1")
         mock_add.assert_any_call("course-2", "p2")
 
-    @patch("api.routes.management.db.get_course_by_id")
+    @patch("src.api.routes.management.db.get_course_by_id")
     def test_duplicate_course_exception_handled(self, mock_get_course, client):
         """Covers exception handler branch."""
         create_site_admin_session(client)
@@ -322,7 +322,7 @@ class TestManagementUpdateSection:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_not_found(self, mock_get_section, client):
         create_site_admin_session(client)
         mock_get_section.return_value = None
@@ -336,7 +336,7 @@ class TestManagementUpdateSection:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_no_fields_to_update(self, mock_get_section, client):
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
@@ -350,8 +350,8 @@ class TestManagementUpdateSection:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.update_course_section")
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.update_course_section")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_success(self, mock_get_section, mock_update, client):
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
@@ -371,8 +371,8 @@ class TestManagementUpdateSection:
         assert updates["students_passed"] == 10
         assert updates["students_dfic"] == 2
 
-    @patch("api.routes.management.db.update_course_section")
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.update_course_section")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_success_narratives(
         self, mock_get_section, mock_update, client
     ):
@@ -396,8 +396,8 @@ class TestManagementUpdateSection:
         assert updates["narrative_challenges"] == "bad"
         assert updates["narrative_changes"] == "change"
 
-    @patch("api.routes.management.db.update_course_section")
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.update_course_section")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_update_failed(self, mock_get_section, mock_update, client):
         create_site_admin_session(client)
         mock_get_section.return_value = {"id": "sec-1"}
@@ -412,7 +412,7 @@ class TestManagementUpdateSection:
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("api.routes.management.db.get_section_by_id")
+    @patch("src.api.routes.management.db.get_section_by_id")
     def test_update_section_exception_handled(self, mock_get_section, client):
         """Covers exception handler branch."""
         create_site_admin_session(client)

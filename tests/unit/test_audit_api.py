@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.app import src.app as app
+from src.app import app
 
 
 class TestAuditAPI:
@@ -58,7 +58,7 @@ class TestAuditAPI:
         """Test successful retrieval of recent audit logs."""
         self._login_institution_admin()
 
-        with patch("api_routes.get_recent_audit_logs") as mock_get_logs:
+        with patch("src.api_routes.get_recent_audit_logs") as mock_get_logs:
             mock_get_logs.return_value = [
                 {
                     "id": "log-1",
@@ -84,7 +84,7 @@ class TestAuditAPI:
         """Test successful search of audit logs."""
         self._login_institution_admin()
 
-        with patch("api_routes.get_audit_logs_filtered") as mock_search:
+        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
             mock_search.return_value = [
                 {
                     "id": "log-2",
@@ -116,7 +116,7 @@ class TestAuditAPI:
         """Test audit log search handles database errors."""
         self._login_institution_admin()
 
-        with patch("api_routes.get_audit_logs_filtered") as mock_search:
+        with patch("src.api_routes.get_audit_logs_filtered") as mock_search:
             mock_search.side_effect = Exception("Database error")
 
             response = self.client.get("/api/audit/search")

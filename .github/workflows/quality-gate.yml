@@ -479,7 +479,7 @@ jobs:
     - name: Generate coverage data
       run: |
         # Generate fresh coverage.xml for diff-cover analysis
-        python -m pytest tests/unit/ -n auto --cov=. --cov-report=xml:coverage.xml --tb=no -q
+        python -m pytest tests/unit/ -n auto --cov=src --cov-report=xml:coverage.xml --tb=no -q
       env:
         PYTHONPATH: .
     - name: Check Coverage on New Code (80% threshold)

@@ -45,7 +45,7 @@ def app_context(app):
 @pytest.fixture(autouse=True)
 def mock_whitelist():
     """Mock whitelist to allow all emails by default in tests."""
-    with patch("email_providers.get_email_whitelist") as mock_get_wl:
+    with patch("src.email_providers.get_email_whitelist") as mock_get_wl:
         whitelist = Mock()
         whitelist.is_allowed.return_value = True
         mock_get_wl.return_value = whitelist
@@ -138,7 +138,7 @@ class TestEmailProtection:
 
     def test_whitelist_blocking(self, app_context):
         """Test blocking by whitelist integration."""
-        with patch("email_providers.get_email_whitelist") as mock_get_wl:
+        with patch("src.email_providers.get_email_whitelist") as mock_get_wl:
             whitelist = Mock()
             whitelist.is_allowed.return_value = False
             whitelist.get_blocked_reason.return_value = "Blocked by whitelist logic"
@@ -152,7 +152,7 @@ class TestEmailProtection:
                     text_body="Text",
                 )
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_safe_email_sending_verification(self, mock_create_provider, app_context):
         """Test that verification emails work for safe domains"""
         # Mock provider
@@ -167,7 +167,7 @@ class TestEmailProtection:
         )
         assert result is True  # Should succeed (suppressed in test mode)
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_safe_email_sending_convenience_functions(
         self, mock_create_provider, app_context
     ):
@@ -195,7 +195,7 @@ class TestEmailProtection:
         with pytest.raises(EmailServiceError):
             send_password_reset_email("test@coastal.edu", "token", "User")
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_production_mode_allows_protected_emails(self, mock_create_provider):
         """Test that production mode allows emails to protected domains"""
         # Mock the email provider
@@ -390,7 +390,7 @@ class TestEmailURLBuilding:
         url = EmailService._build_password_reset_url("reset-token-456")
         assert url == "http://localhost:5000/reset-password/reset-token-456"
 
-    @patch("email_service.EmailService._send_email")
+    @patch("src.services.email_service.EmailService._send_email")
     def test_send_password_reset_confirmation_email(self, mock_send_email, app_context):
         """Test sending password reset confirmation email (covers lines 212-222)"""
         mock_send_email.return_value = True
@@ -414,7 +414,7 @@ class TestEmailURLBuilding:
 class TestEmailLogging:
     """Tests for email preview logging to disk."""
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_logs_successful_email_preview(
         self,
         mock_create_provider,
@@ -494,7 +494,7 @@ class TestEmailLogging:
 class TestEmailSuppression:
     """Test email suppression in development mode"""
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_email_suppression_enabled(self, mock_create_provider, app_context):
         """Test that emails are suppressed when MAIL_SUPPRESS_SEND is True"""
 
@@ -513,7 +513,7 @@ class TestEmailSuppression:
 
         assert result is True
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_email_suppression_logs_content(self, mock_create_provider, app_context):
         """Test that suppressed emails log their content"""
 
@@ -538,7 +538,7 @@ class TestEmailSuppression:
 class TestProviderSending:
     """Test provider-based email sending"""
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_provider_sending_success(self, mock_create_provider):
         """Test email sending via provider"""
 
@@ -565,7 +565,7 @@ class TestProviderSending:
             assert result is True
             mock_provider.send_email.assert_called_once()
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_provider_sending_failure(self, mock_create_provider):
         """Test email sending failure via provider"""
 
@@ -603,7 +603,7 @@ class TestConvenienceFunctions:
         assert callable(send_invitation_email)
         assert callable(send_welcome_email)
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_convenience_functions_work(self, mock_create_provider, app_context):
         """Test that convenience functions work correctly"""
 
@@ -627,7 +627,7 @@ class TestConvenienceFunctions:
 class TestCourseReminderEmail:
     """Test course assessment reminder email functionality."""
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder(self, mock_create_provider, app_context):
         """Test sending course assessment reminder email."""
 
@@ -649,7 +649,7 @@ class TestCourseReminderEmail:
         assert result is True
         mock_provider.send_email.assert_called_once()
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_failure(
         self, mock_create_provider, app_context
     ):
@@ -670,7 +670,7 @@ class TestCourseReminderEmail:
 
         assert result is False
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_with_empty_names(
         self, mock_create_provider, app_context
     ):
@@ -691,7 +691,7 @@ class TestCourseReminderEmail:
 
         assert result is True
 
-    @patch("email_service.create_email_provider")
+    @patch("src.services.email_service.create_email_provider")
     def test_send_course_assessment_reminder_exception(
         self, mock_create_provider, app_context
     ):
