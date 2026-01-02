@@ -50,7 +50,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs/cs-program/courses")
 
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
 
         course_data = {"course_id": "CS101"}
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post(
                 "/api/programs/cs-program/courses", json=course_data
             )
@@ -109,7 +109,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         ]
         mock_remove.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.delete("/api/programs/cs-program/courses/course1")
 
         assert response.status_code == 200
@@ -135,7 +135,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
             "course_ids": ["course1", "course2", "course3", "course4"],
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post(
                 "/api/programs/cs-program/courses/bulk", json=bulk_data
             )
@@ -172,7 +172,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
             "course_ids": ["course1", "course2", "course3"],
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post(
                 "/api/programs/cs-program/courses/bulk", json=bulk_data
             )
@@ -197,7 +197,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
             {"id": "eng-program", "name": "Engineering", "short_name": "ENG"},
         ]
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/courses/CS101/programs")
 
         assert response.status_code == 200
@@ -212,7 +212,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         """Test bulk course management with invalid action"""
         bulk_data = {"action": "invalid_action", "course_ids": ["course1"]}
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post(
                 "/api/programs/cs-program/courses/bulk", json=bulk_data
             )
@@ -229,7 +229,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
             # Missing course_ids
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post(
                 "/api/programs/cs-program/courses/bulk", json=bulk_data
             )
@@ -245,7 +245,7 @@ class TestCourseProgramAPIIntegration(CommonAuthMixin):
         mock_get_program.return_value = None
 
         # Test get program courses
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs/nonexistent/courses")
 
         assert response.status_code == 404
@@ -295,7 +295,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
         # Step 1: Add course to program
         mock_add.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             add_response = self.client.post(
                 "/api/programs/cs-program/courses", json={"course_id": "CS101"}
             )
@@ -314,7 +314,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
             }
         ]
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             view_response = self.client.get("/api/programs/cs-program/courses")
 
         assert view_response.status_code == 200
@@ -326,7 +326,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
         # Step 3: Remove course from program
         mock_remove.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             remove_response = self.client.delete(
                 "/api/programs/cs-program/courses/course1"
             )
@@ -364,7 +364,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
             "failures": [],
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             add_response = self.client.post(
                 "/api/programs/cs-program/courses/bulk",
                 json={"action": "add", "course_ids": ["course1", "course2", "course3"]},
@@ -383,7 +383,7 @@ class TestCourseProgramWorkflow(CommonAuthMixin):
             "orphaned_assigned_to_default": 1,
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             remove_response = self.client.post(
                 "/api/programs/cs-program/courses/bulk",
                 json={

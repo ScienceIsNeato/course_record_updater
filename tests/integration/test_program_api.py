@@ -48,7 +48,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs")
 
         assert response.status_code == 200
@@ -74,7 +74,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             "description": "Mathematics Program",
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post("/api/programs", json=program_data)
 
         assert response.status_code == 201
@@ -94,7 +94,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             "description": "Computer Science Program",
         }
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs/cs-program")
 
         assert response.status_code == 200
@@ -108,7 +108,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         """Test program retrieval when program doesn't exist"""
         mock_get_program.return_value = None
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs/nonexistent")
 
         assert response.status_code == 404
@@ -132,7 +132,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             "description": "Updated description",
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.put("/api/programs/cs-program", json=update_data)
 
         assert response.status_code == 200
@@ -161,7 +161,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         ]
         mock_delete.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.delete("/api/programs/cs-program")
 
         assert response.status_code == 200
@@ -178,7 +178,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             "is_default": True,
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.delete("/api/programs/default-program")
 
         assert response.status_code == 400
@@ -193,7 +193,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
             # Missing short_name
         }
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post("/api/programs", json=incomplete_data)
 
         assert response.status_code == 400
@@ -203,7 +203,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
 
     def test_create_program_no_data_integration(self):
         """Test program creation with no JSON data"""
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             response = self.client.post("/api/programs")
 
         # Returns 400 with silent=True for missing JSON
@@ -215,7 +215,7 @@ class TestProgramAPIIntegration(CommonAuthMixin):
         """Test program listing when no institution context available - should return system-wide programs for site admin"""
         mock_get_institution.return_value = None
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             response = self.client.get("/api/programs")
 
         # Should succeed and return system-wide programs (new behavior for site admin)
@@ -261,7 +261,7 @@ class TestProgramWorkflow(CommonAuthMixin):
         # Step 1: Create program
         mock_create.return_value = "new-program-id"
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             create_response = self.client.post(
                 "/api/programs",
                 json={
@@ -284,7 +284,7 @@ class TestProgramWorkflow(CommonAuthMixin):
             "description": "Engineering Program",
         }
 
-        with patch("api_routes.login_required", lambda f: f):
+        with patch("src.api_routes.login_required", lambda f: f):
             read_response = self.client.get(f"/api/programs/{program_id}")
 
         assert read_response.status_code == 200
@@ -295,7 +295,7 @@ class TestProgramWorkflow(CommonAuthMixin):
         # Step 3: Update program
         mock_update.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             update_response = self.client.put(
                 f"/api/programs/{program_id}",
                 json={
@@ -318,7 +318,7 @@ class TestProgramWorkflow(CommonAuthMixin):
         mock_get_programs.return_value = [{"id": "default-program", "is_default": True}]
         mock_delete.return_value = True
 
-        with patch("api_routes.permission_required", lambda perm: lambda f: f):
+        with patch("src.api_routes.permission_required", lambda perm: lambda f: f):
             delete_response = self.client.delete(f"/api/programs/{program_id}")
 
         assert delete_response.status_code == 200

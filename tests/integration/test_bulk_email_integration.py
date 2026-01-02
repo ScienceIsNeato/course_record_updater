@@ -49,7 +49,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         instructor_ids = ["inst-1", "inst-2"]
 
         # Mock email sending
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True
@@ -107,7 +109,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True
@@ -151,7 +155,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True
