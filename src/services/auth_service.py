@@ -377,6 +377,33 @@ class AuthService:
         # Other roles can only access their institution
         return user.get("accessible_institutions", [])
 
+    def _get_programs_for_institution(self, institution_id: str) -> List[str]:
+        """Fetch program IDs for a specific institution."""
+        try:
+            import src.database.database_service as db
+
+            programs = db.get_programs_by_institution(institution_id)
+            return [p.get("program_id") or p.get("id") for p in programs]
+        except Exception as e:
+            logger.error(f"Error fetching programs: {e}")
+            return []
+
+    def _get_all_programs_for_site_admin(self) -> List[str]:
+        """Fetch all program IDs across all institutions for site admin."""
+        try:
+            import src.database.database_service as db
+
+            all_programs = []
+            institutions = db.get_all_institutions()
+            for inst in institutions:
+                inst_id = inst.get("institution_id") or inst.get("id")
+                if inst_id:
+                    all_programs.extend(self._get_programs_for_institution(inst_id))
+            return all_programs
+        except Exception as e:
+            logger.error(f"Error fetching all programs for site admin: {e}")
+            return []
+
     def get_accessible_programs(
         self, institution_id: Optional[str] = None
     ) -> List[str]:
@@ -389,50 +416,15 @@ class AuthService:
 
         # Site admin can access all programs across all institutions
         if user_role == UserRole.SITE_ADMIN.value:
-            # If institution_id provided, filter to that institution
             if institution_id:
-                try:
-                    import src.database.database_service as db
-
-                    programs = db.get_programs_by_institution(institution_id)
-                    return [p.get("program_id") or p.get("id") for p in programs]
-                except Exception as e:
-                    logger.error(f"Error fetching programs for site admin: {e}")
-                    return []
-
-            # Otherwise, get all programs across all institutions
-            try:
-                import src.database.database_service as db
-
-                all_programs = []
-                institutions = db.get_all_institutions()
-                for inst in institutions:
-                    inst_id = inst.get("institution_id") or inst.get("id")
-                    if inst_id:
-                        programs = db.get_programs_by_institution(inst_id)
-                        program_ids = [
-                            p.get("program_id") or p.get("id") for p in programs
-                        ]
-                        all_programs.extend(program_ids)
-                return all_programs
-            except Exception as e:
-                logger.error(f"Error fetching all programs for site admin: {e}")
-                return []
+                return self._get_programs_for_institution(institution_id)
+            return self._get_all_programs_for_site_admin()
 
         # Institution admin can access all programs in their institution
         if user_role == UserRole.INSTITUTION_ADMIN.value:
             target_inst_id = user.get("institution_id")
-
             if target_inst_id:
-                try:
-                    import src.database.database_service as db
-
-                    programs = db.get_programs_by_institution(target_inst_id)
-                    return [p.get("program_id") or p.get("id") for p in programs]
-                except Exception as e:
-                    logger.error(f"Error fetching programs for admin: {e}")
-                    return []
-
+                return self._get_programs_for_institution(target_inst_id)
             return []
 
         # Program admin can only access their specific programs
