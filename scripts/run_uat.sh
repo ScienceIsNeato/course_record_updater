@@ -20,9 +20,10 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Script directory
+# Script directory and project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
 # Constants
 readonly MODE_HEADED="headed"
@@ -166,7 +167,7 @@ export DATABASE_TYPE="sqlite"
 
 # Seed E2E database with baseline shared infrastructure
 echo -e "${YELLOW}🌱 Seeding E2E database with baseline data...${NC}"
-python seed_db.py --env e2e
+python scripts/seed_db.py --env e2e
 echo ""
 echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""
@@ -174,7 +175,7 @@ echo ""
 # Start server in E2E mode (restart_server.sh determines port from LOOPCLOSER_DEFAULT_PORT_E2E)
 E2E_PORT="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
 echo -e "${YELLOW}🚀 Starting E2E server on port $E2E_PORT...${NC}"
-if ! ./restart_server.sh e2e; then
+if ! ./scripts/restart_server.sh e2e; then
     echo -e "${RED}❌ E2E server failed to start${NC}"
     echo -e "${YELLOW}Check logs/test_server.log for details${NC}"
     exit 1
