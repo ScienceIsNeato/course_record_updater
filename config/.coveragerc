@@ -7,6 +7,9 @@ source = .
 parallel = True
 concurrency = multiprocessing
 omit =
+    config/*
+    build/*
+    data/*
     # Virtual environments and dependencies
     venv/*
     */venv/*
