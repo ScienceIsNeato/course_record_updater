@@ -17,8 +17,8 @@ from datetime import datetime
 
 import pytest
 
-from app import app as flask_app
-from email_service import EmailService
+from src.app import src.app as app as flask_app
+from src.services.email_service import EmailService
 
 
 @pytest.mark.third_party

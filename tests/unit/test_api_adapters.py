@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from app import app
+from src.app import src.app as app
 from tests.test_utils import create_test_session
 
 
@@ -161,7 +161,7 @@ class TestExportHelpers:
 
     def test_create_system_manifest(self):
         """Test manifest creation."""
-        from api_routes import _create_system_manifest
+        from src.api_routes import _create_system_manifest
 
         manifest = _create_system_manifest(
             current_user={"email": "admin@test.com"},
@@ -180,7 +180,7 @@ class TestExportHelpers:
     @patch("api_routes._DEFAULT_EXPORT_EXTENSION", ".csv")
     def test_get_adapter_file_extension(self):
         """Test extension resolution."""
-        from api_routes import _get_adapter_file_extension
+        from src.api_routes import _get_adapter_file_extension
 
         mock_service = Mock()
         mock_adapter = Mock()
@@ -204,7 +204,7 @@ class TestExportHelpers:
         self, mock_create_service, mock_send_file, mock_create_zip, mock_get_insts
     ):
         """Test the logic within _export_all_institutions."""
-        from api_routes import _export_all_institutions
+        from src.api_routes import _export_all_institutions
 
         # Setup mocks
         mock_get_insts.return_value = [{"institution_id": "i1", "short_name": "inst1"}]

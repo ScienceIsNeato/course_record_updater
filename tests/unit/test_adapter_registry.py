@@ -7,12 +7,12 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from adapters.adapter_registry import (
+from src.adapters.adapter_registry import (
     AdapterRegistry,
     AdapterRegistryError,
     get_adapter_registry,
 )
-from adapters.file_base_adapter import FileBaseAdapter
+from src.adapters.file_base_adapter import FileBaseAdapter
 
 
 class MockAdapterA(FileBaseAdapter):
@@ -638,7 +638,7 @@ class TestAdapterRegistryError:
         """Test get_adapter raises AdapterRegistryError when adapter instantiation fails."""
         from unittest.mock import MagicMock
 
-        from adapters.adapter_registry import AdapterRegistry, AdapterRegistryError
+        from src.adapters.adapter_registry import AdapterRegistry, AdapterRegistryError
 
         registry = AdapterRegistry()
 

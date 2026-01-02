@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-import database_service
+import src.database.database_service as database_service
 
 pytestmark = pytest.mark.integration
 

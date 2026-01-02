@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from database_service import create_default_mocku_institution
+from src.database.database_service import create_default_mocku_institution
 
 
 @pytest.mark.integration

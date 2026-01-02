@@ -11,7 +11,7 @@ from typing import List
 
 import pytest
 
-from database_factory import get_database_service
+from src.database.database_factory import get_database_service
 
 
 class TestSQLiteConcurrency:

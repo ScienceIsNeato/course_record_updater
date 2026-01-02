@@ -8,14 +8,14 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest
 
-from api.utils import (
+from src.api.utils import (
     InstitutionContextMissingError,
     get_mimetype_for_extension,
     handle_api_error,
     resolve_institution_scope,
     validate_request_json,
 )
-from auth_service import UserRole
+from src.services.auth_service import UserRole
 
 
 @pytest.fixture

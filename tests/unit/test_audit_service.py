@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from audit_service import (
+from src.services.audit_service import (
     AuditService,
     EntityType,
     OperationType,

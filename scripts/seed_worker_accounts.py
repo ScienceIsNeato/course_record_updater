@@ -27,10 +27,10 @@ from datetime import datetime, timezone
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import database_service as db
-from constants import SITE_ADMIN_INSTITUTION_ID
-from models import User
-from password_service import hash_password
+import src.database.database_service as database_service as db
+from src.utils.constants import SITE_ADMIN_INSTITUTION_ID
+from src.models.models import User
+from src.services.password_service import hash_password
 
 # Import E2E test data contract
 from tests.e2e.e2e_test_data_contract import (

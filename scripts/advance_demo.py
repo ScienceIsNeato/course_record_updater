@@ -48,9 +48,9 @@ def setup_env(env_name="dev"):
 
 def run_generate_logs(app, db):
     """Simulates Phase 2/3 actions (Invites, Imports) to generate log artifacts."""
-    from invitation_service import InvitationService
-    from import_service import ImportService, ConflictStrategy
-    from auth_service import UserRole
+    from src.services.invitation_service import InvitationService
+    from src.services.import_service import ImportService, ConflictStrategy
+    from src.services.auth_service import UserRole
 
     logger.info("=== Target: Generate Logs (Phase 2/3) ===")
 
@@ -126,10 +126,10 @@ def run_generate_logs(app, db):
 
 def run_semester_end(app, db):
     """Fast-forwards to Phase 4 (Submissions, Duplications, Reminders)."""
-    from models import CourseOutcome
-    from clo_workflow_service import CLOWorkflowService
-    from constants import CLOStatus
-    from bulk_email_service import BulkEmailService
+    from src.models.models import CourseOutcome
+    from src.services.clo_workflow_service import CLOWorkflowService
+    from src.utils.constants import CLOStatus
+    from src.services.bulk_email_service import BulkEmailService
 
     logger.info("=== Target: Semester End (Phase 4 Setup) ===")
 
@@ -295,8 +295,8 @@ def main():
     setup_env(args.env)
 
     # Import services AFTER env setup
-    import database_service as db
-    from app import app
+    import src.database.database_service as database_service as db
+    from src.app import src.app as app
     
     with app.app_context():
         if args.target == "generate_logs":

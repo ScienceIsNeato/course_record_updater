@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from dashboard_service import DashboardService, DashboardServiceError
+from src.services.dashboard_service import DashboardService, DashboardServiceError
 
 
 @pytest.fixture

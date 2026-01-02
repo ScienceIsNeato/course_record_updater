@@ -4,8 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from api.routes.clo_workflow import get_clos_for_audit
-from app import app
+from src.api.routes.clo_workflow import get_clos_for_audit
+from src.app import src.app as app
 
 
 @pytest.fixture

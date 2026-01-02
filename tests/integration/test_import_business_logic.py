@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from import_service import ConflictStrategy, ImportService
+from src.services.import_service import ConflictStrategy, ImportService
 
 # Mark as integration tests (involves file I/O, database operations)
 pytestmark = pytest.mark.integration

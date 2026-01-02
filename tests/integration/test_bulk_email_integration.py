@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app import app
-from bulk_email_models.bulk_email_job import BulkEmailJob
+from src.app import src.app as app
+from src.bulk_email_models.bulk_email_job import BulkEmailJob
 from tests.test_utils import CommonAuthMixin
 
 

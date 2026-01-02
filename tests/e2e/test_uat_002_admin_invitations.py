@@ -19,7 +19,7 @@ from typing import Optional
 import pytest
 from playwright.sync_api import Page, expect
 
-from constants import INVITATION_CREATED_AND_SENT_MSG
+from src.utils.constants import INVITATION_CREATED_AND_SENT_MSG
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,

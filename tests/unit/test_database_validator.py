@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
 from sqlalchemy.orm import declarative_base
 
-from database_validator import (
+from src.database.database_validator import (
     SchemaValidationError,
     _get_model_columns,
     _get_table_columns,
@@ -303,7 +303,7 @@ class TestSQLAlchemySchemaValidation:
 
         db_service = DirectEngineService(engine)
 
-        from database_validator import _get_sqlalchemy_engine
+        from src.database.database_validator import _get_sqlalchemy_engine
 
         result_engine = _get_sqlalchemy_engine(db_service)
         assert result_engine is engine
@@ -311,7 +311,8 @@ class TestSQLAlchemySchemaValidation:
     def test_get_all_models_fallback_to_metadata(self):
         """Should fallback to metadata approach when registry access fails."""
         import database_validator
-        from database_validator import _get_all_models
+
+        from src.database.database_validator import _get_all_models
 
         # Mock Base to raise AttributeError when accessing registry
         original_base = database_validator.Base
@@ -335,7 +336,7 @@ class TestSQLAlchemySchemaValidation:
         """Should return issues and should_continue=False when table missing."""
         from sqlalchemy import inspect
 
-        from database_validator import _validate_table_exists
+        from src.database.database_validator import _validate_table_exists
 
         engine = create_engine("sqlite:///:memory:")
         inspector = inspect(engine)
@@ -357,7 +358,7 @@ class TestSQLAlchemySchemaValidation:
         """Should return warnings for columns in DB but not in model."""
         from sqlalchemy import inspect
 
-        from database_validator import _validate_model_columns
+        from src.database.database_validator import _validate_model_columns
 
         engine = create_engine("sqlite:///:memory:")
         inspector = inspect(engine)
@@ -394,7 +395,11 @@ class TestSQLAlchemySchemaValidation:
     def test_validate_schema_or_exit_unexpected_error(self):
         """Should raise SchemaValidationError for unexpected errors."""
         import database_validator
-        from database_validator import SchemaValidationError, validate_schema_or_exit
+
+        from src.database.database_validator import (
+            SchemaValidationError,
+            validate_schema_or_exit,
+        )
 
         # Create service that will cause unexpected error
         class BrokenService:

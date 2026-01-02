@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from export_service import ExportResult
+from src.services.export_service import ExportResult
 
 
 @pytest.mark.unit

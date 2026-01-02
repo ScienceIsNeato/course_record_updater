@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from app import app
+from src.app import src.app as app
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ class TestLoginAPI:
     def test_login_account_locked(self, mock_password_service, client):
         """Test login when account is locked"""
         # Setup
-        from password_service import AccountLockedError
+        from src.services.password_service import AccountLockedError
 
         mock_password_service.check_account_lockout.side_effect = AccountLockedError(
             "Account is locked"

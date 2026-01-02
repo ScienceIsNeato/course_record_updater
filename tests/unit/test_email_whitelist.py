@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from email_providers.whitelist import (
+from src.email_providers.whitelist import (
     EmailWhitelist,
     get_email_whitelist,
     reset_whitelist,

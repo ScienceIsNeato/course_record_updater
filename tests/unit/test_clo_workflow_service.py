@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from clo_workflow_service import CLOWorkflowService
-from constants import CLOApprovalStatus, CLOStatus
+from src.services.clo_workflow_service import CLOWorkflowService
+from src.utils.constants import CLOApprovalStatus, CLOStatus
 
 
 class TestSubmitCLOForApproval:
@@ -661,7 +661,7 @@ class TestSendReworkNotification:
         self, mock_get_details, mock_email_service
     ):
         """Test sending rework notification email"""
-        from app import app  # Import Flask app for context
+        from src.app import src.app as app  # Import Flask app for context
 
         outcome_id = "outcome-123"
         feedback = "Please improve the assessment description"
@@ -712,7 +712,7 @@ class TestSendReworkNotification:
         self, mock_get_details, mock_email_service
     ):
         """Test notification when email sending fails"""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_details.return_value = {
             "id": "outcome-123",

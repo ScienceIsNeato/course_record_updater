@@ -14,7 +14,7 @@ def clean_database():
 
     UAT tests create rich test data and should start with a clean slate.
     """
-    import database_service
+    import src.database.database_service as database_service
 
     database_service.reset_database()
     yield
@@ -27,7 +27,7 @@ def uat_test_client():
     """
     Provide Flask test client configured for UAT testing.
     """
-    from app import app
+    from src.app import src.app as app
 
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "uat-test-secret-key"

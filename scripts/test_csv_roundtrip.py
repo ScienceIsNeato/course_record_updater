@@ -23,11 +23,11 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from adapters.adapter_registry import AdapterRegistry
-from database_factory import get_database_service
-from export_service import ExportConfig, create_export_service
-from import_service import ConflictStrategy, ImportService
-from logging_config import get_logger
+from src.adapters.adapter_registry import AdapterRegistry
+from src.database.database_factory import get_database_service
+from src.services.export_service import ExportConfig, create_export_service
+from src.services.import_service import ConflictStrategy, ImportService
+from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -158,7 +158,7 @@ def main():
     logger.info("STEP 2: Record current database state")
     logger.info("-" * 70)
     
-    from database_service import get_active_terms, get_all_courses, get_all_users
+    from src.database.database_service import get_active_terms, get_all_courses, get_all_users
     
     original_users_count = len(get_all_users(institution_id))
     original_courses_count = len(get_all_courses(institution_id))

@@ -15,7 +15,7 @@ import sys
 
 from flask import Flask
 
-from email_service import EmailService
+from src.services.email_service import EmailService
 
 
 def test_gmail_smtp():

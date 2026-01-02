@@ -15,7 +15,11 @@ from typing import Any, Dict, List
 
 import pytest
 
-from adapters.generic_csv_adapter import CSV_COLUMNS, EXPORT_ORDER, GenericCSVAdapter
+from src.adapters.generic_csv_adapter import (
+    CSV_COLUMNS,
+    EXPORT_ORDER,
+    GenericCSVAdapter,
+)
 
 
 @pytest.mark.unit

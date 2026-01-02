@@ -261,15 +261,15 @@ class PanelManager {
                 <div class="stat-preview-header">${data.title}</div>
                 <div class="stat-preview-content">
                     ${data.items
-                      .map(
-                        item => `
+          .map(
+            item => `
                         <div class="stat-preview-item">
                             <span>${item.label}</span>
                             <span>${item.value}</span>
                         </div>
                     `
-                      )
-                      .join('')}
+          )
+          .join('')}
                 </div>
             `;
     } catch (error) {
@@ -656,17 +656,16 @@ class PanelManager {
                     ${config.title}
                 </h5>
                 <div class="panel-actions">
-                    ${
-                      config.actions
-                        ?.map(
-                          action => `
+                    ${config.actions
+        ?.map(
+          action => `
                         <button class="btn btn-sm btn-outline-primary" onclick="${action.onclick}">
                             ${action.icon} ${action.label}
                         </button>
                     `
-                        )
-                        .join('') || ''
-                    }
+        )
+        .join('') || ''
+      }
                 </div>
                 <button class="panel-toggle">▼</button>
             </div>
@@ -702,14 +701,14 @@ class PanelManager {
           row => `
             <tr>
                 ${config.columns
-                  .map(
-                    col => `
+              .map(
+                col => `
                     <td ${row[col.key + '_sort'] ? `data-sort="${row[col.key + '_sort']}"` : ''}>
                         ${row[col.key] || ''}
                     </td>
                 `
-                  )
-                  .join('')}
+              )
+              .join('')}
             </tr>
         `
         )
@@ -980,20 +979,14 @@ function escapeHtml(text) {
  * View all activity - navigate to detailed audit log page
  */
 function viewAllActivity() {
-  // TODO: Implement full audit log viewer page
-  alert(
-    'Full audit log viewer coming soon!\n\nFor now, you can export audit logs via the API:\nPOST /api/audit/export'
-  );
+  window.location.href = '/audit-logs';
 }
 
 /**
- * Filter activity - show filter modal
+ * Filter activity - navigate to detailed audit log page
  */
 function filterActivity() {
-  // TODO: Implement filter modal
-  alert(
-    'Activity filtering coming soon!\n\nFilters will include:\n- Date range\n- User\n- Action type\n- Entity type'
-  );
+  window.location.href = '/audit-logs';
 }
 
 // Auto-load audit logs when panel is expanded

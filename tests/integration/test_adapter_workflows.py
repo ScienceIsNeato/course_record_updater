@@ -13,16 +13,16 @@ import pandas as pd
 import pytest
 from openpyxl import Workbook
 
-from adapters.adapter_registry import get_adapter_registry
-from database_factory import get_database_service
-from database_service import (
+from src.adapters.adapter_registry import get_adapter_registry
+from src.database.database_factory import get_database_service
+from src.database.database_service import (
     create_default_mocku_institution,
     get_active_terms,
     get_all_courses,
     get_all_users,
 )
-from export_service import ExportConfig, ExportService
-from import_service import ConflictStrategy, ImportService
+from src.services.export_service import ExportConfig, ExportService
+from src.services.import_service import ConflictStrategy, ImportService
 
 
 @pytest.mark.integration

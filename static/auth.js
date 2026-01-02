@@ -700,14 +700,126 @@ function showLogin() {
 }
 
 // Profile management functions
-function handleUpdateProfile(event) {
+// Profile management functions
+async function handleUpdateProfile(event) {
   event.preventDefault();
-  // TODO: Implement profile update
+
+  const form = document.getElementById('profileForm');
+  const btn = document.getElementById('updateProfileBtn');
+  const btnText = btn.querySelector('.btn-text');
+  const btnSpinner = btn.querySelector('.btn-spinner');
+
+  // Validate form
+  if (!validateForm(form)) {
+    return;
+  }
+
+  // Disable button and show spinner
+  btn.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpinner.classList.remove('d-none');
+
+  const firstName = document.getElementById('firstName').value;
+  const lastName = document.getElementById('lastName').value;
+
+  try {
+    const response = await fetch('/api/auth/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      showMessage(data.message || 'Profile updated successfully', 'success');
+      // Update displayed name if present in navbar
+      const navbarName = document.querySelector('.navbar .nav-link i.fa-user-circle')?.nextSibling;
+      if (navbarName) {
+        navbarName.textContent = ` ${firstName} ${lastName}`;
+      }
+    } else {
+      showMessage(data.error || 'Failed to update profile', 'error');
+    }
+  } catch (error) {
+    console.error('Profile update error:', error);
+    showMessage('An unexpected error occurred. Please try again.', 'error');
+  } finally {
+    // Reset button state
+    btn.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpinner.classList.add('d-none');
+  }
 }
 
-function handleChangePassword(event) {
+async function handleChangePassword(event) {
   event.preventDefault();
-  // TODO: Implement password change
+
+  const form = document.getElementById('changePasswordForm');
+  const btn = document.getElementById('changePasswordBtn');
+  const btnText = btn.querySelector('.btn-text');
+  const btnSpinner = btn.querySelector('.btn-spinner');
+
+  // Validate form
+  if (!validateForm(form)) {
+    return;
+  }
+
+  // Validate password match
+  const newPassword = document.getElementById('newPassword');
+  const confirmNewPassword = document.getElementById('confirmNewPassword');
+
+  if (newPassword.value !== confirmNewPassword.value) {
+    setValidationState(confirmNewPassword, false, 'Passwords do not match');
+    return;
+  }
+
+  // Disable button and show spinner
+  btn.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpinner.classList.remove('d-none');
+
+  try {
+    const response = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify({
+        current_password: document.getElementById('currentPassword').value,
+        new_password: newPassword.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      showMessage(data.message || 'Password changed successfully', 'success');
+      form.reset();
+      // Reset strength indicator
+      const strengthFill = document.getElementById('newPasswordStrengthFill');
+      const strengthLabel = document.getElementById('newPasswordStrengthLabel');
+      if (strengthFill) strengthFill.className = 'password-strength-fill';
+      if (strengthLabel) strengthLabel.textContent = 'Enter password';
+    } else {
+      showMessage(data.error || 'Failed to change password', 'error');
+    }
+  } catch (error) {
+    console.error('Password change error:', error);
+    showMessage('An unexpected error occurred. Please try again.', 'error');
+  } finally {
+    // Reset button state
+    btn.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpinner.classList.add('d-none');
+  }
 }
 
 // Export functions for global use

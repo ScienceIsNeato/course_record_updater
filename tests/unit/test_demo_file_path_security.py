@@ -16,7 +16,7 @@ class TestDemoFilePathSecurity:
     @pytest.fixture
     def mock_app_context(self):
         """Create a Flask app context for testing."""
-        from app import app
+        from src.app import src.app as app
 
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"

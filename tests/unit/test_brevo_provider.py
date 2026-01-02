@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from email_providers.brevo_provider import BrevoProvider
+from src.email_providers.brevo_provider import BrevoProvider
 
 
 class TestBrevoProviderConfiguration:

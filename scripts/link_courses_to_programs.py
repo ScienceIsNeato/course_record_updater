@@ -12,7 +12,7 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import database_service as db
+import src.database.database_service as database_service as db
 
 
 def link_courses_to_programs(institution_id):

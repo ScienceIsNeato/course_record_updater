@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from flask import Flask
 
-from email_service import (
+from src.services.email_service import (
     EmailService,
     EmailServiceError,
     send_invitation_email,

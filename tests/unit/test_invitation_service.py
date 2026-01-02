@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from invitation_service import InvitationError, InvitationService
+from src.services.invitation_service import InvitationError, InvitationService
 
 
 class TestInvitationServiceCreation:
@@ -702,7 +702,7 @@ class TestInvitationServiceIntegration:
         from datetime import datetime
         from unittest.mock import patch
 
-        from invitation_service import InvitationService
+        from src.services.invitation_service import InvitationService
 
         # Create invitation with naive datetime (no timezone)
         naive_datetime = datetime(2099, 1, 1, 0, 0, 0)  # Future date, naive

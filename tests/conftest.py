@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-import database_service
+import src.database.database_service as database_service
 
 
 def pytest_collection_modifyitems(config, items):

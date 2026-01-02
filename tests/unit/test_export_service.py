@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pandas as pd
 import pytest
 
-from export_service import ExportConfig, ExportResult, ExportService
+from src.services.export_service import ExportConfig, ExportResult, ExportService
 
 
 class TestExportService:
@@ -225,7 +225,7 @@ class TestExportServiceAdapterRegistry:
 
         # Mock the registry to throw an error
         with patch.object(service.registry, "get_adapter_by_id") as mock_get_adapter:
-            from adapters.adapter_registry import AdapterRegistryError
+            from src.adapters.adapter_registry import AdapterRegistryError
 
             mock_get_adapter.side_effect = AdapterRegistryError("Registry error")
 
@@ -245,7 +245,7 @@ class TestCreateExportService:
 
     def test_create_export_service(self):
         """Test the factory function creates a service."""
-        from export_service import create_export_service
+        from src.services.export_service import create_export_service
 
         service = create_export_service()
         assert isinstance(service, ExportService)

@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from adapters.cei_excel_adapter import (
+from src.adapters.cei_excel_adapter import (
     _extract_clo_data,
     _extract_department_from_course,
     _extract_name_from_email,
@@ -216,7 +216,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test validate_file_compatibility handles general exceptions."""
         from unittest.mock import patch
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -234,7 +234,7 @@ class TestCEIExcelAdapterErrorHandling:
 
     def test_validate_basic_file_properties_file_not_found(self):
         """Test file validation when file doesn't exist."""
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
         is_valid, error_msg = adapter._validate_basic_file_properties(
@@ -249,7 +249,7 @@ class TestCEIExcelAdapterErrorHandling:
         import os
         import tempfile
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -271,7 +271,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_course_column when no valid course numbers found."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -287,7 +287,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_term_column when no valid term codes found."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -303,7 +303,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_student_count_column with invalid data."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -319,7 +319,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_student_count_column with strings that look numeric but aren't."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -335,7 +335,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _check_format_compatibility returns hybrid format."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -354,7 +354,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_data_patterns returns term validation error."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -378,7 +378,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_student_count_column when column doesn't exist."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -394,7 +394,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_student_count_column returns error for invalid data."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -411,7 +411,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_course_column returns None when column doesn't exist."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -427,7 +427,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_term_column returns None when column doesn't exist."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -446,7 +446,10 @@ class TestCEIExcelAdapterErrorHandling:
 
         import pytest
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+        from src.adapters.cei_excel_adapter import (
+            CEIExcelAdapter,
+            FileCompatibilityError,
+        )
 
         adapter = CEIExcelAdapter()
 
@@ -468,7 +471,10 @@ class TestCEIExcelAdapterErrorHandling:
         import pandas as pd
         import pytest
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+        from src.adapters.cei_excel_adapter import (
+            CEIExcelAdapter,
+            FileCompatibilityError,
+        )
 
         adapter = CEIExcelAdapter()
 
@@ -490,7 +496,7 @@ class TestCEIExcelAdapterErrorHandling:
         """Test _validate_data_patterns includes student column error."""
         import pandas as pd
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -514,7 +520,7 @@ class TestCEIExcelAdapterErrorHandling:
         import os
         import tempfile
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter
+        from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
         adapter = CEIExcelAdapter()
 
@@ -542,7 +548,10 @@ class TestCEIExcelAdapterErrorHandling:
 
         import pytest
 
-        from adapters.cei_excel_adapter import CEIExcelAdapter, FileCompatibilityError
+        from src.adapters.cei_excel_adapter import (
+            CEIExcelAdapter,
+            FileCompatibilityError,
+        )
 
         adapter = CEIExcelAdapter()
 

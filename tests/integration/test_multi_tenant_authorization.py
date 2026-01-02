@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from auth_service import Permission, UserRole
+from src.services.auth_service import Permission, UserRole
 
 
 class TestInstitutionDataIsolation:
@@ -41,7 +41,7 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing own institution's programs
-                    from api_routes import list_programs
+                    from src.api_routes import list_programs
 
                     with patch(
                         "api_routes.get_programs_by_institution"
@@ -87,7 +87,7 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing courses - should be filtered by institution
-                    from api_routes import list_courses
+                    from src.api_routes import list_courses
 
                     with patch("api_routes.get_all_courses") as mock_get_courses:
                         # Mock courses from multiple institutions
@@ -135,7 +135,7 @@ class TestInstitutionDataIsolation:
                     mock_has_perm.return_value = True
 
                     # Test accessing sections - instructors get filtered by instructor_id
-                    from api_routes import list_sections
+                    from src.api_routes import list_sections
 
                     with patch(
                         "api_routes.get_sections_by_instructor"
@@ -168,7 +168,7 @@ class TestProgramScopedAccess:
 
     def test_program_admin_scoped_to_assigned_programs(self):
         """Test that program admin can only access their assigned programs"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         # Test program admin with multiple programs
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -210,7 +210,7 @@ class TestProgramScopedAccess:
 
     def test_program_admin_cannot_access_programs_from_other_institutions(self):
         """Test that program admin cannot access programs from other institutions even if program IDs match"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -251,7 +251,7 @@ class TestCrossTenantAccessPrevention:
                 }
 
                 # Test permission decorator with context
-                from auth_service import permission_required
+                from src.services.auth_service import permission_required
 
                 @permission_required(
                     "view_institution_data", context_keys=["institution_id"]
@@ -286,7 +286,7 @@ class TestCrossTenantAccessPrevention:
                     "program_ids": ["program-a1"],
                 }
 
-                from auth_service import permission_required
+                from src.services.auth_service import permission_required
 
                 @permission_required("view_program_data", context_keys=["program_id"])
                 def test_program_endpoint(program_id):
@@ -311,7 +311,7 @@ class TestRoleHierarchyAccess:
 
     def test_site_admin_can_access_all_institutions(self):
         """Test that site admin can access data from any institution"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {"user_id": "site-admin", "role": "site_admin"}
@@ -327,7 +327,7 @@ class TestRoleHierarchyAccess:
 
     def test_institution_admin_hierarchy_over_program_admin(self):
         """Test that institution admin can access all programs in their institution"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -347,7 +347,7 @@ class TestRoleHierarchyAccess:
 
     def test_role_hierarchy_permission_inheritance(self):
         """Test that higher roles inherit permissions from lower roles"""
-        from auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
         # Site admin should have all permissions
         site_admin_perms = ROLE_PERMISSIONS[UserRole.SITE_ADMIN.value]
@@ -380,7 +380,7 @@ class TestContextAwareAPIEndpoints:
         with app.test_request_context("/api/institutions/inst-123/programs"):
             from flask import request
 
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("view_program_data", context_keys=["institution_id"])
             def test_endpoint():
@@ -411,7 +411,7 @@ class TestContextAwareAPIEndpoints:
             method="POST",
             json={"program_id": "prog-456", "name": "Test Course"},
         ):
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("manage_courses", context_keys=["program_id"])
             def test_create_course():
@@ -434,7 +434,7 @@ class TestContextAwareAPIEndpoints:
         with app.test_request_context(
             "/api/programs/prog-123/courses/course-456", method="PUT"
         ):
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required(
                 "manage_courses", context_keys=["program_id", "course_id"]
@@ -461,7 +461,7 @@ class TestAuthorizationSystemIntegration:
         # This would be a comprehensive end-to-end test
         # For now, we'll test the key integration points
 
-        from auth_service import AuthService, UserRole
+        from src.services.auth_service import AuthService, UserRole
 
         # Test that all components work together
         _ = AuthService()
@@ -480,7 +480,7 @@ class TestAuthorizationSystemIntegration:
 
     def test_permission_system_completeness(self):
         """Test that permission system covers all required scenarios"""
-        from auth_service import ROLE_PERMISSIONS, Permission, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
 
         # Test that all roles have permissions defined
         for role in UserRole:
@@ -511,7 +511,11 @@ class TestAuthorizationSystemIntegration:
 
     def test_authorization_decorators_integration(self):
         """Test that authorization decorators integrate properly with Flask"""
-        from auth_service import login_required, permission_required, role_required
+        from src.services.auth_service import (
+            login_required,
+            permission_required,
+            role_required,
+        )
 
         app = Flask(__name__)
 

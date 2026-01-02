@@ -9,8 +9,8 @@ from typing import Any, Dict
 import pandas as pd
 import pytest
 
-from adapters.cei_excel_adapter import CEIExcelAdapter
-from adapters.file_base_adapter import FileCompatibilityError
+from src.adapters.cei_excel_adapter import CEIExcelAdapter
+from src.adapters.file_base_adapter import FileCompatibilityError
 
 
 class TestCEIExcelAdapterClass:

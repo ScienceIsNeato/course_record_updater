@@ -6,7 +6,7 @@ import pytest
 from flask import Flask
 
 # Import the blueprint
-from api.routes.clo_workflow import clo_workflow_bp
+from src.api.routes.clo_workflow import clo_workflow_bp
 
 
 #  Module-level fixture to bypass permission checks for ALL tests in this file

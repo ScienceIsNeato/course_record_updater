@@ -18,7 +18,7 @@ def _get_csrf_token_from_session_or_generate(client):
 
     from flask_wtf.csrf import generate_csrf
 
-    from app import app
+    from src.app import app
 
     # Strategy: Always ensure session has a raw token, then generate signed token from it
     raw_token = None
@@ -99,7 +99,7 @@ def _configure_csrf_for_testing():
     This runs before every test to ensure production-like security validation.
     It also monkeypatches app.test_client() to return CSRF-aware clients.
     """
-    from app import app
+    from src.app import app
 
     # Store original config and methods
     original_csrf = app.config.get("WTF_CSRF_ENABLED")
@@ -114,9 +114,10 @@ def _configure_csrf_for_testing():
         """Create a test client with automatic CSRF injection."""
         client = original_test_client(*args, **kwargs)
 
-        # Wrap POST/PUT/DELETE methods with CSRF injection
+        # Wrap POST/PUT/PATCH/DELETE methods with CSRF injection
         client.post = _make_csrf_wrapper(client, client.post)
         client.put = _make_csrf_wrapper(client, client.put)
+        client.patch = _make_csrf_wrapper(client, client.patch)
         client.delete = _make_csrf_wrapper(client, client.delete)
 
         return client
@@ -138,7 +139,7 @@ def client():
 
     Use this fixture explicitly when you need the client object.
     """
-    from app import app
+    from src.app import app
 
     with app.test_client() as client:
         yield client

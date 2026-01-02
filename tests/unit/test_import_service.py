@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from import_service import (
+from src.services.import_service import (
     ConflictRecord,
     ConflictStrategy,
     ImportMode,
@@ -80,7 +80,7 @@ class TestDatetimeConversion:
 
     def test_convert_datetime_fields_with_z_format(self):
         """Test datetime with Z suffix (UTC indicator)."""
-        from import_service import _normalize_datetime_string
+        from src.services.import_service import _normalize_datetime_string
 
         # Z format with microseconds should be converted to +00:00
         result = _normalize_datetime_string("2025-09-28T17:41:27.935901Z")
@@ -88,7 +88,7 @@ class TestDatetimeConversion:
 
     def test_convert_datetime_fields_already_normalized(self):
         """Test datetime that already has UTC offset."""
-        from import_service import _normalize_datetime_string
+        from src.services.import_service import _normalize_datetime_string
 
         # Already has +00:00, should be returned as-is
         result = _normalize_datetime_string("2025-09-28T17:41:27.935901+00:00")
@@ -686,7 +686,7 @@ class TestImportServiceErrorHandling:
         """Test _prepare_import handles AdapterRegistryError."""
         from unittest.mock import patch
 
-        from adapters.adapter_registry import AdapterRegistryError
+        from src.adapters.adapter_registry import AdapterRegistryError
 
         service = ImportService("test_inst")
         service.reset_stats()
@@ -923,7 +923,7 @@ class TestImportServiceErrorHandling:
         # Create conflict records
         from datetime import datetime, timezone
 
-        from import_service import ConflictRecord
+        from src.services.import_service import ConflictRecord
 
         detected_conflicts = [
             ConflictRecord(
@@ -958,7 +958,7 @@ class TestImportServiceErrorHandling:
 
         from datetime import datetime, timezone
 
-        from import_service import ConflictRecord
+        from src.services.import_service import ConflictRecord
 
         detected_conflicts = [
             ConflictRecord(

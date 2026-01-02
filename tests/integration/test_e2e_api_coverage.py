@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import app
+from src.app import src.app as app
 from tests.test_utils import CommonAuthMixin, create_test_session
 
 
@@ -39,7 +39,8 @@ class TestProgramDeletionScenarios(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test fixtures"""
-        import database_service as db
+        import src.database.database_service as database_service
+        import src.database.database_service as db
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -251,7 +252,8 @@ class TestInvitationAPI(CommonAuthMixin):
 
     def setup_method(self):
         """Set up test fixtures"""
-        import database_service as db
+        import src.database.database_service as database_service
+        import src.database.database_service as db
 
         self.app = app
         self.app.config["TESTING"] = True

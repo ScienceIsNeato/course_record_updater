@@ -10,7 +10,8 @@ from unittest.mock import patch
 from flask import Flask
 
 # Import the app module for testing
-import app as app_module
+import src.app as app
+import src.app as app_module
 
 
 class TestFlaskAppSetup:
@@ -508,7 +509,7 @@ class TestDatabaseConnection:
     def test_database_service_availability(self):
         """Test that database service is available."""
         # Test that we can import the database factory
-        from database_factory import get_database_service
+        from src.database.database_factory import get_database_service
 
         # Get database service instance
         db_service = get_database_service()
@@ -521,7 +522,7 @@ class TestDatabaseConnection:
     def test_database_service_import(self):
         """Test that database service is imported correctly."""
         # Test that the import doesn't fail
-        from database_factory import _db_service
+        from src.database.database_factory import _db_service
 
         # Database service should be available
         assert _db_service is not None
@@ -603,34 +604,34 @@ class TestAppErrorHandling:
     def test_app_handles_import_errors(self, mock_logging):
         """Test that app handles import errors gracefully."""
         # This tests the import error handling in the app module
-        from app import app
+        from src.app import src.app as app
 
         assert app is not None
 
     def test_app_configuration_defaults(self):
         """Test app configuration defaults."""
-        from app import app
+        from src.app import src.app as app
 
         # Test default configuration values
         assert app.config.get("SECRET_KEY") is not None
 
     def test_app_template_folder_configuration(self):
         """Test that app has templates folder configured."""
-        from app import app
+        from src.app import src.app as app
 
         assert app.template_folder is not None
         assert "templates" in app.template_folder
 
     def test_app_static_folder_configuration(self):
         """Test that app has static folder configured."""
-        from app import app
+        from src.app import src.app as app
 
         assert app.static_folder is not None
         assert "static" in app.static_folder
 
     def test_app_has_blueprints(self):
         """Test that app has blueprints registered."""
-        from app import app
+        from src.app import src.app as app
 
         # Check that blueprints are registered
         blueprint_names = [bp.name for bp in app.blueprints.values()]
@@ -638,14 +639,14 @@ class TestAppErrorHandling:
 
     def test_app_error_handlers_configuration(self):
         """Test app error handlers configuration."""
-        from app import app
+        from src.app import src.app as app
 
         # Test that error handlers are configured
         assert hasattr(app, "error_handler_spec")
 
     def test_app_error_handling_comprehensive(self):
         """Test comprehensive app error handling."""
-        from app import app
+        from src.app import src.app as app
 
         with app.test_client() as client:
             # Test 404 error handling
@@ -657,7 +658,7 @@ class TestAppErrorHandling:
 
     def test_app_request_context_functionality(self):
         """Test app request context functionality."""
-        from app import app
+        from src.app import src.app as app
 
         with app.app_context():
             # Test app context availability
@@ -672,7 +673,7 @@ class TestAppErrorHandling:
 
     def test_app_configuration_validation(self):
         """Test app configuration validation."""
-        from app import app
+        from src.app import src.app as app
 
         # Test essential configuration
         assert app.secret_key is not None
@@ -694,10 +695,10 @@ class TestCSRFErrorHandler:
         """Test that CSRF errors on API routes return JSON responses."""
         from flask_wtf.csrf import CSRFError
 
-        from app import app
+        from src.app import src.app as app
 
         with app.test_request_context("/api/users", method="POST"):
-            from app import handle_csrf_error
+            from src.app import handle_csrf_error
 
             response = handle_csrf_error(CSRFError("Invalid token"))
             json_data, status_code = response
@@ -711,10 +712,10 @@ class TestCSRFErrorHandler:
         """Test that CSRF errors on web routes return HTML responses."""
         from flask_wtf.csrf import CSRFError
 
-        from app import app
+        from src.app import src.app as app
 
         with app.test_request_context("/login", method="POST"):
-            from app import handle_csrf_error
+            from src.app import handle_csrf_error
 
             response = handle_csrf_error(CSRFError("Invalid token"))
             html_content, status_code = response
@@ -732,7 +733,7 @@ class TestInvitationAcceptanceRoute:
         self, mock_is_authenticated
     ):
         """Test that authenticated users are logged out before rendering registration page."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = True
 
@@ -746,7 +747,7 @@ class TestInvitationAcceptanceRoute:
         self, mock_is_authenticated
     ):
         """Test that unauthenticated users see the invitation registration page."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
 
@@ -761,7 +762,7 @@ class TestInvitationAcceptanceRoute:
         self, mock_is_authenticated
     ):
         """Test that the invitation token is passed to the template."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
 
@@ -782,7 +783,7 @@ class TestDashboardRoutes:
         self, mock_get_user, mock_is_authenticated
     ):
         """Test dashboard redirects when user has unknown role."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = True
         mock_get_user.return_value = {
@@ -804,7 +805,7 @@ class TestDashboardRoutes:
     @patch("app.get_current_user")
     def test_courses_list_requires_login(self, mock_get_user, mock_is_authenticated):
         """Test courses list route requires authentication."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
         mock_get_user.return_value = None
@@ -820,7 +821,7 @@ class TestDashboardRoutes:
         self, mock_get_user, mock_is_authenticated
     ):
         """Test courses list displays for authenticated users."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = True
         mock_get_user.return_value = {
@@ -848,7 +849,7 @@ class TestReminderLogin:
     @patch("app.is_authenticated")
     def test_reminder_login_renders_for_unauthenticated(self, mock_is_authenticated):
         """Test reminder login renders template for unauthenticated users."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
 
@@ -859,7 +860,7 @@ class TestReminderLogin:
     @patch("app.is_authenticated")
     def test_reminder_login_with_next_parameter(self, mock_is_authenticated):
         """Test reminder login preserves next parameter."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
 
@@ -873,7 +874,7 @@ class TestReminderLogin:
         self, mock_is_authenticated, mock_logout
     ):
         """Test reminder login logs out authenticated users."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = True
 
@@ -888,7 +889,7 @@ class TestReminderLogin:
         self, mock_is_authenticated, mock_logout
     ):
         """Test reminder login preserves next parameter after logging out."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = True
 
@@ -902,7 +903,7 @@ class TestReminderLogin:
     @patch("app.is_authenticated")
     def test_reminder_login_shows_logged_out_message(self, mock_is_authenticated):
         """Test reminder login shows flash message after logout."""
-        from app import app
+        from src.app import src.app as app
 
         mock_is_authenticated.return_value = False
 
@@ -917,7 +918,7 @@ class TestLogoutRoute:
     @patch("login_service.LoginService.logout_user")
     def test_logout_route_redirects_to_login(self, mock_logout):
         """GET /logout should clear session and redirect to /login."""
-        from app import app
+        from src.app import src.app as app
 
         with app.test_client() as client:
             response = client.get("/logout", follow_redirects=False)
@@ -932,7 +933,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_dashboard_no_user(self, mock_get_user):
         """Test dashboard redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -943,7 +944,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_courses_no_user(self, mock_get_user):
         """Test courses redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -954,7 +955,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_users_no_user(self, mock_get_user):
         """Test users redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -965,7 +966,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_assessments_no_user(self, mock_get_user):
         """Test assessments redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -976,7 +977,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_sections_no_user(self, mock_get_user):
         """Test sections redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -987,7 +988,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_audit_clo_no_user(self, mock_get_user):
         """Test audit_clo redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -998,7 +999,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_audit_clo_non_admin(self, mock_get_user):
         """Test audit_clo redirects for non-admin users."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = {
             "id": "user-123",
@@ -1014,7 +1015,7 @@ class TestErrorPaths:
     @patch("app.get_current_user")
     def test_profile_no_user(self, mock_get_user):
         """Test profile redirects when no user."""
-        from app import app
+        from src.app import src.app as app
 
         mock_get_user.return_value = None
 
@@ -1024,7 +1025,7 @@ class TestErrorPaths:
 
     def test_health_check(self):
         """Test health check endpoint."""
-        from app import app
+        from src.app import src.app as app
 
         with app.test_client() as client:
             response = client.get("/health")
@@ -1040,7 +1041,7 @@ class TestPasswordReset:
     @patch("password_reset_service.PasswordResetService.validate_reset_token")
     def test_reset_form_valid_token(self, mock_validate):
         """Test reset form with valid token."""
-        from app import app
+        from src.app import src.app as app
 
         mock_validate.return_value = {"valid": True, "email": "test@example.com"}
 
@@ -1051,7 +1052,7 @@ class TestPasswordReset:
     @patch("password_reset_service.PasswordResetService.validate_reset_token")
     def test_reset_form_invalid_token(self, mock_validate):
         """Test reset form with invalid token."""
-        from app import app
+        from src.app import src.app as app
 
         mock_validate.return_value = {"valid": False}
 
@@ -1062,7 +1063,7 @@ class TestPasswordReset:
     @patch("password_reset_service.PasswordResetService.validate_reset_token")
     def test_reset_form_error(self, mock_validate):
         """Test reset form handles errors."""
-        from app import app
+        from src.app import src.app as app
 
         mock_validate.side_effect = Exception("Error")
 

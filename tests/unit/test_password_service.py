@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from password_service import (
+from src.services.password_service import (
     AccountLockedError,
     PasswordService,
     PasswordValidationError,

@@ -29,8 +29,8 @@ from playwright.sync_api import (
 
 # Import shared test utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from constants import E2E_TEST_PORT
-from password_service import PasswordService
+from src.services.password_service import PasswordService
+from src.utils.constants import E2E_TEST_PORT
 from tests.conftest import get_worker_id
 
 

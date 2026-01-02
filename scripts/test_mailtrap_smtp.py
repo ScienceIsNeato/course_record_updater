@@ -17,7 +17,7 @@ import requests
 # Add the project root to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from email_providers.email_manager import EmailManager
+from src.email_providers.email_manager import EmailManager
 
 
 def test_mailtrap_api():

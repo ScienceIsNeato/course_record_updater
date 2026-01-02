@@ -13,7 +13,7 @@ import pytest
 @pytest.fixture
 def client():
     """Create a Flask test client for integration tests."""
-    import app
+    import src.app as app
 
     # Configure the app for testing
     app.app.config["TESTING"] = True
@@ -44,7 +44,8 @@ def setup_integration_test_data():
 
         from seed_db import DatabaseSeeder
 
-        import database_service as db
+        import src.database.database_service as database_service
+        import src.database.database_service as db
 
         # Check if data already exists to avoid duplicate seeding
         institutions = db.get_all_institutions() or []
@@ -88,7 +89,7 @@ def setup_integration_test_database(tmp_path_factory):
     os.environ["DATABASE_TYPE"] = "sqlite"
 
     # Initialize database - must call refresh_connection() to update module-level singleton
-    import database_service
+    import src.database.database_service as database_service
 
     database_service.refresh_connection()
     database_service.reset_database()
@@ -108,21 +109,21 @@ def clean_database_between_tests():
     This ensures each test starts with a fresh database state and seeds
     essential data (MockU institution, site admin) that tests depend on.
     """
-    import database_service
-    from database_service import (
+    import src.database.database_service as database_service
+    from src.database.database_service import (
         create_default_mocku_institution,
         create_user,
         get_programs_by_institution,
     )
-    from models import User
+    from src.models.models import User
 
     # Reset database to clean state
     database_service.reset_database()
 
     # Seed essential data that integration tests depend on
     # 1. Create test institutions
-    from database_service import create_institution, create_program
-    from models import Institution, Program
+    from src.database.database_service import create_institution, create_program
+    from src.models.models import Institution, Program
 
     mocku_id = create_default_mocku_institution()
 
@@ -247,7 +248,7 @@ def clean_database_between_tests():
 
         # Program admin - needs to be assigned to CS program
         # First get the CS program ID
-        from database_service import get_programs_by_institution
+        from src.database.database_service import get_programs_by_institution
 
         mocku_programs = get_programs_by_institution(mocku_id)
         cs_program_id = next(
@@ -315,17 +316,20 @@ def clean_database_between_tests():
         instructor2_id = create_user(instructor2_schema)
 
     # 3. Create test courses, terms, offerings, and sections for dashboard tests
-    from database_service import (
+    from src.database.database_service import (
         create_course,
         create_course_offering,
         create_course_section,
         create_term,
     )
-    from models import Course, CourseOffering, CourseSection, Term
+    from src.models.models import Course, CourseOffering, CourseSection, Term
 
     if mocku_id and instructor_id and instructor2_id:
         # Get program IDs for course linking
-        from database_service import add_course_to_program, get_programs_by_institution
+        from src.database.database_service import (
+            add_course_to_program,
+            get_programs_by_institution,
+        )
 
         mocku_programs = get_programs_by_institution(mocku_id)
         cs_program_id = next(

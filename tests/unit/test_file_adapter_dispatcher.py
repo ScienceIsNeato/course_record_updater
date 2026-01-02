@@ -8,10 +8,10 @@ import docx
 import pytest
 
 # Also import BaseAdapter for validation mocking
-from adapters.base_adapter import ValidationError
+from src.adapters.base_adapter import ValidationError
 
 # Import the class and exception we intend to test (will fail initially)
-from adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDispatcher
+from src.adapters.file_adapter_dispatcher import DispatcherError, FileAdapterDispatcher
 
 # --- Test Setup ---
 
@@ -358,7 +358,7 @@ class TestFileAdapterDispatcherValidation:
 
     def test_apply_validation_disabled(self):
         """Test _apply_validation returns raw data when validation disabled."""
-        from adapters.file_adapter_dispatcher import FileAdapterDispatcher
+        from src.adapters.file_adapter_dispatcher import FileAdapterDispatcher
 
         dispatcher = FileAdapterDispatcher(use_base_validation=False)
 
@@ -374,7 +374,7 @@ class TestFileAdapterDispatcherValidation:
 
         import pytest
 
-        from adapters.file_adapter_dispatcher import (
+        from src.adapters.file_adapter_dispatcher import (
             DispatcherError,
             FileAdapterDispatcher,
         )

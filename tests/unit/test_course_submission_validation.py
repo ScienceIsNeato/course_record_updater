@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from clo_workflow_service import CLOWorkflowService
+from src.services.clo_workflow_service import CLOWorkflowService
 
 
 class TestValidateCourseSubmission:

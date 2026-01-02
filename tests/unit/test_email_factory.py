@@ -7,9 +7,9 @@ from unittest.mock import patch
 
 import pytest
 
-from email_providers.brevo_provider import BrevoProvider
-from email_providers.ethereal_provider import EtherealProvider
-from email_providers.factory import create_email_provider
+from src.email_providers.brevo_provider import BrevoProvider
+from src.email_providers.ethereal_provider import EtherealProvider
+from src.email_providers.factory import create_email_provider
 
 
 class TestEmailProviderFactory:

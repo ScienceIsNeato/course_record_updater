@@ -4,7 +4,7 @@ Unit tests for Ethereal Email provider
 
 import pytest
 
-from email_providers.ethereal_provider import EtherealProvider
+from src.email_providers.ethereal_provider import EtherealProvider
 
 
 class TestEtherealProvider:

@@ -318,7 +318,7 @@ class BaselineSeeder:
         """Create sample sections for dashboard display tests"""
         self.log("📝 Creating sample sections...")
 
-        from models import CourseOffering, CourseSection
+        from src.models.models import CourseOffering, CourseSection
 
         # Create course offerings first (required for sections)
         offering_ids = []
@@ -620,7 +620,7 @@ class DemoSeeder(BaselineSeeder):
         """Create course offerings and sections for demo"""
         self.log("📋 Creating demo offerings and sections...")
 
-        from models import CourseOffering, CourseSection
+        from src.models.models import CourseOffering, CourseSection
 
         # Create offerings for all courses
         offering_ids = []
@@ -712,8 +712,8 @@ class DemoSeeder(BaselineSeeder):
         """Create Course Learning Outcomes (CLOs) for demo courses"""
         self.log("🎯 Creating Course Learning Outcomes...")
         
-        from models import CourseOutcome
-        from constants import CLOStatus
+        from src.models.models import CourseOutcome
+        from src.utils.constants import CLOStatus
         
         # Get course info to match CLOs to courses
         courses = []
@@ -861,7 +861,7 @@ class DemoSeeder(BaselineSeeder):
     def create_historical_data(self, institution_id, program_ids):
         """Create historical data (Spring 2025 inactive term)"""
         self.log("📜 Creating historical data (Spring 2025)...")
-        from models import Term, Course, CourseOffering, CourseSection
+        from src.models.models import Term, Course, CourseOffering, CourseSection
         from datetime import datetime, timedelta
 
         # 1. Create Inactive Term (Spring 2025)
@@ -937,7 +937,7 @@ class DemoSeeder(BaselineSeeder):
                 db.create_course_section(schema_sec)
 
             # 5. Create CLOs for this course
-            from models import CourseOutcome
+            from src.models.models import CourseOutcome
             schema_clo = CourseOutcome.create_schema(
                 course_id=hist_course_id,
                 clo_number="1",
@@ -1020,10 +1020,10 @@ def main():
     
     # CRITICAL: Import database modules AFTER setting DATABASE_URL
     # This ensures the database_service initializes with the correct database
-    import database_service as db
-    from constants import PROGRAM_DEFAULT_DESCRIPTION, SITE_ADMIN_INSTITUTION_ID
-    from models import Course, Institution, Program, Term, User
-    from password_service import hash_password
+    import src.database.database_service as database_service as db
+    from src.utils.constants import PROGRAM_DEFAULT_DESCRIPTION, SITE_ADMIN_INSTITUTION_ID
+    from src.models.models import Course, Institution, Program, Term, User
+    from src.services.password_service import hash_password
 
     # Inject imports into module globals so classes can use them
     globals()['db'] = db

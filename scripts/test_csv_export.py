@@ -17,8 +17,8 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from adapters.generic_csv_adapter import GenericCSVAdapter
-from export_service import ExportConfig, create_export_service
+from src.adapters.generic_csv_adapter import GenericCSVAdapter
+from src.services.export_service import ExportConfig, create_export_service
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

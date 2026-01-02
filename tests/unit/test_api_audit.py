@@ -14,9 +14,9 @@ from flask import Flask
 with patch("auth_service.permission_required", lambda perm: lambda f: f):
     if "api.routes.audit" in sys.modules:
         del sys.modules["api.routes.audit"]
-    from api.routes.audit import audit_bp
+    from src.api.routes.audit import audit_bp
 
-from audit_service import EntityType
+from src.services.audit_service import EntityType
 
 
 @pytest.fixture

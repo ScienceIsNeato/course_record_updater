@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from email_providers.ethereal_provider import EtherealProvider
+from src.email_providers.ethereal_provider import EtherealProvider
 
 
 class TestEtherealProviderSending:

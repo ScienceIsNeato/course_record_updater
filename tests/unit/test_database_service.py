@@ -1,6 +1,6 @@
 """SQLite-backed database_service unit tests."""
 
-import database_service
+import src.database.database_service as database_service
 
 
 def test_create_and_get_institution():

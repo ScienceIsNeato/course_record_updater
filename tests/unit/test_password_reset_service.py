@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from email_service import EmailServiceError
-from password_reset_service import PasswordResetError, PasswordResetService
-from password_service import PasswordValidationError
+from src.services.email_service import EmailServiceError
+from src.services.password_reset_service import PasswordResetError, PasswordResetService
+from src.services.password_service import PasswordValidationError
 
 
 class TestPasswordResetServiceRequest:
@@ -476,7 +476,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         mock_request.return_value = expected_result
 
         # Execute
-        from password_reset_service import request_password_reset
+        from src.services.password_reset_service import request_password_reset
 
         result = request_password_reset("test@example.com")
 
@@ -492,7 +492,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         mock_reset.return_value = expected_result
 
         # Execute
-        from password_reset_service import reset_password
+        from src.services.password_reset_service import reset_password
 
         result = reset_password("token", "password")
 
@@ -508,7 +508,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         mock_validate.return_value = expected_result
 
         # Execute
-        from password_reset_service import validate_reset_token
+        from src.services.password_reset_service import validate_reset_token
 
         result = validate_reset_token("token")
 
@@ -524,7 +524,7 @@ class TestPasswordResetServiceConvenienceFunctions:
         mock_get_status.return_value = expected_result
 
         # Execute
-        from password_reset_service import get_reset_status
+        from src.services.password_reset_service import get_reset_status
 
         result = get_reset_status("test@example.com")
 

@@ -1,8 +1,8 @@
 import pytest
 
-import database_service
-from app import app
-from models import Institution, User
+import src.database.database_service as database_service
+from src.app import src.app as app
+from src.models.models import Institution, User
 
 
 @pytest.fixture

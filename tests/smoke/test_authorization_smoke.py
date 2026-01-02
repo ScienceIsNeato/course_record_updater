@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from auth_service import AuthService, Permission, UserRole
+from src.services.auth_service import AuthService, Permission, UserRole
 
 
 class TestAuthorizationSmoke:
@@ -20,7 +20,7 @@ class TestAuthorizationSmoke:
 
     def test_site_admin_full_access_smoke(self):
         """Smoke test: Site admin should have access to everything"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -56,7 +56,7 @@ class TestAuthorizationSmoke:
 
     def test_institution_admin_scoped_access_smoke(self):
         """Smoke test: Institution admin should have institution-scoped access"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -103,7 +103,7 @@ class TestAuthorizationSmoke:
 
     def test_program_admin_scoped_access_smoke(self):
         """Smoke test: Program admin should have program-scoped access"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -162,7 +162,7 @@ class TestAuthorizationSmoke:
 
     def test_instructor_limited_access_smoke(self):
         """Smoke test: Instructor should have limited, personal access"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -196,7 +196,7 @@ class TestAuthorizationSmoke:
 
     def test_unauthorized_user_no_access_smoke(self):
         """Smoke test: Unauthenticated user should have no access"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = None
@@ -246,7 +246,7 @@ class TestAPIEndpointSecuritySmoke:
             return "login page"
 
         with app.test_request_context():
-            from auth_service import login_required, permission_required
+            from src.services.auth_service import login_required, permission_required
 
             @login_required
             def protected_endpoint():
@@ -267,7 +267,7 @@ class TestAPIEndpointSecuritySmoke:
         app = Flask(__name__)
 
         with app.test_request_context():
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("manage_users")
             def admin_endpoint():
@@ -303,7 +303,7 @@ class TestAPIEndpointSecuritySmoke:
         app = Flask(__name__)
 
         with app.test_request_context():
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("view_program_data", context_keys=["program_id"])
             def program_endpoint():
@@ -402,7 +402,7 @@ class TestSecurityBoundariesSmoke:
 
     def test_cross_institution_access_blocked_smoke(self):
         """Smoke test: Users cannot access data from other institutions"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         # Test institution admin trying to access other institution
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -428,7 +428,7 @@ class TestSecurityBoundariesSmoke:
 
     def test_cross_program_access_blocked_smoke(self):
         """Smoke test: Program admins cannot access programs outside their scope"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -451,7 +451,7 @@ class TestSecurityBoundariesSmoke:
 
     def test_privilege_escalation_blocked_smoke(self):
         """Smoke test: Users cannot escalate privileges beyond their role"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         # Test that instructor cannot access admin functions
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -479,7 +479,7 @@ class TestAuthorizationSystemHealthSmoke:
 
     def test_all_roles_have_valid_permissions_smoke(self):
         """Smoke test: All roles should have valid, non-empty permission sets"""
-        from auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
         for role in UserRole:
             role_perms = ROLE_PERMISSIONS.get(role.value)
@@ -493,7 +493,7 @@ class TestAuthorizationSystemHealthSmoke:
 
     def test_permission_system_consistency_smoke(self):
         """Smoke test: Permission system should be internally consistent"""
-        from auth_service import ROLE_PERMISSIONS, Permission, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
 
         # Test that all permission constants are strings
         for perm in Permission:
@@ -508,7 +508,7 @@ class TestAuthorizationSystemHealthSmoke:
 
     def test_decorator_integration_smoke(self):
         """Smoke test: All authorization decorators should be importable and functional"""
-        from auth_service import (
+        from src.services.auth_service import (
             admin_required,
             login_required,
             permission_required,
@@ -530,7 +530,7 @@ class TestAuthorizationSystemHealthSmoke:
 
     def test_authorization_service_singleton_smoke(self):
         """Smoke test: AuthService should work as expected"""
-        from auth_service import AuthService, auth_service
+        from src.services.auth_service import AuthService, auth_service
 
         # Test that global service instance exists
         assert auth_service is not None

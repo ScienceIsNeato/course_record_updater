@@ -12,7 +12,7 @@ from unittest.mock import patch
 # pytest import removed
 from flask import Flask
 
-from api_routes import api
+from src.api_routes import api
 from tests.test_utils import CommonAuthMixin
 
 
@@ -245,7 +245,7 @@ class TestImportEndpoints(CommonAuthMixin):
 
     def test_import_progress_endpoints(self):
         """Exercise import progress helper endpoints."""
-        from api_routes import (
+        from src.api_routes import (
             cleanup_progress,
             create_progress_tracker,
             update_progress,

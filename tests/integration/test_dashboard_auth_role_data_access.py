@@ -30,7 +30,7 @@ class TestDashboardAuthRoleDataAccess:
 
     def setup_method(self):
         """Set up test client and application context"""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -42,11 +42,12 @@ class TestDashboardAuthRoleDataAccess:
 
     def _load_seeded_test_data(self):
         """Load actual seeded user data from database to avoid hardcoded IDs"""
-        import database_service as db
+        import src.database.database_service as database_service
+        import src.database.database_service as db
 
         # Force database connection refresh to handle SQLite session isolation
         try:
-            from database_factory import get_database_service
+            from src.database.database_factory import get_database_service
 
             db_service = get_database_service()
             if hasattr(db_service.sqlite, "remove_session"):
@@ -80,7 +81,8 @@ class TestDashboardAuthRoleDataAccess:
                 print("🔄 Re-seeded database due to missing test data")
 
                 # Refresh database connection to see newly seeded data
-                import database_service as db_svc
+                import src.database.database_service as database_service
+                import src.database.database_service as db_svc
 
                 db_svc.refresh_connection()
 
@@ -455,7 +457,7 @@ class TestDashboardDataConsistency:
 
     def setup_method(self):
         """Set up test client"""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -467,11 +469,12 @@ class TestDashboardDataConsistency:
 
     def _load_seeded_test_data(self):
         """Load actual seeded user data from database to avoid hardcoded IDs"""
-        import database_service as db
+        import src.database.database_service as database_service
+        import src.database.database_service as db
 
         # Force database connection refresh to handle SQLite session isolation
         try:
-            from database_factory import get_database_service
+            from src.database.database_factory import get_database_service
 
             db_service = get_database_service()
             if hasattr(db_service.sqlite, "remove_session"):

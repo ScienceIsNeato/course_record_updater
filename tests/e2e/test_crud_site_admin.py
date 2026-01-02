@@ -14,7 +14,7 @@ Test Naming Convention:
 import pytest
 from playwright.sync_api import Page
 
-from database_service import (
+from src.database.database_service import (
     get_all_courses,
     get_all_institutions,
     get_all_users,

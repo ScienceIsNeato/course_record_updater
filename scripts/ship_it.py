@@ -70,7 +70,7 @@ class QualityGateExecutor:
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
-        from logging_config import setup_quality_gate_logger
+        from src.utils.logging_config import setup_quality_gate_logger
 
         self.logger = setup_quality_gate_logger()
         self.script_path = "./scripts/maintAInability-gate.sh"

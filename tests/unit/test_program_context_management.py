@@ -35,7 +35,7 @@ def _login_test_user(client, overrides=None):
     return user_data
 
 
-from auth_service import (
+from src.services.auth_service import (
     clear_current_program_id,
     get_current_program_id,
     set_current_program_id,
@@ -143,7 +143,7 @@ class TestProgramContextAPI:
         app.config["SECRET_KEY"] = "test-secret-key"
 
         # Register the API blueprint
-        from api_routes import api
+        from src.api_routes import api
 
         app.register_blueprint(api)
 
@@ -276,7 +276,7 @@ class TestUnassignedCoursesAPI:
         app.config["SECRET_KEY"] = "test-secret-key"
 
         # Register the API blueprint
-        from api_routes import api
+        from src.api_routes import api
 
         app.register_blueprint(api)
 
@@ -350,7 +350,7 @@ class TestContextValidationMiddleware:
     def test_context_validation_skips_auth_endpoints(self, app):
         """Test that context validation skips auth endpoints"""
         with app.test_request_context("/api/auth/login", method="POST"):
-            from api_routes import validate_context
+            from src.api_routes import validate_context
 
             # Should return None (no validation error) for auth endpoints
             result = validate_context()
@@ -359,7 +359,7 @@ class TestContextValidationMiddleware:
     def test_context_validation_skips_context_endpoints(self, app):
         """Test that context validation skips context management endpoints"""
         with app.test_request_context("/api/context/program", method="GET"):
-            from api_routes import validate_context
+            from src.api_routes import validate_context
 
             # Should return None (no validation error) for context endpoints
             result = validate_context()
@@ -371,7 +371,7 @@ class TestContextValidationMiddleware:
 
         with app.test_request_context("/api/courses", method="GET"):
             with patch("api_routes.get_current_user", return_value=mock_user):
-                from api_routes import validate_context
+                from src.api_routes import validate_context
 
                 result = validate_context()
                 assert result is None
@@ -387,7 +387,7 @@ class TestContextValidationMiddleware:
                 patch("api_routes.logger") as mock_logger,
             ):
 
-                from api_routes import validate_context
+                from src.api_routes import validate_context
 
                 # Call the validation function directly
                 result = validate_context()

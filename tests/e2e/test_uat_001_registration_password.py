@@ -17,7 +17,7 @@ Estimated Duration: 3-4 minutes
 import pytest
 from playwright.sync_api import Page, expect
 
-from constants import INVALID_CREDENTIALS_MSG
+from src.utils.constants import INVALID_CREDENTIALS_MSG
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,

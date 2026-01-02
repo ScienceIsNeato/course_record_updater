@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from password_service import PasswordValidationError
-from registration_service import (
+from src.services.password_service import PasswordValidationError
+from src.services.registration_service import (
     RegistrationError,
     RegistrationService,
     get_registration_status,
@@ -558,7 +558,7 @@ class TestEmailVerificationExpiry:
 
     def test_email_verification_expired_no_timestamp(self):
         """Test _check_verification_expired when no timestamp present."""
-        from registration_service import RegistrationService
+        from src.services.registration_service import RegistrationService
 
         service = RegistrationService()
         user = {}  # No verification_expires_at field
@@ -569,7 +569,7 @@ class TestEmailVerificationExpiry:
 
     def test_email_verification_expired_invalid_format(self):
         """Test _check_verification_expired with invalid datetime string."""
-        from registration_service import RegistrationService
+        from src.services.registration_service import RegistrationService
 
         service = RegistrationService()
         user = {"email_verification_expires_at": "invalid-datetime"}

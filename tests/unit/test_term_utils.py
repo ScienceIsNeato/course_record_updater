@@ -5,7 +5,7 @@ Tests for term_utils module - dynamic term generation.
 from datetime import datetime
 from unittest.mock import patch
 
-from term_utils import (
+from src.utils.term_utils import (
     TermGenerator,
     default_term_generator,
     get_allowed_terms,

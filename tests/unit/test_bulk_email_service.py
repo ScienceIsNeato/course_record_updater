@@ -3,10 +3,10 @@
 import sys
 from unittest.mock import MagicMock, Mock, patch
 
+import bulk_email_service
 import pytest
 
-import bulk_email_service
-from bulk_email_service import BulkEmailService
+from src.services.bulk_email_service import BulkEmailService
 
 
 @pytest.mark.unit

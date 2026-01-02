@@ -22,8 +22,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from auth_service import UserRole
-from database_service import (
+from src.database.database_service import (
     get_all_courses,
     get_all_institutions,
     get_all_sections,
@@ -31,6 +30,7 @@ from database_service import (
     get_user_by_email,
     reset_database,
 )
+from src.services.auth_service import UserRole
 from tests.conftest import (
     INSTITUTION_ADMIN_EMAIL,
     INSTITUTION_ADMIN_PASSWORD,
@@ -360,7 +360,7 @@ class TestSiteAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -501,7 +501,7 @@ class TestInstitutionAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -761,7 +761,7 @@ class TestProgramAdminAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -861,7 +861,7 @@ class TestInstructorAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True
@@ -925,7 +925,7 @@ class TestInstructorAccess:
 
         # PART 3: Database verification - compare with direct DB query
         # Get instructor user record
-        from database_service import get_user_by_email
+        from src.database.database_service import get_user_by_email
 
         instructor = get_user_by_email("john.instructor@mocku.test")
         assert instructor is not None, "Instructor should exist in database"
@@ -1019,7 +1019,7 @@ class TestNegativeAccess:
 
     def setup_method(self):
         """Set up test client and controlled test data."""
-        from app import app
+        from src.app import src.app as app
 
         self.app = app
         self.app.config["TESTING"] = True

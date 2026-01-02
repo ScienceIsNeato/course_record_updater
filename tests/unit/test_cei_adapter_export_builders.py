@@ -9,7 +9,7 @@ Tests the refactored export record building methods:
 
 import pytest
 
-from adapters.cei_excel_adapter import CEIExcelAdapter
+from src.adapters.cei_excel_adapter import CEIExcelAdapter
 
 
 @pytest.fixture

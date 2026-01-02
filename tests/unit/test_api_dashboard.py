@@ -12,9 +12,9 @@ from flask import Flask
 with patch("auth_service.login_required", lambda f: f):
     if "api.routes.dashboard" in sys.modules:
         del sys.modules["api.routes.dashboard"]
-    from api.routes.dashboard import dashboard_bp
+    from src.api.routes.dashboard import dashboard_bp
 
-from dashboard_service import DashboardServiceError
+from src.services.dashboard_service import DashboardServiceError
 
 
 @pytest.fixture

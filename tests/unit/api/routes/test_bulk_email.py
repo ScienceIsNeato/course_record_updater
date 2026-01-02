@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch
 import pytest
 from flask import Flask
 
-from api.routes.bulk_email import bulk_email_bp
+from src.api.routes.bulk_email import bulk_email_bp
 
 
 # Module-level fixture to bypass permission checks for ALL tests in this file

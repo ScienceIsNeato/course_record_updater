@@ -10,8 +10,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from login_service import LoginError, LoginService
-from password_service import AccountLockedError
+from src.services.login_service import LoginError, LoginService
+from src.services.password_service import AccountLockedError
 
 
 class TestLoginServiceAuthentication:
@@ -474,7 +474,7 @@ class TestLoginServiceConvenienceFunctions:
         mock_authenticate.return_value = expected_result
 
         # Execute
-        from login_service import login_user
+        from src.services.login_service import login_user
 
         result = login_user("test@example.com", "password123", True)
 
@@ -492,7 +492,7 @@ class TestLoginServiceConvenienceFunctions:
         mock_logout.return_value = expected_result
 
         # Execute
-        from login_service import logout_user
+        from src.services.login_service import logout_user
 
         result = logout_user()
 
@@ -507,7 +507,7 @@ class TestLoginServiceConvenienceFunctions:
         mock_get_status.return_value = {"logged_in": True}
 
         # Execute
-        from login_service import is_user_logged_in
+        from src.services.login_service import is_user_logged_in
 
         result = is_user_logged_in()
 
@@ -526,7 +526,7 @@ class TestLoginServiceConvenienceFunctions:
         }
 
         # Execute
-        from login_service import get_current_user_info
+        from src.services.login_service import get_current_user_info
 
         result = get_current_user_info()
 
@@ -542,7 +542,7 @@ class TestLoginServiceConvenienceFunctions:
         mock_get_status.return_value = {"logged_in": False}
 
         # Execute
-        from login_service import get_current_user_info
+        from src.services.login_service import get_current_user_info
 
         result = get_current_user_info()
 

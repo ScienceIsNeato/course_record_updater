@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple
 
 import pytest
 
-from adapters.file_base_adapter import (
+from src.adapters.file_base_adapter import (
     AdapterValidationResult,
     FileBaseAdapter,
     FileCompatibilityError,
