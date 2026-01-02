@@ -170,7 +170,7 @@ start_flask_app() {
     
     # Start Flask app
     # Explicitly pass environment variables in the command to ensure subprocess gets them
-    PORT="$port" DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python app.py > "$log_file" 2>&1 &
+    PORT="$port" DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python src/app.py > "$log_file" 2>&1 &
     local flask_pid=$!
     sleep 2
 
@@ -200,7 +200,7 @@ start_flask_app() {
 main() {
     # AGGRESSIVE CLEANUP: Reset all the things
     echo -e "${BLUE}🧹 Aggressive cleanup: Killing stale processes...${NC}"
-    pkill -f "python.*app.py" 2>/dev/null || true
+    pkill -f "python.*src/app.py" 2>/dev/null || true
     sleep 0.5
     
     echo -e "${BLUE}🧹 Aggressive cleanup: Clearing Python bytecode cache...${NC}"
