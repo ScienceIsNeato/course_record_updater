@@ -387,17 +387,41 @@ class AuthService:
 
         user_role = user.get("role")
 
-        # Site admin and institution admin can access all programs in their scope
-        if user_role in [UserRole.SITE_ADMIN.value, UserRole.INSTITUTION_ADMIN.value]:
-            target_inst_id = institution_id
+        # Site admin can access all programs across all institutions
+        if user_role == UserRole.SITE_ADMIN.value:
+            # If institution_id provided, filter to that institution
+            if institution_id:
+                try:
+                    import src.database.database_service as db
 
-            # For Institution Admin, restrict to their institution
-            if user_role == UserRole.INSTITUTION_ADMIN.value:
-                target_inst_id = user.get("institution_id")
+                    programs = db.get_programs_by_institution(institution_id)
+                    return [p.get("program_id") or p.get("id") for p in programs]
+                except Exception as e:
+                    logger.error(f"Error fetching programs for site admin: {e}")
+                    return []
 
-            # Fallback to user's institution context if not provided (e.g. for site admin in context)
-            if not target_inst_id:
-                target_inst_id = user.get("institution_id")
+            # Otherwise, get all programs across all institutions
+            try:
+                import src.database.database_service as db
+
+                all_programs = []
+                institutions = db.get_all_institutions()
+                for inst in institutions:
+                    inst_id = inst.get("institution_id") or inst.get("id")
+                    if inst_id:
+                        programs = db.get_programs_by_institution(inst_id)
+                        program_ids = [
+                            p.get("program_id") or p.get("id") for p in programs
+                        ]
+                        all_programs.extend(program_ids)
+                return all_programs
+            except Exception as e:
+                logger.error(f"Error fetching all programs for site admin: {e}")
+                return []
+
+        # Institution admin can access all programs in their institution
+        if user_role == UserRole.INSTITUTION_ADMIN.value:
+            target_inst_id = user.get("institution_id")
 
             if target_inst_id:
                 try:

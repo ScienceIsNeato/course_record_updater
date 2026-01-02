@@ -28,31 +28,47 @@ class TestAuthorizationSmoke:
                 "role": "site_admin",
             }
 
-            service = AuthService()
+            with patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_get_inst:
+                mock_get_inst.return_value = [
+                    {"id": "inst-1", "name": "Test Institution 1"},
+                    {"id": "inst-2", "name": "Test Institution 2"},
+                ]
 
-            # Test all key permissions
-            assert service.has_permission("manage_institutions") is True
-            assert service.has_permission("manage_users") is True
-            assert service.has_permission("view_all_data") is True
-            assert service.has_permission("manage_institution_users") is True
-            assert service.has_permission("manage_programs") is True
-            assert service.has_permission("manage_courses") is True
-            assert service.has_permission("view_program_data") is True
-            assert service.has_permission("view_section_data") is True
+                with patch(
+                    "src.database.database_service.get_programs_by_institution"
+                ) as mock_get_progs:
+                    mock_get_progs.return_value = [
+                        {"id": "prog-1", "name": "Test Program 1"},
+                        {"id": "prog-2", "name": "Test Program 2"},
+                    ]
 
-            # Test role hierarchy
-            assert service.has_role("site_admin") is True
-            assert service.has_role("institution_admin") is True
-            assert service.has_role("program_admin") is True
-            assert service.has_role("instructor") is True
+                    service = AuthService()
 
-            # Test institution access
-            institutions = service.get_accessible_institutions()
-            assert len(institutions) > 0  # Should have access to all
+                    # Test all key permissions
+                    assert service.has_permission("manage_institutions") is True
+                    assert service.has_permission("manage_users") is True
+                    assert service.has_permission("view_all_data") is True
+                    assert service.has_permission("manage_institution_users") is True
+                    assert service.has_permission("manage_programs") is True
+                    assert service.has_permission("manage_courses") is True
+                    assert service.has_permission("view_program_data") is True
+                    assert service.has_permission("view_section_data") is True
 
-            # Test program access
-            programs = service.get_accessible_programs()
-            assert len(programs) > 0  # Should have access to all
+                    # Test role hierarchy
+                    assert service.has_role("site_admin") is True
+                    assert service.has_role("institution_admin") is True
+                    assert service.has_role("program_admin") is True
+                    assert service.has_role("instructor") is True
+
+                    # Test institution access
+                    institutions = service.get_accessible_institutions()
+                    assert len(institutions) > 0  # Should have access to all
+
+                    # Test program access
+                    programs = service.get_accessible_programs()
+                    assert len(programs) > 0  # Should have access to all
 
     def test_institution_admin_scoped_access_smoke(self):
         """Smoke test: Institution admin should have institution-scoped access"""
