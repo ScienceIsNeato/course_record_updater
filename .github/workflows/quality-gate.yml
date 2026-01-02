@@ -152,6 +152,7 @@ jobs:
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
         export PYTHONPATH=.
         
         # Seed baseline data for smoke tests
@@ -181,6 +182,7 @@ jobs:
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
@@ -230,6 +232,7 @@ jobs:
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
         export PYTHONPATH=.
         
         # Seed baseline data for integration tests
@@ -259,6 +262,7 @@ jobs:
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.

@@ -292,7 +292,7 @@ class TestAPIEndpointSecuritySmoke:
                         mock_get_user.return_value = {"user_id": "test-user"}
 
                         with patch(
-                            "auth_service.get_current_user",
+                            "src.services.auth_service.get_current_user",
                             return_value={"user_id": "test-user"},
                         ):
                             with patch(
@@ -335,7 +335,7 @@ class TestAPIEndpointSecuritySmoke:
                         mock_get_user.return_value = {"user_id": "test-user"}
 
                         with patch(
-                            "auth_service.get_current_user",
+                            "src.services.auth_service.get_current_user",
                             return_value={"user_id": "test-user"},
                         ):
                             with patch(
