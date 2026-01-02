@@ -156,7 +156,7 @@ jobs:
         export PORT=3001  # Use default dev port in CI (no conflicts)
         
         # Start Flask server in background for Selenium tests
-        nohup python app.py > server.log 2>&1 &
+        nohup python -m src.app > server.log 2>&1 &
         sleep 5  # Give server time to start
         
         # Verify server is running
@@ -225,7 +225,7 @@ jobs:
         export PORT=3001  # Use default dev port in CI (no conflicts)
         
         # Start Flask server in background for integration tests
-        nohup python app.py > server.log 2>&1 &
+        nohup python -m src.app > server.log 2>&1 &
         sleep 5  # Give server time to start
         
         # Verify server is running

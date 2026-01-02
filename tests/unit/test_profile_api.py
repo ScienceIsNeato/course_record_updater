@@ -24,6 +24,7 @@ class TestProfileUpdateAPI:
         self.app = app
         self.app.config["TESTING"] = True
         self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.app.config["WTF_CSRF_ENABLED"] = False
         self.client = self.app.test_client()
         self.test_user = {
             "user_id": "user-123",
@@ -149,6 +150,7 @@ class TestChangePasswordAPI:
         self.app = app
         self.app.config["TESTING"] = True
         self.app.config["SECRET_KEY"] = "test-secret-key"
+        self.app.config["WTF_CSRF_ENABLED"] = False
         self.client = self.app.test_client()
         self.test_user = {
             "user_id": "user-123",
