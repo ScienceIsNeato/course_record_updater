@@ -18,7 +18,6 @@ function getStatusBadge(status) {
   };
 
   const setup = config[status] || { bg: "#6c757d", text: "Unknown" };
-  if (!config[status]) span.classList.add("bg-secondary");
   span.style.backgroundColor = setup.bg;
   span.textContent = setup.text;
   return span;
@@ -891,8 +890,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Render HTML using extracted function
       // nosemgrep
-      document.getElementById("cloDetailContent").innerHTML =
-        renderCLODetails(clo);
+      const cloDetailContainer = document.getElementById("cloDetailContent");
+      cloDetailContainer.replaceChildren(renderCLODetails(clo));
 
       // Show/hide action buttons based on status
       const canApprove = ["awaiting_approval", "approval_pending"].includes(

@@ -315,7 +315,6 @@ def main():
     setup_env(args.env)
 
     # Import services AFTER env setup
-    import src.database.database_service as database_service
     import src.database.database_service as db
     from src.app import app
 

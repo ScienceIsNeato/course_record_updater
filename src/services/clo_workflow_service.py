@@ -327,6 +327,87 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
+    def _validate_clo_fields(outcome: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Validate required fields for a single CLO."""
+        errors = []
+        outcome_id = outcome.get("outcome_id") or outcome.get("id")
+        clo_number = outcome.get("clo_number", "?")
+
+        students_took = outcome.get("students_took")
+        students_passed = outcome.get("students_passed")
+        assessment_tool = outcome.get("assessment_tool") or ""
+
+        # Check required fields
+        if students_took is None:
+            errors.append(
+                {
+                    "outcome_id": outcome_id,
+                    "field": "students_took",
+                    "message": f"CLO {clo_number}: Students Took is required",
+                }
+            )
+
+        if students_passed is None:
+            errors.append(
+                {
+                    "outcome_id": outcome_id,
+                    "field": "students_passed",
+                    "message": f"CLO {clo_number}: Students Passed is required",
+                }
+            )
+
+        if not assessment_tool.strip():
+            errors.append(
+                {
+                    "outcome_id": outcome_id,
+                    "field": "assessment_tool",
+                    "message": f"CLO {clo_number}: Assessment Tool is required",
+                }
+            )
+
+        # Check logical constraint: passed can't exceed took
+        if (
+            students_took is not None
+            and students_passed is not None
+            and students_passed > students_took
+        ):
+            errors.append(
+                {
+                    "outcome_id": outcome_id,
+                    "field": "students_passed",
+                    "message": f"CLO {clo_number}: Students Passed cannot exceed Students Took",
+                }
+            )
+
+        return errors
+
+    @staticmethod
+    def _validate_section_data(section_id: str) -> List[Dict[str, Any]]:
+        """Validate course-level section data."""
+        errors = []
+        section = db.get_section_by_id(section_id)
+
+        if section:
+            if section.get("students_passed") is None:
+                errors.append(
+                    {
+                        "outcome_id": None,
+                        "field": "course_students_passed",
+                        "message": "Course: Students Passed (A/B/C) is required",
+                    }
+                )
+            if section.get("students_dfic") is None:
+                errors.append(
+                    {
+                        "outcome_id": None,
+                        "field": "course_students_dfic",
+                        "message": "Course: Students D/F/Incomplete is required",
+                    }
+                )
+
+        return errors
+
+    @staticmethod
     def validate_course_submission(
         course_id: str, section_id: str = None
     ) -> Dict[str, Any]:
@@ -359,75 +440,11 @@ class CLOWorkflowService:
 
             # Validate each CLO
             for outcome in outcomes:
-                outcome_id = outcome.get("outcome_id") or outcome.get("id")
-                clo_number = outcome.get("clo_number", "?")
-
-                students_took = outcome.get("students_took")
-                students_passed = outcome.get("students_passed")
-                assessment_tool = outcome.get("assessment_tool") or ""
-
-                # Check required fields
-                if students_took is None:
-                    errors.append(
-                        {
-                            "outcome_id": outcome_id,
-                            "field": "students_took",
-                            "message": f"CLO {clo_number}: Students Took is required",
-                        }
-                    )
-
-                if students_passed is None:
-                    errors.append(
-                        {
-                            "outcome_id": outcome_id,
-                            "field": "students_passed",
-                            "message": f"CLO {clo_number}: Students Passed is required",
-                        }
-                    )
-
-                if not assessment_tool.strip():
-                    errors.append(
-                        {
-                            "outcome_id": outcome_id,
-                            "field": "assessment_tool",
-                            "message": f"CLO {clo_number}: Assessment Tool is required",
-                        }
-                    )
-
-                # Check logical constraint: passed can't exceed took
-                if (
-                    students_took is not None
-                    and students_passed is not None
-                    and students_passed > students_took
-                ):
-                    errors.append(
-                        {
-                            "outcome_id": outcome_id,
-                            "field": "students_passed",
-                            "message": f"CLO {clo_number}: Students Passed cannot exceed Students Took",
-                        }
-                    )
+                errors.extend(CLOWorkflowService._validate_clo_fields(outcome))
 
             # Validate course-level section data if section provided
             if section_id:
-                section = db.get_section_by_id(section_id)
-                if section:
-                    if section.get("students_passed") is None:
-                        errors.append(
-                            {
-                                "outcome_id": None,
-                                "field": "course_students_passed",
-                                "message": "Course: Students Passed (A/B/C) is required",
-                            }
-                        )
-                    if section.get("students_dfic") is None:
-                        errors.append(
-                            {
-                                "outcome_id": None,
-                                "field": "course_students_dfic",
-                                "message": "Course: Students D/F/Incomplete is required",
-                            }
-                        )
+                errors.extend(CLOWorkflowService._validate_section_data(section_id))
 
             return {"valid": len(errors) == 0, "errors": errors}
 
@@ -622,6 +639,54 @@ class CLOWorkflowService:
         return f"{first} {last}".strip() or None
 
     @staticmethod
+    def _get_term_name_for_instructor(
+        instructor_id: str, course_id: str, outcome_id: str
+    ) -> Optional[str]:
+        """Get term name from instructor's section for a course."""
+        try:
+            sections = db.get_sections_by_instructor(instructor_id)
+            relevant_sections = [s for s in sections if s.get("course_id") == course_id]
+            if relevant_sections:
+                term_id = relevant_sections[0].get("term_id")
+                if term_id:
+                    term = db.get_term_by_id(term_id)
+                    if term:
+                        return term.get("name")
+        except Exception as e:
+            logger.warning(f"Failed to resolve term for outcome {outcome_id}: {e}")
+        return None
+
+    @staticmethod
+    def _get_program_name_for_course(course_id: str) -> Optional[str]:
+        """Get program name from course's programs."""
+        programs = db.get_programs_for_course(course_id)
+        if programs:
+            return programs[0].get("name") or programs[0].get("program_name")
+        return None
+
+    @staticmethod
+    def _enrich_outcome_with_instructor_details(
+        outcome: Dict[str, Any], course_id: str, outcome_id: str
+    ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+        """Get instructor name, email, and term name for an outcome."""
+        instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
+        if not instructor:
+            return None, None, None
+
+        instructor_name = CLOWorkflowService._build_instructor_name(instructor)
+        instructor_email = instructor.get("email")
+        instructor_id = instructor.get("user_id") or instructor.get("id")
+        term_name = (
+            CLOWorkflowService._get_term_name_for_instructor(
+                instructor_id, course_id, outcome_id
+            )
+            if instructor_id
+            else None
+        )
+
+        return instructor_name, instructor_email, term_name
+
+    @staticmethod
     def get_outcome_with_details(outcome_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a course outcome with enriched course and instructor details.
@@ -638,53 +703,27 @@ class CLOWorkflowService:
             if not outcome:
                 return None
 
-            # Get related course
             course_id = outcome.get("course_id")
             course = db.get_course(course_id) if course_id else None
 
-            # Get instructor from CLO submission (multi-section aware)
-            instructor = None
             instructor_name = None
             instructor_email = None
             program_name = None
             term_name = None
+
             if course:
-                instructor = CLOWorkflowService._get_instructor_from_outcome(outcome)
-                if instructor:
-                    instructor_name = CLOWorkflowService._build_instructor_name(
-                        instructor
-                    )
-                    instructor_email = instructor.get("email")
+                (
+                    instructor_name,
+                    instructor_email,
+                    term_name,
+                ) = CLOWorkflowService._enrich_outcome_with_instructor_details(
+                    outcome, course_id, outcome_id
+                )
+                program_name = CLOWorkflowService._get_program_name_for_course(
+                    course_id
+                )
 
-                    # Get term from instructor's section for this course
-                    # distinct from course-level lookup, we want the specific run
-                    try:
-                        sections = db.get_sections_by_instructor(instructor["user_id"])
-                        # Filter for this course
-                        relevant_sections = [
-                            s for s in sections if s.get("course_id") == course_id
-                        ]
-                        if relevant_sections:
-                            # Use the most recent section if multiple (or simply the first found)
-                            term_id = relevant_sections[0].get("term_id")
-                            if term_id:
-                                term = db.get_term_by_id(term_id)
-                                if term:
-                                    term_name = term.get("name")
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to resolve term for outcome {outcome_id}: {e}"
-                        )
-
-                # Get program name from course's programs
-                programs = db.get_programs_for_course(course_id)
-                if programs:
-                    program_name = programs[0].get("name") or programs[0].get(
-                        "program_name"
-                    )
-
-            # Build enriched result
-            result = {
+            return {
                 **outcome,
                 "course_number": course.get("course_number") if course else None,
                 "course_title": course.get("course_title") if course else None,
@@ -693,8 +732,6 @@ class CLOWorkflowService:
                 "program_name": program_name,
                 "term_name": term_name,
             }
-
-            return result
 
         except Exception as e:
             logger.error(f"Error getting outcome with details: {e}")

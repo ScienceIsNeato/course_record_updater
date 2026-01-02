@@ -587,7 +587,7 @@ if [[ "$RUN_E2E_TESTS" == "true" ]]; then
   
   echo "  🔍 Running E2E test suite (headless browser tests)..."
   # Run via run_uat.sh which handles environment setup
-  E2E_TEST_OUTPUT=$(./run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  E2E_TEST_OUTPUT=$(./scripts/run_uat.sh 2>&1) || E2E_TEST_FAILED=true
   
   if [[ "$E2E_TEST_FAILED" == "true" ]]; then
     echo "❌ E2E Tests: FAILED"
@@ -600,7 +600,7 @@ if [[ "$RUN_E2E_TESTS" == "true" ]]; then
     
     # Extract summary stats for the failure record
     FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-    add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './run_uat.sh --watch' to debug"
+    add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './scripts/run_uat.sh --watch' to debug"
   else
     echo "✅ E2E Tests: PASSED"
     add_success "E2E Tests" "All E2E tests passed successfully"
@@ -2028,7 +2028,7 @@ if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
   
   # Run the frontend check script
   echo "  🔍 Running frontend validation check..."
-  FRONTEND_OUTPUT=$(./check_frontend.sh 2>&1) || FRONTEND_FAILED=true
+  FRONTEND_OUTPUT=$(./scripts/check_frontend.sh 2>&1) || FRONTEND_FAILED=true
   
   if [[ "$FRONTEND_FAILED" == "true" ]]; then
     echo "❌ Frontend Check: FAILED"
@@ -2039,7 +2039,7 @@ if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
-    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './check_frontend.sh' manually"
+    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './scripts/check_frontend.sh' manually"
   else
     echo "✅ Frontend Check: PASSED"
     add_success "Frontend Check" "Frontend validation passed successfully"

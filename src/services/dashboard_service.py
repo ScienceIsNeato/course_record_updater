@@ -998,6 +998,30 @@ class DashboardService:
             summary[program_id]["course_count"] += 1
         return list(summary.values())
 
+    def _is_clo_completed(self, clo: Dict[str, Any]) -> bool:
+        """Check if a CLO is considered completed."""
+        # Check if CLO has assessment data filled in
+        has_took = clo.get("students_took") is not None
+        has_passed = clo.get("students_passed") is not None
+        has_tool = clo.get("assessment_tool") and clo.get("assessment_tool").strip()
+
+        # Also check status for submitted/approved CLOs
+        status = clo.get("status", "assigned")
+        is_submitted = status in ("awaiting_approval", "approved")
+
+        return is_submitted or (has_took and has_passed and has_tool)
+
+    def _calculate_clo_progress(
+        self, course_clos: List[Dict[str, Any]]
+    ) -> tuple[int, int, float]:
+        """Calculate CLO progress: total, completed, and percent complete."""
+        total_clos = len(course_clos)
+        completed_clos = sum(1 for clo in course_clos if self._is_clo_completed(clo))
+        percent_complete = (
+            round((completed_clos / total_clos) * 100, 1) if total_clos else 0
+        )
+        return total_clos, completed_clos, percent_complete
+
     def _build_teaching_assignments(
         self,
         courses: Sequence[Dict[str, Any]],
@@ -1015,29 +1039,10 @@ class DashboardService:
             course_id = course.get("course_id") or course.get("id")
             if not course_id:
                 continue
+
             linked_sections = sections_by_course.get(course_id, [])
-            # Calculate CLO progress for this course
-            course_clos = course.get("clos", [])
-            total_clos = len(course_clos)
-            completed_clos = 0
-            for clo in course_clos:
-                # Check if CLO has assessment data filled in
-                # Using current field names: students_took, students_passed, assessment_tool
-                has_took = clo.get("students_took") is not None
-                has_passed = clo.get("students_passed") is not None
-                has_tool = (
-                    clo.get("assessment_tool") and clo.get("assessment_tool").strip()
-                )
-
-                # Also check status for submitted/approved CLOs
-                status = clo.get("status", "assigned")
-                is_submitted = status in ("awaiting_approval", "approved")
-
-                if is_submitted or (has_took and has_passed and has_tool):
-                    completed_clos += 1
-
-            percent_complete = (
-                round((completed_clos / total_clos) * 100, 1) if total_clos else 0
+            total_clos, completed_clos, percent_complete = self._calculate_clo_progress(
+                course.get("clos", [])
             )
 
             assignments.append(
@@ -1370,6 +1375,55 @@ class DashboardService:
 
         return enriched_terms
 
+    def _build_term_section_counts(
+        self, offerings: List[Dict[str, Any]], sections: List[Dict[str, Any]]
+    ) -> Dict[str, int]:
+        """Build a mapping of term_id to section count."""
+        offering_term_map = {
+            o.get("offering_id"): o.get("term_id")
+            for o in offerings
+            if o.get("offering_id")
+        }
+
+        term_section_counts: Dict[str, int] = {}
+        for section in sections:
+            offering_id = section.get("offering_id")
+            term_id = offering_term_map.get(offering_id)
+            if term_id:
+                term_section_counts[term_id] = term_section_counts.get(term_id, 0) + 1
+
+        return term_section_counts
+
+    def _extract_program_ids_from_offering(
+        self,
+        offering: Dict[str, Any],
+        course_lookup: Dict[str, Dict[str, Any]],
+    ) -> set:
+        """Extract all program IDs associated with an offering."""
+        program_ids = set()
+
+        # Get program from offering first
+        if offering.get("program_id"):
+            program_ids.add(offering["program_id"])
+
+        # Fallback to course if no program on offering
+        course_id = offering.get("course_id")
+        if course_id and course_id in course_lookup:
+            course = course_lookup[course_id]
+
+            # Handle program_ids list
+            p_ids = course.get("program_ids", [])
+            if isinstance(p_ids, list):
+                program_ids.update(p_ids)
+            elif isinstance(p_ids, str):
+                program_ids.add(p_ids)
+
+            # Handle legacy program_id field
+            if course.get("program_id"):
+                program_ids.add(course["program_id"])
+
+        return program_ids
+
     def _enrich_terms_with_detailed_counts(
         self,
         terms: List[Dict[str, Any]],
@@ -1389,7 +1443,6 @@ class DashboardService:
         Returns:
             List of terms enriched with program_count, course_count, section_count.
         """
-        # Create lookups
         course_lookup = {c.get("course_id") or c.get("id"): c for c in courses}
 
         # Group offerings by term
@@ -1397,62 +1450,26 @@ class DashboardService:
         for offering in offerings:
             term_id = offering.get("term_id")
             if term_id:
-                if term_id not in term_offerings:
-                    term_offerings[term_id] = []
-                term_offerings[term_id].append(offering)
+                term_offerings.setdefault(term_id, []).append(offering)
 
-        # Count sections per term
-        # Sections map to offerings, offerings map to terms
-        # But we also have enriched sections which might have more data,
-        # but easiest is to use offering's term_id via section's offering_id.
-        offering_term_map = {
-            o.get("offering_id"): o.get("term_id")
-            for o in offerings
-            if o.get("offering_id")
-        }
-
-        term_section_counts: Dict[str, int] = {}
-        for section in sections:
-            offering_id = section.get("offering_id")
-            term_id = offering_term_map.get(offering_id)
-            if term_id:
-                term_section_counts[term_id] = term_section_counts.get(term_id, 0) + 1
+        term_section_counts = self._build_term_section_counts(offerings, sections)
 
         enriched_terms = []
         for term in terms:
             term_id = term.get("term_id") or term.get("id")
             term_copy = dict(term)
-
             term_specific_offerings = term_offerings.get(term_id, [])
 
-            # Calculate counts
+            # Calculate unique programs and courses
             unique_program_ids = set()
             unique_course_ids = set()
 
             for offering in term_specific_offerings:
-                # Get program(s) from Offering first, then fallback to Course
-                program_id = offering.get("program_id")
-                if program_id:
-                    unique_program_ids.add(program_id)
-
-                course_id = offering.get("course_id")
-                if course_id:
-                    unique_course_ids.add(course_id)
-
-                    # If program_id wasn't on offering, get it from the course
-                    # Courses can be linked to multiple programs (program_ids list)
-                    if not program_id and course_id in course_lookup:
-                        course = course_lookup[course_id]
-                        p_ids = course.get("program_ids", [])
-                        if isinstance(p_ids, list):
-                            unique_program_ids.update(p_ids)
-                        elif isinstance(p_ids, str):
-                            unique_program_ids.add(p_ids)
-
-                        # Also check legacy/single 'program_id' field on course
-                        p_id = course.get("program_id")
-                        if p_id:
-                            unique_program_ids.add(p_id)
+                unique_program_ids.update(
+                    self._extract_program_ids_from_offering(offering, course_lookup)
+                )
+                if offering.get("course_id"):
+                    unique_course_ids.add(offering["course_id"])
 
             term_copy["program_count"] = len(unique_program_ids)
             term_copy["course_count"] = len(unique_course_ids)

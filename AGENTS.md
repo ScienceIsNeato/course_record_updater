@@ -320,7 +320,7 @@ Verify tests after ANY modification (source, test, or config code).
 2. **Big Wins**: Target large contiguous uncovered blocks
 3. **Meaningful Testing**: Extend existing tests vs single-purpose error tests
 4. **Value Focus**: Ensure tests add genuine value beyond coverage metrics
-res
+
 ### Coverage Analysis Rules
 1. **ONLY use ship_it.py --checks coverage**: Never run direct pytest coverage commands
 2. **Coverage failures are UNIQUE TO THIS COMMIT**: If coverage decreased, it's due to current changeset

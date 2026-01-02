@@ -261,21 +261,8 @@ def save_report(result: ImportResult, report_file: str):
         print(f"❌ Error saving report: {str(e)}")
 
 
-def main():
-    """Main CLI function"""
-    args = parse_arguments()
-
-    print("🚀 MockU Course Data Import Tool")
-    print("=" * 40)
-
-    # Validate input file
-    if not validate_file(args.file):
-        sys.exit(1)
-
-    # Determine conflict strategy
-    conflict_strategy = determine_conflict_strategy(args)
-
-    # Show configuration
+def print_configuration(args, conflict_strategy):
+    """Print import configuration."""
     print(f"📁 File: {args.file}")
     print(f"🏢 Institution ID: {args.institution_id}")
     print(f"🔧 Adapter: {args.adapter}")
@@ -290,32 +277,34 @@ def main():
 
     print()
 
-    # Confirmation for execute mode
-    if not args.dry_run and not args.validate_only:
-        print("⚠️  This will modify the database!")
-        response = input("Continue? (y/N): ")
-        if response.lower() != "y":
-            print("Import cancelled.")
-            sys.exit(0)
 
-    # Validate only mode
-    if args.validate_only:
-        print("🔍 Validation mode: Checking file format only...")
-        service = ImportService(
-            institution_id=args.institution_id, verbose=args.verbose
-        )
-        result = service.validate_file(args.file, adapter_id=args.adapter)
+def confirm_execution():
+    """Prompt user to confirm execution."""
+    print("⚠️  This will modify the database!")
+    response = input("Continue? (y/N): ")
+    if response.lower() != "y":
+        print("Import cancelled.")
+        sys.exit(0)
 
-        if result.success:
-            print("✅ File format validation complete - Valid format")
-            sys.exit(0)
-        else:
-            print("❌ File format validation failed")
-            for error in result.errors:
-                print(f"   - {error}")
-            sys.exit(1)
 
-    # Perform the import
+def handle_validate_only_mode(args):
+    """Handle validate-only mode."""
+    print("🔍 Validation mode: Checking file format only...")
+    service = ImportService(institution_id=args.institution_id, verbose=args.verbose)
+    result = service.validate_file(args.file, adapter_id=args.adapter)
+
+    if result.success:
+        print("✅ File format validation complete - Valid format")
+        sys.exit(0)
+    else:
+        print("❌ File format validation failed")
+        for error in result.errors:
+            print(f"   - {error}")
+        sys.exit(1)
+
+
+def execute_import(args, conflict_strategy):
+    """Execute the import operation."""
     print("🔄 Starting import...")
     print()
 
@@ -326,18 +315,14 @@ def main():
             conflict_strategy=conflict_strategy,
             dry_run=args.dry_run,
             adapter_id=args.adapter,
-            # delete_existing_db=args.delete_existing_db, # Not supported by service
             verbose=args.verbose,
         )
 
-        # Print summary
         print_summary(result, verbose=args.verbose)
 
-        # Save detailed report if requested
         if args.report_file:
             save_report(result, args.report_file)
 
-        # Exit code based on success
         if result.success:
             print("✅ Import completed successfully!")
             sys.exit(0)
@@ -356,6 +341,28 @@ def main():
 
             traceback.print_exc()
         sys.exit(1)
+
+
+def main():
+    """Main CLI function"""
+    args = parse_arguments()
+
+    print("🚀 MockU Course Data Import Tool")
+    print("=" * 40)
+
+    if not validate_file(args.file):
+        sys.exit(1)
+
+    conflict_strategy = determine_conflict_strategy(args)
+    print_configuration(args, conflict_strategy)
+
+    if not args.dry_run and not args.validate_only:
+        confirm_execution()
+
+    if args.validate_only:
+        handle_validate_only_mode(args)
+
+    execute_import(args, conflict_strategy)
 
 
 if __name__ == "__main__":

@@ -161,7 +161,7 @@ describe("audit_clo.js - Utility Functions", () => {
 
     it("should return unknown badge for invalid status", () => {
       const badge = auditCloModule.getStatusBadge("invalid_status");
-      expect(badge.classList.contains("bg-secondary")).toBe(true);
+      expect(badge.style.backgroundColor).toBe("rgb(108, 117, 125)"); // #6c757d
       expect(badge.textContent).toBe("Unknown");
     });
   });
