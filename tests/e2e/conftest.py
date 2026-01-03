@@ -494,21 +494,43 @@ def reset_account_locks():
     Clear any failed login attempts before each test.
 
     Ensures tests start with clean slate for authentication testing.
+    CRITICAL: Must configure app to use the correct worker DB, as pytest process
+    is separate from the running Flask server process.
     """
-    # Clear failed login attempts for common test accounts
-    test_accounts = [
-        "siteadmin@system.local",
-        "sarah.admin@mocku.test",
-        "mike.admin@riverside.edu",
-        "admin@pactech.edu",
-    ]
+    from src.app import app
 
-    for email in test_accounts:
-        try:
-            PasswordService.clear_failed_attempts(email)
-        except Exception:
-            # Best effort - if account doesn't exist or clearing fails, continue
-            pass
+    # Determine correct DB for this worker (same logic as setup_worker_environment)
+    worker_id = get_worker_id()
+    if worker_id is not None:
+        # Parallel mode: Use worker-specific DB
+        worker_db = f"course_records_e2e_worker{worker_id}.db"
+        # Ensure absolute path to avoid CWD ambiguity
+        db_path = os.path.abspath(worker_db)
+        db_url = f"sqlite:///{db_path}"
+    else:
+        # Serial mode: Use default E2E DB
+        db_path = os.path.abspath("course_records_e2e.db")
+        db_url = f"sqlite:///{db_path}"
+
+    # Force reconfiguration of the app in this process
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    
+    # We must push an app context so DB operations work
+    with app.app_context():
+        # Clear failed login attempts for common test accounts
+        test_accounts = [
+            "siteadmin@system.local",
+            "sarah.admin@mocku.test",
+            "mike.admin@riverside.edu",
+            "admin@pactech.edu",
+        ]
+
+        for email in test_accounts:
+            try:
+                PasswordService.clear_failed_attempts(email)
+            except Exception:
+                # Best effort - if account doesn't exist or clearing fails, continue
+                pass
 
     yield
 

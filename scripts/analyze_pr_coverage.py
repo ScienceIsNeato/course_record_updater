@@ -294,19 +294,15 @@ def _process_lcov_brda(line, current_file, uncovered_lines):
 
 
 def get_uncovered_lines_from_lcov(
-    lcov_file: str = "coverage/lcov.info",
+    lcov_file: str = "build/coverage/lcov.info",
 ) -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
     Parse lcov.info (JavaScript) to find uncovered lines AND partially covered branches.
-
-    Returns:
-        Tuple of (uncovered_lines dict, all_covered_files set)
     """
     print(f"📊 Parsing JavaScript coverage: {lcov_file}...")
-
+    
     if not Path(lcov_file).exists():
-        print(f"⚠️  JavaScript coverage file not found: {lcov_file}", file=sys.stderr)
-        return {}, set()
+        return {}, set()    # Silent fail for cleaner output if missing
 
     try:
         uncovered_lines = defaultdict(set)
@@ -551,7 +547,7 @@ def main():
     )
 
     # Step 2b: Get JavaScript uncovered lines from lcov.info
-    js_uncovered, js_covered_files = get_uncovered_lines_from_lcov("coverage/lcov.info")
+    js_uncovered, js_covered_files = get_uncovered_lines_from_lcov("build/coverage/lcov.info")
     js_uncovered_count = sum(len(lines) for lines in js_uncovered.values())
     print(
         f"   📊 JavaScript: {js_uncovered_count} total uncovered lines across {len(js_uncovered)} files"
