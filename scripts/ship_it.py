@@ -113,7 +113,7 @@ class QualityGateExecutor:
             ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
             (
                 "coverage",
-                "📊 Test Coverage Analysis (80% threshold)",
+                "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
             ),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
