@@ -300,9 +300,9 @@ def get_uncovered_lines_from_lcov(
     Parse lcov.info (JavaScript) to find uncovered lines AND partially covered branches.
     """
     print(f"📊 Parsing JavaScript coverage: {lcov_file}...")
-    
+
     if not Path(lcov_file).exists():
-        return {}, set()    # Silent fail for cleaner output if missing
+        return {}, set()  # Silent fail for cleaner output if missing
 
     try:
         uncovered_lines = defaultdict(set)
@@ -547,7 +547,9 @@ def main():
     )
 
     # Step 2b: Get JavaScript uncovered lines from lcov.info
-    js_uncovered, js_covered_files = get_uncovered_lines_from_lcov("build/coverage/lcov.info")
+    js_uncovered, js_covered_files = get_uncovered_lines_from_lcov(
+        "build/coverage/lcov.info"
+    )
     js_uncovered_count = sum(len(lines) for lines in js_uncovered.values())
     print(
         f"   📊 JavaScript: {js_uncovered_count} total uncovered lines across {len(js_uncovered)} files"

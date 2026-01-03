@@ -514,7 +514,7 @@ def reset_account_locks():
 
     # Force reconfiguration of the app in this process
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
-    
+
     # We must push an app context so DB operations work
     with app.app_context():
         # Clear failed login attempts for common test accounts

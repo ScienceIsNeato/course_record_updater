@@ -96,5 +96,6 @@ Complete repository reorganization to move all source code into `src/` directory
 - ✅ **Label Quality**: Renamed "coverage" check to "🧪 Python Unit Tests & 📊 Coverage Analysis" in `ship_it.py` for transparency.
 
 ### Next Steps:
-1. Verify PR pipeline runs with new test structure.
+1. ⏳ Monitor CI for `fix: Stabilize CI/E2E pipelines`.
+2. Integration verification of new test structure.
 
