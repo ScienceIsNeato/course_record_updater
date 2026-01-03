@@ -154,9 +154,15 @@ def setup_worker_environment(tmp_path_factory):
         print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
 
         # Copy base E2E database to worker-specific copy
+        # Copy base E2E database to worker-specific copy
+        # CRITICAL: Must copy WAL/SHM files if they exist to capture all transactions
         if os.path.exists(base_db):
-            shutil.copy2(base_db, worker_db)
-            print(f"   ✓ Database copied: {worker_db}")
+            for ext in ["", "-wal", "-shm"]:
+                src_file = f"{base_db}{ext}"
+                dst_file = f"{worker_db}{ext}"
+                if os.path.exists(src_file):
+                    shutil.copy2(src_file, dst_file)
+                    print(f"   ✓ Database copied: {dst_file}")
 
             env = os.environ.copy()
             env["DATABASE_URL"] = f"sqlite:///{worker_db}"
