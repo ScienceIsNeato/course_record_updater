@@ -674,10 +674,13 @@
 
         // Update rate display when inputs change
         function updateRateDisplay(inputElement) {
-            const row = inputElement.closest('[data-outcome-id]');
+            // Fix: Target the ROW div explicitly (inputs also have data-outcome-id)
+            const row = inputElement.closest('div[data-outcome-id]');
+            if (!row) return;
+
             const tookInput = row.querySelector('[data-field="students_took"]');
             const passedInput = row.querySelector('[data-field="students_passed"]');
-            const rateSpan = row.querySelector('.col-md-1 span');
+            const rateSpan = row.querySelector('.col-md-1.text-center span');
 
             const took = parseInt(tookInput?.value) || 0;
             const passed = parseInt(passedInput?.value) || 0;
@@ -686,6 +689,9 @@
                 const rate = Math.round((passed / took) * 100);
                 rateSpan.textContent = rate + '%';
                 rateSpan.className = 'fw-bold ' + (rate >= 80 ? 'text-success' : (rate >= 60 ? 'text-warning' : 'text-danger'));
+            } else if (rateSpan) {
+                rateSpan.textContent = '-';
+                rateSpan.className = 'fw-bold';
             }
 
             // Soft validation for enrollment matching
@@ -748,6 +754,7 @@
                 if (response.ok && data.success) {
                     alert('Course submitted for approval successfully!');
                     loadOutcomes(courseId); // Reload to show updated status
+                    loadCourses(); // Reload to update status summary counts
                 } else {
                     // Show validation errors
                     let errorMsg = 'Please fix the following issues:\n\n';

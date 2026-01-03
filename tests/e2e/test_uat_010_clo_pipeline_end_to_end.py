@@ -215,31 +215,32 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     )
 
     instructor_page.goto(f"{BASE_URL}/assessments")
-    instructor_page.wait_for_selector("#courseSelect", timeout=5000)
+    # Select course - wait for option to be present first
+    instructor_page.wait_for_selector(
+        f"#courseSelect option[value='{course_id}']", timeout=10000
+    )
     instructor_page.select_option("#courseSelect", value=course_id)
+
+    # Wait for outcomes to load
     instructor_page.wait_for_selector(
-        f'button[data-outcome-id="{clo_id}"]', timeout=5000
+        ".outcomes-list .row[data-outcome-id]", timeout=10000
     )
 
-    # Click "Update Assessment" button to open modal
-    instructor_page.click(f'button.update-assessment-btn[data-outcome-id="{clo_id}"]')
-    instructor_page.wait_for_selector(
-        "#updateAssessmentModal", state="visible", timeout=5000
+    # Locate CLO row
+    clo_row = instructor_page.locator(f".row[data-outcome-id='{clo_id}']")
+    expect(clo_row).to_be_visible()
+
+    # Use inline inputs
+    # Fill assessment data (updated field names from CEI demo feedback)
+    clo_row.locator(f"input[data-field='students_took']").fill("35")
+    clo_row.locator(f"input[data-field='students_passed']").fill("30")
+    clo_row.locator(f"input[data-field='assessment_tool']").fill(
+        "Programming Assignment"
     )
 
-    # Fill assessment data in modal (updated field names from CEI demo feedback)
-    instructor_page.fill("#studentsTook", "35")
-    instructor_page.fill("#studentsPassed", "30")
-    instructor_page.fill(
-        "#assessmentTool",
-        "Programming Assignment",
-    )
-
-    # Save changes (triggers auto-mark IN_PROGRESS)
-    instructor_page.click("#updateAssessmentModal button:has-text('Save Assessment')")
-    instructor_page.wait_for_timeout(
-        1000
-    )  # Wait for modal to close and alert to appear
+    # Trigger blur to autosave (marks IN_PROGRESS)
+    clo_row.locator(f"input[data-field='assessment_tool']").blur()
+    instructor_page.wait_for_timeout(2000)
 
     # Verify status is IN_PROGRESS
     outcome = admin_page.request.get(
@@ -327,50 +328,48 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     # === STEP 6: Instructor addresses and resubmits (→ AWAITING_APPROVAL) ===
 
     instructor_page.goto(f"{BASE_URL}/assessments")
-    instructor_page.wait_for_selector("#courseSelect", timeout=5000)
+    # Robust selection
+    instructor_page.wait_for_selector(
+        f"#courseSelect option[value='{course_id}']", timeout=10000
+    )
     instructor_page.select_option("#courseSelect", value=course_id)
+
+    # Wait for outcomes
     instructor_page.wait_for_selector(
-        f'button[data-outcome-id="{clo_id}"]', timeout=5000
+        ".outcomes-list .row[data-outcome-id]", timeout=10000
     )
+    clo_row = instructor_page.locator(f".row[data-outcome-id='{clo_id}']")
+    expect(clo_row).to_be_visible()
 
-    # Verify feedback is visible (it's in an alert div with "Revision Requested" heading)
-    feedback_alert = instructor_page.locator(
-        ".alert-warning:has-text('Revision Requested')"
-    )
-    expect(feedback_alert).to_be_visible()
+    # Verify feedback is visible inline
+    feedback_div = clo_row.locator(".text-warning.small")
+    expect(feedback_div).to_be_visible()
 
-    # Click "Update Assessment" button to open modal and address feedback
-    instructor_page.click(f'button.update-assessment-btn[data-outcome-id="{clo_id}"]')
-    instructor_page.wait_for_selector(
-        "#updateAssessmentModal", state="visible", timeout=5000
-    )
+    # Address feedback - inline update
+    tool_input = clo_row.locator(f"input[data-field='assessment_tool']")
+    tool_input.fill("Final Project")
+    tool_input.blur()
+    instructor_page.wait_for_timeout(1000)
 
-    # Address feedback - assessment tool should already be filled, but ensure it's set
-    instructor_page.fill(
-        "#assessmentTool",
-        "Final Project",
-    )
+    # Resubmit via Course Submission
+    # Fill required course level data
+    instructor_page.locator("#courseStudentsPassed").fill("30")
+    instructor_page.locator("#courseStudentsDFIC").fill("5")
 
-    # Save changes (submit the form)
-    instructor_page.click("#updateAssessmentForm button[type='submit']")
-    instructor_page.wait_for_selector(
-        "#updateAssessmentModal", state="hidden", timeout=5000
-    )
+    # Click submit course button
+    submit_btn = instructor_page.locator("#submitCourseBtn")
+    expect(submit_btn).to_be_visible()
 
-    # Resubmit
-    instructor_csrf = instructor_page.evaluate(
-        "document.querySelector('meta[name=\"csrf-token\"]')?.content"
-    )
+    # Handle confirmation dialog
+    instructor_page.once("dialog", lambda dialog: dialog.accept())
+    submit_btn.click()
 
-    resubmit_response = instructor_page.request.post(
-        f"{BASE_URL}/api/outcomes/{clo_id}/submit",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": instructor_csrf if instructor_csrf else "",
-        },
-        data=json.dumps({}),
-    )
-    assert resubmit_response.ok
+    # Wait for completion
+    instructor_page.wait_for_timeout(2000)
+
+    # Verify successful submission (URL or updated UI state)
+    # Skipped explicit API check for 200 OK since we clicked a button,
+    # but we will check the status via API in next step.
 
     # Verify status is AWAITING_APPROVAL again
     outcome = admin_page.request.get(

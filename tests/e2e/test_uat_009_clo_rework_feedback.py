@@ -324,90 +324,72 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
     instructor_page.goto(f"{BASE_URL}/assessments")
     expect(instructor_page).to_have_url(f"{BASE_URL}/assessments")
 
-    # Select course
-    instructor_page.select_option("#courseSelect", value=course_id)
+    # Select course - wait for option to be present first
     instructor_page.wait_for_selector(
-        f"button[data-outcome-id='{clo_id}']", timeout=5000
+        f"#courseSelect option[value='{course_id}']", timeout=10000
+    )
+    instructor_page.select_option("#courseSelect", value=course_id)
+
+    # Wait for outcomes to load
+    instructor_page.wait_for_selector(
+        ".outcomes-list .row[data-outcome-id]", timeout=10000
     )
 
-    # Verify status badge shows "Needs Revision" (wait for page to refresh the data)
-    instructor_page.wait_for_timeout(1000)
+    # Locate CLO row
+    clo_row = instructor_page.locator(f".row[data-outcome-id='{clo_id}']")
+    expect(clo_row).to_be_visible()
 
-    # Find the status badge - it's in the same card container as the button
-    status_badge = instructor_page.locator('.badge:has-text("Needs Revision")')
-    expect(status_badge).to_be_visible()
+    # Verify status indicator (Needs Rework icon)
+    # Check for warning triangle
+    warning_icon = clo_row.locator(".fa-exclamation-triangle")
+    expect(warning_icon).to_be_visible()
 
-    # Verify feedback is displayed in the warning alert
-    feedback_alert = instructor_page.locator(
-        '.alert-warning:has-text("Revision Requested")'
-    )
-    expect(feedback_alert).to_be_visible()
-    expect(feedback_alert).to_contain_text("second law")
+    # Verify feedback is displayed inline
+    feedback_div = clo_row.locator(".text-warning.small")
+    expect(feedback_div).to_be_visible()
+    expect(feedback_div).to_contain_text("second law")
 
     # === STEP 11: Instructor addresses feedback and updates narrative ===
-    # Click "Update Assessment" button to open modal
-    update_button = instructor_page.locator(
-        f'button.update-assessment-btn[data-outcome-id="{clo_id}"]'
-    )
-    update_button.click()
-    instructor_page.wait_for_selector(
-        "#updateAssessmentModal", state="visible", timeout=5000
-    )
+    # Use inline inputs
+    took_input = clo_row.locator(f"input[data-field='students_took']")
+    passed_input = clo_row.locator(f"input[data-field='students_passed']")
+    tool_input = clo_row.locator(f"input[data-field='assessment_tool']")
 
-    # Modal should have existing assessment data pre-filled (updated field names from CEI demo feedback)
-    # Make sure required fields have values (they should be pre-populated)
-    assessed_value = instructor_page.input_value("#studentsTook")
-    if not assessed_value:
-        instructor_page.fill("#studentsTook", "30")
-        instructor_page.fill("#studentsPassed", "18")
+    # Update assessment tool field
+    # (inputs should be populated already, just updating tool)
+    tool_input.fill("Final Exam")
 
-    # Update assessment tool field (replaces old narrative field)
-    instructor_page.fill(
-        "#assessmentTool",
-        "Final Exam",
-    )
+    # Blur to save
+    tool_input.blur()
+    instructor_page.wait_for_timeout(1000)
 
-    # Save changes (submit the form) - need to handle success alert
-    # Set up dialog handler BEFORE clicking
-    dialog_handled = []
+    # === STEP 12: Instructor resubmits CLO via Course Submission ===
+    # Fill required course level data if needed (it might be pre-filled if previously saved, but let's be safe)
+    # Check if empty first? Or just fill.
+    instructor_page.locator("#courseStudentsPassed").fill("18")
+    instructor_page.locator("#courseStudentsDFIC").fill("2")
 
-    def handle_success_dialog(dialog):
-        dialog_handled.append(dialog.message)
-        dialog.accept()
+    # Click submit course button (Verify it changed to "Update" or "Submit")
+    submit_btn = instructor_page.locator("#submitCourseBtn")
+    expect(submit_btn).to_be_visible()
 
-    instructor_page.on("dialog", handle_success_dialog)
-    instructor_page.click("#updateAssessmentForm button[type='submit']")
-
-    # Wait for dialog and modal to close
-    instructor_page.wait_for_timeout(2000)  # Wait for API call + alert + modal close
-
-    # Verify dialog was shown
-    assert len(dialog_handled) > 0, "Expected success alert dialog"
-
-    # Modal should close after successful save
-    expect(instructor_page.locator("#updateAssessmentModal")).not_to_be_visible(
-        timeout=3000
-    )
-
-    # === STEP 12: Instructor resubmits CLO ===
-    # Click submit button
-    submit_button = instructor_page.locator(
-        f'.submit-clo-btn[data-outcome-id="{clo_id}"]'
-    )
-    expect(submit_button).to_be_visible()
+    # Handle confirmation dialog
     instructor_page.once("dialog", lambda dialog: dialog.accept())
-    submit_button.click()
+    submit_btn.click()
 
     # Wait briefly for status to update
-    instructor_page.wait_for_timeout(500)
+    instructor_page.wait_for_timeout(2000)
 
     # === STEP 13: Verify status is back to AWAITING_APPROVAL ===
-    # Verify the badge changed back to "Pending Review"
-    status_badge = instructor_page.locator('.badge:has-text("Pending Review")')
-    expect(status_badge).to_be_visible()
+    # Verify the warning icon is gone (or replaced by generic state? awaiting approval doesn't have an icon in code I saw)
+    # Code: isApproved ? check : (needsWork ? warning : '')
+    # So if awaiting approval, no icon.
+    expect(warning_icon).not_to_be_visible()
 
-    # UI already verified status changed to "Pending Review"
-    # API verification skipped since audit-details endpoint requires audit_clo permission
+    # Verify inputs might be implicitly validated or status summary updated
+    expect(
+        instructor_page.locator(".card-body:has-text('Awaiting Approval') .fs-4")
+    ).to_have_text("1")
 
     # Cleanup
     instructor_page.close()
