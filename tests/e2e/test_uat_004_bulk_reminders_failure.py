@@ -61,16 +61,22 @@ class TestUAT004BulkRemindersFailureHandling:
 
         # Get a program from this institution to associate instructors with
         programs_response = admin_page.request.get(f"{BASE_URL}/api/programs")
-        assert programs_response.ok, f"Failed to get programs: {programs_response.status}"
+        assert (
+            programs_response.ok
+        ), f"Failed to get programs: {programs_response.status}"
         programs_data = programs_response.json()
         programs = programs_data.get("programs", [])
-        
+
         # Filter to programs in this institution
-        inst_programs = [p for p in programs if p.get("institution_id") == institution_id]
+        inst_programs = [
+            p for p in programs if p.get("institution_id") == institution_id
+        ]
         assert len(inst_programs) > 0, "No programs found for institution"
-        
+
         program_ids = [inst_programs[0]["program_id"]]
-        print(f"   Using program: {inst_programs[0].get('name', 'unnamed')} ({program_ids[0]})")
+        print(
+            f"   Using program: {inst_programs[0].get('name', 'unnamed')} ({program_ids[0]})"
+        )
 
         # Create 2 test instructors associated with the program
         # These will be visible to the institution admin
@@ -145,7 +151,9 @@ class TestUAT004BulkRemindersFailureHandling:
         # Verify at least 2 instructors selected (the 2 we created, plus any baseline)
         selected_count = admin_page.locator("#selectedInstructorCount")
         selected_text = selected_count.text_content()
-        assert int(selected_text) >= 2, f"Expected at least 2 instructors, got {selected_text}"
+        assert (
+            int(selected_text) >= 2
+        ), f"Expected at least 2 instructors, got {selected_text}"
         print(f"✅ Selected {selected_text} instructors")
 
         # Enter personal message

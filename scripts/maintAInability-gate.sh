@@ -299,9 +299,9 @@ if [[ "$RUN_JS_LINT_FORMAT" == "true" ]]; then
   echo "  🔍 Checking JavaScript with ESLint..."
   # Auto-fix JavaScript with ESLint
   echo "  🔍 Auto-fixing JavaScript with ESLint..."
-  npx eslint "static/**/*.js" --fix 2>/dev/null || true
+  npx eslint "static/**/*.js" -c config/.eslintrc.json --fix 2>/dev/null || true
   
-  if npx eslint "static/**/*.js" --max-warnings 0 2>&1 >/dev/null; then
+  if npx eslint "static/**/*.js" -c config/.eslintrc.json --max-warnings 0 2>&1 >/dev/null; then
     add_success "ESLint" "JavaScript code passes linting"
   else
     add_failure "ESLint" "JavaScript linting errors" "Run: npx eslint static/**/*.js --fix"
@@ -939,6 +939,28 @@ for r in d.get('results',[])[:5]:
     echo "  ❌ Semgrep not installed (pip install semgrep)"
     echo "  This is a required check."
     exit 1
+  fi
+
+  # Run detect-secrets scan
+  echo "  🔍 Running detect-secrets scan..."
+  if command -v detect-secrets-hook &> /dev/null; then
+    if [[ -f .secrets.baseline ]]; then
+      # Scan all tracked files
+      SECRETS_OUTPUT=$(git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline 2>&1)
+      SECRETS_EXIT=$?
+      
+      if [[ $SECRETS_EXIT -eq 0 ]]; then
+        echo "  ✅ detect-secrets: No secrets found"
+      else
+        echo "  ❌ detect-secrets: Secrets found!"
+        echo "$SECRETS_OUTPUT" # | head -n 20
+        SECURITY_PASSED=false
+      fi
+    else
+         echo "  ⚠️  No .secrets.baseline found. Skipping detect-secrets."
+    fi
+  else
+    echo "  ⚠️  detect-secrets-hook not installed. Skipping."
   fi
 
   # Run safety scan for known vulnerabilities in dependencies

@@ -52,10 +52,14 @@ class TestUAT006EdgeCases:
 
         # Get a program from this institution
         programs_response = admin_page.request.get(f"{BASE_URL}/api/programs")
-        assert programs_response.ok, f"Failed to get programs: {programs_response.status}"
+        assert (
+            programs_response.ok
+        ), f"Failed to get programs: {programs_response.status}"
         programs_data = programs_response.json()
         programs = programs_data.get("programs", [])
-        inst_programs = [p for p in programs if p.get("institution_id") == institution_id]
+        inst_programs = [
+            p for p in programs if p.get("institution_id") == institution_id
+        ]
         program_ids = [inst_programs[0]["program_id"]] if inst_programs else None
 
         # Create test instructor

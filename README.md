@@ -38,8 +38,9 @@ python scripts/ship_it.py
 # Run full PR validation (all checks including security & sonar)
 python scripts/ship_it.py --validation-type PR
 
-# Install pre-commit hooks
-pre-commit install
+# Security Check (integrated into ship_it.py)
+# detect-secrets scan runs automatically during commit validation
+python scripts/ship_it.py --checks security-local
 ```
 
 ### Git Operations & Commit Messages

@@ -164,8 +164,6 @@ function exportCurrentViewToCsv(cloList) {
 async function approveCLO() {
   if (!globalThis.currentCLO) return;
 
-
-
   const outcomeId = globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
     alert("Error: CLO ID not found");
@@ -992,7 +990,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Show success
       alert(
         "Rework request sent successfully!" +
-        (sendEmail ? " Email notification sent." : ""),
+          (sendEmail ? " Email notification sent." : ""),
       );
 
       // Reload list
