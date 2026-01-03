@@ -45,7 +45,8 @@ describe('Offering Management - Create Offering Modal', () => {
           <option value="planning">Planning</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <input type="number" id="offeringCapacity" name="capacity" min="0" placeholder="Optional" />
+        <div id="sectionsContainer"></div>
+        <button type="button" id="addSectionBtn">Add Section</button>
         <button type="submit" id="createOfferingBtn">
           <span class="btn-text">Create Offering</span>
           <span class="btn-spinner d-none">Creating...</span>
@@ -103,11 +104,11 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(statusSelect.value).toBe('active');
     });
 
-    test('should allow capacity to be empty', () => {
-      const capacityInput = document.getElementById('offeringCapacity');
-      capacityInput.value = '';
-      // Capacity is not required
-      expect(capacityInput.validity.valid).toBe(true);
+    test('should allow empty sections', () => {
+      const sectionsContainer = document.getElementById('sectionsContainer');
+      // Sections are optional (can create offering with 0 sections)
+      expect(sectionsContainer).toBeTruthy();
+      expect(sectionsContainer.children.length).toBe(0);
     });
   });
 
@@ -127,7 +128,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringTermId').value = 'term-1';
       document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
-      document.getElementById('offeringCapacity').value = '30';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -158,7 +158,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringTermId').value = 'term-2';
       document.getElementById('offeringProgramId').value = 'program-2';
       document.getElementById('offeringStatus').value = 'planning';
-      document.getElementById('offeringCapacity').value = '50';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -173,7 +172,7 @@ describe('Offering Management - Create Offering Modal', () => {
         term_id: 'term-2',
         program_id: 'program-2',
         status: 'planning',
-        capacity: 50
+        sections: []
       });
     });
 
@@ -198,7 +197,7 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(body.program_id).toBeNull();
     });
 
-    test('should handle empty capacity as null', async () => {
+    test('should handle empty sections as empty array', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ success: true, offering_id: 'offering-123' })
@@ -209,7 +208,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringTermId').value = 'term-1';
       document.getElementById('offeringProgramId').value = 'program-1';
       document.getElementById('offeringStatus').value = 'active';
-      document.getElementById('offeringCapacity').value = '';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -219,7 +217,7 @@ describe('Offering Management - Create Offering Modal', () => {
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
 
-      expect(body.capacity).toBeNull();
+      expect(body.sections).toEqual([]);
     });
 
     test('should show loading state during API call', async () => {
@@ -415,7 +413,6 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
         <option value="active">active</option>
         <option value="scheduled">scheduled</option>
       </select>
-      <input id="editOfferingCapacity" />
       <input id="editOfferingCourse" />
       <input id="editOfferingTerm" />
       <select id="editOfferingProgramId"></select>
@@ -456,7 +453,6 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
 
     expect(document.getElementById('editOfferingId').value).toBe('offering-123');
     expect(document.getElementById('editOfferingStatus').value).toBe('scheduled');
-    expect(document.getElementById('editOfferingCapacity').value).toBe('25');
     expect(document.getElementById('editOfferingCourse').value).toBe('Intro');
     expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
 
@@ -541,7 +537,6 @@ describe('Offering Management - Edit Offering Modal', () => {
           <option value="planning">Planning</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <input type="number" id="editOfferingCapacity" min="0" />
         <button type="submit">
           <span class="btn-text">Update</span>
           <span class="btn-spinner d-none">Updating...</span>
@@ -586,7 +581,6 @@ describe('Offering Management - Edit Offering Modal', () => {
 
     expect(document.getElementById('editOfferingId').value).toBe('offering-123');
     expect(document.getElementById('editOfferingStatus').value).toBe('planning');
-    expect(document.getElementById('editOfferingCapacity').value).toBe('40');
     expect(document.getElementById('editOfferingCourse').value).toBe('Intro to CS');
     expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
     expect(mockModal.show).toHaveBeenCalled();
@@ -626,7 +620,6 @@ describe('Offering Management - Edit Offering Modal', () => {
     document.getElementById('editOfferingId').value = 'offering-123';
     document.getElementById('editOfferingProgramId').value = 'program-1';
     document.getElementById('editOfferingStatus').value = 'cancelled';
-    document.getElementById('editOfferingCapacity').value = '25';
 
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
     form.dispatchEvent(submitEvent);
@@ -648,7 +641,6 @@ describe('Offering Management - Edit Offering Modal', () => {
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
     expect(body.status).toBe('cancelled');
-    expect(body.capacity).toBe(25);
   });
 });
 

@@ -557,7 +557,7 @@ describe('Section Management - Edit Modal Instructor Loading', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        data: [
+        users: [
           {
             user_id: 'instructor-1',
             first_name: 'John',

@@ -2700,13 +2700,35 @@ def create_course_offering_endpoint():
                 400,
             )
 
-        # Add institution_id from context
-        data["institution_id"] = get_current_institution_id()
-        data.setdefault("status", "active")
+        # Prepare offering data
+        offering_payload = {
+            "course_id": data["course_id"],
+            "term_id": data["term_id"],
+            "program_id": data.get("program_id"),
+            "institution_id": get_current_institution_id(),
+            "status": data.get("status", "active"),
+        }
 
-        offering_id = database_service.create_course_offering(data)
+        # Calculate section count
+        sections_data = data.get("sections")
+        if not sections_data:
+            # Create a default section if none provided
+            sections_data = [{"section_number": "001"}]
+
+        offering_payload["section_count"] = len(sections_data)
+        offering_id = database_service.create_course_offering(offering_payload)
 
         if offering_id:
+            # Create sections
+            for sec in sections_data:
+                section_payload = {
+                    "offering_id": offering_id,
+                    "section_number": sec.get("section_number", "001"),
+                    "enrollment": 0,
+                    "status": "assigned",
+                }
+                database_service.create_course_section(section_payload)
+
             return (
                 jsonify(
                     {
@@ -3721,7 +3743,7 @@ def register_institution_admin_api():
     Expected JSON payload:
     {
         "email": "admin@example.com",
-        "password": "SecurePass123!",
+        "password": "SecurePass123!",  # pragma: allowlist secret - API documentation example
         "first_name": "John",
         "last_name": "Doe",
         "institution_name": "Example University",
@@ -4070,7 +4092,7 @@ def accept_invitation_api():
     JSON Body:
     {
         "invitation_token": "secure-token-here",
-        "password": "newpassword123",
+        "password": "newpassword123",  # pragma: allowlist secret - API documentation example
         "display_name": "John Doe"  // Optional
     }
 
@@ -4320,7 +4342,7 @@ def login_api():
     JSON Body:
     {
         "email": "user@example.com",
-        "password": "password123",
+        "password": "password123",  # pragma: allowlist secret - API documentation example
         "remember_me": false  // Optional, default false
     }
 
@@ -4704,8 +4726,8 @@ def change_password_api():
 
     JSON Body:
     {
-        "current_password": "oldPassword123!",
-        "new_password": "newPassword456!"
+        "current_password": "oldPassword123!",  # pragma: allowlist secret - API documentation example
+        "new_password": "newPassword456!"  # pragma: allowlist secret - API documentation example
     }
 
     Returns:
@@ -4849,7 +4871,7 @@ def reset_password_api():
     JSON Body:
     {
         "reset_token": "secure-reset-token",
-        "new_password": "newSecurePassword123!"
+        "new_password": "newSecurePassword123!"  # pragma: allowlist secret - API documentation example
     }
 
     Returns:

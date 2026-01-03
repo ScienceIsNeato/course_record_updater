@@ -388,7 +388,7 @@ async function duplicateCourse(courseId, rawCourseData) {
     }
 
     const result = await response.json();
-    alert(result.message || "Course duplicated successfully!");
+    // alert(result.message || "Course duplicated successfully!");
 
     if (typeof globalThis.loadCourses === "function") {
       globalThis.loadCourses();

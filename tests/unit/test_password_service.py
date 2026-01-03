@@ -27,7 +27,9 @@ class TestPasswordHashing:
 
     def test_hash_password_success(self):
         """Test successful password hashing"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hashed = hash_password(password)
 
         assert isinstance(hashed, str)
@@ -52,14 +54,18 @@ class TestPasswordHashing:
 
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password(password, hashed) is True
 
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         wrong_password = "WrongPass123!"
         hashed = hash_password(password)
 
@@ -67,14 +73,18 @@ class TestPasswordHashing:
 
     def test_verify_password_with_invalid_hash(self):
         """Test password verification with invalid hash"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         invalid_hash = "invalid_hash"
 
         assert verify_password(password, invalid_hash) is False
 
     def test_hash_consistency(self):
         """Test that same password produces different hashes (due to salt)"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hash1 = hash_password(password)
         hash2 = hash_password(password)
 

@@ -207,7 +207,7 @@ async function openEditSectionModal(sectionId, sectionData) {
     const response = await fetch("/api/users?role=instructor");
     if (response.ok) {
       const data = await response.json();
-      const instructors = data.data || [];
+      const instructors = data.users || [];
 
       instructors.forEach((instructor) => {
         const option = document.createElement("option");

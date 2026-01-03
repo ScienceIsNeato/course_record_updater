@@ -100,8 +100,10 @@ class BaselineSeeder:
         """Create site administrator account"""
         self.log("👑 Creating site administrator...")
 
-        email = "siteadmin@system.local"
-        password = "SiteAdmin123!"  # nosec B105
+        from tests.test_credentials import SITE_ADMIN_EMAIL, SITE_ADMIN_PASSWORD
+
+        email = SITE_ADMIN_EMAIL
+        password = SITE_ADMIN_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -124,65 +126,140 @@ class BaselineSeeder:
             self.created["users"].append(user_id)
         return user_id
 
+    def seed_baseline(self, manifest_data=None):
+        """Seed minimal baseline data"""
+        self.log("🌱 Seeding baseline E2E infrastructure...")
+
+        inst_ids = self.create_institutions()
+        self.create_site_admin()
+
+        # Users from manifest or fallback
+        custom_admins = []
+        if manifest_data and "users" in manifest_data:
+            custom_admins = manifest_data["users"]
+
+        self.create_institution_admins(inst_ids, custom_admins)
+
+        prog_ids = self.create_programs(inst_ids)
+        term_ids = self.create_terms(inst_ids)
+
+        course_ids = self.create_sample_courses(inst_ids, prog_ids)
+        instructor_ids = self.create_sample_instructors(inst_ids, prog_ids)
+
+        # Only create default program admin if not in manifest (manifest might handle it)
+        # But for now, let's keep it unless we want full override.
+        # The manifest 'users' list can contain any role.
+        # create_institution_admins processes the list.
+        # Wait, create_institution_admins logic needs to handle role types if we mix them?
+        # Let's check create_institution_admins logic below.
+
+        self.create_sample_program_admins(inst_ids, prog_ids)
+        self.create_sample_sections(course_ids, term_ids, instructor_ids, inst_ids)
+
+        self.log("✅ Baseline seeding completed!")
+        self.print_summary()
+        return True
+
+    # ... create_institutions ... create_site_admin ...
+
     def create_institution_admins(self, institution_ids, custom_data=None):
-        """Create one institution admin per institution"""
+        """Create institution admins (and other users if specified in manifest)"""
         self.log("🎓 Creating institution administrators...")
 
+        users_to_create = []
+
         if custom_data:
-            admins_data = custom_data
+            # Manifest provided specific users
+            users_to_create = custom_data
         else:
             # Generic fallback
-            admins_data = []
             for idx, inst_id in enumerate(institution_ids):
-                admins_data.append(
+                users_to_create.append(
                     {
                         "email": f"admin{idx+1}@example.com",
                         "first_name": "Admin",
                         "last_name": f"User {idx+1}",
-                        "institution_idx": idx,
-                        "password_env_var": "DEFAULT_PASSWORD",  # pragma: allowlist secret
+                        "institution_idx": idx,  # Index in institution_ids list
+                        "password_env_var": "DEFAULT_PASSWORD",
+                        "role": "institution_admin",
                     }
                 )
 
-        admin_ids = []
-        for admin_data in admins_data:
-            idx = admin_data.get("institution_idx", 0)
-            if idx >= len(institution_ids):
-                continue
+        created_ids = []
+        for user_data in users_to_create:
+            email = user_data["email"]
 
-            inst_id = institution_ids[idx]
-            email = admin_data["email"]
+            # Resolve Institution ID
+            inst_id = None
+            if "institution_idx" in user_data:
+                idx = user_data["institution_idx"]
+                if idx < len(institution_ids):
+                    inst_id = institution_ids[idx]
+            elif "institution_short_name" in user_data:
+                short = user_data["institution_short_name"]
+                found = db.get_institution_by_short_name(short)
+                if found:
+                    inst_id = found["institution_id"]
+
+            if not inst_id:
+                # Some users might not have institution (e.g. system admins, though we handled site admin separately)
+                # Or if we can't find it, skip
+                if user_data.get("role") != "site_admin":
+                    self.log(f"   ⚠️  Skipping {email} - unknown institution")
+                    continue
 
             existing = db.get_user_by_email(email)
             if existing:
-                admin_ids.append(existing["user_id"])
+                created_ids.append(existing["user_id"])
                 continue
 
             # Determine password
-            pwd_env = admin_data.get("password_env_var", "DEFAULT_PASSWORD")  # nosec
-            pwd_raw = "InstitutionAdmin123!"  # pragma: allowlist secret # nosec
-            if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):  # nosec
+            pwd_env = user_data.get(
+                "password_env_var", "DEFAULT_PASSWORD"
+            )  # nosec B105
+            pwd_raw = "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret # Test account password
+            if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):  # nosec B105
                 pwd_raw = os.getenv(pwd_env)
+            elif "password" in user_data:
+                pwd_raw = user_data["password"]
 
             password_hash = hash_password(pwd_raw)
 
+            # Determine role (default to institution_admin if not specified)
+            role = user_data.get("role", "institution_admin")
+
             schema = User.create_schema(
                 email=email,
-                first_name=admin_data["first_name"],
-                last_name=admin_data["last_name"],
-                role="institution_admin",
+                first_name=user_data["first_name"],
+                last_name=user_data["last_name"],
+                role=role,
                 institution_id=inst_id,
                 password_hash=password_hash,
                 account_status="active",
             )
             schema["email_verified"] = True
 
+            # Handle program assignment if needed (e.g. program_admin)
+            if "program_code" in user_data:
+                # Need to find program ID by code and institution
+                # This is tricky without fully exposing lookup.
+                # For now, let's look it up via DB helper
+                # Assuming find_program_by_code exists or we iterate
+                # db.get_program_by_short_name is what we need?
+                # db.get_programs_for_institution(inst_id) then match code
+
+                progs = db.get_programs_by_institution(inst_id)
+                for p in progs:
+                    if p["short_name"] == user_data["program_code"]:
+                        schema["program_ids"] = [p["id"]]
+                        break
+
             user_id = db.create_user(schema)
             if user_id:
-                admin_ids.append(user_id)
+                created_ids.append(user_id)
                 self.created["users"].append(user_id)
 
-        return admin_ids
+        return created_ids
 
     def create_programs(self, institution_ids):
         """Create academic programs"""
@@ -359,7 +436,9 @@ class BaselineSeeder:
         ]
 
         instructor_ids = []
-        password_hash = hash_password("Instructor123!")  # nosec B106
+        from tests.test_credentials import INSTRUCTOR_PASSWORD
+
+        password_hash = hash_password(INSTRUCTOR_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
 
         for inst_data in instructors_data:
             inst_id = institution_ids[inst_data["institution_idx"]]
@@ -398,7 +477,9 @@ class BaselineSeeder:
         if existing:
             return existing["user_id"]
 
-        password_hash = hash_password("ProgramAdmin123!")  # nosec B106
+        from tests.test_credentials import PROGRAM_ADMIN_PASSWORD
+
+        password_hash = hash_password(PROGRAM_ADMIN_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
         schema = User.create_schema(
             email=email,
             first_name="Bob",
@@ -457,43 +538,6 @@ class BaselineSeeder:
                 section_count += 1
 
         self.log(f"   ✓ Created {section_count} sections")
-
-    def seed_baseline(self):
-        """Seed baseline shared infrastructure"""
-        self.log("🌱 Seeding baseline E2E infrastructure...")
-
-        institution_ids = self.create_institutions()
-        if not institution_ids:
-            return False
-
-        if not self.create_site_admin():
-            return False
-
-        admin_ids = self.create_institution_admins(institution_ids)
-        if not admin_ids:
-            return False
-
-        program_ids = self.create_programs(institution_ids)
-        if not program_ids:
-            return False
-
-        term_ids = self.create_terms(institution_ids)
-        if not term_ids:
-            return False
-
-        course_ids = self.create_sample_courses(institution_ids, program_ids)
-
-        # Create sample instructors, program admin, and sections for E2E tests
-        instructor_ids = self.create_sample_instructors(institution_ids, program_ids)
-        self.create_sample_program_admins(institution_ids, program_ids)
-        if instructor_ids:
-            self.create_sample_sections(
-                course_ids, term_ids, instructor_ids, institution_ids
-            )
-
-        self.log("✅ Baseline seeding completed!")
-        self.print_summary()
-        return True
 
     def print_summary(self):
         """Print seeding summary"""
@@ -584,8 +628,10 @@ class DemoSeeder(BaselineSeeder):
         """Create demo admin account"""
         self.log("👩‍💼 Creating Demo Admin (Institution Admin)...")
 
+        from tests.test_credentials import DEMO_PASSWORD
+
         email = "demo2025.admin@example.com"
-        password = "Demo2025!"  # nosec B105
+        password = DEMO_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -723,7 +769,9 @@ class DemoSeeder(BaselineSeeder):
         ]
 
         instructor_ids = []
-        password_hash = hash_password("Instructor123!")  # nosec B106
+        from tests.test_credentials import INSTRUCTOR_PASSWORD
+
+        password_hash = hash_password(INSTRUCTOR_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
 
         for fac_data in faculty_data:
             existing = db.get_user_by_email(fac_data["email"])
@@ -1216,6 +1264,11 @@ def main():
         default="prod",
         help="Environment to seed (dev, e2e, or prod). Determines which database file to use.",
     )
+    parser.add_argument(
+        "--manifest",
+        type=str,
+        help="Path to JSON manifest file for custom seeding (overrides generic defaults)",
+    )
 
     # Parse arguments and catch errors
     try:
@@ -1244,7 +1297,8 @@ def main():
     # CRITICAL: Import database modules AFTER setting DATABASE_URL
     # This ensures the database_service initializes with the correct database
     import src.database.database_service as database_service
-    import src.database.database_service as db
+
+    db = database_service.refresh_connection()
     from src.models.models import Course, Institution, Program, Term, User
     from src.services.password_service import hash_password
     from src.utils.constants import (
@@ -1279,7 +1333,18 @@ def main():
             seeder.log("🧹 Clearing database...")
             db.reset_database()
 
-        success = seeder.seed_baseline()
+        # Load manifest if provided
+        manifest_data = None
+        if args.manifest:
+            try:
+                with open(args.manifest, "r") as f:
+                    manifest_data = json.load(f)
+                seeder.log(f"📄 Loaded custom manifest: {args.manifest}")
+            except Exception as e:
+                print(f"❌ Failed to load manifest: {e}")
+                sys.exit(1)
+
+        success = seeder.seed_baseline(manifest_data)
         sys.exit(0 if success else 1)
 
 

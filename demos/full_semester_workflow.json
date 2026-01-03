@@ -212,18 +212,13 @@
     {
       "step_number": 5,
       "phase": "Course Management",
-      "name": "Duplicate BIOL-101 Course",
-      "purpose": "Demonstrate course versioning and multi-program attachment",
+      "name": "Duplicate BIOL-101 for Zoology Expansion",
+      "purpose": "Demonstrate course duplication as a starting point for new variations",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
           "purpose": "Get source course ID",
           "capture_output_as": "course_id"
-        },
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE name='Biological Sciences' LIMIT 1\"",
-          "purpose": "Get Biological Sciences program ID",
-          "capture_output_as": "bio_program_id"
         },
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM programs WHERE name='Zoology' LIMIT 1\"",
@@ -232,44 +227,38 @@
         }
       ],
       "instructions": {
-        "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-V2'\n   - Keep title and description\n   - In Programs dropdown, select BOTH 'Biological Sciences' AND 'Zoology' (multi-program attachment)\n4. Click 'Duplicate' button\n5. Verify 'BIOL-101-V2' appears in the course list",
+        "human": "1. Find 'BIOL-101 Introduction to Biology' in the course table\n2. Click the Duplicate button (copy icon)\n3. In the modal:\n   - Change Course Number to 'BIOL-101-Z'\n   - Change Title to 'Biology for Zoologists'\n   - In Programs dropdown, ensure 'Zoology' is selected\n4. Click 'Duplicate' button",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/management/courses/{{course_id}}/duplicate",
           "data": {
-            "new_course_number": "BIOL-101-V2",
+            "new_course_number": "BIOL-101-Z",
+            "new_course_title": "Biology for Zoologists",
             "program_ids": [
-              "{{bio_program_id}}",
               "{{zoo_program_id}}"
             ]
           },
-          "description": "Duplicate BIOL-101 and attach to both programs"
+          "description": "Duplicate BIOL-101 for Zoology expansion"
         }
       },
       "urls": [],
       "inputs": {
         "source_course": "BIOL-101 Introduction to Biology",
-        "new_course_number": "BIOL-101-V2",
+        "new_course_number": "BIOL-101-Z",
         "programs": [
-          "Biological Sciences",
           "Zoology"
         ]
       },
       "expected_results": [
-        "Success toast appears ('Course duplicated successfully')",
-        "BIOL-101-V2 appears in the course table",
-        "New course is attached to both Biological Sciences and Zoology programs"
+        "Success toast appears",
+        "BIOL-101-Z appears in the course list",
+        "Edit course modal opens automatically for the new course"
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT course_number, course_title FROM courses WHERE course_number='BIOL-101-V2'\"",
-          "purpose": "Verify duplicated course exists",
-          "expected_output_contains": "BIOL-101-V2"
-        },
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT COUNT(*) FROM course_programs cp JOIN courses c ON cp.course_id = c.id WHERE c.course_number='BIOL-101-V2'\"",
-          "purpose": "Verify course is attached to 2 programs",
-          "expected_output": "2"
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101-Z' LIMIT 1\"",
+          "purpose": "Get new course ID",
+          "capture_output_as": "zoo_course_id"
         }
       ],
       "verification": {
@@ -277,8 +266,7 @@
       },
       "artifacts": {
         "screenshots": [
-          "04_duplicate_modal.png",
-          "04_course_duplicated.png"
+          "04_zoology_duplicated.png"
         ],
         "logs": []
       },
@@ -286,6 +274,175 @@
     },
     {
       "step_number": 6,
+      "phase": "Course Management",
+      "name": "Create Offering with Multiple Sections",
+      "purpose": "Showcase new Course Offering UX with dynamic section creation",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM terms WHERE term_code='FA2025' LIMIT 1\"",
+          "purpose": "Get Fall 2025 term ID",
+          "capture_output_as": "term_id"
+        }
+      ],
+      "instructions": {
+        "human": "1. Go to Dashboard\n2. Click 'Create New Offering'\n3. In the modal:\n   - Select Course: 'BIOL-101-Z - Biology for Zoologists'\n   - Select Term: 'Fall 2025'\n   - Default Section 001 is already there. Click '+' or 'Add Section' to add Section 002.\n   - Set Capacity to 30 for both sections.\n4. Click 'Create Offering'",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/offerings",
+          "data": {
+            "course_id": "{{zoo_course_id}}",
+            "term_id": "{{term_id}}",
+            "sections": [
+              {
+                "section_number": "001",
+                "capacity": 30
+              },
+              {
+                "section_number": "002",
+                "capacity": 30
+              }
+            ]
+          },
+          "description": "Create offering with 2 dynamic sections"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "course": "BIOL-101-Z",
+        "sections": [
+          "001",
+          "002"
+        ],
+        "capacity": 30
+      },
+      "expected_results": [
+        "Success toast appears",
+        "New offering appears on Dashboard",
+        "Both sections are created in database"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='001' AND course_id='{{zoo_course_id}}' LIMIT 1\"",
+          "purpose": "Get Section 001 ID",
+          "capture_output_as": "section_001_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='002' AND course_id='{{zoo_course_id}}' LIMIT 1\"",
+          "purpose": "Get Section 002 ID",
+          "capture_output_as": "section_002_id"
+        }
+      ],
+      "verification": {
+        "type": "db_check"
+      },
+      "artifacts": {
+        "screenshots": [
+          "05_create_offering_modal_sections.png"
+        ],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 7,
+      "phase": "Faculty Management",
+      "name": "Invite New Instructor for Section 002",
+      "purpose": "Demonstrate invitation flow for newly created sections",
+      "pre_commands": [],
+      "instructions": {
+        "human": "1. Navigate to 'Sections' page\n2. Find Section 002 for BIOL-101-Z\n3. Click 'Invite Instructor'\n4. Enter email: 'dr.newguy@example.com'\n5. Click 'Send Invitation'",
+        "automated": {
+          "action": "api_post",
+          "endpoint": "/api/management/invitations",
+          "data": {
+            "email": "dr.newguy@example.com",
+            "role": "instructor",
+            "section_id": "{{section_002_id}}"
+          },
+          "description": "Invite new instructor"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "email": "dr.newguy@example.com",
+        "section": "002"
+      },
+      "expected_results": [
+        "Invitation sent successfully",
+        "Invitation appears in logs/email.log"
+      ],
+      "post_commands": [
+        {
+          "command": "grep \"dr.newguy@example.com\" logs/email.log",
+          "purpose": "Verify invitation email was logged",
+          "expected_output_contains": "dr.newguy@example.com"
+        }
+      ],
+      "verification": {
+        "type": "log_check"
+      },
+      "artifacts": {
+        "screenshots": [
+          "06_invite_instructor.png"
+        ],
+        "logs": [
+          "email.log"
+        ]
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 8,
+      "phase": "Faculty Management",
+      "name": "Assign Dr. Morgan to Section 001",
+      "purpose": "Show manual assignment of existing faculty to a new section",
+      "pre_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM users WHERE email='dr.morgan@demo.example.com' LIMIT 1\"",
+          "purpose": "Get Dr. Morgan user ID",
+          "capture_output_as": "dr_morgan_id"
+        }
+      ],
+      "instructions": {
+        "human": "1. Navigate to 'Sections' page\n2. Find Section 001 for BIOL-101-Z\n3. Click 'Edit Section' (pencil icon)\n4. In Instructor dropdown, select 'Dr. Morgan'\n5. Click 'Save'",
+        "automated": {
+          "action": "api_put",
+          "endpoint": "/api/management/sections/{{section_001_id}}",
+          "data": {
+            "instructor_id": "{{dr_morgan_id}}"
+          },
+          "description": "Assign Dr. Morgan to section 001"
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "instructor": "Dr. Morgan",
+        "section": "001"
+      },
+      "expected_results": [
+        "Section updated successfully",
+        "Dr. Morgan visible as instructor for Section 001"
+      ],
+      "post_commands": [
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT instructor_id FROM course_sections WHERE id='{{section_001_id}}'\"",
+          "purpose": "Verify instructor assignment in database",
+          "expected_output": "{{dr_morgan_id}}"
+        }
+      ],
+      "verification": {
+        "type": "db_check"
+      },
+      "artifacts": {
+        "screenshots": [
+          "07_assign_instructor.png"
+        ],
+        "logs": []
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 9,
       "phase": "Faculty Management",
       "name": "Logout as Admin",
       "purpose": "End admin session before logging in as faculty",
@@ -323,7 +480,7 @@
       "pause_for_human": false
     },
     {
-      "step_number": 7,
+      "step_number": 10,
       "phase": "Faculty Assessment",
       "name": "Login as Biology Faculty (Dr. Morgan)",
       "purpose": "Establish faculty session for assessment submission",
@@ -375,7 +532,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 8,
+      "step_number": 11,
       "phase": "Faculty Assessment",
       "name": "Navigate to Assessments Page",
       "purpose": "Access course assessment form",
@@ -413,7 +570,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 9,
+      "step_number": 12,
       "phase": "Faculty Assessment",
       "name": "Fill Out Assessment Form for BIOL-101",
       "purpose": "Submit section-level assessment data and narrative",
@@ -470,7 +627,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 10,
+      "step_number": 13,
       "phase": "Faculty Assessment",
       "name": "Logout as Faculty",
       "purpose": "End faculty session before admin audit phase",
@@ -507,7 +664,7 @@
       "pause_for_human": false
     },
     {
-      "step_number": 11,
+      "step_number": 14,
       "phase": "Audit Setup",
       "name": "Advance Demo State to Semester End",
       "purpose": "Populate database with submitted CLOs across all statuses for audit demonstration",
@@ -545,7 +702,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 12,
+      "step_number": 15,
       "phase": "Admin Audit",
       "name": "Login as Admin for Audit",
       "purpose": "Establish admin session for CLO audit workflow",
@@ -588,7 +745,7 @@
       "pause_for_human": false
     },
     {
-      "step_number": 13,
+      "step_number": 16,
       "phase": "Admin Audit",
       "name": "Navigate to CLO Audit Page",
       "purpose": "Access the CLO Audit & Approval dashboard",
@@ -627,7 +784,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 14,
+      "step_number": 17,
       "phase": "Admin Audit",
       "name": "Filter by 'Awaiting Approval' Status",
       "purpose": "View only CLOs that need review",
@@ -662,7 +819,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 15,
+      "step_number": 18,
       "phase": "Admin Audit",
       "name": "View CLO Details",
       "purpose": "Review CLO assessment data before approval",
@@ -695,7 +852,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 16,
+      "step_number": 19,
       "phase": "Admin Audit",
       "name": "Export Current View to CSV",
       "purpose": "Generate audit report for record-keeping",
@@ -730,7 +887,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 17,
+      "step_number": 20,
       "phase": "Admin Audit",
       "name": "Filter by 'All Statuses'",
       "purpose": "View complete CLO landscape across all statuses",
@@ -765,7 +922,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 18,
+      "step_number": 21,
       "phase": "Demo Completion",
       "name": "Review Dashboard KPIs",
       "purpose": "Show that audit actions feed back into dashboard metrics",
@@ -804,7 +961,7 @@
       "pause_for_human": true
     },
     {
-      "step_number": 19,
+      "step_number": 22,
       "phase": "Demo Completion",
       "name": "Demo Complete",
       "purpose": "Wrap up and highlight key takeaways",

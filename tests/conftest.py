@@ -32,20 +32,14 @@ def pytest_collection_modifyitems(config, items):
 
 
 # Shared test credentials (seeded by seed_db.py)
-# Import from E2E test data contract if available for consistency
-try:
-    from tests.e2e.e2e_test_data_contract import BASE_ACCOUNTS
-
-    SITE_ADMIN_EMAIL = BASE_ACCOUNTS["site_admin"]["email"]
-    SITE_ADMIN_PASSWORD = BASE_ACCOUNTS["site_admin"]["password"]
-    INSTITUTION_ADMIN_EMAIL = BASE_ACCOUNTS["institution_admin"]["email"]
-    INSTITUTION_ADMIN_PASSWORD = BASE_ACCOUNTS["institution_admin"]["password"]
-except (ImportError, KeyError):
-    # Fallback if contract not available
-    SITE_ADMIN_EMAIL = "siteadmin@system.local"
-    SITE_ADMIN_PASSWORD = "SiteAdmin123!"
-    INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
-    INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+# Import from centralized test credentials module
+from tests.test_credentials import (
+    BASE_ACCOUNTS,
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
 
 
 def get_worker_id():

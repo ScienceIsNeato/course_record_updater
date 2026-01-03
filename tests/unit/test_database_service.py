@@ -1536,7 +1536,6 @@ def test_offering_crud_operations():
         "term_id": term_id,
         "institution_id": inst_id,
         "status": "active",
-        "capacity": 30,
         "total_enrollment": 0,
     }
     offering_id = database_service.create_course_offering(offering_data)
@@ -1544,7 +1543,6 @@ def test_offering_crud_operations():
 
     # Test update_course_offering
     update_data = {
-        "capacity": 40,
         "total_enrollment": 25,
         "status": "full",
     }
@@ -1552,8 +1550,8 @@ def test_offering_crud_operations():
     assert result is True
 
     offering = database_service.get_course_offering(offering_id)
-    assert offering["capacity"] == 40
     assert offering["total_enrollment"] == 25
+    assert offering["status"] == "full"
 
     # Test delete_course_offering (CASCADE deletes sections)
     result = database_service.delete_course_offering(offering_id)

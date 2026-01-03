@@ -12,8 +12,10 @@ import pytest
 
 from src.app import app
 
-TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "SecurePass123!")
-NEW_TEST_PASSWORD = "NewSecure456!"
+from tests.test_credentials import NEW_PASSWORD, SECURE_PASSWORD
+
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", SECURE_PASSWORD)
+NEW_TEST_PASSWORD = NEW_PASSWORD
 
 
 class TestProfileUpdateAPI:

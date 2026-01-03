@@ -67,7 +67,35 @@
     </div>
 </div>
 
-<!-- Panel 2: Faculty Assignments -->
+<!-- Panel 2: Offering Management -->
+<div class="dashboard-panel" id="program-offering-panel">
+    <div class="panel-header">
+        <h5 class="panel-title">
+            <span class="panel-icon">📋</span>
+            Course Offerings
+        </h5>
+        <div class="panel-actions">
+            <button class="btn btn-sm btn-primary"
+                onclick="window.createOffering ? createOffering() : openCreateOfferingModal()">
+                <i class="fas fa-plus"></i> Add Offering
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/offerings'">
+                <i class="fas fa-list"></i> Manage Offerings
+            </button>
+        </div>
+        <button class="panel-toggle">▼</button>
+    </div>
+    <div class="panel-content">
+        <div id="programOfferingContainer">
+            <div class="panel-loading">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading offerings...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel 3: Faculty Assignments -->
 <div class="dashboard-panel" id="program-faculty-panel">
     <div class="panel-header">
         <h5 class="panel-title">
@@ -183,18 +211,21 @@
 <script src="{{ url_for('static', filename='dashboard_utils.js') }}"></script>
 <script src="{{ url_for('static', filename='dashboard_navigation.js') }}"></script>
 <script src="{{ url_for('static', filename='program_dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='offeringManagement.js') }}"></script>
 <script src="{{ url_for('static', filename='courseManagement.js') }}"></script>
 <script>
     // Configure dashboard navigation for Program Admin role
     configureDashboardFilter(
         {
             'courses': ['program-courses-panel'],
+            'offerings': ['program-offering-panel'],
             'faculty': ['program-faculty-panel'],
             'clos': ['program-clo-panel'],
-            'all': ['program-courses-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
+            'all': ['program-courses-panel', 'program-offering-panel', 'program-faculty-panel', 'program-clo-panel', 'program-assessment-panel', 'program-clo-audit-panel']
         },
         [
             'program-courses-panel',
+            'program-offering-panel',
             'program-faculty-panel',
             'program-clo-panel',
             'program-assessment-panel',

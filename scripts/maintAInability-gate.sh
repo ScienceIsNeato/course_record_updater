@@ -954,7 +954,14 @@ for r in d.get('results',[])[:5]:
     echo "  🔍 Running detect-secrets scan..."
     if command -v detect-secrets-hook &> /dev/null; then
         if [[ -f .secrets.baseline ]]; then
-            SECRETS_OUTPUT=$(git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline 2>&1)
+            # Exclude build artifacts, dependencies, and generated files
+            # Keep source code, tests, and demos so we can add pragma comments
+            SECRETS_OUTPUT=$(git ls-files -z | \
+                grep -zvE '(venv/|\.venv/|node_modules/|\.git/|build/|coverage/|htmlcov/|\.pyc$|\.pyo$|__pycache__/|\.scannerwork/)' | \
+                xargs -0 detect-secrets-hook \
+                    --baseline .secrets.baseline \
+                    --exclude-files 'venv/.*|\.venv/.*|node_modules/.*|\.git/.*|build/.*|coverage/.*|htmlcov/.*|__pycache__/.*|\.scannerwork/.*' \
+                    2>&1)
             SECRETS_EXIT=$?
             if [[ $SECRETS_EXIT -eq 0 ]]; then
                 echo "PASS" > "$SECRETS_OUT"

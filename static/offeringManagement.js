@@ -206,11 +206,84 @@ function initializeCreateOfferingModal() {
     return; // Form not on this page
   }
 
+  const addBtn = document.getElementById("addSectionBtn");
+  const container = document.getElementById("sectionsContainer");
+
+  if (addBtn && container) {
+    addBtn.addEventListener("click", () => {
+      const rows = container.querySelectorAll(".section-row");
+      const nextIndex = rows.length;
+      const sectionNum = (nextIndex + 1).toString().padStart(3, "0");
+
+      const row = document.createElement("div");
+      row.className = "section-row row mb-2 align-items-end";
+      row.dataset.index = nextIndex;
+
+      // Create section number column
+      const col1 = document.createElement("div");
+      col1.className = "col-md-10";
+
+      const label = document.createElement("label");
+      label.className = "form-label small";
+      label.textContent = "Section Number";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "form-control form-control-sm section-number";
+      input.name = `section-number-${nextIndex}`;
+      input.value = sectionNum;
+      input.readOnly = true;
+
+      col1.appendChild(label);
+      col1.appendChild(input);
+
+      // Create remove button column
+      const col2 = document.createElement("div");
+      col2.className = "col-md-2";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "btn btn-sm btn-outline-danger remove-section-btn";
+
+      const icon = document.createElement("i");
+      icon.className = "fas fa-trash";
+      removeBtn.appendChild(icon);
+
+      col2.appendChild(removeBtn);
+
+      row.appendChild(col1);
+      row.appendChild(col2);
+      container.appendChild(row);
+
+      row.querySelector(".remove-section-btn").addEventListener("click", () => {
+        row.remove();
+        reindexSections(container);
+      });
+    });
+  }
+
+  function reindexSections(cont) {
+    const rows = cont.querySelectorAll(".section-row");
+    rows.forEach((row, idx) => {
+      row.dataset.index = idx;
+      const sectionNum = (idx + 1).toString().padStart(3, "0");
+      row.querySelector(".section-number").value = sectionNum;
+      row.querySelector(".section-number").name = `section-number-${idx}`;
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const capacityValue = document.getElementById("offeringCapacity").value;
     const programIdValue = document.getElementById("offeringProgramId").value;
+    const sections = [];
+    if (container) {
+      container.querySelectorAll(".section-row").forEach((row) => {
+        sections.push({
+          section_number: row.querySelector(".section-number").value,
+        });
+      });
+    }
 
     const offeringData = {
       course_id: document.getElementById("offeringCourseId").value,
@@ -218,7 +291,7 @@ function initializeCreateOfferingModal() {
       // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
       program_id: programIdValue || null,
       status: document.getElementById("offeringStatus").value,
-      capacity: capacityValue ? Number.parseInt(capacityValue) : null,
+      sections: sections,
     };
 
     const createBtn = document.getElementById("createOfferingBtn");
@@ -289,12 +362,10 @@ function initializeEditOfferingModal() {
     e.preventDefault();
 
     const offeringId = document.getElementById("editOfferingId").value;
-    const capacityValue = document.getElementById("editOfferingCapacity").value;
 
     const updateData = {
       program_id: document.getElementById("editOfferingProgramId").value,
       status: document.getElementById("editOfferingStatus").value,
-      capacity: capacityValue ? Number.parseInt(capacityValue) : null,
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -353,8 +424,6 @@ function openEditOfferingModal(offeringId, offeringData) {
   document.getElementById("editOfferingId").value = offeringId;
   document.getElementById("editOfferingStatus").value =
     offeringData.status || "active";
-  document.getElementById("editOfferingCapacity").value =
-    offeringData.capacity || "";
 
   // Set display-only fields (Course/Term are immutable)
   document.getElementById("editOfferingCourse").value =

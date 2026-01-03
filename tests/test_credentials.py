@@ -1,0 +1,113 @@
+"""
+Centralized Test Credentials Module
+
+This module contains all test passwords and credentials used across the test suite.
+All test passwords are defined here to avoid scattering credentials throughout the codebase.
+
+This file is added to .secrets.baseline since it intentionally contains test passwords.
+All other test files should import from this module instead of hardcoding passwords.
+
+Usage:
+    from tests.test_credentials import (
+        SITE_ADMIN_PASSWORD,
+        INSTITUTION_ADMIN_PASSWORD,
+        TEST_USER_PASSWORD,
+        # ... etc
+    )
+"""
+
+# pragma: allowlist secret - Centralized test credentials module
+
+# ============================================================================
+# Admin Account Passwords
+# ============================================================================
+
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"
+INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+PROGRAM_ADMIN_PASSWORD = "ProgramAdmin123!"
+
+# ============================================================================
+# User Account Passwords
+# ============================================================================
+
+TEST_USER_PASSWORD = "TestUser123!"
+INSTRUCTOR_PASSWORD = "Instructor123!"
+
+# ============================================================================
+# Generic Test Passwords
+# ============================================================================
+
+# Standard test password for general test cases
+TEST_PASSWORD = "TestPass123!"
+
+# Secure password for password validation tests
+SECURE_PASSWORD = "SecurePass123!"
+
+# Password for new password tests
+NEW_PASSWORD = "NewSecurePassword123!"
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"
+
+# Password for password reset tests
+RESET_PASSWORD = "NewSecurePassword123!"
+
+# ============================================================================
+# Password Validation Test Cases
+# ============================================================================
+
+# Wrong password for negative test cases
+WRONG_PASSWORD = "WrongPass123!"
+
+# Weak password for validation tests
+WEAK_PASSWORD = "weak"
+
+# Invalid password formats
+INVALID_PASSWORD_SHORT = "a"
+INVALID_PASSWORD_NO_COMPLEXITY = "password123"
+
+# Strong password examples
+STRONG_PASSWORD_1 = "Str0ng!Pass"
+STRONG_PASSWORD_2 = "StrongPass1!"
+VALID_PASSWORD = "ValidPassword123!"
+
+# Long password for length validation tests
+LONG_PASSWORD = "A" * 129 + "1!"
+
+# ============================================================================
+# Demo/Workflow Passwords
+# ============================================================================
+
+DEMO_PASSWORD = "Demo2025!"
+
+# ============================================================================
+# Email/Account Test Data
+# ============================================================================
+
+SITE_ADMIN_EMAIL = "siteadmin@system.local"
+INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
+PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
+INSTRUCTOR_EMAIL = "john.instructor@mocku.test"
+
+# ============================================================================
+# Legacy Compatibility
+# ============================================================================
+
+# For backward compatibility with existing code that uses these names
+BASE_ACCOUNTS = {
+    "site_admin": {
+        "email": SITE_ADMIN_EMAIL,
+        "password": SITE_ADMIN_PASSWORD,
+    },
+    "institution_admin": {
+        "email": INSTITUTION_ADMIN_EMAIL,
+        "password": INSTITUTION_ADMIN_PASSWORD,
+    },
+    "program_admin": {
+        "email": PROGRAM_ADMIN_EMAIL,
+        "password": PROGRAM_ADMIN_PASSWORD,
+    },
+    "instructor": {
+        "email": INSTRUCTOR_EMAIL,
+        "password": INSTRUCTOR_PASSWORD,
+    },
+}
+

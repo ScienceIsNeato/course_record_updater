@@ -1,0 +1,43 @@
+{
+    "institutions": [
+        {
+            "name": "Mock University",
+            "short_name": "MockU",
+            "admin_email": "admin@mocku.test",
+            "website_url": "https://mocku.test"
+        },
+        {
+            "name": "Riverside Community College",
+            "short_name": "RCC",
+            "admin_email": "admin@riverside.edu",
+            "website_url": "https://riverside.edu"
+        }
+    ],
+    "users": [
+        {
+            "email": "sarah.admin@mocku.test",
+            "first_name": "Sarah",
+            "last_name": "Admin",
+            "role": "institution_admin",
+            "institution_short_name": "MockU",
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "mike.admin@riverside.edu",
+            "first_name": "Mike",
+            "last_name": "Admin",
+            "role": "institution_admin",
+            "institution_short_name": "RCC",
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "bob.programadmin@mocku.test",
+            "first_name": "Bob",
+            "last_name": "ProgramAdmin",
+            "role": "program_admin",
+            "institution_short_name": "MockU",
+            "program_code": "CS",
+            "password_env_var": "DEFAULT_PASSWORD"
+        }
+    ]
+}

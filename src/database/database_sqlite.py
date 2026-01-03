@@ -812,7 +812,6 @@ class SQLiteDatabase(DatabaseInterface):
             institution_id=payload.get("institution_id"),
             program_id=payload.get("program_id"),
             status=payload.get("status", "active"),
-            capacity=payload.get("capacity"),
             total_enrollment=payload.get("total_enrollment", 0),
             section_count=payload.get("section_count", 0),
             extras={**payload, "offering_id": offering_id},

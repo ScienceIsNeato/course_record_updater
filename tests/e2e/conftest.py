@@ -92,8 +92,17 @@ def setup_worker_environment(tmp_path_factory):
 
         # Step 2: Seed baseline data
         # Run seed_db.py as subprocess to ensure clean import state
+        seed_cmd = [
+            "python",
+            "scripts/seed_db.py",
+            "--env",
+            "e2e",
+            "--manifest",
+            "tests/fixtures/e2e_seed_manifest.json",
+        ]
+
         seed_result = subprocess.run(
-            ["python", "scripts/seed_db.py", "--env", "e2e"],
+            seed_cmd,
             capture_output=True,
             text=True,
             cwd=os.getcwd(),
@@ -454,6 +463,35 @@ def authenticated_institution_admin_page(page: Page) -> Page:
         return page
     except Exception as e:
         pytest.fail(f"Institution admin login failed: {str(e)}")
+
+
+@pytest.fixture(scope="function")
+def authenticated_program_admin_page(page: Page) -> Page:
+    """
+    Provides page with program admin session (MockU).
+    """
+    page.context.clear_cookies()
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Use Bob ProgramAdmin from baseline seed
+    page.fill('input[name="email"]', "bob.programadmin@mocku.test")
+    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.click('button[type="submit"]')
+
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
+
+        # Verify session is properly established
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=15000,
+        )
+
+        return page
+    except Exception as e:
+        pytest.fail(f"Program admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")

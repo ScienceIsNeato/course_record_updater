@@ -247,7 +247,6 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
         String, ForeignKey(PROGRAMS_ID), nullable=True
     )  # Link to specific program context
     status = Column(String, default="active")
-    capacity = Column(Integer)
     total_enrollment = Column(Integer, default=0)
     section_count = Column(Integer, default=0)
     extras = Column(PickleType, default=dict)
@@ -595,7 +594,6 @@ def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
         "term_id": model.term_id,
         "institution_id": model.institution_id,
         "status": model.status,
-        "capacity": model.capacity,
         "total_enrollment": model.total_enrollment,
         "section_count": model.section_count,
         "created_at": model.created_at,
