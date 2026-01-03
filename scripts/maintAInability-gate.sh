@@ -865,103 +865,143 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # SECURITY AUDIT (BANDIT + SEMGREP + SAFETY)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_SECURITY" == "true" ]] || [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+if [[ "$RUN_SECURITY" == "true" || "$RUN_SECURITY_LOCAL" == "true" ]]; then
   if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
-    echo "🔒 Security Audit (bandit + semgrep) [local mode - skipping safety]"
+    echo "🔒 Security Audit (bandit + semgrep + detect-secrets) [parallelized]"
   else
     echo "🔒 Security Audit (bandit + semgrep + safety)"
   fi
 
   SECURITY_PASSED=true
-
-  # Run bandit for Python security issues - ZERO TOLERANCE for any severity
-  echo "  🔧 Running bandit security scan (Python)..."
   
-  # Write to file first, use --quiet to suppress progress bar that corrupts JSON
-  bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./demos,./archives --format json --quiet 2>/dev/null > bandit-report.json || BANDIT_FAILED=true
+  # Create temp files for output capture
+  BANDIT_OUT=$(mktemp)
+  SEMGREP_OUT=$(mktemp)
+  SECRETS_OUT=$(mktemp)
   
-  # Count issues by severity from the file
-  if [[ -f bandit-report.json ]]; then
-    BANDIT_HIGH=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='HIGH'))" 2>/dev/null || echo "0")
-    BANDIT_MED=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='MEDIUM'))" 2>/dev/null || echo "0")
-    BANDIT_LOW=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='LOW'))" 2>/dev/null || echo "0")
-    BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
-  else
-    BANDIT_TOTAL=0
-  fi
-
-  if [[ "$BANDIT_TOTAL" -gt 0 ]]; then
-    SECURITY_PASSED=false
-    echo "  ❌ Bandit found $BANDIT_TOTAL issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED, Low: $BANDIT_LOW)"
-    echo ""
-    echo "  📋 Top issues:"
-    python3 -c "
+  # 1. BANDIT (Background)
+  (
+    echo "  🔧 Running bandit security scan (Python)..."
+    bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./demos,./archives --format json --quiet 2>/dev/null > bandit-report.json || true
+    
+    if [[ -f bandit-report.json ]]; then
+        BANDIT_HIGH=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='HIGH'))" 2>/dev/null || echo "0")
+        BANDIT_MED=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='MEDIUM'))" 2>/dev/null || echo "0")
+        BANDIT_LOW=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='LOW'))" 2>/dev/null || echo "0")
+        BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
+        
+        if [[ "$BANDIT_TOTAL" -gt 0 ]]; then
+            echo "FAIL" > "$BANDIT_OUT"
+            echo "  ❌ Bandit found $BANDIT_TOTAL issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED, Low: $BANDIT_LOW)" >> "$BANDIT_OUT"
+            echo "" >> "$BANDIT_OUT"
+            echo "  📋 Top issues:" >> "$BANDIT_OUT"
+            python3 -c "
 import json
 d=json.load(open('bandit-report.json'))
 for r in d.get('results',[])[:5]:
     print(f\"    [{r.get('issue_severity','?')}] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:60]}...\")
-" 2>/dev/null || true
-    echo ""
-  else
-    echo "  ✅ Bandit: No Python security issues"
-  fi
+" 2>/dev/null >> "$BANDIT_OUT" || true
+            echo "" >> "$BANDIT_OUT"
+        else
+            echo "PASS" > "$BANDIT_OUT"
+            echo "  ✅ Bandit: No Python security issues" >> "$BANDIT_OUT"
+        fi
+    else
+        echo "FAIL" > "$BANDIT_OUT"
+        echo "  ❌ Bandit: Failed to generate report" >> "$BANDIT_OUT"
+    fi
+  ) &
+  PID_BANDIT=$!
 
-  # Run Semgrep for comprehensive SAST (Python + JavaScript)
-  echo "  🔧 Running semgrep security scan (Python + JS)..."
-  if command -v semgrep &> /dev/null; then
-    SEMGREP_OUTPUT=$(timeout 60s semgrep scan --config=auto \
-      --exclude="venv" --exclude=".venv" --exclude="node_modules" \
-      --exclude="tests" --exclude="cursor-rules" --exclude="demos" --exclude="archives" \
-      --json --quiet 2>/dev/null) || SEMGREP_FAILED=true
-    
-    # Save semgrep report
-    echo "$SEMGREP_OUTPUT" > semgrep-report.json
-    
-    SEMGREP_COUNT=$(echo "$SEMGREP_OUTPUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results',[])))" 2>/dev/null || echo "0")
-    
-    if [[ "$SEMGREP_COUNT" -gt 0 ]]; then
-      SECURITY_PASSED=false
-      echo "  ❌ Semgrep found $SEMGREP_COUNT issues"
-      echo ""
-      echo "  📋 Top issues:"
-      echo "$SEMGREP_OUTPUT" | python3 -c "
+  # 2. SEMGREP (Background)
+  (
+    echo "  🔧 Running semgrep security scan (Python + JS)..."
+    if command -v semgrep &> /dev/null; then
+        SEMGREP_OUTPUT=$(timeout 60s semgrep scan --config=auto \
+          --exclude="venv" --exclude=".venv" --exclude="node_modules" \
+          --exclude="tests" --exclude="cursor-rules" --exclude="demos" --exclude="archives" \
+          --json --quiet 2>/dev/null) || true
+        
+        echo "$SEMGREP_OUTPUT" > semgrep-report.json
+        SEMGREP_COUNT=$(echo "$SEMGREP_OUTPUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results',[])))" 2>/dev/null || echo "0")
+        
+        if [[ "$SEMGREP_COUNT" -gt 0 ]]; then
+            echo "FAIL" > "$SEMGREP_OUT"
+            echo "  ❌ Semgrep found $SEMGREP_COUNT issues" >> "$SEMGREP_OUT"
+            echo "" >> "$SEMGREP_OUT"
+            echo "  📋 Top issues:" >> "$SEMGREP_OUT"
+            echo "$SEMGREP_OUTPUT" | python3 -c "
 import json,sys
 d=json.load(sys.stdin)
 for r in d.get('results',[])[:5]:
     rule = r.get('check_id','').split('.')[-1]
     print(f\"    {r.get('path','')}:{r.get('start',{}).get('line','')} - {rule}\")
-" 2>/dev/null || true
-      echo ""
+" 2>/dev/null >> "$SEMGREP_OUT" || true
+            echo "" >> "$SEMGREP_OUT"
+        else
+            echo "PASS" > "$SEMGREP_OUT"
+            echo "  ✅ Semgrep: No security issues" >> "$SEMGREP_OUT"
+        fi
     else
-      echo "  ✅ Semgrep: No security issues"
+        echo "FAIL" > "$SEMGREP_OUT"
+        echo "  ❌ Semgrep not installed" >> "$SEMGREP_OUT"
     fi
+  ) &
+  PID_SEMGREP=$!
+
+  # 3. DETECT-SECRETS (Background)
+  (
+    echo "  🔍 Running detect-secrets scan..."
+    if command -v detect-secrets-hook &> /dev/null; then
+        if [[ -f .secrets.baseline ]]; then
+            SECRETS_OUTPUT=$(git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline 2>&1)
+            SECRETS_EXIT=$?
+            if [[ $SECRETS_EXIT -eq 0 ]]; then
+                echo "PASS" > "$SECRETS_OUT"
+                echo "  ✅ detect-secrets: No secrets found" >> "$SECRETS_OUT"
+            else
+                echo "FAIL" > "$SECRETS_OUT"
+                echo "  ❌ detect-secrets: Secrets found!" >> "$SECRETS_OUT"
+                echo "$SECRETS_OUTPUT" >> "$SECRETS_OUT"
+            fi
+        else
+            echo "PASS" > "$SECRETS_OUT"
+            echo "  ⚠️  No .secrets.baseline. Skipping." >> "$SECRETS_OUT"
+        fi
+    else
+        echo "PASS" > "$SECRETS_OUT"
+        echo "  ⚠️  detect-secrets-hook not installed. Skipping." >> "$SECRETS_OUT"
+    fi
+  ) &
+  PID_SECRETS=$!
+
+  # WAIT FOR ALL
+  wait $PID_BANDIT $PID_SEMGREP $PID_SECRETS
+  
+  # COLLECT RESULTS
+  if grep -q "FAIL" "$BANDIT_OUT"; then
+    cat "$BANDIT_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
   else
-    echo "  ❌ Semgrep not installed (pip install semgrep)"
-    echo "  This is a required check."
-    exit 1
+    cat "$BANDIT_OUT" | grep -v "PASS"
+  fi
+  
+  if grep -q "FAIL" "$SEMGREP_OUT"; then
+    cat "$SEMGREP_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
+  else
+    cat "$SEMGREP_OUT" | grep -v "PASS"
   fi
 
-  # Run detect-secrets scan
-  echo "  🔍 Running detect-secrets scan..."
-  if command -v detect-secrets-hook &> /dev/null; then
-    if [[ -f .secrets.baseline ]]; then
-      # Scan all tracked files
-      SECRETS_OUTPUT=$(git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline 2>&1)
-      SECRETS_EXIT=$?
-      
-      if [[ $SECRETS_EXIT -eq 0 ]]; then
-        echo "  ✅ detect-secrets: No secrets found"
-      else
-        echo "  ❌ detect-secrets: Secrets found!"
-        echo "$SECRETS_OUTPUT" # | head -n 20
-        SECURITY_PASSED=false
-      fi
-    else
-         echo "  ⚠️  No .secrets.baseline found. Skipping detect-secrets."
-    fi
+  if grep -q "FAIL" "$SECRETS_OUT"; then
+    cat "$SECRETS_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
   else
-    echo "  ⚠️  detect-secrets-hook not installed. Skipping."
+    cat "$SECRETS_OUT" | grep -v "PASS"
   fi
+  
+  rm -f "$BANDIT_OUT" "$SEMGREP_OUT" "$SECRETS_OUT"
+
 
   # Run safety scan for known vulnerabilities in dependencies
   # Skip when using --security-local (for commit hooks - Safety is slow and requirements rarely change)
