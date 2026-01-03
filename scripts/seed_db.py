@@ -438,7 +438,9 @@ class BaselineSeeder:
         instructor_ids = []
         from tests.test_credentials import INSTRUCTOR_PASSWORD
 
-        password_hash = hash_password(INSTRUCTOR_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
+        password_hash = hash_password(
+            INSTRUCTOR_PASSWORD
+        )  # pragma: allowlist secret - Imported from test_credentials
 
         for inst_data in instructors_data:
             inst_id = institution_ids[inst_data["institution_idx"]]
@@ -479,7 +481,9 @@ class BaselineSeeder:
 
         from tests.test_credentials import PROGRAM_ADMIN_PASSWORD
 
-        password_hash = hash_password(PROGRAM_ADMIN_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
+        password_hash = hash_password(
+            PROGRAM_ADMIN_PASSWORD
+        )  # pragma: allowlist secret - Imported from test_credentials
         schema = User.create_schema(
             email=email,
             first_name="Bob",
@@ -631,7 +635,9 @@ class DemoSeeder(BaselineSeeder):
         from tests.test_credentials import DEMO_PASSWORD
 
         email = "demo2025.admin@example.com"
-        password = DEMO_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
+        password = (
+            DEMO_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
+        )
 
         existing = db.get_user_by_email(email)
         if existing:
@@ -771,7 +777,9 @@ class DemoSeeder(BaselineSeeder):
         instructor_ids = []
         from tests.test_credentials import INSTRUCTOR_PASSWORD
 
-        password_hash = hash_password(INSTRUCTOR_PASSWORD)  # pragma: allowlist secret - Imported from test_credentials
+        password_hash = hash_password(
+            INSTRUCTOR_PASSWORD
+        )  # pragma: allowlist secret - Imported from test_credentials
 
         for fac_data in faculty_data:
             existing = db.get_user_by_email(fac_data["email"])

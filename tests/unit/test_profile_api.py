@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 from src.app import app
-
 from tests.test_credentials import NEW_PASSWORD, SECURE_PASSWORD
 
 TEST_PASSWORD = os.environ.get("TEST_PASSWORD", SECURE_PASSWORD)

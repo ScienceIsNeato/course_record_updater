@@ -110,4 +110,3 @@ BASE_ACCOUNTS = {
         "password": INSTRUCTOR_PASSWORD,
     },
 }
-
