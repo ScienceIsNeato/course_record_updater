@@ -81,4 +81,20 @@ Complete repository reorganization to move all source code into `src/` directory
 
 ### Next Steps:
 1. Final verification commit.
-2. Integration testing of full system.
+
+### Latest Work: Security & Test Optimization (2026-01-02)
+
+**Status**: ✅ COMPLETED - Parallelized & Categorized
+
+### Changes
+- ✅ **Parallelized Security Checks**: Reduced security audit time from ~60s to ~17s in commit gate.
+- ✅ **Test Organization**:
+  - Moved `test_dashboard_api.py` (Selenium/Requests) to `tests/e2e/test_dashboard_frontend.py` (requires live server).
+  - Moved manual tests to `tests/manual/`.
+  - Confirmed `tests/integration/` contains only API client tests (mocked/fast).
+- ✅ **Gate Strictness**: Reverted "skip if server down" to ensure E2E tests strictly enforce environment requirements.
+- ✅ **Label Quality**: Renamed "coverage" check to "🧪 Python Unit Tests & 📊 Coverage Analysis" in `ship_it.py` for transparency.
+
+### Next Steps:
+1. Verify PR pipeline runs with new test structure.
+
