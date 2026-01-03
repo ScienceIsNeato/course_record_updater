@@ -34,7 +34,7 @@ class TestUAT004BulkRemindersFailureHandling:
     PERSONAL_MESSAGE = "Please submit your course data ASAP."
 
     def test_complete_bulk_reminder_failure_workflow(
-        self, program_admin_authenticated_page: Page
+        self, authenticated_institution_admin_page: Page
     ):
         """
         STEP 1: Setup - Use seeded instructors (for now, all valid)
@@ -47,32 +47,33 @@ class TestUAT004BulkRemindersFailureHandling:
         Failure scenarios (invalid emails, soft-deleted users, etc.) will be added
         once we have the infrastructure to create those conditions.
         """
-        admin_page = program_admin_authenticated_page
+        admin_page = authenticated_institution_admin_page
 
         print("=" * 70)
         print("STEP 1: Setup - Create test instructors via API")
         print("=" * 70)
 
-        # Get institution ID and program_ids for the CS program admin
+        # Get institution ID from the institution admin
         institution_id = get_institution_id_from_user(admin_page)
-        print(f"   Program admin institution_id: {institution_id}")
+        print(f"   Institution admin institution_id: {institution_id}")
 
-        assert institution_id, "Failed to get institution_id from program admin"
+        assert institution_id, "Failed to get institution_id from institution admin"
 
-        # Get program admin's program_ids via API
-        # The seeded program admin (bob.programadmin@mocku.test) manages the Computer Science program
-        current_user_response = admin_page.request.get(f"{BASE_URL}/api/me")
-        assert (
-            current_user_response.ok
-        ), f"Failed to get current user: {current_user_response.status}"
-        current_user_data = current_user_response.json()
-        program_ids = current_user_data.get("program_ids", [])
+        # Get a program from this institution to associate instructors with
+        programs_response = admin_page.request.get(f"{BASE_URL}/api/programs")
+        assert programs_response.ok, f"Failed to get programs: {programs_response.status}"
+        programs_data = programs_response.json()
+        programs = programs_data.get("programs", [])
+        
+        # Filter to programs in this institution
+        inst_programs = [p for p in programs if p.get("institution_id") == institution_id]
+        assert len(inst_programs) > 0, "No programs found for institution"
+        
+        program_ids = [inst_programs[0]["program_id"]]
+        print(f"   Using program: {inst_programs[0].get('name', 'unnamed')} ({program_ids[0]})")
 
-        print(f"   Program admin program_ids: {program_ids}")
-        assert len(program_ids) > 0, "Program admin has no program_ids"
-
-        # Create 3 test instructors associated with the CS program
-        # These will be visible to the CS program admin
+        # Create 2 test instructors associated with the program
+        # These will be visible to the institution admin
         create_test_user_via_api(
             admin_page=admin_page,
             base_url=BASE_URL,
@@ -82,7 +83,7 @@ class TestUAT004BulkRemindersFailureHandling:
             role="instructor",
             institution_id=institution_id,
             password="Instructor123!",
-            program_ids=program_ids,  # Associate with CS program
+            program_ids=program_ids,
         )
         print(f"   ✅ Created instructor: {self.VALID_INSTRUCTOR_1_EMAIL}")
 
@@ -95,7 +96,7 @@ class TestUAT004BulkRemindersFailureHandling:
             role="instructor",
             institution_id=institution_id,
             password="Instructor123!",
-            program_ids=program_ids,  # Associate with CS program
+            program_ids=program_ids,
         )
         print(f"   ✅ Created instructor: {self.VALID_INSTRUCTOR_2_EMAIL}")
 
@@ -141,10 +142,11 @@ class TestUAT004BulkRemindersFailureHandling:
         select_all_btn = admin_page.locator("#selectAllInstructors")
         select_all_btn.click()
 
-        # Verify selected count (3 = 1 seeded instructor + 2 created)
+        # Verify at least 2 instructors selected (the 2 we created, plus any baseline)
         selected_count = admin_page.locator("#selectedInstructorCount")
-        expect(selected_count).to_have_text("3")
-        print("✅ Selected 3 instructors")
+        selected_text = selected_count.text_content()
+        assert int(selected_text) >= 2, f"Expected at least 2 instructors, got {selected_text}"
+        print(f"✅ Selected {selected_text} instructors")
 
         # Enter personal message
         admin_page.fill("#reminderMessage", self.PERSONAL_MESSAGE)

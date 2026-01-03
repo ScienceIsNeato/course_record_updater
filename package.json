@@ -4,8 +4,8 @@
   "description": "Loopcloser - Close the Assessment Loop",
   "main": "static/script.js",
   "scripts": {
-    "lint": "eslint static/**/*.js",
-    "lint:fix": "eslint static/**/*.js --fix",
+    "lint": "eslint -c config/.eslintrc.json static/**/*.js",
+    "lint:fix": "eslint -c config/.eslintrc.json static/**/*.js --fix",
     "format": "prettier --write static/**/*.js",
     "format:check": "prettier --check static/**/*.js",
     "quality:js": "npm run lint && npm run format:check && npm run test:coverage",

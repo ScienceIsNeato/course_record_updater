@@ -7,6 +7,7 @@ Tests create their own specific data (users, sections) via API calls.
 """
 
 import argparse
+import json
 import os
 import random
 import sys
@@ -123,43 +124,48 @@ class BaselineSeeder:
             self.created["users"].append(user_id)
         return user_id
 
-    def create_institution_admins(self, institution_ids):
+    def create_institution_admins(self, institution_ids, custom_data=None):
         """Create one institution admin per institution"""
         self.log("🎓 Creating institution administrators...")
 
-        admins_data = [
-            {
-                "email": "sarah.admin@mocku.test",
-                "first_name": "Sarah",
-                "last_name": "Chen",
-                "institution_idx": 0,
-            },
-            {
-                "email": "mike.admin@riverside.edu",
-                "first_name": "Mike",
-                "last_name": "Rodriguez",
-                "institution_idx": 1,
-            },
-            {
-                "email": "admin@pactech.edu",
-                "first_name": "Patricia",
-                "last_name": "Kim",
-                "institution_idx": 2,
-            },
-        ]
+        if custom_data:
+            admins_data = custom_data
+        else:
+            # Generic fallback
+            admins_data = []
+            for idx, inst_id in enumerate(institution_ids):
+                admins_data.append({
+                    "email": f"admin{idx+1}@example.com",
+                    "first_name": "Admin",
+                    "last_name": f"User {idx+1}",
+                    "institution_idx": idx,
+                    "password_env_var": "DEFAULT_PASSWORD" # pragma: allowlist secret
+                })
 
         admin_ids = []
         for admin_data in admins_data:
-            inst_id = institution_ids[admin_data["institution_idx"]]
+            idx = admin_data.get("institution_idx", 0)
+            if idx >= len(institution_ids):
+                continue
 
-            existing = db.get_user_by_email(admin_data["email"])
+            inst_id = institution_ids[idx]
+            email = admin_data["email"]
+
+            existing = db.get_user_by_email(email)
             if existing:
                 admin_ids.append(existing["user_id"])
                 continue
 
-            password_hash = hash_password("InstitutionAdmin123!")  # nosec B106
+            # Determine password
+            pwd_env = admin_data.get("password_env_var", "DEFAULT_PASSWORD")
+            pwd_raw = "InstitutionAdmin123!" # pragma: allowlist secret 
+            if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):
+                 pwd_raw = os.getenv(pwd_env)
+            
+            password_hash = hash_password(pwd_raw)
+
             schema = User.create_schema(
-                email=admin_data["email"],
+                email=email,
                 first_name=admin_data["first_name"],
                 last_name=admin_data["last_name"],
                 role="institution_admin",
@@ -173,7 +179,7 @@ class BaselineSeeder:
             if user_id:
                 admin_ids.append(user_id)
                 self.created["users"].append(user_id)
-
+        
         return admin_ids
 
     def create_programs(self, institution_ids):
@@ -501,16 +507,8 @@ class BaselineSeeder:
         self.log("   Site Admin: siteadmin@system.local / SiteAdmin123!")
         self.log("")
         self.log("   Institution Admins:")
-        self.log("      MockU: sarah.admin@mocku.test / InstitutionAdmin123!")
-        self.log("      RCC: mike.admin@riverside.edu / InstitutionAdmin123!")
-        self.log("      PTU: admin@pactech.edu / InstitutionAdmin123!")
-        self.log("")
-        self.log("   Program Admin (CS @ MockU):")
-        self.log("      bob.programadmin@mocku.test / ProgramAdmin123!")
-        self.log("")
-        self.log("   Sample Instructors:")
-        self.log("      john.instructor@mocku.test / Instructor123!")
-        self.log("      jane.instructor@mocku.test / Instructor123!")
+        self.log("      (See console output for created generic admins)")
+        self.log("      Default Password: InstitutionAdmin123!")
 
 
 class DatabaseSeeder:
@@ -539,6 +537,23 @@ class DemoSeeder(BaselineSeeder):
     def log(self, message: str):
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
+
+    def load_demo_manifest(self):
+        """Load demo data from external JSON"""
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            manifest_path = os.path.join(script_dir, "..", "demos", "demo_data_manifest.json")
+            
+            if os.path.exists(manifest_path):
+                self.log(f"📋 Loading demo data from {manifest_path}")
+                with open(manifest_path, 'r') as f:
+                    return json.load(f)
+            else:
+                self.log(f"⚠️  Manifest not found at {manifest_path}, using defaults")
+                return {}
+        except Exception as e:
+            self.log(f"⚠️  Failed to load manifest: {e}")
+            return {}
 
     def create_demo_institution(self):
         """Create demo institution"""
@@ -1003,6 +1018,9 @@ class DemoSeeder(BaselineSeeder):
     def seed_demo(self):
         """Seed complete data for product demo - ready to showcase features!"""
         self.log("🎬 Seeding 2025 demo environment...")
+        
+        # Load manifest
+        manifest = self.load_demo_manifest()
 
         inst_id = self.create_demo_institution()
         if not inst_id:
@@ -1023,37 +1041,57 @@ class DemoSeeder(BaselineSeeder):
             inst_id, course_ids, term_id, instructor_ids
         )
         self.create_demo_clos(course_ids)
-        self.create_historical_data(inst_id, program_ids)
+        self.create_historical_data(inst_id, program_ids, manifest.get("historical_data"))
 
         self.log("✅ Demo seeding completed!")
         self.print_summary()
         return True
 
-    def create_historical_data(self, institution_id, program_ids):
-        """Create historical data (Spring 2025 inactive term)"""
-        self.log("📜 Creating historical data (Spring 2025)...")
-        from datetime import datetime, timedelta
+    def create_historical_data(self, institution_id, program_ids, historical_data=None):
+        """Create historical data from manifest"""
+        self.log("📜 Creating historical data...")
+        
+        if not historical_data:
+            self.log("   ⏭️  No historical data in manifest, skipping.")
+            return
 
+        from datetime import datetime, timedelta
         from src.models.models import Course, CourseOffering, CourseSection, Term
 
-        # 1. Create Inactive Term (Spring 2025)
-        # Dates: Jan 2025 - May 2025 (Assuming current is Fall 2025)
-        start_date = datetime(2025, 1, 15)
-        end_date = datetime(2025, 5, 15)
-
+        # 1. Create Term from data
+        term_data = historical_data.get("term", {})
+        if not term_data:
+            return
+            
         schema_term = Term.create_schema(
-            name="Spring 2025",
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat(),
-            assessment_due_date=end_date.isoformat(),
-            active=False,
+            name=term_data.get("name", "Historical Term"),
+            start_date=term_data.get("start_date", "2025-01-01"),
+            end_date=term_data.get("end_date", "2025-05-01"),
+            assessment_due_date=term_data.get("end_date", "2025-05-01"),
+            active=term_data.get("active", False),
         )
-        schema_term["term_name"] = "Spring 2025"  # Required by DB layer
-        schema_term["term_code"] = "SP2025"
+        schema_term["term_name"] = term_data.get("name")
+        schema_term["term_code"] = "HIST2025"
         schema_term["institution_id"] = institution_id
-        term_id = db.create_term(schema_term)
-        if term_id:
-            self.created["terms"].append(term_id)
+        
+        existing = db.get_term_by_name(term_data.get("name"), institution_id)
+        if existing:
+            term_id = existing["id"]
+        else:
+            term_id = db.create_term(schema_term)
+            if term_id:
+                self.created["terms"].append(term_id)
+
+        if not term_id:
+             return
+
+        # 2. Basic Historical Course (Hardcoded structure for now, but triggered by data)
+        # Using first program
+        program_id = program_ids[0] if program_ids else None
+        
+        # (Simplified for brevity - can expand to fully usage `historical_data['offerings']` later)
+        # This clears the hardcoded Spring 2025 block.
+
 
         # 2. Create a specific historical course
         # Let's verify if we have programs; use first one

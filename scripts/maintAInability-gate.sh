@@ -936,7 +936,9 @@ for r in d.get('results',[])[:5]:
       echo "  ✅ Semgrep: No security issues"
     fi
   else
-    echo "  ⚠️ Semgrep not installed, skipping (pip install semgrep)"
+    echo "  ❌ Semgrep not installed (pip install semgrep)"
+    echo "  This is a required check."
+    exit 1
   fi
 
   # Run safety scan for known vulnerabilities in dependencies

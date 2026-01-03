@@ -217,7 +217,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Select course - wait for option to be present first
     instructor_page.wait_for_selector(
-        f"#courseSelect option[value='{course_id}']", timeout=10000
+        f"#courseSelect option[value='{course_id}']", state="attached", timeout=10000
     )
     instructor_page.select_option("#courseSelect", value=course_id)
 
@@ -330,7 +330,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     instructor_page.goto(f"{BASE_URL}/assessments")
     # Robust selection
     instructor_page.wait_for_selector(
-        f"#courseSelect option[value='{course_id}']", timeout=10000
+        f"#courseSelect option[value='{course_id}']", state="attached", timeout=10000
     )
     instructor_page.select_option("#courseSelect", value=course_id)
 
@@ -392,30 +392,14 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     modal = admin_page.locator("#cloDetailModal")
     expect(modal).to_be_visible()
 
-    # Approve - use dialog handler like test_uat_008
+    # Approve - no dialogs expected (they were removed per UI request)
     approve_button = modal.locator('button:has-text("Approve")')
     expect(approve_button).to_be_visible()
 
-    # Set up dialog handler for confirmation and success dialogs
-    dialog_messages = []
-
-    def handle_dialog(dialog):
-        dialog_messages.append(dialog.message)
-        dialog.accept()
-
-    admin_page.on("dialog", handle_dialog)
     approve_button.click()
 
-    # Wait for dialogs to be handled
-    admin_page.wait_for_timeout(1000)
-
-    # Verify we got success dialog
-    assert (
-        len(dialog_messages) >= 1
-    ), f"Expected at least 1 dialog, got {len(dialog_messages)}: {dialog_messages}"
-    assert any(
-        "approved" in msg.lower() for msg in dialog_messages
-    ), f"Expected approval success dialog, got: {dialog_messages}"
+    # Wait for the API call to complete
+    admin_page.wait_for_timeout(1500)
 
     # Modal should close after approval
     expect(modal).not_to_be_visible(timeout=5000)

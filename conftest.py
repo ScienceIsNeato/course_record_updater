@@ -24,25 +24,15 @@ def _get_csrf_token_from_session_or_generate(client):
     raw_token = None
 
     # Try to get existing raw token from session
-    try:
-        with client.session_transaction() as sess:
-            if "csrf_token" in sess:
-                raw_token = sess["csrf_token"]
-    except (
-        Exception
-    ):  # nosec B110 - intentionally ignoring session access errors during test setup
-        pass
+    with client.session_transaction() as sess:
+        if "csrf_token" in sess:
+            raw_token = sess["csrf_token"]
 
     # If no token exists, create one and store it
     if not raw_token:
         raw_token = secrets.token_hex(16)
-        try:
-            with client.session_transaction() as sess:
-                sess["csrf_token"] = raw_token
-        except (
-            Exception
-        ):  # nosec B110 - intentionally ignoring session write errors during test setup
-            pass
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = raw_token
 
     # Generate the signed token from the raw token
     try:

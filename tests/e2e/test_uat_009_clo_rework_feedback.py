@@ -326,7 +326,7 @@ def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page
 
     # Select course - wait for option to be present first
     instructor_page.wait_for_selector(
-        f"#courseSelect option[value='{course_id}']", timeout=10000
+        f"#courseSelect option[value='{course_id}']", state="attached", timeout=10000
     )
     instructor_page.select_option("#courseSelect", value=course_id)
 

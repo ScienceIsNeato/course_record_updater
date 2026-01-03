@@ -30,7 +30,9 @@ class TestUAT006EdgeCases:
 
     TEST_INSTRUCTOR_EMAIL = "edge.case.instructor@ethereal.email"
 
-    def test_complete_edge_cases_workflow(self, program_admin_authenticated_page: Page):
+    def test_complete_edge_cases_workflow(
+        self, authenticated_institution_admin_page: Page
+    ):
         """
         STEP 1: Setup - Create test instructor
         STEP 2: Empty recipient list validation (API)
@@ -39,7 +41,7 @@ class TestUAT006EdgeCases:
         STEP 5: Single instructor selection (minimum)
         STEP 6: Missing optional fields
         """
-        admin_page = program_admin_authenticated_page
+        admin_page = authenticated_institution_admin_page
 
         print("=" * 70)
         print("STEP 1: Setup - Create test instructor")
@@ -48,11 +50,13 @@ class TestUAT006EdgeCases:
         institution_id = get_institution_id_from_user(admin_page)
         print(f"   Institution ID: {institution_id}")
 
-        # Get program admin's program_ids
-        admin_user_response = admin_page.request.get(f"{BASE_URL}/api/me")
-        assert admin_user_response.ok, "Failed to get admin user data"
-        admin_data = admin_user_response.json()
-        program_ids = admin_data.get("program_ids", [])
+        # Get a program from this institution
+        programs_response = admin_page.request.get(f"{BASE_URL}/api/programs")
+        assert programs_response.ok, f"Failed to get programs: {programs_response.status}"
+        programs_data = programs_response.json()
+        programs = programs_data.get("programs", [])
+        inst_programs = [p for p in programs if p.get("institution_id") == institution_id]
+        program_ids = [inst_programs[0]["program_id"]] if inst_programs else None
 
         # Create test instructor
         create_test_user_via_api(
@@ -64,7 +68,7 @@ class TestUAT006EdgeCases:
             role="instructor",
             institution_id=institution_id,
             password="Instructor123!",
-            program_ids=program_ids if program_ids else None,
+            program_ids=program_ids,
         )
         print(f"   ✅ Created: {self.TEST_INSTRUCTOR_EMAIL}")
 

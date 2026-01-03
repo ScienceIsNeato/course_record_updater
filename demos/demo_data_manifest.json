@@ -1,0 +1,39 @@
+{
+    "institution_admins": [
+        {
+            "email": "sarah.admin@mocku.test",
+            "first_name": "Sarah",
+            "last_name": "Chen",
+            "institution_idx": 0,
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "mike.admin@riverside.edu",
+            "first_name": "Mike",
+            "last_name": "Rodriguez",
+            "institution_idx": 1,
+            "password_env_var": "DEFAULT_PASSWORD"
+        }
+    ],
+    "historical_data": {
+        "term": {
+            "name": "Spring 2025",
+            "start_date": "2025-01-10",
+            "end_date": "2025-05-15",
+            "active": false
+        },
+        "offerings": [
+            {
+                "course_idx": 0,
+                "section_numbers": [
+                    "001",
+                    "002"
+                ],
+                "enrollments": [
+                    28,
+                    22
+                ]
+            }
+        ]
+    }
+}

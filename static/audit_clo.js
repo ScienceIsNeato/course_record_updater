@@ -164,8 +164,7 @@ function exportCurrentViewToCsv(cloList) {
 async function approveCLO() {
   if (!globalThis.currentCLO) return;
 
-  // Removed confirmation dialog per request
-  // if (!confirm(...)) return;
+
 
   const outcomeId = globalThis.currentCLO.outcome_id;
   if (!outcomeId) {
@@ -993,7 +992,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Show success
       alert(
         "Rework request sent successfully!" +
-          (sendEmail ? " Email notification sent." : ""),
+        (sendEmail ? " Email notification sent." : ""),
       );
 
       // Reload list
