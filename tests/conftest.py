@@ -126,10 +126,15 @@ def ensure_test_database(tmp_path_factory):
 def clean_database_between_tests():
     """Reset database after each test to guarantee isolation.
 
-    Skip for E2E/UAT tests which manage their own database state.
+    Skip for E2E tests which manage their own database state via their conftest.
+    E2E tests use course_records_e2e.db while unit tests use temporary databases.
     """
     yield
-    # Skip cleanup for E2E/UAT tests - they handle their own state
-    env = os.environ.get("ENV", "development")
-    if env != "test":
-        database_service.reset_database()
+    # Skip cleanup for E2E tests - they manage their own state
+    db_url = os.environ.get("DATABASE_URL", "")
+    if "e2e" in db_url.lower():
+        # E2E tests - don't interfere with their database management
+        return
+
+    # Unit tests - reset database for isolation
+    database_service.reset_database()
