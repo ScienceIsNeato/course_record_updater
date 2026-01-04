@@ -1350,7 +1350,9 @@ def main():
 
         if args.clear:
             seeder.log("🧹 Clearing database...")
-            db.reset_database()
+            from src.database.database_service import reset_database
+
+            reset_database()
 
         # Load manifest if provided
         manifest_data = None
