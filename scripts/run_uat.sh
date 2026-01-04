@@ -167,7 +167,7 @@ export DATABASE_TYPE="sqlite"
 
 # Seed E2E database with baseline shared infrastructure
 echo -e "${YELLOW}🌱 Seeding E2E database with baseline data...${NC}"
-python scripts/seed_db.py --env e2e
+python scripts/seed_db.py --env e2e --manifest tests/fixtures/e2e_seed_manifest.json
 echo ""
 echo -e "${BLUE}ℹ️  Tests will create their own users/sections programmatically via API${NC}"
 echo ""

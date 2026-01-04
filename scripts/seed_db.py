@@ -1341,7 +1341,9 @@ def main():
 
         if args.clear:
             seeder.log("🧹 Clearing database...")
-            db.reset_database()
+            from src.database.database_service import reset_database
+
+            reset_database()
 
         success = seeder.seed_demo()
         sys.exit(0 if success else 1)
