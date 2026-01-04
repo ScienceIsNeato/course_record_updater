@@ -162,104 +162,115 @@ class BaselineSeeder:
 
     # ... create_institutions ... create_site_admin ...
 
+    def _resolve_institution_id(self, user_data, institution_ids):
+        """Resolve institution ID from user data (helper for create_institution_admins)"""
+        if "institution_idx" in user_data:
+            idx = user_data["institution_idx"]
+            if idx < len(institution_ids):
+                return institution_ids[idx]
+            return None
+        if "institution_short_name" in user_data:
+            short = user_data["institution_short_name"]
+            found = db.get_institution_by_short_name(short)
+            if found:
+                return found["institution_id"]
+        return None
+
+    def _resolve_password(self, user_data):
+        """Resolve and hash password from user data (helper for create_institution_admins)"""
+        pwd_env = user_data.get("password_env_var", "DEFAULT_PASSWORD")  # nosec B105
+        pwd_raw = "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret
+        if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):  # nosec B105
+            pwd_raw = os.getenv(pwd_env)
+        elif "password" in user_data:
+            pwd_raw = user_data["password"]
+        return hash_password(pwd_raw)
+
+    def _resolve_program_assignment(self, user_data, inst_id):
+        """Resolve program IDs from user data (helper for create_institution_admins)"""
+        if "program_code" not in user_data:
+            return []
+        progs = db.get_programs_by_institution(inst_id)
+        for p in progs:
+            if p["short_name"] == user_data["program_code"]:
+                return [p["id"]]
+        return []
+
     def create_institution_admins(self, institution_ids, custom_data=None):
         """Create institution admins (and other users if specified in manifest)"""
         self.log("🎓 Creating institution administrators...")
 
-        users_to_create = []
+        users_to_create = (
+            custom_data
+            if custom_data
+            else self._build_default_admin_list(institution_ids)
+        )
+        return self._create_users_from_list(users_to_create, institution_ids)
 
-        if custom_data:
-            # Manifest provided specific users
-            users_to_create = custom_data
-        else:
-            # Generic fallback
-            for idx, inst_id in enumerate(institution_ids):
-                users_to_create.append(
-                    {
-                        "email": f"admin{idx+1}@example.com",
-                        "first_name": "Admin",
-                        "last_name": f"User {idx+1}",
-                        "institution_idx": idx,  # Index in institution_ids list
-                        "password_env_var": "DEFAULT_PASSWORD",
-                        "role": "institution_admin",
-                    }
-                )
+    def _build_default_admin_list(self, institution_ids):
+        """Build default admin user list when no manifest provided"""
+        users = []
+        for idx in range(len(institution_ids)):
+            users.append(
+                {
+                    "email": f"admin{idx+1}@example.com",
+                    "first_name": "Admin",
+                    "last_name": f"User {idx+1}",
+                    "institution_idx": idx,
+                    "password_env_var": "DEFAULT_PASSWORD",
+                    "role": "institution_admin",
+                }
+            )
+        return users
 
+    def _create_users_from_list(self, users_to_create, institution_ids):
+        """Create users from a list of user data dictionaries"""
         created_ids = []
         for user_data in users_to_create:
-            email = user_data["email"]
-
-            # Resolve Institution ID
-            inst_id = None
-            if "institution_idx" in user_data:
-                idx = user_data["institution_idx"]
-                if idx < len(institution_ids):
-                    inst_id = institution_ids[idx]
-            elif "institution_short_name" in user_data:
-                short = user_data["institution_short_name"]
-                found = db.get_institution_by_short_name(short)
-                if found:
-                    inst_id = found["institution_id"]
-
-            if not inst_id:
-                # Some users might not have institution (e.g. system admins, though we handled site admin separately)
-                # Or if we can't find it, skip
-                if user_data.get("role") != "site_admin":
-                    self.log(f"   ⚠️  Skipping {email} - unknown institution")
-                    continue
-
-            existing = db.get_user_by_email(email)
-            if existing:
-                created_ids.append(existing["user_id"])
-                continue
-
-            # Determine password
-            pwd_env = user_data.get(
-                "password_env_var", "DEFAULT_PASSWORD"
-            )  # nosec B105
-            pwd_raw = "InstitutionAdmin123!"  # nosec B105 # pragma: allowlist secret # Test account password
-            if pwd_env != "DEFAULT_PASSWORD" and os.getenv(pwd_env):  # nosec B105
-                pwd_raw = os.getenv(pwd_env)
-            elif "password" in user_data:
-                pwd_raw = user_data["password"]
-
-            password_hash = hash_password(pwd_raw)
-
-            # Determine role (default to institution_admin if not specified)
-            role = user_data.get("role", "institution_admin")
-
-            schema = User.create_schema(
-                email=email,
-                first_name=user_data["first_name"],
-                last_name=user_data["last_name"],
-                role=role,
-                institution_id=inst_id,
-                password_hash=password_hash,
-                account_status="active",
-            )
-            schema["email_verified"] = True
-
-            # Handle program assignment if needed (e.g. program_admin)
-            if "program_code" in user_data:
-                # Need to find program ID by code and institution
-                # This is tricky without fully exposing lookup.
-                # For now, let's look it up via DB helper
-                # Assuming find_program_by_code exists or we iterate
-                # db.get_program_by_short_name is what we need?
-                # db.get_programs_for_institution(inst_id) then match code
-
-                progs = db.get_programs_by_institution(inst_id)
-                for p in progs:
-                    if p["short_name"] == user_data["program_code"]:
-                        schema["program_ids"] = [p["id"]]
-                        break
-
-            user_id = db.create_user(schema)
+            user_id = self._create_single_user(user_data, institution_ids)
             if user_id:
                 created_ids.append(user_id)
-                self.created["users"].append(user_id)
-
         return created_ids
+
+    def _create_single_user(self, user_data, institution_ids):
+        """Create a single user from user data dictionary"""
+        email = user_data["email"]
+
+        # Resolve institution
+        inst_id = self._resolve_institution_id(user_data, institution_ids)
+        if not inst_id and user_data.get("role") != "site_admin":
+            self.log(f"   ⚠️  Skipping {email} - unknown institution")
+            return None
+
+        # Check for existing user
+        existing = db.get_user_by_email(email)
+        if existing:
+            return existing["user_id"]
+
+        # Build user schema
+        password_hash = self._resolve_password(user_data)
+        role = user_data.get("role", "institution_admin")
+
+        schema = User.create_schema(
+            email=email,
+            first_name=user_data["first_name"],
+            last_name=user_data["last_name"],
+            role=role,
+            institution_id=inst_id,
+            password_hash=password_hash,
+            account_status="active",
+        )
+        schema["email_verified"] = True
+
+        # Handle program assignment if needed
+        program_ids = self._resolve_program_assignment(user_data, inst_id)
+        if program_ids:
+            schema["program_ids"] = program_ids
+
+        user_id = db.create_user(schema)
+        if user_id:
+            self.created["users"].append(user_id)
+        return user_id
 
     def create_programs(self, institution_ids):
         """Create academic programs"""

@@ -144,14 +144,14 @@ jobs:
         
         # Set database environment variables for SQLite
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records_ci.db
+        export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
     - name: Seed Database for Smoke Tests
       run: |
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records_ci.db
+        export DATABASE_URL=sqlite:///course_records.db
         export ENV=test
         export PYTHONPATH=.
         
