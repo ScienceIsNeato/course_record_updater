@@ -19,10 +19,7 @@ This wrapper dispatches individual check commands to the existing bash script
 in parallel threads, then collects and formats the results. Fail-fast behavior
 is always enabled for rapid development cycles.
 
-IMPORTANT: SonarCloud analysis workflow:
-  --checks sonar-analyze: Trigger new analysis (slow ~60s)
-  --checks sonar-status: Fetch latest results (fast <5s)
-See SONAR_ANALYSIS_RESULTS.md for the proper workflow.
+
 """
 
 import argparse
@@ -88,11 +85,7 @@ class QualityGateExecutor:
             ("security", "🔒 Security Audit (bandit, semgrep, safety)"),
             ("complexity", "🧠 Complexity Analysis (radon/xenon)"),
             ("duplication", "🔄 Code Duplication Check"),
-            # SonarCloud supports an analyze/status split for fast iteration.
-            # We also keep a unified "sonar" check for the common workflow.
-            ("sonar-analyze", "☁️ SonarCloud Analyze (trigger new scan)"),
-            ("sonar-status", "☁️ SonarCloud Status (fetch latest results)"),
-            ("sonar", "☁️ SonarCloud Analysis (quality gate validation)"),
+
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
@@ -157,7 +150,7 @@ class QualityGateExecutor:
             "python-lint-format": "python-lint-format",
             "js-lint-format": "js-lint-format",
             "python-static-analysis": "python-static-analysis",
-            "sonar": "sonar",  # Unified sonar check (was sonar-analyze + sonar-status)
+
         }
 
         # Use mapped flag if available, otherwise use original flag
@@ -166,12 +159,9 @@ class QualityGateExecutor:
         try:
             # Configure timeout per check type
             # E2E: 600s (IMAP verification is slow in CI)
-            # Sonar: 600s (SonarCloud server-side processing can be slow)
             # Others: 300s (default)
-            if check_flag in ["e2e", "sonar", "sonar-analyze"]:
+            if check_flag in ["e2e"]:
                 timeout_seconds = 600
-            elif check_flag in ["sonar-status"]:
-                timeout_seconds = 120
             else:
                 timeout_seconds = 300
 
@@ -1697,10 +1687,10 @@ Examples:
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
 Validation Types:
-  commit - Fast checks for development cycle (excludes security & sonar, ~40s savings)
-  PR     - Full validation for pull requests (all checks including security & sonar)
+  commit - Fast checks for development cycle (~40s savings)
+  PR     - Full validation for pull requests (all checks including security)
 
-Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar-analyze, sonar-status, sonar, e2e, integration, smoke, frontend-check
+Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -1717,7 +1707,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, sonar-analyze, sonar-status, sonar, e2e, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check",
     )
 
     parser.add_argument(
