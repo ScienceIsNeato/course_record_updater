@@ -14,6 +14,7 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.adapters.adapter_registry import AdapterRegistryError, get_adapter_registry
+from src.utils.time_utils import get_current_time
 
 # Constants for datetime formatting
 UTC_OFFSET = "+00:00"
@@ -227,7 +228,7 @@ class ImportService:
         Returns:
             ImportResult with detailed statistics
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = get_current_time()
         self.reset_stats()
 
         self._log_import_start(file_path, conflict_strategy, dry_run)
@@ -270,7 +271,7 @@ class ImportService:
         Returns:
             ImportResult (only success/errors/execution_time fields populated)
         """
-        start_time = datetime.now(timezone.utc)
+        start_time = get_current_time()
         self.reset_stats()
 
         try:
@@ -602,7 +603,7 @@ class ImportService:
                     existing_value=existing_value,
                     import_value=new_value,
                     resolution="pending",
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=get_current_time(),
                 )
                 detected_conflicts.append(conflict)
 
@@ -806,7 +807,7 @@ class ImportService:
                     existing_value=existing_value,
                     import_value=new_value,
                     resolution="pending",
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=get_current_time(),
                 )
                 detected_conflicts.append(conflict)
 
@@ -1407,7 +1408,7 @@ class ImportService:
         self, start_time: datetime, dry_run: bool
     ) -> ImportResult:
         """Create ImportResult with current statistics"""
-        end_time = datetime.now(timezone.utc)
+        end_time = get_current_time()
         execution_time = (end_time - start_time).total_seconds()
 
         return ImportResult(

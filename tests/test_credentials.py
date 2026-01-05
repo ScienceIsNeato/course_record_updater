@@ -24,7 +24,8 @@ Usage:
 
 SITE_ADMIN_PASSWORD = "SiteAdmin123!"
 INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
-PROGRAM_ADMIN_PASSWORD = "ProgramAdmin123!"
+# Note: seed_db.py uses DEFAULT_PASSWORD (InstitutionAdmin123!) for all seeded users
+PROGRAM_ADMIN_PASSWORD = "InstitutionAdmin123!"
 
 # ============================================================================
 # User Account Passwords

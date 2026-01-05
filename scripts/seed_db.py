@@ -133,15 +133,16 @@ class BaselineSeeder:
         inst_ids = self.create_institutions()
         self.create_site_admin()
 
-        # Users from manifest or fallback
+        # Create programs BEFORE users - users may reference program_code for assignment
+        prog_ids = self.create_programs(inst_ids)
+        term_ids = self.create_terms(inst_ids)
+
+        # Users from manifest or fallback (must be after programs for program_code resolution)
         custom_admins = []
         if manifest_data and "users" in manifest_data:
             custom_admins = manifest_data["users"]
 
         self.create_institution_admins(inst_ids, custom_admins)
-
-        prog_ids = self.create_programs(inst_ids)
-        term_ids = self.create_terms(inst_ids)
 
         course_ids = self.create_sample_courses(inst_ids, prog_ids)
         instructor_ids = self.create_sample_instructors(inst_ids, prog_ids)
@@ -193,7 +194,7 @@ class BaselineSeeder:
         progs = db.get_programs_by_institution(inst_id)
         for p in progs:
             if p["short_name"] == user_data["program_code"]:
-                return [p["id"]]
+                return [p["program_id"]]
         return []
 
     def create_institution_admins(self, institution_ids, custom_data=None):

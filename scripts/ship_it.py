@@ -72,6 +72,15 @@ class QualityGateExecutor:
         self.logger = setup_quality_gate_logger()
         self.script_path = "./scripts/maintAInability-gate.sh"
 
+        self.security_check = (
+            "security",
+            "🔒 Security Audit (bandit, semgrep, safety)",
+        )
+        self.security_local_check = (
+            "security-local",
+            "🔒 Security Audit (bandit, semgrep)",
+        )
+
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
         self.all_checks = [
@@ -82,10 +91,9 @@ class QualityGateExecutor:
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            ("security", "🔒 Security Audit (bandit, semgrep, safety)"),
+            self.security_check,
             ("complexity", "🧠 Complexity Analysis (radon/xenon)"),
             ("duplication", "🔄 Code Duplication Check"),
-
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
             ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
@@ -110,15 +118,13 @@ class QualityGateExecutor:
             ),  # Includes test execution
             ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
-            (
-                "security-local",
-                "🔒 Security Audit (bandit, semgrep)",
-            ),  # Zero tolerance (safety skipped for speed)
+            # Zero tolerance (safety skipped for speed)
+            # Security checks moved to PR-only as requested by user
             # Duplication, sonar, complexity excluded from commit (slower or PR-level)
         ]
 
         # Full checks for PR validation (all checks)
-        self.pr_checks = self.all_checks
+        self.pr_checks = list(self.all_checks)
 
         # Integration test validation (component interactions using SQLite persistence)
         self.integration_checks = [
@@ -135,8 +141,13 @@ class QualityGateExecutor:
         ]
 
         # Full validation (everything)
-        self.full_checks = self.commit_checks + [
-            check for check in self.pr_checks if check not in self.commit_checks
+        # Full validation prefers the full security scan over the lightweight variant
+        full_commit_checks = [
+            self.security_check if check == self.security_local_check else check
+            for check in self.commit_checks
+        ]
+        self.full_checks = full_commit_checks + [
+            check for check in self.all_checks if check not in full_commit_checks
         ]
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
@@ -150,7 +161,6 @@ class QualityGateExecutor:
             "python-lint-format": "python-lint-format",
             "js-lint-format": "js-lint-format",
             "python-static-analysis": "python-static-analysis",
-
         }
 
         # Use mapped flag if available, otherwise use original flag

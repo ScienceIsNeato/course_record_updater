@@ -617,6 +617,9 @@ globalThis.openEditOfferingModal = openEditOfferingModal;
 globalThis.deleteOffering = deleteOffering;
 globalThis.loadOfferings = loadOfferings;
 globalThis.openCreateOfferingModal = () => {
+  if (typeof loadCoursesAndTermsForCreateDropdown === "function") {
+    loadCoursesAndTermsForCreateDropdown();
+  }
   const modal = new bootstrap.Modal(
     document.getElementById("createOfferingModal"),
   );

@@ -9,7 +9,9 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
+from flask import g
 
+from src.app import app
 from src.services.password_service import (
     AccountLockedError,
     PasswordService,
@@ -317,13 +319,13 @@ class TestAccountLockout:
     def test_lockout_expiry(self):
         """Test that lockout expires after timeout"""
         email = "test@example.com"
+        initial_time = datetime.now(timezone.utc)
 
-        # Mock time to simulate lockout expiry
-        with patch("src.services.password_service.datetime") as mock_datetime:
-            # Set initial time
-            initial_time = datetime.now(timezone.utc)
-            mock_datetime.now.return_value = initial_time
-            mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
+        # Use test request context to support system date override
+        with app.test_request_context():
+            # Ensure we start with no override (real time)
+            if hasattr(g, "system_date_override"):
+                del g.system_date_override
 
             # Lock the account
             for i in range(5):
@@ -333,9 +335,9 @@ class TestAccountLockout:
             is_locked, _ = PasswordService.is_account_locked(email)
             assert is_locked is True
 
-            # Fast forward time past lockout duration
+            # Set override to future to simulate expiry
             future_time = initial_time + timedelta(minutes=35)
-            mock_datetime.now.return_value = future_time
+            g.system_date_override = future_time
 
             # Check lockout status again
             is_locked, _ = PasswordService.is_account_locked(email)
@@ -372,6 +374,9 @@ class TestRateLimiting:
     def test_rate_limit_window_cleanup(self):
         """Test that old requests are cleaned up"""
         email = "test@example.com"
+
+        # Note: Rate limiting uses time.time() for security/performance, NOT get_current_time().
+        # So we continue to mock time.time() here as it DOES NOT respect system date override (by design).
 
         # Mock time to simulate window expiry
         with patch("src.services.password_service.time") as mock_time:

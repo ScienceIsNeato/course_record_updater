@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from src.database.database_service import _db_service as db
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 logger = get_logger(__name__)
 
@@ -158,7 +159,7 @@ class AuditService:
         """
         try:
             audit_id = str(uuid.uuid4())
-            timestamp = datetime.now(timezone.utc)
+            timestamp = get_current_time()
 
             # Sanitize sensitive data
             sanitized_new = sanitize_for_audit(new_values)
@@ -257,7 +258,7 @@ class AuditService:
         """
         try:
             audit_id = str(uuid.uuid4())
-            timestamp = datetime.now(timezone.utc)
+            timestamp = get_current_time()
 
             # Sanitize sensitive data
             sanitized_old = sanitize_for_audit(old_values)
@@ -358,7 +359,7 @@ class AuditService:
         """
         try:
             audit_id = str(uuid.uuid4())
-            timestamp = datetime.now(timezone.utc)
+            timestamp = get_current_time()
 
             # Sanitize sensitive data
             sanitized_old = sanitize_for_audit(old_values)

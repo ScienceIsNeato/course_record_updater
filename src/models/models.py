@@ -258,6 +258,8 @@ class User(DataModel):
             # Future OAuth Support
             "oauth_provider": None,
             "oauth_id": None,
+            # Admin-only date override for demos and testing
+            "system_date_override": None,
         }
 
     @staticmethod

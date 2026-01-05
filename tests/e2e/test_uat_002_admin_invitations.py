@@ -14,6 +14,7 @@ Estimated Duration: 4-5 minutes
 """
 
 import re
+import time
 from typing import Optional
 
 import pytest
@@ -156,6 +157,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("STEP 1: Admin invites instructor")
         print("=" * 70)
 
+        # Generate unique message to prevent stale email hits
+        unique_timestamp = int(time.time())
+        unique_message = f"{self.PERSONAL_MESSAGE} [ID:{unique_timestamp}]"
+
         # Navigate to user management
         admin_page.goto(f"{BASE_URL}/admin/users")
         expect(admin_page).to_have_url(f"{BASE_URL}/admin/users")
@@ -169,7 +174,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         # Fill invitation form
         admin_page.fill("#inviteEmail", self.INSTRUCTOR_EMAIL)
         admin_page.select_option("#inviteRole", "instructor")
-        admin_page.fill("#inviteMessage", self.PERSONAL_MESSAGE)
+        admin_page.fill("#inviteMessage", unique_message)
 
         # Submit invitation (form ID: inviteUserForm)
         admin_page.click('#inviteUserForm button[type="submit"]')
@@ -189,10 +194,11 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("STEP 2: Wait for invitation email")
         print("=" * 70)
 
+        # Wait for email containing our unique ID
         invitation_email = wait_for_email_via_imap(
             recipient_email=self.INSTRUCTOR_EMAIL,
             subject_substring="invit",  # Matches both "invited" and "invitation"
-            unique_identifier=None,
+            unique_identifier=str(unique_timestamp),
             timeout=30,
         )
 
@@ -205,10 +211,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
 
         # Verify personal message in email
         assert self.verify_personal_message_in_email(
-            invitation_email, self.PERSONAL_MESSAGE
+            invitation_email, unique_message
         ), "Personal message not found in invitation email"
 
-        print(f"✅ Personal message found in email: '{self.PERSONAL_MESSAGE[:50]}...'")
+        print(f"✅ Personal message found in email: '{unique_message[:50]}...'")
 
         # Extract invitation link
         invitation_link = self.extract_invitation_link_from_email(
@@ -301,6 +307,10 @@ class TestUAT002AdminInvitationsAndMultiRole:
         print("STEP 5: Admin invites program admin")
         print("=" * 70)
 
+        # Unique ID for Program Admin
+        unique_timestamp_pa = int(time.time())
+        unique_message_pa = f"{self.PERSONAL_MESSAGE} [ID:{unique_timestamp_pa}]"
+
         # Verify admin page is still authenticated before navigating
         # Check current page - might have been redirected or timed out
         current_url = admin_page.url
@@ -341,7 +351,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         ).first.get_attribute("value")
         admin_page.select_option("#invitePrograms", first_program_value)
 
-        admin_page.fill("#inviteMessage", self.PERSONAL_MESSAGE)
+        admin_page.fill("#inviteMessage", unique_message_pa)
 
         # Submit invitation
         admin_page.click('#inviteUserForm button[type="submit"]')
@@ -364,6 +374,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         pa_invitation_email = wait_for_email_via_imap(
             recipient_email=self.PROGRAM_ADMIN_EMAIL,
             subject_substring="invit",  # Matches both "invited" and "invitation"
+            unique_identifier=str(unique_timestamp_pa),
             timeout=30,
         )
 

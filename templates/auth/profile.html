@@ -1,38 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Settings - MockU Course Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='images/mocku_logo.jpg') }}" type="image/jpeg">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/mocku_logo.jpg') }}" alt="MockU Logo" height="30" class="d-inline-block align-text-top me-2">
+                <img src="{{ url_for('static', filename='images/mocku_logo.jpg') }}" alt="MockU Logo" height="30"
+                    class="d-inline-block align-text-top me-2">
                 MockU Course Admin Tool
             </a>
-            
+
             <div class="navbar-nav ms-auto">
                 <div class="nav-item dropdown">
-                    <button class="nav-link dropdown-toggle btn btn-link" id="navbarDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="nav-link dropdown-toggle btn btn-link" id="navbarDropdown" data-bs-toggle="dropdown"
+                        aria-expanded="false">
                         <i class="fas fa-user-circle"></i> {{ current_user.first_name }} {{ current_user.last_name }}
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li><a class="dropdown-item active" href="{{ url_for('profile') }}">
-                            <i class="fas fa-user"></i> Account Settings
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
+                                <i class="fas fa-user"></i> Account Settings
+                            </a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
                         <li><button class="dropdown-item btn btn-link" type="button" onclick="logout()">
-                            <i class="fas fa-sign-out-alt"></i> Sign Out
-                        </button></li>
+                                <i class="fas fa-sign-out-alt"></i> Sign Out
+                            </button></li>
                     </ul>
                 </div>
             </div>
@@ -57,14 +64,15 @@
 
                 <!-- Flash Messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else category }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else category }} alert-dismissible fade show"
+                    role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
                 {% endwith %}
 
                 <!-- Profile Information -->
@@ -79,26 +87,30 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label for="firstName" class="form-label">First Name</label>
-                                    <input type="text" class="form-control" id="firstName" name="firstName" value="{{ current_user.first_name or '' }}" required>
+                                    <input type="text" class="form-control" id="firstName" name="firstName"
+                                        value="{{ current_user.first_name or '' }}" required>
                                     <div class="invalid-feedback">
                                         Please enter your first name.
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="lastName" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="lastName" name="lastName" value="{{ current_user.last_name or '' }}" required>
+                                    <input type="text" class="form-control" id="lastName" name="lastName"
+                                        value="{{ current_user.last_name or '' }}" required>
                                     <div class="invalid-feedback">
                                         Please enter your last name.
                                     </div>
                                 </div>
                                 <div class="col-12">
                                     <label for="email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email or '' }}" readonly>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                        value="{{ current_user.email or '' }}" readonly>
                                     <div class="form-text">Email cannot be changed. Contact support if needed.</div>
                                 </div>
                                 <div class="col-12">
                                     <label for="role" class="form-label">Role</label>
-                                    <input type="text" class="form-control" id="role" value="{{ current_user.role | title }}" readonly>
+                                    <input type="text" class="form-control" id="role"
+                                        value="{{ current_user.role | title }}" readonly>
                                     <div class="form-text">Role is assigned by administrators.</div>
                                 </div>
                             </div>
@@ -126,7 +138,8 @@
                             <div class="mb-3">
                                 <label for="currentPassword" class="form-label">Current Password</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="currentPassword" name="currentPassword" required>
+                                    <input type="password" class="form-control" id="currentPassword"
+                                        name="currentPassword" required>
                                     <button class="btn btn-outline-secondary" type="button" id="toggleCurrentPassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -138,7 +151,8 @@
                             <div class="mb-3">
                                 <label for="newPassword" class="form-label">New Password</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="newPassword" name="newPassword" required>
+                                    <input type="password" class="form-control" id="newPassword" name="newPassword"
+                                        required>
                                     <button class="btn btn-outline-secondary" type="button" id="toggleNewPassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -147,7 +161,7 @@
                                     Please enter a new password that meets the requirements.
                                 </div>
                             </div>
-                            
+
                             <!-- Password Strength Indicator -->
                             <div class="password-strength mb-3">
                                 <div class="password-strength-bar">
@@ -161,8 +175,10 @@
                             <div class="mb-3">
                                 <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="confirmNewPassword" name="confirmNewPassword" required>
-                                    <button class="btn btn-outline-secondary" type="button" id="toggleConfirmNewPassword">
+                                    <input type="password" class="form-control" id="confirmNewPassword"
+                                        name="confirmNewPassword" required>
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        id="toggleConfirmNewPassword">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
@@ -181,6 +197,63 @@
                         </form>
                     </div>
                 </div>
+
+                <!-- Today's Date Override (Admin Only) -->
+                {% if current_user.role in ['institution_admin', 'site_admin'] %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-calendar-alt me-2"></i>Today's Date Override
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Demo & Testing Feature:</strong> Override the system date to view the application
+                            as it would appear at a different point in time. Useful for verifying term-based features,
+                            deadline logic, and historical reporting.
+                        </div>
+                        <div id="activeOverrideDisplay" data-prefix="{{ date_override_banner_prefix }}" class="alert alert-warning d-flex align-items-center mb-3 {% if not current_user.system_date_override %}d-none{% endif %}">
+                            <i class="fas fa-clock fa-lg me-3"></i>
+                            <div class="override-banner-body">
+                                {% if current_user.system_date_override %}
+                                <strong>{{ date_override_banner_prefix }}:</strong>
+                                Viewing data as of
+                                {{ current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p %Z') if current_user.system_date_override.tzinfo else current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p') }}.
+                                {% else %}
+                                <strong>{{ date_override_banner_prefix }}:</strong>
+                                Using the current system time.
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-6">
+                                <label for="systemDateOverride" class="form-label">Override Date</label>
+                                <input type="datetime-local" class="form-control" id="systemDateOverride"
+                                    value="{{ current_user.system_date_override.strftime('%Y-%m-%dT%H:%M') if current_user.system_date_override else '' }}">
+                                <div class="form-text" id="dateOverrideStatus">
+                                    {% if current_user.system_date_override %}
+                                    <span class="text-warning"><i class="fas fa-clock me-1"></i>Override active: {{
+                                        current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                                    {% else %}
+                                    <span class="text-muted"><i class="fas fa-clock me-1"></i>Using live system
+                                        time</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <button type="button" class="btn btn-primary me-2" id="setDateOverrideBtn">
+                                    <i class="fas fa-save me-1"></i>Set Override
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="clearDateOverrideBtn" {% if
+                                    not current_user.system_date_override %}disabled{% endif %}>
+                                    <i class="fas fa-undo me-1"></i>Reset to Live
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Account Information -->
                 <div class="card">
@@ -209,11 +282,13 @@
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold small text-muted mb-1">Institution</h6>
-                                <div class="form-control-plaintext">{{ current_user.institution_name or 'Not specified' }}</div>
+                                <div class="form-control-plaintext">{{ current_user.institution_name or 'Not specified'
+                                    }}</div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="fw-bold small text-muted mb-1">Member Since</h6>
-                                <div class="form-control-plaintext">{{ current_user.created_at or 'Not available' }}</div>
+                                <div class="form-control-plaintext">{{ current_user.created_at or 'Not available' }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -222,7 +297,10 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='auth.js') }}"></script>
 </body>
+
 </html>

@@ -31,6 +31,7 @@ from src.utils.constants import DEFAULT_BASE_URL
 
 # Import centralized logging
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 # Get standardized logger
 logger = get_logger(__name__)
@@ -518,7 +519,7 @@ class EmailService:
             log_path = EmailService._get_email_log_path()
             log_path.parent.mkdir(parents=True, exist_ok=True)
 
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = get_current_time().isoformat()
             sanitized_to = logger.sanitize(to_email, 120)
             sanitized_subject = logger.sanitize(subject, 200)
             error_text = logger.sanitize(error_message, 200) if error_message else None
@@ -628,7 +629,7 @@ class EmailService:
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -655,7 +656,7 @@ If you didn't create this account, you can safely ignore this email.
 
 This email was sent to {email}
 
-© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+© {get_current_time().year} Course Record Updater. All rights reserved.
         """
 
     @staticmethod
@@ -700,7 +701,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -729,7 +730,7 @@ If you didn't request this password reset, you can safely ignore this email. You
 
 This email was sent to {email}
 
-© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+© {get_current_time().year} Course Record Updater. All rights reserved.
         """
 
     @staticmethod
@@ -762,7 +763,7 @@ This email was sent to {email}
             <p>Hello, {user_name}</p>
             <p>Your password has been successfully reset for your Course Record Updater account.</p>
             <p><strong>Account:</strong> {email}</p>
-            <p><strong>Reset completed:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d at %H:%M UTC')}</p>
+            <p><strong>Reset completed:</strong> {get_current_time().strftime('%Y-%m-%d at %H:%M UTC')}</p>
             
             <h3>Security Information:</h3>
             <ul>
@@ -783,7 +784,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+            <p>© {get_current_time().year} Course Record Updater. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -803,7 +804,7 @@ Hello, {user_name}
 Your password has been successfully reset for your Course Record Updater account.
 
 Account: {email}
-Reset completed: {datetime.now(timezone.utc).strftime('%Y-%m-%d at %H:%M UTC')}
+Reset completed: {get_current_time().strftime('%Y-%m-%d at %H:%M UTC')}
 
 Security Information:
 - Your password has been securely updated
@@ -820,7 +821,7 @@ For security reasons, we recommend:
 
 This email was sent to {email}
 
-© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+© {get_current_time().year} Course Record Updater. All rights reserved.
         """
 
     @staticmethod
@@ -881,7 +882,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -923,7 +924,7 @@ If you're not sure why you received this invitation, please contact {inviter_nam
 
 This email was sent to {email}
 
-© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+© {get_current_time().year} Course Record Updater. All rights reserved.
         """
 
     @staticmethod
@@ -972,7 +973,7 @@ This email was sent to {email}
             <p>We're excited to have you on board!</p>
         </div>
         <div class="footer">
-            <p>&copy; {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -1003,7 +1004,7 @@ If you have any questions or need help getting started, don't hesitate to reach 
 
 We're excited to have you on board!
 
-© {datetime.now(timezone.utc).year} Course Record Updater. All rights reserved.
+© {get_current_time().year} Course Record Updater. All rights reserved.
         """
 
     @staticmethod
@@ -1135,7 +1136,7 @@ We're excited to have you on board!
         </div>
         <div class="footer">
             <p>This is an automated reminder from the Course Record Updater system.</p>
-            <p>© {datetime.now(timezone.utc).year} {escape(institution_name)}. All rights reserved.</p>
+            <p>© {get_current_time().year} {escape(institution_name)}. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -1178,7 +1179,7 @@ Thank you for your continued dedication to student success!
 
 ---
 This is an automated reminder from the Course Record Updater system.
-© {datetime.now(timezone.utc).year} {institution_name}. All rights reserved.
+© {get_current_time().year} {institution_name}. All rights reserved.
         """
 
 

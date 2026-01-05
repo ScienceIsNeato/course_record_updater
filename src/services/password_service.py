@@ -23,6 +23,7 @@ import bcrypt
 
 # Import centralized logging
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 # Get standardized logger
 logger = get_logger(__name__)
@@ -207,16 +208,14 @@ class PasswordService:
             Dictionary with token data
         """
         token = PasswordService.generate_reset_token()
-        expires_at = datetime.now(timezone.utc) + timedelta(
-            hours=RESET_TOKEN_EXPIRY_HOURS
-        )
+        expires_at = get_current_time() + timedelta(hours=RESET_TOKEN_EXPIRY_HOURS)
 
         return {
             "token": token,
             "user_id": user_id,
             "email": email,
             "expires_at": expires_at,
-            "created_at": datetime.now(timezone.utc),
+            "created_at": get_current_time(),
             "used": False,
         }
 
@@ -250,7 +249,7 @@ class PasswordService:
                 logger.error("[Password Service] Invalid expiry date format")
                 return False
 
-        if expires_at < datetime.now(timezone.utc):
+        if expires_at < get_current_time():
             logger.warning("[Password Service] Reset token expired")
             return False
 
@@ -303,7 +302,7 @@ class PasswordService:
         Args:
             email: User email that failed login
         """
-        now = datetime.now(timezone.utc)
+        now = get_current_time()
 
         if email not in PasswordService._failed_attempts:
             PasswordService._failed_attempts[email] = {
@@ -359,7 +358,7 @@ class PasswordService:
         if not locked_until:
             return False, None
 
-        now = datetime.now(timezone.utc)
+        now = get_current_time()
         if now >= locked_until:
             # Lockout expired, clear the data
             PasswordService.clear_failed_attempts(email)
@@ -396,7 +395,7 @@ class PasswordService:
 
         if is_locked:
             minutes_remaining = int(
-                (locked_until - datetime.now(timezone.utc)).total_seconds() / 60
+                (locked_until - get_current_time()).total_seconds() / 60
             )
             raise AccountLockedError(
                 f"Account is locked due to too many failed login attempts. "

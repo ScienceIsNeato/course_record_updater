@@ -23,6 +23,7 @@ from flask import current_app
 import src.database.database_service as db
 from src.models.models import Institution, Program, User, UserInvitation
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 from .email_service import send_verification_email, send_welcome_email
 from .password_service import PasswordService, PasswordValidationError
@@ -91,7 +92,7 @@ class RegistrationService:
 
             # Generate verification token
             verification_token = secrets.token_urlsafe(32)
-            verification_expires_at = datetime.now(timezone.utc) + timedelta(
+            verification_expires_at = get_current_time() + timedelta(
                 hours=VERIFICATION_TOKEN_EXPIRY_HOURS
             )
 
@@ -228,7 +229,7 @@ class RegistrationService:
                 except ValueError:
                     raise RegistrationError("Invalid verification token expiry format")
 
-            if expires_at < datetime.now(timezone.utc):
+            if expires_at < get_current_time():
                 raise RegistrationError("Verification token has expired")
 
             # Check if already verified
@@ -244,10 +245,10 @@ class RegistrationService:
             user_updates = {
                 "account_status": "active",
                 "email_verified": True,
-                "email_verified_at": datetime.now(timezone.utc),
+                "email_verified_at": get_current_time(),
                 "email_verification_token": None,
                 "email_verification_expires_at": None,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": get_current_time(),
             }
 
             db.update_user(user["id"], user_updates)
@@ -320,7 +321,7 @@ class RegistrationService:
 
             # Generate new verification token
             verification_token = secrets.token_urlsafe(32)
-            verification_expires_at = datetime.now(timezone.utc) + timedelta(
+            verification_expires_at = get_current_time() + timedelta(
                 hours=VERIFICATION_TOKEN_EXPIRY_HOURS
             )
 
@@ -328,7 +329,7 @@ class RegistrationService:
             user_updates = {
                 "email_verification_token": verification_token,
                 "email_verification_expires_at": verification_expires_at,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": get_current_time(),
             }
 
             db.update_user(user["id"], user_updates)
@@ -453,7 +454,7 @@ class RegistrationService:
             except ValueError:
                 return False
 
-        return verification_expires_at < datetime.now(timezone.utc)
+        return verification_expires_at < get_current_time()
 
     @staticmethod
     def _build_other_status(

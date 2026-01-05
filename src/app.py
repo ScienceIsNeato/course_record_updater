@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from datetime import datetime, timezone
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
@@ -16,7 +17,10 @@ from src.services.auth_service import (
 from src.services.email_service import EmailService
 
 # Import constants
-from src.utils.constants import DASHBOARD_ENDPOINT
+from src.utils.constants import (
+    DASHBOARD_ENDPOINT,
+    DATE_OVERRIDE_BANNER_PREFIX,
+)
 from src.utils.logging_config import get_app_logger
 
 from .api import register_blueprints  # New modular API structure
@@ -116,6 +120,35 @@ register_blueprints(app)  # New modular API structure
 
 # Configure email service (sets BASE_URL and other email settings)
 EmailService.configure_app(app)
+
+
+@app.before_request
+def load_system_date_override():
+    """Load system date override from current user into global context."""
+    from datetime import datetime, timezone
+
+    from flask import g
+
+    # Use localized import if needed, or rely on top-level
+    user = get_current_user()
+    if user:
+        # Check for override in user dict
+        override = user.get("system_date_override")
+        if override:
+            # Parse if string (from session/JSON)
+            if isinstance(override, str):
+                try:
+                    # Handle ISO string with potential Z
+                    override = datetime.fromisoformat(override.replace("Z", "+00:00"))
+                except ValueError:
+                    return  # Invalid format, ignore
+
+            # Ensure timezone awareness (UTC)
+            if isinstance(override, datetime):
+                if override.tzinfo is None:
+                    override = override.replace(tzinfo=timezone.utc)
+                g.system_date_override = override
+
 
 # Secret key configuration
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key")
@@ -303,7 +336,26 @@ def profile():
         flash("Please log in to access your profile.", "error")
         return redirect(url_for("login"))
 
-    return render_template("auth/profile.html", current_user=current_user)
+    override = current_user.get("system_date_override")
+    if isinstance(override, str):
+        try:
+            parsed_override = datetime.fromisoformat(override.replace("Z", "+00:00"))
+            if parsed_override.tzinfo is None:
+                parsed_override = parsed_override.replace(tzinfo=timezone.utc)
+            current_user = dict(current_user)
+            current_user["system_date_override"] = parsed_override
+        except ValueError:
+            logger.warning(
+                "Unable to parse system_date_override '%s' for user %s",
+                override,
+                current_user.get("user_id"),
+            )
+
+    return render_template(
+        "auth/profile.html",
+        current_user=current_user,
+        date_override_banner_prefix=DATE_OVERRIDE_BANNER_PREFIX,
+    )
 
 
 # Admin Routes

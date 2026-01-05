@@ -15,6 +15,7 @@ from src.services.audit_service import AuditService, EntityType
 from src.services.auth_service import permission_required
 from src.utils.constants import TIMEZONE_UTC_SUFFIX
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 # Create blueprint
 audit_bp = Blueprint("audit", __name__, url_prefix="/api/audit")
@@ -315,7 +316,7 @@ def export_logs():
         export_io.seek(0)
 
         # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = get_current_time().strftime("%Y%m%d_%H%M%S")
         filename = f"audit_logs_{timestamp}.{export_format}"
 
         # Determine mime type

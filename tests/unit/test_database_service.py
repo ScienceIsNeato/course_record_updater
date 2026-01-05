@@ -1,5 +1,7 @@
 """SQLite-backed database_service unit tests."""
 
+from datetime import date, timedelta
+
 import src.database.database_service as database_service
 
 
@@ -330,6 +332,14 @@ def test_get_all_programs():
     assert test_program["name"] == "Test Program"
 
 
+def _make_active_term_dates(buffer_days: int = 7) -> tuple[str, str]:
+    """Return ISO start/end dates that guarantee term is active today."""
+    today = date.today()
+    start_date = today - timedelta(days=buffer_days)
+    end_date = today + timedelta(days=90)
+    return start_date.isoformat(), end_date.isoformat()
+
+
 def test_get_all_terms():
     """Test getting all terms for an institution."""
     # Create test institution
@@ -343,12 +353,13 @@ def test_get_all_terms():
     )
 
     # Create test term
+    start_date, end_date = _make_active_term_dates()
     term_data = {
         "term_code": "FA2024",
         "term_name": "Fall 2024",
         "institution_id": inst_id,
-        "start_date": "2024-08-15",
-        "end_date": "2024-12-15",
+        "start_date": start_date,
+        "end_date": end_date,
     }
     term_id = database_service.create_term(term_data)
 

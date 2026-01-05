@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional
 
 import src.database.database_service as db
 from data.session import SessionService
+from src.utils.time_utils import get_current_time
 
 from .password_service import AccountLockedError, PasswordService
 
@@ -120,7 +121,7 @@ class LoginService:
             db.update_user(
                 user["user_id"],
                 {
-                    "last_login_at": datetime.now(timezone.utc),
+                    "last_login_at": get_current_time(),
                     "login_count": user.get("login_count", 0) + 1,
                 },
             )

@@ -520,9 +520,9 @@ def program_admin_authenticated_page(page: Page) -> Page:
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    # Use CS program admin from baseline seed
+    # Use CS program admin from baseline seed (DEFAULT_PASSWORD = InstitutionAdmin123!)
     page.fill('input[name="email"]', "bob.programadmin@mocku.test")
-    page.fill('input[name="password"]', "ProgramAdmin123!")
+    page.fill('input[name="password"]', "InstitutionAdmin123!")
     page.click('button[type="submit"]')
 
     try:

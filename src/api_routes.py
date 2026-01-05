@@ -211,6 +211,10 @@ def validate_context():
         or request.endpoint.startswith("api.clear_program_context")
         or request.endpoint.startswith("api.create_institution")
         or request.endpoint.startswith("api.list_institutions")
+        or request.endpoint.startswith("api.get_current_user_info")
+        or request.endpoint.startswith("api.get_system_date")
+        or request.endpoint.startswith("api.set_system_date")
+        or request.endpoint.startswith("api.clear_system_date")
         or "auth" in request.endpoint  # Skip for auth endpoints
     ):
         return
@@ -729,6 +733,122 @@ def get_current_user_info():
         )
     except Exception as e:
         return handle_api_error(e, "Get current user", "Failed to get user information")
+
+
+# ========================================
+# SYSTEM DATE OVERRIDE API
+# ========================================
+
+
+@api.route("/profile/system-date", methods=["GET"])
+def get_system_date():
+    """
+    Get current system date override status.
+
+    Only available to institution_admin and site_admin roles.
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        # Check role - only admins can access
+        role = current_user.get("role", "")
+        if role not in ["institution_admin", "site_admin"]:
+            return jsonify({"success": False, "error": "Admin access required"}), 403
+
+        override = current_user.get("system_date_override")
+        return jsonify(
+            {
+                "success": True,
+                "is_overridden": override is not None,
+                "override_date": override.isoformat() if override else None,
+            }
+        )
+    except Exception as e:
+        return handle_api_error(e, "Get system date", "Failed to get system date")
+
+
+@api.route("/profile/system-date", methods=["POST"])
+def set_system_date():
+    """
+    Set system date override.
+
+    Only available to institution_admin and site_admin roles.
+    Requires JSON body: {"date": "2024-01-15T12:00:00Z"}
+    """
+    from dateutil import parser as date_parser
+
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        # Check role - only admins can access
+        role = current_user.get("role", "")
+        if role not in ["institution_admin", "site_admin"]:
+            return jsonify({"success": False, "error": "Admin access required"}), 403
+
+        data = request.get_json()
+        if not data or "date" not in data:
+            return jsonify({"success": False, "error": "date field required"}), 400
+
+        try:
+            override_date = date_parser.parse(data["date"])
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "error": "Invalid date format"}), 400
+
+        # Update user record with override
+        user_id = current_user.get("user_id") or current_user.get("id")
+        update_user(user_id, {"system_date_override": override_date})
+
+        # Update session immediately so validation middleware picks it up
+        session["system_date_override"] = override_date.isoformat()
+
+        return jsonify(
+            {
+                "success": True,
+                "force_refresh": True,
+                "message": f"System date set to {override_date.isoformat()}",
+            }
+        )
+    except Exception as e:
+        return handle_api_error(e, "Set system date", "Failed to set system date")
+
+
+@api.route("/profile/system-date", methods=["DELETE"])
+def clear_system_date():
+    """
+    Clear system date override (return to real time).
+
+    Only available to institution_admin and site_admin roles.
+    """
+    try:
+        current_user = get_current_user()
+        if not current_user:
+            return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+        # Check role - only admins can access
+        role = current_user.get("role", "")
+        if role not in ["institution_admin", "site_admin"]:
+            return jsonify({"success": False, "error": "Admin access required"}), 403
+
+        # Clear override
+        user_id = current_user.get("user_id") or current_user.get("id")
+        update_user(user_id, {"system_date_override": None})
+
+        # Update session immediately
+        session.pop("system_date_override", None)
+
+        return jsonify(
+            {
+                "success": True,
+                "force_refresh": True,
+                "message": "System date reset to live",
+            }
+        )
+    except Exception as e:
+        return handle_api_error(e, "Clear system date", "Failed to clear system date")
 
 
 @api.route("/users", methods=["GET"])

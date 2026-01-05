@@ -20,6 +20,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship
 
+from src.utils.time_utils import get_current_time
+
 Base = declarative_base()  # type: ignore[valid-type,misc]
 
 # Constants for foreign key references
@@ -38,12 +40,12 @@ def generate_uuid() -> str:
 class TimestampMixin:
     """Common timestamp columns."""
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=get_current_time)
     updated_at = Column(
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=get_current_time,
+        onupdate=get_current_time,
     )
 
 
@@ -133,6 +135,8 @@ class User(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     password_reset_expires_at = Column(DateTime)
     extras = Column(PickleType, default=dict)
 
+    # Per-user date override for demos and testing (admin-only)
+    system_date_override = Column(DateTime)
     institution = relationship("Institution", back_populates="users")
     programs = relationship(
         "Program",
@@ -402,7 +406,7 @@ class UserInvitation(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     institution_id = Column(String, ForeignKey(INSTITUTIONS_ID), nullable=False)
     token = Column(String, nullable=False, unique=True)
     invited_by = Column(String)
-    invited_at = Column(DateTime, default=datetime.utcnow)
+    invited_at = Column(DateTime, default=get_current_time)
     expires_at = Column(DateTime)
     status = Column(String, default="pending")
     accepted_at = Column(DateTime)

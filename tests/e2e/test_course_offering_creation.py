@@ -34,8 +34,9 @@ def test_course_data(authenticated_program_admin_page: Page):
     page.fill("#courseDepartment", "Test Dept")
     page.fill("#courseCreditHours", "3")
 
-    # Select first program
-    page.locator("#courseProgramIds").select_option(index=0)
+    # Select "Computer Science" program (matches Bob's assignment)
+    # Bob is program admin for CS, so he must create course in CS to see it later.
+    page.locator("#courseProgramIds").select_option(label="Computer Science (CS)")
 
     # Handle the success alert dialog by auto-dismissing it
     page.on("dialog", lambda dialog: dialog.dismiss())
@@ -69,10 +70,15 @@ def test_create_offering_with_dynamic_sections(
     # 3. Fill basic offering details
     course_select = page.locator("#offeringCourseId")
     expect(course_select).not_to_be_empty()
-    course_select.select_option(label=re.compile(f"{course_number}"))
+    course_title = test_course_data["course_title"]
+
+    course_select.select_option(label=f"{course_number} - {course_title}")
 
     # Select Term (index 1)
     page.locator("#offeringTermId").select_option(index=1)
+
+    # Select Program (Required) - "Computer Science" matches Bob's program
+    page.locator("#offeringProgramId").select_option(label="Computer Science")
 
     # 4. Verify Dynamic Section UI
     expect(page.locator("#sectionsContainer")).to_be_visible()
@@ -101,4 +107,6 @@ def test_create_offering_with_dynamic_sections(
 
     # 8. Verify Dashboard Update
     page.goto(f"{BASE_URL}/dashboard")
-    expect(page.get_by_role("cell", name=course_number)).to_be_visible()
+    expect(
+        page.locator("#program-courses-table").get_by_role("cell", name=course_number)
+    ).to_be_visible()

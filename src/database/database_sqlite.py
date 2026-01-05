@@ -28,6 +28,7 @@ from src.models.models_sql import (
 )
 from src.utils.constants import DEFAULT_INSTITUTION_TIMEZONE
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 logger = get_logger(__name__)
 
@@ -961,6 +962,9 @@ class SQLiteDatabase(DatabaseInterface):
             return to_dict(term) if term else None
 
     def get_active_terms(self, institution_id: str) -> List[Dict[str, Any]]:
+        # Use system date override to determine "current" date for filtering
+        current_date_str = get_current_time().strftime("%Y-%m-%d")
+
         with self.sqlite.session_scope() as session:
             terms = (
                 session.execute(
@@ -968,6 +972,8 @@ class SQLiteDatabase(DatabaseInterface):
                         and_(
                             Term.institution_id == institution_id,
                             Term.active.is_(True),
+                            Term.start_date <= current_date_str,
+                            Term.end_date >= current_date_str,
                         )
                     )
                 )
@@ -1089,7 +1095,7 @@ class SQLiteDatabase(DatabaseInterface):
                     if hasattr(section, key) and key != "id":
                         setattr(section, key, value)
 
-                section.updated_at = datetime.now(timezone.utc)
+                section.updated_at = get_current_time()
                 return True
         except Exception as e:
             logger.error(f"Failed to update section: {e}")
@@ -1102,7 +1108,7 @@ class SQLiteDatabase(DatabaseInterface):
             {
                 "instructor_id": instructor_id,
                 "status": "assigned",
-                "assigned_date": datetime.now(timezone.utc),
+                "assigned_date": get_current_time(),
             },
         )
 
@@ -1427,7 +1433,7 @@ class SQLiteDatabase(DatabaseInterface):
             institution_id=payload.get("institution_id"),
             token=payload.get("token", str(uuid.uuid4())),
             invited_by=payload.get("invited_by"),
-            invited_at=payload.get("invited_at", datetime.now(timezone.utc)),
+            invited_at=payload.get("invited_at", get_current_time()),
             expires_at=payload.get("expires_at"),
             status=payload.get("status", "pending"),
             accepted_at=payload.get("accepted_at"),

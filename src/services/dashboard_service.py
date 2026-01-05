@@ -21,6 +21,7 @@ from src.database.database_service import (
     get_programs_by_institution,
 )
 from src.utils.logging_config import get_logger
+from src.utils.time_utils import get_current_time
 
 
 class DashboardServiceError(Exception):
@@ -67,7 +68,7 @@ class DashboardService:
         metadata = {
             "user_role": role,
             "data_scope": scope,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": get_current_time().isoformat(),
         }
         payload.setdefault("metadata", metadata)
         payload["metadata"].update(metadata)
@@ -1152,7 +1153,7 @@ class DashboardService:
         sections: Sequence[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         feed: List[Dict[str, Any]] = []
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = get_current_time().isoformat()
 
         # System activities should be attributed to SITE_ADMIN user
         from src.utils.constants import SYSTEM_USER_NAME

@@ -97,6 +97,14 @@ class SessionService:
             user_data.get("display_name")
             or f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
         )
+        if user_data.get("system_date_override"):
+            # Store as ISO string
+            date_val = user_data.get("system_date_override")
+            if hasattr(date_val, "isoformat"):
+                 session["system_date_override"] = date_val.isoformat()
+            else:
+                 session["system_date_override"] = str(date_val)
+
 
         # Session metadata
         session["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -198,6 +206,7 @@ class SessionService:
             "created_at": session.get("created_at"),
             "last_activity": session.get("last_activity"),
             "remember_me": session.get("remember_me", False),
+            "system_date_override": session.get("system_date_override"),
         }
 
     @staticmethod

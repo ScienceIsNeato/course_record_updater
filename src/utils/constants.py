@@ -73,6 +73,9 @@ DEFAULT_BASE_URL = "http://localhost:5000"
 TIMEZONE_UTC_SUFFIX = "+00:00"
 SYSTEM_USER_NAME = "System Administrator"
 
+# System date override messaging
+DATE_OVERRIDE_BANNER_PREFIX = "Date Override Mode"
+
 # CSRF error messages
 CSRF_ERROR_MESSAGE = "CSRF validation failed. Please refresh the page and try again."
 
