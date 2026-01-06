@@ -354,6 +354,7 @@ def profile():
     return render_template(
         "auth/profile.html",
         current_user=current_user,
+        user=current_user,
         date_override_banner_prefix=DATE_OVERRIDE_BANNER_PREFIX,
     )
 

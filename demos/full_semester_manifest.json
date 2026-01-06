@@ -35,5 +35,24 @@
                 ]
             }
         ]
+    },
+    "demo_scenarios": {
+        "needs_rework": {
+            "course_number": "BIOL-101",
+            "clo_number": "4",
+            "description": "Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
+            "assessment_method": "Midterm Exam",
+            "status": "submitted"
+        },
+        "nci": {
+            "course_number": "ZOOL-101",
+            "clo_number": "5",
+            "description": "Analyze long-term migration patterns of unicorns",
+            "assessment_method": "Dream Journal",
+            "status": "awaiting_approval"
+        }
+    },
+    "system_settings": {
+        "admin_date_override": "2025-10-15T09:00:00"
     }
 }

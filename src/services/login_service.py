@@ -148,6 +148,7 @@ class LoginService:
                     "display_name": user.get(
                         "display_name", user["email"].split("@")[0]
                     ),
+                    "system_date_override": user.get("system_date_override"),
                 },
                 remember_me,
             )

@@ -1,10 +1,12 @@
-
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
+
 from src.app import app
+from src.utils.constants import PROGRAM_NOT_FOUND_MSG, TERM_NOT_FOUND_MSG
 from tests.test_utils import create_test_session
-from src.utils.constants import TERM_NOT_FOUND_MSG, PROGRAM_NOT_FOUND_MSG
+
 
 class TestTermRoutes:
     """Test Term management API routes."""
@@ -21,7 +23,7 @@ class TestTermRoutes:
             "role": "institution_admin",
             "institution_id": "inst-1",
             "first_name": "Test",
-            "last_name": "Admin"
+            "last_name": "Admin",
         }
 
     @patch("src.api_routes.get_active_terms")
@@ -31,7 +33,7 @@ class TestTermRoutes:
         mock_get_terms.return_value = [{"term_id": "t1", "name": "Fall 2024"}]
 
         response = self.client.get("/api/terms")
-        
+
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data["success"] is True
@@ -48,7 +50,7 @@ class TestTermRoutes:
             "name": "Spring 2025",
             "start_date": "2025-01-01",
             "end_date": "2025-05-01",
-            "assessment_due_date": "2025-05-15"
+            "assessment_due_date": "2025-05-15",
         }
 
         response = self.client.post("/api/terms", json=payload, headers=self.headers)
@@ -62,7 +64,11 @@ class TestTermRoutes:
     def test_get_term_success(self, mock_get_term):
         """Test getting a term by ID."""
         create_test_session(self.client, self.admin_user)
-        mock_get_term.return_value = {"term_id": "t1", "name": "Fall 2024", "institution_id": "inst-1"}
+        mock_get_term.return_value = {
+            "term_id": "t1",
+            "name": "Fall 2024",
+            "institution_id": "inst-1",
+        }
 
         response = self.client.get("/api/terms/t1")
 
@@ -75,7 +81,7 @@ class TestTermRoutes:
     def test_get_term_not_found_or_access_denied(self, mock_get_term):
         """Test getting term that doesn't exist or wrong institution."""
         create_test_session(self.client, self.admin_user)
-        
+
         # Case 1: Term not found
         mock_get_term.return_value = None
         response = self.client.get("/api/terms/t999")
@@ -94,7 +100,9 @@ class TestTermRoutes:
         mock_get_term.return_value = {"term_id": "t1", "institution_id": "inst-1"}
         mock_update.return_value = True
 
-        response = self.client.put("/api/terms/t1", json={"name": "Updated Name"}, headers=self.headers)
+        response = self.client.put(
+            "/api/terms/t1", json={"name": "Updated Name"}, headers=self.headers
+        )
 
         assert response.status_code == 200
         assert json.loads(response.data)["success"] is True
@@ -104,7 +112,11 @@ class TestTermRoutes:
     def test_delete_term_success(self, mock_delete, mock_get_term):
         """Test deleting a term."""
         create_test_session(self.client, self.admin_user)
-        mock_get_term.return_value = {"term_id": "t1", "institution_id": "inst-1", "name": "Fall 2024"}
+        mock_get_term.return_value = {
+            "term_id": "t1",
+            "institution_id": "inst-1",
+            "name": "Fall 2024",
+        }
         mock_delete.return_value = True
 
         response = self.client.delete("/api/terms/t1")
@@ -128,14 +140,16 @@ class TestProgramRoutes:
             "role": "institution_admin",
             "institution_id": "inst-1",
             "first_name": "Test",
-            "last_name": "Admin"
+            "last_name": "Admin",
         }
 
     @patch("src.api_routes.get_programs_by_institution")
     def test_list_programs_success(self, mock_get_programs):
         """Test listing programs."""
         create_test_session(self.client, self.admin_user)
-        mock_get_programs.return_value = [{"program_id": "p1", "name": "Computer Science"}]
+        mock_get_programs.return_value = [
+            {"program_id": "p1", "name": "Computer Science"}
+        ]
 
         response = self.client.get("/api/programs")
 
@@ -179,7 +193,9 @@ class TestProgramRoutes:
         mock_get_program.return_value = {"program_id": "p1"}
         mock_update.return_value = True
 
-        response = self.client.put("/api/programs/p1", json={"name": "New Name"}, headers=self.headers)
+        response = self.client.put(
+            "/api/programs/p1", json={"name": "New Name"}, headers=self.headers
+        )
 
         assert response.status_code == 200
         assert json.loads(response.data)["success"] is True
@@ -187,23 +203,25 @@ class TestProgramRoutes:
     @patch("src.api_routes.get_program_by_id")
     @patch("src.api_routes.delete_program")
     @patch("src.api_routes.get_programs_by_institution")
-    def test_delete_program_success(self, mock_get_programs, mock_delete, mock_get_prog):
+    def test_delete_program_success(
+        self, mock_get_programs, mock_delete, mock_get_prog
+    ):
         """Test deleting a program."""
         create_test_session(self.client, self.admin_user)
-        
+
         # Setup program to delete
         mock_get_prog.return_value = {
-            "program_id": "p1", 
+            "program_id": "p1",
             "institution_id": "inst-1",
-            "is_default": False
+            "is_default": False,
         }
-        
+
         # Setup default program for reassignment
         mock_get_programs.return_value = [
             {"program_id": "p1", "is_default": False},
-            {"program_id": "default-p", "is_default": True}
+            {"program_id": "default-p", "is_default": True},
         ]
-        
+
         mock_delete.return_value = True
 
         response = self.client.delete("/api/programs/p1")

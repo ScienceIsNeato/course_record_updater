@@ -593,8 +593,9 @@ class DatabaseSeeder:
 class DemoSeeder(BaselineSeeder):
     """Complete seeding for product demonstrations (2025)"""
 
-    def __init__(self):
+    def __init__(self, manifest_path=None):
         super().__init__()
+        self.manifest_path = manifest_path
 
     def log(self, message: str):
         """Log with [SEED] prefix"""
@@ -603,10 +604,14 @@ class DemoSeeder(BaselineSeeder):
     def load_demo_manifest(self):
         """Load demo data from external JSON"""
         try:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            manifest_path = os.path.join(
-                script_dir, "..", "demos", "demo_data_manifest.json"
-            )
+            # Use provided path or fallback to default relative to script
+            if self.manifest_path:
+                manifest_path = os.path.abspath(self.manifest_path)
+            else:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                manifest_path = os.path.join(
+                    script_dir, "..", "demos", "full_semester_manifest.json"
+                )
 
             if os.path.exists(manifest_path):
                 self.log(f"📋 Loading demo data from {manifest_path}")
@@ -1043,69 +1048,95 @@ class DemoSeeder(BaselineSeeder):
         """Create specific CLO scenarios for the narrative (Rework, NCI)"""
         self.log("🎭 Creating narrative-specific CLO scenarios...")
 
+        manifest = self.load_demo_manifest()
+        scenarios = manifest.get("demo_scenarios", {})
+
         from src.models.models import CourseOutcome
         from src.utils.constants import CLOStatus
 
-        # 1. "Needs Rework" Scenario: mismatched text
-        # Find BIOL-101 course
-        biol101_id = None
-        for cid in course_ids:
-            c = db.get_course_by_id(cid)
-            if c and c.get("course_number") == "BIOL-101":
-                biol101_id = cid
-                break
-        
-        if biol101_id:
-            # Create a CLO that looks suspicious
-            schema = CourseOutcome.create_schema(
-                course_id=biol101_id,
-                clo_number="4",
-                description="Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
-                assessment_method="Midterm Exam",
-            )
-            schema["status"] = CLOStatus.SUBMITTED
-            schema["active"] = True
-            # Associate with one of the specific sections if possible, or just leave as course-level
-            # For now, course-level CLO is fine, the narrative will "find" it.
-            
-            if db.create_course_outcome(schema):
-                self.log("   ✓ Created 'Needs Rework' scenario (CLO #4)")
+        # Helper to map string status to Enum if needed
+        def get_status(status_str):
+            if status_str == "submitted":
+                return CLOStatus.AWAITING_APPROVAL
+            if status_str == "awaiting_approval":
+                return CLOStatus.AWAITING_APPROVAL
+            return CLOStatus.ASSIGNED
 
-        # 2. "NCI" Scenario: Unreachable faculty
-        # Find ZOOL-101
-        zool101_id = None
-        for cid in course_ids:
-            c = db.get_course_by_id(cid)
-            if c and c.get("course_number") == "ZOOL-101":
-                zool101_id = cid
-                break
-        
-        if zool101_id:
-             # Create a CLO that is stuck in Awaiting Approval
-            schema = CourseOutcome.create_schema(
-                course_id=zool101_id,
-                clo_number="5",
-                description="Analyze long-term migration patterns of unicorns",
-                assessment_method="Dream Journal",
-            )
-            schema["status"] = CLOStatus.AWAITING_APPROVAL
-            schema["active"] = True
-            
-            if db.create_course_outcome(schema):
-                self.log("   ✓ Created 'NCI' scenario (CLO #5)")
+        # 1. "Needs Rework" Scenario
+        rework_data = scenarios.get("needs_rework")
+        if rework_data:
+            course_num = rework_data.get("course_number")
+            # Find course ID
+            course_id = None
+            for cid in course_ids:
+                c = db.get_course_by_id(cid)
+                if c and c.get("course_number") == course_num:
+                    course_id = cid
+                    break
+
+            if course_id:
+                schema = CourseOutcome.create_schema(
+                    course_id=course_id,
+                    clo_number=rework_data.get("clo_number"),
+                    description=rework_data.get("description"),
+                    assessment_method=rework_data.get("assessment_method"),
+                )
+                schema["status"] = get_status(rework_data.get("status"))
+                schema["active"] = True
+
+                if db.create_course_outcome(schema):
+                    self.log(
+                        f"   ✓ Created 'Needs Rework' scenario (CLO #{rework_data.get('clo_number')})"
+                    )
+
+        # 2. "NCI" Scenario
+        nci_data = scenarios.get("nci")
+        if nci_data:
+            course_num = nci_data.get("course_number")
+            # Find course ID
+            course_id = None
+            for cid in course_ids:
+                c = db.get_course_by_id(cid)
+                if c and c.get("course_number") == course_num:
+                    course_id = cid
+                    break
+
+            if course_id:
+                schema = CourseOutcome.create_schema(
+                    course_id=course_id,
+                    clo_number=nci_data.get("clo_number"),
+                    description=nci_data.get("description"),
+                    assessment_method=nci_data.get("assessment_method"),
+                )
+                schema["status"] = get_status(nci_data.get("status"))
+                schema["active"] = True
+
+                if db.create_course_outcome(schema):
+                    self.log(
+                        f"   ✓ Created 'NCI' scenario (CLO #{nci_data.get('clo_number')})"
+                    )
 
     def set_admin_date_override(self):
-        """Set system date override for the demo admin to mid-October 2025"""
+        """Set system date override for the demo admin"""
         self.log("⏰ Setting initial date override for admin...")
-        
+
+        manifest = self.load_demo_manifest()
+        date_str = manifest.get("system_settings", {}).get("admin_date_override")
+
+        if not date_str:
+            self.log("   Info: No date override found in manifest system_settings")
+            return
+
         admin_email = "demo2025.admin@example.com"
         user = db.get_user_by_email(admin_email)
-        
+
         if user:
-            # Oct 15, 2025 - Mid-semester FA2025
-            override_date = datetime(2025, 10, 15, 9, 0, 0)
-            db.update_user(user["user_id"], {"system_date_override": override_date})
-            self.log(f"   ✓ Set {admin_email} date to 2025-10-15")
+            try:
+                override_date = datetime.fromisoformat(date_str)
+                db.update_user(user["user_id"], {"system_date_override": override_date})
+                self.log(f"   ✓ Set {admin_email} date to {date_str}")
+            except ValueError:
+                self.log(f"   ⚠️ Invalid date format in manifest: {date_str}")
         else:
             self.log(f"   ⚠️ Could not find {admin_email} to set date override")
 
@@ -1183,7 +1214,7 @@ class DemoSeeder(BaselineSeeder):
             inst_id, course_ids, term_id, instructor_ids
         )
         self.create_demo_clos(course_ids)
-        
+
         # Create narrative-specific scenarios (Rework, NCI)
         self.create_scenario_specific_clos(course_ids, instructor_ids)
 
@@ -1415,7 +1446,7 @@ def main():
     globals()["hash_password"] = hash_password
 
     if args.demo:
-        seeder = DemoSeeder()
+        seeder = DemoSeeder(manifest_path=args.manifest)
 
         if args.clear:
             seeder.log("🧹 Clearing database...")

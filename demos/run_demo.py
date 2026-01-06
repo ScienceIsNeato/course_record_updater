@@ -20,6 +20,7 @@ Features:
 import argparse
 import json
 import os
+import shlex
 import subprocess  # nosec B404
 import sys
 from datetime import datetime
@@ -42,7 +43,7 @@ BOLD = '\033[1m'
 NC = '\033[0m'  # No Color
 
 class DemoRunner:
-    def __init__(self, demo_file: Path, auto_mode: bool = False, start_step: int = 1, 
+    def __init__(self, demo_file: Path, auto_mode: bool = False, start_step: int = 1,
                  fail_fast: bool = False, verify_only: bool = False):
         self.demo_file = demo_file
         self.auto_mode = auto_mode
@@ -55,6 +56,8 @@ class DemoRunner:
         self.session = requests.Session()  # For maintaining auth cookies
         self.csrf_token = None  # CSRF token for API calls
         self.errors = []  # Track all errors encountered during demo
+        self.working_dir: Path = Path(os.getcwd())
+        self.manifest_path: Optional[Path] = None
         
     def load_demo(self) -> bool:
         """Load and parse the demo JSON file."""
@@ -83,27 +86,74 @@ class DemoRunner:
         
         self.print_info(f"Artifacts will be saved to: {self.artifact_dir}")
     
+    def validate_environment(self) -> None:
+        """Ensure working directory and manifest referenced by demo exist."""
+        env_config = self.demo_data.get('environment', {})
+        working_directory = env_config.get('working_directory')
+
+        if working_directory:
+            candidate = Path(working_directory)
+            if not candidate.is_absolute():
+                candidate = (self.demo_file.parent / candidate).resolve()
+        else:
+            candidate = self.demo_file.parent
+
+        if not candidate.exists():
+            self.print_error(f"Configured working directory does not exist: {candidate}")
+            sys.exit(1)
+
+        self.working_dir = candidate
+
+        setup_commands = env_config.get('setup_commands', [])
+        self.manifest_path = self._extract_manifest_path(setup_commands)
+
+        if self.manifest_path is None:
+            self.print_error("Demo setup commands must include --manifest <path> for seeding")
+            sys.exit(1)
+
+        if not self.manifest_path.exists():
+            self.print_error(f"Manifest file not found: {self.manifest_path}")
+            sys.exit(1)
+
+        if not any("scripts/seed_db.py" in cmd for cmd in setup_commands):
+            self.print_error("Setup commands must include scripts/seed_db.py invocation")
+            sys.exit(1)
+
+        if not any("--demo" in cmd for cmd in setup_commands if "scripts/seed_db.py" in cmd):
+            self.print_error("Demo seeding command must include --demo flag")
+            sys.exit(1)
+
+    def _extract_manifest_path(self, setup_commands: List[str]) -> Optional[Path]:
+        """Extract manifest path from setup commands."""
+        for cmd in setup_commands:
+            try:
+                parts = shlex.split(cmd)
+            except ValueError:
+                continue
+
+            for index, part in enumerate(parts):
+                if part == '--manifest' and index + 1 < len(parts):
+                    manifest_candidate = Path(parts[index + 1])
+                    if not manifest_candidate.is_absolute():
+                        manifest_candidate = (self.working_dir / manifest_candidate).resolve()
+                    return manifest_candidate
+
+        return None
+
     def run_setup(self) -> bool:
         """Run environment setup commands."""
         env_config = self.demo_data.get('environment', {})
         setup_commands = env_config.get('setup_commands', [])
-        working_dir = env_config.get('working_directory', os.getcwd())
-        
+
         if not setup_commands:
             return True
-        
+
         self.print_header("Environment Setup")
-        print(f"Working Directory: {CYAN}{working_dir}{NC}\n")
+        print(f"Working Directory: {CYAN}{self.working_dir}{NC}\n")
         print("The following commands will prepare the demo environment:\n")
-        
+
         for i, cmd in enumerate(setup_commands, 1):
             print(f"  {i}. {CYAN}{cmd}{NC}")
-        
-        if not self.auto_mode and not self.verify_only:
-            response = input(f"\n{YELLOW}Run setup commands? (y/n): {NC}").strip().lower()
-            if response != 'y':
-                print(f"{YELLOW}Setup skipped. Make sure environment is prepared manually.{NC}\n")
-                return True
         
         if self.verify_only:
             print(f"{YELLOW}[VERIFY-ONLY MODE] Skipping setup execution{NC}\n")
@@ -112,17 +162,11 @@ class DemoRunner:
         # Change to working directory for setup
         original_dir = os.getcwd()
         try:
-            os.chdir(working_dir)
+            os.chdir(self.working_dir)
             print()
             for cmd in setup_commands:
-                if not self.run_command(cmd, "Setup"):
-                    if not self.auto_mode:
-                        response = input(f"{YELLOW}Setup command failed. Continue anyway? (y/n): {NC}").strip().lower()
-                        if response != 'y':
-                            return False
-                    else:
-                        if self.fail_fast:
-                            return False
+                if not self.run_command(cmd, label="Setup"):
+                    return False
             
             self.print_success("Setup complete!")
             return True
@@ -133,6 +177,8 @@ class DemoRunner:
         """Main demo execution loop."""
         if not self.load_demo():
             sys.exit(1)
+
+        self.validate_environment()
 
         if not self.verify_only:
             self.setup_artifacts()
@@ -672,10 +718,10 @@ class DemoRunner:
     
     def run_command(self, cmd: str, label: str = "Command") -> bool:
         """Run a shell command and return success status."""
-        print(f"{CYAN}Running: {cmd}{NC}")
+        print(f"{CYAN}{label}: {cmd}{NC}")
         
         # Get working directory from environment config
-        working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
+        working_dir = self.working_dir
         
         try:
             # nosec B602 - shell=True is intentional for demo script commands
