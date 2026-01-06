@@ -2,11 +2,14 @@
 Unit tests for Password Management Service
 
 Tests password hashing, validation, reset tokens, and security policies.
+
+NOTE: Most tests use mocked bcrypt for speed (~0.01s vs ~0.2s per hash).
+test_hash_consistency uses real bcrypt to verify actual integration.
 """
 
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import g
@@ -23,10 +26,37 @@ from src.services.password_service import (
     verify_password,
 )
 
+# Fast bcrypt mock for performance - returns predictable hash based on password
+_MOCK_HASH_PREFIX = b"$2b$04$mockhash"
+
+
+def _mock_hashpw(password: bytes, salt: bytes) -> bytes:
+    """Fast mock for bcrypt.hashpw"""
+    # Return a deterministic hash based on password content
+    return _MOCK_HASH_PREFIX + password[:20]
+
+
+def _mock_gensalt(rounds: int = 12) -> bytes:
+    """Fast mock for bcrypt.gensalt"""
+    return b"$2b$04$testsalt00000000000000"
+
+
+def _mock_checkpw(password: bytes, hashed: bytes) -> bool:
+    """Fast mock for bcrypt.checkpw - matches our mock hash format"""
+    if hashed.startswith(_MOCK_HASH_PREFIX):
+        # Our mock hash format - check if password matches
+        return hashed == _MOCK_HASH_PREFIX + password[:20]
+    return False
+
 
 class TestPasswordHashing:
-    """Test password hashing and verification functionality"""
+    """Test password hashing and verification functionality
 
+    Most tests use mocked bcrypt for speed. test_hash_consistency uses real bcrypt.
+    """
+
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     def test_hash_password_success(self):
         """Test successful password hashing"""
         from tests.test_credentials import TEST_PASSWORD
@@ -54,6 +84,9 @@ class TestPasswordHashing:
         with pytest.raises(Exception, match="bcrypt failed"):
             hash_password("ValidPassword123!")
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
         from tests.test_credentials import TEST_PASSWORD
@@ -63,6 +96,9 @@ class TestPasswordHashing:
 
         assert verify_password(password, hashed) is True
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
         from tests.test_credentials import TEST_PASSWORD
@@ -83,7 +119,11 @@ class TestPasswordHashing:
         assert verify_password(password, invalid_hash) is False
 
     def test_hash_consistency(self):
-        """Test that same password produces different hashes (due to salt)"""
+        """Test that same password produces different hashes (due to salt)
+
+        NOTE: This test uses REAL bcrypt to verify actual integration.
+        It's intentionally slower (~0.5s) to test the real password flow.
+        """
         from tests.test_credentials import TEST_PASSWORD
 
         password = TEST_PASSWORD
@@ -399,6 +439,9 @@ class TestRateLimiting:
 class TestPasswordServiceIntegration:
     """Integration tests for password service"""
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_complete_password_lifecycle(self):
         """Test complete password creation and verification cycle"""
         password = "SecurePass123!"

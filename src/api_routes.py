@@ -201,26 +201,40 @@ def _resolve_institution_scope(require: bool = True):
     return current_user, [], False
 
 
+# Endpoints that skip context validation (checked before requiring institution context)
+_CONTEXT_SKIP_ENDPOINT_PREFIXES = frozenset(
+    [
+        "api.get_program_context",
+        "api.switch_program_context",
+        "api.clear_program_context",
+        "api.create_institution",
+        "api.list_institutions",
+        "api.get_current_user_info",
+        "api.get_system_date",
+        "api.set_system_date",
+        "api.clear_system_date",
+    ]
+)
+
+
+def _should_skip_context_validation(endpoint: str) -> bool:
+    """Check if the endpoint should skip context validation."""
+    if not endpoint:
+        return True
+    if not endpoint.startswith("api."):
+        return True
+    if "auth" in endpoint:
+        return True
+    return any(
+        endpoint.startswith(prefix) for prefix in _CONTEXT_SKIP_ENDPOINT_PREFIXES
+    )
+
+
 @api.before_request
 def validate_context():
     """Validate institution and program context for API requests"""
-    # Skip validation for context management endpoints
-    if request.endpoint and (
-        request.endpoint.startswith("api.get_program_context")
-        or request.endpoint.startswith("api.switch_program_context")
-        or request.endpoint.startswith("api.clear_program_context")
-        or request.endpoint.startswith("api.create_institution")
-        or request.endpoint.startswith("api.list_institutions")
-        or request.endpoint.startswith("api.get_current_user_info")
-        or request.endpoint.startswith("api.get_system_date")
-        or request.endpoint.startswith("api.set_system_date")
-        or request.endpoint.startswith("api.clear_system_date")
-        or "auth" in request.endpoint  # Skip for auth endpoints
-    ):
-        return
-
-    # Skip validation for non-API endpoints
-    if not request.endpoint or not request.endpoint.startswith("api."):
+    # Skip validation for certain endpoints and methods
+    if _should_skip_context_validation(request.endpoint):
         return
 
     # Skip validation for OPTIONS requests (CORS preflight)

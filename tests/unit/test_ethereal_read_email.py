@@ -95,9 +95,14 @@ class TestEtherealProviderReadEmail:
         assert result is not None
         assert "ABC123XYZ" in result["body"]
 
+    @patch("src.email_providers.ethereal_provider.time.sleep")
+    @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_no_match_found(self, mock_imap_class):
+    def test_read_email_no_match_found(self, mock_imap_class, mock_time, mock_sleep):
         """Test reading email when no match is found"""
+        # Mock time to avoid real waits - simulate immediate timeout
+        mock_time.side_effect = [0, 2]  # Start at 0, next call exceeds timeout
+
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
         mock_mail.search.return_value = (None, [b"1"])
@@ -160,9 +165,14 @@ class TestEtherealProviderReadEmail:
         # IMAP should not be called for wrong recipient
         mock_imap_class.assert_not_called()
 
+    @patch("src.email_providers.ethereal_provider.time.sleep")
+    @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_imap_error(self, mock_imap_class):
+    def test_read_email_imap_error(self, mock_imap_class, mock_time, mock_sleep):
         """Test handling IMAP connection errors"""
+        # Mock time to avoid real waits - simulate immediate timeout
+        mock_time.side_effect = [0, 2]  # Start at 0, next call exceeds timeout
+
         mock_imap_class.side_effect = Exception("IMAP connection failed")
 
         provider = EtherealProvider()
@@ -217,9 +227,14 @@ class TestEtherealProviderReadEmail:
         assert "Plain text version" in result["body"]
         assert "HTML version" in result["html_body"]
 
+    @patch("src.email_providers.ethereal_provider.time.sleep")
+    @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_empty_inbox(self, mock_imap_class):
+    def test_read_email_empty_inbox(self, mock_imap_class, mock_time, mock_sleep):
         """Test reading from empty inbox"""
+        # Mock time to avoid real waits - simulate immediate timeout
+        mock_time.side_effect = [0, 2]  # Start at 0, next call exceeds timeout
+
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
         mock_mail.search.return_value = (None, [b""])  # Empty result
@@ -240,9 +255,16 @@ class TestEtherealProviderReadEmail:
 
         assert result is None
 
+    @patch("src.email_providers.ethereal_provider.time.sleep")
+    @patch("src.email_providers.ethereal_provider.time.time")
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")
-    def test_read_email_invalid_fetch_result(self, mock_imap_class):
+    def test_read_email_invalid_fetch_result(
+        self, mock_imap_class, mock_time, mock_sleep
+    ):
         """Test handling invalid fetch results"""
+        # Mock time to avoid real waits - simulate immediate timeout
+        mock_time.side_effect = [0, 2]  # Start at 0, next call exceeds timeout
+
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
         mock_mail.search.return_value = (None, [b"1"])

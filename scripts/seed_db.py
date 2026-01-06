@@ -1039,6 +1039,76 @@ class DemoSeeder(BaselineSeeder):
             if db.create_course_outcome(schema):
                 self.log("   ✓ Created unassigned CLO #99")
 
+    def create_scenario_specific_clos(self, course_ids, instructor_ids):
+        """Create specific CLO scenarios for the narrative (Rework, NCI)"""
+        self.log("🎭 Creating narrative-specific CLO scenarios...")
+
+        from src.models.models import CourseOutcome
+        from src.utils.constants import CLOStatus
+
+        # 1. "Needs Rework" Scenario: mismatched text
+        # Find BIOL-101 course
+        biol101_id = None
+        for cid in course_ids:
+            c = db.get_course_by_id(cid)
+            if c and c.get("course_number") == "BIOL-101":
+                biol101_id = cid
+                break
+        
+        if biol101_id:
+            # Create a CLO that looks suspicious
+            schema = CourseOutcome.create_schema(
+                course_id=biol101_id,
+                clo_number="4",
+                description="Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
+                assessment_method="Midterm Exam",
+            )
+            schema["status"] = CLOStatus.SUBMITTED
+            schema["active"] = True
+            # Associate with one of the specific sections if possible, or just leave as course-level
+            # For now, course-level CLO is fine, the narrative will "find" it.
+            
+            if db.create_course_outcome(schema):
+                self.log("   ✓ Created 'Needs Rework' scenario (CLO #4)")
+
+        # 2. "NCI" Scenario: Unreachable faculty
+        # Find ZOOL-101
+        zool101_id = None
+        for cid in course_ids:
+            c = db.get_course_by_id(cid)
+            if c and c.get("course_number") == "ZOOL-101":
+                zool101_id = cid
+                break
+        
+        if zool101_id:
+             # Create a CLO that is stuck in Awaiting Approval
+            schema = CourseOutcome.create_schema(
+                course_id=zool101_id,
+                clo_number="5",
+                description="Analyze long-term migration patterns of unicorns",
+                assessment_method="Dream Journal",
+            )
+            schema["status"] = CLOStatus.AWAITING_APPROVAL
+            schema["active"] = True
+            
+            if db.create_course_outcome(schema):
+                self.log("   ✓ Created 'NCI' scenario (CLO #5)")
+
+    def set_admin_date_override(self):
+        """Set system date override for the demo admin to mid-October 2025"""
+        self.log("⏰ Setting initial date override for admin...")
+        
+        admin_email = "demo2025.admin@example.com"
+        user = db.get_user_by_email(admin_email)
+        
+        if user:
+            # Oct 15, 2025 - Mid-semester FA2025
+            override_date = datetime(2025, 10, 15, 9, 0, 0)
+            db.update_user(user["user_id"], {"system_date_override": override_date})
+            self.log(f"   ✓ Set {admin_email} date to 2025-10-15")
+        else:
+            self.log(f"   ⚠️ Could not find {admin_email} to set date override")
+
     def link_courses_to_programs(self, institution_id):
         """Link courses to programs based on course prefixes"""
         self.log("🔗 Linking courses to programs...")
@@ -1113,6 +1183,13 @@ class DemoSeeder(BaselineSeeder):
             inst_id, course_ids, term_id, instructor_ids
         )
         self.create_demo_clos(course_ids)
+        
+        # Create narrative-specific scenarios (Rework, NCI)
+        self.create_scenario_specific_clos(course_ids, instructor_ids)
+
+        # Set initial date override for admin to start the story in Oct 2025
+        self.set_admin_date_override()
+
         self.create_historical_data(
             inst_id, program_ids, manifest.get("historical_data")
         )

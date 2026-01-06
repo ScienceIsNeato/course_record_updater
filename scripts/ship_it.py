@@ -259,14 +259,14 @@ class QualityGateExecutor:
             if proc.poll() is None:
                 try:
                     proc.terminate()
-                except Exception:
+                except Exception:  # nosec B110 - Process may already be dead
                     pass
                 try:
                     proc.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     try:
                         proc.kill()
-                    except Exception:
+                    except Exception:  # nosec B110 - Process may already be dead
                         pass
 
     def run_checks_parallel(
@@ -1730,6 +1730,142 @@ def write_pr_comments_scratch(comments, new_comments=None):
         print(f"⚠️  Could not write scratch file: {e}")
 
 
+def _handle_pr_validation(args) -> int:
+    """Handle PR validation with comprehensive batch reporting.
+
+    Returns:
+        Exit code (0 for success, 1 for failures)
+    """
+    pr_number, _, _ = _get_pr_context()
+    if not pr_number:
+        print("⚠️  Not in a PR context. Skipping PR-specific checks.")
+        print("   Run this command from a branch with an associated PR.")
+        return None  # Signal to fall through to regular validation
+
+    # Step 1: Run all quality checks in parallel
+    print("=" * 70)
+    print("🔍 PR VALIDATION: Running all checks in parallel...")
+    print("=" * 70)
+    print()
+
+    executor = QualityGateExecutor()
+
+    # Determine which checks to run
+    if args.checks is None:
+        checks_to_run = executor.pr_checks
+    else:
+        available_checks = {flag: (flag, name) for flag, name in executor.all_checks}
+        checks_to_run = [
+            available_checks[c] for c in args.checks if c in available_checks
+        ]
+
+    fail_fast = not args.no_fail_fast
+
+    if fail_fast:
+        print(
+            "🚨 Fail-fast enabled: PR validation will stop after the first failure. Use --no-fail-fast to gather all failures."
+        )
+    else:
+        print("ℹ️ Fail-fast disabled: collecting results for all checks.")
+
+    # Run checks (may exit early when fail-fast is enabled)
+    start_time = time.time()
+    quality_results = executor.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
+    total_duration = time.time() - start_time
+
+    # Format and display results
+    executor.logger.info(
+        "\n" + executor.format_results(quality_results, total_duration)
+    )
+
+    failed_checks = [
+        result for result in quality_results if result.status == CheckStatus.FAILED
+    ]
+
+    if fail_fast and failed_checks:
+        print()
+        print(
+            "🚫 Fail-fast triggered: skipping PR context collection. Re-run with --no-fail-fast to gather a full report once issues are fixed."
+        )
+        return 1
+
+    # Step 2: Collect CI status and PR comments
+    print()
+    print("=" * 70)
+    print("📊 Collecting PR context (CI status, comments)...")
+    print("=" * 70)
+    print()
+
+    ci_status = check_ci_status()
+    comments_data = check_pr_comments()
+
+    # Step 3: Generate comprehensive report
+    print()
+    print("=" * 70)
+    print("📝 Generating PR Issues Report...")
+    print("=" * 70)
+    print()
+
+    report = generate_pr_issues_report(
+        ci_status, comments_data, quality_results, pr_number
+    )
+
+    # Write comments scratch file
+    all_comments, new_comments = comments_data
+    if all_comments:
+        write_pr_comments_scratch(all_comments, new_comments)
+
+    # Step 4: Print summary
+    _print_pr_summary(report)
+
+    return 0 if report["summary"]["total_items"] == 0 else 1
+
+
+def _print_pr_summary(report: dict) -> None:
+    """Print the PR validation summary."""
+    print()
+    print("=" * 70)
+    print("📋 PR VALIDATION SUMMARY")
+    print("=" * 70)
+    print()
+    print(f"✅ Report generated: {report['file_path']}")
+    print(f"📌 Commit: {report['commit_sha'][:8]}")
+    print(f"🕐 Timestamp: {report['timestamp']}")
+    print()
+    print("📊 Summary:")
+    print(f"  - Total Checklist Items: {report['summary']['total_items']}")
+    ci_status_str = (
+        "✅ Passed"
+        if report["summary"]["ci_passed"] is True
+        else "❌ Failed" if report["summary"]["ci_passed"] is False else "⚠️ Unknown"
+    )
+    print(f"  - CI Status: {ci_status_str}")
+    print(
+        f"  - Outstanding Comments: {report['summary']['comments_count']} ({report['summary']['new_comments_count']} new)"
+    )
+    print(
+        f"  - Quality Checks: {report['summary']['passed_checks']} passed, {report['summary']['failed_checks']} failed"
+    )
+
+    if report.get("error_log_files"):
+        print(f"\n📄 Error Logs Generated ({len(report['error_log_files'])}):")
+        for check_name, log_file in report["error_log_files"].items():
+            check_flag = _get_check_flag_for_result(check_name)
+            print(f"  • {check_name}: {log_file}")
+            print(f"    View: python scripts/view_check_error.py {check_flag}")
+
+    print()
+    print("💡 Next Steps:")
+    print("   1. Review the checklist in the report file")
+    print("   2. View full error details:")
+    print("      - Use: python scripts/view_check_error.py <check-name>")
+    print("      - Or: cat logs/pr_<PR>_error_<check>_<commit>.log")
+    print("   3. Address ALL items before pushing commits")
+    print("   4. Do NOT push or re-run validation until all items are addressed")
+    print("   5. After pushing commits and CI completes, re-run PR validation")
+    print()
+
+
 def main():
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
@@ -1782,133 +1918,10 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
 
     # Handle PR validation with comprehensive batch reporting
     if args.validation_type == "PR" and not args.skip_pr_comments:
-        pr_number, _, _ = _get_pr_context()
-        if not pr_number:
-            print("⚠️  Not in a PR context. Skipping PR-specific checks.")
-            print("   Run this command from a branch with an associated PR.")
-            # Fall through to regular validation
-
-        # Step 1: Run all quality checks in parallel (NO fail-fast)
-        print("=" * 70)
-        print("🔍 PR VALIDATION: Running all checks in parallel...")
-        print("=" * 70)
-        print()
-
-        executor = QualityGateExecutor()
-        validation_type = ValidationType.PR
-
-        # Determine which checks to run
-        if args.checks is None:
-            checks_to_run = executor.pr_checks
-        else:
-            available_checks = {
-                flag: (flag, name) for flag, name in executor.all_checks
-            }
-            checks_to_run = [
-                available_checks[c] for c in args.checks if c in available_checks
-            ]
-
-        fail_fast = not args.no_fail_fast
-
-        if fail_fast:
-            print(
-                "🚨 Fail-fast enabled: PR validation will stop after the first failure. Use --no-fail-fast to gather all failures."
-            )
-        else:
-            print("ℹ️ Fail-fast disabled: collecting results for all checks.")
-
-        # Run checks (may exit early when fail-fast is enabled)
-        start_time = time.time()
-        quality_results = executor.run_checks_parallel(
-            checks_to_run, fail_fast=fail_fast
-        )
-        total_duration = time.time() - start_time
-
-        # Format and display results
-        executor.logger.info(
-            "\n" + executor.format_results(quality_results, total_duration)
-        )
-
-        failed_checks = [
-            result for result in quality_results if result.status == CheckStatus.FAILED
-        ]
-
-        if fail_fast and failed_checks:
-            print()
-            print(
-                "🚫 Fail-fast triggered: skipping PR context collection. Re-run with --no-fail-fast to gather a full report once issues are fixed."
-            )
-            sys.exit(1)
-
-        # Step 2: Collect CI status and PR comments
-        print()
-        print("=" * 70)
-        print("📊 Collecting PR context (CI status, comments)...")
-        print("=" * 70)
-        print()
-
-        ci_status = check_ci_status()
-        comments_data = check_pr_comments()
-
-        # Step 3: Generate comprehensive report
-        print()
-        print("=" * 70)
-        print("📝 Generating PR Issues Report...")
-        print("=" * 70)
-        print()
-
-        report = generate_pr_issues_report(
-            ci_status, comments_data, quality_results, pr_number
-        )
-
-        # Write comments scratch file
-        all_comments, new_comments = comments_data
-        if all_comments:
-            write_pr_comments_scratch(all_comments, new_comments)
-
-        # Step 4: Print summary
-        print()
-        print("=" * 70)
-        print("📋 PR VALIDATION SUMMARY")
-        print("=" * 70)
-        print()
-        print(f"✅ Report generated: {report['file_path']}")
-        print(f"📌 Commit: {report['commit_sha'][:8]}")
-        print(f"🕐 Timestamp: {report['timestamp']}")
-        print()
-        print(f"📊 Summary:")
-        print(f"  - Total Checklist Items: {report['summary']['total_items']}")
-        print(
-            f"  - CI Status: {'✅ Passed' if report['summary']['ci_passed'] is True else '❌ Failed' if report['summary']['ci_passed'] is False else '⚠️ Unknown'}"
-        )
-        print(
-            f"  - Outstanding Comments: {report['summary']['comments_count']} ({report['summary']['new_comments_count']} new)"
-        )
-        print(
-            f"  - Quality Checks: {report['summary']['passed_checks']} passed, {report['summary']['failed_checks']} failed"
-        )
-
-        if report.get("error_log_files"):
-            print(f"\n📄 Error Logs Generated ({len(report['error_log_files'])}):")
-            for check_name, log_file in report["error_log_files"].items():
-                check_flag = _get_check_flag_for_result(check_name)
-                print(f"  • {check_name}: {log_file}")
-                print(f"    View: python scripts/view_check_error.py {check_flag}")
-
-        print()
-        print("💡 Next Steps:")
-        print("   1. Review the checklist in the report file")
-        print("   2. View full error details:")
-        print("      - Use: python scripts/view_check_error.py <check-name>")
-        print("      - Or: cat logs/pr_<PR>_error_<check>_<commit>.log")
-        print("   3. Address ALL items before pushing commits")
-        print("   4. Do NOT push or re-run validation until all items are addressed")
-        print("   5. After pushing commits and CI completes, re-run PR validation")
-        print()
-
-        # Don't exit early - let the process complete normally
-        # Exit code indicates if there were any failures, but don't block
-        sys.exit(0 if report["summary"]["total_items"] == 0 else 1)
+        exit_code = _handle_pr_validation(args)
+        if exit_code is not None:
+            sys.exit(exit_code)
+        # Fall through to regular validation if not in PR context
 
     # Convert validation type string to enum
     validation_type_map = {

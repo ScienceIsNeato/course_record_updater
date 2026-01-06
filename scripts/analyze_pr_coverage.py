@@ -187,7 +187,7 @@ def get_git_diff_lines(base_branch: str = "origin/main") -> Dict[str, Set[int]]:
 
 
 def get_uncovered_lines_from_xml(
-    coverage_file: str = "coverage.xml",
+    coverage_file: str = "build/coverage.xml",
 ) -> Tuple[Dict[str, Set[int]], Set[str]]:
     """
     Parse coverage.xml (Python) to find uncovered lines AND partially covered branches.
@@ -513,8 +513,8 @@ def main():
     )
     parser.add_argument(
         "--coverage-file",
-        default="coverage.xml",
-        help="Path to coverage XML file (default: coverage.xml)",
+        default="build/coverage.xml",
+        help="Path to coverage XML file (default: build/coverage.xml)",
     )
     parser.add_argument(
         "--output",
