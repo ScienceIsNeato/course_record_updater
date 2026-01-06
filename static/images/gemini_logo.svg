@@ -1,0 +1,35 @@
+<svg width="220" height="64" viewBox="0 0 220 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Gemini Platform Logo</title>
+  <desc id="desc">Interlocking orbit glyph with Gemini wordmark</desc>
+  <defs>
+    <linearGradient id="geminiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4c6fff" />
+      <stop offset="50%" stop-color="#8b5bff" />
+      <stop offset="100%" stop-color="#f062c0" />
+    </linearGradient>
+    <linearGradient id="geminiBadge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#101828" />
+      <stop offset="100%" stop-color="#1d2335" />
+    </linearGradient>
+    <filter id="softGlow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g transform="translate(12 10)">
+    <rect x="0" y="0" width="88" height="44" rx="18" fill="url(#geminiBadge)" filter="url(#softGlow)" />
+    <path d="M24 14c4.5-5.8 12.9-6.8 18.7-2.2 5.8 4.6 6.9 13.1 2.3 18.9-4.5 5.6-12.6 6.7-18.4 2.5" fill="none" stroke="url(#geminiGradient)" stroke-width="6" stroke-linecap="round" />
+    <path d="M60 14c-4.5-5.8-12.9-6.8-18.7-2.2-5.8 4.6-6.9 13.1-2.3 18.9 4.5 5.6 12.6 6.7 18.4 2.5" fill="none" stroke="url(#geminiGradient)" stroke-width="6" stroke-linecap="round" />
+    <circle cx="24" cy="14" r="4" fill="#4c6fff" />
+    <circle cx="60" cy="30" r="4" fill="#f062c0" />
+  </g>
+
+  <g transform="translate(110 36)">
+    <text x="0" y="0" font-family="'DM Sans', 'Segoe UI', sans-serif" font-size="32" font-weight="700" fill="#1d2335" letter-spacing="0.02em">Gemini</text>
+    <text x="2" y="20" font-family="'DM Sans', 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#5a5f77" letter-spacing="0.18em">COURSE INTELLIGENCE</text>
+  </g>
+</svg>

@@ -16,12 +16,13 @@ from src.services.auth_service import (
 )
 from src.services.email_service import EmailService
 
-# Import constants
+# Import constants and utilities
 from src.utils.constants import (
     DASHBOARD_ENDPOINT,
     DATE_OVERRIDE_BANNER_PREFIX,
 )
 from src.utils.logging_config import get_app_logger
+from src.utils.term_utils import TermGenerator, get_current_term, get_term_display_name
 
 from .api import register_blueprints  # New modular API structure
 
@@ -381,6 +382,46 @@ def admin_users():
 
 
 # Dashboard Routes
+def get_header_context(user):
+    """
+    Generate header context with current term and date information
+
+    Args:
+        user: The current user object
+
+    Returns:
+        dict: Header context with term and date information
+    """
+    # Get current term and format it for display
+    current_term = get_current_term()
+    current_term_display = get_term_display_name(current_term)
+
+    # Get effective date - use override if set, otherwise current time
+    effective_date = user.get("system_date_override") or datetime.now(timezone.utc)
+
+    # Format date for display
+    if isinstance(effective_date, str):
+        # If it's a string, try to parse it
+        try:
+            effective_date = datetime.fromisoformat(
+                effective_date.replace("Z", "+00:00")
+            )
+        except (ValueError, AttributeError):
+            effective_date = datetime.now(timezone.utc)
+
+    # Format the date for display
+    date_format = "%b %d, %Y %I:%M %p %Z"
+    effective_date_display = effective_date.strftime(date_format)
+
+    return {
+        "current_term": current_term,
+        "current_term_display": current_term_display,
+        "effective_date": effective_date,
+        "effective_date_display": effective_date_display,
+        "is_override": bool(user.get("system_date_override")),
+    }
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -392,16 +433,22 @@ def dashboard():
         return redirect(url_for("login"))
 
     role = user["role"]
+    header_context = get_header_context(user)
+    template_kwargs = {
+        "user": user,
+        "header_context": header_context,
+        "DATE_OVERRIDE_BANNER_PREFIX": DATE_OVERRIDE_BANNER_PREFIX,
+    }
 
     if role == "instructor":
-        return render_template("dashboard/instructor.html", user=user)
+        return render_template("dashboard/instructor.html", **template_kwargs)
     elif role == "program_admin":
-        return render_template("dashboard/program_admin.html", user=user)
+        return render_template("dashboard/program_admin.html", **template_kwargs)
     elif role == "institution_admin":
-        return render_template("dashboard/institution_admin.html", user=user)
+        return render_template("dashboard/institution_admin.html", **template_kwargs)
     elif role == "site_admin":
         # Use simplified site admin UI with working create modals
-        return render_template("dashboard/site_admin.html", user=user)
+        return render_template("dashboard/site_admin.html", **template_kwargs)
     else:
         flash("Unknown user role. Please contact administrator.", "danger")
         return redirect(url_for("index"))

@@ -110,14 +110,14 @@ class SQLiteDatabase(DatabaseInterface):
             return [to_dict(record) for record in records]
 
     def create_default_mocku_institution(self) -> Optional[str]:
-        existing = self.get_institution_by_short_name("MockU")
+        existing = self.get_institution_by_short_name("Gemini")
         if existing:
             return existing["institution_id"]
 
         mocku_payload = {
-            "name": "Mock University",
-            "short_name": "MockU",
-            "domain": "mocku.test",
+            "name": "Gemini University",
+            "short_name": "Gemini",
+            "domain": "gemini.edu",
             "timezone": DEFAULT_INSTITUTION_TIMEZONE,
             "is_active": True,
             "billing_settings": {

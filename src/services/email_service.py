@@ -66,7 +66,7 @@ class EmailService:
     @staticmethod
     def _is_protected_email(email: Optional[str]) -> bool:
         """
-        Check if email address is from a protected domain (e.g., MockU)
+        Check if email address is from a protected domain (e.g., Gemini)
 
         Args:
             email: Email address to check (can be None)
@@ -390,7 +390,7 @@ class EmailService:
     ) -> bool:
         """Send email using configured email provider"""
         try:
-            # CRITICAL PROTECTION: Block protected domains (e.g., MockU) in non-production environments
+            # CRITICAL PROTECTION: Block protected domains (e.g., Gemini) in non-production environments
             is_production = current_app.config.get(
                 "ENV"
             ) == "production" or current_app.config.get("PRODUCTION", False)

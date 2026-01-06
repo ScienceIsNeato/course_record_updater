@@ -1,7 +1,7 @@
 """
 API Routes Module
 
-This module defines the new REST API endpoints for the MockU Course Management System.
+This module defines the new REST API endpoints for the Gemini Course Intelligence platform.
 These routes provide a proper REST API structure while maintaining backward compatibility
 with the existing single-page application.
 """
@@ -3840,7 +3840,7 @@ def health_check():
         {
             "success": True,
             "status": "healthy",
-            "message": "MockU Course Management API is running",
+            "message": "Gemini Course Intelligence API is running",
             "version": "2.0.0",
         }
     )

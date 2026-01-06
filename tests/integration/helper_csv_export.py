@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 def test_export():
     """Test CSV export with real database data."""
+    # Note: This function returns 1 on error for script usage, but pytest expects None
+    # This is a test helper function, not a pytest test function
     logger.info("=" * 60)
     logger.info("Testing Generic CSV Adapter Export")
     logger.info("=" * 60)

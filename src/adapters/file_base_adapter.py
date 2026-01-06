@@ -71,7 +71,7 @@ class FileBaseAdapter(ABC):
                               'assessments', 'programs', 'terms']
 
         Example:
-            ['courses', 'faculty', 'assessments']  # MockU Excel file
+            ['courses', 'faculty', 'assessments']  # Gemini Excel file
             ['students', 'enrollments']            # Student enrollment CSV
         """
         pass
@@ -103,8 +103,8 @@ class FileBaseAdapter(ABC):
         Example (Institution-Specific):
             {
                 "id": "cei_excel_format_v1",
-                "name": "MockU Excel Format v1.2",
-                "description": "Imports course, faculty, and assessment data from MockU's Excel exports",
+                "name": "Gemini Excel Format v1.2",
+                "description": "Imports course, faculty, and assessment data from Gemini's Excel exports",
                 "supported_formats": [".xlsx", ".xls"],
                 "institution_id": "mocku_institution_id",
                 "data_types": ["courses", "faculty", "assessments"],

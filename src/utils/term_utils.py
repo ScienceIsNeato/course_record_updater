@@ -132,3 +132,8 @@ def is_valid_term(term: str) -> bool:
 def get_current_term() -> str:
     """Get current academic term (convenience function)."""
     return default_term_generator.get_current_term()
+
+
+def get_term_display_name(term: str) -> str:
+    """Get human-readable display name for a term (convenience function)."""
+    return default_term_generator.get_term_display_name(term)
