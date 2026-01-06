@@ -68,10 +68,10 @@ class QualityGateExecutor:
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if parent_dir not in sys.path:
             sys.path.insert(0, parent_dir)
-        
+
         # Change to project root so all relative paths work regardless of where script is invoked
         os.chdir(parent_dir)
-        
+
         from src.utils.logging_config import setup_quality_gate_logger
 
         self.logger = setup_quality_gate_logger()

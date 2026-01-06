@@ -24,7 +24,9 @@ class TestFrontendBasics:
         """
         # 1. Check API Health
         api_health = page.request.get(f"{BASE_URL}/api/health")
-        assert api_health.ok, f"API health check failed: {api_health.status} {api_health.status_text}"
+        assert (
+            api_health.ok
+        ), f"API health check failed: {api_health.status} {api_health.status_text}"
 
         # 2. Check Static Assets
         assets = [
@@ -38,10 +40,10 @@ class TestFrontendBasics:
 
         # 3. Check Splash/Login Page
         page.goto(f"{BASE_URL}/login")
-        
+
         # Verify specific elements that confirm CSS/JS is working
         expect(page.locator("body")).to_be_visible()
-        
+
         # Check login form exists
         expect(page.locator("#loginForm")).to_be_visible()
         expect(page.locator("input[name='email']")).to_be_visible()
@@ -56,12 +58,14 @@ class TestFrontendBasics:
         Uses an authenticated session (Institution Admin).
         """
         page = authenticated_institution_admin_page
-        
+
         # 1. Check Dashboard Header
         # "Institution Administration" should be visible (from institution_admin.html)
         # Or look for span id="page-title-text"
-        expect(page.locator("#page-title-text")).to_contain_text("Institution Administration")
-        
+        expect(page.locator("#page-title-text")).to_contain_text(
+            "Institution Administration"
+        )
+
         # 2. Check Dashboard Panels
         # Verify key panels exist
         panels = [
@@ -69,9 +73,9 @@ class TestFrontendBasics:
             "#institution-course-panel",
             "#institution-term-panel",
             "#institution-faculty-panel",
-            "#data-management-panel"
+            "#data-management-panel",
         ]
-        
+
         for panel_id in panels:
             expect(page.locator(panel_id)).to_be_visible()
 
@@ -79,16 +83,16 @@ class TestFrontendBasics:
         # Used to be #excelImportForm, now #dataImportForm in components/data_management_panel.html
         form = page.locator("#dataImportForm")
         expect(form).to_be_visible()
-            
+
         # Check form inputs
         expect(page.locator("#excel_file")).to_be_visible()
         expect(page.locator("#import_adapter")).to_be_visible()
-        
+
         # Check interactions
         dry_run = page.locator("#dry_run")
         expect(dry_run).to_be_visible()
         expect(dry_run).not_to_be_checked()  # Should be unchecked by default
-        
+
         # Check Import Button (Select by text as it lacks ID)
         expect(page.locator("button:has-text('Excel Import')")).to_be_visible()
 
@@ -97,15 +101,15 @@ class TestFrontendBasics:
         Test HTML5 form validation for the import feature.
         """
         page = authenticated_institution_admin_page
-        
+
         # Locate the form and submit button
         # The button is type="button" calling onclick="executeDataImport()"
         # It currently bypasses HTML5 validation in the implementation.
         # We will check that the 'required' attribute exists on the file input,
         # which is a static check of intent.
-        
+
         file_input = page.locator("#excel_file")
-        
+
         # Use simple assertion without optional chaining complex logic
         # get_attribute might return None, so we assert it isn't None.
         # However, looking at the template: <input type="file" ... id="excel_file" name="excel_file">
@@ -113,5 +117,7 @@ class TestFrontendBasics:
         # <input type="file" class="form-control" id="excel_file" name="excel_file">
         # So validation is strictly handled by backend or manual JS if at all.
         # We will skip this test or just remove the assertion if it's not implemented.
-        
-        pytest.skip("Form validation is not currently implemented in frontend (type='button')")
+
+        pytest.skip(
+            "Form validation is not currently implemented in frontend (type='button')"
+        )

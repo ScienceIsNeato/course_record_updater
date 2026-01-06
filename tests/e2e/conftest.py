@@ -41,9 +41,8 @@ from tests.test_credentials import (
     SITE_ADMIN_PASSWORD,
 )
 
-
-
 # E2E environment runs on dedicated port (worker-aware for parallel execution)
+
 
 def get_worker_port():
     """Get port number for current worker (3002 + worker_id)"""
@@ -88,8 +87,6 @@ def setup_worker_environment(tmp_path_factory):
         # SERIAL EXECUTION - Full setup required
         # ==============================================
         print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
-
-
 
         worker_db = "course_records_e2e.db"
 

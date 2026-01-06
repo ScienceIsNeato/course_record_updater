@@ -11,6 +11,7 @@ Scope:
 """
 
 import os
+
 import pytest
 import requests
 
@@ -18,6 +19,7 @@ import requests
 DEFAULT_BASE_URL = "http://localhost:3002"
 DEFAULT_ADMIN_EMAIL = "siteadmin@system.local"
 DEFAULT_ADMIN_PASSWORD = "SiteAdmin123!"
+
 
 @pytest.mark.smoke
 class TestSystemSmoke:
@@ -32,14 +34,14 @@ class TestSystemSmoke:
     def api_session(self, smoke_target_url):
         """Create an authenticated session for API checking"""
         session = requests.Session()
-        
+
         # 1. Login via API (auth.js uses /api/auth/login)
         # First, get CSRF token from login page
         import re
-        
+
         login_page_url = f"{smoke_target_url}/login"
         page_resp = session.get(login_page_url)
-        
+
         csrf_token = None
         # Try to find in meta tag (standard in this app base template)
         meta_match = re.search(r'name="csrf-token" content="([^"]+)"', page_resp.text)
@@ -47,29 +49,30 @@ class TestSystemSmoke:
             csrf_token = meta_match.group(1)
         # Try to find in input field as fallback
         if not csrf_token:
-            input_match = re.search(r'name="csrf_token" value="([^"]+)"', page_resp.text)
+            input_match = re.search(
+                r'name="csrf_token" value="([^"]+)"', page_resp.text
+            )
             if input_match:
                 csrf_token = input_match.group(1)
-                
+
         login_url = f"{smoke_target_url}/api/auth/login"
-        headers = {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token or ""
-        }
-        
+        headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""}
+
         payload = {
             "email": os.getenv("SMOKE_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL),
             "password": os.getenv("SMOKE_ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD),
-            "remember_me": False
+            "remember_me": False,
         }
-        
+
         # The API expects JSON, not form data
-        response = session.post(login_url, json=payload, headers=headers, allow_redirects=True, timeout=10)
-        
+        response = session.post(
+            login_url, json=payload, headers=headers, allow_redirects=True, timeout=10
+        )
+
         if response.status_code != 200:
             print(f"Login failed status: {response.status_code}")
             print(f"Response: {response.text}")
-            
+
         # Verify success (API returns JSON with success: true)
         try:
             data = response.json()
@@ -77,12 +80,12 @@ class TestSystemSmoke:
                 return session
         except Exception:
             pass
-            
+
         # Fallback verification: Check if we can access dashboard
         dash_resp = session.get(f"{smoke_target_url}/dashboard")
         if dash_resp.status_code == 200 and "login" not in dash_resp.url:
             return session
-            
+
         # If we are here, login failed
         pytest.fail(f"Smoke test authentication failed against {smoke_target_url}")
         return session
@@ -91,9 +94,13 @@ class TestSystemSmoke:
         """Verify API health endpoint is accessible and healthy"""
         try:
             resp = requests.get(f"{smoke_target_url}/api/health", timeout=5)
-            assert resp.status_code == 200, f"Health endpoint returned {resp.status_code}"
+            assert (
+                resp.status_code == 200
+            ), f"Health endpoint returned {resp.status_code}"
             data = resp.json()
-            assert data.get("status") == "healthy", f"System reported unhealthy status: {data}"
+            assert (
+                data.get("status") == "healthy"
+            ), f"System reported unhealthy status: {data}"
         except requests.exceptions.ConnectionError:
             pytest.fail(f"Could not connect to server at {smoke_target_url}")
 
@@ -110,18 +117,27 @@ class TestSystemSmoke:
         resp = api_session.get(f"{smoke_target_url}/dashboard")
         assert resp.status_code == 200
         # Check for dashboard title/header to confirm we are logged in and on the right page
-        assert "Dashboard" in resp.text or "Site Administrator" in resp.text, "Dashboard content not found"
+        assert (
+            "Dashboard" in resp.text or "Site Administrator" in resp.text
+        ), "Dashboard content not found"
 
         # 2. Verify we can access API data (since dashboard loads it dynamically)
         # Check for institutions list which should contain the seeded MockU
         api_resp = api_session.get(f"{smoke_target_url}/api/institutions")
-        assert api_resp.status_code == 200, f"API Institutions endpoint returned {api_resp.status_code}"
-        
+        assert (
+            api_resp.status_code == 200
+        ), f"API Institutions endpoint returned {api_resp.status_code}"
+
         data = api_resp.json()
         assert data.get("success") is True, "API reported failure"
-        
+
         # Check for MockU in the returned institutions list
         institutions = data.get("institutions", [])
-        mocku_found = any("MockU" in inst.get("name", "") or "Mock University" in inst.get("name", "") for inst in institutions)
-        
-        assert mocku_found, f"Seeded institution 'MockU' not found in API response. Found: {[i.get('name') for i in institutions]}"
+        mocku_found = any(
+            "MockU" in inst.get("name", "") or "Mock University" in inst.get("name", "")
+            for inst in institutions
+        )
+
+        assert (
+            mocku_found
+        ), f"Seeded institution 'MockU' not found in API response. Found: {[i.get('name') for i in institutions]}"

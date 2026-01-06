@@ -17,7 +17,7 @@ import pytest
 from flask import Flask
 
 from tests.conftest import INSTITUTION_ADMIN_EMAIL, SITE_ADMIN_EMAIL
-from tests.test_credentials import CS_INTRO_COURSE, CS_DATA_STRUCTURES_COURSE
+from tests.test_credentials import CS_DATA_STRUCTURES_COURSE, CS_INTRO_COURSE
 from tests.test_utils import create_test_session
 
 
@@ -27,13 +27,20 @@ class TestDashboardAuthRoleDataAccess:
 
     Uses seeded test data from conftest fixtures to verify each user role
     sees exactly the data they should have access to.
-    
+
     Database isolation: Each test gets a forked copy of the seeded database.
     """
 
     @pytest.fixture(autouse=True)
-    def setup_test_context(self, isolated_integration_db, site_admin, institution_admin, 
-                           program_admin, instructor, mocku_institution):
+    def setup_test_context(
+        self,
+        isolated_integration_db,
+        site_admin,
+        institution_admin,
+        program_admin,
+        instructor,
+        mocku_institution,
+    ):
         """Set up test context using conftest fixtures"""
         import src.database.database_service as db
         from src.app import app
@@ -58,7 +65,11 @@ class TestDashboardAuthRoleDataAccess:
             None,
         )
         self.ee_program = next(
-            (prog for prog in mocku_programs if prog.get("name") == "Electrical Engineering"),
+            (
+                prog
+                for prog in mocku_programs
+                if prog.get("name") == "Electrical Engineering"
+            ),
             None,
         )
         # Programs may not exist if manifest doesn't define them - that's OK for some tests
@@ -404,7 +415,9 @@ class TestDashboardDataConsistency:
                 from seed_db import BaselineSeeder
 
                 # Load E2E manifest for proper test user data
-                manifest_path = Path(__file__).parent.parent / "fixtures" / "e2e_seed_manifest.json"
+                manifest_path = (
+                    Path(__file__).parent.parent / "fixtures" / "e2e_seed_manifest.json"
+                )
                 manifest_data = None
                 if manifest_path.exists():
                     with open(manifest_path) as f:

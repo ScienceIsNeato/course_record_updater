@@ -399,7 +399,12 @@ class BaselineSeeder:
                 "credits": 3,
                 "program_idx": 3,
             },
-            {"name": "Thermodynamics", "code": "ME-201", "credits": 3, "program_idx": 5},
+            {
+                "name": "Thermodynamics",
+                "code": "ME-201",
+                "credits": 3,
+                "program_idx": 5,
+            },
         ]
 
         course_ids = []
