@@ -67,3 +67,4 @@ safety-report.txt
 # Demo run artifacts (generated during demos, not source)
 demo_artifacts/
 coverage-diff.json
+*.log

@@ -1,5 +1,5 @@
 """
-UAT-010: CLO Pipeline End-to-End
+E2E: CLO Pipeline End-to-End
 
 Test the complete CLO lifecycle from creation to approval.
 
@@ -28,7 +28,7 @@ from tests.e2e.test_helpers import (
 
 
 @pytest.mark.e2e
-@pytest.mark.uat
+@pytest.mark.e2e
 def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
     """
     Test complete CLO lifecycle through all states.
@@ -56,7 +56,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         },
         data=json.dumps(
             {
-                "name": "UAT-010 Computer Science",
+                "name": "E2E test: Computer Science",
                 "short_name": "UAT010-CS",
                 "institution_id": institution_id,
             }
@@ -75,7 +75,7 @@ def test_clo_pipeline_end_to_end(authenticated_institution_admin_page: Page):
         data=json.dumps(
             {
                 "course_number": "UAT010-DS101",
-                "course_title": "UAT-010 Data Structures",
+                "course_title": "E2E test: Data Structures",
                 "department": "Computer Science",
                 "institution_id": institution_id,
                 "program_id": program_id,

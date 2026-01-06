@@ -33,7 +33,9 @@ readonly MODE_HEADLESS="headless"
 MODE="$MODE_HEADLESS"
 TEST_FILTER=""
 SAVE_VIDEOS="0"
+SAVE_VIDEOS="0"
 DEBUG_MODE="0"
+FAIL_FAST="0"
 PARALLEL_WORKERS="auto"  # Always run in parallel, auto-scale to CPU cores
 
 # Parse arguments
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
             SAVE_VIDEOS="1"
             shift
             ;;
+        --fail-fast)
+            FAIL_FAST="1"
+            shift
+            ;;
         --help)
             echo "UAT Runner - Automated E2E Testing"
             echo ""
@@ -70,7 +76,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --headed, -h         Same as --watch (visible browser, slow-mo 350ms)"
             echo "  --debug, -d          Debug mode: visible browser + pause at each step + DevTools"
             echo "  --test, -t <name>    Run specific test (e.g., TC-IE-001)"
+            echo "  --test, -t <name>    Run specific test (e.g., TC-IE-001)"
             echo "  --save-videos        Record video of test execution for debugging"
+            echo "  --fail-fast          Stop immediately on first test failure"
             echo "  --help               Show this help message"
             echo ""
             echo "Examples:"
@@ -78,7 +86,9 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --watch               # Watch tests run (parallel, visible, slow-mo)"
             echo "  $0 --debug               # Debug mode (parallel, visible, 1s steps, DevTools)"
             echo "  $0 --test TC-IE-001      # Run specific test case (serial, clearer output)"
+            echo "  $0 --test TC-IE-001      # Run specific test case (serial, clearer output)"
             echo "  $0 --save-videos         # Record videos for debugging"
+            echo "  $0 --fail-fast           # Stop on first failure"
             echo ""
             echo "Note: Smart execution mode based on test count:"
             echo "      - Full test suite: parallel with auto-scaling to all CPU cores (~3x speedup)"
@@ -219,6 +229,11 @@ if [[ "$MODE" = "$MODE_HEADED" ]]; then
     PYTEST_CMD="$PYTEST_CMD --headed"
 fi
 
+# Add fail-fast flag
+if [[ "$FAIL_FAST" = "1" ]]; then
+    PYTEST_CMD="$PYTEST_CMD -x"
+fi
+
 # Add verbose output with progress indicator
 PYTEST_CMD="$PYTEST_CMD -v --tb=short"
 
@@ -253,6 +268,9 @@ if [[ "$SAVE_VIDEOS" = "1" ]]; then
     echo -e "  Video Recording: ${GREEN}enabled${NC}"
 else
     echo -e "  Video Recording: ${GREEN}disabled${NC}"
+fi
+if [[ "$FAIL_FAST" = "1" ]]; then
+    echo -e "  Fail Fast: ${GREEN}enabled${NC}"
 fi
 echo ""
 

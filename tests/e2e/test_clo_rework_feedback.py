@@ -1,5 +1,5 @@
 """
-UAT-009: CLO Rework Feedback Workflow
+E2E: CLO Rework Feedback Workflow
 
 Test the admin rework request workflow with email notification.
 
@@ -33,7 +33,7 @@ from tests.e2e.test_helpers import (
 
 
 @pytest.mark.e2e
-@pytest.mark.uat
+@pytest.mark.e2e
 def test_clo_rework_feedback_workflow(authenticated_institution_admin_page: Page):
     """
     Test admin rework request workflow with feedback and email notification.

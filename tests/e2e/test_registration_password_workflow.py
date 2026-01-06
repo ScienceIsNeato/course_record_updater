@@ -1,5 +1,5 @@
 """
-UAT-001: Complete User Registration & Password Management Workflow
+E2E: Complete User Registration & Password Management Workflow
 
 Tests the entire authentication email lifecycle from registration through
 password reset, including:
@@ -29,9 +29,9 @@ from tests.e2e.email_utils import (
 
 @pytest.mark.e2e
 @pytest.mark.slow
-class TestUAT001RegistrationAndPasswordManagement:
+class TestRegistrationAndPasswordManagement:
     """
-    UAT-001: Complete User Registration & Password Management Workflow
+    E2E: Complete User Registration & Password Management Workflow
 
     Validates the entire authentication email lifecycle in a single comprehensive test.
     """
@@ -46,7 +46,7 @@ class TestUAT001RegistrationAndPasswordManagement:
 
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
-        """Setup and teardown for UAT-001 test."""
+        """Setup and teardown for E2E test: test."""
         if SKIP_EMAIL_VERIFICATION:
             print(
                 "\n⚠️  Ethereal Email not configured - email verification will be skipped"
@@ -410,5 +410,5 @@ class TestUAT001RegistrationAndPasswordManagement:
         # ====================================================================
 
         print(
-            "✅ UAT-001 PASSED: Registration and password management workflow complete"
+            "✅ E2E test: PASSED: Registration and password management workflow complete"
         )

@@ -1,5 +1,5 @@
 """
-UAT-004: Bulk Reminders - Failure Handling, Retry, and Error Recovery
+E2E: Bulk Reminders - Failure Handling, Retry, and Error Recovery
 
 Test Objective: Validate system behavior when email sending fails, including retry logic,
 error reporting, and partial success handling.
@@ -18,8 +18,8 @@ from tests.e2e.test_helpers import (
 )
 
 
-class TestUAT004BulkRemindersFailureHandling:
-    """UAT-004: Test bulk reminder failure scenarios and error recovery"""
+class TestBulkRemindersFailureHandling:
+    """E2E: Test bulk reminder failure scenarios and error recovery"""
 
     # Test user credentials
     VALID_INSTRUCTOR_1_EMAIL = "alice.johnson@ethereal.email"

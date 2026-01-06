@@ -1,5 +1,5 @@
 """
-UAT-003: Bulk Instructor Reminders - Happy Path with Progress Tracking
+E2E: Bulk Instructor Reminders - Happy Path with Progress Tracking
 
 Test Objective: Validate bulk reminder system with real-time progress tracking
 and successful delivery to multiple instructors.
@@ -13,8 +13,8 @@ from playwright.sync_api import Page, expect
 BASE_URL = "http://localhost:3002"  # E2E tests use port 3002
 
 
-class TestUAT003BulkInstructorReminders:
-    """UAT-003: Complete bulk instructor reminder workflow with progress tracking"""
+class TestBulkInstructorReminders:
+    """E2E: Complete bulk instructor reminder workflow with progress tracking"""
 
     # Test Data
     ADMIN_EMAIL = "sarah.admin@mocku.test"
@@ -65,7 +65,7 @@ class TestUAT003BulkInstructorReminders:
         authenticated_institution_admin_page: Page,
     ):
         """
-        UAT-003: Complete bulk reminder workflow with progress tracking.
+        E2E: Complete bulk reminder workflow with progress tracking.
 
         Steps:
         1. Admin logs in (fixture provides authenticated page)

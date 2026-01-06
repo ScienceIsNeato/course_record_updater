@@ -377,29 +377,29 @@ class BaselineSeeder:
         courses_data = [
             {
                 "name": "Introduction to Programming",
-                "code": "CS101",
+                "code": "CS-101",
                 "credits": 3,
                 "program_idx": 0,
             },
             {
                 "name": "Data Structures",
-                "code": "CS201",
+                "code": "CS-201",
                 "credits": 4,
                 "program_idx": 0,
             },
             {
                 "name": "Circuit Analysis",
-                "code": "EE101",
+                "code": "EE-101",
                 "credits": 4,
                 "program_idx": 1,
             },
             {
                 "name": "English Composition",
-                "code": "ENG101",
+                "code": "ENG-101",
                 "credits": 3,
                 "program_idx": 3,
             },
-            {"name": "Thermodynamics", "code": "ME201", "credits": 3, "program_idx": 5},
+            {"name": "Thermodynamics", "code": "ME-201", "credits": 3, "program_idx": 5},
         ]
 
         course_ids = []
@@ -1194,6 +1194,9 @@ class DemoSeeder(BaselineSeeder):
 
         # Load manifest
         manifest = self.load_demo_manifest()
+
+        # Ensure Site Admin exists
+        self.create_site_admin()
 
         inst_id = self.create_demo_institution()
         if not inst_id:

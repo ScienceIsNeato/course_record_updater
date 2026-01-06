@@ -1,5 +1,5 @@
 """
-UAT-007: CLO Submission Happy Path
+E2E: CLO Submission Happy Path
 
 Test the instructor workflow for submitting CLOs for approval.
 
@@ -26,7 +26,7 @@ from tests.e2e.test_helpers import (
 
 
 @pytest.mark.e2e
-@pytest.mark.uat
+@pytest.mark.e2e
 def test_clo_submission_happy_path(authenticated_institution_admin_page: Page):
     """
     Test full CLO submission workflow for instructor.

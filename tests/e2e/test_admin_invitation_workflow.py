@@ -1,5 +1,5 @@
 """
-UAT-002: Admin Invitation & Multi-Role User Management
+E2E: Admin Invitation & Multi-Role User Management
 
 Tests the complete invitation workflow including:
 - Admin invites instructor with personal message
@@ -30,9 +30,9 @@ from tests.e2e.email_utils import (
 
 @pytest.mark.e2e
 @pytest.mark.slow
-class TestUAT002AdminInvitationsAndMultiRole:
+class TestAdminInvitationsAndMultiRole:
     """
-    UAT-002: Admin Invitation & Multi-Role User Management Workflow
+    E2E: Admin Invitation & Multi-Role User Management Workflow
 
     Validates the entire invitation lifecycle including multi-role management
     and permission boundaries.
@@ -133,7 +133,7 @@ class TestUAT002AdminInvitationsAndMultiRole:
         browser,
     ):
         """
-        UAT-002: Complete admin invitation and multi-role user management workflow.
+        E2E: Complete admin invitation and multi-role user management workflow.
 
         Tests:
         1. Admin invites instructor with personal message

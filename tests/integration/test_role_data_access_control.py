@@ -1,6 +1,7 @@
 """
-UAT: Data Integrity and Access Control
-Backend-focused tests validating role-based data access.
+Integration Tests: Data Integrity and Role-Based Access Control
+
+Backend-focused tests validating role-based data access using Flask test client.
 
 Test Coverage:
 - Site Admin: Full system access (all institutions)
@@ -8,8 +9,6 @@ Test Coverage:
 - Program Admin: Program-scoped access
 - Instructor: Section-level access
 - Negative testing: Unauthorized access denied
-
-Reference: UAT_DATA_INTEGRITY_AND_ACCESS_CONTROL.md
 """
 
 import csv
@@ -354,7 +353,7 @@ class TestDataFixture:
             writer.writerows(data)
 
 
-@pytest.mark.uat
+@pytest.mark.integration
 class TestSiteAdminAccess:
     """SCENARIO 1: Site Admin - Full System Access"""
 
@@ -495,7 +494,7 @@ class TestSiteAdminAccess:
                 ), f"Institution {inst_dir} should have export files"
 
 
-@pytest.mark.uat
+@pytest.mark.integration
 class TestInstitutionAdminAccess:
     """SCENARIO 2: Institution Admin - Single Institution Access"""
 
@@ -755,7 +754,7 @@ class TestInstitutionAdminAccess:
         ), f"Data leakage! MockU and RCC users overlap: {user_overlap}"
 
 
-@pytest.mark.uat
+@pytest.mark.integration
 class TestProgramAdminAccess:
     """SCENARIO 3: Program Admin - Program-Scoped Access"""
 
@@ -855,7 +854,7 @@ class TestProgramAdminAccess:
             assert len(file_list) > 0, "Export should contain files"
 
 
-@pytest.mark.uat
+@pytest.mark.integration
 class TestInstructorAccess:
     """SCENARIO 4: Instructor - Section-Level Access"""
 
@@ -1013,7 +1012,7 @@ class TestInstructorAccess:
             ), "Export should not contain hashed passwords"
 
 
-@pytest.mark.uat
+@pytest.mark.integration
 class TestNegativeAccess:
     """SCENARIO 5: Negative Access Testing"""
 

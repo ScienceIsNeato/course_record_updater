@@ -1,5 +1,5 @@
 """
-UAT-006: Edge Cases, Validation, and System Resilience
+E2E: Edge Cases, Validation, and System Resilience
 
 Test Objective: Validate system behavior under edge cases, invalid inputs, and boundary conditions.
 
@@ -25,8 +25,8 @@ from tests.e2e.test_helpers import (
 )
 
 
-class TestUAT006EdgeCases:
-    """UAT-006: Test edge cases and system resilience"""
+class TestEdgeCases:
+    """E2E: Test edge cases and system resilience"""
 
     TEST_INSTRUCTOR_EMAIL = "edge.case.instructor@ethereal.email"
 

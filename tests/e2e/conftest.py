@@ -32,9 +32,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from src.services.password_service import PasswordService
 from src.utils.constants import E2E_TEST_PORT
 from tests.conftest import get_worker_id
+from tests.test_credentials import (
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    PROGRAM_ADMIN_EMAIL,
+    PROGRAM_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
+
 
 
 # E2E environment runs on dedicated port (worker-aware for parallel execution)
+
 def get_worker_port():
     """Get port number for current worker (3002 + worker_id)"""
     worker_id = get_worker_id()
@@ -79,6 +89,8 @@ def setup_worker_environment(tmp_path_factory):
         # ==============================================
         print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
 
+
+
         worker_db = "course_records_e2e.db"
 
         # Step 1: Create fresh database (remove stale state)
@@ -93,7 +105,7 @@ def setup_worker_environment(tmp_path_factory):
         # Step 2: Seed baseline data
         # Run seed_db.py as subprocess to ensure clean import state
         seed_cmd = [
-            "python",
+            sys.executable,
             "scripts/seed_db.py",
             "--env",
             "e2e",
@@ -118,25 +130,34 @@ def setup_worker_environment(tmp_path_factory):
         env["DATABASE_TYPE"] = "sqlite"
         env["PORT"] = str(worker_port)
         env["BASE_URL"] = f"http://localhost:{worker_port}"
-        env["ENV"] = "development"  # E2E runs against development mode
+        env["ENV"] = "e2e"
+        env["FLASK_ENV"] = "e2e"  # Prevents account lockout in PasswordService
         env["WTF_CSRF_ENABLED"] = "false"  # Disable CSRF for E2E tests
         env.pop("EMAIL_PROVIDER", None)  # Use Ethereal for E2E
-        if "EMAIL_WHITELIST" not in env:
-            env["EMAIL_WHITELIST"] = (
-                "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-            )
+        env["EMAIL_WHITELIST"] = (
+            "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
+        )
 
+        server_log = open("server.log", "w")
         server_process = subprocess.Popen(
-            ["python", "-m", "src.app"],
+            [sys.executable, "-m", "src.app"],
             env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=server_log,
+            stderr=subprocess.STDOUT,
             cwd=os.getcwd(),
         )
 
         # Wait for server to be ready
         max_attempts = 30
         for attempt in range(max_attempts):
+            # Check if process died
+            if server_process.poll() is not None:
+                # Process exited early
+                raise RuntimeError(
+                    f"Server process died immediately (Return Code: {server_process.returncode}). "
+                    f"Port {worker_port} might be in use by a stale process. Check server.log."
+                )
+
             try:
                 urllib.request.urlopen(
                     f"http://localhost:{worker_port}/login", timeout=1
@@ -181,13 +202,12 @@ def setup_worker_environment(tmp_path_factory):
             env["ENV"] = "test"
             env["WTF_CSRF_ENABLED"] = "true"
             env.pop("EMAIL_PROVIDER", None)
-            if "EMAIL_WHITELIST" not in env:
-                env["EMAIL_WHITELIST"] = (
-                    "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
-                )
+            env["EMAIL_WHITELIST"] = (
+                "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
+            )
 
             server_process = subprocess.Popen(
-                ["python", "-m", "src.app"],
+                [sys.executable, "-m", "src.app"],
                 env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -389,8 +409,8 @@ def authenticated_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use MockU institution admin from baseline seed
-    page.fill('input[name="email"]', "sarah.admin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -422,8 +442,8 @@ def authenticated_site_admin_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use site admin from baseline seed
-    page.fill('input[name="email"]', "siteadmin@system.local")
-    page.fill('input[name="password"]', "SiteAdmin123!")
+    page.fill('input[name="email"]', SITE_ADMIN_EMAIL)
+    page.fill('input[name="password"]', SITE_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -446,8 +466,8 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use MockU institution admin from baseline seed
-    page.fill('input[name="email"]', "sarah.admin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -474,9 +494,12 @@ def authenticated_program_admin_page(page: Page) -> Page:
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    # Use Bob ProgramAdmin from baseline seed
-    page.fill('input[name="email"]', "bob.programadmin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    # Use Bob ProgramAdmin (or Lisa) from baseline seed
+    # We use credentials from test_credentials which maps to Lisa, but role is same (Program Admin)
+    # Note: seed_db.py creates 'bob.programadmin@mocku.test' and 'lisa.prog@mocku.test'
+    # We use the imported constant for consistency.
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -567,6 +590,8 @@ def reset_account_locks():
             "sarah.admin@mocku.test",
             "mike.admin@riverside.edu",
             "admin@pactech.edu",
+            "bob.programadmin@mocku.test",
+            PROGRAM_ADMIN_EMAIL,
         ]
 
         for email in test_accounts:

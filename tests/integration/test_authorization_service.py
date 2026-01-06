@@ -1,7 +1,7 @@
 """
-Authorization System Smoke Tests
+Authorization System Integration Tests
 
-Comprehensive smoke tests that validate the complete authorization system
+Comprehensive integration tests that validate the complete authorization system
 works correctly across all user roles and scenarios.
 
 These tests focus on real-world usage patterns and critical security boundaries.
@@ -15,11 +15,12 @@ from flask import Flask
 from src.services.auth_service import AuthService, Permission, UserRole
 
 
-class TestAuthorizationSmoke:
-    """Smoke tests for authorization system critical paths"""
+@pytest.mark.integration
+class TestAuthorizationService:
+    """Integration tests for authorization system critical paths"""
 
-    def test_site_admin_full_access_smoke(self):
-        """Smoke test: Site admin should have access to everything"""
+    def test_site_admin_full_access(self):
+        """Test: Site admin should have access to everything"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -70,8 +71,8 @@ class TestAuthorizationSmoke:
                     programs = service.get_accessible_programs()
                     assert len(programs) > 0  # Should have access to all
 
-    def test_institution_admin_scoped_access_smoke(self):
-        """Smoke test: Institution admin should have institution-scoped access"""
+    def test_institution_admin_scoped_access(self):
+        """Test: Institution admin should have institution-scoped access"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -117,8 +118,8 @@ class TestAuthorizationSmoke:
                 is False
             )
 
-    def test_program_admin_scoped_access_smoke(self):
-        """Smoke test: Program admin should have program-scoped access"""
+    def test_program_admin_scoped_access(self):
+        """Test: Program admin should have program-scoped access"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -176,8 +177,8 @@ class TestAuthorizationSmoke:
                 is False
             )
 
-    def test_instructor_limited_access_smoke(self):
-        """Smoke test: Instructor should have limited, personal access"""
+    def test_instructor_limited_access(self):
+        """Test: Instructor should have limited, personal access"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -210,8 +211,8 @@ class TestAuthorizationSmoke:
             programs = service.get_accessible_programs()
             assert programs == []  # Instructors don't manage programs
 
-    def test_unauthorized_user_no_access_smoke(self):
-        """Smoke test: Unauthenticated user should have no access"""
+    def test_unauthorized_user_no_access(self):
+        """Test: Unauthenticated user should have no access"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -238,11 +239,12 @@ class TestAuthorizationSmoke:
             assert programs == []
 
 
-class TestAPIEndpointSecuritySmoke:
-    """Smoke tests for API endpoint security with different user roles"""
+@pytest.mark.integration
+class TestAPIEndpointSecurity:
+    """Integration tests for API endpoint security with different user roles"""
 
-    def test_protected_endpoints_require_authentication_smoke(self):
-        """Smoke test: Protected endpoints should require authentication"""
+    def test_protected_endpoints_require_authentication(self):
+        """Test: Protected endpoints should require authentication"""
         app = Flask(__name__)
 
         # Add the API blueprint and login route to prevent routing errors
@@ -280,8 +282,8 @@ class TestAPIEndpointSecuritySmoke:
                 assert hasattr(result, "status_code")
                 assert result.status_code == 302
 
-    def test_permission_endpoints_enforce_permissions_smoke(self):
-        """Smoke test: Permission-required endpoints should enforce permissions"""
+    def test_permission_endpoints_enforce_permissions(self):
+        """Test: Permission-required endpoints should enforce permissions"""
         app = Flask(__name__)
 
         with app.test_request_context():
@@ -322,8 +324,8 @@ class TestAPIEndpointSecuritySmoke:
                             assert isinstance(result, tuple)
                             assert result[1] == 403
 
-    def test_context_aware_endpoints_validate_context_smoke(self):
-        """Smoke test: Context-aware endpoints should validate context"""
+    def test_context_aware_endpoints_validate_context(self):
+        """Test: Context-aware endpoints should validate context"""
         app = Flask(__name__)
 
         with app.test_request_context():
@@ -366,11 +368,12 @@ class TestAPIEndpointSecuritySmoke:
                             assert result[1] == 403
 
 
-class TestDataAccessPatternsSmoke:
-    """Smoke tests for data access patterns across different user types"""
+@pytest.mark.integration
+class TestDataAccessPatterns:
+    """Integration tests for data access patterns across different user types"""
 
-    def test_institution_data_filtering_smoke(self):
-        """Smoke test: Data should be filtered by institution context"""
+    def test_institution_data_filtering(self):
+        """Test: Data should be filtered by institution context"""
         # This tests the conceptual pattern - in real implementation,
         # database queries would be filtered by institution_id
 
@@ -390,8 +393,8 @@ class TestDataAccessPatternsSmoke:
         assert len(accessible_programs) == 2
         assert all(p["institution_id"] == "inst-a" for p in accessible_programs)
 
-    def test_program_data_filtering_smoke(self):
-        """Smoke test: Data should be filtered by program context for program admins"""
+    def test_program_data_filtering(self):
+        """Test: Data should be filtered by program context for program admins"""
         # Mock data from multiple programs
         all_courses = [
             {"id": "course-1", "program_id": "prog-a1", "name": "Course 1"},
@@ -408,8 +411,8 @@ class TestDataAccessPatternsSmoke:
         assert len(accessible_courses) == 2
         assert all(c["program_id"] in accessible_programs for c in accessible_courses)
 
-    def test_instructor_personal_data_filtering_smoke(self):
-        """Smoke test: Instructors should only see their own sections/courses"""
+    def test_instructor_personal_data_filtering(self):
+        """Test: Instructors should only see their own sections/courses"""
         # Mock sections from multiple instructors
         all_sections = [
             {"id": "sect-1", "instructor_id": "instructor-1", "course": "Course A"},
@@ -427,11 +430,12 @@ class TestDataAccessPatternsSmoke:
         assert all(s["instructor_id"] == instructor_id for s in instructor_sections)
 
 
-class TestSecurityBoundariesSmoke:
-    """Smoke tests for critical security boundaries"""
+@pytest.mark.integration
+class TestSecurityBoundaries:
+    """Integration tests for critical security boundaries"""
 
-    def test_cross_institution_access_blocked_smoke(self):
-        """Smoke test: Users cannot access data from other institutions"""
+    def test_cross_institution_access_blocked(self):
+        """Test: Users cannot access data from other institutions"""
         from src.services.auth_service import AuthService
 
         # Test institution admin trying to access other institution
@@ -456,8 +460,8 @@ class TestSecurityBoundariesSmoke:
                 is False
             )
 
-    def test_cross_program_access_blocked_smoke(self):
-        """Smoke test: Program admins cannot access programs outside their scope"""
+    def test_cross_program_access_blocked(self):
+        """Test: Program admins cannot access programs outside their scope"""
         from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -479,8 +483,8 @@ class TestSecurityBoundariesSmoke:
                 is False
             )
 
-    def test_privilege_escalation_blocked_smoke(self):
-        """Smoke test: Users cannot escalate privileges beyond their role"""
+    def test_privilege_escalation_blocked(self):
+        """Test: Users cannot escalate privileges beyond their role"""
         from src.services.auth_service import AuthService
 
         # Test that instructor cannot access admin functions
@@ -504,11 +508,12 @@ class TestSecurityBoundariesSmoke:
             assert service.has_role("site_admin") is False
 
 
-class TestAuthorizationSystemHealthSmoke:
-    """Smoke tests to validate overall system health and completeness"""
+@pytest.mark.integration
+class TestAuthorizationSystemHealth:
+    """Integration tests to validate overall system health and completeness"""
 
-    def test_all_roles_have_valid_permissions_smoke(self):
-        """Smoke test: All roles should have valid, non-empty permission sets"""
+    def test_all_roles_have_valid_permissions(self):
+        """Test: All roles should have valid, non-empty permission sets"""
         from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
         for role in UserRole:
@@ -521,8 +526,8 @@ class TestAuthorizationSystemHealthSmoke:
                 role_perms, list
             ), f"Permissions should be a list for role {role.value}"
 
-    def test_permission_system_consistency_smoke(self):
-        """Smoke test: Permission system should be internally consistent"""
+    def test_permission_system_consistency(self):
+        """Test: Permission system should be internally consistent"""
         from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
 
         # Test that all permission constants are strings
@@ -536,8 +541,8 @@ class TestAuthorizationSystemHealthSmoke:
         assert hierarchy[0] == "site_admin"  # Highest privilege
         assert hierarchy[-1] == "instructor"  # Lowest privilege
 
-    def test_decorator_integration_smoke(self):
-        """Smoke test: All authorization decorators should be importable and functional"""
+    def test_decorator_integration(self):
+        """Test: All authorization decorators should be importable and functional"""
         from src.services.auth_service import (
             admin_required,
             login_required,
@@ -558,8 +563,8 @@ class TestAuthorizationSystemHealthSmoke:
         assert callable(perm_decorator)
         assert callable(role_decorator)
 
-    def test_authorization_service_singleton_smoke(self):
-        """Smoke test: AuthService should work as expected"""
+    def test_authorization_service_singleton(self):
+        """Test: AuthService should work as expected"""
         from src.services.auth_service import AuthService, auth_service
 
         # Test that global service instance exists

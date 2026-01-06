@@ -89,6 +89,16 @@ PROGRAM_ADMIN_EMAIL = "lisa.prog@mocku.test"
 INSTRUCTOR_EMAIL = "john.instructor@mocku.test"
 
 # ============================================================================
+# Course/Program Test Data
+# ============================================================================
+
+CS_INTRO_COURSE = "CS-101"
+CS_DATA_STRUCTURES_COURSE = "CS-201"
+EE_CIRCUITS_COURSE = "EE-101"
+CS_PROGRAM_NAME = "Computer Science"
+EE_PROGRAM_NAME = "Electrical Engineering"
+
+# ============================================================================
 # Legacy Compatibility
 # ============================================================================
 

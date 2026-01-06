@@ -11,6 +11,12 @@
             "short_name": "RCC",
             "admin_email": "admin@riverside.edu",
             "website_url": "https://riverside.edu"
+        },
+        {
+            "name": "Pacific Technical University",
+            "short_name": "PTU",
+            "admin_email": "admin@pactech.edu",
+            "website_url": "https://pactech.edu"
         }
     ],
     "users": [
@@ -31,13 +37,48 @@
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
-            "email": "bob.programadmin@mocku.test",
-            "first_name": "Bob",
+            "email": "lisa.prog@mocku.test",
+            "first_name": "Lisa",
             "last_name": "ProgramAdmin",
             "role": "program_admin",
             "institution_short_name": "MockU",
             "program_code": "CS",
             "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "john.instructor@mocku.test",
+            "first_name": "John",
+            "last_name": "Instructor",
+            "role": "instructor",
+            "institution_short_name": "MockU",
+            "program_code": "CS",
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "jane.instructor@mocku.test",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "role": "instructor",
+            "institution_short_name": "MockU",
+            "program_code": "EE",
+            "password_env_var": "DEFAULT_PASSWORD"
+        }
+    ],
+    "programs": [
+        {
+            "name": "Computer Science",
+            "short_name": "CS",
+            "institution_short_name": "MockU"
+        },
+        {
+            "name": "Electrical Engineering",
+            "short_name": "EE",
+            "institution_short_name": "MockU"
+        },
+        {
+            "name": "Business Administration",
+            "short_name": "BA",
+            "institution_short_name": "MockU"
         }
     ]
 }

@@ -1,5 +1,5 @@
 """
-UAT-008: CLO Approval Workflow
+E2E: CLO Approval Workflow
 
 Test the admin workflow for approving CLOs.
 
@@ -27,7 +27,7 @@ from tests.e2e.test_helpers import (
 
 
 @pytest.mark.e2e
-@pytest.mark.uat
+@pytest.mark.e2e
 def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     """
     Test admin approval workflow for submitted CLOs.

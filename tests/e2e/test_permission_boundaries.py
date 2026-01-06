@@ -1,5 +1,5 @@
 """
-UAT-005: Permission Boundaries & Cross-Tenant Isolation
+E2E: Permission Boundaries & Cross-Tenant Isolation
 
 Test Objective: Validate that admins can only send reminders within their permission scope
 and cannot access other admins' data.
@@ -19,8 +19,8 @@ from tests.e2e.test_helpers import (
 )
 
 
-class TestUAT005PermissionBoundaries:
-    """UAT-005: Test permission boundaries and cross-tenant isolation"""
+class TestPermissionBoundaries:
+    """E2E: Test permission boundaries and cross-tenant isolation"""
 
     # CS Program instructors (unique emails for UAT-005)
     CS_INSTRUCTOR_1_EMAIL = "alice.perms@ethereal.email"
