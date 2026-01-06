@@ -27,6 +27,7 @@ import concurrent.futures
 import re
 import subprocess  # nosec B404
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -71,6 +72,10 @@ class QualityGateExecutor:
 
         self.logger = setup_quality_gate_logger()
         self.script_path = "./scripts/maintAInability-gate.sh"
+
+        # Track running subprocesses so we can terminate them on fail-fast
+        self._process_lock = threading.Lock()
+        self._running_processes: dict[int, subprocess.Popen] = {}
 
         self.security_check = (
             "security",
@@ -120,7 +125,7 @@ class QualityGateExecutor:
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             # Zero tolerance (safety skipped for speed)
             # Security checks moved to PR-only as requested by user
-            # Duplication, sonar, complexity excluded from commit (slower or PR-level)
+            # Duplication, complexity excluded from commit (slower or PR-level)
         ]
 
         # Full checks for PR validation (all checks)
@@ -175,34 +180,47 @@ class QualityGateExecutor:
             else:
                 timeout_seconds = 300
 
-            # Run the individual check
-            result = subprocess.run(  # nosec
+            process = subprocess.Popen(  # nosec
                 [self.script_path, f"--{actual_flag}"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=timeout_seconds,
-                check=False,  # Don't raise exception on non-zero exit code
             )
+
+            self._register_process(process)
+
+            try:
+                stdout, stderr = process.communicate(timeout=timeout_seconds)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                stdout, stderr = process.communicate()
+                duration = time.time() - start_time
+                return CheckResult(
+                    name=check_name,
+                    status=CheckStatus.FAILED,
+                    duration=duration,
+                    output=stdout,
+                    error=f"Check timed out after {timeout_seconds}s",
+                )
+            finally:
+                self._unregister_process(process)
 
             duration = time.time() - start_time
 
-            # Intentionally do not auto-stage files.
-            # Staging should be an explicit developer action to avoid unexpected changes being committed.
-
-            if result.returncode == 0:
+            if process.returncode == 0:
                 return CheckResult(
                     name=check_name,
                     status=CheckStatus.PASSED,
                     duration=duration,
-                    output=result.stdout,
+                    output=stdout,
                 )
             else:
                 return CheckResult(
                     name=check_name,
                     status=CheckStatus.FAILED,
                     duration=duration,
-                    output=result.stdout,
-                    error=result.stderr,
+                    output=stdout,
+                    error=stderr,
                 )
 
         except subprocess.TimeoutExpired:
@@ -223,6 +241,33 @@ class QualityGateExecutor:
                 output="",
                 error=f"Process error: {str(e)}",
             )
+
+    def _register_process(self, process: subprocess.Popen) -> None:
+        with self._process_lock:
+            self._running_processes[process.pid] = process
+
+    def _unregister_process(self, process: subprocess.Popen) -> None:
+        with self._process_lock:
+            self._running_processes.pop(process.pid, None)
+
+    def _terminate_running_processes(self) -> None:
+        with self._process_lock:
+            processes = list(self._running_processes.values())
+            self._running_processes.clear()
+
+        for proc in processes:
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
 
     def run_checks_parallel(
         self,
@@ -270,6 +315,7 @@ class QualityGateExecutor:
                         # Cancel all remaining futures and shutdown immediately
                         for f in future_to_check:
                             f.cancel()
+                        self._terminate_running_processes()
                         executor.shutdown(wait=False)
                         sys.exit(1)
 
@@ -559,12 +605,12 @@ class QualityGateExecutor:
             if validation_type == ValidationType.COMMIT:
                 checks_to_run = self.commit_checks
                 self.logger.info(
-                    "📦 Running COMMIT validation (fast checks, excludes security & sonar)"
+                    "📦 Running COMMIT validation (fast checks, excludes security)"
                 )
             elif validation_type == ValidationType.PR:
                 checks_to_run = self.pr_checks
                 self.logger.info(
-                    "🔍 Running PR validation (all checks including security & sonar)"
+                    "🔍 Running PR validation (all checks including security)"
                 )
             elif validation_type == ValidationType.INTEGRATION:
                 checks_to_run = self.integration_checks
@@ -1715,6 +1761,12 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     )
 
     parser.add_argument(
+        "--no-fail-fast",
+        action="store_true",
+        help="Disable fail-fast so all requested checks complete even after failures",
+    )
+
+    parser.add_argument(
         "--checks",
         nargs="+",
         help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check",
@@ -1756,15 +1808,37 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
                 available_checks[c] for c in args.checks if c in available_checks
             ]
 
-        # Run checks without fail-fast to collect all results
+        fail_fast = not args.no_fail_fast
+
+        if fail_fast:
+            print(
+                "🚨 Fail-fast enabled: PR validation will stop after the first failure. Use --no-fail-fast to gather all failures."
+            )
+        else:
+            print("ℹ️ Fail-fast disabled: collecting results for all checks.")
+
+        # Run checks (may exit early when fail-fast is enabled)
         start_time = time.time()
-        quality_results = executor.run_checks_parallel(checks_to_run, fail_fast=False)
+        quality_results = executor.run_checks_parallel(
+            checks_to_run, fail_fast=fail_fast
+        )
         total_duration = time.time() - start_time
 
         # Format and display results
         executor.logger.info(
             "\n" + executor.format_results(quality_results, total_duration)
         )
+
+        failed_checks = [
+            result for result in quality_results if result.status == CheckStatus.FAILED
+        ]
+
+        if fail_fast and failed_checks:
+            print()
+            print(
+                "🚫 Fail-fast triggered: skipping PR context collection. Re-run with --no-fail-fast to gather a full report once issues are fixed."
+            )
+            sys.exit(1)
 
         # Step 2: Collect CI status and PR comments
         print()
