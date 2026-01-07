@@ -396,6 +396,35 @@ def admin_users():
 
 
 # Dashboard Routes
+def _parse_date_to_naive(date_value):
+    """Parse a date value to timezone-naive datetime for comparison."""
+    if isinstance(date_value, str):
+        return datetime.fromisoformat(date_value.replace("Z", "+00:00")).replace(
+            tzinfo=None
+        )
+    elif hasattr(date_value, "replace"):
+        return date_value.replace(tzinfo=None) if date_value.tzinfo else date_value
+    return date_value
+
+
+def _find_matching_term(terms, effective_date_naive):
+    """Find term where effective_date falls within start/end dates."""
+    for term in terms:
+        start_date = term.get("start_date")
+        end_date = term.get("end_date")
+
+        if not start_date or not end_date:
+            continue
+
+        start_naive = _parse_date_to_naive(start_date)
+        end_naive = _parse_date_to_naive(end_date)
+
+        if start_naive <= effective_date_naive <= end_naive:
+            return term.get("name") or term.get("term_name") or "Current Term"
+
+    return None
+
+
 def _get_current_term_from_db(user, effective_date):
     """
     Find the current term based on effective date by querying the database.
@@ -405,56 +434,19 @@ def _get_current_term_from_db(user, effective_date):
     """
     institution_id = user.get("institution_id")
     if not institution_id:
-        # Fall back to generated term for site admins without institution
         return get_term_display_name(get_current_term())
 
     try:
         from src.database.database_service import get_all_terms
 
         terms = get_all_terms(institution_id)
-
         if not terms:
             return get_term_display_name(get_current_term())
 
-        # Make effective_date timezone-naive for comparison if needed
-        effective_date_naive = (
-            effective_date.replace(tzinfo=None)
-            if effective_date.tzinfo
-            else effective_date
-        )
+        effective_date_naive = _parse_date_to_naive(effective_date)
+        term_name = _find_matching_term(terms, effective_date_naive)
 
-        for term in terms:
-            start_date = term.get("start_date")
-            end_date = term.get("end_date")
-
-            if not start_date or not end_date:
-                continue
-
-            # Parse dates if they're strings
-            if isinstance(start_date, str):
-                start_date = datetime.fromisoformat(
-                    start_date.replace("Z", "+00:00")
-                ).replace(tzinfo=None)
-            elif hasattr(start_date, "replace"):
-                start_date = (
-                    start_date.replace(tzinfo=None) if start_date.tzinfo else start_date
-                )
-
-            if isinstance(end_date, str):
-                end_date = datetime.fromisoformat(
-                    end_date.replace("Z", "+00:00")
-                ).replace(tzinfo=None)
-            elif hasattr(end_date, "replace"):
-                end_date = (
-                    end_date.replace(tzinfo=None) if end_date.tzinfo else end_date
-                )
-
-            # Check if effective date falls within this term
-            if start_date <= effective_date_naive <= end_date:
-                return term.get("name") or term.get("term_name") or "Current Term"
-
-        # No matching term found - fall back to generated term
-        return get_term_display_name(get_current_term())
+        return term_name or get_term_display_name(get_current_term())
 
     except Exception as e:
         logger.warning(f"Failed to get current term from DB: {e}")
