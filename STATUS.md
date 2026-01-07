@@ -2,7 +2,10 @@
 
 ## Latest Work: Institution Branding Cleanup (2026-01-07)
 
-**Status**: ✅ COMPLETED & VERIFIED - Cleaned up branding confusion, all quality gates passing
+**Status**: ✅ COMPLETED, VERIFIED & PUSHED - All quality gates passing
+
+**Branch**: `feat/reorganize-repository-structure`
+**Commit**: `62327c9` - "fix: clean up institution branding and remove Gemini references"
 
 ### What Happened
 Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unnecessary branded files, replaced Loopcloser branding incorrectly, and added institution context to login page (before user is authenticated).
@@ -17,8 +20,10 @@ Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unn
 
 2. **Fixed Dashboard Layout**
    - Institution logo appears in upper-left (non-clickable for now)
+   - Doubled logo size: 40px → 80px height (with white background for contrast)
    - Loopcloser branding remains next to institution logo
    - Clean separation: Institution identity + Platform branding
+   - Fixed "Loading..." text appearing when header_context unavailable
 
 3. **Created Generic Placeholder**
    - Added `static/images/institution_placeholder.svg` - clean university building icon
@@ -28,46 +33,54 @@ Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unn
    - Deleted `static/images/gemini_logo.svg` and `gemini_favicon.svg`
    - Updated constants to use placeholder SVG
    - Changed database default from "Gemini University" to "Mock University"
-   - Cleaned up all code comments/strings referencing Gemini
+   - Cleaned up all code comments/strings referencing Gemini (15 files)
    - Updated API messages to say "Loopcloser" instead of "Gemini Course Intelligence"
 
 5. **Demo Data Integration**
    - Copied `MockU.png` to `static/images/MockU.png`
    - Updated `demos/full_semester_manifest.json` to include MockU logo path
-   - Modified `scripts/seed_db.py` to accept institution branding from manifest (both baseline and demo)
-   - Demo now correctly shows MockU logo for Demo University
+   - Modified `scripts/seed_db.py` to accept institution branding from manifest
+   - Demo correctly shows MockU logo for Demo University
 
 6. **InstitutionService**
-   - Kept existing CRUD methods (logo upload/save/delete)
+   - Created `src/services/institution_service.py` with full CRUD methods
+   - Logo upload/save/delete functionality ready for admin UI
    - Improved docstring clarity
    - Service ready for admin UI integration when needed
 
+### Quality Gate Results
+
+✅ **All Pre-commit Checks Passed (74.7s)**
+- Python Lint & Format: ✅ (6.4s)
+- JavaScript Lint & Format: ✅ (6.5s)
+- Python Static Analysis: ✅ (6.6s)
+- Python Unit Tests: ✅ (436 tests, 74.7s)
+- JavaScript Tests: ✅ (5.6s)
+- Python Coverage: ✅ (80%+ maintained)
+- JavaScript Coverage: ✅ (80.2%)
+
+### File Changes (24 files, 470 insertions, 354 deletions)
+- ✅ Created: `static/images/institution_placeholder.svg`
+- ✅ Created: `static/images/MockU.png` (6MB demo logo)
+- ✅ Created: `src/services/institution_service.py` (180 lines)
+- ✅ Deleted: `static/images/gemini_logo.svg`
+- ✅ Deleted: `static/images/gemini_favicon.svg`
+- ✅ Updated: 19 existing files (templates, services, adapters, database, constants)
+
 ### Verification Results
 
-✅ **Linting**: All Python code passes black, isort, flake8
-✅ **Tests**: All 436 unit tests passing (59.3s)
 ✅ **Database Seeding**: Demo institution correctly receives logo from manifest
 ```
 📊 Institutions in database:
    • Demo University (DEMO2025): logo_path="images/MockU.png"
 ```
-✅ **Server**: Dev server running on port 3001, serving Loopcloser-branded pages
 
-### File Changes
-- ✅ Created: `static/images/institution_placeholder.svg`
-- ✅ Created: `static/images/MockU.png` (from root)
-- ✅ Deleted: `static/images/gemini_logo.svg`
-- ✅ Deleted: `static/images/gemini_favicon.svg`
-- ✅ Updated: `src/utils/constants.py` (default logo path)
-- ✅ Updated: `templates/auth/login.html` (Loopcloser only)
-- ✅ Updated: `templates/auth/forgot_password.html` (Loopcloser only)
-- ✅ Updated: `templates/index_authenticated.html` (Loopcloser only)
-- ✅ Updated: `templates/dashboard/base_dashboard.html` (institution logo + Loopcloser)
-- ✅ Updated: All dashboard templates (removed "Gemini Course Intelligence" from titles)
-- ✅ Updated: `src/database/database_sqlite.py` (MOCKU instead of Gemini)
-- ✅ Updated: `scripts/seed_db.py` (manifest-driven logo support for demo AND baseline)
-- ✅ Updated: `demos/full_semester_manifest.json` (added institutions array with logo)
-- ✅ Updated: Multiple files to remove "Gemini" references (15 files total)
+✅ **Server**: Dev server running on port 3001, serving correct branding
+
+✅ **Visual Verification**: 
+- Login page: Loopcloser-only branding ✅
+- Dashboard: MockU logo (80px) + Loopcloser sitename ✅
+- Header: No "Loading..." text, clean formatting ✅
 
 ### Current Branding Architecture
 
@@ -76,7 +89,7 @@ Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unn
 - No institution-specific branding (user hasn't authenticated yet)
 
 **After Login (Authenticated):**
-- Institution logo appears in upper-left of dashboard (non-clickable)
+- Institution logo appears in upper-left (80px tall, white background)
 - Loopcloser sitename logo appears next to it
 - Institution branding injected via `inject_institution_branding()` context processor
 - Falls back to placeholder SVG if no custom logo
@@ -86,7 +99,7 @@ Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unn
 - Other institutions get placeholder SVG
 
 ### Next Steps (Future Work)
-1. ✅ Run demo to verify MockU logo appears correctly (verified in database)
+1. ✅ Run demo to verify MockU logo appears correctly (verified in database & visually)
 2. Consider admin UI for uploading institution logos (InstitutionService ready)
 3. Test with multiple institutions to verify placeholder fallback
 
@@ -104,12 +117,6 @@ Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unn
 - ✅ **Performance**: Security audit now completes in ~20s (was hanging indefinitely)
 - ✅ **All Quality Gates Passing**: Lint, format, type checking, tests, coverage, security all green
 - ✅ **Pushed to PR**: All work committed and pushed to `feat/reorganize-repository-structure` branch
-
-### Key Achievements
-- **Single Baseline Entry**: Only `tests/test_credentials.py` needs to stay in baseline long-term
-- **Fast Iteration**: Secrets scan completes quickly, enabling rapid development
-- **Clean Architecture**: Test credentials separated from production code
-- **Incremental Migration**: Pattern established for migrating remaining ~60 test files
 
 ## Previous Work: Repository Reorganization (2026-01-01)
 
