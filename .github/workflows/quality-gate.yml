@@ -88,14 +88,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Run Unit Tests with Coverage
+    - name: Run Coverage (unit + integration)
       run: |
         echo "=== Environment Debug ==="
         echo "CI=$CI"
         echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
         echo "PYTHONPATH=$PYTHONPATH"
-        echo "=== Running unit tests with coverage (single execution) ==="
-        python scripts/ship_it.py --checks tests coverage
+        echo "=== Running coverage check via ship_it.py (tests + integration) ==="
+        python scripts/ship_it.py --checks coverage
       env:
         PYTHONPATH: .
     - name: Upload Coverage to Codecov
@@ -501,6 +501,8 @@ jobs:
         pip install diff-cover
     - name: Generate coverage data
       run: |
+        # Ensure build directory exists
+        mkdir -p build
         # Generate fresh coverage.xml for diff-cover analysis
         python -m pytest tests/unit/ -n auto --cov=src --cov-report=xml:build/coverage.xml --tb=no -q
       env:

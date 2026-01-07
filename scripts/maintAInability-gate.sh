@@ -503,7 +503,19 @@ if [[ "$RUN_TESTS" == "true" ]]; then
   # Run UNIT tests only (fast tests, separate directory, no coverage)
   echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
   # Use pytest-xdist for parallel execution (35% faster)
-  TEST_OUTPUT=$(python -m pytest tests/unit/ -n auto -v 2>&1) || TEST_FAILED=true
+  # Stream output live to CI logs while also capturing it for parsing
+  mkdir -p logs
+  TEST_OUTPUT_FILE="logs/tests_output.txt"
+  TEST_FAILED=false
+
+  python -m pytest tests/unit/ -n auto -v 2>&1 | tee "$TEST_OUTPUT_FILE"
+  TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+  if [[ "$TEST_EXIT_CODE" -ne 0 ]]; then
+    TEST_FAILED=true
+  fi
+
+  TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -630,10 +642,13 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
   TEST_EXIT_CODE=0
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
-  
-  # Write detailed coverage report to file
-  echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
+
+  # Stream coverage output to CI logs while also capturing it for analysis
+  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1 | tee "$COVERAGE_REPORT_FILE"
+  TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+  # Load coverage output from file for parsing
+  COVERAGE_OUTPUT=$(cat "$COVERAGE_REPORT_FILE")
   
   # Check for ACTUAL test failures (not just coverage threshold failures)
   # pytest exits with code 1 for both test failures AND coverage threshold failures
