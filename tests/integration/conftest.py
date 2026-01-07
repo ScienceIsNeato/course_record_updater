@@ -58,9 +58,9 @@ def seeded_integration_db(tmp_path_factory):
     # Seed with manifest
     scripts_dir = PROJECT_ROOT / "scripts"
     sys.path.insert(0, str(scripts_dir))
-    from seed_db import BaselineSeeder
+    from seed_db import BaselineTestSeeder
 
-    seeder = BaselineSeeder()
+    seeder = BaselineTestSeeder()
     seeder.seed_baseline(manifest_data)
     print(f"✅ Seeded integration session database: {session_db}")
 

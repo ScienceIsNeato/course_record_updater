@@ -60,7 +60,8 @@ echo -e "${BLUE}🔍 Checking static assets...${NC}"
 STATIC_ASSETS=(
     "/static/script.js"
     "/static/style.css"
-    "/static/images/loopcloser_logo.svg"
+    "/static/images/loopcloser_favicon.png"
+    "/static/images/loopcloser_wordmark.png"
 )
 
 for asset in "${STATIC_ASSETS[@]}"; do
