@@ -239,12 +239,22 @@ class SQLiteDatabase(DatabaseInterface):
             logger.error("[SQLiteDatabase] User requires email")
             return None
 
+        # Validate required fields
+        first_name = payload.get("first_name", "")
+        last_name = payload.get("last_name", "")
+        if not first_name or not first_name.strip():
+            logger.error("[SQLiteDatabase] User requires first_name")
+            return None
+        if not last_name or not last_name.strip():
+            logger.error("[SQLiteDatabase] User requires last_name")
+            return None
+
         user = User(
             id=user_id,
             email=email.lower(),
             password_hash=payload.get("password_hash"),
-            first_name=payload.get("first_name", ""),
-            last_name=payload.get("last_name", ""),
+            first_name=first_name.strip(),
+            last_name=last_name.strip(),
             display_name=payload.get("display_name"),
             account_status=payload.get("account_status", "pending"),
             email_verified=payload.get("email_verified", False),

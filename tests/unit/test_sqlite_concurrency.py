@@ -100,7 +100,10 @@ class TestSQLiteConcurrency:
                 # Create a test user
                 user_data = {
                     "email": f"concurrent_test_{thread_id}@example.com",
+                    "first_name": "Test",
+                    "last_name": f"User{thread_id}",
                     "role": "instructor",
+                    "institution_id": "test-institution",
                     "account_status": "active",
                     "email_verified": True,
                 }
@@ -158,7 +161,10 @@ class TestSQLiteConcurrency:
             try:
                 user_data = {
                     "email": f"mixed_test_{thread_id}@example.com",
+                    "first_name": "Mixed",
+                    "last_name": f"User{thread_id}",
                     "role": "instructor",
+                    "institution_id": "test-institution",
                     "account_status": "active",
                     "email_verified": True,
                 }

@@ -10,7 +10,7 @@
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}" type="image/png">
     <style>
         .flash-message {
             margin-top: 1rem;
@@ -29,7 +29,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <img src="{{ url_for('static', filename='images/loopcloser_logo.svg') }}" alt="Loopcloser Logo" height="30"
+                <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" alt="Loopcloser Logo" height="30"
                     class="d-inline-block align-text-top me-2">
                 Loopcloser
             </a>
@@ -258,7 +258,7 @@
                         <button class="nav-link dropdown-toggle text-light btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
                             ${user.first_name} ${user.last_name}
-                            <span class="badge bg-secondary ms-1">${user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                            <span class="badge bg-secondary ms-1">${user.role.replaceAll('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a></li>
@@ -355,16 +355,16 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    window.location.href = '/';
+                    globalThis.location.href = '/';
                 } else {
                     console.error('Logout failed:', data);
                     // On logout failure, force a fresh login to clear broken session
-                    window.location.href = '/login?force=true';
+                    globalThis.location.href = '/login?force=true';
                 }
             } catch (error) {
                 console.error('Logout error:', error);
                 // On error, force a fresh login to clear broken session
-                window.location.href = '/login?force=true';
+                globalThis.location.href = '/login?force=true';
             }
         }
 

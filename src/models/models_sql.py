@@ -528,6 +528,7 @@ def _user_to_dict(model: User) -> Dict[str, Any]:
         "password_reset_expires_at": model.password_reset_expires_at,
         "created_at": model.created_at,
         "updated_at": model.updated_at,
+        "system_date_override": model.system_date_override,
     }
     # Add program_ids if not already present
     if "program_ids" not in data:

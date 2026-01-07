@@ -11,7 +11,7 @@
     <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='loopcloser_logo.png') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}" type="image/png">
     <style>
         .banner-info {
             display: flex;
@@ -46,18 +46,20 @@
             letter-spacing: 0.05em;
         }
         .institution-logo {
-            max-height: 80px;
+            height: 40px;
             max-width: 200px;
             object-fit: contain;
-            margin-right: 1rem;
-            border-radius: 4px;
-            background-color: white;
-            padding: 4px;
+            border-radius: 0;
+            background-color: transparent;
+            padding: 0;
         }
-        .navbar-brand-container {
+        .loopcloser-brand {
             display: flex;
             align-items: center;
-            gap: 1rem;
+        }
+        .loopcloser-brand img {
+            height: 40px;
+            object-fit: contain;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -67,20 +69,11 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
-            <div class="navbar-brand-container">
-                <!-- Institution Logo (non-clickable) -->
-                <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
-                     alt="{{ institution_branding.short_name }} logo"
-                     class="institution-logo">
-                
-                <!-- Loopcloser Branding -->
-                <a class="navbar-brand d-flex align-items-center" href="/dashboard">
-                    <img src="{{ url_for('static', filename='loopcloser_sitename_with_logo.png') }}" 
-                         alt="Loopcloser" 
-                         height="30" 
-                         class="d-inline-block align-text-top">
-                </a>
-            </div>
+            <!-- Loopcloser Branding (left side) -->
+            <a class="navbar-brand loopcloser-brand" href="/dashboard">
+                <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" 
+                     alt="Loopcloser">
+            </a>
 
             <!-- Navigation Items -->
             <div class="navbar-nav me-auto">
@@ -112,8 +105,7 @@
                 <div class="nav-item dropdown">
                     <button class="nav-link dropdown-toggle btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                         <i class="fas fa-user-circle me-1"></i>
-                        {{ user.first_name }} {{ user.last_name }}
-                        <span class="badge bg-secondary ms-1">{{ user.role.replace('_', ' ').title() }}</span>
+                        {{ user.first_name }} ({{ user.role.replace('_', ' ').title() }})
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
@@ -125,6 +117,11 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Institution Logo (right side, non-clickable) -->
+            <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
+                 alt="{{ institution_branding.short_name }} logo"
+                 class="institution-logo ms-3">
         </div>
     </nav>
 

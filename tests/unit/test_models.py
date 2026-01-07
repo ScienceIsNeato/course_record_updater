@@ -71,6 +71,54 @@ class TestUser:
                 password_hash="$2b$12$test_hash",
             )
 
+    def test_create_user_missing_first_name_raises_error(self):
+        """Test that missing first name raises ValueError"""
+        with pytest.raises(ValueError, match="First name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="",
+                last_name="User",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_missing_last_name_raises_error(self):
+        """Test that missing last name raises ValueError"""
+        with pytest.raises(ValueError, match="Last name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="Test",
+                last_name="",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_whitespace_only_first_name_raises_error(self):
+        """Test that whitespace-only first name raises ValueError"""
+        with pytest.raises(ValueError, match="First name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="   ",
+                last_name="User",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_whitespace_only_last_name_raises_error(self):
+        """Test that whitespace-only last name raises ValueError"""
+        with pytest.raises(ValueError, match="Last name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="Test",
+                last_name="   ",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
     def test_get_permissions(self):
         """Test getting permissions for different roles using new authorization system"""
         instructor_perms = User.get_permissions("instructor")
