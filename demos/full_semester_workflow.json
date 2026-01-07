@@ -11,7 +11,7 @@
     "Role-based dashboards focus users on immediate tasks"
   ],
   "environment": {
-    "working_directory": "/Users/pacey/Documents/SourceCode/course_record_updater",
+    "working_directory": ".",
     "setup_commands": [
       "source venv/bin/activate && source .envrc",
       "python scripts/seed_db.py --demo --manifest demos/full_semester_manifest.json --clear --env dev",

@@ -12,13 +12,6 @@
             "last_name": "Chen",
             "institution_idx": 0,
             "password_env_var": "DEFAULT_PASSWORD"
-        },
-        {
-            "email": "mike.admin@riverside.edu",
-            "first_name": "Mike",
-            "last_name": "Rodriguez",
-            "institution_idx": 1,
-            "password_env_var": "DEFAULT_PASSWORD"
         }
     ],
     "historical_data": {
