@@ -1,143 +1,113 @@
 # Course Record Updater - Current Status
 
-## Latest Work: Institution Branding Cleanup & UX Improvements (2026-01-07)
+## Latest Work: CI Fixes & PR Comment Analysis (2026-01-07)
 
-**Status**: ✅ COMPLETED, VERIFIED & PUSHED
+**Status**: ✅ ALL CI FAILURES FIXED LOCALLY - Ready to Push
 
 **Branch**: `feat/reorganize-repository-structure`
 
-**Latest Commits**:
-- `74596ae` - fix: improve program display in institution dashboard
-- `6cb0ab7` - feat: improve UX with wordmark logo, term filters, and program visibility  
-- `eefc2ea` - fix: update branding assets and fix concurrency tests
-- `d382cac` - docs: update STATUS.md with branding cleanup details
-- `62327c9` - fix: clean up institution branding and remove Gemini references
+### CI Failure Resolution
 
-### What Happened
-Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unnecessary branded files, replaced Loopcloser branding incorrectly, and added institution context to login page (before user is authenticated).
+**All 3 Failed CI Checks Now Passing Locally:**
 
-### All Changes Made
+1. **✅ Complexity** - FIXED
+   - Refactored `_get_current_term_from_db()` in `src/app.py`
+   - Extracted `_parse_date_to_naive()` and `_find_matching_term()` helpers
+   - Reduced complexity from 17 → 8 (threshold: 15)
+   - Average project complexity: 3.54
 
-1. **Restored Loopcloser Branding**
-   - Login page: Pure Loopcloser branding using loopcloser_wordmark.png
-   - Forgot password page: Loopcloser branding
-   - Index authenticated page: Loopcloser branding
-   - All pages use proper Loopcloser PNG assets
+2. **✅ Integration Tests** - FIXED
+   - Fixed fixture name: `setup_integration_test_database` → `isolated_integration_db`
+   - All 177 integration tests passing (6.6s)
 
-2. **Fixed Dashboard Layout**
-   - Institution logo appears in upper-left (80px tall, non-clickable)
-   - White background with padding for logo contrast
-   - Loopcloser branding remains next to institution logo
-   - Clean separation: Institution identity + Platform branding
-   - Fixed "Loading..." text appearing when header_context unavailable
+3. **✅ Smoke Tests** - FIXED
+   - Verified passing with E2E server on port 3002
+   - All 3 smoke tests passing (5.5s)
 
-3. **Created Generic Placeholder**
-   - Added `static/images/institution_placeholder.svg` - clean university building icon
-   - Used as fallback when institutions don't have custom logos
+4. **✅ Critical Database URL Mismatch** - FIXED
+   - Standardized smoke test workflow to use `course_records_ci.db` consistently
+   - Previously: seeding used `course_records_ci.db`, server used `course_records.db` (empty!)
+   - Now: All 4 workflow steps use same database file
 
-4. **Removed All "Gemini" References**
-   - Deleted `static/images/gemini_logo.svg` and `gemini_favicon.svg`
-   - Updated constants to use placeholder SVG
-   - Changed database default from "Gemini University" to "Mock University"
-   - Cleaned up all code comments/strings referencing Gemini (15 files)
-   - Updated API messages to say "Loopcloser" instead of "Gemini Course Intelligence"
+### Deprecated Code Removed
 
-5. **Logo Asset Management**
-   - Replaced SVG logos with PNG assets for better compatibility
-   - Added `loopcloser_favicon.png`, `loopcloser_icon.png`, `loopcloser_wordmark.png`
-   - Removed obsolete `cei_logo.jpg`
-   - Updated all templates to use new PNG assets
+**SonarCloud References** (Moving away from Sonar):
+- Deleted `docs/quality/SONARCLOUD_WORKFLOW.md`
+- Deleted `docs/quality/SONARCLOUD_TROUBLESHOOTING.md`
+- Deleted `docs/quality/SONARCLOUD_SETUP_GUIDE.md`
+- Note: Some sonar constants remain in code (may still be used by ship_it.py)
 
-6. **Demo Data Integration**
-   - Copied `MockU.png` to `static/images/MockU.png`
-   - Updated `demos/full_semester_manifest.json` to include institution logo configuration
-   - Modified `scripts/seed_db.py` to accept institution branding from manifest
-   - Demo correctly shows MockU logo for Demo University
+### PR Comment Analysis
 
-7. **InstitutionService**
-   - Created `src/services/institution_service.py` with full CRUD methods
-   - Logo upload/save/delete functionality ready for admin UI
-   - Branding context builder for template injection
-   - Service ready for admin UI integration
+**Created**: `PR39_ISSUES_REPORT.md` - Comprehensive analysis of 30 bot comments
 
-8. **API Enhancements**
-   - Added `?all=true` query param to `/api/terms` for fetching all terms
-   - Made `assessment_due_date` optional when creating terms
-   - Session updates after profile changes for immediate UI reflection
-   - Fixed import ordering
+**Unresolved Comments**: 15 (verified via GraphQL - matches GitHub UI)
 
-9. **Dashboard Improvements**
-   - Added Program column to institution offerings table
-   - Enriched offerings with program names from course data
-   - Support for multiple programs display (comma-separated)
-   - Fixed duplicate offerings line bug
+**Categorized by Priority:**
+- High Severity: 3 (2 fixed, 1 deprecated sonar)
+- Medium Severity: 2
+- User Cleanup Requests: 15 files
+- Code Quality: 5 improvements
+- Architectural: 1 critical (seed_db.py demo data mangling)
 
-10. **Test Fixes**
-    - Fixed concurrency tests (added required user fields)
-    - Updated termManagement.test.js (removed obsolete active field)
-    - All 675 JavaScript tests passing
-    - All 1,578 Python tests passing
+### Local Quality Gate Status - ALL PASSING ✅
 
-### Quality Gate Results - ALL PASSING ✅
+**Complete Validation (70.4s)**:
+- ✅ Python Lint & Format: Passing (5.8s)
+- ✅ JavaScript Lint & Format: Passing (6.0s)
+- ✅ Python Static Analysis: Passing (6.1s)
+- ✅ Python Unit Tests: 1,578 passing (70.4s)
+- ✅ JavaScript Tests: 675 passing (5.4s)
+- ✅ Python Coverage: 80%+ ✅
+- ✅ JavaScript Coverage: 80.2% ✅
+- ✅ Complexity: All functions ≤ 15 ✅
+- ✅ Integration: 177 tests passing ✅
+- ✅ Smoke: 3 tests passing ✅
 
-**Final validation (71.9s)**:
-- ✅ Python Lint & Format (5.7s)
-- ✅ JavaScript Lint & Format (6.2s)
-- ✅ Python Static Analysis (6.1s)
-- ✅ Python Unit Tests (1,578 tests, 71.9s)
-- ✅ JavaScript Tests (675 tests, 5.4s)
-- ✅ Python Coverage: 80%+ maintained
-- ✅ JavaScript Coverage: 80.2%
+### Commits Ready to Push (4 total):
 
-### File Changes Summary
-**5 commits, 37 total files changed**:
-- Created: 4 new files (institution_service.py, placeholder SVG, MockU.png, test coverage)
-- Deleted: 5 files (gemini logos, cei logo, loopcloser SVGs)
-- Modified: 28 files (templates, services, adapters, tests, configs)
+```
+e925af5 - fix: standardize CI database and remove deprecated docs
+162d156 - docs: add comprehensive PR #39 issues analysis report
+1aee4c6 - fix: reduce complexity and fix integration test fixture
+(plus earlier branding commits)
+```
 
-### Current Branding Architecture
+### Next Steps
 
-**Before Login (Unauthenticated):**
-- Login, Forgot Password, Index pages show ONLY Loopcloser branding
-- Uses loopcloser_wordmark.png (60px height) for clear brand identity
-- No institution-specific branding (user hasn't authenticated yet)
+**Before Final Merge:**
+1. ⏳ Push these CI fixes
+2. ⏳ Address remaining 12 unresolved PR comments
+3. ⏳ **Critical**: Untangle seed_db.py demo data issue
 
-**After Login (Authenticated):**
-- Institution logo appears in upper-left (80px tall, white background)
-- Loopcloser sitename logo appears next to it
-- Institution branding injected via `inject_institution_branding()` context processor
-- Falls back to placeholder SVG if no custom logo
-
-**Demo Data:**
-- Demo University (DEMO2025) gets MockU.png logo via manifest
-- Other institutions get placeholder SVG
-
-### Next Steps (Future Work)
-1. ✅ Run demo to verify MockU logo appears correctly (verified)
-2. Consider admin UI for uploading institution logos (InstitutionService ready)
-3. Test with multiple institutions to verify placeholder fallback
+**Remaining Unresolved PR Comments (Priority Order):**
+- Database/workflow issues (cursor bot)
+- Demo runner issues (cursor bot) 
+- File cleanup (user requests - 6 migration scripts to delete)
+- Code quality improvements (audit_clo.js, etc.)
 
 ---
 
-## Previous Work: Test Credentials Centralization & Secrets Optimization (2026-01-02)
+## Previous Work: Institution Branding Cleanup (2026-01-07)
 
-**Status**: ✅ COMPLETED - All checks passing, pushed to PR
+**Status**: ✅ COMPLETED & PUSHED
 
-### Completed
-- ✅ **Centralized Test Credentials**: Created `tests/test_credentials.py` - single source of truth
-- ✅ **Optimized Secrets Scan**: Reduced from hanging to ~20s
-- ✅ **Baseline Management**: Grandfathered existing test files
-- ✅ **All Quality Gates Passing**: Lint, format, type checking, tests, coverage, security all green
+**Completed**:
+- Restored Loopcloser-only branding to login pages
+- Fixed dashboard (institution logo 80px + Loopcloser)
+- Created institution_placeholder.svg fallback
+- Removed all "Gemini" references (15 files)
+- Added MockU.png demo logo
+- Fixed concurrency tests, term management tests
+- All 2,253 tests passing
 
-## Previous Work: Repository Reorganization (2026-01-01)
+---
 
-**Status**: ✅ COMPLETED - Refactor & Quality Gate Passed
+## Previous Work: Test Credentials & Repository Reorganization
 
-### What We Did
-Complete repository reorganization to move all source code into `src/` directory and organize supporting files into logical locations.
+**Status**: ✅ COMPLETED
 
-### Current State
-- Repositories reorganized into `src/` structure
+- Centralized test credentials
+- Reorganized to `src/` structure
 - All quality gates passing
-- Frontend code refactored for XSS prevention
-- Fail-fast mechanism optimized
+- Parallelized security checks
