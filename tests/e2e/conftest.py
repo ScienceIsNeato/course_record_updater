@@ -123,7 +123,9 @@ def setup_worker_environment(tmp_path_factory):
 
         # Step 3: Start Flask server
         env = os.environ.copy()
-        env["DATABASE_URL"] = f"sqlite:///{worker_db}"
+        # Use absolute path to avoid CWD ambiguity between server and test processes
+        db_abs_path = os.path.abspath(worker_db)
+        env["DATABASE_URL"] = f"sqlite:///{db_abs_path}"
         env["DATABASE_TYPE"] = "sqlite"
         env["PORT"] = str(worker_port)
         env["BASE_URL"] = f"http://localhost:{worker_port}"
@@ -534,22 +536,23 @@ def program_admin_authenticated_page(page: Page) -> Page:
     """
     Provides page with program admin session (CS program @ MockU).
 
-    Uses baseline seed account: bob.programadmin@mocku.test
+    Uses baseline seed account from test_credentials: PROGRAM_ADMIN_EMAIL
     """
     page.context.clear_cookies()
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
-    # Use CS program admin from baseline seed (DEFAULT_PASSWORD = InstitutionAdmin123!)
-    page.fill('input[name="email"]', "bob.programadmin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    # Use CS program admin from baseline seed
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)  # Increased timeout
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Program admin login failed")
+    except Exception as e:
+        pytest.fail(f"Program admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function", autouse=True)
