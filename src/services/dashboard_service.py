@@ -173,7 +173,6 @@ class DashboardService:
             "instructors": get_all_instructors(institution_id) or [],
             "sections": get_all_sections(institution_id) or [],
             "offerings": get_all_course_offerings(institution_id) or [],
-            "offerings": get_all_course_offerings(institution_id) or [],
             "terms": get_all_terms(institution_id) or [],
         }
 
@@ -272,7 +271,9 @@ class DashboardService:
             raw["terms"], raw["offerings"], courses, sections
         )
 
-        offerings = self._enrich_offerings_with_section_data(raw["offerings"], sections)
+        offerings = self._enrich_offerings_with_section_data(
+            raw["offerings"], sections, courses
+        )
 
         # Build metrics and aggregations
         program_metrics = self._build_program_metrics(
@@ -1512,22 +1513,43 @@ class DashboardService:
         self,
         offerings: List[Dict[str, Any]],
         sections: List[Dict[str, Any]],
+        courses: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Enrich offerings with section count and total enrollment.
+        Enrich offerings with section count, total enrollment, and program info.
 
         Args:
             offerings: List of offering dictionaries
             sections: List of section dictionaries
+            courses: Optional list of course dictionaries for program lookup
 
         Returns:
-            List of offerings enriched with section_count and total_enrollment
+            List of offerings enriched with section_count, total_enrollment, and program_names
         """
         offering_data = self._build_offering_section_rollup(sections)
-        return [
-            self._apply_offering_section_rollup(offering, offering_data)
-            for offering in offerings
-        ]
+
+        # Build course lookup for program info
+        course_lookup: Dict[str, Dict[str, Any]] = {}
+        if courses:
+            for course in courses:
+                course_id = course.get("course_id") or course.get("id")
+                if course_id:
+                    course_lookup[course_id] = course
+
+        enriched = []
+        for offering in offerings:
+            enriched_offering = self._apply_offering_section_rollup(
+                offering, offering_data
+            )
+            # Add program info from course
+            course_id = offering.get("course_id")
+            if course_id and course_id in course_lookup:
+                course = course_lookup[course_id]
+                enriched_offering["program_names"] = course.get("program_names", [])
+            else:
+                enriched_offering["program_names"] = []
+            enriched.append(enriched_offering)
+        return enriched
 
     def _build_offering_section_rollup(
         self, sections: List[Dict[str, Any]]

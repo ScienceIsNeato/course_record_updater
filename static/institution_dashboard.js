@@ -585,15 +585,15 @@
           const term = termLookup.get(offering.term_id) || {};
           const sectionCount = offering.section_count || 0;
           const enrollmentCount = offering.total_enrollment || 0;
-          const programName =
-            offering.program_name ||
-            (course.programs && course.programs[0]?.name) ||
-            (course.program_names && course.program_names[0]) ||
-            "-";
+          // Get program names from offering (enriched from course) or fall back to course data
+          const programNames =
+            offering.program_names || course.program_names || [];
+          const programDisplay =
+            programNames.length > 0 ? programNames.join(", ") : "-";
 
           return {
             course: course.course_number || "Unknown Course",
-            program: programName,
+            program: programDisplay,
             term: term.term_name || term.name || "Unknown Term",
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
