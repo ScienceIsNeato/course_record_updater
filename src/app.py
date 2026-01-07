@@ -396,6 +396,71 @@ def admin_users():
 
 
 # Dashboard Routes
+def _get_current_term_from_db(user, effective_date):
+    """
+    Find the current term based on effective date by querying the database.
+
+    Returns the term name where effective_date falls between start_date and end_date.
+    Falls back to a generated term name if no matching term is found.
+    """
+    institution_id = user.get("institution_id")
+    if not institution_id:
+        # Fall back to generated term for site admins without institution
+        return get_term_display_name(get_current_term())
+
+    try:
+        from src.database.database_service import get_all_terms
+
+        terms = get_all_terms(institution_id)
+
+        if not terms:
+            return get_term_display_name(get_current_term())
+
+        # Make effective_date timezone-naive for comparison if needed
+        effective_date_naive = (
+            effective_date.replace(tzinfo=None)
+            if effective_date.tzinfo
+            else effective_date
+        )
+
+        for term in terms:
+            start_date = term.get("start_date")
+            end_date = term.get("end_date")
+
+            if not start_date or not end_date:
+                continue
+
+            # Parse dates if they're strings
+            if isinstance(start_date, str):
+                start_date = datetime.fromisoformat(
+                    start_date.replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+            elif hasattr(start_date, "replace"):
+                start_date = (
+                    start_date.replace(tzinfo=None) if start_date.tzinfo else start_date
+                )
+
+            if isinstance(end_date, str):
+                end_date = datetime.fromisoformat(
+                    end_date.replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+            elif hasattr(end_date, "replace"):
+                end_date = (
+                    end_date.replace(tzinfo=None) if end_date.tzinfo else end_date
+                )
+
+            # Check if effective date falls within this term
+            if start_date <= effective_date_naive <= end_date:
+                return term.get("name") or term.get("term_name") or "Current Term"
+
+        # No matching term found - fall back to generated term
+        return get_term_display_name(get_current_term())
+
+    except Exception as e:
+        logger.warning(f"Failed to get current term from DB: {e}")
+        return get_term_display_name(get_current_term())
+
+
 def get_header_context(user):
     """
     Generate header context with current term and date information
@@ -406,10 +471,6 @@ def get_header_context(user):
     Returns:
         dict: Header context with term and date information
     """
-    # Get current term and format it for display
-    current_term = get_current_term()
-    current_term_display = get_term_display_name(current_term)
-
     # Get effective date - use override if set, otherwise current time
     effective_date = user.get("system_date_override") or datetime.now(timezone.utc)
 
@@ -427,8 +488,11 @@ def get_header_context(user):
     date_format = "%b %d, %Y %I:%M %p %Z"
     effective_date_display = effective_date.strftime(date_format)
 
+    # Determine current term based on effective date and actual term records
+    current_term_display = _get_current_term_from_db(user, effective_date)
+
     return {
-        "current_term": current_term,
+        "current_term": current_term_display,
         "current_term_display": current_term_display,
         "effective_date": effective_date,
         "effective_date_display": effective_date_display,

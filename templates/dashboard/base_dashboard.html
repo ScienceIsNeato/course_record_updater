@@ -69,11 +69,10 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
-            <!-- Loopcloser Branding (left side) -->
-            <a class="navbar-brand loopcloser-brand" href="/dashboard">
-                <img src="{{ url_for('static', filename='images/loopcloser_icon.png') }}" 
-                     alt="Loopcloser">
-            </a>
+            <!-- Institution Logo (left side, non-clickable) -->
+            <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
+                 alt="{{ institution_branding.short_name }} logo"
+                 class="institution-logo">
 
             <!-- Navigation Items -->
             <div class="navbar-nav me-auto">
@@ -118,10 +117,11 @@
                 </div>
             </div>
 
-            <!-- Institution Logo (right side, non-clickable) -->
-            <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
-                 alt="{{ institution_branding.short_name }} logo"
-                 class="institution-logo ms-3">
+            <!-- Loopcloser Wordmark (right side) -->
+            <a class="navbar-brand loopcloser-brand ms-3" href="/dashboard">
+                <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" 
+                     alt="Loopcloser">
+            </a>
         </div>
     </nav>
 

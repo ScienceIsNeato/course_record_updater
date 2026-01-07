@@ -497,6 +497,7 @@
         id: "institution-terms-table",
         columns: [
           { key: "name", label: "Name", sortable: true },
+          { key: "programs", label: "Programs", sortable: true },
           { key: "courses", label: "Courses", sortable: true },
           { key: "sections", label: "Course Sections", sortable: true },
           { key: "start_date", label: "Start Date", sortable: true },
@@ -515,6 +516,8 @@
           return {
             name: term.name || term.term_name || "Unnamed Term",
             name_sort: term.name || term.term_name || "",
+            programs: (term.program_count ?? 0).toString(),
+            programs_sort: (term.program_count ?? 0).toString(),
             courses: (term.course_count ?? 0).toString(),
             courses_sort: (term.course_count ?? 0).toString(),
             sections: (term.section_count ?? 0).toString(),
