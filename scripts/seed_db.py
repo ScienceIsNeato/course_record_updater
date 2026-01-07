@@ -53,14 +53,14 @@ class BaselineSeeder:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
-    def create_institutions(self):
+    def create_institutions(self, manifest_institutions=None):
         """Create 3 test institutions"""
         self.log("🏢 Creating test institutions...")
 
         institutions = [
             {
                 "name": "Mock University",
-                "short_name": "MockU",
+                "short_name": "MOCKU",
                 "admin_email": "admin@mocku.test",
                 "website_url": "https://mocku.test",
                 "created_by": "system",
@@ -80,6 +80,17 @@ class BaselineSeeder:
                 "created_by": "system",
             },
         ]
+
+        # Merge in logo_path from manifest if provided
+        if manifest_institutions:
+            for manifest_inst in manifest_institutions:
+                short_name = manifest_inst.get("short_name")
+                logo_path = manifest_inst.get("logo_path")
+                if short_name and logo_path:
+                    for inst_data in institutions:
+                        if inst_data["short_name"] == short_name:
+                            inst_data["logo_path"] = logo_path
+                            break
 
         institution_ids = []
         for inst_data in institutions:
@@ -132,7 +143,10 @@ class BaselineSeeder:
         """Seed minimal baseline data"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
 
-        inst_ids = self.create_institutions()
+        manifest_institutions = (
+            manifest_data.get("institutions") if manifest_data else None
+        )
+        inst_ids = self.create_institutions(manifest_institutions)
         self.create_site_admin()
 
         # Create programs BEFORE users - users may reference program_code for assignment
@@ -645,7 +659,7 @@ class DemoSeeder(BaselineSeeder):
             self.log(f"⚠️  Failed to load manifest: {e}")
             return {}
 
-    def create_demo_institution(self):
+    def create_demo_institution(self, manifest_institutions=None):
         """Create demo institution"""
         self.log("🏢 Creating Demo University...")
 
@@ -653,13 +667,26 @@ class DemoSeeder(BaselineSeeder):
         if existing:
             return existing["institution_id"]
 
-        schema = Institution.create_schema(
-            name="Demo University",
-            short_name="DEMO2025",
-            admin_email="demo2025.admin@example.com",
-            website_url="https://demo.example.com",
-            created_by="system",
-        )
+        # Base institution data
+        inst_data = {
+            "name": "Demo University",
+            "short_name": "DEMO2025",
+            "admin_email": "demo2025.admin@example.com",
+            "website_url": "https://demo.example.com",
+            "created_by": "system",
+        }
+
+        # Apply logo_path from manifest if provided
+        if manifest_institutions:
+            for manifest_inst in manifest_institutions:
+                if manifest_inst.get("short_name") == "DEMO2025":
+                    logo_path = manifest_inst.get("logo_path")
+                    if logo_path:
+                        inst_data["logo_path"] = logo_path
+                        self.log(f"   ✓ Using logo from manifest: {logo_path}")
+                    break
+
+        schema = Institution.create_schema(**inst_data)
 
         inst_id = database_service.db.create_institution(schema)
         if inst_id:
@@ -1223,7 +1250,8 @@ class DemoSeeder(BaselineSeeder):
         # Ensure Site Admin exists
         self.create_site_admin()
 
-        inst_id = self.create_demo_institution()
+        manifest_institutions = manifest.get("institutions") if manifest else None
+        inst_id = self.create_demo_institution(manifest_institutions)
         if not inst_id:
             return False
 

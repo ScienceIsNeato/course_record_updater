@@ -1,6 +1,98 @@
 # Course Record Updater - Current Status
 
-## Latest Work: Test Credentials Centralization & Secrets Optimization (2026-01-02)
+## Latest Work: Institution Branding Cleanup (2026-01-07)
+
+**Status**: ✅ COMPLETED & VERIFIED - Cleaned up branding confusion, all quality gates passing
+
+### What Happened
+Previous agent misunderstood "Gemini" (MockU.png's old filename) and created unnecessary branded files, replaced Loopcloser branding incorrectly, and added institution context to login page (before user is authenticated).
+
+### Changes Made
+
+1. **Restored Loopcloser Branding**
+   - Login page: Pure Loopcloser branding (no institution references)
+   - Forgot password page: Loopcloser branding
+   - Index authenticated page: Loopcloser branding
+   - All pages use `loopcloser_logo.png` and `loopcloser_sitename_with_logo.png`
+
+2. **Fixed Dashboard Layout**
+   - Institution logo appears in upper-left (non-clickable for now)
+   - Loopcloser branding remains next to institution logo
+   - Clean separation: Institution identity + Platform branding
+
+3. **Created Generic Placeholder**
+   - Added `static/images/institution_placeholder.svg` - clean university building icon
+   - Used as fallback when institutions don't have custom logos
+
+4. **Removed All "Gemini" References**
+   - Deleted `static/images/gemini_logo.svg` and `gemini_favicon.svg`
+   - Updated constants to use placeholder SVG
+   - Changed database default from "Gemini University" to "Mock University"
+   - Cleaned up all code comments/strings referencing Gemini
+   - Updated API messages to say "Loopcloser" instead of "Gemini Course Intelligence"
+
+5. **Demo Data Integration**
+   - Copied `MockU.png` to `static/images/MockU.png`
+   - Updated `demos/full_semester_manifest.json` to include MockU logo path
+   - Modified `scripts/seed_db.py` to accept institution branding from manifest (both baseline and demo)
+   - Demo now correctly shows MockU logo for Demo University
+
+6. **InstitutionService**
+   - Kept existing CRUD methods (logo upload/save/delete)
+   - Improved docstring clarity
+   - Service ready for admin UI integration when needed
+
+### Verification Results
+
+✅ **Linting**: All Python code passes black, isort, flake8
+✅ **Tests**: All 436 unit tests passing (59.3s)
+✅ **Database Seeding**: Demo institution correctly receives logo from manifest
+```
+📊 Institutions in database:
+   • Demo University (DEMO2025): logo_path="images/MockU.png"
+```
+✅ **Server**: Dev server running on port 3001, serving Loopcloser-branded pages
+
+### File Changes
+- ✅ Created: `static/images/institution_placeholder.svg`
+- ✅ Created: `static/images/MockU.png` (from root)
+- ✅ Deleted: `static/images/gemini_logo.svg`
+- ✅ Deleted: `static/images/gemini_favicon.svg`
+- ✅ Updated: `src/utils/constants.py` (default logo path)
+- ✅ Updated: `templates/auth/login.html` (Loopcloser only)
+- ✅ Updated: `templates/auth/forgot_password.html` (Loopcloser only)
+- ✅ Updated: `templates/index_authenticated.html` (Loopcloser only)
+- ✅ Updated: `templates/dashboard/base_dashboard.html` (institution logo + Loopcloser)
+- ✅ Updated: All dashboard templates (removed "Gemini Course Intelligence" from titles)
+- ✅ Updated: `src/database/database_sqlite.py` (MOCKU instead of Gemini)
+- ✅ Updated: `scripts/seed_db.py` (manifest-driven logo support for demo AND baseline)
+- ✅ Updated: `demos/full_semester_manifest.json` (added institutions array with logo)
+- ✅ Updated: Multiple files to remove "Gemini" references (15 files total)
+
+### Current Branding Architecture
+
+**Before Login (Unauthenticated):**
+- Login, Forgot Password, Index pages show ONLY Loopcloser branding
+- No institution-specific branding (user hasn't authenticated yet)
+
+**After Login (Authenticated):**
+- Institution logo appears in upper-left of dashboard (non-clickable)
+- Loopcloser sitename logo appears next to it
+- Institution branding injected via `inject_institution_branding()` context processor
+- Falls back to placeholder SVG if no custom logo
+
+**Demo Data:**
+- Demo University (DEMO2025) gets MockU.png logo via manifest
+- Other institutions get placeholder SVG
+
+### Next Steps (Future Work)
+1. ✅ Run demo to verify MockU logo appears correctly (verified in database)
+2. Consider admin UI for uploading institution logos (InstitutionService ready)
+3. Test with multiple institutions to verify placeholder fallback
+
+---
+
+## Previous Work: Test Credentials Centralization & Secrets Optimization (2026-01-02)
 
 **Status**: ✅ COMPLETED - All checks passing, pushed to PR
 
@@ -18,11 +110,6 @@
 - **Fast Iteration**: Secrets scan completes quickly, enabling rapid development
 - **Clean Architecture**: Test credentials separated from production code
 - **Incremental Migration**: Pattern established for migrating remaining ~60 test files
-
-### Next Steps (Future Work)
-- Incrementally migrate remaining test files to use `from tests.test_credentials import <PASSWORD>`
-- Remove migrated files from baseline as they're updated
-- Eventually only `test_credentials.py` remains in baseline
 
 ## Previous Work: Repository Reorganization (2026-01-01)
 
@@ -57,25 +144,12 @@ Complete repository reorganization to move all source code into `src/` directory
 5. **Moved Scripts** → `scripts/`
    - Shell scripts (`restart_server.sh`, `run_uat.sh`, etc.)
 
-### Refactoring Phase 3: Final Consolidation & Quality Gates ✅
-- [x] Update documentation (README.md, structure diagrams)
-- [x] Update CI/CD configurations (Dockerfile, Jest, SonarCloud)
-- [x] Correct stale path references in all scripts
-- [x] Refactor frontend security hotspots (Appease Semgrep vs. Suppress)
-  - [x] Refactored `audit_clo.js`, dashboards, and `panels.js` to use DOM API construction
-  - [x] Optimized `ship_it.py` fail-fast mechanism (True non-blocking shutdown)
-  - [x] Enabled frontend auto-fixes in `maintAInability-gate.sh`
-- [x] Final Quality Gate validation pass
-
 ### Current State:
 - Repositories reorganized into `src/` structure.
 - Imports correctly migrated to `src.*` namespaced paths.
 - All quality gates (linting, typing, coverage, security) passing.
 - Frontend code refactored for XSS prevention without suppression.
 - Fail-fast mechanism in `ship_it.py` is now highly efficient.
-
-### Next Steps:
-1. Final verification commit.
 
 ### Latest Work: Security & Test Optimization (2026-01-02)
 
@@ -89,8 +163,3 @@ Complete repository reorganization to move all source code into `src/` directory
   - Confirmed `tests/integration/` contains only API client tests (mocked/fast).
 - ✅ **Gate Strictness**: Reverted "skip if server down" to ensure E2E tests strictly enforce environment requirements.
 - ✅ **Label Quality**: Renamed "coverage" check to "🧪 Python Unit Tests & 📊 Coverage Analysis" in `ship_it.py` for transparency.
-
-### Next Steps:
-1. ⏳ Monitor CI for `fix: Stabilize CI/E2E pipelines`.
-2. Integration verification of new test structure.
-

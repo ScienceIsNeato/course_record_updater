@@ -226,7 +226,7 @@ class TestHealthEndpoint:
             data = json.loads(response.data)
             assert data["status"] == "healthy"
             assert data["success"] is True
-            assert data["message"] == "Gemini Course Intelligence API is running"
+            assert data["message"] == "Loopcloser API is running"
             assert data["version"] == "2.0.0"
 
     def test_health_endpoint_no_auth_required(self):

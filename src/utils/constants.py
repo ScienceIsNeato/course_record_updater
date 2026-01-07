@@ -19,7 +19,7 @@ DEFAULT_EXPORT_LIMIT = 1000
 # Branding defaults for institutions
 DEFAULT_INSTITUTION_NAME = "Your Institution"
 DEFAULT_INSTITUTION_SHORT_NAME = "YOUR INSTITUTION"
-DEFAULT_INSTITUTION_LOGO_STATIC_PATH = "images/gemini_logo.svg"
+DEFAULT_INSTITUTION_LOGO_STATIC_PATH = "images/institution_placeholder.svg"
 
 # Database collection names
 INSTITUTIONS_COLLECTION = "institutions"

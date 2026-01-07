@@ -347,7 +347,7 @@ def main():
     """Main CLI function"""
     args = parse_arguments()
 
-    print("🚀 Gemini Course Data Import Tool")
+    print("🚀 Loopcloser Course Data Import Tool")
     print("=" * 40)
 
     if not validate_file(args.file):

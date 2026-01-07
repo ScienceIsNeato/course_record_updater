@@ -1,7 +1,7 @@
 """
 API Routes Module
 
-This module defines the new REST API endpoints for the Gemini Course Intelligence platform.
+This module defines the new REST API endpoints for the Loopcloser platform.
 These routes provide a proper REST API structure while maintaining backward compatibility
 with the existing single-page application.
 """
@@ -3840,7 +3840,7 @@ def health_check():
         {
             "success": True,
             "status": "healthy",
-            "message": "Gemini Course Intelligence API is running",
+            "message": "Loopcloser API is running",
             "version": "2.0.0",
         }
     )

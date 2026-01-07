@@ -1,4 +1,10 @@
 {
+    "institutions": [
+        {
+            "short_name": "DEMO2025",
+            "logo_path": "images/MockU.png"
+        }
+    ],
     "institution_admins": [
         {
             "email": "sarah.admin@mocku.test",
