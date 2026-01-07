@@ -11,8 +11,10 @@ import json
 import os
 import random
 import sys
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -37,8 +39,16 @@ PROGRAM_DEFAULT_DESCRIPTION = "A sample academic program."
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-class BaselineSeeder:
-    """Seeds baseline shared infrastructure for E2E tests"""
+class BaselineSeeder(ABC):
+    """
+    Abstract base class for database seeding operations.
+
+    Provides shared utilities for manifest loading, logging, and database interaction.
+    Subclasses implement specific seeding strategies (test vs demo vs production).
+
+    TODO (Future - Phase 2): Move all hardcoded data from subclasses to JSON manifests.
+    See SEED_DB_REFACTOR_PLAN.md for migration strategy.
+    """
 
     def __init__(self):
         self.created = {
@@ -52,6 +62,51 @@ class BaselineSeeder:
     def log(self, message: str):
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
+
+    def load_manifest(self, manifest_path: Optional[str]) -> Dict[str, Any]:
+        """Load and parse manifest JSON file (shared utility)"""
+        if not manifest_path:
+            return {}
+
+        try:
+            manifest_file = Path(manifest_path)
+            if manifest_file.exists():
+                self.log(f"📋 Loading manifest from {manifest_path}")
+                with open(manifest_file, "r") as f:
+                    return json.load(f)
+            else:
+                self.log(f"⚠️  Manifest not found at {manifest_path}, using defaults")
+                return {}
+        except Exception as e:
+            self.log(f"⚠️  Failed to load manifest: {e}")
+            return {}
+
+    @abstractmethod
+    def seed(self):
+        """Implement seeding logic in subclasses"""
+        pass
+
+
+class BaselineTestSeeder(BaselineSeeder):
+    """
+    Seeds baseline test infrastructure for E2E/integration tests.
+
+    TODO (Future - Phase 2): Move hardcoded data to tests/fixtures/baseline_test_manifest.json
+    This class currently contains hardcoded institution, program, and term data
+    that should be externalized to JSON manifests for flexibility.
+    See SEED_DB_REFACTOR_PLAN.md for migration strategy.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def log(self, message: str):
+        """Log with [SEED] prefix"""
+        print(f"[SEED] {message}")
+
+    def seed(self):
+        """Implementation of abstract seed method - calls seed_baseline()"""
+        return self.seed_baseline()
 
     def create_institutions(self, manifest_institutions=None):
         """Create 3 test institutions"""
@@ -613,11 +668,11 @@ class DatabaseSeeder:
     Compatibility wrapper for integration tests.
 
     Integration tests expect DatabaseSeeder.seed_full_dataset() but we refactored
-    to BaselineSeeder.seed_baseline() for E2E tests. This provides backward compatibility.
+    to BaselineTestSeeder.seed_baseline() for E2E tests. This provides backward compatibility.
     """
 
     def __init__(self, verbose=True):
-        self.seeder = BaselineSeeder()
+        self.seeder = BaselineTestSeeder()
         self.verbose = verbose
 
     def seed_full_dataset(self):
@@ -625,12 +680,23 @@ class DatabaseSeeder:
         return self.seeder.seed_baseline()
 
 
-class DemoSeeder(BaselineSeeder):
-    """Complete seeding for product demonstrations (2025)"""
+class DemoSeeder(BaselineTestSeeder):
+    """
+    Complete seeding for product demonstrations (2025).
+
+    TODO (Future - Phase 2): Move demo-specific data to demos/full_semester_manifest.json
+    This class extends BaselineTestSeeder and adds demo-specific scenarios,
+    users, and CLO workflows. All hardcoded data should eventually be in manifest.
+    See SEED_DB_REFACTOR_PLAN.md for migration strategy.
+    """
 
     def __init__(self, manifest_path=None):
         super().__init__()
         self.manifest_path = manifest_path
+
+    def seed(self):
+        """Implementation of abstract seed method - calls seed_demo()"""
+        return self.seed_demo()
 
     def log(self, message: str):
         """Log with [SEED] prefix"""
@@ -1317,7 +1383,7 @@ class DemoSeeder(BaselineSeeder):
             term_data.get("name"), institution_id
         )
         if existing:
-            term_id = existing["id"]
+            term_id = existing.get("id") or existing.get("term_id")
         else:
             term_id = database_service.db.create_term(schema_term)
             if term_id:
@@ -1509,7 +1575,7 @@ def main():
         success = seeder.seed_demo()
         sys.exit(0 if success else 1)
     else:
-        seeder = BaselineSeeder()
+        seeder = BaselineTestSeeder()
 
         if args.clear:
             seeder.log("🧹 Clearing database...")
