@@ -102,7 +102,6 @@ function initializeCreateTermModal() {
     const endDate = document.getElementById("termEndDate").value;
     const assessmentDueDate =
       document.getElementById("termAssessmentDueDate")?.value || "";
-    const active = document.getElementById("termActive").checked;
 
     // Validate dates
     if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
@@ -113,9 +112,12 @@ function initializeCreateTermModal() {
       name,
       start_date: startDate,
       end_date: endDate,
-      assessment_due_date: assessmentDueDate,
-      active,
     };
+
+    // Only include assessment_due_date if provided
+    if (assessmentDueDate) {
+      termData.assessment_due_date = assessmentDueDate;
+    }
 
     const createBtn = document.getElementById("createTermBtn");
     const btnText = createBtn.querySelector(".btn-text");
@@ -196,7 +198,6 @@ function initializeEditTermModal() {
     const endDate = document.getElementById("editTermEndDate").value;
     const assessmentDueDate =
       document.getElementById("editTermAssessmentDueDate")?.value || "";
-    const active = document.getElementById("editTermActive").checked;
 
     // Validate dates
     if (!validateTermDates(startDate, endDate, assessmentDueDate)) {
@@ -207,9 +208,12 @@ function initializeEditTermModal() {
       name,
       start_date: startDate,
       end_date: endDate,
-      assessment_due_date: assessmentDueDate,
-      active,
     };
+
+    // Only include assessment_due_date if provided
+    if (assessmentDueDate) {
+      updateData.assessment_due_date = assessmentDueDate;
+    }
 
     const saveBtn = this.querySelector('button[type="submit"]');
     const btnText = saveBtn.querySelector(".btn-text");
@@ -296,9 +300,6 @@ function openEditTermModal(termId, termDataOverride) {
     dueDateInput.value = termData.assessment_due_date || "";
   }
 
-  document.getElementById("editTermActive").checked =
-    termData.active !== undefined ? termData.active : true;
-
   const modal = new bootstrap.Modal(document.getElementById("editTermModal"));
   modal.show();
 }
@@ -361,7 +362,7 @@ async function loadTerms() {
   `;
 
   try {
-    const response = await fetch("/api/terms", {
+    const response = await fetch("/api/terms?all=true", {
       headers: { Accept: "application/json" },
     });
 

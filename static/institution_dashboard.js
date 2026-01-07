@@ -574,6 +574,7 @@
         id: "institution-offerings-table",
         columns: [
           { key: "course", label: "Course", sortable: true },
+          { key: "program", label: "Program", sortable: true },
           { key: "term", label: "Term", sortable: true },
           { key: "sections", label: "Sections", sortable: true },
           { key: "enrollment", label: "Enrollment", sortable: true },
@@ -584,9 +585,15 @@
           const term = termLookup.get(offering.term_id) || {};
           const sectionCount = offering.section_count || 0;
           const enrollmentCount = offering.total_enrollment || 0;
+          const programName =
+            offering.program_name ||
+            (course.programs && course.programs[0]?.name) ||
+            (course.program_names && course.program_names[0]) ||
+            "-";
 
           return {
             course: course.course_number || "Unknown Course",
+            program: programName,
             term: term.term_name || term.name || "Unknown Term",
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
@@ -876,6 +883,11 @@
 
   // Expose InstitutionDashboard to window immediately so onclick handlers work
   globalThis.InstitutionDashboard = InstitutionDashboard;
+
+  // Expose loadTerms globally for termManagement.js to call after term creation
+  globalThis.loadTerms = function () {
+    InstitutionDashboard.loadData({ silent: true });
+  };
 
   document.addEventListener("DOMContentLoaded", () => {
     // Wait a bit for panelManager to be initialized

@@ -141,6 +141,8 @@ class LoginService:
                     "user_id": user["user_id"],
                     "email": user["email"],
                     "role": user["role"],
+                    "first_name": user.get("first_name", ""),
+                    "last_name": user.get("last_name", ""),
                     "institution_id": user.get("institution_id"),
                     "institution_short_name": institution_short_name,  # Natural key
                     "institution_name": institution_name,

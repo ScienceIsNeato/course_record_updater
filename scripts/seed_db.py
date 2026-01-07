@@ -1410,24 +1410,16 @@ class DemoSeeder(BaselineSeeder):
         self.log(f"   Programs: {len(self.created['programs'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log(f"   Courses: {len(self.created['courses'])} created")
-        self.log(
-            f"   Faculty: {len([u for u in self.created['users'] if 'instructor' in str(u)])} created"
-        )
+        self.log(f"   Users: {len(self.created['users'])} created")
         self.log("")
         self.log("🔑 Demo Account Credentials:")
         self.log("   Email:    demo2025.admin@example.com")
         self.log("   Password: Demo2025!")
         self.log("")
-        self.log("🚀 Ready to demo! The database is fully populated with:")
-        self.log("   ✓ Courses across multiple programs")
-        self.log("   ✓ Faculty members assigned to courses")
-        self.log("   ✓ Course offerings and sections")
-        self.log("")
         self.log("🎬 Next Steps:")
         self.log("   1. Start server: ./restart_server.sh dev")
         self.log("   2. Navigate to: http://localhost:3001")
         self.log("   3. Login with the credentials above")
-        self.log("   4. Jump right into the killer features!")
 
 
 def main():

@@ -88,6 +88,8 @@ class SessionService:
         session["user_id"] = user_data.get("user_id")  # Still store for this session
         session["email"] = user_data.get("email")  # Natural key for user
         session["role"] = user_data.get("role")
+        session["first_name"] = user_data.get("first_name", "")
+        session["last_name"] = user_data.get("last_name", "")
         if user_data.get("institution_id"):
             session["institution_id"] = user_data.get("institution_id")
         session["institution_short_name"] = user_data.get("institution_short_name")  # Natural key
@@ -198,6 +200,8 @@ class SessionService:
             "user_id": session.get("user_id"),
             "email": session.get("email"),  # Natural key for user lookup
             "role": session.get("role"),
+            "first_name": session.get("first_name", ""),
+            "last_name": session.get("last_name", ""),
             "institution_id": session.get("institution_id"),
             "institution_short_name": session.get("institution_short_name"),  # Natural key
             "institution_name": session.get("institution_name"),

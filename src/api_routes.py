@@ -54,6 +54,7 @@ from src.database.database_service import (
     duplicate_course_record,
     get_active_terms,
     get_all_courses,
+    get_all_terms,
     get_all_institutions,
     get_all_instructors,
     get_all_sections,
@@ -2035,7 +2036,7 @@ def list_instructors():
 @api.route("/terms", methods=["GET"])
 @permission_required("view_program_data")
 def list_terms():
-    """Get list of active terms"""
+    """Get list of terms. Use ?all=true to get all terms, otherwise returns only active terms."""
     try:
         try:
             _, institution_ids, is_global = _resolve_institution_scope()
@@ -2045,12 +2046,21 @@ def list_terms():
                 400,
             )
 
+        # Check if caller wants all terms or just active ones
+        include_all = request.args.get("all", "").lower() in ("true", "1", "yes")
+
         if is_global:
             terms: List[Dict[str, Any]] = []
             for inst_id in institution_ids:
-                terms.extend(get_active_terms(inst_id))
+                if include_all:
+                    terms.extend(get_all_terms(inst_id))
+                else:
+                    terms.extend(get_active_terms(inst_id))
         else:
-            terms = get_active_terms(institution_ids[0])
+            if include_all:
+                terms = get_all_terms(institution_ids[0])
+            else:
+                terms = get_active_terms(institution_ids[0])
 
         return jsonify({"success": True, "terms": terms, "count": len(terms)})
 
@@ -2077,7 +2087,7 @@ def create_term_api():
             return jsonify({"success": False, "error": NO_DATA_PROVIDED_MSG}), 400
 
         # Validate required fields
-        required_fields = ["name", "start_date", "end_date", "assessment_due_date"]
+        required_fields = ["name", "start_date", "end_date"]
         missing_fields = [f for f in required_fields if not data.get(f)]
 
         if missing_fields:
@@ -4840,6 +4850,18 @@ def update_profile_api():
         success = update_user_profile(user_id, profile_data)
 
         if success:
+            # Update session with new values so page refresh shows updated data
+            from flask import session
+
+            if "first_name" in profile_data:
+                session["first_name"] = profile_data["first_name"]
+            if "last_name" in profile_data:
+                session["last_name"] = profile_data["last_name"]
+            # Update display_name in session as well
+            new_first = profile_data.get("first_name", session.get("first_name", ""))
+            new_last = profile_data.get("last_name", session.get("last_name", ""))
+            session["display_name"] = f"{new_first} {new_last}".strip()
+
             return (
                 jsonify({"success": True, "message": "Profile updated successfully"}),
                 200,
