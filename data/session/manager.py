@@ -100,12 +100,13 @@ class SessionService:
             or f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
         )
         if user_data.get("system_date_override"):
-            # Store as ISO string
+            # Store as datetime object - Flask session handles serialization
             date_val = user_data.get("system_date_override")
-            if hasattr(date_val, "isoformat"):
-                 session["system_date_override"] = date_val.isoformat()
-            else:
-                 session["system_date_override"] = str(date_val)
+            # Ensure it's a datetime object, not a string
+            if isinstance(date_val, str):
+                from datetime import datetime
+                date_val = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            session["system_date_override"] = date_val
 
 
         # Session metadata
