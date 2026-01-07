@@ -46,7 +46,13 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def create_new_institution_simple(
-        self, name: str, short_name: str, active: bool = True
+        self,
+        name: str,
+        short_name: str,
+        active: bool = True,
+        *,
+        website_url: Optional[str] = None,
+        logo_path: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new institution without creating an admin user (site admin workflow)"""
         raise NotImplementedError

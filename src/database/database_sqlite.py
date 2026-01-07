@@ -51,6 +51,7 @@ class SQLiteDatabase(DatabaseInterface):
         institution_id = _ensure_uuid(payload.pop("institution_id", None))
         name = payload.get("name") or payload.get("institution_name")
         short_name = payload.get("short_name")
+        logo_path = payload.pop("logo_path", None)
         if not name or not short_name:
             logger.error("[SQLiteDatabase] Institution requires name and short_name")
             return None
@@ -60,6 +61,7 @@ class SQLiteDatabase(DatabaseInterface):
             name=name,
             short_name=short_name.upper(),
             website_url=payload.get("website_url"),
+            logo_path=logo_path,
             created_by=payload.get("created_by"),
             admin_email=(payload.get("admin_email") or "").lower(),
             allow_self_registration=payload.get("allow_self_registration", False),

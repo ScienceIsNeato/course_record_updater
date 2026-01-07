@@ -630,7 +630,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
   TEST_EXIT_CODE=0
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
+  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
   
   # Write detailed coverage report to file
   echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
@@ -785,7 +785,7 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
       rm -f .coverage .coverage.*
       
       # Generate coverage.xml
-      python -m pytest tests/unit/ --cov=src --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
+      python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
     fi
     
     if [[ -f "coverage.xml" ]]; then

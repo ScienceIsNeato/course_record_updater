@@ -67,6 +67,7 @@ class Institution(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     name = Column(String, nullable=False)
     short_name = Column(String, nullable=False, unique=True)
     website_url = Column(String)
+    logo_path = Column(String)
     created_by = Column(String)
     admin_email = Column(String, nullable=False)
     allow_self_registration = Column(Boolean, default=False)
@@ -485,6 +486,7 @@ def _institution_to_dict(model: Institution) -> Dict[str, Any]:
         "name": model.name,
         "short_name": model.short_name,
         "website_url": model.website_url,
+        "logo_path": model.logo_path,
         "created_by": model.created_by,
         "admin_email": model.admin_email,
         "allow_self_registration": model.allow_self_registration,

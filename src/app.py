@@ -15,6 +15,7 @@ from src.services.auth_service import (
     permission_required,
 )
 from src.services.email_service import EmailService
+from src.services.institution_service import InstitutionService
 
 # Import constants and utilities
 from src.utils.constants import (
@@ -36,6 +37,10 @@ from .api_routes import api
 
 # Initialize logger
 logger = get_app_logger()
+
+
+# Shared services
+institution_service = InstitutionService()
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 
@@ -86,6 +91,15 @@ def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
 
     return dict(csrf_token=generate_csrf)
+
+
+@app.context_processor
+def inject_institution_branding():
+    """Provide institution branding data to all templates."""
+    user = get_current_user()
+    institution_id = user.get("institution_id") if user else None
+    branding = institution_service.build_branding(institution_id)
+    return {"institution_branding": branding}
 
 
 # Configure logging to ensure consistent output

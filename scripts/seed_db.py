@@ -18,7 +18,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.database.database_service import db
+import src.database.database_service as database_service
 from src.models.models import (
     Course,
     CourseOffering,
@@ -83,13 +83,15 @@ class BaselineSeeder:
 
         institution_ids = []
         for inst_data in institutions:
-            existing = db.get_institution_by_short_name(inst_data["short_name"])
+            existing = database_service.db.get_institution_by_short_name(
+                inst_data["short_name"]
+            )
             if existing:
                 institution_ids.append(existing["institution_id"])
                 continue
 
             schema = Institution.create_schema(**inst_data)
-            inst_id = db.create_institution(schema)
+            inst_id = database_service.db.create_institution(schema)
             if inst_id:
                 institution_ids.append(inst_id)
                 self.created["institutions"].append(inst_id)
@@ -105,7 +107,7 @@ class BaselineSeeder:
         email = SITE_ADMIN_EMAIL
         password = SITE_ADMIN_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
 
-        existing = db.get_user_by_email(email)
+        existing = database_service.db.get_user_by_email(email)
         if existing:
             return existing["user_id"]
 
@@ -121,7 +123,7 @@ class BaselineSeeder:
         )
         schema["email_verified"] = True
 
-        user_id = db.create_user(schema)
+        user_id = database_service.db.create_user(schema)
         if user_id:
             self.created["users"].append(user_id)
         return user_id
@@ -172,7 +174,7 @@ class BaselineSeeder:
             return None
         if "institution_short_name" in user_data:
             short = user_data["institution_short_name"]
-            found = db.get_institution_by_short_name(short)
+            found = database_service.db.get_institution_by_short_name(short)
             if found:
                 return found["institution_id"]
         return None
@@ -191,7 +193,7 @@ class BaselineSeeder:
         """Resolve program IDs from user data (helper for create_institution_admins)"""
         if "program_code" not in user_data:
             return []
-        progs = db.get_programs_by_institution(inst_id)
+        progs = database_service.db.get_programs_by_institution(inst_id)
         for p in progs:
             if p["short_name"] == user_data["program_code"]:
                 return [p["program_id"]]
@@ -210,11 +212,21 @@ class BaselineSeeder:
 
     def _build_default_admin_list(self, institution_ids):
         """Build default admin user list when no manifest provided"""
+        from tests.test_credentials import INSTITUTION_ADMIN_EMAIL
+
         users = []
+        email_map = {
+            0: INSTITUTION_ADMIN_EMAIL,
+            1: "mike.admin@riverside.edu",
+            2: "linda.admin@pactech.edu",
+        }
         for idx in range(len(institution_ids)):
+            # Use specific email for tests
+            email = email_map.get(idx, f"admin{idx+1}@example.com")
+
             users.append(
                 {
-                    "email": f"admin{idx+1}@example.com",
+                    "email": email,
                     "first_name": "Admin",
                     "last_name": f"User {idx+1}",
                     "institution_idx": idx,
@@ -244,7 +256,7 @@ class BaselineSeeder:
             return None
 
         # Check for existing user
-        existing = db.get_user_by_email(email)
+        existing = database_service.db.get_user_by_email(email)
         if existing:
             return existing["user_id"]
 
@@ -268,7 +280,7 @@ class BaselineSeeder:
         if program_ids:
             schema["program_ids"] = program_ids
 
-        user_id = db.create_user(schema)
+        user_id = database_service.db.create_user(schema)
         if user_id:
             self.created["users"].append(user_id)
         return user_id
@@ -300,7 +312,7 @@ class BaselineSeeder:
                 created_by="system",
             )
 
-            prog_id = db.create_program(schema)
+            prog_id = database_service.db.create_program(schema)
             if prog_id:
                 program_ids.append(prog_id)
                 self.created["programs"].append(prog_id)
@@ -363,7 +375,7 @@ class BaselineSeeder:
                 schema["term_code"] = term_data["code"]
                 schema["institution_id"] = inst_id
 
-                term_id = db.create_term(schema)
+                term_id = database_service.db.create_term(schema)
                 if term_id:
                     term_ids.append(term_id)
                     self.created["terms"].append(term_id)
@@ -410,7 +422,7 @@ class BaselineSeeder:
         course_ids = []
         for course_data in courses_data:
             program_id = program_ids[course_data["program_idx"]]
-            program = db.get_program_by_id(program_id)
+            program = database_service.db.get_program_by_id(program_id)
 
             schema = Course.create_schema(
                 course_number=course_data["code"],
@@ -424,7 +436,7 @@ class BaselineSeeder:
                 active=True,
             )
 
-            course_id = db.create_course(schema)
+            course_id = database_service.db.create_course(schema)
             if course_id:
                 course_ids.append(course_id)
                 self.created["courses"].append(course_id)
@@ -435,9 +447,11 @@ class BaselineSeeder:
         """Create sample instructors for dashboard display tests"""
         self.log("👨‍🏫 Creating sample instructors...")
 
+        from tests.test_credentials import INSTRUCTOR_EMAIL
+
         instructors_data = [
             {
-                "email": "john.instructor@mocku.test",
+                "email": INSTRUCTOR_EMAIL,
                 "first_name": "John",
                 "last_name": "Smith",
                 "institution_idx": 0,
@@ -462,7 +476,7 @@ class BaselineSeeder:
         for inst_data in instructors_data:
             inst_id = institution_ids[inst_data["institution_idx"]]
 
-            existing = db.get_user_by_email(inst_data["email"])
+            existing = database_service.db.get_user_by_email(inst_data["email"])
             if existing:
                 instructor_ids.append(existing["user_id"])
                 continue
@@ -479,7 +493,7 @@ class BaselineSeeder:
             )
             schema["email_verified"] = True
 
-            user_id = db.create_user(schema)
+            user_id = database_service.db.create_user(schema)
             if user_id:
                 instructor_ids.append(user_id)
                 self.created["users"].append(user_id)
@@ -490,9 +504,11 @@ class BaselineSeeder:
         """Create sample program admin for E2E tests"""
         self.log("👔 Creating sample program admin...")
 
+        from tests.test_credentials import PROGRAM_ADMIN_EMAIL
+
         # Create CS program admin
-        email = "bob.programadmin@mocku.test"
-        existing = db.get_user_by_email(email)
+        email = PROGRAM_ADMIN_EMAIL
+        existing = database_service.db.get_user_by_email(email)
         if existing:
             return existing["user_id"]
 
@@ -513,7 +529,7 @@ class BaselineSeeder:
         )
         schema["email_verified"] = True
 
-        user_id = db.create_user(schema)
+        user_id = database_service.db.create_user(schema)
         if user_id:
             self.created["users"].append(user_id)
 
@@ -536,7 +552,7 @@ class BaselineSeeder:
                 institution_id=institution_ids[0],  # MockU
                 status="active",
             )
-            offering_id = db.create_course_offering(schema)
+            offering_id = database_service.db.create_course_offering(schema)
             if offering_id:
                 offering_ids.append(offering_id)
 
@@ -554,7 +570,7 @@ class BaselineSeeder:
                 enrollment=0,
                 status="assigned",
             )
-            section_id = db.create_course_section(schema)
+            section_id = database_service.db.create_course_section(schema)
             if section_id:
                 section_count += 1
 
@@ -633,7 +649,7 @@ class DemoSeeder(BaselineSeeder):
         """Create demo institution"""
         self.log("🏢 Creating Demo University...")
 
-        existing = db.get_institution_by_short_name("DEMO2025")
+        existing = database_service.db.get_institution_by_short_name("DEMO2025")
         if existing:
             return existing["institution_id"]
 
@@ -645,7 +661,7 @@ class DemoSeeder(BaselineSeeder):
             created_by="system",
         )
 
-        inst_id = db.create_institution(schema)
+        inst_id = database_service.db.create_institution(schema)
         if inst_id:
             self.created["institutions"].append(inst_id)
         return inst_id
@@ -661,7 +677,7 @@ class DemoSeeder(BaselineSeeder):
             DEMO_PASSWORD  # pragma: allowlist secret - Imported from test_credentials
         )
 
-        existing = db.get_user_by_email(email)
+        existing = database_service.db.get_user_by_email(email)
         if existing:
             return existing["user_id"]
 
@@ -677,7 +693,7 @@ class DemoSeeder(BaselineSeeder):
         )
         schema["email_verified"] = True
 
-        user_id = db.create_user(schema)
+        user_id = database_service.db.create_user(schema)
         if user_id:
             self.created["users"].append(user_id)
         return user_id
@@ -701,7 +717,7 @@ class DemoSeeder(BaselineSeeder):
                 created_by="system",
             )
 
-            prog_id = db.create_program(schema)
+            prog_id = database_service.db.create_program(schema)
             if prog_id:
                 program_ids.append(prog_id)
                 self.created["programs"].append(prog_id)
@@ -752,7 +768,7 @@ class DemoSeeder(BaselineSeeder):
         course_ids = []
         for course_data in courses_data:
             program_id = program_ids[course_data["program_idx"]]
-            _program = db.get_program_by_id(program_id)  # noqa: F841
+            _program = database_service.db.get_program_by_id(program_id)  # noqa: F841
 
             schema = Course.create_schema(
                 course_number=course_data["code"],
@@ -764,7 +780,7 @@ class DemoSeeder(BaselineSeeder):
                 active=True,
             )
 
-            course_id = db.create_course(schema)
+            course_id = database_service.db.create_course(schema)
             if course_id:
                 course_ids.append(course_id)
                 self.created["courses"].append(course_id)
@@ -804,7 +820,7 @@ class DemoSeeder(BaselineSeeder):
         )  # pragma: allowlist secret - Imported from test_credentials
 
         for fac_data in faculty_data:
-            existing = db.get_user_by_email(fac_data["email"])
+            existing = database_service.db.get_user_by_email(fac_data["email"])
             if existing:
                 instructor_ids.append(existing["user_id"])
                 continue
@@ -821,7 +837,7 @@ class DemoSeeder(BaselineSeeder):
             )
             schema["email_verified"] = True
 
-            user_id = db.create_user(schema)
+            user_id = database_service.db.create_user(schema)
             if user_id:
                 instructor_ids.append(user_id)
                 self.created["users"].append(user_id)
@@ -847,7 +863,7 @@ class DemoSeeder(BaselineSeeder):
         schema["term_code"] = "FA2025"
         schema["institution_id"] = institution_id
 
-        term_id = db.create_term(schema)
+        term_id = database_service.db.create_term(schema)
         if term_id:
             self.created["terms"].append(term_id)
         return term_id
@@ -867,7 +883,7 @@ class DemoSeeder(BaselineSeeder):
                 institution_id=institution_id,
                 status="active",
             )
-            offering_id = db.create_course_offering(schema)
+            offering_id = database_service.db.create_course_offering(schema)
             if offering_id:
                 offering_ids.append(offering_id)
 
@@ -888,7 +904,7 @@ class DemoSeeder(BaselineSeeder):
                     status="assigned",
                     assessment_due_date="2025-12-15T23:59:59",
                 )
-                if db.create_course_section(s1_schema):
+                if database_service.db.create_course_section(s1_schema):
                     section_count += 1
 
                 # Section 2: 25 students, next instructor
@@ -900,7 +916,7 @@ class DemoSeeder(BaselineSeeder):
                     status="assigned",
                     assessment_due_date="2025-12-15T23:59:59",
                 )
-                if db.create_course_section(s2_schema):
+                if database_service.db.create_course_section(s2_schema):
                     section_count += 1
 
                 # Section 3: 13 students, next instructor
@@ -912,7 +928,7 @@ class DemoSeeder(BaselineSeeder):
                     status="assigned",
                     assessment_due_date="2025-12-15T23:59:59",
                 )
-                if db.create_course_section(s3_schema):
+                if database_service.db.create_course_section(s3_schema):
                     section_count += 1
 
                 # Section 4: Unassigned, 0 students
@@ -924,7 +940,7 @@ class DemoSeeder(BaselineSeeder):
                     status="unassigned",
                     assessment_due_date="2025-12-15T23:59:59",
                 )
-                if db.create_course_section(s4_schema):
+                if database_service.db.create_course_section(s4_schema):
                     section_count += 1
                     self.log(
                         "   ✓ Created specialized sections for Biology 101 (25, 25, 13, 0)"
@@ -940,7 +956,7 @@ class DemoSeeder(BaselineSeeder):
                     status="assigned",
                     assessment_due_date="2025-12-15T23:59:59",
                 )
-                section_id = db.create_course_section(schema)
+                section_id = database_service.db.create_course_section(schema)
                 if section_id:
                     section_count += 1
 
@@ -958,7 +974,7 @@ class DemoSeeder(BaselineSeeder):
         # Get course info to match CLOs to courses
         courses = []
         for cid in course_ids:
-            course = db.get_course_by_id(cid)
+            course = database_service.db.get_course_by_id(cid)
             if course:
                 courses.append(course)
 
@@ -1010,7 +1026,7 @@ class DemoSeeder(BaselineSeeder):
 
             for template in templates:
                 # Check if CLO already exists
-                existing = db.get_course_outcomes(course_id)
+                existing = database_service.db.get_course_outcomes(course_id)
                 already_exists = any(
                     str(clo.get("clo_number")) == str(template["num"])
                     for clo in (existing or [])
@@ -1028,7 +1044,7 @@ class DemoSeeder(BaselineSeeder):
                 schema["status"] = CLOStatus.ASSIGNED
                 schema["active"] = True
 
-                outcome_id = db.create_course_outcome(schema)
+                outcome_id = database_service.db.create_course_outcome(schema)
                 if outcome_id:
                     clo_count += 1
 
@@ -1046,7 +1062,7 @@ class DemoSeeder(BaselineSeeder):
             schema["status"] = CLOStatus.UNASSIGNED
             schema["active"] = True
 
-            if db.create_course_outcome(schema):
+            if database_service.db.create_course_outcome(schema):
                 self.log("   ✓ Created unassigned CLO #99")
 
     def create_scenario_specific_clos(self, course_ids, instructor_ids):
@@ -1074,7 +1090,7 @@ class DemoSeeder(BaselineSeeder):
             # Find course ID
             course_id = None
             for cid in course_ids:
-                c = db.get_course_by_id(cid)
+                c = database_service.db.get_course_by_id(cid)
                 if c and c.get("course_number") == course_num:
                     course_id = cid
                     break
@@ -1089,7 +1105,7 @@ class DemoSeeder(BaselineSeeder):
                 schema["status"] = get_status(rework_data.get("status"))
                 schema["active"] = True
 
-                if db.create_course_outcome(schema):
+                if database_service.db.create_course_outcome(schema):
                     self.log(
                         f"   ✓ Created 'Needs Rework' scenario (CLO #{rework_data.get('clo_number')})"
                     )
@@ -1101,7 +1117,7 @@ class DemoSeeder(BaselineSeeder):
             # Find course ID
             course_id = None
             for cid in course_ids:
-                c = db.get_course_by_id(cid)
+                c = database_service.db.get_course_by_id(cid)
                 if c and c.get("course_number") == course_num:
                     course_id = cid
                     break
@@ -1116,7 +1132,7 @@ class DemoSeeder(BaselineSeeder):
                 schema["status"] = get_status(nci_data.get("status"))
                 schema["active"] = True
 
-                if db.create_course_outcome(schema):
+                if database_service.db.create_course_outcome(schema):
                     self.log(
                         f"   ✓ Created 'NCI' scenario (CLO #{nci_data.get('clo_number')})"
                     )
@@ -1133,12 +1149,14 @@ class DemoSeeder(BaselineSeeder):
             return
 
         admin_email = "demo2025.admin@example.com"
-        user = db.get_user_by_email(admin_email)
+        user = database_service.db.get_user_by_email(admin_email)
 
         if user:
             try:
                 override_date = datetime.fromisoformat(date_str)
-                db.update_user(user["user_id"], {"system_date_override": override_date})
+                database_service.db.update_user(
+                    user["user_id"], {"system_date_override": override_date}
+                )
                 self.log(f"   ✓ Set {admin_email} date to {date_str}")
             except ValueError:
                 self.log(f"   ⚠️ Invalid date format in manifest: {date_str}")
@@ -1150,8 +1168,8 @@ class DemoSeeder(BaselineSeeder):
         self.log("🔗 Linking courses to programs...")
 
         # Get all courses and programs
-        courses = db.get_all_courses(institution_id)
-        programs = db.get_programs_by_institution(institution_id)
+        courses = database_service.db.get_all_courses(institution_id)
+        programs = database_service.db.get_programs_by_institution(institution_id)
 
         if not courses or not programs:
             self.log("   ⚠️  No courses or programs found to link")
@@ -1182,7 +1200,9 @@ class DemoSeeder(BaselineSeeder):
 
                 if program_id:
                     try:
-                        db.add_course_to_program(course["id"], program_id)
+                        database_service.db.add_course_to_program(
+                            course["id"], program_id
+                        )
                         linked_count += 1
                         self.log(f"   ✓ Linked {course_number} to {program_name}")
                     except Exception:  # nosec B110 - might already be linked
@@ -1265,11 +1285,13 @@ class DemoSeeder(BaselineSeeder):
         schema_term["term_code"] = "HIST2025"
         schema_term["institution_id"] = institution_id
 
-        existing = db.get_term_by_name(term_data.get("name"), institution_id)
+        existing = database_service.db.get_term_by_name(
+            term_data.get("name"), institution_id
+        )
         if existing:
             term_id = existing["id"]
         else:
-            term_id = db.create_term(schema_term)
+            term_id = database_service.db.create_term(schema_term)
             if term_id:
                 self.created["terms"].append(term_id)
 
@@ -1296,12 +1318,14 @@ class DemoSeeder(BaselineSeeder):
             program_ids=[],
         )
 
-        hist_course_id = db.create_course(schema_course)
+        hist_course_id = database_service.db.create_course(schema_course)
         if hist_course_id:
             self.created["courses"].append(hist_course_id)
             if program_id:
                 try:
-                    db.add_course_to_program(hist_course_id, program_id)
+                    database_service.db.add_course_to_program(
+                        hist_course_id, program_id
+                    )
                 except Exception:  # nosec
                     pass
 
@@ -1312,7 +1336,7 @@ class DemoSeeder(BaselineSeeder):
                 institution_id=institution_id,
                 status="archived",  # or inactive
             )
-            off_id = db.create_course_offering(schema_off)
+            off_id = database_service.db.create_course_offering(schema_off)
 
             # 4. Create Section with enrollment
             if off_id:
@@ -1334,7 +1358,7 @@ class DemoSeeder(BaselineSeeder):
                     enrollment=42,
                     status="completed",
                 )
-                db.create_course_section(schema_sec)
+                database_service.db.create_course_section(schema_sec)
 
             # 5. Create CLOs for this course
             from src.models.models import CourseOutcome
@@ -1346,7 +1370,7 @@ class DemoSeeder(BaselineSeeder):
                 assessment_method="Essay",
             )
             schema_clo["active"] = True
-            db.create_course_outcome(schema_clo)
+            database_service.db.create_course_outcome(schema_clo)
 
             self.log("   ✓ Created 'Spring 2025' term with HIST-101 course and data")
 
@@ -1383,9 +1407,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Seed baseline E2E test data",
         epilog="Examples:\n"
-        "  python scripts/seed_db.py --demo --clear --env dev\n"
-        "  python scripts/seed_db.py --clear --env e2e\n"
-        "  python scripts/seed_db.py --env prod\n",
+        "  python scripts/seed_database_service.db.py --demo --clear --env dev\n"
+        "  python scripts/seed_database_service.db.py --clear --env e2e\n"
+        "  python scripts/seed_database_service.db.py --env prod\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--clear", action="store_true", help="Clear database first")

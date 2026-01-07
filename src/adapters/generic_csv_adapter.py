@@ -23,9 +23,9 @@ import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
-from .file_base_adapter import FileBaseAdapter, FileCompatibilityError
+from .file_base_adapter import FileBaseAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,6 @@ CSV_COLUMNS = {
     "users": [
         "id",
         "email",
-        "password_hash",
         "first_name",
         "last_name",
         "display_name",

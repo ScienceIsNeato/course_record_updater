@@ -390,6 +390,7 @@ class Institution(DataModel):
         created_by: str,
         admin_email: str,
         website_url: Optional[str] = None,
+        logo_path: Optional[str] = None,
         allow_self_registration: bool = False,
         require_email_verification: bool = True,
     ) -> Dict[str, Any]:
@@ -400,6 +401,7 @@ class Institution(DataModel):
             "name": name.strip(),
             "short_name": short_name.strip().upper(),
             "website_url": website_url.strip() if website_url else None,
+            "logo_path": logo_path.strip() if logo_path else None,
             # Auth fields
             "created_by": created_by,
             "admin_email": admin_email.lower().strip(),

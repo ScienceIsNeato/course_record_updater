@@ -11,6 +11,16 @@ SITE_ADMIN_INSTITUTION_ID = (
 # Default timezone for institutions
 DEFAULT_INSTITUTION_TIMEZONE = "America/Denver"
 
+# Default pagination and export limits
+DEFAULT_PAGINATION_LIMIT = 50
+DEFAULT_AUDIT_LOG_LIMIT = 20
+DEFAULT_EXPORT_LIMIT = 1000
+
+# Branding defaults for institutions
+DEFAULT_INSTITUTION_NAME = "Your Institution"
+DEFAULT_INSTITUTION_SHORT_NAME = "YOUR INSTITUTION"
+DEFAULT_INSTITUTION_LOGO_STATIC_PATH = "images/gemini_logo.svg"
+
 # Database collection names
 INSTITUTIONS_COLLECTION = "institutions"
 USERS_COLLECTION = "users"

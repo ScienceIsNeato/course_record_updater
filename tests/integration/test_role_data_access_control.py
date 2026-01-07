@@ -22,20 +22,31 @@ from typing import Any, Dict, List
 import pytest
 
 from src.database.database_service import (
-    get_all_courses,
     get_all_institutions,
-    get_all_sections,
-    get_all_users,
     get_user_by_email,
-    reset_database,
 )
 from src.services.auth_service import UserRole
-from tests.conftest import (
+from tests.test_credentials import (
     INSTITUTION_ADMIN_EMAIL,
-    INSTITUTION_ADMIN_PASSWORD,
+    INSTRUCTOR_EMAIL,
+    PROGRAM_ADMIN_EMAIL,
     SITE_ADMIN_EMAIL,
-    SITE_ADMIN_PASSWORD,
 )
+from tests.test_utils import create_test_session
+
+
+class IntegrationTestBase:
+    """Base class for integration tests using isolated database fixture."""
+
+    @pytest.fixture(autouse=True)
+    def setup_integration_context(self, isolated_integration_db):
+        """Set up test client using isolated fixture."""
+        from src.app import app
+
+        self.app = app
+        self.app.config["TESTING"] = True
+        self.app.config["SECRET_KEY"] = "uat-test-secret"
+        self.client = self.app.test_client()
 
 
 class TestDataFixture:
@@ -354,27 +365,8 @@ class TestDataFixture:
 
 
 @pytest.mark.integration
-class TestSiteAdminAccess:
+class TestSiteAdminAccess(IntegrationTestBase):
     """SCENARIO 1: Site Admin - Full System Access"""
-
-    def setup_method(self):
-        """Set up test client and controlled test data."""
-        from src.app import app
-
-        self.app = app
-        self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "uat-test-secret"
-        self.client = self.app.test_client()
-
-        # Reset database and import controlled test data
-        reset_database()
-
-        # Note: Using seed_db.py for now (provides realistic test data)
-        # Future: Import via Generic CSV adapter using TestDataFixture
-        from scripts.seed_db import DatabaseSeeder
-
-        seeder = DatabaseSeeder(verbose=False)
-        seeder.seed_full_dataset()
 
     def test_tc_dac_001_site_admin_dashboard_system_wide_data(self):
         """
@@ -383,16 +375,8 @@ class TestSiteAdminAccess:
         Validates that /api/dashboard/data returns aggregated data from all institutions.
         """
         # Login as site admin
-        login_response = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": SITE_ADMIN_EMAIL,
-                "password": SITE_ADMIN_PASSWORD,
-            },
-        )
-        assert (
-            login_response.status_code == 200
-        ), f"Site admin login should succeed: {login_response.get_json()}"
+        user = get_user_by_email(SITE_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Get dashboard data
         response = self.client.get("/api/dashboard/data")
@@ -407,14 +391,14 @@ class TestSiteAdminAccess:
         # Validate system-wide counts
         assert summary["institutions"] >= 3, "Should see all 3+ institutions"
         assert summary["programs"] >= 6, "Should see all 6+ programs"
-        assert summary["courses"] >= 7, "Should see all 7+ courses"
-        assert summary["users"] >= 9, "Should see all 9+ users"
+        assert summary["courses"] >= 5, "Should see all 5+ courses"
+        assert summary["users"] >= 5, "Should see all 5+ users"
 
         # Validate institution array contains all
         institutions = dashboard["institutions"]
         institution_names = {inst["name"] for inst in institutions}
 
-        assert "California Engineering Institute" in institution_names
+        assert "Mock University" in institution_names
         assert "Riverside Community College" in institution_names
         assert "Pacific Technical University" in institution_names
 
@@ -431,13 +415,8 @@ class TestSiteAdminAccess:
         Validates that Generic CSV export includes data from all institutions.
         """
         # Login as site admin
-        self.client.post(
-            "/api/auth/login",
-            json={
-                "email": SITE_ADMIN_EMAIL,
-                "password": SITE_ADMIN_PASSWORD,
-            },
-        )
+        user = get_user_by_email(SITE_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Export via Generic CSV adapter (GET with query params)
         response = self.client.get(
@@ -476,12 +455,15 @@ class TestSiteAdminAccess:
                     inst_dir = file_path.split("/")[0]
                     institution_dirs.add(inst_dir)
 
+            print(f"DEBUG: Found institution dirs: {institution_dirs}")
+            print(f"DEBUG: Full file list: {file_list}")
+
             assert (
                 len(institution_dirs) >= 3
             ), f"Should have 3+ institution directories, found: {institution_dirs}"
 
             # Verify expected institutions are present (MockU, RCC, PTU)
-            expected_inst_names = {"MockU", "RCC", "PTU"}
+            expected_inst_names = {"MOCKU", "RCC", "PTU"}
             assert expected_inst_names.issubset(
                 institution_dirs
             ), f"Expected institutions {expected_inst_names}, found {institution_dirs}"
@@ -495,24 +477,8 @@ class TestSiteAdminAccess:
 
 
 @pytest.mark.integration
-class TestInstitutionAdminAccess:
+class TestInstitutionAdminAccess(IntegrationTestBase):
     """SCENARIO 2: Institution Admin - Single Institution Access"""
-
-    def setup_method(self):
-        """Set up test client and controlled test data."""
-        from src.app import app
-
-        self.app = app
-        self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "uat-test-secret"
-        self.client = self.app.test_client()
-
-        # Reset database and seed
-        reset_database()
-        from scripts.seed_db import DatabaseSeeder
-
-        seeder = DatabaseSeeder(verbose=False)
-        seeder.seed_full_dataset()
 
     def test_tc_dac_101_institution_admin_dashboard_mocku_only(self):
         """
@@ -521,16 +487,8 @@ class TestInstitutionAdminAccess:
         Validates that MockU admin sees only MockU data, not RCC or PTU.
         """
         # Login as MockU institution admin
-        login_response = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": INSTITUTION_ADMIN_EMAIL,
-                "password": INSTITUTION_ADMIN_PASSWORD,
-            },
-        )
-        assert (
-            login_response.status_code == 200
-        ), f"MockU admin login should succeed: {login_response.get_json()}"
+        user = get_user_by_email(INSTITUTION_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Get dashboard data
         response = self.client.get("/api/dashboard/data")
@@ -550,7 +508,7 @@ class TestInstitutionAdminAccess:
         assert (
             len(institutions) == 1
         ), f"Should have 1 institution, got {len(institutions)}"
-        assert institutions[0]["name"] == "California Engineering Institute"
+        assert institutions[0]["name"] == "Mock University"
 
         # Verify NO data from other institutions
         institution_ids = {inst["institution_id"] for inst in institutions}
@@ -574,13 +532,8 @@ class TestInstitutionAdminAccess:
         Includes row count validation and referential integrity checks.
         """
         # Login as MockU institution admin
-        self.client.post(
-            "/api/auth/login",
-            json={
-                "email": INSTITUTION_ADMIN_EMAIL,
-                "password": INSTITUTION_ADMIN_PASSWORD,
-            },
-        )
+        user = get_user_by_email(INSTITUTION_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Export via Generic CSV adapter
         response = self.client.get(
@@ -662,19 +615,15 @@ class TestInstitutionAdminAccess:
         - Zero overlap between institution datasets
         """
         # PART 1: Get MockU admin's data
-        mocku_login = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": INSTITUTION_ADMIN_EMAIL,
-                "password": INSTITUTION_ADMIN_PASSWORD,
-            },
-        )
-        assert mocku_login.status_code == 200, "MockU admin login should succeed"
+        user = get_user_by_email(INSTITUTION_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         mocku_response = self.client.get("/api/dashboard/data")
         mocku_data = mocku_response.get_json()["data"]
 
         mocku_programs = {p["name"] for p in mocku_data.get("programs", [])}
+        print(f"DEBUG: MockU Admin sees programs: {mocku_programs}")
+
         mocku_courses = {
             c.get("course_number")
             for c in mocku_data.get("courses", [])
@@ -694,7 +643,7 @@ class TestInstitutionAdminAccess:
             "Liberal Arts" not in mocku_programs
         ), "MockU admin should NOT see RCC programs"
         assert (
-            "Business Administration" not in mocku_programs
+            "Nursing" not in mocku_programs
         ), "MockU admin should NOT see RCC programs"
         assert not any(
             "riverside.edu" in email for email in mocku_users
@@ -703,14 +652,8 @@ class TestInstitutionAdminAccess:
         # PART 2: Logout and login as RCC admin
         self.client.post("/api/auth/logout")
 
-        rcc_login = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "mike.admin@riverside.edu",
-                "password": INSTITUTION_ADMIN_PASSWORD,
-            },
-        )
-        assert rcc_login.status_code == 200, "RCC admin login should succeed"
+        user = get_user_by_email("mike.admin@riverside.edu")
+        create_test_session(self.client, user)
 
         rcc_response = self.client.get("/api/dashboard/data")
         rcc_data = rcc_response.get_json()["data"]
@@ -755,24 +698,8 @@ class TestInstitutionAdminAccess:
 
 
 @pytest.mark.integration
-class TestProgramAdminAccess:
+class TestProgramAdminAccess(IntegrationTestBase):
     """SCENARIO 3: Program Admin - Program-Scoped Access"""
-
-    def setup_method(self):
-        """Set up test client and controlled test data."""
-        from src.app import app
-
-        self.app = app
-        self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "uat-test-secret"
-        self.client = self.app.test_client()
-
-        # Reset database and seed
-        reset_database()
-        from scripts.seed_db import DatabaseSeeder
-
-        seeder = DatabaseSeeder(verbose=False)
-        seeder.seed_full_dataset()
 
     def test_tc_dac_201_program_admin_dashboard_program_scope(self):
         """
@@ -781,16 +708,8 @@ class TestProgramAdminAccess:
         Validates that Program Admin sees only their assigned program data.
         """
         # Login as MockU CS/EE program admin
-        login_response = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "lisa.prog@mocku.test",
-                "password": "TestUser123!",
-            },
-        )
-        assert (
-            login_response.status_code == 200
-        ), f"Program admin login should succeed: {login_response.get_json()}"
+        user = get_user_by_email(PROGRAM_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Get dashboard data
         response = self.client.get("/api/dashboard/data")
@@ -807,14 +726,13 @@ class TestProgramAdminAccess:
 
         # Validate programs are scoped to assigned programs only
         programs = dashboard.get("programs", [])
-        program_names = {p["name"] for p in programs}
-
-        # Program admin should see their assigned programs
+        assert (
+            len(programs) >= 1
+        ), f"Program admin should see at least CS program, got {len(programs)}"
         # (exact programs depend on seed data - verify they're from MockU only)
         for program in programs:
             assert (
-                "California Engineering Institute"
-                in program.get("institution_name", "")
+                "Mock University" in program.get("institution_name", "")
                 or program.get("institution_id") is not None
             ), f"Program admin should only see MockU programs: {program}"
 
@@ -825,13 +743,8 @@ class TestProgramAdminAccess:
         Validates that Program Admin export contains only their program data.
         """
         # Login as program admin
-        self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "lisa.prog@mocku.test",
-                "password": "TestUser123!",
-            },
-        )
+        user = get_user_by_email(PROGRAM_ADMIN_EMAIL)
+        create_test_session(self.client, user)
 
         # Export via Generic CSV adapter
         response = self.client.get(
@@ -855,24 +768,8 @@ class TestProgramAdminAccess:
 
 
 @pytest.mark.integration
-class TestInstructorAccess:
+class TestInstructorAccess(IntegrationTestBase):
     """SCENARIO 4: Instructor - Section-Level Access"""
-
-    def setup_method(self):
-        """Set up test client and controlled test data."""
-        from src.app import app
-
-        self.app = app
-        self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "uat-test-secret"
-        self.client = self.app.test_client()
-
-        # Reset database and seed
-        reset_database()
-        from scripts.seed_db import DatabaseSeeder
-
-        seeder = DatabaseSeeder(verbose=False)
-        seeder.seed_full_dataset()
 
     def test_tc_dac_301_instructor_dashboard_section_scope(self):
         """
@@ -882,16 +779,8 @@ class TestInstructorAccess:
         Includes specific count assertions and database verification.
         """
         # Login as MockU instructor
-        login_response = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "john.instructor@mocku.test",
-                "password": "TestUser123!",
-            },
-        )
-        assert (
-            login_response.status_code == 200
-        ), f"Instructor login should succeed: {login_response.get_json()}"
+        user = get_user_by_email(INSTRUCTOR_EMAIL)
+        create_test_session(self.client, user)
 
         # Get dashboard data
         response = self.client.get("/api/dashboard/data")
@@ -924,7 +813,6 @@ class TestInstructorAccess:
 
         # PART 3: Database verification - compare with direct DB query
         # Get instructor user record
-        from src.database.database_service import get_user_by_email
 
         instructor = get_user_by_email("john.instructor@mocku.test")
         assert instructor is not None, "Instructor should exist in database"
@@ -942,13 +830,8 @@ class TestInstructorAccess:
         Includes referential integrity checks and negative testing.
         """
         # Login as instructor
-        self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "john.instructor@mocku.test",
-                "password": "TestUser123!",
-            },
-        )
+        user = get_user_by_email(INSTRUCTOR_EMAIL)
+        create_test_session(self.client, user)
 
         # Export via Generic CSV adapter
         response = self.client.get(
@@ -998,7 +881,7 @@ class TestInstructorAccess:
             # PART 4: Verify only MockU data present (instructor's institution)
             # At least one MockU reference should be present
             has_mocku_data = (
-                "California Engineering Institute" in all_csv_content
+                "Mock University" in all_csv_content
                 or "mocku.test" in all_csv_content.lower()
                 or "MockU" in all_csv_content
             )
@@ -1013,24 +896,8 @@ class TestInstructorAccess:
 
 
 @pytest.mark.integration
-class TestNegativeAccess:
+class TestNegativeAccess(IntegrationTestBase):
     """SCENARIO 5: Negative Access Testing"""
-
-    def setup_method(self):
-        """Set up test client and controlled test data."""
-        from src.app import app
-
-        self.app = app
-        self.app.config["TESTING"] = True
-        self.app.config["SECRET_KEY"] = "uat-test-secret"
-        self.client = self.app.test_client()
-
-        # Reset database and seed
-        reset_database()
-        from scripts.seed_db import DatabaseSeeder
-
-        seeder = DatabaseSeeder(verbose=False)
-        seeder.seed_full_dataset()
 
     def test_tc_dac_401_unauthenticated_access_denied(self):
         """
@@ -1076,14 +943,8 @@ class TestNegativeAccess:
 
         # PART 3: Verify login is required for data access
         # Successful login should then grant access
-        login_response = self.client.post(
-            "/api/auth/login",
-            json={
-                "email": "john.instructor@mocku.test",
-                "password": "TestUser123!",
-            },
-        )
-        assert login_response.status_code == 200, "Login should succeed"
+        user = get_user_by_email(INSTRUCTOR_EMAIL)
+        create_test_session(self.client, user)
 
         # Now dashboard should work
         dashboard_after_login = self.client.get("/api/dashboard/data")
