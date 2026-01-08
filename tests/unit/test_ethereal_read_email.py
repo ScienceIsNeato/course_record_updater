@@ -53,7 +53,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
                 "from_email": "test@ethereal.email",
             }
         )
@@ -93,7 +93,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -138,7 +138,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -169,7 +169,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -199,7 +199,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -233,7 +233,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -265,7 +265,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -299,7 +299,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 
@@ -345,7 +345,7 @@ class TestEtherealProviderReadEmail:
                 "imap_host": "imap.ethereal.email",
                 "imap_port": 993,
                 "username": "test@ethereal.email",
-                "password": "testpass",
+                "password": "testpass",  # pragma: allowlist secret
             }
         )
 

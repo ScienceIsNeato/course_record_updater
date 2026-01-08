@@ -28,62 +28,62 @@ SITE_ADMIN_EMAIL = "siteadmin@system.local"
 # Admin Account Passwords
 # ============================================================================
 
-SITE_ADMIN_PASSWORD = "SiteAdmin123!"
-INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+SITE_ADMIN_PASSWORD = "SiteAdmin123!"  # pragma: allowlist secret
+INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"  # pragma: allowlist secret
 # Note: seed_db.py uses DEFAULT_PASSWORD (InstitutionAdmin123!) for all seeded users
-PROGRAM_ADMIN_PASSWORD = "InstitutionAdmin123!"
+PROGRAM_ADMIN_PASSWORD = "InstitutionAdmin123!"  # pragma: allowlist secret
 
 # ============================================================================
 # User Account Passwords
 # ============================================================================
 
-TEST_USER_PASSWORD = "TestUser123!"
-INSTRUCTOR_PASSWORD = "Instructor123!"
+TEST_USER_PASSWORD = "TestUser123!"  # pragma: allowlist secret
+INSTRUCTOR_PASSWORD = "Instructor123!"  # pragma: allowlist secret
 
 # ============================================================================
 # Generic Test Passwords
 # ============================================================================
 
 # Standard test password for general test cases
-TEST_PASSWORD = "TestPass123!"
+TEST_PASSWORD = "TestPass123!"  # pragma: allowlist secret
 
 # Secure password for password validation tests
-SECURE_PASSWORD = "SecurePass123!"
+SECURE_PASSWORD = "SecurePass123!"  # pragma: allowlist secret
 
 # Password for new password tests
-NEW_PASSWORD = "NewSecurePassword123!"
-NEW_SECURE_PASSWORD = "NewSecurePassword123!"
+NEW_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
+NEW_SECURE_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
 
 # Password for password reset tests
-RESET_PASSWORD = "NewSecurePassword123!"
+RESET_PASSWORD = "NewSecurePassword123!"  # pragma: allowlist secret
 
 # ============================================================================
 # Password Validation Test Cases
 # ============================================================================
 
 # Wrong password for negative test cases
-WRONG_PASSWORD = "WrongPass123!"
+WRONG_PASSWORD = "WrongPass123!"  # pragma: allowlist secret
 
 # Weak password for validation tests
-WEAK_PASSWORD = "weak"
+WEAK_PASSWORD = "weak"  # pragma: allowlist secret
 
 # Invalid password formats
 INVALID_PASSWORD_SHORT = "a"
-INVALID_PASSWORD_NO_COMPLEXITY = "password123"
+INVALID_PASSWORD_NO_COMPLEXITY = "password123"  # pragma: allowlist secret
 
 # Strong password examples
-STRONG_PASSWORD_1 = "Str0ng!Pass"
-STRONG_PASSWORD_2 = "StrongPass1!"
-VALID_PASSWORD = "ValidPassword123!"
+STRONG_PASSWORD_1 = "Str0ng!Pass"  # pragma: allowlist secret
+STRONG_PASSWORD_2 = "StrongPass1!"  # pragma: allowlist secret
+VALID_PASSWORD = "ValidPassword123!"  # pragma: allowlist secret
 
 # Long password for length validation tests
-LONG_PASSWORD = "A" * 129 + "1!"
+LONG_PASSWORD = "A" * 129 + "1!"  # pragma: allowlist secret
 
 # ============================================================================
 # Demo/Workflow Passwords
 # ============================================================================
 
-DEMO_PASSWORD = "Demo2025!"
+DEMO_PASSWORD = "Demo2025!"  # pragma: allowlist secret
 
 # ============================================================================
 # Email/Account Test Data
