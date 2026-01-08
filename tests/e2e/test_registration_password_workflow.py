@@ -21,6 +21,7 @@ from src.utils.constants import INVALID_CREDENTIALS_MSG
 from tests.e2e.conftest import BASE_URL
 from tests.e2e.email_utils import (
     SKIP_EMAIL_VERIFICATION,
+    clear_ethereal_inbox,
     extract_password_reset_link_from_email,
     extract_verification_link_from_email,
     wait_for_email_via_imap,
@@ -47,7 +48,10 @@ class TestRegistrationAndPasswordManagement:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         """Setup and teardown for E2E test: test."""
-        if SKIP_EMAIL_VERIFICATION:
+        # Clear any stale emails from previous test runs
+        if not SKIP_EMAIL_VERIFICATION:
+            clear_ethereal_inbox()
+        else:
             print(
                 "\n⚠️  Ethereal Email not configured - email verification will be skipped"
             )
