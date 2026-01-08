@@ -1506,9 +1506,9 @@ def main():
     )
     parser.add_argument(
         "--env",
-        choices=["dev", "e2e", "prod"],
+        choices=["dev", "e2e", "ci", "prod"],
         default="prod",
-        help="Environment to seed (dev, e2e, or prod). Determines which database file to use.",
+        help="Environment to seed (dev, e2e, ci, or prod). Determines which database file to use.",
     )
     parser.add_argument(
         "--manifest",
@@ -1530,6 +1530,7 @@ def main():
     db_mapping = {
         "dev": "sqlite:///course_records_dev.db",
         "e2e": "sqlite:///course_records_e2e.db",
+        "ci": "sqlite:///course_records_ci.db",
         "prod": "sqlite:///course_records.db",
     }
 

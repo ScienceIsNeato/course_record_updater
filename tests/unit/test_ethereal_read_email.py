@@ -3,7 +3,6 @@ Unit tests for Ethereal Provider read_email() method
 """
 
 import email
-import itertools
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -102,8 +101,8 @@ class TestEtherealProviderReadEmail:
     def test_read_email_no_match_found(self, mock_imap_class, mock_time, mock_sleep):
         """Test reading email when no match is found"""
         # Mock time to avoid real waits - simulate immediate timeout
-        # Use infinite iterator: start at 0, then always return 2 (exceeds timeout)
-        mock_time.side_effect = itertools.chain([0], itertools.repeat(2))
+        # Return 0 on first call, then 100 (way past timeout=1) on subsequent calls
+        mock_time.side_effect = [0, 100, 100, 100]
 
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
@@ -174,7 +173,7 @@ class TestEtherealProviderReadEmail:
         """Test handling IMAP connection errors"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Use infinite iterator: start at 0, then always return 2 (exceeds timeout)
-        mock_time.side_effect = itertools.chain([0], itertools.repeat(2))
+        mock_time.side_effect = [0, 100, 100, 100]
 
         mock_imap_class.side_effect = Exception("IMAP connection failed")
 
@@ -237,7 +236,7 @@ class TestEtherealProviderReadEmail:
         """Test reading from empty inbox"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Use infinite iterator: start at 0, then always return 2 (exceeds timeout)
-        mock_time.side_effect = itertools.chain([0], itertools.repeat(2))
+        mock_time.side_effect = [0, 100, 100, 100]
 
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
@@ -268,7 +267,7 @@ class TestEtherealProviderReadEmail:
         """Test handling invalid fetch results"""
         # Mock time to avoid real waits - simulate immediate timeout
         # Use infinite iterator: start at 0, then always return 2 (exceeds timeout)
-        mock_time.side_effect = itertools.chain([0], itertools.repeat(2))
+        mock_time.side_effect = [0, 100, 100, 100]
 
         mock_mail = MagicMock()
         mock_imap_class.return_value = mock_mail
