@@ -978,14 +978,17 @@ class SQLiteDatabase(DatabaseInterface):
         current_date_str = get_current_time().strftime("%Y-%m-%d")
 
         with self.sqlite.session_scope() as session:
+            # Use SQLite date() function to extract just the date portion from
+            # ISO datetime strings (e.g., "2026-01-08T03:59:16..." -> "2026-01-08")
+            # This ensures proper date comparison without time component issues
             terms = (
                 session.execute(
                     select(Term).where(
                         and_(
                             Term.institution_id == institution_id,
                             Term.active.is_(True),
-                            Term.start_date <= current_date_str,
-                            Term.end_date >= current_date_str,
+                            func.date(Term.start_date) <= current_date_str,
+                            func.date(Term.end_date) >= current_date_str,
                         )
                     )
                 )
