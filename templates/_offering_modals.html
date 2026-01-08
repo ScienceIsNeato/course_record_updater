@@ -30,14 +30,7 @@
                         </select>
                         <small class="form-text text-muted">Which program is this offering for?</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="offeringStatus" class="form-label">Status</label>
-                        <select class="form-control" id="offeringStatus" name="status">
-                            <option value="active" selected>Active</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
+
                     <hr>
                     <h6>Sections</h6>
                     <div id="sectionsContainer">
@@ -90,7 +83,9 @@
                     </div>
                     <div class="mb-3">
                         <label for="editOfferingTerm" class="form-label">Term</label>
-                        <input type="text" class="form-control" id="editOfferingTerm" disabled>
+                        <select class="form-control" id="editOfferingTerm" required>
+                            <option value="">Loading terms...</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="editOfferingProgramId" class="form-label">Program *</label>
@@ -99,14 +94,7 @@
                         </select>
                         <small class="form-text text-muted">Which program is this offering for?</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="editOfferingStatus" class="form-label">Status</label>
-                        <select class="form-control" id="editOfferingStatus">
-                            <option value="active">Active</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

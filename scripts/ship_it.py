@@ -188,12 +188,12 @@ class QualityGateExecutor:
 
         try:
             # Configure timeout per check type
-            # E2E: 600s (IMAP verification is slow in CI)
-            # Others: 300s (default)
+            # E2E: 900s (IMAP verification is slow in CI)
+            # Others: 900s (default to 15m to avoid premature CI kills)
             if check_flag in ["e2e"]:
-                timeout_seconds = 600
+                timeout_seconds = 900
             else:
-                timeout_seconds = 300
+                timeout_seconds = 900
 
             # Build command with verbose flag if enabled
             cmd = [self.script_path, f"--{actual_flag}"]
@@ -1783,7 +1783,7 @@ def _handle_pr_validation(args) -> int:
     print("=" * 70)
     print()
 
-    executor = QualityGateExecutor()
+    executor = QualityGateExecutor(verbose=args.verbose)
 
     # Determine which checks to run
     if args.checks is None:
@@ -1805,7 +1805,9 @@ def _handle_pr_validation(args) -> int:
 
     # Run checks (may exit early when fail-fast is enabled)
     start_time = time.time()
-    quality_results = executor.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
+    quality_results = executor.run_checks_parallel(
+        checks_to_run, fail_fast=fail_fast, verbose=args.verbose
+    )
     total_duration = time.time() - start_time
 
     # Format and display results

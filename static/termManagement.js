@@ -497,5 +497,15 @@ function escapeHtml(text) {
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditTermModal = openEditTermModal;
 globalThis.deleteTerm = deleteTerm;
-globalThis.loadTerms = loadTerms;
 globalThis.openCreateTermModal = openCreateTermModal;
+
+// Smart loadTerms wrapper: use dashboard refresh if available, otherwise table loader
+// This prevents clobbering the dashboard's refresh function
+if (!globalThis.loadTerms) {
+  // No existing loadTerms function - use our table loader
+  globalThis.loadTerms = loadTerms;
+} else {
+  // Dashboard or other page already set up loadTerms - preserve it
+  // Store our table loader under a different name for direct access if needed
+  globalThis.loadTermsTable = loadTerms;
+}

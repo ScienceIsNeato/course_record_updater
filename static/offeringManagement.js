@@ -122,24 +122,33 @@ async function loadCoursesAndTermsForCreateDropdown() {
  */
 async function loadCoursesAndTermsForEditDropdown() {
   const programSelect = document.getElementById("editOfferingProgramId");
+  const termSelect = document.getElementById("editOfferingTerm");
 
   if (!programSelect) {
     return;
   }
 
-  // Set loading state for programs only (course/term are display-only)
-  programSelect.innerHTML = '<option value="">Loading programs...</option>'; // nosemgrep
+  // Set loading state
+  programSelect.innerHTML = '<option value="">Loading programs...</option>';
+  if (termSelect)
+    termSelect.innerHTML = '<option value="">Loading terms...</option>';
 
   try {
-    // Fetch programs
-    const programsResponse = await fetch("/api/programs");
+    // Fetch programs and terms
+    const [programsResponse, termsResponse] = await Promise.all([
+      fetch("/api/programs"),
+      fetch("/api/terms?all=true"),
+    ]);
 
-    if (!programsResponse.ok) {
-      throw new Error("Failed to fetch programs");
+    if (!programsResponse.ok || !termsResponse.ok) {
+      throw new Error("Failed to fetch dropdown data");
     }
 
     const programsData = await programsResponse.json();
+    const termsData = await termsResponse.json();
+
     const programs = programsData.programs || [];
+    const terms = termsData.terms || [];
 
     populateSelectOptions(
       programSelect,
@@ -149,10 +158,23 @@ async function loadCoursesAndTermsForEditDropdown() {
       (program) => program.name || program.program_name,
       "No programs available",
     );
+
+    if (termSelect) {
+      populateSelectOptions(
+        termSelect,
+        terms,
+        "Select Term",
+        (term) => term.term_id,
+        (term) => term.name,
+        "No terms available",
+      );
+    }
   } catch (error) {
-    console.error("Failed to load programs:", error);
+    console.error("Failed to load dropdown data:", error);
     programSelect.innerHTML =
-      '<option value="">Error loading programs</option>'; // nosemgrep
+      '<option value="">Error loading programs</option>';
+    if (termSelect)
+      termSelect.innerHTML = '<option value="">Error loading terms</option>';
   }
 }
 
@@ -290,7 +312,6 @@ function initializeCreateOfferingModal() {
       term_id: document.getElementById("offeringTermId").value,
       // Treat empty selection as null so API doesn't receive "" (often fails UUID validation)
       program_id: programIdValue || null,
-      status: document.getElementById("offeringStatus").value,
       sections: sections,
     };
 
@@ -320,7 +341,7 @@ function initializeCreateOfferingModal() {
             typeof bootstrap.Modal.getOrCreateInstance === "function"
               ? bootstrap.Modal.getOrCreateInstance(modalEl)
               : bootstrap.Modal.getInstance(modalEl) ||
-              new bootstrap.Modal(modalEl);
+                new bootstrap.Modal(modalEl);
           modal.hide();
         }
 
@@ -365,7 +386,7 @@ function initializeEditOfferingModal() {
 
     const updateData = {
       program_id: document.getElementById("editOfferingProgramId").value,
-      status: document.getElementById("editOfferingStatus").value,
+      term_id: document.getElementById("editOfferingTerm").value,
     };
 
     const saveBtn = this.querySelector('button[type="submit"]');
@@ -422,22 +443,32 @@ function initializeEditOfferingModal() {
  */
 function openEditOfferingModal(offeringId, offeringData) {
   document.getElementById("editOfferingId").value = offeringId;
-  document.getElementById("editOfferingStatus").value =
-    offeringData.status || "active";
 
-  // Set display-only fields (Course/Term are immutable)
+  // Set display-only fields
   document.getElementById("editOfferingCourse").value =
     offeringData.course_name || offeringData.course_title || "";
-  document.getElementById("editOfferingTerm").value =
-    offeringData.term_name || "";
 
-  // Set program (will be populated by loadCoursesAndTermsForEditDropdown)
+  // Set selectors (program and term)
   const programSelect = document.getElementById("editOfferingProgramId");
-  if (programSelect && offeringData.program_id) {
-    // Wait a bit for dropdown to populate, then select
-    setTimeout(() => {
-      programSelect.value = offeringData.program_id;
-    }, 500); // Increased timeout to ensure fetch completes
+  const termSelect = document.getElementById("editOfferingTerm");
+
+  // Helper to set value when options might be loaded async
+  const setSelectValue = (select, value) => {
+    if (!select) return;
+    if (select.options.length > 1) {
+      select.value = value;
+    } else {
+      // Retry if not populated yet
+      setTimeout(() => setSelectValue(select, value), 500);
+    }
+  };
+
+  if (offeringData.program_id && programSelect) {
+    setSelectValue(programSelect, offeringData.program_id);
+  }
+
+  if (offeringData.term_id && termSelect) {
+    setSelectValue(termSelect, offeringData.term_id);
   }
 
   const modal = new bootstrap.Modal(
@@ -470,7 +501,7 @@ function handleEditOfferingClick(button) {
 async function deleteOffering(offeringId, courseName, termName) {
   const confirmation = confirm(
     `Are you sure you want to delete the offering for ${courseName} in ${termName}?\n\n` +
-    "This action cannot be undone. All sections for this offering will be deleted.",
+      "This action cannot be undone. All sections for this offering will be deleted.",
   );
 
   if (!confirmation) {
@@ -580,7 +611,7 @@ async function loadOfferings() {
       html += `
           <tr>
             <td><strong>${courseName}</strong></td>
-            <td>${(offering.program_names && offering.program_names.length > 0) ? offering.program_names.join(", ") : "-"}</td>
+            <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
             <td>${termName}</td>
             <td>${statusBadge}</td>
             <td>${offering.section_count || 0}</td>

@@ -1,10 +1,53 @@
 # Course Record Updater - Current Status
 
-## Latest Work: PR Closing Protocol Execution (2026-01-07)
+## Latest Work: Terms Panel Refresh Fix (2026-01-08)
 
-**Status**: 🔄 IN PROGRESS - Protocol working, iterating on CI failures
+**Status**: ✅ COMPLETE - Terms panel now refreshes after creating term
 
+**Previous Work**: PR Closing Protocol Execution (2026-01-07)
 **Branch**: `feat/reorganize-repository-structure`
+
+### Terms Panel Refresh Fix ✅
+
+**Problem**: After creating a new term via dashboard "Add Term" button, Terms panel didn't update until manual page refresh.
+
+**Root Cause**: Function name collision - `termManagement.js` overwrote dashboard's `loadTerms()` refresh function with table loader that only works on dedicated terms page.
+
+**Solution**: Smart wrapper in `termManagement.js` that preserves existing `loadTerms()` if present (dashboard), otherwise uses table loader.
+
+**Files Modified**:
+- `static/termManagement.js` (lines 497-511)
+
+**Verification**:
+- ✅ All termManagement tests pass (32/32)
+- ✅ All dashboard tests pass (57/57)
+- ✅ Frontend quality checks pass
+
+### ship_it.py Verbose & Complexity Fixes ✅
+
+**Problems**:
+1. `--verbose` flag not honored in PR validation path
+2. Security check output buffering in CI
+3. Complexity check not visible (actually WAS in PR checks, just not showing due to verbose issue)
+
+**Root Causes**:
+1. `_handle_pr_validation()` created QualityGateExecutor without passing `args.verbose`
+2. `run_checks_parallel()` not receiving verbose parameter in PR validation path
+3. CI security check missing `python -u` for unbuffered output
+
+**Solutions**:
+- `scripts/ship_it.py:1786` - Pass `verbose=args.verbose` to QualityGateExecutor
+- `scripts/ship_it.py:1809` - Pass `verbose=args.verbose` to run_checks_parallel
+- `.github/workflows/quality-gate.yml:369` - Add `python -u` for unbuffered security output
+
+**Verification**:
+- ✅ Complexity confirmed in PR checks (always was, now visible with --verbose)
+- ✅ --verbose now works correctly for PR validation
+- ✅ CI will show security check output in real-time
+
+**Files Modified**:
+- `scripts/ship_it.py` (lines 1786, 1809)
+- `.github/workflows/quality-gate.yml` (line 369)
 
 ### PR Closing Protocol - Successfully Executed!
 

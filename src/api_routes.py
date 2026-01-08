@@ -2180,6 +2180,22 @@ def update_term_endpoint(term_id: str):
         if term.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
 
+        # Validate assessment_due_date format if present
+        if data.get("assessment_due_date"):
+            try:
+                # Simple format check YYYY-MM-DD
+                datetime.strptime(data["assessment_due_date"], "%Y-%m-%d")
+            except ValueError:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Invalid assessment date format (YYYY-MM-DD required)",
+                        }
+                    ),
+                    400,
+                )
+
         success = update_term(term_id, data)
 
         if success:
@@ -2947,28 +2963,30 @@ def list_course_offerings():
 
         # Helper mapping for programs
         programs = get_programs_by_institution(institution_id) or []
-        program_map = {p.get("program_id") or p.get("id"): p.get("name") for p in programs}
+        program_map = {
+            p.get("program_id") or p.get("id"): p.get("name") for p in programs
+        }
 
         # Helper mapping for course programs
         courses = get_all_courses(institution_id) or []
         course_program_map = {}
         for c in courses:
-             p_ids = c.get("program_ids") or []
-             p_names = []
-             for pid in p_ids:
-                 if pid in program_map:
-                     p_names.append(program_map[pid])
-             course_program_map[c.get("course_id") or c.get("id")] = p_names
+            p_ids = c.get("program_ids") or []
+            p_names = []
+            for pid in p_ids:
+                if pid in program_map:
+                    p_names.append(program_map[pid])
+            course_program_map[c.get("course_id") or c.get("id")] = p_names
 
         offerings = list(offerings_dict.values())
-        
+
         # Enrich offerings with program names
         for offering in offerings:
             c_id = offering.get("course_id")
             if c_id and c_id in course_program_map:
                 offering["program_names"] = course_program_map[c_id]
             else:
-                 offering["program_names"] = []
+                offering["program_names"] = []
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
@@ -3297,6 +3315,23 @@ def update_section_endpoint(section_id: str):
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
 
+        # Validate enrollment if present
+        if "enrollment" in data:
+            try:
+                enrollment = int(data["enrollment"])
+                if enrollment < 0:
+                    raise ValueError("Negative enrollment")
+            except (ValueError, TypeError):
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": "Enrollment must be a non-negative integer",
+                        }
+                    ),
+                    400,
+                )
+
         success = update_course_section(section_id, data)
 
         if success:
@@ -3349,6 +3384,11 @@ def assign_instructor_to_section_endpoint(section_id: str):
         offering = get_course_offering(section.get("offering_id"))
         if not offering or offering.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": SECTION_NOT_FOUND_MSG}), 404
+
+        # Verify instructor exists
+        instructor = get_user_by_id(instructor_id)
+        if not instructor:
+            return jsonify({"success": False, "error": "Instructor not found"}), 404
 
         success = assign_instructor(section_id, instructor_id)
 

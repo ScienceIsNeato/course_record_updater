@@ -652,11 +652,18 @@ class TestSectionsCRUD:
         assert data["success"] is True
 
     @patch("src.api_routes.assign_instructor")
+    @patch("src.api_routes.get_user_by_id")
     @patch("src.api_routes.get_course_offering")
     @patch("src.api_routes.get_current_institution_id")
     @patch("src.api_routes.get_section_by_id")
     def test_assign_instructor_success(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_assign, client
+        self,
+        mock_get_section,
+        mock_get_inst_id,
+        mock_get_offering,
+        mock_get_user,
+        mock_assign,
+        client,
     ):
         """Test PATCH /api/sections/<id>/instructor - success"""
         create_site_admin_session(client)
@@ -670,6 +677,7 @@ class TestSectionsCRUD:
             "offering_id": "offering-123",
             "institution_id": "inst-1",
         }
+        mock_get_user.return_value = {"user_id": "instructor-123"}
         mock_assign.return_value = True
 
         response = client.patch(

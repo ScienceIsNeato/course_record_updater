@@ -512,11 +512,17 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         assert data["success"] is True
 
     @patch("src.api_routes.assign_instructor")
+    @patch("src.api_routes.get_user_by_id")
     @patch("src.api_routes.get_course_offering")
     @patch("src.api_routes.get_current_institution_id")
     @patch("src.api_routes.get_section_by_id")
     def test_assign_instructor_integration(
-        self, mock_get_section, mock_get_inst_id, mock_get_offering, mock_assign
+        self,
+        mock_get_section,
+        mock_get_inst_id,
+        mock_get_offering,
+        mock_get_user,
+        mock_assign,
     ):
         """Test PATCH /api/sections/<id>/instructor assign instructor"""
         mock_get_section.return_value = {
@@ -528,6 +534,11 @@ class TestSectionsCRUDIntegration(CommonAuthMixin):
         mock_get_offering.return_value = {
             "offering_id": "offering-123",
             "institution_id": "mocku-institution-id",
+        }
+        mock_get_user.return_value = {
+            "user_id": "instructor-456",
+            "email": "instructor@example.com",
+            "role": "instructor",
         }
         mock_assign.return_value = True
 

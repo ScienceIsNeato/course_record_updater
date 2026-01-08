@@ -40,11 +40,6 @@ describe('Offering Management - Create Offering Modal', () => {
           <option value="program-1">Computer Science</option>
           <option value="program-2">Mathematics</option>
         </select>
-        <select id="offeringStatus" name="status" required>
-          <option value="active" selected>Active</option>
-          <option value="planning">Planning</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
         <div id="sectionsContainer"></div>
         <button type="button" id="addSectionBtn">Add Section</button>
         <button type="submit" id="createOfferingBtn">
@@ -99,11 +94,6 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(termSelect.validity.valid).toBe(true);
     });
 
-    test('should have status default to active', () => {
-      const statusSelect = document.getElementById('offeringStatus');
-      expect(statusSelect.value).toBe('active');
-    });
-
     test('should allow empty sections', () => {
       const sectionsContainer = document.getElementById('sectionsContainer');
       // Sections are optional (can create offering with 0 sections)
@@ -127,7 +117,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
       document.getElementById('offeringProgramId').value = 'program-1';
-      document.getElementById('offeringStatus').value = 'active';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -157,7 +146,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringCourseId').value = 'course-2';
       document.getElementById('offeringTermId').value = 'term-2';
       document.getElementById('offeringProgramId').value = 'program-2';
-      document.getElementById('offeringStatus').value = 'planning';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -171,7 +159,6 @@ describe('Offering Management - Create Offering Modal', () => {
         course_id: 'course-2',
         term_id: 'term-2',
         program_id: 'program-2',
-        status: 'planning',
         sections: []
       });
     });
@@ -207,7 +194,6 @@ describe('Offering Management - Create Offering Modal', () => {
       document.getElementById('offeringCourseId').value = 'course-1';
       document.getElementById('offeringTermId').value = 'term-1';
       document.getElementById('offeringProgramId').value = 'program-1';
-      document.getElementById('offeringStatus').value = 'active';
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -409,12 +395,11 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
     document.body.innerHTML = `
       <meta name="csrf-token" content="test-csrf-token">
       <input id="editOfferingId" />
-      <select id="editOfferingStatus">
-        <option value="active">active</option>
-        <option value="scheduled">scheduled</option>
-      </select>
       <input id="editOfferingCourse" />
-      <input id="editOfferingTerm" />
+      <select id="editOfferingTerm">
+        <option value="">Select Term</option>
+        <option value="term-1">Fall 2024</option>
+      </select>
       <select id="editOfferingProgramId"></select>
       <div class="modal" id="editOfferingModal"></div>
       <div id="offeringsTableContainer"></div>
@@ -438,10 +423,10 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
 
   test('openEditOfferingModal should populate fields and show modal', () => {
     const offeringData = {
-      status: 'scheduled',
       capacity: 25,
       course_title: 'Intro',
       term_name: 'Fall 2024',
+      term_id: 'term-1',
       program_id: 'program-1'
     };
 
@@ -449,15 +434,18 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
     const programSelect = document.getElementById('editOfferingProgramId');
     programSelect.innerHTML = '<option value="program-1">Computer Science</option>';
 
+    // Add term option
+    const termSelect = document.getElementById('editOfferingTerm');
+    termSelect.innerHTML += '<option value="term-1">Fall 2024</option>';
+
     openEditOfferingModal('offering-123', offeringData);
 
     expect(document.getElementById('editOfferingId').value).toBe('offering-123');
-    expect(document.getElementById('editOfferingStatus').value).toBe('scheduled');
     expect(document.getElementById('editOfferingCourse').value).toBe('Intro');
-    expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
 
     jest.advanceTimersByTime(500);
     expect(document.getElementById('editOfferingProgramId').value).toBe('program-1');
+    expect(document.getElementById('editOfferingTerm').value).toBe('term-1');
   });
 
   test('deleteOffering should no-op when user cancels confirmation', async () => {
@@ -526,16 +514,15 @@ describe('Offering Management - Edit Offering Modal', () => {
       <form id="editOfferingForm">
         <input type="hidden" id="editOfferingId" />
         <input type="text" id="editOfferingCourse" />
-        <input type="text" id="editOfferingTerm" />
+        <select id="editOfferingTerm" required>
+          <option value="">Select Term</option>
+          <option value="term-1">Fall 2024</option>
+          <option value="term-2">Spring 2025</option>
+        </select>
         <select id="editOfferingProgramId" required>
           <option value="">Select Program</option>
           <option value="program-1">Computer Science</option>
           <option value="program-2">Mathematics</option>
-        </select>
-        <select id="editOfferingStatus" required>
-          <option value="active">Active</option>
-          <option value="planning">Planning</option>
-          <option value="cancelled">Cancelled</option>
         </select>
         <button type="submit">
           <span class="btn-text">Update</span>
@@ -573,16 +560,14 @@ describe('Offering Management - Edit Offering Modal', () => {
     global.bootstrap.Modal = jest.fn(() => mockModal);
 
     window.openEditOfferingModal('offering-123', {
-      status: 'planning',
       capacity: 40,
       course_title: 'Intro to CS',
-      term_name: 'Fall 2024'
+      term_name: 'Fall 2024',
+      term_id: 'term-1'
     });
 
     expect(document.getElementById('editOfferingId').value).toBe('offering-123');
-    expect(document.getElementById('editOfferingStatus').value).toBe('planning');
     expect(document.getElementById('editOfferingCourse').value).toBe('Intro to CS');
-    expect(document.getElementById('editOfferingTerm').value).toBe('Fall 2024');
     expect(mockModal.show).toHaveBeenCalled();
   });
 
@@ -596,10 +581,10 @@ describe('Offering Management - Edit Offering Modal', () => {
     programSelect.value = '';
 
     window.openEditOfferingModal('offering-123', {
-      status: 'active',
       capacity: 10,
       course_title: 'Intro',
       term_name: 'Fall',
+      term_id: 'term-1',
       program_id: 'program-2'
     });
 
@@ -619,7 +604,7 @@ describe('Offering Management - Edit Offering Modal', () => {
     const form = document.getElementById('editOfferingForm');
     document.getElementById('editOfferingId').value = 'offering-123';
     document.getElementById('editOfferingProgramId').value = 'program-1';
-    document.getElementById('editOfferingStatus').value = 'cancelled';
+    document.getElementById('editOfferingTerm').value = 'term-2';
 
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
     form.dispatchEvent(submitEvent);
@@ -634,13 +619,14 @@ describe('Offering Management - Edit Offering Modal', () => {
           'Content-Type': 'application/json',
           'X-CSRFToken': 'test-csrf-token'
         }),
-        body: expect.stringContaining('cancelled')
+        body: expect.stringContaining('program-1')
       })
     );
 
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
-    expect(body.status).toBe('cancelled');
+    expect(body.program_id).toBe('program-1');
+    expect(body.term_id).toBe('term-2');
   });
 });
 

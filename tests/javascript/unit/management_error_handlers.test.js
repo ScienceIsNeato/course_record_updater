@@ -54,15 +54,14 @@ describe('Management Modules Error Handling', () => {
         <select id="offeringTermId" required><option value="t1" selected>Term</option></select>
         <select id="offeringCourseId" required><option value="c1" selected>Course</option></select>
         <select id="offeringProgramId" required><option value="p1" selected>Program</option></select>
-        <select id="offeringStatus"><option value="active" selected>Active</option></select>
         <input id="offeringCapacity" value="30">
         <button type="submit" id="createOfferingBtn"><span class="btn-text">S</span><span class="btn-spinner"></span></button>
       </form>
       <form id="editOfferingForm">
         <input id="editOfferingId" value="o1">
         <select id="editOfferingProgramId" required><option value="p1" selected>Program</option></select>
+        <select id="editOfferingTerm" required><option value="t1" selected>Term</option></select>
         <input id="editOfferingCapacity" value="30">
-        <select id="editOfferingStatus"><option value="active" selected>Active</option></select>
         <button type="submit" id="updateOfferingBtn"><span class="btn-text">S</span><span class="btn-spinner"></span></button>
       </form>
       

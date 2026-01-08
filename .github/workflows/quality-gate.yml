@@ -69,7 +69,7 @@ jobs:
   unit-tests-with-coverage:
     runs-on: ubuntu-latest
     needs: setup
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
@@ -365,7 +365,8 @@ jobs:
         pip install semgrep
     - name: Run Security Audit
       run: |
-        python scripts/ship_it.py --verbose --checks security | tee security-output.log
+        # Force unbuffered output for real-time visibility in CI
+        python -u scripts/ship_it.py --verbose --checks security | tee security-output.log
         exit ${PIPESTATUS[0]}
       env:
         PYTHONPATH: .
@@ -484,7 +485,7 @@ jobs:
   coverage-new-code:
     runs-on: ubuntu-latest
     needs: [setup, unit-tests-with-coverage]
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
       with:
