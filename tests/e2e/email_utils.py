@@ -357,9 +357,60 @@ def verify_email_content(
     return True
 
 
+
 # ============================================================================
 # Ethereal Email IMAP Functions
 # ============================================================================
+
+
+def clear_ethereal_inbox() -> bool:
+    """
+    Clear all emails from the Ethereal IMAP inbox.
+
+    Call this at the start of tests to prevent stale emails from previous runs
+    from interfering with email verification.
+
+    Returns:
+        True if inbox cleared successfully, False otherwise
+    """
+    if not USE_ETHEREAL_IMAP:
+        print("⚠️  Ethereal IMAP not configured, skipping inbox clear")
+        return False
+
+    try:
+        print("🧹 Clearing Ethereal inbox...")
+
+        # Connect to IMAP server
+        mail = imaplib.IMAP4_SSL(ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT)
+        mail.login(ETHEREAL_USER, ETHEREAL_PASS)
+        mail.select("INBOX")
+
+        # Search for all emails
+        status, messages = mail.search(None, "ALL")
+
+        if status == "OK" and messages[0]:
+            email_ids = messages[0].split()
+            deleted_count = 0
+
+            # Mark all emails for deletion
+            for email_id in email_ids:
+                mail.store(email_id, "+FLAGS", "\\Deleted")
+                deleted_count += 1
+
+            # Permanently remove deleted emails
+            mail.expunge()
+
+            print(f"   ✓ Deleted {deleted_count} email(s) from inbox")
+        else:
+            print("   ✓ Inbox already empty")
+
+        mail.close()
+        mail.logout()
+        return True
+
+    except Exception as e:
+        print(f"   ⚠️  Failed to clear inbox: {e}")
+        return False
 
 
 def wait_for_email_via_imap(

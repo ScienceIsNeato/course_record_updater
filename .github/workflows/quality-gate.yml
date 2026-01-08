@@ -191,6 +191,7 @@ jobs:
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
         export PORT=3001
+        export TEST_PORT=3001
         
         # Run smoke tests using ship_it.py with SQLite backend (server already running)
         python scripts/ship_it.py --checks smoke

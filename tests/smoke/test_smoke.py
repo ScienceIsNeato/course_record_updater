@@ -11,12 +11,15 @@ Scope:
 """
 
 import os
+import re
 
 import pytest
 import requests
 
 # Default configuration (can be overridden by environment)
-DEFAULT_BASE_URL = "http://localhost:3002"
+
+DEFAULT_PORT = os.getenv("TEST_PORT", "3001")  # Default to 3001 to match CI
+DEFAULT_BASE_URL = f"http://localhost:{DEFAULT_PORT}"
 DEFAULT_ADMIN_EMAIL = "siteadmin@system.local"
 DEFAULT_ADMIN_PASSWORD = "SiteAdmin123!"
 
@@ -35,59 +38,41 @@ class TestSystemSmoke:
         """Create an authenticated session for API checking"""
         session = requests.Session()
 
-        # 1. Login via API (auth.js uses /api/auth/login)
-        # First, get CSRF token from login page
-        import re
-
-        login_page_url = f"{smoke_target_url}/login"
-        page_resp = session.get(login_page_url)
-
-        csrf_token = None
-        # Try to find in meta tag (standard in this app base template)
-        meta_match = re.search(r'name="csrf-token" content="([^"]+)"', page_resp.text)
-        if meta_match:
-            csrf_token = meta_match.group(1)
-        # Try to find in input field as fallback
-        if not csrf_token:
-            input_match = re.search(
-                r'name="csrf_token" value="([^"]+)"', page_resp.text
-            )
-            if input_match:
-                csrf_token = input_match.group(1)
-
+        # Use JSON login API endpoint
         login_url = f"{smoke_target_url}/api/auth/login"
-        headers = {"Content-Type": "application/json", "X-CSRFToken": csrf_token or ""}
-
         payload = {
             "email": os.getenv("SMOKE_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL),
             "password": os.getenv("SMOKE_ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD),
             "remember_me": False,
         }
+        headers = {"Content-Type": "application/json"}
 
-        # The API expects JSON, not form data
         response = session.post(
             login_url, json=payload, headers=headers, allow_redirects=True, timeout=10
         )
 
         if response.status_code != 200:
-            print(f"Login failed status: {response.status_code}")
-            print(f"Response: {response.text}")
+            print(f"Login failed with status {response.status_code}")
+            print(f"Response text: {response.text[:500]}...")
+            pytest.fail("Login failed - check credentials and server logs")
 
-        # Verify success (API returns JSON with success: true)
+        # Verify success response
         try:
             data = response.json()
-            if data.get("success"):
-                return session
+            if not data.get("success"):
+                print(f"Login API response: {data}")
+                pytest.fail("Login failed - API did not return success")
         except Exception:
-            pass
+            print(f"Non-JSON login response: {response.text[:500]}...")
+            pytest.fail("Login failed - unexpected response format")
 
-        # Fallback verification: Check if we can access dashboard
+        # Verify we're actually logged in by checking the dashboard
         dash_resp = session.get(f"{smoke_target_url}/dashboard")
-        if dash_resp.status_code == 200 and "login" not in dash_resp.url:
-            return session
+        if dash_resp.status_code != 200 or "login" in dash_resp.url:
+            print(f"Dashboard access failed with status {dash_resp.status_code}")
+            print(f"Dashboard URL: {dash_resp.url}")
+            pytest.fail("Failed to access dashboard after login")
 
-        # If we are here, login failed
-        pytest.fail(f"Smoke test authentication failed against {smoke_target_url}")
         return session
 
     def test_api_health(self, smoke_target_url):

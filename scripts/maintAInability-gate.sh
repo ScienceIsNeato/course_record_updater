@@ -1930,8 +1930,8 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   BLUE='\033[0;34m'
   NC='\033[0m' # No Color
   
-  # Test configuration
-  TEST_PORT=${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}
+  # Test configuration - use TEST_PORT if set, otherwise default to 3001
+  TEST_PORT=${TEST_PORT:-3001}
   TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   
@@ -1970,11 +1970,16 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   # Function to start test server
   start_test_server() {
     echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
-    
+
     # Load environment variables
     if [ -f ".envrc" ]; then
       source .envrc
     fi
+    
+    # Force test environment and database AFTER sourcing any env files
+    export ENV="test"
+    export FLASK_ENV="test"
+    export DATABASE_URL="sqlite:///course_records_e2e.db"
     
     # Activate virtual environment if it exists
     if [ -d "venv" ]; then
@@ -2074,6 +2079,18 @@ except Exception as e:
   
   # SQLite is used for persistence; no external emulator required.
 
+  # Ensure we use the e2e database for both seeding and server
+  export DATABASE_URL="sqlite:///course_records_e2e.db"
+
+  # Ensure test database is seeded
+  echo -e "${BLUE}🌱 Seeding test database...${NC}"
+  python scripts/seed_db.py --clear --env e2e || {
+    echo -e "${RED}❌ Failed to seed test database${NC}"
+    add_failure "Smoke Tests" "Failed to seed test database" "Check database connection and seed script"
+    echo ""
+    return
+  }
+  
   # Start test server
   if ! start_test_server; then
     add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"
