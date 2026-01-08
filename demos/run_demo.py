@@ -288,7 +288,7 @@ class DemoRunner:
         
         print(f"{CYAN}🔧 Pre-Step Commands:{NC}")
         for cmd_spec in commands:
-            cmd = cmd_spec.get('command', '')
+            cmd = self._substitute_variables(cmd_spec.get('command', ''))
             purpose = cmd_spec.get('purpose', '')
             expected = cmd_spec.get('expected_output', '')
             expected_contains = cmd_spec.get('expected_output_contains', '')
@@ -498,7 +498,7 @@ class DemoRunner:
         
         return True
     
-    def substitute_variables(self, text: str) -> str:
+    def _substitute_variables(self, text: str) -> str:
         """Replace {{variable}} placeholders with context values."""
         import re
         pattern = r'\{\{(\w+)\}\}'
@@ -510,6 +510,10 @@ class DemoRunner:
             return match.group(0)  # Return original if not found
         
         return re.sub(pattern, replace_var, text)
+    
+    def substitute_variables(self, text: str) -> str:
+        """Public alias for backward compatibility."""
+        return self._substitute_variables(text)
     
     def get_csrf_token(self) -> str:
         """Get CSRF token from the server."""
@@ -741,8 +745,8 @@ class DemoRunner:
     
     def run_command_with_capture(self, cmd: str) -> Optional[str]:
         """Run a command and capture its output."""
-        # Get working directory from environment config
-        working_dir = self.demo_data.get('environment', {}).get('working_directory', os.getcwd())
+        # Use consistent working directory from validate_environment
+        working_dir = self.working_dir
         
         try:
             # nosec B602 - shell=True is intentional for demo script commands
