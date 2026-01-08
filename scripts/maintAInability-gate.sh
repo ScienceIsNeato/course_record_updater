@@ -99,6 +99,9 @@ RUN_JS_COVERAGE=false
 RUN_COVERAGE_NEW_CODE=false
 RUN_ALL=false
 
+# Output control
+VERBOSE=false
+
 # Grouped check flags
 RUN_PYTHON_LINT_FORMAT=false
 RUN_JS_LINT_FORMAT=false
@@ -139,6 +142,7 @@ else
       --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
+      --verbose) VERBOSE=true ;;
       --help)
         echo "maintAInability-gate - Course Record Updater Quality Framework"
         echo ""
@@ -570,19 +574,35 @@ if [[ "$RUN_INTEGRATION_TESTS" == "true" ]]; then
   echo "🔗 Integration Test Suite Execution (tests/integration/)"
   
   echo "  🔍 Running INTEGRATION test suite (component interactions)..."
-  INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    # Verbose mode: Stream output directly
+    if ! python -m pytest tests/integration/ -v 2>&1; then
+      INTEGRATION_TEST_FAILED=true
+    fi
+  else
+    # Normal mode: Capture for summary
+    INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+  fi
   
   if [[ "$INTEGRATION_TEST_FAILED" == "true" ]]; then
     echo "❌ Integration Tests: FAILED"
-    echo ""
-    echo "📋 Integration Test Failure Details:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    
+    if [[ "$VERBOSE" != "true" ]]; then
+      echo ""
+      echo "📋 Integration Test Failure Details:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+    fi
     
     # Extract summary stats for the failure record
-    FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    if [[ "$VERBOSE" != "true" ]]; then
+      FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    else
+      FAILED_INTEGRATION_TESTS="See output above"
+    fi
     add_failure "Integration Tests" "Integration test failures: $FAILED_INTEGRATION_TESTS" "See detailed output above and run 'python -m pytest tests/integration/ -v' for full details"
   else
     echo "✅ Integration Tests: PASSED"
@@ -598,20 +618,36 @@ if [[ "$RUN_E2E_TESTS" == "true" ]]; then
   echo "🎭 End-to-End Test Suite (Playwright browser automation)"
   
   echo "  🔍 Running E2E test suite (headless browser tests)..."
-  # Run via run_uat.sh which handles environment setup
-  E2E_TEST_OUTPUT=$(./scripts/run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    # Verbose mode: Stream output directly for real-time visibility
+    if ! ./scripts/run_uat.sh 2>&1; then
+      E2E_TEST_FAILED=true
+    fi
+  else
+    # Normal mode: Capture output for formatted summary
+    E2E_TEST_OUTPUT=$(./scripts/run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  fi
   
   if [[ "$E2E_TEST_FAILED" == "true" ]]; then
     echo "❌ E2E Tests: FAILED"
-    echo ""
-    echo "📋 E2E Test Failure Details:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$E2E_TEST_OUTPUT" | sed 's/^/  /'
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    
+    # Only show details if not in verbose mode (verbose already showed them)
+    if [[ "$VERBOSE" != "true" ]]; then
+      echo ""
+      echo "📋 E2E Test Failure Details:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$E2E_TEST_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+    fi
     
     # Extract summary stats for the failure record
-    FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    if [[ "$VERBOSE" != "true" ]]; then
+      FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    else
+      FAILED_E2E_TESTS="See output above"
+    fi
     add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './scripts/run_uat.sh --watch' to debug"
   else
     echo "✅ E2E Tests: PASSED"

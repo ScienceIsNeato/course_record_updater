@@ -195,18 +195,23 @@ class QualityGateExecutor:
             else:
                 timeout_seconds = 300
 
+            # Build command with verbose flag if enabled
+            cmd = [self.script_path, f"--{actual_flag}"]
+            if verbose:
+                cmd.append("--verbose")
+
             # Verbose mode: Stream output directly for real-time visibility
             # Normal mode: Capture for formatted output
             if verbose:
                 # Stream directly - no buffering, real-time output
                 process = subprocess.Popen(  # nosec
-                    [self.script_path, f"--{actual_flag}"],
+                    cmd,
                     text=True,
                 )
             else:
                 # Capture for formatted summary
                 process = subprocess.Popen(  # nosec
-                    [self.script_path, f"--{actual_flag}"],
+                    cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
