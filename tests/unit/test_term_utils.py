@@ -6,10 +6,15 @@ from datetime import datetime
 from unittest.mock import patch
 
 from src.utils.term_utils import (
+    TERM_STATUS_ACTIVE,
+    TERM_STATUS_PASSED,
+    TERM_STATUS_SCHEDULED,
     TermGenerator,
     default_term_generator,
     get_allowed_terms,
     get_current_term,
+    get_term_status,
+    is_term_active,
     is_valid_term,
 )
 
@@ -198,7 +203,33 @@ class TestTermGeneratorExtended:
         # Test with None
         assert generator.is_valid_term(None) is False
 
+
+class TestTermStatusHelpers:
+    """Tests for get_term_status/is_term_active helpers."""
+
+    def test_status_active(self):
+        with patch("src.utils.term_utils.get_current_time") as mock_now:
+            mock_now.return_value = datetime(2024, 1, 15)
+            assert get_term_status("2024-01-01", "2024-02-01") == TERM_STATUS_ACTIVE
+            assert is_term_active("2024-01-01", "2024-02-01") is True
+
+    def test_status_scheduled(self):
+        with patch("src.utils.term_utils.get_current_time") as mock_now:
+            mock_now.return_value = datetime(2024, 1, 15)
+            assert get_term_status("2024-02-01", "2024-05-01") == TERM_STATUS_SCHEDULED
+            assert is_term_active("2024-02-01", "2024-05-01") is False
+
+    def test_status_passed(self):
+        with patch("src.utils.term_utils.get_current_time") as mock_now:
+            mock_now.return_value = datetime(2024, 6, 1)
+            assert get_term_status("2024-01-01", "2024-05-01") == TERM_STATUS_PASSED
+            assert is_term_active("2024-01-01", "2024-05-01") is False
+
+    def test_status_unknown_when_missing_dates(self):
+        assert get_term_status(None, None) == "UNKNOWN"
+
         # Test with empty string
+        generator = TermGenerator()
         assert generator.is_valid_term("") is False
 
         # Test with whitespace

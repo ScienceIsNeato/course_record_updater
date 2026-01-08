@@ -111,8 +111,8 @@
     {
       "step_number": 3,
       "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Duplicate Biology for Zoology",
-      "purpose": "Create BIOL-101-Z tailored for Zoology program",
+      "name": "Create Course Offering for Spring 2026",
+      "purpose": "Create offering for BIOL-101 in the new Spring 2026 term",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101' LIMIT 1\"",
@@ -126,33 +126,45 @@
         }
       ],
       "instructions": {
-        "human": "Navigate to Courses.\nFind 'BIOL-101' and click Duplicate.\nUpdate details:\n- Number: BIOL-101-Z\n- Title: Biology for Zoologists\n- Credits: 2\n- Program: Zoology",
+        "human": "Navigate to Course Offerings.\nClick 'Create New Course Offering'.\nSelect:\n- Course: BIOL-101 - Introduction to Biology\n- Term: SP2026\n- Program: Zoology\n- Sections: 001, 002",
         "automated": {
           "action": "api_post",
-          "endpoint": "/api/management/courses/{{biol101_id}}/duplicate",
+          "endpoint": "/api/offerings",
           "data": {
-            "new_course_number": "BIOL-101-Z",
-            "new_course_title": "Biology for Zoologists",
-            "credit_hours": 2,
-            "program_ids": [
-              "{{zool_program_id}}"
+            "course_id": "{{biol101_id}}",
+            "term_id": "{{sp26_term_id}}",
+            "program_id": "{{zool_program_id}}",
+            "sections": [
+              {
+                "section_number": "001"
+              },
+              {
+                "section_number": "002"
+              }
             ]
           },
-          "description": "Duplicate BIOL-101 to BIOL-101-Z"
+          "description": "Create SP2026 offering for BIOL-101"
         }
       },
       "urls": [],
       "inputs": {
-        "course": "BIOL-101-Z"
+        "course": "BIOL-101",
+        "term": "SP2026"
       },
       "expected_results": [
-        "BIOL-101-Z course created"
+        "Course offering created for BIOL-101 in Spring 2026",
+        "Two sections created (001, 002)"
       ],
       "post_commands": [
         {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM courses WHERE course_number='BIOL-101-Z' LIMIT 1\"",
-          "purpose": "Capture BIOL-101-Z ID",
-          "capture_output_as": "biol101z_id"
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_offerings WHERE course_id='{{biol101_id}}' AND term_id='{{sp26_term_id}}' LIMIT 1\"",
+          "purpose": "Capture offering ID",
+          "capture_output_as": "sp26_offering_id"
+        },
+        {
+          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='002' AND offering_id='{{sp26_offering_id}}' LIMIT 1\"",
+          "purpose": "Capture Section 002 ID",
+          "capture_output_as": "section_002_id"
         }
       ],
       "verification": {
@@ -164,8 +176,8 @@
     {
       "step_number": 4,
       "phase": "Act 1: Planning (Oct 2025)",
-      "name": "Create Offering & Assign Faculty",
-      "purpose": "Schedule the course and assign instructors",
+      "name": "Assign Faculty to Sections",
+      "purpose": "Assign instructors to the new course offering sections",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM users WHERE email='dr.morgan@demo.example.com' LIMIT 1\"",
@@ -174,42 +186,25 @@
         }
       ],
       "instructions": {
-        "human": "Create Offering for BIOL-101-Z in SP2026.\nAdd 2 Sections:\n- 001: Assign Dr. Morgan (Existing)\n- 002: Click 'Invite' and send to 'dr.newguy@example.com'",
+        "human": "In the offering details for BIOL-101 SP2026:\n- Section 001: Assign Dr. Morgan (existing faculty)\n- Section 002: Leave unassigned for now (will invite new faculty next)",
         "automated": {
-          "action": "api_post",
-          "endpoint": "/api/offerings",
+          "action": "api_put",
+          "endpoint": "/api/sections/{{sp26_offering_id}}/001",
           "data": {
-            "course_id": "{{biol101z_id}}",
-            "term_id": "{{sp26_term_id}}",
-            "sections": [
-              {
-                "section_number": "001",
-                "instructor_id": "{{morgan_id}}",
-                "capacity": 30
-              },
-              {
-                "section_number": "002",
-                "capacity": 30
-              }
-            ]
+            "instructor_id": "{{morgan_id}}"
           },
-          "description": "Create offering with sections"
+          "description": "Assign Dr. Morgan to section 001"
         }
       },
       "urls": [],
       "inputs": {
-        "offering": "BIOL-101-Z SP26"
+        "section": "001",
+        "instructor": "Dr. Morgan"
       },
       "expected_results": [
-        "Offering created"
+        "Dr. Morgan assigned to Section 001"
       ],
-      "post_commands": [
-        {
-          "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_sections WHERE section_number='002' AND offering_id=(SELECT id FROM course_offerings WHERE course_id='{{biol101z_id}}' AND term_id='{{sp26_term_id}}')\"",
-          "purpose": "Capture Section 002 ID",
-          "capture_output_as": "section_002_id"
-        }
-      ],
+      "post_commands": [],
       "verification": {
         "type": "db_check"
       },
@@ -223,7 +218,7 @@
       "purpose": "Onboard new faculty member",
       "pre_commands": [],
       "instructions": {
-        "human": "In the Sections list for BIOL-101-Z:\nClick Invitation icon for Section 002.\nEmail: dr.newguy@example.com\nSend Invitation.",
+        "human": "In the Sections list for BIOL-101 SP2026:\nClick Invitation icon for Section 002.\nEmail: dr.newguy@example.com\nSend Invitation.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/invitations",

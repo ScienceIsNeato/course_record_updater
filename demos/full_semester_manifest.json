@@ -5,6 +5,15 @@
             "logo_path": "images/MockU.png"
         }
     ],
+    "terms": [
+        {
+            "name": "Fall 2025",
+            "term_code": "FA2025",
+            "start_date": "2025-08-30",
+            "end_date": "2025-12-15",
+            "active": true
+        }
+    ],
     "institution_admins": [
         {
             "email": "sarah.admin@mocku.test",

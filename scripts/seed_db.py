@@ -619,7 +619,6 @@ class BaselineTestSeeder(BaselineSeeder):
                 course_id=course_id,
                 term_id=term_id,
                 institution_id=institution_ids[0],  # MockU
-                status="active",
             )
             offering_id = database_service.db.create_course_offering(schema)
             if offering_id:
@@ -937,23 +936,43 @@ class DemoSeeder(BaselineTestSeeder):
 
         return instructor_ids
 
-    def create_demo_term(self, institution_id):
-        """Create Fall 2025 term"""
+    def create_demo_term(self, institution_id, manifest_terms=None):
+        """Create Fall 2025 term from manifest or fallback to defaults"""
         self.log("📅 Creating Fall 2025 term...")
 
-        base_date = datetime.now(timezone.utc)
-        start_date = base_date - timedelta(days=90)
-        end_date = base_date + timedelta(days=30)
+        # Try to use manifest data first
+        term_data = None
+        if manifest_terms:
+            # Find Fall 2025 term in manifest
+            for term in manifest_terms:
+                if term.get("name") == "Fall 2025":
+                    term_data = term
+                    break
+
+        if term_data:
+            # Use manifest data
+            start_date = term_data.get("start_date", "2025-08-30")
+            end_date = term_data.get("end_date", "2025-12-15")
+            term_code = term_data.get("term_code", "FA2025")
+            active = term_data.get("active", True)
+            self.log(f"   ✓ Using manifest data: {start_date} to {end_date}")
+        else:
+            # Fallback to hardcoded Fall 2025 semester dates
+            start_date = datetime(2025, 8, 30, tzinfo=timezone.utc).isoformat()
+            end_date = datetime(2025, 12, 15, tzinfo=timezone.utc).isoformat()
+            term_code = "FA2025"
+            active = True
+            self.log("   ⚠️  No manifest data, using fallback dates")
 
         schema = Term.create_schema(
             name="Fall 2025",
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat(),
-            assessment_due_date=end_date.isoformat(),
-            active=True,
+            start_date=start_date,
+            end_date=end_date,
+            assessment_due_date=end_date,
+            active=active,
         )
         schema["term_name"] = "Fall 2025"
-        schema["term_code"] = "FA2025"
+        schema["term_code"] = term_code
         schema["institution_id"] = institution_id
 
         term_id = database_service.db.create_term(schema)
@@ -974,7 +993,6 @@ class DemoSeeder(BaselineTestSeeder):
                 course_id=course_id,
                 term_id=term_id,
                 institution_id=institution_id,
-                status="active",
             )
             offering_id = database_service.db.create_course_offering(schema)
             if offering_id:
@@ -1326,7 +1344,8 @@ class DemoSeeder(BaselineTestSeeder):
             return False
 
         program_ids = self.create_demo_programs(inst_id)
-        term_id = self.create_demo_term(inst_id)
+        manifest_terms = manifest.get("terms") if manifest else None
+        term_id = self.create_demo_term(inst_id, manifest_terms)
 
         # Create complete demo data for showcasing features
         course_ids = self.create_demo_courses(inst_id, program_ids)
@@ -1428,7 +1447,6 @@ class DemoSeeder(BaselineTestSeeder):
                 course_id=hist_course_id,
                 term_id=term_id,
                 institution_id=institution_id,
-                status="archived",  # or inactive
             )
             off_id = database_service.db.create_course_offering(schema_off)
 
