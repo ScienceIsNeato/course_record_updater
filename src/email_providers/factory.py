@@ -95,7 +95,7 @@ def _determine_provider_from_environment() -> str:
     is_testing = os.getenv("TESTING", "").lower() in ("true", "1", "yes")
 
     # Map environment to provider
-    if env == "test" or is_testing:
+    if env in ("test", "e2e") or is_testing:
         return "ethereal"
     else:
         # development, staging, production all use Brevo
