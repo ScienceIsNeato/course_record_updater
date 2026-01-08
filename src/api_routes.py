@@ -12,7 +12,7 @@ import tempfile
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from flask import (
     Blueprint,
@@ -29,7 +29,6 @@ from flask import (
 import src.database.database_service as database_service
 from src.database.database_service import (
     add_course_to_program,
-    archive_term,
     assign_course_to_default_program,
     assign_instructor,
     bulk_add_courses_to_program,
@@ -143,6 +142,7 @@ from src.utils.constants import (
     USER_NOT_FOUND_MSG,
 )
 from src.utils.logging_config import get_logger
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 # Create API blueprint
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -2116,6 +2116,7 @@ def create_term_api():
 
         # Attach institution_id to payload
         data["institution_id"] = institution_id
+        _strip_term_status_fields(data)
 
         term_id = create_term(data)
 
@@ -2197,6 +2198,7 @@ def update_term_endpoint(term_id: str):
                     400,
                 )
 
+        _strip_term_status_fields(data)
         success = update_term(term_id, data)
 
         if success:
@@ -2217,39 +2219,6 @@ def update_term_endpoint(term_id: str):
 
     except Exception as e:
         return handle_api_error(e, "Update term", "Failed to update term")
-
-
-@api.route("/terms/<term_id>/archive", methods=["POST"])
-@permission_required("manage_terms")
-def archive_term_endpoint(term_id: str):
-    """
-    Archive a term (soft delete - sets active=False)
-
-    Preserves term data but marks it as inactive.
-    """
-    try:
-        # Verify term exists and institution access
-        term = get_term_by_id(term_id)
-
-        if not term:
-            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
-
-        institution_id = get_current_institution_id()
-        if term.get("institution_id") != institution_id:
-            return jsonify({"success": False, "error": TERM_NOT_FOUND_MSG}), 404
-
-        success = archive_term(term_id)
-
-        if success:
-            return (
-                jsonify({"success": True, "message": "Term archived successfully"}),
-                200,
-            )
-        else:
-            return jsonify({"success": False, "error": "Failed to archive term"}), 500
-
-    except Exception as e:
-        return handle_api_error(e, "Archive term", "Failed to archive term")
 
 
 @api.route("/terms/<term_id>", methods=["DELETE"])
@@ -2962,6 +2931,38 @@ def _enrich_offerings_with_programs(offerings, course_program_map, program_map):
         offering["program_names"] = names
 
 
+def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
+    """Remove unsupported status toggles from term payloads."""
+    for key in ("status", "active", "is_active"):
+        payload.pop(key, None)
+
+
+def _resolve_term_dates(
+    term: Optional[Dict[str, Any]], fallback: Dict[str, Any]
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve term start/end dates from the term record or offering fallback."""
+    if term:
+        return term.get("start_date"), term.get("end_date")
+    return fallback.get("term_start_date"), fallback.get("term_end_date")
+
+
+def _annotate_offering_status(
+    offering: Dict[str, Any], term: Optional[Dict[str, Any]]
+) -> None:
+    """Ensure offerings always expose a deterministic status."""
+    start_date, end_date = _resolve_term_dates(term, offering)
+    if start_date:
+        offering["term_start_date"] = start_date
+    if end_date:
+        offering["term_end_date"] = end_date
+
+    status = get_term_status(start_date, end_date)
+    offering["status"] = status
+    offering["term_status"] = status
+    offering["timeline_status"] = status
+    offering["is_active"] = status == TERM_STATUS_ACTIVE
+
+
 @api.route("/offerings", methods=["GET"])
 @permission_required("view_program_data")
 def list_course_offerings():
@@ -2987,12 +2988,11 @@ def list_course_offerings():
         }
 
         terms = get_all_terms(institution_id) or []
-        term_lookup = {
-            term.get("term_id")
-            or term.get("id"): term.get("name")
-            or term.get("term_name")
-            for term in terms
-        }
+        term_lookup: Dict[str, Dict[str, Any]] = {}
+        for term in terms:
+            term_id = term.get("term_id") or term.get("id")
+            if term_id:
+                term_lookup[term_id] = term
 
         offerings = get_all_course_offerings(institution_id) or []
 
@@ -3019,10 +3019,18 @@ def list_course_offerings():
             else:
                 offering.setdefault("course_name", "Unknown Course")
 
-            term_name = term_lookup.get(offering.get("term_id"))
-            offering["term_name"] = (
-                term_name or offering.get("term_name") or "Unknown Term"
-            )
+            term = term_lookup.get(offering.get("term_id"))
+            if term:
+                offering["term_name"] = (
+                    term.get("name")
+                    or term.get("term_name")
+                    or offering.get("term_name")
+                    or "Unknown Term"
+                )
+            else:
+                offering["term_name"] = offering.get("term_name") or "Unknown Term"
+
+            _annotate_offering_status(offering, term)
 
         _enrich_offerings_with_programs(offerings, course_program_map, program_map)
 
@@ -3079,7 +3087,14 @@ def update_course_offering_endpoint(offering_id: str):
                 404,
             )
 
-        data.pop("status", None)
+        for field in (
+            "status",
+            "term_status",
+            "timeline_status",
+            "is_active",
+            "active",
+        ):
+            data.pop(field, None)
         success = update_course_offering(offering_id, data)
 
         if success:

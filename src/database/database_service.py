@@ -518,10 +518,6 @@ def update_term(term_id: str, term_data: Dict[str, Any]) -> bool:
     return _db_service.update_term(term_id, term_data)
 
 
-def archive_term(term_id: str) -> bool:
-    return _db_service.archive_term(term_id)
-
-
 def delete_term(term_id: str) -> bool:
     return _db_service.delete_term(term_id)
 

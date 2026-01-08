@@ -31,10 +31,6 @@ describe('Term Management - Create Term Modal', () => {
         <input type="date" id="termStartDate" name="start_date" required />
         <input type="date" id="termEndDate" name="end_date" required />
         <input type="date" id="termAssessmentDueDate" name="assessment_due_date" required />
-        <div class="form-check">
-          <input type="checkbox" id="termActive" name="active" checked />
-          <label for="termActive">Active</label>
-        </div>
         <button type="submit" id="createTermBtn">
           <span class="btn-text">Create Term</span>
           <span class="btn-spinner d-none">Creating...</span>
@@ -121,10 +117,6 @@ describe('Term Management - Create Term Modal', () => {
       expect(assessmentInput.validity.valid).toBe(true);
     });
 
-    test('should have active checkbox checked by default', () => {
-      const activeCheckbox = document.getElementById('termActive');
-      expect(activeCheckbox.checked).toBe(true);
-    });
   });
 
   describe('Form Submission - API Call', () => {
@@ -342,7 +334,6 @@ describe('Term Management - Create Term Modal', () => {
       document.getElementById('termStartDate').value = '2024-08-01';
       document.getElementById('termEndDate').value = '2024-12-15';
       document.getElementById('termAssessmentDueDate').value = '2024-12-20';
-      document.getElementById('termActive').checked = true;
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);

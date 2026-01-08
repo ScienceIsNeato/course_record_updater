@@ -290,11 +290,6 @@ class DatabaseInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def archive_term(self, term_id: str) -> bool:
-        """Archive term (soft delete - set active=False)"""
-        raise NotImplementedError
-
-    @abstractmethod
     def delete_term(self, term_id: str) -> bool:
         """Delete term (CASCADE deletes offerings and sections)"""
         raise NotImplementedError

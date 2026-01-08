@@ -45,7 +45,7 @@ describe('InstitutionDashboard', () => {
   const sampleData = {
     summary: { programs: 2, courses: 5, faculty: 3, sections: 7 },
     institutions: [{ name: 'Example University' }],
-    terms: [{ name: 'Fall 2025', active: true }],
+    terms: [{ name: 'Fall 2025', status: 'ACTIVE' }],
     clos: [
       {
         id: 'clo1',
@@ -117,7 +117,7 @@ describe('InstitutionDashboard', () => {
           { program_name: 'CS', completed: 15, pending: 5, overdue: 2 }
         ],
         terms: [
-          { name: 'Fall 2024', active: true }
+          { name: 'Fall 2024', status: 'ACTIVE' }
         ],
         metadata: { last_updated: '2024-02-01T12:00:00Z' }
       };
@@ -193,7 +193,7 @@ describe('InstitutionDashboard', () => {
           { program_name: 'CS', completed: 10, pending: 2, overdue: 1 }
         ],
         terms: [
-          { name: 'Spring 2024', active: true }
+          { name: 'Spring 2024', status: 'ACTIVE' }
         ],
         metadata: { last_updated: '2024-02-01T12:00:00Z' }
       };
@@ -628,7 +628,7 @@ describe('InstitutionDashboard', () => {
           name: 'Fall 2024',
           start_date: '2024-08-01',
           end_date: '2024-12-15',
-          active: true,
+          status: 'ACTIVE',
           offerings_count: 10
         },
         {
@@ -636,7 +636,7 @@ describe('InstitutionDashboard', () => {
           name: 'Spring 2025',
           start_date: '2025-01-15',
           end_date: '2025-05-15',
-          active: false,
+          status: 'SCHEDULED',
           offerings_count: 0
         }
       ];

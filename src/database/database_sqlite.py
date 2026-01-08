@@ -37,6 +37,22 @@ def _ensure_uuid(value: Optional[str]) -> str:
     return value or str(uuid.uuid4())
 
 
+TERM_STATUS_FIELDS: Tuple[str, ...] = ("active", "is_active", "status")
+OFFERING_STATUS_FIELDS: Tuple[str, ...] = (
+    "status",
+    "term_status",
+    "timeline_status",
+    "is_active",
+    "active",
+)
+
+
+def _remove_fields(payload: Dict[str, Any], keys: Tuple[str, ...]) -> None:
+    """Remove status-ish fields from payload dictionaries to avoid persistence."""
+    for key in keys:
+        payload.pop(key, None)
+
+
 class SQLiteDatabase(DatabaseInterface):
     """Concrete database implementation using SQLite and SQLAlchemy."""
 
@@ -817,7 +833,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(offering_data)
-        payload.pop("status", None)
+        _remove_fields(payload, OFFERING_STATUS_FIELDS)
         offering_id = _ensure_uuid(payload.pop("offering_id", None))
         offering = CourseOffering(
             id=offering_id,
@@ -844,7 +860,7 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in offering_data.items():
-                    if key == "status":
+                    if key in OFFERING_STATUS_FIELDS:
                         continue
                     if hasattr(offering, key) and key != "id":
                         setattr(offering, key, value)
@@ -870,7 +886,15 @@ class SQLiteDatabase(DatabaseInterface):
 
     def get_course_offering(self, offering_id: str) -> Optional[Dict[str, Any]]:
         with self.sqlite.session_scope() as session:
-            offering = session.get(CourseOffering, offering_id)
+            offering = (
+                session.execute(
+                    select(CourseOffering)
+                    .options(selectinload(CourseOffering.term))
+                    .where(CourseOffering.id == offering_id)
+                )
+                .scalars()
+                .first()
+            )
             return to_dict(offering) if offering else None
 
     def get_course_offering_by_course_and_term(
@@ -879,7 +903,9 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             offering = (
                 session.execute(
-                    select(CourseOffering).where(
+                    select(CourseOffering)
+                    .options(selectinload(CourseOffering.term))
+                    .where(
                         and_(
                             CourseOffering.course_id == course_id,
                             CourseOffering.term_id == term_id,
@@ -895,9 +921,9 @@ class SQLiteDatabase(DatabaseInterface):
         with self.sqlite.session_scope() as session:
             offerings = (
                 session.execute(
-                    select(CourseOffering).where(
-                        CourseOffering.institution_id == institution_id
-                    )
+                    select(CourseOffering)
+                    .options(selectinload(CourseOffering.term))
+                    .where(CourseOffering.institution_id == institution_id)
                 )
                 .scalars()
                 .all()
@@ -909,6 +935,7 @@ class SQLiteDatabase(DatabaseInterface):
     # ------------------------------------------------------------------
     def create_term(self, term_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(term_data)
+        _remove_fields(payload, TERM_STATUS_FIELDS)
         term_id = _ensure_uuid(payload.pop("term_id", None))
         term_name = payload.get("term_name")
         if not term_name:
@@ -937,6 +964,8 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in term_data.items():
+                    if key in TERM_STATUS_FIELDS:
+                        continue
                     if hasattr(term, key) and key != "id":
                         setattr(term, key, value)
 

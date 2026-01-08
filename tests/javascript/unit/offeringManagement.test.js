@@ -14,7 +14,8 @@ const {
   initOfferingManagement,
   openEditOfferingModal,
   deleteOffering,
-  loadOfferings
+  loadOfferings,
+  resolveOfferingStatus
 } = require('../../../static/offeringManagement.js');
 
 describe('Offering Management - Create Offering Modal', () => {
@@ -384,6 +385,26 @@ describe('Offering Management - Create Offering Modal', () => {
       expect(document.getElementById('offeringTermId').innerHTML).toContain('Error loading terms');
       expect(document.getElementById('offeringProgramId').innerHTML).toContain('Error loading programs');
     });
+  });
+});
+
+describe('resolveOfferingStatus helper', () => {
+  test('returns direct status when provided', () => {
+    const status = resolveOfferingStatus({ status: 'active' });
+    expect(status).toBe('ACTIVE');
+  });
+
+  test('calculates status from term dates when missing', () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const futureStart = new Date(now + 7 * day).toISOString().slice(0, 10);
+    const futureEnd = new Date(now + 21 * day).toISOString().slice(0, 10);
+
+    const status = resolveOfferingStatus({
+      term_start_date: futureStart,
+      term_end_date: futureEnd
+    });
+    expect(status).toBe('SCHEDULED');
   });
 });
 

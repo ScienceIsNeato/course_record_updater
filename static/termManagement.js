@@ -24,6 +24,33 @@ function renderTermStatusBadge(status) {
   return `<span class="badge ${config.className}">${config.label}</span>`;
 }
 
+function resolveTermStatus(term) {
+  if (typeof globalThis.resolveTimelineStatus === "function") {
+    return globalThis.resolveTimelineStatus(term);
+  }
+
+  if (!term) return "UNKNOWN";
+  const direct =
+    term.status || (term.is_active || term.active ? "ACTIVE" : null);
+  if (direct) {
+    return String(direct).toUpperCase();
+  }
+
+  const { start_date: start, end_date: end } = term;
+  if (!start || !end) {
+    return "UNKNOWN";
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "UNKNOWN";
+  }
+  const now = new Date();
+  if (now < startDate) return "SCHEDULED";
+  if (now > endDate) return "PASSED";
+  return "ACTIVE";
+}
+
 function publishTermMutation(action, metadata = {}) {
   globalThis.DashboardEvents?.publishMutation({
     entity: "terms",
@@ -442,9 +469,7 @@ async function renderTermsTable() {
     `;
 
     currentTerms.forEach((term) => {
-      const statusValue = (
-        term.status || (term.active ? "ACTIVE" : "UNKNOWN")
-      ).toUpperCase();
+      const statusValue = resolveTermStatus(term);
       const statusBadge = renderTermStatusBadge(statusValue);
       const offeringsCount = term.offerings_count || 0;
       const termId = term.term_id || term.id;

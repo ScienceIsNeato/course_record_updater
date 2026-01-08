@@ -324,31 +324,6 @@ class TestTermsCRUDIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is True
 
-    @patch("src.api_routes.archive_term")
-    @patch("src.api_routes.get_current_institution_id")
-    @patch("src.api_routes.get_term_by_id")
-    def test_archive_term_integration(
-        self, mock_get_term, mock_get_inst_id, mock_archive
-    ):
-        """Test POST /api/terms/<id>/archive soft delete"""
-        mock_get_term.return_value = {
-            "term_id": "term-123",
-            "term_name": "FA2024",
-            "institution_id": "mocku-institution-id",
-        }
-        mock_get_inst_id.return_value = "mocku-institution-id"
-        mock_archive.return_value = True
-
-        response = self.client.post(
-            "/api/terms/term-123/archive",
-            headers={"X-CSRFToken": get_csrf_token(self.client)},
-        )
-
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["success"] is True
-        assert "archived" in data["message"].lower()
-
     @patch("src.api_routes.delete_term")
     @patch("src.api_routes.get_current_institution_id")
     @patch("src.api_routes.get_term_by_id")

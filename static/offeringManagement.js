@@ -23,13 +23,43 @@ function renderOfferingStatusBadge(status) {
   return `<span class="${config.className}">${config.label}</span>`;
 }
 
+function deriveStatusFromDates(start, end) {
+  if (!start || !end) return "UNKNOWN";
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return "UNKNOWN";
+  }
+  const now = new Date();
+  if (now < startDate) return "SCHEDULED";
+  if (now > endDate) return "PASSED";
+  return "ACTIVE";
+}
+
 function resolveOfferingStatus(offering) {
-  return (
+  if (typeof globalThis.resolveTimelineStatus === "function") {
+    return globalThis.resolveTimelineStatus(offering, {
+      startKeys: ["term_start_date", "start_date"],
+      endKeys: ["term_end_date", "end_date"],
+    });
+  }
+
+  const directStatus =
     offering?.status ||
     offering?.timeline_status ||
     offering?.term_status ||
-    (offering?.is_active ? "ACTIVE" : "UNKNOWN")
-  );
+    (offering?.is_active ? "ACTIVE" : offering?.active ? "ACTIVE" : null);
+
+  if (directStatus) {
+    return String(directStatus).toUpperCase();
+  }
+
+  const start =
+    offering?.term_start_date || offering?.start_date || offering?.term_start;
+  const end =
+    offering?.term_end_date || offering?.end_date || offering?.term_end;
+
+  return deriveStatusFromDates(start, end);
 }
 
 function publishOfferingMutation(action, metadata = {}) {
@@ -713,5 +743,7 @@ if (typeof module !== "undefined" && module.exports) {
     openEditOfferingModal,
     deleteOffering,
     loadOfferings,
+    resolveOfferingStatus,
+    deriveStatusFromDates,
   };
 }

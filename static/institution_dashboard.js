@@ -38,6 +38,56 @@
     return `<span class="${config.className}">${config.label}</span>`;
   }
 
+  function fallbackTimelineStatus(record, startKeys = [], endKeys = []) {
+    if (!record) return "UNKNOWN";
+
+    const direct =
+      record.status ||
+      record.timeline_status ||
+      record.term_status ||
+      (record.is_active || record.active ? "ACTIVE" : null);
+    if (direct) {
+      return String(direct).toUpperCase();
+    }
+
+    const candidates = (keys) =>
+      keys
+        .map((key) => record[key])
+        .filter((value) => value !== undefined && value !== null);
+
+    const startValue =
+      candidates(startKeys).find(Boolean) ||
+      record.start_date ||
+      record.term_start_date;
+    const endValue =
+      candidates(endKeys).find(Boolean) ||
+      record.end_date ||
+      record.term_end_date;
+    if (!startValue || !endValue) {
+      return "UNKNOWN";
+    }
+    const start = new Date(startValue);
+    const end = new Date(endValue);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "UNKNOWN";
+    }
+    const now = new Date();
+    if (now < start) return "SCHEDULED";
+    if (now > end) return "PASSED";
+    return "ACTIVE";
+  }
+
+  function computeTimelineStatus(record, options = {}) {
+    if (typeof globalThis.resolveTimelineStatus === "function") {
+      return globalThis.resolveTimelineStatus(record, options);
+    }
+    return fallbackTimelineStatus(
+      record,
+      options.startKeys || ["start_date", "term_start_date"],
+      options.endKeys || ["end_date", "term_end_date"],
+    );
+  }
+
   const InstitutionDashboard = {
     cache: null,
     lastFetch: 0,
@@ -280,8 +330,9 @@
         institutionName || "Institution Overview";
 
       const term =
-        (data.terms || []).find((item) => item && item.active) ||
-        (data.terms || [])[0];
+        (data.terms || []).find(
+          (item) => item && computeTimelineStatus(item) === "ACTIVE",
+        ) || (data.terms || [])[0];
       const termName = term && term.name ? term.name : "--";
       document.getElementById(SELECTORS.currentTerm).textContent = termName;
     },
@@ -567,9 +618,7 @@
           const endDate = term.end_date
             ? new Date(term.end_date).toLocaleDateString()
             : "N/A";
-          const statusValue = (
-            term.status || (term.active ? "ACTIVE" : "UNKNOWN")
-          ).toUpperCase();
+          const statusValue = computeTimelineStatus(term);
 
           return {
             name: term.name || term.term_name || "Unnamed Term",
@@ -645,12 +694,7 @@
             offering.program_names || course.program_names || [];
           const programDisplay =
             programNames.length > 0 ? programNames.join(", ") : "-";
-          const statusValue = (
-            offering.status ||
-            offering.timeline_status ||
-            offering.term_status ||
-            (offering.is_active ? "ACTIVE" : "UNKNOWN")
-          ).toUpperCase();
+          const statusValue = computeTimelineStatus(offering);
 
           return {
             course: course.course_number || "Unknown Course",

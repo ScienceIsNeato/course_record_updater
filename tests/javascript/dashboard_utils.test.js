@@ -5,7 +5,13 @@
  */
 
 // Load functions from dashboard_utils.js
-const { setLoadingState, setErrorState, setEmptyState } = require('../../static/dashboard_utils');
+const {
+  setLoadingState,
+  setErrorState,
+  setEmptyState,
+  deriveTimelineStatus,
+  resolveTimelineStatus
+} = require('../../static/dashboard_utils');
 
 describe('Dashboard Utilities', () => {
   // Mock DOM elements
@@ -16,6 +22,29 @@ describe('Dashboard Utilities', () => {
     container = document.createElement('div');
     container.id = 'testContainer';
     document.body.appendChild(container);
+  });
+
+  describe('Status Helpers', () => {
+    it('deriveTimelineStatus returns ACTIVE when reference is within range', () => {
+      const status = deriveTimelineStatus('2024-01-01', '2024-12-31', new Date('2024-06-01'));
+      expect(status).toBe('ACTIVE');
+    });
+
+    it('deriveTimelineStatus returns SCHEDULED when before start', () => {
+      const status = deriveTimelineStatus('2024-05-01', '2024-06-01', new Date('2024-04-01'));
+      expect(status).toBe('SCHEDULED');
+    });
+
+    it('resolveTimelineStatus honors direct status when provided', () => {
+      const status = resolveTimelineStatus({ status: 'active' });
+      expect(status).toBe('ACTIVE');
+    });
+
+    it('resolveTimelineStatus computes from start/end when status missing', () => {
+      const record = { start_date: '2024-01-01', end_date: '2024-02-01' };
+      const status = resolveTimelineStatus(record, { referenceDate: new Date('2024-03-01') });
+      expect(status).toBe('PASSED');
+    });
   });
 
   afterEach(() => {
@@ -189,4 +218,3 @@ describe('Dashboard Utilities', () => {
     });
   });
 });
-
