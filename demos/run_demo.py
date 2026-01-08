@@ -564,7 +564,7 @@ class DemoRunner:
         try:
             if action == 'sequence':
                 # Execute a sequence of sub-actions
-                sub_actions = config.get('actions', [])
+                sub_actions = config.get('steps', [])
                 for sub_action in sub_actions:
                     sub_action_type = sub_action.get('action', '')
                     if not self.execute_browser_action(sub_action_type, sub_action):

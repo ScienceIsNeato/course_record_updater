@@ -237,9 +237,10 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         export ENV=test
         export PYTHONPATH=.
-        
+
         # Seed baseline data for integration tests
-        python scripts/seed_db.py --env dev --clear
+        # Use prod environment to match course_records.db (standard name)
+        python scripts/seed_db.py --env prod --clear
     - name: Start Flask Server for Integration Tests
       run: |
         # Set environment variables for SQLite

@@ -1029,8 +1029,9 @@ for r in d.get('results',[])[:5]:
             echo "  ⚠️  No .secrets.baseline. Skipping." >> "$SECRETS_OUT"
         fi
     else
-        echo "PASS" > "$SECRETS_OUT"
-        echo "  ⚠️  detect-secrets-hook not installed. Skipping." >> "$SECRETS_OUT"
+        echo "FAIL" > "$SECRETS_OUT"
+        echo "  ❌ detect-secrets-hook not installed. This is required." >> "$SECRETS_OUT"
+        echo "  💡 Install with: pip install detect-secrets" >> "$SECRETS_OUT"
     fi
   ) &
   PID_SECRETS=$!
