@@ -12,9 +12,13 @@ describe('panels.js Coverage Boost', () => {
         <button class="panel-toggle"></button>
       </div>
     `);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(window, 'alert').mockImplementation(() => {});
-    
+    jest.spyOn(console, 'error').mockImplementation(() => { });
+    jest.spyOn(window, 'alert').mockImplementation(() => { });
+
+    // Mock window.location
+    delete window.location;
+    window.location = { href: '' };
+
     // Mock fetch for loadAuditLogs
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -36,14 +40,14 @@ describe('panels.js Coverage Boost', () => {
     require('../../../static/panels.js');
     // Ensure panelManager is initialized
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    
+
     const panel = global.panelManager.createPanel({
       id: 'test-panel-1',
       title: 'Test Panel 1',
       content: 'Content 1',
       collapsed: false
     });
-    
+
     expect(panel.innerHTML).toContain('Test Panel 1');
     expect(panel.querySelector('.panel-actions').innerHTML.trim()).toBe('');
   });
@@ -51,7 +55,7 @@ describe('panels.js Coverage Boost', () => {
   test('createPanel renders actions', () => {
     require('../../../static/panels.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    
+
     const panel = global.panelManager.createPanel({
       id: 'test-panel-2',
       title: 'Test Panel 2',
@@ -59,21 +63,21 @@ describe('panels.js Coverage Boost', () => {
       collapsed: true,
       actions: [{ label: 'Action 1', icon: '<i></i>', onclick: 'void(0)' }]
     });
-    
+
     expect(panel.querySelector('.panel-actions').textContent).toContain('Action 1');
     expect(panel.querySelector('.panel-content.collapsed')).toBeTruthy();
   });
 
-  test('viewAllActivity shows alert', () => {
+  test('viewAllActivity redirects to audit logs', () => {
     require('../../../static/panels.js');
     global.viewAllActivity();
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('coming soon'));
+    expect(window.location.href).toBe('/audit-logs');
   });
 
-  test('filterActivity shows alert', () => {
+  test('filterActivity redirects to audit logs', () => {
     require('../../../static/panels.js');
     global.filterActivity();
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('coming soon'));
+    expect(window.location.href).toBe('/audit-logs');
   });
 
   test('getAuditDetails returns fallback', () => {
@@ -81,12 +85,12 @@ describe('panels.js Coverage Boost', () => {
     const detail = global.getAuditDetails({ operation_type: 'UPDATE' });
     expect(detail).toBe('Entity modified');
   });
-  
+
   test('getAuditDetails handles JSON parse error', () => {
     require('../../../static/panels.js');
-    const detail = global.getAuditDetails({ 
-        operation_type: 'UPDATE',
-        changed_fields: '{invalid-json}'
+    const detail = global.getAuditDetails({
+      operation_type: 'UPDATE',
+      changed_fields: '{invalid-json}'
     });
     expect(detail).toBe('Entity modified');
   });
@@ -94,19 +98,19 @@ describe('panels.js Coverage Boost', () => {
   test('system activity panel auto-load', async () => {
     jest.useFakeTimers();
     require('../../../static/panels.js');
-    
+
     document.dispatchEvent(new Event('DOMContentLoaded'));
-    
+
     // Initial load
     if (global.fetch.mock.calls.length === 0) {
-        console.log('Console errors:', console.error.mock.calls);
+      console.log('Console errors:', console.error.mock.calls);
     }
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/audit/recent'));
-    
+
     // Interval load
     jest.advanceTimersByTime(30000);
     expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(2);
-    
+
     jest.useRealTimers();
   });
 });

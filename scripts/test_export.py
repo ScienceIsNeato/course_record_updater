@@ -12,12 +12,12 @@ from pathlib import Path
 # Add project root to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from database_service import (
+from src.database.database_service import (
     create_course,
     create_term,
     create_user,
 )
-from export_service import ExportConfig, ExportService
+from src.services.export_service import ExportConfig, ExportService
 
 
 def test_export():
@@ -27,7 +27,7 @@ def test_export():
     print("=" * 50)
 
     # Use a simple approach - use an existing institution or create MockU
-    from database_service import (
+    from src.database.database_service import (
         create_default_mocku_institution,
         get_institution_by_short_name,
     )

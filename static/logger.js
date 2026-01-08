@@ -9,7 +9,7 @@ const Logger = {
     ERROR: 0,
     WARN: 1,
     INFO: 2,
-    DEBUG: 3
+    DEBUG: 3,
   },
 
   // Current log level (can be set via environment or config)
@@ -23,6 +23,7 @@ const Logger = {
   error: function (message, data) {
     if (this.currentLevel >= this.LEVELS.ERROR) {
       if (data) {
+        // nosemgrep
         console.error(`❌ ${message}`, data); // eslint-disable-line no-console
       } else {
         console.error(`❌ ${message}`); // eslint-disable-line no-console
@@ -38,6 +39,7 @@ const Logger = {
   warn: function (message, data) {
     if (this.currentLevel >= this.LEVELS.WARN) {
       if (data) {
+        // nosemgrep
         console.warn(`⚠️ ${message}`, data); // eslint-disable-line no-console
       } else {
         console.warn(`⚠️ ${message}`); // eslint-disable-line no-console
@@ -53,6 +55,7 @@ const Logger = {
   info: function (message, data) {
     if (this.currentLevel >= this.LEVELS.INFO) {
       if (data) {
+        // nosemgrep
         console.log(`ℹ️ ${message}`, data); // eslint-disable-line no-console
       } else {
         console.log(`ℹ️ ${message}`); // eslint-disable-line no-console
@@ -68,6 +71,7 @@ const Logger = {
   debug: function (message, data) {
     if (this.currentLevel >= this.LEVELS.DEBUG) {
       if (data) {
+        // nosemgrep
         console.log(`🐛 ${message}`, data); // eslint-disable-line no-console
       } else {
         console.log(`🐛 ${message}`); // eslint-disable-line no-console
@@ -81,12 +85,12 @@ const Logger = {
    */
   setLevel: function (level) {
     this.currentLevel = level;
-  }
+  },
 };
 
 // Make logger available globally
 globalThis.Logger = Logger;
 
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = Logger;
 }

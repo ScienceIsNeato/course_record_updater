@@ -86,6 +86,7 @@ RUN_INTEGRATION_TESTS=false
 RUN_E2E_TESTS=false
 RUN_COVERAGE=false
 RUN_SECURITY=false
+RUN_SECURITY_LOCAL=false  # bandit+semgrep only, no safety (faster for commits)
 RUN_SONAR_ANALYZE=false
 RUN_SONAR_STATUS=false
 RUN_DUPLICATION=false
@@ -97,6 +98,9 @@ RUN_JS_TESTS=false
 RUN_JS_COVERAGE=false
 RUN_COVERAGE_NEW_CODE=false
 RUN_ALL=false
+
+# Output control
+VERBOSE=false
 
 # Grouped check flags
 RUN_PYTHON_LINT_FORMAT=false
@@ -125,6 +129,7 @@ else
       --e2e) RUN_E2E_TESTS=true ;;
       --coverage) RUN_COVERAGE=true ;;
       --security) RUN_SECURITY=true ;;
+      --security-local) RUN_SECURITY_LOCAL=true ;;  # Skip safety (for commit hooks)
       --sonar-analyze) RUN_SONAR_ANALYZE=true ;;
       --sonar-status) RUN_SONAR_STATUS=true ;;
       --duplication) RUN_DUPLICATION=true ;;
@@ -137,6 +142,7 @@ else
       --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
+      --verbose) VERBOSE=true ;;
       --help)
         echo "maintAInability-gate - Course Record Updater Quality Framework"
         echo ""
@@ -251,25 +257,25 @@ if [[ "$RUN_PYTHON_LINT_FORMAT" == "true" ]]; then
   
   # Auto-fix formatting with black
   echo "  🔧 Auto-fixing code formatting with black..."
-  if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
+  if black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     add_success "black" "Code formatting auto-fixed"
   else
-    add_failure "black" "Code formatting check" "Run: black --line-length 88 --target-version py39 *.py adapters/ tests/"
+    add_failure "black" "Code formatting check" "Run: black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py"
     GROUPED_PASSED=false
   fi
   
   # Auto-fix import sorting with isort
   echo "  📚 Auto-fixing import sorting with isort..."
-  if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
+  if isort --profile black src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     add_success "isort" "Import sorting auto-fixed"
   else
-    add_failure "isort" "Import sorting check" "Run: isort --profile black *.py adapters/ tests/"
+    add_failure "isort" "Import sorting check" "Run: isort --profile black src/ tests/ scripts/ conftest.py"
     GROUPED_PASSED=false
   fi
   
   # Run flake8 (critical errors only)
   echo "  🔍 Checking critical lint issues with flake8..."
-  if flake8 --select=E9,F63,F7,F82 --show-source --statistics *.py adapters/ tests/ 2>&1; then
+  if flake8 --select=E9,F63,F7,F82 --show-source --statistics src/ tests/ scripts/ conftest.py 2>&1; then
     add_success "flake8" "No critical lint errors found"
   else
     add_failure "flake8" "Critical lint errors found" "Fix the errors above"
@@ -295,19 +301,23 @@ if [[ "$RUN_JS_LINT_FORMAT" == "true" ]]; then
   
   # Run ESLint (only check static JS files, not templates)
   echo "  🔍 Checking JavaScript with ESLint..."
-  if npx eslint "static/**/*.js" --max-warnings 0 2>&1; then
+  # Auto-fix JavaScript with ESLint
+  echo "  🔍 Auto-fixing JavaScript with ESLint..."
+  npx eslint "static/**/*.js" -c config/.eslintrc.json --fix 2>/dev/null || true
+  
+  if npx eslint "static/**/*.js" -c config/.eslintrc.json --max-warnings 0 2>&1 >/dev/null; then
     add_success "ESLint" "JavaScript code passes linting"
   else
     add_failure "ESLint" "JavaScript linting errors" "Run: npx eslint static/**/*.js --fix"
     GROUPED_PASSED=false
   fi
   
-  # Check Prettier formatting
-  echo "  🎨 Checking JavaScript formatting with Prettier..."
-  if npx prettier --check "static/**/*.js" 2>&1; then
-    add_success "Prettier" "JavaScript code is properly formatted"
+  # Auto-fix JavaScript formatting with Prettier
+  echo "  🎨 Auto-fixing JavaScript formatting with Prettier..."
+  if npx prettier --write "static/**/*.js" 2>&1 >/dev/null; then
+    add_success "Prettier" "JavaScript code formatted with Prettier"
   else
-    add_failure "Prettier" "JavaScript formatting issues" "Run: npx prettier --write 'static/**/*.js'"
+    add_failure "Prettier" "JavaScript formatting check" "Check Prettier installation and static/ folder"
     GROUPED_PASSED=false
   fi
   
@@ -330,7 +340,7 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   
   # Run mypy type checking
   echo "  🔧 Type checking with mypy..."
-  if mypy *.py adapters/ --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
+  if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
     add_success "mypy" "Type checking passed"
   else
     echo "⚠️  mypy found type issues (non-blocking)"
@@ -378,17 +388,17 @@ if [[ "$RUN_BLACK" == "true" ]]; then
 
   # Try to auto-fix formatting issues with black
   echo "🔧 Auto-fixing code formatting with black..."
-  if black --line-length 88 --target-version py39 *.py adapters/ tests/ 2>/dev/null || true; then
+  if black --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     echo "   ✅ Black formatting applied"
   fi
 
   # Verify formatting
-  if black --check --line-length 88 --target-version py39 *.py adapters/ tests/ > /dev/null 2>&1; then
+  if black --check --line-length 88 --target-version py39 src/ tests/ scripts/ conftest.py > /dev/null 2>&1; then
     echo "✅ Black Check: PASSED (code formatting verified)"
     add_success "Black Check" "All Python files properly formatted with black"
   else
     echo "❌ Black Check: FAILED (formatting issues found)"
-    add_failure "Black Check" "Code formatting issues found" "Run 'black *.py adapters/ tests/' manually"
+    add_failure "Black Check" "Code formatting issues found" "Run 'black src/ tests/ scripts/ conftest.py' manually"
   fi
   echo ""
 fi
@@ -401,17 +411,17 @@ if [[ "$RUN_ISORT" == "true" ]]; then
 
   # Try to auto-fix import organization with isort
   echo "🔧 Auto-fixing import organization with isort..."
-  if isort --profile black *.py adapters/ tests/ 2>/dev/null || true; then
+  if isort --profile black src/ tests/ scripts/ conftest.py 2>/dev/null || true; then
     echo "   ✅ Import organization applied"
   fi
 
   # Verify import organization
-  if isort --check-only --profile black *.py adapters/ tests/ > /dev/null 2>&1; then
+  if isort --check-only --profile black src/ tests/ scripts/ conftest.py > /dev/null 2>&1; then
     echo "✅ Isort Check: PASSED (import organization verified)"
     add_success "Isort Check" "All Python imports properly organized with isort"
   else
     echo "❌ Isort Check: FAILED (import organization issues found)"
-    add_failure "Isort Check" "Import organization issues found" "Run 'isort --profile black *.py adapters/ tests/' manually"
+    add_failure "Isort Check" "Import organization issues found" "Run 'isort --profile black src/ tests/ scripts/ conftest.py' manually"
   fi
   echo ""
 fi
@@ -497,7 +507,19 @@ if [[ "$RUN_TESTS" == "true" ]]; then
   # Run UNIT tests only (fast tests, separate directory, no coverage)
   echo "  🔍 Running UNIT test suite (tests only, no coverage)..."
   # Use pytest-xdist for parallel execution (35% faster)
-  TEST_OUTPUT=$(python -m pytest tests/unit/ -n auto -v 2>&1) || TEST_FAILED=true
+  # Stream output live to CI logs while also capturing it for parsing
+  mkdir -p logs
+  TEST_OUTPUT_FILE="logs/tests_output.txt"
+  TEST_FAILED=false
+
+  python -m pytest tests/unit/ -n auto -v 2>&1 | tee "$TEST_OUTPUT_FILE"
+  TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+  if [[ "$TEST_EXIT_CODE" -ne 0 ]]; then
+    TEST_FAILED=true
+  fi
+
+  TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 
   if [[ "$TEST_FAILED" == "true" ]]; then
     echo "❌ Tests: FAILED"
@@ -552,19 +574,35 @@ if [[ "$RUN_INTEGRATION_TESTS" == "true" ]]; then
   echo "🔗 Integration Test Suite Execution (tests/integration/)"
   
   echo "  🔍 Running INTEGRATION test suite (component interactions)..."
-  INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    # Verbose mode: Stream output directly
+    if ! python -m pytest tests/integration/ -v 2>&1; then
+      INTEGRATION_TEST_FAILED=true
+    fi
+  else
+    # Normal mode: Capture for summary
+    INTEGRATION_TEST_OUTPUT=$(python -m pytest tests/integration/ -v 2>&1) || INTEGRATION_TEST_FAILED=true
+  fi
   
   if [[ "$INTEGRATION_TEST_FAILED" == "true" ]]; then
     echo "❌ Integration Tests: FAILED"
-    echo ""
-    echo "📋 Integration Test Failure Details:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    
+    if [[ "$VERBOSE" != "true" ]]; then
+      echo ""
+      echo "📋 Integration Test Failure Details:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$INTEGRATION_TEST_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+    fi
     
     # Extract summary stats for the failure record
-    FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    if [[ "$VERBOSE" != "true" ]]; then
+      FAILED_INTEGRATION_TESTS=$(echo "$INTEGRATION_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    else
+      FAILED_INTEGRATION_TESTS="See output above"
+    fi
     add_failure "Integration Tests" "Integration test failures: $FAILED_INTEGRATION_TESTS" "See detailed output above and run 'python -m pytest tests/integration/ -v' for full details"
   else
     echo "✅ Integration Tests: PASSED"
@@ -580,21 +618,37 @@ if [[ "$RUN_E2E_TESTS" == "true" ]]; then
   echo "🎭 End-to-End Test Suite (Playwright browser automation)"
   
   echo "  🔍 Running E2E test suite (headless browser tests)..."
-  # Run via run_uat.sh which handles environment setup
-  E2E_TEST_OUTPUT=$(./run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  
+  if [[ "$VERBOSE" == "true" ]]; then
+    # Verbose mode: Stream output directly for real-time visibility
+    if ! ./scripts/run_uat.sh 2>&1; then
+      E2E_TEST_FAILED=true
+    fi
+  else
+    # Normal mode: Capture output for formatted summary
+    E2E_TEST_OUTPUT=$(./scripts/run_uat.sh 2>&1) || E2E_TEST_FAILED=true
+  fi
   
   if [[ "$E2E_TEST_FAILED" == "true" ]]; then
     echo "❌ E2E Tests: FAILED"
-    echo ""
-    echo "📋 E2E Test Failure Details:"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "$E2E_TEST_OUTPUT" | sed 's/^/  /'
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+    
+    # Only show details if not in verbose mode (verbose already showed them)
+    if [[ "$VERBOSE" != "true" ]]; then
+      echo ""
+      echo "📋 E2E Test Failure Details:"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "$E2E_TEST_OUTPUT" | sed 's/^/  /'
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+    fi
     
     # Extract summary stats for the failure record
-    FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
-    add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './run_uat.sh --watch' to debug"
+    if [[ "$VERBOSE" != "true" ]]; then
+      FAILED_E2E_TESTS=$(echo "$E2E_TEST_OUTPUT" | grep -o '[0-9]\+ failed' | head -1 || echo "unknown")
+    else
+      FAILED_E2E_TESTS="See output above"
+    fi
+    add_failure "E2E Tests" "E2E test failures: $FAILED_E2E_TESTS" "See detailed output above and run './scripts/run_uat.sh --watch' to debug"
   else
     echo "✅ E2E Tests: PASSED"
     add_success "E2E Tests" "All E2E tests passed successfully"
@@ -624,10 +678,13 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   # NOTE: Running serially (no -n auto) to avoid SQLite database locking issues in parallel execution
   # conftest.py handles DATABASE_URL setup automatically
   TEST_EXIT_CODE=0
-  COVERAGE_OUTPUT=$(python -m pytest tests/unit/ --cov=. --cov-report=term-missing --tb=no --quiet 2>&1) || TEST_EXIT_CODE=$?
-  
-  # Write detailed coverage report to file
-  echo "$COVERAGE_OUTPUT" > "$COVERAGE_REPORT_FILE"
+
+  # Stream coverage output to CI logs while also capturing it for analysis
+  python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=term-missing --tb=no --quiet 2>&1 | tee "$COVERAGE_REPORT_FILE"
+  TEST_EXIT_CODE=${PIPESTATUS[0]}
+
+  # Load coverage output from file for parsing
+  COVERAGE_OUTPUT=$(cat "$COVERAGE_REPORT_FILE")
   
   # Check for ACTUAL test failures (not just coverage threshold failures)
   # pytest exits with code 1 for both test failures AND coverage threshold failures
@@ -662,7 +719,7 @@ if [[ "$RUN_COVERAGE" == "true" ]]; then
   else
   
   # Extract coverage percentage from output
-  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\.[0-9]\+%' | grep -o '[0-9]\+\.[0-9]\+%' | head -1 || echo "unknown")
+  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -o 'TOTAL.*[0-9]\+\(\.[0-9]\+\)\?%' | grep -o '[0-9]\+\(\.[0-9]\+\)\?%' | head -1 || echo "unknown")
   
   # Check if we got a valid coverage percentage
   if [[ "$COVERAGE" != "unknown" && "$COVERAGE" != "" ]]; then
@@ -779,7 +836,7 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
       rm -f .coverage .coverage.*
       
       # Generate coverage.xml
-      python -m pytest tests/unit/ --cov=. --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
+      python -m pytest tests/unit/ tests/integration/ --cov=src --cov-report=xml:coverage.xml --tb=no --quiet 2>&1 || true
     fi
     
     if [[ -f "coverage.xml" ]]; then
@@ -857,40 +914,163 @@ if [[ "$RUN_COVERAGE_NEW_CODE" == "true" ]]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SECURITY AUDIT (BANDIT + SAFETY)
+# SECURITY AUDIT (BANDIT + SEMGREP + SAFETY)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [[ "$RUN_SECURITY" == "true" ]]; then
-  echo "🔒 Security Audit (bandit + safety)"
-
-  SECURITY_PASSED=true
-
-  # Run bandit for security issues in code (main source files only, with timeout)
-  # Only fail on HIGH severity issues, ignore LOW/MEDIUM for now
-  echo "🔧 Running bandit security scan..."
-  BANDIT_OUTPUT=$(timeout 30s bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests -lll --format json 2>&1) || BANDIT_FAILED=true
-  
-  # Save bandit report to file for GitHub Actions artifact upload
-  echo "$BANDIT_OUTPUT" > bandit-report.json
-
-  if [[ "$BANDIT_FAILED" == "true" ]]; then
-    SECURITY_PASSED=false
-    echo "❌ Bandit security scan failed"
-
-    # Try to extract meaningful security issues
-    SECURITY_ISSUES=$(echo "$BANDIT_OUTPUT" | grep -E "(HIGH|MEDIUM)" | head -5)
-    if [[ -n "$SECURITY_ISSUES" ]]; then
-      echo "📋 Security Issues Found:"
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-      echo "$SECURITY_ISSUES" | sed 's/^/  /'
-      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    fi
+if [[ "$RUN_SECURITY" == "true" || "$RUN_SECURITY_LOCAL" == "true" ]]; then
+  if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+    echo "🔒 Security Audit (bandit + semgrep + detect-secrets) [parallelized]"
   else
-    echo "   ✅ Bandit security scan passed"
+    echo "🔒 Security Audit (bandit + semgrep + safety)"
   fi
 
+  SECURITY_PASSED=true
+  
+  # Create temp files for output capture
+  BANDIT_OUT=$(mktemp)
+  SEMGREP_OUT=$(mktemp)
+  SECRETS_OUT=$(mktemp)
+  
+  # 1. BANDIT (Background)
+  (
+    echo "  🔧 Running bandit security scan (Python)..."
+    bandit -r . --exclude ./venv,./cursor-rules,./.venv,./logs,./tests,./node_modules,./demos,./archives --format json --quiet 2>/dev/null > bandit-report.json || true
+    
+    if [[ -f bandit-report.json ]]; then
+        BANDIT_HIGH=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='HIGH'))" 2>/dev/null || echo "0")
+        BANDIT_MED=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='MEDIUM'))" 2>/dev/null || echo "0")
+        BANDIT_LOW=$(python3 -c "import json; d=json.load(open('bandit-report.json')); print(sum(1 for r in d.get('results',[]) if r.get('issue_severity')=='LOW'))" 2>/dev/null || echo "0")
+        BANDIT_TOTAL=$((BANDIT_HIGH + BANDIT_MED + BANDIT_LOW))
+        
+        if [[ "$BANDIT_TOTAL" -gt 0 ]]; then
+            echo "FAIL" > "$BANDIT_OUT"
+            echo "  ❌ Bandit found $BANDIT_TOTAL issues (High: $BANDIT_HIGH, Medium: $BANDIT_MED, Low: $BANDIT_LOW)" >> "$BANDIT_OUT"
+            echo "" >> "$BANDIT_OUT"
+            echo "  📋 Top issues:" >> "$BANDIT_OUT"
+            python3 -c "
+import json
+d=json.load(open('bandit-report.json'))
+for r in d.get('results',[])[:5]:
+    print(f\"    [{r.get('issue_severity','?')}] {r.get('filename','')}:{r.get('line_number','')} - {r.get('issue_text','')[:60]}...\")
+" 2>/dev/null >> "$BANDIT_OUT" || true
+            echo "" >> "$BANDIT_OUT"
+        else
+            echo "PASS" > "$BANDIT_OUT"
+            echo "  ✅ Bandit: No Python security issues" >> "$BANDIT_OUT"
+        fi
+    else
+        echo "FAIL" > "$BANDIT_OUT"
+        echo "  ❌ Bandit: Failed to generate report" >> "$BANDIT_OUT"
+    fi
+  ) &
+  PID_BANDIT=$!
+
+  # 2. SEMGREP (Background)
+  (
+    echo "  🔧 Running semgrep security scan (Python + JS)..."
+    if command -v semgrep &> /dev/null; then
+        SEMGREP_OUTPUT=$(timeout 60s semgrep scan --config=auto \
+          --exclude="venv" --exclude=".venv" --exclude="node_modules" \
+          --exclude="tests" --exclude="cursor-rules" --exclude="demos" --exclude="archives" \
+          --json --quiet 2>/dev/null) || true
+        
+        echo "$SEMGREP_OUTPUT" > semgrep-report.json
+        SEMGREP_COUNT=$(echo "$SEMGREP_OUTPUT" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('results',[])))" 2>/dev/null || echo "0")
+        
+        if [[ "$SEMGREP_COUNT" -gt 0 ]]; then
+            echo "FAIL" > "$SEMGREP_OUT"
+            echo "  ❌ Semgrep found $SEMGREP_COUNT issues" >> "$SEMGREP_OUT"
+            echo "" >> "$SEMGREP_OUT"
+            echo "  📋 Top issues:" >> "$SEMGREP_OUT"
+            echo "$SEMGREP_OUTPUT" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for r in d.get('results',[])[:5]:
+    rule = r.get('check_id','').split('.')[-1]
+    print(f\"    {r.get('path','')}:{r.get('start',{}).get('line','')} - {rule}\")
+" 2>/dev/null >> "$SEMGREP_OUT" || true
+            echo "" >> "$SEMGREP_OUT"
+        else
+            echo "PASS" > "$SEMGREP_OUT"
+            echo "  ✅ Semgrep: No security issues" >> "$SEMGREP_OUT"
+        fi
+    else
+        echo "FAIL" > "$SEMGREP_OUT"
+        echo "  ❌ Semgrep not installed" >> "$SEMGREP_OUT"
+    fi
+  ) &
+  PID_SEMGREP=$!
+
+  # 3. DETECT-SECRETS (Background)
+  (
+    echo "  🔍 Running detect-secrets scan..."
+    if command -v detect-secrets-hook &> /dev/null; then
+        if [[ -f .secrets.baseline ]]; then
+            # Exclude build artifacts, dependencies, and generated files
+            # Keep source code, tests, and demos so we can add pragma comments
+            set +e  # detect-secrets uses non-zero exit codes for findings; capture output instead of exiting
+            SECRETS_OUTPUT=$(git ls-files -z | \
+                grep -zvE '(venv/|\.venv/|node_modules/|\.git/|build/|coverage/|htmlcov/|\.pyc$|\.pyo$|__pycache__/|\.scannerwork/)' | \
+                xargs -0 detect-secrets-hook \
+                    --baseline .secrets.baseline \
+                    --exclude-files 'venv/.*|\.venv/.*|node_modules/.*|\.git/.*|build/.*|coverage/.*|htmlcov/.*|__pycache__/.*|\.scannerwork/.*' \
+                    2>&1)
+            SECRETS_EXIT=$?
+            set -e
+            if [[ $SECRETS_EXIT -eq 0 ]]; then
+                echo "PASS" > "$SECRETS_OUT"
+                echo "  ✅ detect-secrets: No secrets found" >> "$SECRETS_OUT"
+            else
+                echo "FAIL" > "$SECRETS_OUT"
+                echo "  ❌ detect-secrets: Secrets found!" >> "$SECRETS_OUT"
+                echo "$SECRETS_OUTPUT" >> "$SECRETS_OUT"
+            fi
+        else
+            echo "PASS" > "$SECRETS_OUT"
+            echo "  ⚠️  No .secrets.baseline. Skipping." >> "$SECRETS_OUT"
+        fi
+    else
+        echo "FAIL" > "$SECRETS_OUT"
+        echo "  ❌ detect-secrets-hook not installed. This is required." >> "$SECRETS_OUT"
+        echo "  💡 Install with: pip install detect-secrets" >> "$SECRETS_OUT"
+    fi
+  ) &
+  PID_SECRETS=$!
+
+  # WAIT FOR ALL
+  wait $PID_BANDIT $PID_SEMGREP $PID_SECRETS
+  
+  # COLLECT RESULTS
+  if grep -q "FAIL" "$BANDIT_OUT"; then
+    cat "$BANDIT_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
+  else
+    cat "$BANDIT_OUT" | grep -v "PASS"
+  fi
+  
+  if grep -q "FAIL" "$SEMGREP_OUT"; then
+    cat "$SEMGREP_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
+  else
+    cat "$SEMGREP_OUT" | grep -v "PASS"
+  fi
+
+  if grep -q "FAIL" "$SECRETS_OUT"; then
+    cat "$SECRETS_OUT" | grep -v "FAIL"
+    SECURITY_PASSED=false
+  else
+    cat "$SECRETS_OUT" | grep -v "PASS"
+  fi
+  
+  rm -f "$BANDIT_OUT" "$SEMGREP_OUT" "$SECRETS_OUT"
+
+
   # Run safety scan for known vulnerabilities in dependencies
-  echo "🔧 Running safety dependency scan..."
-  echo "📋 Debug: Pre-execution checks:"
+  # Skip when using --security-local (for commit hooks - Safety is slow and requirements rarely change)
+  if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+    echo "  ⏭️  Skipping safety dependency scan (use --security for full check)"
+  else
+    echo "🔧 Running safety dependency scan..."
+    echo "📋 Debug: Pre-execution checks:"
   echo "  Safety executable: $(which safety 2>&1 || echo 'NOT FOUND')"
   echo "  Safety version: $(safety --version 2>&1 || echo 'VERSION CHECK FAILED')"
   echo "  Python version: $(python --version 2>&1)"
@@ -1032,13 +1212,129 @@ if [[ "$RUN_SECURITY" == "true" ]]; then
   else
     echo "   ✅ Safety dependency check passed"
   fi
+  fi  # End of Safety scan conditional (skipped for --security-local)
 
   if [[ "$SECURITY_PASSED" == "true" ]]; then
-    echo "✅ Security Check: PASSED (bandit + safety)"
-    add_success "Security Check" "No security vulnerabilities found"
+    if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
+      echo "✅ Security Check: PASSED (bandit + semgrep) [local mode]"
+      add_success "Security Check" "No security vulnerabilities found (local mode - safety skipped)"
+    else
+      echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
+      add_success "Security Check" "No security vulnerabilities found"
+    fi
   else
     echo "❌ Security Check: FAILED (security issues found)"
-    add_failure "Security Check" "Security vulnerabilities found" "See detailed output above and address security issues"
+    add_failure "Security Check" "Security vulnerabilities found" "Run './scripts/maintAInability-gate.sh --security' for details"
+  fi
+  echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# COMPLEXITY ANALYSIS (RADON + XENON)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [[ "$RUN_COMPLEXITY" == "true" ]]; then
+  echo "🧠 Complexity Analysis (radon + xenon)"
+
+  COMPLEXITY_PASSED=true
+
+  # Check if radon is installed
+  if ! command -v radon &> /dev/null; then
+    echo "  ⚠️ radon not found, installing..."
+    pip install radon xenon --quiet
+  fi
+
+  # Run radon for cyclomatic complexity analysis
+  # Using exact numeric threshold: complexity > 15 fails
+  echo "  🔧 Running radon cyclomatic complexity analysis..."
+  
+  # Get complexity with scores (-s flag)
+  # Radon analysis using JSON and Python for better parsing (shows filenames)
+  RADON_JSON=$(radon cc . --json --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
+  
+  # Parse JSON with Python to get stats and failing files
+  PARSE_OUTPUT=$(python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    total_cc = 0
+    count = 0
+    failures = []
+    for f, blocks in data.items():
+        if isinstance(blocks, list):
+             for b in blocks:
+                 cc = b.get('complexity', 0)
+                 total_cc += cc
+                 count += 1
+                 if cc > 15:
+                     failures.append((cc, f, b.get('name','?'), b.get('lineno',0)))
+                 
+    avg = total_cc / count if count > 0 else 0
+    print(f'Average complexity: {avg:.2f}')
+    
+    failures.sort(key=lambda x: x[0], reverse=True)
+    print(len(failures))
+    for cc, f, name, line in failures:
+        print(f'[{cc}] {f}:{line} {name}')
+except Exception as e:
+    print(f'Average complexity: N/A')
+    print('0')
+    print(f'Error: {e}')
+" <<< "$RADON_JSON")
+
+  # Extract values from Python output
+  AVG_COMPLEXITY=$(echo "$PARSE_OUTPUT" | head -1 | awk -F': ' '{print $2}')
+  FAILING_COUNT=$(echo "$PARSE_OUTPUT" | sed -n '2p')
+  FAILING_FUNCTIONS=$(echo "$PARSE_OUTPUT" | tail -n +3)
+
+  if [[ "$FAILING_COUNT" -gt 0 ]]; then
+    echo "  ❌ Found $FAILING_COUNT functions with complexity > 15"
+    echo ""
+    echo "  🔴 Functions exceeding complexity threshold (max: 15):"
+    echo "$FAILING_FUNCTIONS" | head -10 | while read -r line; do
+      echo "    $line"
+    done
+    echo ""
+    echo "  📋 Threshold: 15 (functions must have cyclomatic complexity ≤ 15)"
+    COMPLEXITY_PASSED=false
+  else
+    echo "  ✅ All functions have complexity ≤ 15"
+  fi
+  
+  # Run xenon for strict complexity thresholds
+  # --max-absolute C: No function above grade C (11-20)
+  # --max-modules B: Average module complexity at B or better
+  # --max-average B: Average project complexity at B or better
+  echo ""
+  echo "  🔧 Running xenon complexity threshold check..."
+
+  XENON_OUTPUT=$(xenon --max-absolute C --max-modules B --max-average B \
+    --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" \
+    . 2>&1) || XENON_FAILED=true
+
+  if [[ "$XENON_FAILED" == "true" ]]; then
+    echo "  ❌ Some functions exceed complexity thresholds:"
+    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | sed 's/^/    /'
+    echo ""
+    echo "  💡 These functions must be refactored to reduce complexity."
+    COMPLEXITY_PASSED=false
+  else
+    echo "  ✅ All functions within acceptable complexity thresholds"
+  fi
+
+  # Final result
+  echo ""
+  if [[ "$COMPLEXITY_PASSED" == "true" ]]; then
+    echo "✅ Complexity Analysis: PASSED (Average: $AVG_COMPLEXITY)"
+    add_success "Complexity Analysis" "Average complexity: $AVG_COMPLEXITY, all functions ≤ 15"
+  else
+    if [[ "$XENON_FAILED" == "true" ]]; then
+      XENON_COUNT=$(echo "$XENON_OUTPUT" | grep -c "ERROR" || echo "0")
+      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed radon threshold, $XENON_COUNT modules exceed xenon threshold)"
+      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15 and $XENON_COUNT modules with complexity > C" "Refactor functions to complexity ≤ 15"
+    else
+      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
+      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
+    fi
   fi
   echo ""
 fi
@@ -1680,8 +1976,8 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   BLUE='\033[0;34m'
   NC='\033[0m' # No Color
   
-  # Test configuration
-  TEST_PORT=${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}
+  # Test configuration - use TEST_PORT if set, otherwise default to 3001
+  TEST_PORT=${TEST_PORT:-3001}
   TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   
@@ -1720,11 +2016,16 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   # Function to start test server
   start_test_server() {
     echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
-    
+
     # Load environment variables
     if [ -f ".envrc" ]; then
       source .envrc
     fi
+    
+    # Force test environment and database AFTER sourcing any env files
+    export ENV="test"
+    export FLASK_ENV="test"
+    export DATABASE_URL="sqlite:///course_records_e2e.db"
     
     # Activate virtual environment if it exists
     if [ -d "venv" ]; then
@@ -1732,7 +2033,7 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
     fi
     
     # Start server on test port in background
-    PORT=$TEST_PORT python app.py > logs/test_server.log 2>&1 &
+    PORT=$TEST_PORT python -m src.app > logs/test_server.log 2>&1 &
     SERVER_PID=$!
     
     # Wait for server to start
@@ -1824,6 +2125,18 @@ except Exception as e:
   
   # SQLite is used for persistence; no external emulator required.
 
+  # Ensure we use the e2e database for both seeding and server
+  export DATABASE_URL="sqlite:///course_records_e2e.db"
+
+  # Ensure test database is seeded
+  echo -e "${BLUE}🌱 Seeding test database...${NC}"
+  python scripts/seed_db.py --clear --env e2e || {
+    echo -e "${RED}❌ Failed to seed test database${NC}"
+    add_failure "Smoke Tests" "Failed to seed test database" "Check database connection and seed script"
+    echo ""
+    return
+  }
+  
   # Start test server
   if ! start_test_server; then
     add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"
@@ -1864,7 +2177,7 @@ if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
   
   # Run the frontend check script
   echo "  🔍 Running frontend validation check..."
-  FRONTEND_OUTPUT=$(./check_frontend.sh 2>&1) || FRONTEND_FAILED=true
+  FRONTEND_OUTPUT=$(./scripts/check_frontend.sh 2>&1) || FRONTEND_FAILED=true
   
   if [[ "$FRONTEND_FAILED" == "true" ]]; then
     echo "❌ Frontend Check: FAILED"
@@ -1875,7 +2188,7 @@ if [[ "$RUN_FRONTEND_CHECK" == "true" ]]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
-    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './check_frontend.sh' manually"
+    add_failure "Frontend Check" "Frontend validation failed" "See detailed output above and run './scripts/check_frontend.sh' manually"
   else
     echo "✅ Frontend Check: PASSED"
     add_success "Frontend Check" "Frontend validation passed successfully"

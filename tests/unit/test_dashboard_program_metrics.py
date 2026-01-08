@@ -2,7 +2,7 @@
 
 import pytest
 
-from dashboard_service import DashboardService
+from src.services.dashboard_service import DashboardService
 
 
 class TestDashboardProgramMetrics:

@@ -8,14 +8,14 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import BadRequest
 
-from api.utils import (
+from src.api.utils import (
     InstitutionContextMissingError,
     get_mimetype_for_extension,
     handle_api_error,
     resolve_institution_scope,
     validate_request_json,
 )
-from auth_service import UserRole
+from src.services.auth_service import UserRole
 
 
 @pytest.fixture
@@ -75,8 +75,8 @@ class TestGetMimetypeForExtension:
 class TestResolveInstitutionScope:
     """Tests for resolve_institution_scope utility."""
 
-    @patch("api.utils.get_current_user")
-    @patch("api.utils.get_current_institution_id")
+    @patch("src.api.utils.get_current_user")
+    @patch("src.api.utils.get_current_institution_id")
     def test_resolve_with_institution_context(self, mock_get_inst_id, mock_get_user):
         """Test resolution when institution context is set."""
         mock_user = {"user_id": "user-123", "role": "program_admin"}
@@ -89,9 +89,9 @@ class TestResolveInstitutionScope:
         assert inst_ids == ["inst-123"]
         assert is_global is False
 
-    @patch("api.utils.get_current_user")
-    @patch("api.utils.get_current_institution_id")
-    @patch("api.utils.get_all_institutions")
+    @patch("src.api.utils.get_current_user")
+    @patch("src.api.utils.get_current_institution_id")
+    @patch("src.api.utils.get_all_institutions")
     def test_resolve_as_site_admin_without_context(
         self, mock_get_all_inst, mock_get_inst_id, mock_get_user
     ):
@@ -111,8 +111,8 @@ class TestResolveInstitutionScope:
         assert inst_ids == ["inst-1", "inst-2", "inst-3"]
         assert is_global is True
 
-    @patch("api.utils.get_current_user")
-    @patch("api.utils.get_current_institution_id")
+    @patch("src.api.utils.get_current_user")
+    @patch("src.api.utils.get_current_institution_id")
     def test_resolve_without_context_raises_error_when_required(
         self, mock_get_inst_id, mock_get_user
     ):
@@ -124,8 +124,8 @@ class TestResolveInstitutionScope:
         with pytest.raises(InstitutionContextMissingError):
             resolve_institution_scope(require=True)
 
-    @patch("api.utils.get_current_user")
-    @patch("api.utils.get_current_institution_id")
+    @patch("src.api.utils.get_current_user")
+    @patch("src.api.utils.get_current_institution_id")
     def test_resolve_without_context_returns_empty_when_not_required(
         self, mock_get_inst_id, mock_get_user
     ):

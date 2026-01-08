@@ -4,7 +4,7 @@ Unit tests for the data models module.
 
 import pytest
 
-from models import (
+from src.models.models import (
     ASSESSMENT_STATUSES,
     ROLES,
     SECTION_STATUSES,
@@ -67,6 +67,54 @@ class TestUser:
                 first_name="Test",
                 last_name="User",
                 role="invalid_role",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_missing_first_name_raises_error(self):
+        """Test that missing first name raises ValueError"""
+        with pytest.raises(ValueError, match="First name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="",
+                last_name="User",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_missing_last_name_raises_error(self):
+        """Test that missing last name raises ValueError"""
+        with pytest.raises(ValueError, match="Last name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="Test",
+                last_name="",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_whitespace_only_first_name_raises_error(self):
+        """Test that whitespace-only first name raises ValueError"""
+        with pytest.raises(ValueError, match="First name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="   ",
+                last_name="User",
+                role="instructor",
+                institution_id="test-institution",
+                password_hash="$2b$12$test_hash",
+            )
+
+    def test_create_user_whitespace_only_last_name_raises_error(self):
+        """Test that whitespace-only last name raises ValueError"""
+        with pytest.raises(ValueError, match="Last name is required"):
+            User.create_schema(
+                email="test@mocku.test",
+                first_name="Test",
+                last_name="   ",
+                role="instructor",
                 institution_id="test-institution",
                 password_hash="$2b$12$test_hash",
             )
@@ -254,8 +302,8 @@ class TestValidationFunctions:
 
     def test_format_and_parse_functions(self):
         """Test format and parse utility functions."""
-        from adapters.cei_excel_adapter import parse_cei_term
-        from models import format_term_name
+        from src.adapters.cei_excel_adapter import parse_cei_term
+        from src.models.models import format_term_name
 
         # Test format function
         formatted = format_term_name(2024, "Fall")
@@ -276,7 +324,7 @@ class TestConstants:
 
     def test_roles_defined(self):
         """Test that all roles are properly defined in new authorization system"""
-        from auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
         # Test that UserRole enum contains expected roles
         role_values = [role.value for role in UserRole]
@@ -334,7 +382,7 @@ class TestModelValidationFunctions:
 
     def test_user_model_active_status_calculation(self):
         """Test User model's active status calculation logic."""
-        from models import User
+        from src.models.models import User
 
         # Test various combinations of account status and sections
         test_cases = [
@@ -418,7 +466,7 @@ class TestModelValidationEdgeCases:
 
     def test_format_term_name_comprehensive(self):
         """Test format_term_name comprehensive functionality."""
-        from models import format_term_name
+        from src.models.models import format_term_name
 
         # Test format_term_name with year and season parameters
         result = format_term_name("2024", "Fall")
@@ -429,7 +477,7 @@ class TestModelValidationEdgeCases:
 
     def test_parse_cei_term_comprehensive(self):
         """Test parse_cei_term comprehensive functionality."""
-        from adapters.cei_excel_adapter import parse_cei_term
+        from src.adapters.cei_excel_adapter import parse_cei_term
 
         # Test valid CEI term formats (YEAR+SEASON)
         valid_terms = ["2024FA", "2025SP", "2023SU", "2026WI"]
@@ -508,7 +556,7 @@ class TestCourseOfferingAdditional:
 
     def test_create_offering_schema_basic(self):
         """Test basic course offering schema creation."""
-        from models import CourseOffering
+        from src.models.models import CourseOffering
 
         schema = CourseOffering.create_schema(
             course_id="course123", term_id="term456", institution_id="inst789"
@@ -528,7 +576,7 @@ class TestCourseOutcomeAdditional:
 
     def test_update_assessment_data_percentage_calculation(self):
         """Test automatic percentage calculation in assessment data update (corrected field names)."""
-        from models import CourseOutcome
+        from src.models.models import CourseOutcome
 
         # Test the specific case where percentage is calculated automatically
         updated_data = CourseOutcome.update_assessment_data(

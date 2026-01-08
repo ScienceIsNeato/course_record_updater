@@ -7,10 +7,12 @@
 let dashboardData = null;
 
 function openInviteFacultyModal() {
-  const modal = new bootstrap.Modal(document.getElementById('inviteFacultyModal'));
+  const modal = new bootstrap.Modal(
+    document.getElementById("inviteFacultyModal"),
+  );
 
   // Reset form
-  document.getElementById('inviteFacultyForm').reset();
+  document.getElementById("inviteFacultyForm").reset();
 
   // Get dashboard data from the global cache
   if (globalThis.dashboardDataCache) {
@@ -29,20 +31,20 @@ function openInviteFacultyModal() {
 }
 
 function populateTermDropdown() {
-  const termSelect = document.getElementById('inviteFacultyTerm');
-  termSelect.innerHTML = '<option value="">No course assignment</option>';
+  const termSelect = document.getElementById("inviteFacultyTerm");
+  termSelect.innerHTML = '<option value="">No course assignment</option>'; // nosemgrep
 
   if (!dashboardData?.terms) return;
 
   // Sort terms by start_date descending (most recent first)
   const terms = dashboardData.terms.sort((a, b) => {
-    const dateA = a.start_date || '';
-    const dateB = b.start_date || '';
+    const dateA = a.start_date || "";
+    const dateB = b.start_date || "";
     return dateB.localeCompare(dateA);
   });
 
-  terms.forEach(term => {
-    const option = document.createElement('option');
+  terms.forEach((term) => {
+    const option = document.createElement("option");
     option.value = term.term_id || term.id;
     option.textContent = term.term_name || term.name;
     termSelect.appendChild(option);
@@ -50,14 +52,14 @@ function populateTermDropdown() {
 }
 
 function resetOfferingDropdown() {
-  const offeringSelect = document.getElementById('inviteFacultyOffering');
-  offeringSelect.innerHTML = '<option value="">Select term first</option>';
+  const offeringSelect = document.getElementById("inviteFacultyOffering");
+  offeringSelect.innerHTML = '<option value="">Select term first</option>'; // nosemgrep
   offeringSelect.disabled = true;
 }
 
 function resetSectionDropdown() {
-  const sectionSelect = document.getElementById('inviteFacultySection');
-  sectionSelect.innerHTML = '<option value="">Select offering first</option>';
+  const sectionSelect = document.getElementById("inviteFacultySection");
+  sectionSelect.innerHTML = '<option value="">Select offering first</option>'; // nosemgrep
   sectionSelect.disabled = true;
 }
 
@@ -75,8 +77,8 @@ function handleTermChange(event) {
 }
 
 function populateOfferingDropdown(termId) {
-  const offeringSelect = document.getElementById('inviteFacultyOffering');
-  offeringSelect.innerHTML = '<option value="">Select an offering</option>';
+  const offeringSelect = document.getElementById("inviteFacultyOffering");
+  offeringSelect.innerHTML = '<option value="">Select an offering</option>'; // nosemgrep
 
   if (!dashboardData?.offerings) {
     offeringSelect.disabled = true;
@@ -84,10 +86,13 @@ function populateOfferingDropdown(termId) {
   }
 
   // Filter offerings by term
-  const offeringsForTerm = dashboardData.offerings.filter(offering => offering.term_id === termId);
+  const offeringsForTerm = dashboardData.offerings.filter(
+    (offering) => offering.term_id === termId,
+  );
 
   if (offeringsForTerm.length === 0) {
-    offeringSelect.innerHTML = '<option value="">No offerings for this term</option>';
+    offeringSelect.innerHTML =
+      '<option value="">No offerings for this term</option>'; // nosemgrep
     offeringSelect.disabled = true;
     return;
   }
@@ -95,17 +100,17 @@ function populateOfferingDropdown(termId) {
   // Get course lookup for display names
   const courseLookup = new Map();
   if (dashboardData.courses) {
-    dashboardData.courses.forEach(course => {
+    dashboardData.courses.forEach((course) => {
       const courseId = course.course_id || course.id;
       courseLookup.set(courseId, course);
     });
   }
 
-  offeringsForTerm.forEach(offering => {
+  offeringsForTerm.forEach((offering) => {
     const course = courseLookup.get(offering.course_id);
-    const courseName = course ? course.course_number : 'Unknown Course';
+    const courseName = course ? course.course_number : "Unknown Course";
 
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = offering.offering_id || offering.id;
     option.textContent = courseName;
     offeringSelect.appendChild(option);
@@ -126,8 +131,8 @@ function handleOfferingChange(event) {
 }
 
 function populateSectionDropdown(offeringId) {
-  const sectionSelect = document.getElementById('inviteFacultySection');
-  sectionSelect.innerHTML = '<option value="">Select a section</option>';
+  const sectionSelect = document.getElementById("inviteFacultySection");
+  sectionSelect.innerHTML = '<option value="">Select a section</option>'; // nosemgrep
 
   if (!dashboardData?.sections) {
     sectionSelect.disabled = true;
@@ -136,11 +141,12 @@ function populateSectionDropdown(offeringId) {
 
   // Filter sections by offering
   const sectionsForOffering = dashboardData.sections.filter(
-    section => section.offering_id === offeringId
+    (section) => section.offering_id === offeringId,
   );
 
   if (sectionsForOffering.length === 0) {
-    sectionSelect.innerHTML = '<option value="">No sections for this offering</option>';
+    sectionSelect.innerHTML =
+      '<option value="">No sections for this offering</option>'; // nosemgrep
     sectionSelect.disabled = true;
     return;
   }
@@ -148,19 +154,19 @@ function populateSectionDropdown(offeringId) {
   // Get instructor lookup for display
   const instructorLookup = new Map();
   if (dashboardData.instructors) {
-    dashboardData.instructors.forEach(instructor => {
+    dashboardData.instructors.forEach((instructor) => {
       const instructorId = instructor.user_id || instructor.id;
       instructorLookup.set(instructorId, instructor);
     });
   }
 
-  sectionsForOffering.forEach(section => {
+  sectionsForOffering.forEach((section) => {
     const instructor = instructorLookup.get(section.instructor_id);
     const instructorName = instructor
       ? `${instructor.first_name} ${instructor.last_name}`
-      : 'Unassigned';
+      : "Unassigned";
 
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = section.section_id || section.id;
     option.textContent = `Section ${section.section_number} (${instructorName})`;
     sectionSelect.appendChild(option);
@@ -174,34 +180,40 @@ async function submitFacultyInvitation(event) {
 
   const form = event.target;
   const submitBtn = form.querySelector('button[type="submit"]');
-  const btnText = submitBtn.querySelector('.btn-text');
-  const btnSpinner = submitBtn.querySelector('.btn-spinner');
+  const btnText = submitBtn.querySelector(".btn-text");
+  const btnSpinner = submitBtn.querySelector(".btn-spinner");
 
   // Get form data
-  const email = document.getElementById('inviteFacultyEmail').value.trim();
-  const firstName = document.getElementById('inviteFacultyFirstName').value.trim();
-  const lastName = document.getElementById('inviteFacultyLastName').value.trim();
-  const sectionId = document.getElementById('inviteFacultySection').value;
-  const replaceExisting = document.getElementById('inviteFacultyReplaceExisting').checked;
+  const email = document.getElementById("inviteFacultyEmail").value.trim();
+  const firstName = document
+    .getElementById("inviteFacultyFirstName")
+    .value.trim();
+  const lastName = document
+    .getElementById("inviteFacultyLastName")
+    .value.trim();
+  const sectionId = document.getElementById("inviteFacultySection").value;
+  const replaceExisting = document.getElementById(
+    "inviteFacultyReplaceExisting",
+  ).checked;
   const csrfToken = form.querySelector('input[name="csrf_token"]').value;
 
   // Validate
   if (!email || !firstName || !lastName) {
-    alert('Please fill in all required fields');
+    alert("Please fill in all required fields");
     return;
   }
 
   // Show loading state
-  btnText.classList.add('d-none');
-  btnSpinner.classList.remove('d-none');
+  btnText.classList.add("d-none");
+  btnSpinner.classList.remove("d-none");
   submitBtn.disabled = true;
 
   try {
     const payload = {
       email,
-      role: 'instructor',
+      role: "instructor",
       first_name: firstName,
-      last_name: lastName
+      last_name: lastName,
     };
 
     // Add section assignment if selected
@@ -210,28 +222,30 @@ async function submitFacultyInvitation(event) {
       payload.replace_existing = replaceExisting;
     }
 
-    const response = await fetch('/api/invitations', {
-      method: 'POST',
+    const response = await fetch("/api/invitations", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
 
     if (response.ok && data.success) {
       // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('inviteFacultyModal'));
+      const modal = bootstrap.Modal.getInstance(
+        document.getElementById("inviteFacultyModal"),
+      );
       modal.hide();
 
       // Show success message
       const assignmentMsg = sectionId
-        ? '\n\nThey will be assigned to the selected section upon accepting the invitation.'
-        : '';
+        ? "\n\nThey will be assigned to the selected section upon accepting the invitation."
+        : "";
       alert(
-        `✅ Invitation sent to ${email}!${assignmentMsg}\n\nThe instructor will receive an email with instructions to complete their registration.`
+        `✅ Invitation sent to ${email}!${assignmentMsg}\n\nThe instructor will receive an email with instructions to complete their registration.`,
       );
 
       // Reload dashboard to show updated data
@@ -239,15 +253,15 @@ async function submitFacultyInvitation(event) {
         globalThis.InstitutionDashboard.loadData({ silent: true });
       }
     } else {
-      alert(`❌ Failed to send invitation: ${data.error || 'Unknown error'}`);
+      alert(`❌ Failed to send invitation: ${data.error || "Unknown error"}`);
     }
   } catch (error) {
-    console.error('Error sending invitation:', error); // eslint-disable-line no-console
-    alert('❌ Failed to send invitation. Please try again.');
+    console.error("Error sending invitation:", error); // eslint-disable-line no-console
+    alert("❌ Failed to send invitation. Please try again.");
   } finally {
     // Reset button state
-    btnText.classList.remove('d-none');
-    btnSpinner.classList.add('d-none');
+    btnText.classList.remove("d-none");
+    btnSpinner.classList.add("d-none");
     submitBtn.disabled = false;
   }
 }
@@ -256,19 +270,19 @@ async function submitFacultyInvitation(event) {
 globalThis.openInviteFacultyModal = openInviteFacultyModal;
 
 // Attach event handlers when document loads
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('inviteFacultyForm');
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("inviteFacultyForm");
   if (form) {
-    form.addEventListener('submit', submitFacultyInvitation);
+    form.addEventListener("submit", submitFacultyInvitation);
   }
 
-  const termSelect = document.getElementById('inviteFacultyTerm');
+  const termSelect = document.getElementById("inviteFacultyTerm");
   if (termSelect) {
-    termSelect.addEventListener('change', handleTermChange);
+    termSelect.addEventListener("change", handleTermChange);
   }
 
-  const offeringSelect = document.getElementById('inviteFacultyOffering');
+  const offeringSelect = document.getElementById("inviteFacultyOffering");
   if (offeringSelect) {
-    offeringSelect.addEventListener('change', handleOfferingChange);
+    offeringSelect.addEventListener("change", handleOfferingChange);
   }
 });

@@ -8,7 +8,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-from email_providers.email_manager import EmailJob, EmailManager, EmailStatus
+from src.email_providers.email_manager import EmailJob, EmailManager, EmailStatus
 
 
 class TestEmailJob(unittest.TestCase):

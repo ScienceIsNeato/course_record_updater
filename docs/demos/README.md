@@ -5,15 +5,14 @@ Deterministic, automated demo orchestration system for showcasing Course Record 
 ## Quick Start
 
 ```bash
-# Run demo in human-guided mode (default)
-cd demos
-python run_demo.py --demo full_semester_workflow.json
+# Run demo from repository root (human-guided mode by default)
+python demos/run_demo.py --demo full_semester_workflow.json
 
-# Run demo in automated mode (agent validation)
-python run_demo.py --demo full_semester_workflow.json --auto
+# Automated validation (no pauses, fail on first issue)
+python demos/run_demo.py --demo full_semester_workflow.json --auto --fail-fast
 
 # Iterate on specific step with fast feedback
-python run_demo.py --demo full_semester_workflow.json --auto --start-step 15 --fail-fast
+python demos/run_demo.py --demo full_semester_workflow.json --auto --start-step 15 --fail-fast
 ```
 
 ## Available Demos
@@ -49,7 +48,7 @@ For validation and iteration. The script:
 ## CLI Reference
 
 ```bash
-python run_demo.py --demo <file> [OPTIONS]
+python demos/run_demo.py --demo <file> [OPTIONS]
 ```
 
 ### Required Arguments
@@ -67,23 +66,23 @@ python run_demo.py --demo <file> [OPTIONS]
 
 **Full validation run:**
 ```bash
-python run_demo.py --demo full_semester_workflow.json --auto --fail-fast
+python demos/run_demo.py --demo full_semester_workflow.json --auto --fail-fast
 ```
 
 **Iterate on failing step:**
 ```bash
 # Step 37 is failing, iterate quickly
-python run_demo.py --demo full_semester_workflow.json --auto --start-step 37 --fail-fast
+python demos/run_demo.py --demo full_semester_workflow.json --auto --start-step 37 --fail-fast
 ```
 
 **Preview demo without executing:**
 ```bash
-python run_demo.py --demo full_semester_workflow.json --verify-only
+python demos/run_demo.py --demo full_semester_workflow.json --verify-only
 ```
 
 **Human presentation:**
 ```bash
-python run_demo.py --demo full_semester_workflow.json
+python demos/run_demo.py --demo full_semester_workflow.json
 # Press Enter to advance through each step
 ```
 

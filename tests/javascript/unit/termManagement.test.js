@@ -368,7 +368,6 @@ describe('Term Management - Create Term Modal', () => {
       document.getElementById('termStartDate').value = '2025-01-10';
       document.getElementById('termEndDate').value = '2025-05-20';
       document.getElementById('termAssessmentDueDate').value = '2025-05-25';
-      document.getElementById('termActive').checked = false;
 
       const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
       form.dispatchEvent(submitEvent);
@@ -382,8 +381,7 @@ describe('Term Management - Create Term Modal', () => {
         name: 'Spring 2025',
         start_date: '2025-01-10',
         end_date: '2025-05-20',
-        assessment_due_date: '2025-05-25',
-        active: false
+        assessment_due_date: '2025-05-25'
       });
     });
 
@@ -652,7 +650,6 @@ describe('Term Management - Edit Term Modal', () => {
     expect(document.getElementById('editTermStartDate').value).toBe('2024-08-01');
     expect(document.getElementById('editTermEndDate').value).toBe('2024-12-15');
     expect(document.getElementById('editTermAssessmentDueDate').value).toBe('2024-12-20');
-    expect(document.getElementById('editTermActive').checked).toBe(true);
     expect(mockModal.show).toHaveBeenCalled();
   });
 
@@ -668,7 +665,6 @@ describe('Term Management - Edit Term Modal', () => {
     document.getElementById('editTermStartDate').value = '2025-01-10';
     document.getElementById('editTermEndDate').value = '2025-05-20';
     document.getElementById('editTermAssessmentDueDate').value = '2025-05-25';
-    document.getElementById('editTermActive').checked = false;
 
     const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
     form.dispatchEvent(submitEvent);
@@ -689,8 +685,8 @@ describe('Term Management - Edit Term Modal', () => {
 
     const callArgs = mockFetch.mock.calls[0];
     const body = JSON.parse(callArgs[1].body);
-    expect(body.active).toBe(false);
     expect(body.end_date).toBe('2025-05-20');
+    expect(body.name).toBe('Spring 2025');
     expect(global.loadTerms).toHaveBeenCalled();
   });
 });

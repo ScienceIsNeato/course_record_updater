@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from import_service import ConflictStrategy, ImportService
+from src.services.import_service import ConflictStrategy, ImportService
 
 # Mark as integration tests (involves file I/O, database operations)
 pytestmark = pytest.mark.integration
@@ -99,9 +99,9 @@ class TestImportBusinessLogic:
 
         return temp_file.name
 
-    @patch("import_service.get_course_by_number")
-    @patch("import_service.create_course")
-    @patch("import_service.get_user_by_email")
+    @patch("src.services.import_service.get_course_by_number")
+    @patch("src.services.import_service.create_course")
+    @patch("src.services.import_service.get_user_by_email")
     def test_happy_path_first_import(
         self, mock_get_user, mock_create_course, mock_get_course
     ):
@@ -165,9 +165,9 @@ class TestImportBusinessLogic:
         finally:
             os.unlink(excel_file)
 
-    @patch("import_service.get_course_by_number")
-    @patch("import_service.create_course")
-    @patch("import_service.get_user_by_email")
+    @patch("src.services.import_service.get_course_by_number")
+    @patch("src.services.import_service.create_course")
+    @patch("src.services.import_service.get_user_by_email")
     def test_identical_reimport_no_changes(
         self, mock_get_user, mock_create_course, mock_get_course
     ):
@@ -244,9 +244,9 @@ class TestImportBusinessLogic:
         finally:
             os.unlink(excel_file)
 
-    @patch("import_service.get_course_by_number")
-    @patch("import_service.create_course")
-    @patch("import_service.get_user_by_email")
+    @patch("src.services.import_service.get_course_by_number")
+    @patch("src.services.import_service.create_course")
+    @patch("src.services.import_service.get_user_by_email")
     def test_incremental_import_one_new_course(
         self, mock_get_user, mock_create_course, mock_get_course
     ):
@@ -367,7 +367,7 @@ class TestImportBusinessLogic:
         finally:
             os.unlink(temp_file.name)
 
-    @patch("import_service.get_course_by_number")
+    @patch("src.services.import_service.get_course_by_number")
     def test_data_deletion_protection(self, mock_get_course):
         """
         Test: Data cannot be deleted via import (only created/updated)
@@ -415,7 +415,7 @@ class TestImportBusinessLogic:
         excel_file = self.create_test_excel_file(self.sample_courses)
 
         try:
-            with patch("import_service.create_course") as mock_create:
+            with patch("src.services.import_service.create_course") as mock_create:
                 mock_create.side_effect = mock_create_course_fn
 
                 # Act: Import different courses

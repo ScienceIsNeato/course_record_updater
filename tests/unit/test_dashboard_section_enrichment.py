@@ -6,7 +6,7 @@ Tests the section enrichment logic that adds course data to sections
 
 import pytest
 
-from dashboard_service import DashboardService
+from src.services.dashboard_service import DashboardService
 
 
 @pytest.fixture

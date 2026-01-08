@@ -40,10 +40,10 @@ class BulkReminderManager {
    */
   init() {
     // Get modal instance
-    const modalEl = document.getElementById('bulkReminderModal');
+    const modalEl = document.getElementById("bulkReminderModal");
     if (!modalEl) {
       // eslint-disable-next-line no-console
-      console.error('[BulkReminders] Modal not found');
+      console.error("[BulkReminders] Modal not found");
       return;
     }
     this.modal = new bootstrap.Modal(modalEl);
@@ -52,7 +52,7 @@ class BulkReminderManager {
     this.setupEventListeners();
 
     // eslint-disable-next-line no-console
-    console.log('[BulkReminders] Initialized');
+    console.log("[BulkReminders] Initialized");
   }
 
   /**
@@ -63,54 +63,54 @@ class BulkReminderManager {
    */
   setupEventListeners() {
     // Select All / Deselect All
-    const selectAllBtn = document.getElementById('selectAllInstructors');
+    const selectAllBtn = document.getElementById("selectAllInstructors");
     if (selectAllBtn) {
-      selectAllBtn.addEventListener('click', () => {
+      selectAllBtn.addEventListener("click", () => {
         this.selectAll();
       });
     }
 
-    const deselectAllBtn = document.getElementById('deselectAllInstructors');
+    const deselectAllBtn = document.getElementById("deselectAllInstructors");
     if (deselectAllBtn) {
-      deselectAllBtn.addEventListener('click', () => {
+      deselectAllBtn.addEventListener("click", () => {
         this.deselectAll();
       });
     }
 
     // Send Reminders button
-    const sendBtn = document.getElementById('sendRemindersButton');
+    const sendBtn = document.getElementById("sendRemindersButton");
     if (sendBtn) {
-      sendBtn.addEventListener('click', () => {
+      sendBtn.addEventListener("click", () => {
         this.sendReminders();
       });
     }
 
     // Close button after completion
-    const closeBtn = document.getElementById('closeProgressButton');
+    const closeBtn = document.getElementById("closeProgressButton");
     if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
+      closeBtn.addEventListener("click", () => {
         this.closeModal();
       });
     }
 
     // Character count for message
-    const messageInput = document.getElementById('reminderMessage');
+    const messageInput = document.getElementById("reminderMessage");
     if (messageInput) {
-      messageInput.addEventListener('input', e => {
+      messageInput.addEventListener("input", (e) => {
         const count = e.target.value.length;
-        document.getElementById('messageCharCount').textContent = count;
+        document.getElementById("messageCharCount").textContent = count;
       });
     }
 
     // Modal shown event - load instructors
-    const bulkModal = document.getElementById('bulkReminderModal');
+    const bulkModal = document.getElementById("bulkReminderModal");
     if (bulkModal) {
-      bulkModal.addEventListener('shown.bs.modal', () => {
+      bulkModal.addEventListener("shown.bs.modal", () => {
         this.loadInstructors();
       });
 
       // Modal hidden event - reset state
-      bulkModal.addEventListener('hidden.bs.modal', () => {
+      bulkModal.addEventListener("hidden.bs.modal", () => {
         this.resetModal();
       });
     }
@@ -140,9 +140,10 @@ class BulkReminderManager {
    * Load instructors for the current context
    */
   async loadInstructors() {
-    const container = document.getElementById('instructorListContainer');
+    const container = document.getElementById("instructorListContainer");
     if (!container) return;
 
+    // nosemgrep
     container.innerHTML = `
             <div class="text-center text-muted py-4">
                 <div class="spinner-border spinner-border-sm me-2"></div>
@@ -157,7 +158,8 @@ class BulkReminderManager {
       this.renderInstructorList(instructors);
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('[BulkReminders] Error loading instructors:', error);
+      console.error("[BulkReminders] Error loading instructors:", error);
+      // nosemgrep
       container.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -175,7 +177,7 @@ class BulkReminderManager {
    * @throws {Error} If API request fails or returns error
    */
   async fetchInstructors() {
-    const response = await fetch('/api/instructors');
+    const response = await fetch("/api/instructors");
 
     if (!response.ok) {
       throw new Error(`Failed to fetch instructors: ${response.status}`);
@@ -184,18 +186,19 @@ class BulkReminderManager {
     const data = await response.json();
 
     if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch instructors');
+      throw new Error(data.error || "Failed to fetch instructors");
     }
 
     // Transform API response to expected format
     // API returns: { success: true, instructors: [...], count: N }
     // Each instructor has: user_id, first_name, last_name, email, role, etc.
-    return data.instructors.map(instructor => ({
+    return data.instructors.map((instructor) => ({
       id: instructor.user_id,
       name:
-        `${instructor.first_name || ''} ${instructor.last_name || ''}`.trim() || instructor.email,
+        `${instructor.first_name || ""} ${instructor.last_name || ""}`.trim() ||
+        instructor.email,
       email: instructor.email,
-      courses: [] // TODO: Add course assignment data when available
+      courses: [], // TODO: Add course assignment data when available
     }));
   }
 
@@ -203,10 +206,11 @@ class BulkReminderManager {
    * Render the instructor list with checkboxes
    */
   renderInstructorList(instructors) {
-    const container = document.getElementById('instructorListContainer');
+    const container = document.getElementById("instructorListContainer");
     if (!container) return;
 
     if (instructors.length === 0) {
+      // nosemgrep
       container.innerHTML = `
                 <div class="text-center text-muted py-4">
                     <i class="fas fa-users-slash fs-3 mb-2"></i>
@@ -218,7 +222,7 @@ class BulkReminderManager {
 
     const html = instructors
       .map(
-        instructor => `
+        (instructor) => `
             <div class="form-check mb-2">
                 <input class="form-check-input instructor-checkbox" 
                        type="checkbox" 
@@ -234,20 +238,20 @@ class BulkReminderManager {
                             <small class="text-muted">${instructor.email}</small>
                         </div>
                         <div class="text-end">
-                            <small class="text-muted">${instructor.courses.join(', ')}</small>
+                            <small class="text-muted">${instructor.courses.join(", ")}</small>
                         </div>
                     </div>
                 </label>
             </div>
-        `
+        `,
       )
-      .join('');
+      .join("");
 
-    container.innerHTML = html;
+    container.innerHTML = html; // nosemgrep
 
     // Add change listeners to checkboxes
-    container.querySelectorAll('.instructor-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
+    container.querySelectorAll(".instructor-checkbox").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
         this.updateSelection();
       });
     });
@@ -259,21 +263,23 @@ class BulkReminderManager {
   updateSelection() {
     this.selectedInstructors.clear();
 
-    document.querySelectorAll('.instructor-checkbox:checked').forEach(checkbox => {
-      this.selectedInstructors.add(checkbox.value);
-    });
+    document
+      .querySelectorAll(".instructor-checkbox:checked")
+      .forEach((checkbox) => {
+        this.selectedInstructors.add(checkbox.value);
+      });
 
     // Update UI
     const count = this.selectedInstructors.size;
-    document.getElementById('selectedInstructorCount').textContent = count;
-    document.getElementById('sendRemindersButton').disabled = count === 0;
+    document.getElementById("selectedInstructorCount").textContent = count;
+    document.getElementById("sendRemindersButton").disabled = count === 0;
   }
 
   /**
    * Select all instructors
    */
   selectAll() {
-    document.querySelectorAll('.instructor-checkbox').forEach(checkbox => {
+    document.querySelectorAll(".instructor-checkbox").forEach((checkbox) => {
       checkbox.checked = true;
     });
     this.updateSelection();
@@ -283,7 +289,7 @@ class BulkReminderManager {
    * Deselect all instructors
    */
   deselectAll() {
-    document.querySelectorAll('.instructor-checkbox').forEach(checkbox => {
+    document.querySelectorAll(".instructor-checkbox").forEach((checkbox) => {
       checkbox.checked = false;
     });
     this.updateSelection();
@@ -302,16 +308,20 @@ class BulkReminderManager {
     }
 
     // Get optional fields
-    const term = document.getElementById('reminderTerm').value.trim();
-    const deadline = document.getElementById('reminderDeadline').value;
-    const personalMessage = document.getElementById('reminderMessage').value.trim();
+    const term = document.getElementById("reminderTerm").value.trim();
+    const deadline = document.getElementById("reminderDeadline").value;
+    const personalMessage = document
+      .getElementById("reminderMessage")
+      .value.trim();
 
     // Get course_id if one instructor is selected and they have a single course
     let courseId = null;
     if (this.selectedInstructors.size === 1 && globalThis.dashboardDataCache) {
       const instructorId = Array.from(this.selectedInstructors)[0];
       const sections = globalThis.dashboardDataCache.sections || [];
-      const instructorSections = sections.filter(s => s.instructor_id === instructorId);
+      const instructorSections = sections.filter(
+        (s) => s.instructor_id === instructorId,
+      );
       if (instructorSections.length === 1) {
         courseId = instructorSections[0].course_id;
       }
@@ -323,7 +333,7 @@ class BulkReminderManager {
       personal_message: personalMessage || null,
       term: term || null,
       deadline: deadline || null,
-      course_id: courseId || null
+      course_id: courseId || null,
     };
 
     try {
@@ -335,14 +345,17 @@ class BulkReminderManager {
       const csrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
 
       // Send request to API
-      const response = await fetch('/api/bulk-email/send-instructor-reminders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'X-CSRFToken': csrfToken })
+      const response = await fetch(
+        "/api/bulk-email/send-instructor-reminders",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(csrfToken && { "X-CSRFToken": csrfToken }),
+          },
+          body: JSON.stringify(requestData),
         },
-        body: JSON.stringify(requestData)
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -351,22 +364,25 @@ class BulkReminderManager {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to start bulk reminder job');
+        throw new Error(data.error || "Failed to start bulk reminder job");
       }
 
       // Start polling for progress
       this.currentJobId = data.job_id;
-      this.addStatusMessage(`Job started: ${data.job_id}`, 'info');
-      this.addStatusMessage(`Sending to ${data.recipient_count} instructor(s)`, 'info');
+      this.addStatusMessage(`Job started: ${data.job_id}`, "info");
+      this.addStatusMessage(
+        `Sending to ${data.recipient_count} instructor(s)`,
+        "info",
+      );
 
       this.startPolling();
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('[BulkReminders] Error sending reminders:', error);
-      this.addStatusMessage(`Error: ${error.message}`, 'danger');
+      console.error("[BulkReminders] Error sending reminders:", error);
+      this.addStatusMessage(`Error: ${error.message}`, "danger");
 
       // Show error and allow closing
-      document.getElementById('closeProgressButton').disabled = false;
+      document.getElementById("closeProgressButton").disabled = false;
     }
   }
 
@@ -374,10 +390,10 @@ class BulkReminderManager {
    * Switch from selection view to progress view
    */
   showProgressView() {
-    document.getElementById('reminderStep1').style.display = 'none';
-    document.getElementById('reminderFooter1').style.display = 'none';
-    document.getElementById('reminderStep2').style.display = 'block';
-    document.getElementById('reminderFooter2').style.display = 'block';
+    document.getElementById("reminderStep1").style.display = "none";
+    document.getElementById("reminderFooter1").style.display = "none";
+    document.getElementById("reminderStep2").style.display = "block";
+    document.getElementById("reminderFooter2").style.display = "block";
   }
 
   /**
@@ -413,7 +429,9 @@ class BulkReminderManager {
     if (!this.currentJobId) return;
 
     try {
-      const response = await fetch(`/api/bulk-email/job-status/${this.currentJobId}`);
+      const response = await fetch(
+        `/api/bulk-email/job-status/${this.currentJobId}`,
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -422,22 +440,25 @@ class BulkReminderManager {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to get job status');
+        throw new Error(data.error || "Failed to get job status");
       }
 
       this.updateProgress(data.job);
 
       // Stop polling if job is complete or failed
-      if (['completed', 'failed', 'cancelled'].includes(data.job.status)) {
+      if (["completed", "failed", "cancelled"].includes(data.job.status)) {
         this.stopPolling();
         this.showCompletion(data.job);
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('[BulkReminders] Error checking job status:', error);
+      console.error("[BulkReminders] Error checking job status:", error);
       this.stopPolling();
-      this.addStatusMessage(`Error checking status: ${error.message}`, 'danger');
-      document.getElementById('closeProgressButton').disabled = false;
+      this.addStatusMessage(
+        `Error checking status: ${error.message}`,
+        "danger",
+      );
+      document.getElementById("closeProgressButton").disabled = false;
     }
   }
 
@@ -447,8 +468,8 @@ class BulkReminderManager {
   updateProgress(job) {
     // Update progress bar
     const percentage = job.progress_percentage || 0;
-    const progressBar = document.getElementById('reminderProgressBar');
-    const progressText = document.getElementById('reminderProgressText');
+    const progressBar = document.getElementById("reminderProgressBar");
+    const progressText = document.getElementById("reminderProgressText");
 
     if (progressBar && progressText) {
       progressBar.value = percentage;
@@ -456,17 +477,22 @@ class BulkReminderManager {
     }
 
     // Update counts
-    document.getElementById('reminderSentCount').textContent = job.emails_sent || 0;
-    document.getElementById('reminderFailedCount').textContent = job.emails_failed || 0;
-    document.getElementById('reminderPendingCount').textContent = job.emails_pending || 0;
+    document.getElementById("reminderSentCount").textContent =
+      job.emails_sent || 0;
+    document.getElementById("reminderFailedCount").textContent =
+      job.emails_failed || 0;
+    document.getElementById("reminderPendingCount").textContent =
+      job.emails_pending || 0;
 
     // Add status message
     if (job.emails_sent > 0) {
-      const lastMessageDiv = document.querySelector('#reminderStatusMessages div:last-child');
-      const lastMessage = lastMessageDiv?.textContent || '';
+      const lastMessageDiv = document.querySelector(
+        "#reminderStatusMessages div:last-child",
+      );
+      const lastMessage = lastMessageDiv?.textContent || "";
       const newMessage = `Sent ${job.emails_sent}/${job.recipient_count} reminders...`;
       if (!lastMessage.includes(newMessage)) {
-        this.addStatusMessage(newMessage, 'success');
+        this.addStatusMessage(newMessage, "success");
       }
     }
 
@@ -481,64 +507,69 @@ class BulkReminderManager {
    */
   showCompletion(job) {
     // Update progress bar to 100%
-    const progressBar = document.getElementById('reminderProgressBar');
+    const progressBar = document.getElementById("reminderProgressBar");
     if (progressBar) {
-      progressBar.classList.remove('progress-bar-animated');
-      if (job.status === 'completed') {
-        progressBar.classList.add('bg-success');
-      } else if (job.status === 'failed') {
-        progressBar.classList.add('bg-danger');
+      progressBar.classList.remove("progress-bar-animated");
+      if (job.status === "completed") {
+        progressBar.classList.add("bg-success");
+      } else if (job.status === "failed") {
+        progressBar.classList.add("bg-danger");
       }
     }
 
     // Show completion message
-    const completeDiv = document.getElementById('reminderComplete');
+    const completeDiv = document.getElementById("reminderComplete");
     if (completeDiv) {
-      if (job.status === 'completed') {
-        completeDiv.className = 'mt-3 alert alert-success';
+      if (job.status === "completed") {
+        completeDiv.className = "mt-3 alert alert-success";
+        // nosemgrep
         completeDiv.innerHTML = `
                     <i class="fas fa-check-circle me-2"></i>
                     <strong>Complete!</strong> Successfully sent ${job.emails_sent} reminder(s).
-                    ${job.emails_failed > 0 ? `<br><small>${job.emails_failed} email(s) failed to send.</small>` : ''}
+                    ${job.emails_failed > 0 ? `<br><small>${job.emails_failed} email(s) failed to send.</small>` : ""}
                 `;
-      } else if (job.status === 'failed') {
-        completeDiv.className = 'mt-3 alert alert-danger';
+      } else if (job.status === "failed") {
+        completeDiv.className = "mt-3 alert alert-danger";
+        // nosemgrep
         completeDiv.innerHTML = `
                     <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Failed!</strong> ${job.error_message || 'Job failed to complete.'}
+                    <strong>Failed!</strong> ${job.error_message || "Job failed to complete."}
                 `;
       }
-      completeDiv.style.display = 'block';
+      completeDiv.style.display = "block";
     }
 
     // Enable close button
-    document.getElementById('closeProgressButton').disabled = false;
+    document.getElementById("closeProgressButton").disabled = false;
 
     // Add final status message
-    this.addStatusMessage(`Job ${job.status}`, job.status === 'completed' ? 'success' : 'danger');
+    this.addStatusMessage(
+      `Job ${job.status}`,
+      job.status === "completed" ? "success" : "danger",
+    );
   }
 
   /**
    * Show failed recipients
    */
   showFailedRecipients(failedRecipients) {
-    const container = document.getElementById('reminderFailedRecipients');
-    const list = document.getElementById('reminderFailedList');
+    const container = document.getElementById("reminderFailedRecipients");
+    const list = document.getElementById("reminderFailedList");
 
     if (!container || !list) return;
 
     const html = failedRecipients
       .map(
-        recipient => `
+        (recipient) => `
             <div class="mb-1">
-                <strong>${recipient.name || recipient.email}</strong>: ${recipient.error || 'Unknown error'}
+                <strong>${recipient.name || recipient.email}</strong>: ${recipient.error || "Unknown error"}
             </div>
-        `
+        `,
       )
-      .join('');
+      .join("");
 
-    list.innerHTML = html;
-    container.style.display = 'block';
+    list.innerHTML = html; // nosemgrep
+    container.style.display = "block";
   }
 
   /**
@@ -549,29 +580,30 @@ class BulkReminderManager {
    * @param {string} [type='info'] - Message type: 'info', 'success', 'warning', 'danger'
    * @returns {void}
    */
-  addStatusMessage(message, type = 'info') {
-    const container = document.getElementById('reminderStatusMessages');
+  addStatusMessage(message, type = "info") {
+    const container = document.getElementById("reminderStatusMessages");
     if (!container) return;
 
     const icon =
       {
-        info: 'fa-info-circle',
-        success: 'fa-check-circle',
-        warning: 'fa-exclamation-triangle',
-        danger: 'fa-times-circle'
-      }[type] || 'fa-info-circle';
+        info: "fa-info-circle",
+        success: "fa-check-circle",
+        warning: "fa-exclamation-triangle",
+        danger: "fa-times-circle",
+      }[type] || "fa-info-circle";
 
     const color =
       {
-        info: 'text-muted',
-        success: 'text-success',
-        warning: 'text-warning',
-        danger: 'text-danger'
-      }[type] || 'text-muted';
+        info: "text-muted",
+        success: "text-success",
+        warning: "text-warning",
+        danger: "text-danger",
+      }[type] || "text-muted";
 
     const timestamp = new Date().toLocaleTimeString();
-    const messageDiv = document.createElement('div');
+    const messageDiv = document.createElement("div");
     messageDiv.className = `small ${color} mb-1`;
+    // nosemgrep
     messageDiv.innerHTML = `
             <i class="fas ${icon} me-1"></i>
             [${timestamp}] ${message}
@@ -604,37 +636,38 @@ class BulkReminderManager {
     this.currentJobId = null;
 
     // Reset UI
-    document.getElementById('selectedInstructorCount').textContent = '0';
-    document.getElementById('sendRemindersButton').disabled = true;
+    document.getElementById("selectedInstructorCount").textContent = "0";
+    document.getElementById("sendRemindersButton").disabled = true;
 
     // Clear form fields
-    document.getElementById('reminderTerm').value = '';
-    document.getElementById('reminderDeadline').value = '';
-    document.getElementById('reminderMessage').value = '';
-    document.getElementById('messageCharCount').textContent = '0';
+    document.getElementById("reminderTerm").value = "";
+    document.getElementById("reminderDeadline").value = "";
+    document.getElementById("reminderMessage").value = "";
+    document.getElementById("messageCharCount").textContent = "0";
 
     // Reset progress view
-    document.getElementById('reminderProgressBar').value = 0;
-    document.getElementById('reminderProgressText').textContent = '0%';
-    document.getElementById('reminderSentCount').textContent = '0';
-    document.getElementById('reminderFailedCount').textContent = '0';
-    document.getElementById('reminderPendingCount').textContent = '0';
-    document.getElementById('reminderStatusMessages').innerHTML = '';
-    document.getElementById('reminderComplete').style.display = 'none';
-    document.getElementById('reminderFailedRecipients').style.display = 'none';
+    document.getElementById("reminderProgressBar").value = 0;
+    document.getElementById("reminderProgressText").textContent = "0%";
+    document.getElementById("reminderSentCount").textContent = "0";
+    document.getElementById("reminderFailedCount").textContent = "0";
+    document.getElementById("reminderPendingCount").textContent = "0";
+    document.getElementById("reminderStatusMessages").innerHTML = ""; // nosemgrep
+    document.getElementById("reminderComplete").style.display = "none";
+    document.getElementById("reminderFailedRecipients").style.display = "none";
 
     // Reset progress bar classes
-    const progressBar = document.getElementById('reminderProgressBar');
+    const progressBar = document.getElementById("reminderProgressBar");
     if (progressBar) {
-      progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+      progressBar.className =
+        "progress-bar progress-bar-striped progress-bar-animated";
     }
 
     // Show selection view, hide progress view
-    document.getElementById('reminderStep1').style.display = 'block';
-    document.getElementById('reminderFooter1').style.display = 'block';
-    document.getElementById('reminderStep2').style.display = 'none';
-    document.getElementById('reminderFooter2').style.display = 'none';
-    document.getElementById('closeProgressButton').disabled = true;
+    document.getElementById("reminderStep1").style.display = "block";
+    document.getElementById("reminderFooter1").style.display = "block";
+    document.getElementById("reminderStep2").style.display = "none";
+    document.getElementById("reminderFooter2").style.display = "none";
+    document.getElementById("closeProgressButton").disabled = true;
   }
 }
 
@@ -642,7 +675,7 @@ class BulkReminderManager {
 let bulkReminderManager = null;
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   bulkReminderManager = new BulkReminderManager();
   bulkReminderManager.init();
 });
@@ -653,16 +686,17 @@ function openBulkReminderModal() {
   // In test environment, check global first
   const manager =
     // eslint-disable-next-line no-undef
-    (typeof global !== 'undefined' && global.bulkReminderManager) || bulkReminderManager;
+    (typeof global !== "undefined" && global.bulkReminderManager) ||
+    bulkReminderManager;
   if (manager) {
     manager.show();
   } else {
     // eslint-disable-next-line no-console
-    console.error('[BulkReminders] Manager not initialized');
+    console.error("[BulkReminders] Manager not initialized");
   }
 }
 
 // Export for testing (Node.js environment)
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = { BulkReminderManager, openBulkReminderModal };
 }

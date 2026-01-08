@@ -9,17 +9,6 @@
  */
 
 /**
- * Escape HTML to prevent XSS attacks
- * @param {string} str - String to escape
- * @returns {string} - Escaped string safe for HTML
- */
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/**
  * Standard loading state setter for dashboard containers
  *
  * @param {string} containerId - ID of the container element
@@ -27,59 +16,66 @@ function escapeHtml(str) {
  */
 function setLoadingState(containerId, message) {
   const container = document.getElementById(containerId);
-  if (container) {
-    container.innerHTML = `
-      <div class="text-center text-muted py-4">
-        <div class="spinner-border spinner-border-sm me-2" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        ${escapeHtml(message)}
-      </div>
-    `;
-  }
+  if (!container) return;
+
+  container.innerHTML = "";
+  const wrapper = document.createElement("div");
+  wrapper.className = "text-center text-muted py-4";
+
+  const spinner = document.createElement("div");
+  spinner.className = "spinner-border spinner-border-sm me-2";
+  spinner.setAttribute("role", "status");
+  const hiddenSpan = document.createElement("span");
+  hiddenSpan.className = "visually-hidden";
+  hiddenSpan.textContent = "Loading...";
+  spinner.appendChild(hiddenSpan);
+
+  wrapper.appendChild(spinner);
+  wrapper.appendChild(document.createTextNode(message));
+  container.appendChild(wrapper);
 }
 
-/**
- * Display error message in container
- *
- * @param {string} containerId - ID of the container element
- * @param {string} message - Error message to display
- */
 function setErrorState(containerId, message) {
   const container = document.getElementById(containerId);
-  if (container) {
-    container.innerHTML = `
-      <div class="alert alert-danger" role="alert">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        ${escapeHtml(message)}
-      </div>
-    `;
-  }
+  if (!container) return;
+
+  container.innerHTML = "";
+  const wrapper = document.createElement("div");
+  wrapper.className = "alert alert-danger";
+  wrapper.setAttribute("role", "alert");
+
+  const icon = document.createElement("i");
+  icon.className = "fas fa-exclamation-triangle me-2";
+
+  wrapper.appendChild(icon);
+  wrapper.appendChild(document.createTextNode(message));
+  container.appendChild(wrapper);
 }
 
-/**
- * Display empty state message in container
- *
- * @param {string} containerId - ID of the container element
- * @param {string} message - Empty state message to display
- */
 function setEmptyState(containerId, message) {
   const container = document.getElementById(containerId);
-  if (container) {
-    container.innerHTML = `
-      <div class="text-center text-muted py-4">
-        <i class="fas fa-inbox fa-2x mb-3"></i>
-        <p>${escapeHtml(message)}</p>
-      </div>
-    `;
-  }
+  if (!container) return;
+
+  container.innerHTML = "";
+  const wrapper = document.createElement("div");
+  wrapper.className = "text-center text-muted py-4";
+
+  const icon = document.createElement("i");
+  icon.className = "fas fa-inbox fa-2x mb-3";
+
+  const p = document.createElement("p");
+  p.textContent = message;
+
+  wrapper.appendChild(icon);
+  wrapper.appendChild(p);
+  container.appendChild(wrapper);
 }
 
 // Export for use in other dashboard modules (for testing)
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     setLoadingState,
     setErrorState,
-    setEmptyState
+    setEmptyState,
   };
 }

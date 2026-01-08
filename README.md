@@ -32,14 +32,14 @@ This project maintains enterprise-grade quality standards:
 # Install development dependencies
 pip install -r requirements-dev.txt
 
-# Run fast commit validation (excludes slow security & sonar checks)
 python scripts/ship_it.py
 
-# Run full PR validation (all checks including security & sonar)
+# Run full PR validation)
 python scripts/ship_it.py --validation-type PR
 
-# Install pre-commit hooks
-pre-commit install
+# Security Check (integrated into ship_it.py)
+# detect-secrets scan runs automatically during commit validation
+python scripts/ship_it.py --checks security-local
 ```
 
 ### Git Operations & Commit Messages
@@ -52,7 +52,7 @@ echo "fix: resolve failing tests" > COMMIT_MSG.txt
 git commit --file=COMMIT_MSG.txt
 ```
 
-See [CI_SETUP_GUIDE.md](CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
+See [CI_SETUP_GUIDE.md](docs/setup/CI_SETUP_GUIDE.md) for comprehensive CI/CD documentation.
 
 ## 🎬 Demo & Workflow Walkthroughs
 
@@ -72,7 +72,7 @@ python docs/workflow-walkthroughs/scripts/run_demo.py single_term_outcome_manage
 python scripts/seed_db.py --demo --clear --env dev
 
 # Start server
-./restart_server.sh dev
+bash scripts/restart_server.sh dev
 
 # Access: http://localhost:3001
 # Login: demo2025.admin@example.com / Demo2024!
@@ -81,17 +81,17 @@ python scripts/seed_db.py --demo --clear --env dev
 ## 🧪 Manual Testing & UAT
 
 For comprehensive user acceptance testing of the authentication system:
-- **[UAT_GUIDE.md](UAT_GUIDE.md)**: Complete manual testing protocol with role-based scenarios
-- **[SMOKE_TESTING_GUIDE.md](SMOKE_TESTING_GUIDE.md)**: Quick smoke test procedures
-- **[TESTING_STRATEGY.md](TESTING_STRATEGY.md)**: Overall testing approach and automation strategy
+- **[UAT_GUIDE.md](docs/testing/UAT_GUIDE.md)**: Complete manual testing protocol with role-based scenarios
+- **[SMOKE_TESTING_GUIDE.md](docs/testing/SMOKE_TESTING_GUIDE.md)**: Quick smoke test procedures
+- **[TESTING_STRATEGY.md](docs/testing/TESTING_STRATEGY.md)**: Overall testing approach and automation strategy
 
 ### Quick Testing Commands
 ```bash
 # Quick frontend validation (5 seconds)
-./check_frontend.sh
+python scripts/ship_it.py --checks frontend-check
 
 # Comprehensive smoke tests (30-60 seconds)  
-./run_smoke_tests.sh
+python scripts/ship_it.py --checks smoke
 
 # Seed database with test data
 python scripts/seed_db.py --clear
@@ -101,8 +101,19 @@ python scripts/seed_db.py --clear
 
 ```
 .
-├── docs/                 # 📚 ALL DOCUMENTATION
-│   ├── architecture/       # System design, site maps, data models
+├── src/                  # 🚀 Source code (Core application)
+│   ├── app.py              # Main Flask application factory
+│   ├── api/                # API route packages
+│   ├── models/             # Data models
+│   ├── services/           # Business logic services
+│   ├── database/           # Database layer
+│   └── utils/              # Shared utilities
+├── config/               # ⚙️ Configuration files
+├── data/                 # 💾 Database files and session data
+├── build/                # 🏭 Build artifacts (coverage, reports)
+├── demos/                # 🎬 Demo data and artifacts
+├── docs/                 # 📚 Documentation
+│   ├── architecture/       # System design
 │   ├── setup/              # Environment, deployment, CI guides
 │   ├── testing/            # Testing strategy, E2E, smoke, UAT
 │   ├── quality/            # SonarCloud, code quality guides
@@ -114,13 +125,10 @@ python scripts/seed_db.py --clear
 │   ├── planning/           # Old phase plans, timelines
 │   ├── legacy/             # Migration docs, V1 designs
 │   └── agent/              # AI agent context files
-├── adapters/             # Input format adapters
-├── api/                  # API route modules
-├── static/               # CSS, JavaScript
-├── templates/            # Flask HTML templates
-├── tests/                # Unit and integration tests
-├── scripts/              # Utility and deployment scripts
-├── app.py                # Main Flask application
+├── static/               # 🎨 Frontend assets (CSS, JS)
+├── templates/            # 📄 HTML templates
+├── tests/                # 🧪 Unit and integration tests
+├── scripts/              # 🛠️ Utility and deployment scripts
 └── README.md             # This file
 ```
 
@@ -165,7 +173,7 @@ python scripts/seed_db.py --clear
     # Example for service account key:
 6.  **Run the application:**
     ```bash
-    python app.py
+    python src/app.py
     ```
     The application should be accessible at `http://localhost:8080` (or the port specified by the `PORT` environment variable).
 

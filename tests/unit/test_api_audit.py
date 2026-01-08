@@ -11,12 +11,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-with patch("auth_service.permission_required", lambda perm: lambda f: f):
-    if "api.routes.audit" in sys.modules:
-        del sys.modules["api.routes.audit"]
-    from api.routes.audit import audit_bp
+with patch("src.services.auth_service.permission_required", lambda perm: lambda f: f):
+    if "src.api.routes.audit" in sys.modules:
+        del sys.modules["src.api.routes.audit"]
+    from src.api.routes.audit import audit_bp
 
-from audit_service import EntityType
+from src.services.audit_service import EntityType
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def mock_site_admin():
 class TestGetRecentLogs:
     """Tests for GET /api/audit/recent endpoint."""
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_success(self, mock_get_activity, client):
         """Test successful retrieval of recent logs."""
         mock_logs = [
@@ -67,7 +67,7 @@ class TestGetRecentLogs:
         assert data["limit"] == 50
         assert data["offset"] == 0
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_with_limit_and_offset(self, mock_get_activity, client):
         """Test recent logs with custom limit and offset."""
         mock_get_activity.return_value = []
@@ -80,7 +80,7 @@ class TestGetRecentLogs:
         assert data["offset"] == 50
         mock_get_activity.assert_called_once_with(institution_id=None, limit=100)
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_with_institution_filter(self, mock_get_activity, client):
         """Test recent logs filtered by institution."""
         mock_get_activity.return_value = []
@@ -90,7 +90,7 @@ class TestGetRecentLogs:
         assert response.status_code == 200
         mock_get_activity.assert_called_once_with(institution_id="inst-123", limit=50)
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_limit_capped_at_500(self, mock_get_activity, client):
         """Test that limit is capped at 500."""
         mock_get_activity.return_value = []
@@ -102,7 +102,7 @@ class TestGetRecentLogs:
         assert data["limit"] == 500
         mock_get_activity.assert_called_once_with(institution_id=None, limit=500)
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_invalid_limit(self, mock_get_activity, client):
         """Test error handling for invalid limit parameter."""
         response = client.get("/api/audit/recent?limit=invalid")
@@ -112,7 +112,7 @@ class TestGetRecentLogs:
         assert data["success"] is False
         assert "Invalid parameter" in data["error"]
 
-    @patch("api.routes.audit.AuditService.get_recent_activity")
+    @patch("src.api.routes.audit.AuditService.get_recent_activity")
     def test_get_recent_logs_service_error(self, mock_get_activity, client):
         """Test error handling when service raises exception."""
         mock_get_activity.side_effect = Exception("Database error")
@@ -128,7 +128,7 @@ class TestGetRecentLogs:
 class TestGetEntityHistory:
     """Tests for GET /api/audit/entity/<entity_type>/<entity_id> endpoint."""
 
-    @patch("api.routes.audit.AuditService.get_entity_history")
+    @patch("src.api.routes.audit.AuditService.get_entity_history")
     def test_get_entity_history_success(self, mock_get_history, client):
         """Test successful retrieval of entity history."""
         mock_history = [
@@ -150,7 +150,7 @@ class TestGetEntityHistory:
             entity_type=EntityType.USER, entity_id="user-123", limit=100
         )
 
-    @patch("api.routes.audit.AuditService.get_entity_history")
+    @patch("src.api.routes.audit.AuditService.get_entity_history")
     def test_get_entity_history_with_limit(self, mock_get_history, client):
         """Test entity history with custom limit."""
         mock_get_history.return_value = []
@@ -162,7 +162,7 @@ class TestGetEntityHistory:
             entity_type=EntityType.COURSE, entity_id="course-456", limit=50
         )
 
-    @patch("api.routes.audit.AuditService.get_entity_history")
+    @patch("src.api.routes.audit.AuditService.get_entity_history")
     def test_get_entity_history_limit_capped_at_1000(self, mock_get_history, client):
         """Test that limit is capped at 1000."""
         mock_get_history.return_value = []
@@ -183,7 +183,7 @@ class TestGetEntityHistory:
         assert data["success"] is False
         assert "Invalid entity type" in data["error"]
 
-    @patch("api.routes.audit.AuditService.get_entity_history")
+    @patch("src.api.routes.audit.AuditService.get_entity_history")
     def test_get_entity_history_service_error(self, mock_get_history, client):
         """Test error handling when service raises exception."""
         mock_get_history.side_effect = Exception("Database error")
@@ -199,7 +199,7 @@ class TestGetEntityHistory:
 class TestGetUserActivity:
     """Tests for GET /api/audit/user/<user_id> endpoint."""
 
-    @patch("api.routes.audit.AuditService.get_user_activity")
+    @patch("src.api.routes.audit.AuditService.get_user_activity")
     def test_get_user_activity_success(self, mock_get_activity, client):
         """Test successful retrieval of user activity."""
         mock_activity = [
@@ -220,7 +220,7 @@ class TestGetUserActivity:
             user_id="user-123", limit=100, start_date=None, end_date=None
         )
 
-    @patch("api.routes.audit.AuditService.get_user_activity")
+    @patch("src.api.routes.audit.AuditService.get_user_activity")
     def test_get_user_activity_with_date_range(self, mock_get_activity, client):
         """Test user activity with date range filter."""
         mock_get_activity.return_value = []
@@ -236,7 +236,7 @@ class TestGetUserActivity:
         assert isinstance(call_args.kwargs["start_date"], datetime)
         assert isinstance(call_args.kwargs["end_date"], datetime)
 
-    @patch("api.routes.audit.AuditService.get_user_activity")
+    @patch("src.api.routes.audit.AuditService.get_user_activity")
     def test_get_user_activity_with_limit(self, mock_get_activity, client):
         """Test user activity with custom limit."""
         mock_get_activity.return_value = []
@@ -266,7 +266,7 @@ class TestGetUserActivity:
         assert data["success"] is False
         assert "Invalid end_date format" in data["error"]
 
-    @patch("api.routes.audit.AuditService.get_user_activity")
+    @patch("src.api.routes.audit.AuditService.get_user_activity")
     def test_get_user_activity_service_error(self, mock_get_activity, client):
         """Test error handling when service raises exception."""
         mock_get_activity.side_effect = Exception("Database error")
@@ -282,7 +282,7 @@ class TestGetUserActivity:
 class TestExportLogs:
     """Tests for POST /api/audit/export endpoint."""
 
-    @patch("api.routes.audit.AuditService.export_audit_log")
+    @patch("src.api.routes.audit.AuditService.export_audit_log")
     def test_export_logs_csv_success(self, mock_export, client):
         """Test successful CSV export."""
         mock_export.return_value = b"log_id,operation,entity_type\n1,CREATE,users\n"
@@ -301,7 +301,7 @@ class TestExportLogs:
         assert "audit_logs_" in response.headers["Content-Disposition"]
         assert ".csv" in response.headers["Content-Disposition"]
 
-    @patch("api.routes.audit.AuditService.export_audit_log")
+    @patch("src.api.routes.audit.AuditService.export_audit_log")
     def test_export_logs_json_success(self, mock_export, client):
         """Test successful JSON export."""
         mock_export.return_value = b'[{"log_id": "1", "operation": "CREATE"}]'
@@ -320,7 +320,7 @@ class TestExportLogs:
         assert "audit_logs_" in response.headers["Content-Disposition"]
         assert ".json" in response.headers["Content-Disposition"]
 
-    @patch("api.routes.audit.AuditService.export_audit_log")
+    @patch("src.api.routes.audit.AuditService.export_audit_log")
     def test_export_logs_with_filters(self, mock_export, client):
         """Test export with optional filters."""
         mock_export.return_value = b"csv_data"
@@ -416,7 +416,7 @@ class TestExportLogs:
         assert data["success"] is False
         assert "Invalid entity type" in data["error"]
 
-    @patch("api.routes.audit.AuditService.export_audit_log")
+    @patch("src.api.routes.audit.AuditService.export_audit_log")
     def test_export_logs_service_error(self, mock_export, client):
         """Test error handling when service raises exception."""
         mock_export.side_effect = Exception("Export failed")

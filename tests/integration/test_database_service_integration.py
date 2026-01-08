@@ -4,15 +4,15 @@ import os
 
 import pytest
 
-import database_service
+import src.database.database_service as database_service
 
 pytestmark = pytest.mark.integration
 
 
-def test_database_file_created(setup_integration_test_database):
+def test_database_file_created(isolated_integration_db):
     """Ensure the configured SQLite database file exists on disk."""
-    # setup_integration_test_database fixture returns the database path
-    db_path = setup_integration_test_database
+    # isolated_integration_db fixture returns the database path
+    db_path = isolated_integration_db
     assert os.path.exists(db_path)
 
 

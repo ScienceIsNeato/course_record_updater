@@ -15,8 +15,6 @@ describe('ProgramDashboard', () => {
       <div id="programFacultyCount"></div>
       <div id="programStudentCount"></div>
       <div id="programSectionCount"></div>
-      <div id="programLastUpdated"></div>
-      <button id="programRefreshButton"></button>
       <div id="programCoursesContainer"></div>
       <div id="programFacultyContainer"></div>
       <div id="programCloContainer"></div>
@@ -64,7 +62,6 @@ describe('ProgramDashboard', () => {
 
     expect(document.getElementById('programCourseCount').textContent).toBe('4');
     expect(document.getElementById('programAssessmentContainer').querySelector('table')).not.toBeNull();
-    expect(document.getElementById('programLastUpdated').textContent).toContain('Last updated:');
   });
 
   it('handles null and undefined programs in assessment results', () => {
@@ -76,7 +73,7 @@ describe('ProgramDashboard', () => {
           program_summaries: [
             { program_name: 'Valid Program' },
             null,  // null program
-            { },   // program without program_name
+            {},   // program without program_name
             undefined  // undefined program
           ],
           course_count: 4,
@@ -84,7 +81,7 @@ describe('ProgramDashboard', () => {
         }
       ]
     };
-    
+
     ProgramDashboard.render(dataWithNullPrograms);
     // Should render without crashing and filter out null/undefined
     expect(document.getElementById('programAssessmentContainer').querySelector('table')).not.toBeNull();
@@ -102,7 +99,7 @@ describe('ProgramDashboard', () => {
     beforeEach(() => {
       global.fetch = jest.fn();
       jest.useFakeTimers();
-      jest.spyOn(console, 'error').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => { });
     });
 
     afterEach(() => {
@@ -232,7 +229,7 @@ describe('ProgramDashboard', () => {
         json: async () => ({ success: true, data: sampleData })
       });
       jest.useFakeTimers();
-      jest.spyOn(console, 'error').mockImplementation(() => {});
+      jest.spyOn(console, 'error').mockImplementation(() => { });
     });
 
     afterEach(() => {
@@ -266,23 +263,11 @@ describe('ProgramDashboard', () => {
       addEventListenerSpy.mockRestore();
     });
 
-    it('handles refresh button clicks', () => {
-      const loadDataSpy = jest.spyOn(ProgramDashboard, 'loadData');
-
-      ProgramDashboard.init();
-
-      // Simulate refresh button click
-      const refreshButton = document.getElementById('programRefreshButton');
-      refreshButton.click();
-
-      expect(loadDataSpy).toHaveBeenCalledWith({ silent: false });
-
-      loadDataSpy.mockRestore();
-    });
+    // Refresh button removed from UI - data auto-refreshes after mutations
 
     it('handles visibility change events for auto-refresh', () => {
       const loadDataSpy = jest.spyOn(ProgramDashboard, 'loadData');
-      
+
       // Set lastFetch to an old time to trigger refresh
       ProgramDashboard.lastFetch = Date.now() - (6 * 60 * 1000); // 6 minutes ago
 
@@ -304,7 +289,7 @@ describe('ProgramDashboard', () => {
 
     it('skips auto-refresh when lastFetch is recent', () => {
       const loadDataSpy = jest.spyOn(ProgramDashboard, 'loadData');
-      
+
       // Set lastFetch to a recent time
       ProgramDashboard.lastFetch = Date.now() - (2 * 60 * 1000); // 2 minutes ago
 
@@ -361,7 +346,7 @@ describe('ProgramDashboard Initialization', () => {
     jest.resetModules();
     jest.useFakeTimers();
   });
-  
+
   afterEach(() => {
     jest.useRealTimers();
   });
@@ -370,11 +355,11 @@ describe('ProgramDashboard Initialization', () => {
     delete global.panelManager;
     delete window.panelManager;
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-    
+
     require('../../../static/program_dashboard');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     jest.advanceTimersByTime(200);
-    
+
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Panel manager not initialized'));
   });
 });

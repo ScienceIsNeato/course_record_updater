@@ -1,6 +1,7 @@
-import sqlite3
 import os
+import sqlite3
 import sys
+
 
 def migrate(db_path):
     print(f"Migrating {db_path}...")
@@ -10,7 +11,7 @@ def migrate(db_path):
 
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    
+
     # 1. Add program_id to course_outcomes
     try:
         c.execute("ALTER TABLE course_outcomes ADD COLUMN program_id VARCHAR")
@@ -52,10 +53,11 @@ def migrate(db_path):
         print("Created course_section_outcomes table")
     except Exception as e:
         print(f"Error creating course_section_outcomes table: {e}")
-    
+
     conn.commit()
     conn.close()
     print("Migration complete.")
+
 
 if __name__ == "__main__":
     db = sys.argv[1] if len(sys.argv) > 1 else "course_records.db"

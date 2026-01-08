@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from session import (
+from data.session import (
     SessionSecurityError,
     SessionService,
     create_user_session,
@@ -143,8 +143,8 @@ class TestSessionCreation:
         assert csrf_token is not None
         assert len(csrf_token) > 0
 
-    @patch("session.security.SessionSecurity.get_client_ip")
-    @patch("session.security.SessionSecurity.hash_user_agent")
+    @patch("data.session.security.SessionSecurity.get_client_ip")
+    @patch("data.session.security.SessionSecurity.hash_user_agent")
     def test_create_user_session_stores_security_data(
         self, mock_hash_ua, mock_get_ip, request_context, sample_user_data
     ):
@@ -169,7 +169,7 @@ class TestSessionCreation:
         mock_session = MagicMock()
         mock_session.regenerate = MagicMock()
 
-        with patch("session.manager.session", mock_session):
+        with patch("data.session.manager.session", mock_session):
             create_user_session(sample_user_data)
 
             # Verify regenerate was called
@@ -189,7 +189,7 @@ class TestSessionValidation:
         """Test session validation when not logged in"""
         assert validate_session() is False
 
-    @patch("session.security.SessionSecurity.is_session_expired")
+    @patch("data.session.security.SessionSecurity.is_session_expired")
     def test_validate_session_when_expired(
         self, mock_is_expired, request_context, sample_user_data
     ):
@@ -200,7 +200,7 @@ class TestSessionValidation:
         assert validate_session() is False
         assert not is_user_logged_in()  # Session should be destroyed
 
-    @patch("session.security.SessionSecurity.validate_ip_consistency")
+    @patch("data.session.security.SessionSecurity.validate_ip_consistency")
     def test_validate_session_ip_mismatch(
         self, mock_validate_ip, request_context, sample_user_data
     ):
@@ -211,7 +211,7 @@ class TestSessionValidation:
         assert validate_session() is False
         assert not is_user_logged_in()  # Session should be destroyed
 
-    @patch("session.security.SessionSecurity.validate_user_agent_consistency")
+    @patch("data.session.security.SessionSecurity.validate_user_agent_consistency")
     def test_validate_session_user_agent_mismatch(
         self, mock_validate_ua, request_context, sample_user_data
     ):
@@ -236,7 +236,7 @@ class TestSessionTimeout:
         old_time = datetime.now(timezone.utc) - timedelta(hours=9)
         session["last_activity"] = old_time.isoformat()
 
-        from session.security import SessionSecurity
+        from data.session.security import SessionSecurity
 
         assert SessionSecurity.is_session_expired() is True
 
@@ -252,7 +252,7 @@ class TestSessionTimeout:
         recent_time = datetime.now(timezone.utc) - timedelta(days=20)
         session["last_activity"] = recent_time.isoformat()
 
-        from session.security import SessionSecurity
+        from data.session.security import SessionSecurity
 
         assert SessionSecurity.is_session_expired() is False
 
@@ -260,7 +260,7 @@ class TestSessionTimeout:
         old_time = datetime.now(timezone.utc) - timedelta(days=31)
         session["last_activity"] = old_time.isoformat()
 
-        from session.security import SessionSecurity
+        from data.session.security import SessionSecurity
 
         assert SessionSecurity.is_session_expired() is True
 
@@ -272,7 +272,7 @@ class TestSessionTimeout:
 
         session["last_activity"] = "invalid-timestamp"
 
-        from session.security import SessionSecurity
+        from data.session.security import SessionSecurity
 
         assert SessionSecurity.is_session_expired() is True
 
@@ -374,7 +374,7 @@ class TestSessionInfo:
 class TestSessionRefresh:
     """Test session refresh functionality"""
 
-    @patch("session.security.datetime")
+    @patch("data.session.security.datetime")
     def test_refresh_session_updates_activity(
         self, mock_datetime, request_context, sample_user_data
     ):
@@ -409,21 +409,21 @@ class TestSecurityHelpers:
 
     def test_get_client_ip_direct(self, request_context):
         """Test getting client IP from direct connection"""
-        with patch("session.security.request") as mock_request:
+        with patch("data.session.security.request") as mock_request:
             # Create a proper mock for headers
             mock_headers = MagicMock()
             mock_headers.get.return_value = None
             mock_request.headers = mock_headers
             mock_request.environ = {"REMOTE_ADDR": "192.168.1.1"}
 
-            from session.security import SessionSecurity
+            from data.session.security import SessionSecurity
 
             ip = SessionSecurity.get_client_ip()
             assert ip == "192.168.1.1"
 
     def test_get_client_ip_forwarded(self, request_context):
         """Test getting client IP from forwarded header"""
-        with patch("session.security.request") as mock_request:
+        with patch("data.session.security.request") as mock_request:
             # Create a proper mock for headers
             mock_headers = MagicMock()
             mock_headers.get.side_effect = lambda key, default=None: (
@@ -435,17 +435,17 @@ class TestSecurityHelpers:
                 "REMOTE_ADDR": "192.168.1.1",
             }
 
-            from session.security import SessionSecurity
+            from data.session.security import SessionSecurity
 
             ip = SessionSecurity.get_client_ip()
             assert ip == "10.0.0.1"
 
     def test_hash_user_agent(self, request_context):
         """Test user agent hashing"""
-        with patch("session.security.request") as mock_request:
+        with patch("data.session.security.request") as mock_request:
             mock_request.headers = {"User-Agent": "Mozilla/5.0 Test Browser"}
 
-            from session.security import SessionSecurity
+            from data.session.security import SessionSecurity
 
             hash1 = SessionSecurity.hash_user_agent()
             hash2 = SessionSecurity.hash_user_agent()

@@ -6,13 +6,13 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from email_providers.ethereal_provider import EtherealProvider
+from src.email_providers.ethereal_provider import EtherealProvider
 
 
 class TestEtherealProviderSending:
     """Test Ethereal Provider email sending with mocked SMTP"""
 
-    @patch("email_providers.ethereal_provider.smtplib.SMTP")
+    @patch("src.email_providers.ethereal_provider.smtplib.SMTP")
     def test_send_email_success(self, mock_smtp_class):
         """Test successful email sending via Ethereal"""
         # Setup mock
@@ -55,7 +55,7 @@ class TestEtherealProviderSending:
 
         assert result is False
 
-    @patch("email_providers.ethereal_provider.smtplib.SMTP")
+    @patch("src.email_providers.ethereal_provider.smtplib.SMTP")
     def test_send_email_smtp_error(self, mock_smtp_class):
         """Test email sending with SMTP error"""
         # Setup mock to raise exception

@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-import database_service
+import src.database.database_service as database_service
 
 
 def pytest_collection_modifyitems(config, items):
@@ -32,20 +32,14 @@ def pytest_collection_modifyitems(config, items):
 
 
 # Shared test credentials (seeded by seed_db.py)
-# Import from E2E test data contract if available for consistency
-try:
-    from tests.e2e.e2e_test_data_contract import BASE_ACCOUNTS
-
-    SITE_ADMIN_EMAIL = BASE_ACCOUNTS["site_admin"]["email"]
-    SITE_ADMIN_PASSWORD = BASE_ACCOUNTS["site_admin"]["password"]
-    INSTITUTION_ADMIN_EMAIL = BASE_ACCOUNTS["institution_admin"]["email"]
-    INSTITUTION_ADMIN_PASSWORD = BASE_ACCOUNTS["institution_admin"]["password"]
-except (ImportError, KeyError):
-    # Fallback if contract not available
-    SITE_ADMIN_EMAIL = "siteadmin@system.local"
-    SITE_ADMIN_PASSWORD = "SiteAdmin123!"
-    INSTITUTION_ADMIN_EMAIL = "sarah.admin@mocku.test"
-    INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"
+# Import from centralized test credentials module
+from tests.test_credentials import (
+    BASE_ACCOUNTS,
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
 
 
 def get_worker_id():
@@ -126,10 +120,15 @@ def ensure_test_database(tmp_path_factory):
 def clean_database_between_tests():
     """Reset database after each test to guarantee isolation.
 
-    Skip for E2E/UAT tests which manage their own database state.
+    Skip for E2E tests which manage their own database state via their conftest.
+    E2E tests use course_records_e2e.db while unit tests use temporary databases.
     """
     yield
-    # Skip cleanup for E2E/UAT tests - they handle their own state
-    env = os.environ.get("ENV", "development")
-    if env != "test":
-        database_service.reset_database()
+    # Skip cleanup for E2E tests - they manage their own state
+    db_url = os.environ.get("DATABASE_URL", "")
+    if "e2e" in db_url.lower():
+        # E2E tests - don't interfere with their database management
+        return
+
+    # Unit tests - reset database for isolation
+    database_service.reset_database()

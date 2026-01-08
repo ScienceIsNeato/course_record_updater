@@ -2,8 +2,8 @@
 
 import pytest
 
-import database_service
-from dashboard_service import DashboardService
+import src.database.database_service as database_service
+from src.services.dashboard_service import DashboardService
 
 
 @pytest.mark.integration

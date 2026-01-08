@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from models_sql import (
+from src.models.models_sql import (
     Course,
     CourseOffering,
     CourseOutcome,
@@ -187,7 +187,7 @@ class TestToDictEdgeCases:
 
     def test_to_dict_course_offering(self):
         """Test to_dict with CourseOffering model."""
-        from models_sql import CourseOffering, to_dict
+        from src.models.models_sql import CourseOffering, to_dict
 
         offering = CourseOffering(
             id="off-123",
@@ -203,7 +203,7 @@ class TestToDictEdgeCases:
 
     def test_to_dict_course_section(self):
         """Test to_dict with CourseSection model."""
-        from models_sql import CourseSection, to_dict
+        from src.models.models_sql import CourseSection, to_dict
 
         section = CourseSection(
             id="sec-123", offering_id="off-123", section_number="001"
@@ -216,7 +216,7 @@ class TestToDictEdgeCases:
 
     def test_to_dict_course_outcome(self):
         """Test to_dict with CourseOutcome model."""
-        from models_sql import CourseOutcome, to_dict
+        from src.models.models_sql import CourseOutcome, to_dict
 
         outcome = CourseOutcome(
             id="out-123", course_id="course-123", description="Learn Python"

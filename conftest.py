@@ -18,27 +18,21 @@ def _get_csrf_token_from_session_or_generate(client):
 
     from flask_wtf.csrf import generate_csrf
 
-    from app import app
+    from src.app import app
 
     # Strategy: Always ensure session has a raw token, then generate signed token from it
     raw_token = None
 
     # Try to get existing raw token from session
-    try:
-        with client.session_transaction() as sess:
-            if "csrf_token" in sess:
-                raw_token = sess["csrf_token"]
-    except Exception:
-        pass
+    with client.session_transaction() as sess:
+        if "csrf_token" in sess:
+            raw_token = sess["csrf_token"]
 
     # If no token exists, create one and store it
     if not raw_token:
         raw_token = secrets.token_hex(16)
-        try:
-            with client.session_transaction() as sess:
-                sess["csrf_token"] = raw_token
-        except Exception:
-            pass
+        with client.session_transaction() as sess:
+            sess["csrf_token"] = raw_token
 
     # Generate the signed token from the raw token
     try:
@@ -47,7 +41,11 @@ def _get_csrf_token_from_session_or_generate(client):
 
             flask_session["csrf_token"] = raw_token
             return generate_csrf()
-    except Exception:
+    except Exception as e:
+        # Log error for debugging instead of silently returning None
+        import warnings
+
+        warnings.warn(f"Failed to generate CSRF token in test: {e}")
         return None
 
 
@@ -95,14 +93,14 @@ def _configure_csrf_for_testing():
     This runs before every test to ensure production-like security validation.
     It also monkeypatches app.test_client() to return CSRF-aware clients.
     """
-    from app import app
+    from src.app import app
 
     # Store original config and methods
     original_csrf = app.config.get("WTF_CSRF_ENABLED")
     original_test_client = app.test_client
 
     # Enable CSRF for all tests
-    app.config["TESTING"] = True
+    app.config["TESTING"] = True  # nosemgrep
     app.config["WTF_CSRF_ENABLED"] = True
 
     # Monkeypatch app.test_client() to return CSRF-aware clients
@@ -110,9 +108,11 @@ def _configure_csrf_for_testing():
         """Create a test client with automatic CSRF injection."""
         client = original_test_client(*args, **kwargs)
 
-        # Wrap POST/PUT/DELETE methods with CSRF injection
+        # Wrap POST/PUT/PATCH/DELETE methods with CSRF injection
+        # Wrap all mutation methods with CSRF injection
         client.post = _make_csrf_wrapper(client, client.post)
         client.put = _make_csrf_wrapper(client, client.put)
+        client.patch = _make_csrf_wrapper(client, client.patch)
         client.delete = _make_csrf_wrapper(client, client.delete)
 
         return client
@@ -134,7 +134,7 @@ def client():
 
     Use this fixture explicitly when you need the client object.
     """
-    from app import app
+    from src.app import app
 
     with app.test_client() as client:
         yield client

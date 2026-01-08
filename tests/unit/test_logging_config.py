@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from logging_config import get_import_logger, setup_logger
+from src.utils.logging_config import get_import_logger, setup_logger
 
 
 class TestLoggingConfiguration:
@@ -70,7 +70,7 @@ class TestLoggingConfiguration:
 
     def test_get_logger_function(self):
         """Test the get_logger convenience function."""
-        from logging_config import get_logger
+        from src.utils.logging_config import get_logger
 
         logger = get_logger("test_module")
         assert isinstance(logger, logging.Logger)
@@ -106,7 +106,7 @@ class TestLoggingConfiguration:
 
     def test_logging_config_module_attributes(self):
         """Test logging configuration module attributes."""
-        import logging_config
+        import src.utils.logging_config as logging_config
 
         # Test that module has expected functions
         assert hasattr(logging_config, "setup_logger")
@@ -130,7 +130,11 @@ class TestLoggingFormatters:
 
     def test_multiple_logger_functions(self):
         """Test that multiple logger functions are available."""
-        from logging_config import get_api_logger, get_app_logger, get_database_logger
+        from src.utils.logging_config import (
+            get_api_logger,
+            get_app_logger,
+            get_database_logger,
+        )
 
         db_logger = get_database_logger()
         api_logger = get_api_logger()
@@ -142,7 +146,7 @@ class TestLoggingFormatters:
 
     def test_logger_configuration_comprehensive(self):
         """Test comprehensive logger configuration and functionality."""
-        from logging_config import get_database_logger
+        from src.utils.logging_config import get_database_logger
 
         # Test database logger
         db_logger = get_database_logger()
@@ -150,14 +154,14 @@ class TestLoggingFormatters:
         assert db_logger.name == "DatabaseService"  # Actual logger name
 
         # Test API logger
-        from logging_config import get_api_logger
+        from src.utils.logging_config import get_api_logger
 
         api_logger = get_api_logger()
         assert isinstance(api_logger, logging.Logger)
         assert api_logger.name == "APIService"  # Actual logger name
 
         # Test app logger
-        from logging_config import get_app_logger
+        from src.utils.logging_config import get_app_logger
 
         app_logger = get_app_logger()
         assert isinstance(app_logger, logging.Logger)
@@ -176,7 +180,7 @@ class TestLoggingFormatters:
         """Test quality gate logger creation and configuration"""
         import logging
 
-        from logging_config import setup_quality_gate_logger
+        from src.utils.logging_config import setup_quality_gate_logger
 
         # Clear any existing handlers
         quality_gate_logger = logging.getLogger("QualityGate")

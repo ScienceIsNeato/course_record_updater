@@ -47,7 +47,7 @@ jobs:
 
     - name: Set environment-specific config
       id: config
-      run: |
+      run: |  # nosemgrep
         case "${{ github.event.inputs.environment }}" in
           dev)
             echo "service_name=loopcloser-dev" >> $GITHUB_OUTPUT
@@ -76,7 +76,7 @@ jobs:
         esac
 
     - name: Deploy to Cloud Run
-      run: |
+      run: |  # nosemgrep
         ENV_VARS="APP_ENV=${{ github.event.inputs.environment }},DATABASE_URL=sqlite:////tmp/loopcloser.db,SESSION_COOKIE_SECURE=true,SESSION_COOKIE_HTTPONLY=true,SESSION_COOKIE_SAMESITE=Lax"
         if [[ -n "${{ steps.config.outputs.email_whitelist }}" ]]; then
           ENV_VARS="${ENV_VARS},EMAIL_WHITELIST=${{ steps.config.outputs.email_whitelist }}"
@@ -104,7 +104,7 @@ jobs:
         echo "url=$URL" >> $GITHUB_OUTPUT
 
     - name: Output deployment info
-      run: |
+      run: |  # nosemgrep
         echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY

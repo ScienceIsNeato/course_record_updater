@@ -5,7 +5,7 @@ Unit tests for BulkEmailJob model
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, Mock
 
-from bulk_email_models.bulk_email_job import BulkEmailJob
+from src.bulk_email_models.bulk_email_job import BulkEmailJob
 
 
 class TestBulkEmailJob:

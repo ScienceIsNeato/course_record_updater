@@ -8,9 +8,12 @@
 
 {% block nav_items %}
 <a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
-<button class="nav-link btn btn-link" type="button" onclick="showInstitutions()"><i class="fas fa-university me-1"></i>Institutions</button>
-<button class="nav-link btn btn-link" type="button" onclick="showUsers()"><i class="fas fa-users me-1"></i>Users</button>
-<button class="nav-link btn btn-link" type="button" onclick="showSystemSettings()"><i class="fas fa-cogs me-1"></i>System</button>
+<button class="nav-link btn btn-link" type="button" onclick="showInstitutions()"><i
+        class="fas fa-university me-1"></i>Institutions</button>
+<button class="nav-link btn btn-link" type="button" onclick="showUsers()"><i
+        class="fas fa-users me-1"></i>Users</button>
+<button class="nav-link btn btn-link" type="button" onclick="showSystemSettings()"><i
+        class="fas fa-cogs me-1"></i>System</button>
 {% endblock %}
 
 {% block page_title %}🏛️ Site Administration{% endblock %}
@@ -33,10 +36,7 @@
         [<span class="stat-number" id="userCount">0</span> Users]
     </div>
     <div class="header-actions ms-auto">
-        <button type="button" class="btn btn-sm btn-outline-primary" id="refreshDashboardButton">
-            <i class="fas fa-sync-alt"></i> Refresh
-        </button>
-        <span class="last-updated" id="dashboardLastUpdated">Last updated: --</span>
+        <!-- Removed manual refresh - data auto-refreshes after mutations -->
     </div>
 </div>
 
@@ -459,7 +459,8 @@
 </div>
 
 <!-- Institution Management Modals -->
-<div class="modal fade" id="createInstitutionModal" tabindex="-1" aria-labelledby="createInstitutionModalLabel" aria-hidden="true">
+<div class="modal fade" id="createInstitutionModal" tabindex="-1" aria-labelledby="createInstitutionModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -488,9 +489,10 @@
                     </div>
                     <div class="mb-3">
                         <label for="institutionWebsite" class="form-label">Website</label>
-                        <input type="url" class="form-control" id="institutionWebsite" name="website" placeholder="https://example.edu">
+                        <input type="url" class="form-control" id="institutionWebsite" name="website"
+                            placeholder="https://example.edu">
                     </div>
-                    
+
                     <hr class="my-4">
                     <h6 class="mb-3">Institution Administrator</h6>
                     <div class="mb-3">
@@ -522,7 +524,8 @@
 </div>
 
 <!-- Edit Institution Modal -->
-<div class="modal fade" id="editInstitutionModal" tabindex="-1" aria-labelledby="editInstitutionModalLabel" aria-hidden="true">
+<div class="modal fade" id="editInstitutionModal" tabindex="-1" aria-labelledby="editInstitutionModalLabel"
+    aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">

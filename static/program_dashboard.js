@@ -1,18 +1,16 @@
 /* global setLoadingState, setErrorState */
 (function () {
-  const API_ENDPOINT = '/api/dashboard/data';
+  const API_ENDPOINT = "/api/dashboard/data";
   const SELECTORS = {
-    title: 'programAdminTitle',
-    courseCount: 'programCourseCount',
-    facultyCount: 'programFacultyCount',
-    studentCount: 'programStudentCount',
-    sectionCount: 'programSectionCount',
-    lastUpdated: 'programLastUpdated',
-    refreshButton: 'programRefreshButton',
-    coursesContainer: 'programCoursesContainer',
-    facultyContainer: 'programFacultyContainer',
-    cloContainer: 'programCloContainer',
-    assessmentContainer: 'programAssessmentContainer'
+    title: "programAdminTitle",
+    courseCount: "programCourseCount",
+    facultyCount: "programFacultyCount",
+    studentCount: "programStudentCount",
+    sectionCount: "programSectionCount",
+    coursesContainer: "programCoursesContainer",
+    facultyContainer: "programFacultyContainer",
+    cloContainer: "programCloContainer",
+    assessmentContainer: "programAssessmentContainer",
   };
 
   const ProgramDashboard = {
@@ -21,16 +19,16 @@
     refreshInterval: 5 * 60 * 1000,
 
     init() {
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && Date.now() - this.lastFetch > this.refreshInterval) {
+      document.addEventListener("visibilitychange", () => {
+        if (
+          !document.hidden &&
+          Date.now() - this.lastFetch > this.refreshInterval
+        ) {
           this.loadData({ silent: true });
         }
       });
 
-      const refreshButton = document.getElementById(SELECTORS.refreshButton);
-      if (refreshButton) {
-        refreshButton.addEventListener('click', () => this.loadData({ silent: false }));
-      }
+      // Data auto-refreshes after mutations - no manual refresh button needed
 
       this.loadData();
       setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
@@ -43,24 +41,30 @@
     async loadData(options = {}) {
       const { silent = false } = options;
       if (!silent) {
-        this.setLoading(SELECTORS.coursesContainer, 'Loading courses...');
-        this.setLoading(SELECTORS.facultyContainer, 'Loading faculty assignments...');
-        this.setLoading(SELECTORS.cloContainer, 'Loading learning outcomes...');
-        this.setLoading(SELECTORS.assessmentContainer, 'Loading assessment results...');
+        this.setLoading(SELECTORS.coursesContainer, "Loading courses...");
+        this.setLoading(
+          SELECTORS.facultyContainer,
+          "Loading faculty assignments...",
+        );
+        this.setLoading(SELECTORS.cloContainer, "Loading learning outcomes...");
+        this.setLoading(
+          SELECTORS.assessmentContainer,
+          "Loading assessment results...",
+        );
       }
 
       try {
         const response = await fetch(API_ENDPOINT, {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
+            Accept: "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
         });
 
         const payload = await response.json();
         if (!response.ok || !payload.success) {
-          throw new Error(payload.error || 'Unable to load dashboard data');
+          throw new Error(payload.error || "Unable to load dashboard data");
         }
 
         this.cache = payload.data || {};
@@ -69,47 +73,70 @@
         this.render(this.cache);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.warn('Program dashboard load error:', error);
-        this.showError(SELECTORS.coursesContainer, 'Unable to load course data');
-        this.showError(SELECTORS.facultyContainer, 'Unable to load faculty data');
-        this.showError(SELECTORS.cloContainer, 'Unable to load learning outcomes');
-        this.showError(SELECTORS.assessmentContainer, 'Unable to load assessment results');
+        console.warn("Program dashboard load error:", error);
+        this.showError(
+          SELECTORS.coursesContainer,
+          "Unable to load course data",
+        );
+        this.showError(
+          SELECTORS.facultyContainer,
+          "Unable to load faculty data",
+        );
+        this.showError(
+          SELECTORS.cloContainer,
+          "Unable to load learning outcomes",
+        );
+        this.showError(
+          SELECTORS.assessmentContainer,
+          "Unable to load assessment results",
+        );
       }
     },
 
     render(data) {
       this.updateHeader(data);
-      this.renderCourses(data.courses || [], data.sections || [], data.program_overview || []);
+      this.renderCourses(
+        data.courses || [],
+        data.sections || [],
+        data.program_overview || [],
+      );
       this.renderFaculty(data.faculty_assignments || []);
       this.renderClos(data.courses || [], data.program_overview || []);
       this.renderAssessment(data.program_overview || []);
       const lastUpdated =
-        data.metadata && data.metadata.last_updated ? data.metadata.last_updated : null;
+        data.metadata && data.metadata.last_updated
+          ? data.metadata.last_updated
+          : null;
       this.updateLastUpdated(lastUpdated);
     },
 
     updateHeader(data) {
       const summary = data.summary || {};
-      document.getElementById(SELECTORS.courseCount).textContent = summary.courses ?? 0;
-      document.getElementById(SELECTORS.facultyCount).textContent = summary.faculty ?? 0;
-      document.getElementById(SELECTORS.studentCount).textContent = summary.students ?? 0;
-      document.getElementById(SELECTORS.sectionCount).textContent = summary.sections ?? 0;
+      document.getElementById(SELECTORS.courseCount).textContent =
+        summary.courses ?? 0;
+      document.getElementById(SELECTORS.facultyCount).textContent =
+        summary.faculty ?? 0;
+      document.getElementById(SELECTORS.studentCount).textContent =
+        summary.students ?? 0;
+      document.getElementById(SELECTORS.sectionCount).textContent =
+        summary.sections ?? 0;
 
       const programs = data.programs || [];
       if (programs.length === 1) {
         const program = programs[0];
         document.getElementById(SELECTORS.title).textContent =
-          `${program.name || 'Program'} Administration`;
+          `${program.name || "Program"} Administration`;
       } else if (programs.length > 1) {
         const names = programs
-          .map(p => p.name)
+          .map((p) => p.name)
           .filter(Boolean)
           .slice(0, 3)
-          .join(', ');
+          .join(", ");
         document.getElementById(SELECTORS.title).textContent =
-          `${programs.length} Programs — ${names}${programs.length > 3 ? '…' : ''}`;
+          `${programs.length} Programs — ${names}${programs.length > 3 ? "…" : ""}`;
       } else {
-        document.getElementById(SELECTORS.title).textContent = 'Program Overview';
+        document.getElementById(SELECTORS.title).textContent =
+          "Program Overview";
       }
     },
 
@@ -118,7 +145,7 @@
       if (!container) return;
 
       const courseMap = new Map();
-      courses.forEach(course => {
+      courses.forEach((course) => {
         const id = course.course_id || course.id;
         if (id && !courseMap.has(id)) {
           courseMap.set(id, course);
@@ -126,66 +153,73 @@
       });
 
       if (!courseMap.size) {
-        container.innerHTML = this.renderEmptyState(
-          'No courses found for this program',
-          'Add Course'
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState(
+            "No courses found for this program",
+            "Add Course",
+          ),
         );
         return;
       }
 
-      const sectionsByCourse = this.groupBy(sections, section => section.course_id || section.id);
+      const sectionsByCourse = this.groupBy(
+        sections,
+        (section) => section.course_id || section.id,
+      );
       const progressByProgram = new Map(
-        (programOverview || []).map(item => [item.program_id, item.assessment_progress])
+        (programOverview || []).map((item) => [
+          item.program_id,
+          item.assessment_progress,
+        ]),
       );
 
       const table = globalThis.panelManager.createSortableTable({
-        id: 'program-courses-table',
+        id: "program-courses-table",
         columns: [
-          { key: 'course', label: 'Course', sortable: true },
-          { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'enrollment', label: 'Students', sortable: true },
-          { key: 'program', label: 'Program', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: "course", label: "Course", sortable: true },
+          { key: "sections", label: "Sections", sortable: true },
+          { key: "enrollment", label: "Students", sortable: true },
+          { key: "program", label: "Program", sortable: true },
+          { key: "progress", label: "Progress", sortable: true },
         ],
-        data: Array.from(courseMap.values()).map(course => {
+        data: Array.from(courseMap.values()).map((course) => {
           const courseId = course.course_id || course.id;
           const programIdsFirst =
-            course.program_ids && course.program_ids[0] ? course.program_ids[0] : null;
+            course.program_ids && course.program_ids[0]
+              ? course.program_ids[0]
+              : null;
           const programId = course.program_id || programIdsFirst;
           const programProgress = progressByProgram.get(programId) || {};
           const courseSections = sectionsByCourse.get(courseId) || [];
           const sectionCount = courseSections.length;
           const enrollment = courseSections.reduce(
             (total, section) => total + (Number(section.enrollment) || 0),
-            0
+            0,
           );
           const percent = programProgress.percent_complete ?? 0;
           const completed = programProgress.completed ?? 0;
           const total = programProgress.total ?? 0;
 
           return {
-            course: `${course.course_number || course.number || ''}`.trim()
-              ? `${course.course_number || course.number} — ${course.course_title || course.title || course.name || ''}`
-              : course.course_title || course.title || course.name || 'Course',
+            course: `${course.course_number || course.number || ""}`.trim()
+              ? `${course.course_number || course.number} — ${course.course_title || course.title || course.name || ""}`
+              : course.course_title || course.title || course.name || "Course",
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
-            program: course.program_name || course.program || 'Program',
+            program: course.program_name || course.program || "Program",
             progress: `<div class="progress">
                 <div class="progress-bar bg-success" role="progressbar" style="width: ${Math.min(percent, 100)}%">${percent}%</div>
               </div>
               <small class="text-muted">${completed}/${total} complete</small>`,
             progress_sort: percent,
-            actions: `<button class="btn btn-sm btn-outline-primary" onclick="return false;">
-                <i class="fas fa-edit"></i>
-              </button>`
           };
-        })
+        }),
       });
 
-      container.innerHTML = '';
+      container.innerHTML = "";
       container.appendChild(table);
     },
 
@@ -194,25 +228,28 @@
       if (!container) return;
 
       if (!assignments.length) {
-        container.innerHTML = this.renderEmptyState('No faculty assignments yet', 'Assign Courses');
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState("No faculty assignments yet", "Assign Courses"),
+        );
         return;
       }
 
       const table = globalThis.panelManager.createSortableTable({
-        id: 'program-faculty-table',
+        id: "program-faculty-table",
         columns: [
-          { key: 'name', label: 'Faculty', sortable: true },
-          { key: 'courses', label: 'Courses', sortable: true },
-          { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'students', label: 'Students', sortable: true },
-          { key: 'programs', label: 'Programs', sortable: true }
+          { key: "name", label: "Faculty", sortable: true },
+          { key: "courses", label: "Courses", sortable: true },
+          { key: "sections", label: "Sections", sortable: true },
+          { key: "students", label: "Students", sortable: true },
+          { key: "programs", label: "Programs", sortable: true },
         ],
-        data: assignments.map(record => {
+        data: assignments.map((record) => {
           const courseCount = Number(record.course_count ?? 0);
           const sectionCount = Number(record.section_count ?? 0);
           const studentCount = Number(record.enrollment ?? 0);
           return {
-            name: record.full_name || record.name || 'Instructor',
+            name: record.full_name || record.name || "Instructor",
             courses: courseCount.toString(),
             courses_sort: courseCount.toString(),
             sections: sectionCount.toString(),
@@ -221,16 +258,18 @@
             students_sort: studentCount.toString(),
             programs:
               (record.program_summaries || [])
-                .map(program => (program && program.program_name ? program.program_name : null))
+                .map((program) =>
+                  program && program.program_name ? program.program_name : null,
+                )
                 .filter(Boolean)
-                .join(', ') ||
-              (record.program_ids || []).join(', ') ||
-              '—'
+                .join(", ") ||
+              (record.program_ids || []).join(", ") ||
+              "—",
           };
-        })
+        }),
       });
 
-      container.innerHTML = '';
+      container.innerHTML = "";
       container.appendChild(table);
     },
 
@@ -239,57 +278,63 @@
       if (!container) return;
 
       if (!courses.length) {
-        container.innerHTML = this.renderEmptyState(
-          'No learning outcomes configured yet',
-          'Add CLO'
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState(
+            "No learning outcomes configured yet",
+            "Add CLO",
+          ),
         );
         return;
       }
 
       const progressByProgram = new Map(
-        (programOverview || []).map(item => [item.program_id, item.assessment_progress])
+        (programOverview || []).map((item) => [
+          item.program_id,
+          item.assessment_progress,
+        ]),
       );
 
       const table = globalThis.panelManager.createSortableTable({
-        id: 'program-clo-table',
+        id: "program-clo-table",
         columns: [
-          { key: 'course', label: 'Course', sortable: true },
-          { key: 'clos', label: 'CLOs', sortable: true },
-          { key: 'status', label: 'Status', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true },
-          { key: 'actions', label: 'Actions', sortable: false }
+          { key: "course", label: "Course", sortable: true },
+          { key: "clos", label: "CLOs", sortable: true },
+          { key: "status", label: "Status", sortable: true },
+          { key: "progress", label: "Progress", sortable: true },
         ],
-        data: courses.map(course => {
+        data: courses.map((course) => {
           const programIdsFirst =
-            course.program_ids && course.program_ids[0] ? course.program_ids[0] : null;
+            course.program_ids && course.program_ids[0]
+              ? course.program_ids[0]
+              : null;
           const programId = course.program_id || programIdsFirst;
           const progress = progressByProgram.get(programId) || {};
           const percent = progress.percent_complete ?? 0;
-          const cloCount = (course.clo_count ?? (course.clos ? course.clos.length : 0)) || 0;
+          const cloCount =
+            (course.clo_count ?? (course.clos ? course.clos.length : 0)) || 0;
           // Determine status based on completion percentage
           let status;
           if (percent >= 75) {
-            status = 'On Track';
+            status = "On Track";
           } else if (percent >= 30) {
-            status = 'In Progress';
+            status = "In Progress";
           } else {
-            status = 'Needs Attention';
+            status = "Needs Attention";
           }
           return {
             course:
-              `${course.course_number || course.number || course.course_id || 'Course'} — ${course.course_title || course.title || course.name || ''}`.trim(),
+              `${course.course_number || course.number || course.course_id || "Course"} — ${course.course_title || course.title || course.name || ""}`.trim(),
             clos: cloCount.toString(),
             clos_sort: cloCount.toString(),
             status,
             progress: `${percent}%`,
             progress_sort: percent,
-            actions:
-              '<button class="btn btn-sm btn-outline-secondary" onclick="return false;">Manage</button>'
           };
-        })
+        }),
       });
 
-      container.innerHTML = '';
+      container.innerHTML = "";
       container.appendChild(table);
     },
 
@@ -298,32 +343,36 @@
       if (!container) return;
 
       if (!programOverview.length) {
-        container.innerHTML = this.renderEmptyState(
-          'No assessment activity recorded',
-          'Open Assessment Report'
+        container.innerHTML = "";
+        container.appendChild(
+          this.renderEmptyState(
+            "No assessment activity recorded",
+            "Open Assessment Report",
+          ),
         );
         return;
       }
 
       const table = globalThis.panelManager.createSortableTable({
-        id: 'program-assessment-table',
+        id: "program-assessment-table",
         columns: [
-          { key: 'program', label: 'Program', sortable: true },
-          { key: 'courses', label: 'Courses', sortable: true },
-          { key: 'sections', label: 'Sections', sortable: true },
-          { key: 'students', label: 'Students', sortable: true },
-          { key: 'progress', label: 'Progress', sortable: true }
+          { key: "program", label: "Program", sortable: true },
+          { key: "courses", label: "Courses", sortable: true },
+          { key: "sections", label: "Sections", sortable: true },
+          { key: "students", label: "Students", sortable: true },
+          { key: "progress", label: "Progress", sortable: true },
         ],
-        data: programOverview.map(item => {
+        data: programOverview.map((item) => {
           const percentComplete =
-            item.assessment_progress && item.assessment_progress.percent_complete !== undefined
+            item.assessment_progress &&
+            item.assessment_progress.percent_complete !== undefined
               ? item.assessment_progress.percent_complete
               : 0;
           const percent = percentComplete ?? 0;
           const studentCount = item.student_count ?? 0;
           const sectionCount = item.section_count ?? 0;
           return {
-            program: item.program_name || 'Program',
+            program: item.program_name || "Program",
             courses: (item.course_count ?? 0).toString(),
             courses_sort: (item.course_count ?? 0).toString(),
             sections: sectionCount.toString(),
@@ -331,19 +380,21 @@
             students: studentCount.toString(),
             students_sort: studentCount.toString(),
             progress: `${percent}%`,
-            progress_sort: percent
+            progress_sort: percent,
           };
-        })
+        }),
       });
 
-      container.innerHTML = '';
+      container.innerHTML = "";
       container.appendChild(table);
     },
 
     updateLastUpdated(timestamp) {
       const target = document.getElementById(SELECTORS.lastUpdated);
       if (!target) return;
-      const value = timestamp ? new Date(timestamp).toLocaleString() : new Date().toLocaleString();
+      const value = timestamp
+        ? new Date(timestamp).toLocaleString()
+        : new Date().toLocaleString();
       target.textContent = `Last updated: ${value}`;
     },
 
@@ -356,18 +407,26 @@
     },
 
     renderEmptyState(message, actionLabel) {
-      return `
-        <div class="panel-empty">
-          <div class="panel-empty-icon">📌</div>
-          <p>${message}</p>
-          <button class="btn btn-primary btn-sm" onclick="return false;">${actionLabel}</button>
-        </div>
-      `;
+      const wrapper = document.createElement("div");
+      wrapper.className = "panel-empty";
+      const icon = document.createElement("div");
+      icon.className = "panel-empty-icon";
+      icon.textContent = "📌";
+      const p = document.createElement("p");
+      p.textContent = message;
+      const button = document.createElement("button");
+      button.className = "btn btn-primary btn-sm";
+      button.textContent = actionLabel;
+      button.onclick = () => false;
+      wrapper.appendChild(icon);
+      wrapper.appendChild(p);
+      wrapper.appendChild(button);
+      return wrapper;
     },
 
     groupBy(items, keyFn) {
       const map = new Map();
-      items.forEach(item => {
+      items.forEach((item) => {
         const key = keyFn(item);
         if (!key) return;
         const group = map.get(key) || [];
@@ -375,15 +434,15 @@
         map.set(key, group);
       });
       return map;
-    }
+    },
   };
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener("DOMContentLoaded", () => {
     // Wait a bit for panelManager to be initialized
     setTimeout(() => {
-      if (typeof globalThis.panelManager === 'undefined') {
+      if (typeof globalThis.panelManager === "undefined") {
         // eslint-disable-next-line no-console
-        console.warn('Panel manager not initialized');
+        console.warn("Panel manager not initialized");
         return;
       }
       ProgramDashboard.init();
@@ -391,7 +450,7 @@
     }, 100);
   });
 
-  if (typeof module !== 'undefined' && module.exports) {
+  if (typeof module !== "undefined" && module.exports) {
     module.exports = ProgramDashboard;
   }
 })();

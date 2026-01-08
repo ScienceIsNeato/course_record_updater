@@ -5,16 +5,16 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-import bulk_email_service
-from bulk_email_service import BulkEmailService
+from src.services import bulk_email_service
+from src.services.bulk_email_service import BulkEmailService
 
 
 @pytest.mark.unit
 class TestBulkEmailService:
     """Test suite for BulkEmailService."""
 
-    @patch("bulk_email_service.threading.Thread")
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.threading.Thread")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_instructor_reminders_success(self, mock_bulk_email_job, mock_thread):
         """Test sending reminders to instructors successfully."""
         # Setup mock database session
@@ -65,7 +65,7 @@ class TestBulkEmailService:
         mock_thread.assert_called_once()
         mock_thread.return_value.start.assert_called_once()
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_instructor_reminders_instructor_not_found(self, mock_bulk_email_job):
         """Test sending reminders when instructor not found."""
         mock_db = Mock()
@@ -93,7 +93,7 @@ class TestBulkEmailService:
         call_args = mock_bulk_email_job.create_job.call_args
         assert call_args[1]["recipients"] == []
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_instructor_reminders_no_email(self, mock_bulk_email_job):
         """Test sending reminders when instructor has no email."""
         mock_db = Mock()
@@ -127,7 +127,7 @@ class TestBulkEmailService:
         call_args = mock_bulk_email_job.create_job.call_args
         assert call_args[1]["recipients"] == []
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_instructor_reminders_no_name_fallback(self, mock_bulk_email_job):
         """Test sending reminders when instructor has no name (fallback to email)."""
         mock_db = Mock()
@@ -251,7 +251,7 @@ class TestBulkEmailService:
         assert "/reminder-login?next=/assessments?course=course-123" in text
         assert "enter your course assessments" in text
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_get_job_status_success(self, mock_bulk_email_job):
         """Test getting job status successfully."""
         mock_db = Mock()
@@ -278,7 +278,7 @@ class TestBulkEmailService:
         assert result["total_recipients"] == 10
         assert result["emails_sent"] == 5
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_get_job_status_not_found(self, mock_bulk_email_job):
         """Test getting status for non-existent job."""
         mock_db = Mock()
@@ -288,7 +288,7 @@ class TestBulkEmailService:
 
         assert result is None
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_get_recent_jobs_success(self, mock_bulk_email_job):
         """Test getting recent jobs."""
         mock_db = Mock()
@@ -321,7 +321,7 @@ class TestBulkEmailService:
         assert results[0]["job_id"] == "job-1"
         assert results[1]["job_id"] == "job-2"
 
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_get_recent_jobs_empty(self, mock_bulk_email_job):
         """Test getting recent jobs when none exist."""
         mock_db = Mock()
@@ -331,10 +331,10 @@ class TestBulkEmailService:
 
         assert results == []
 
-    @patch("database_factory.get_database_service")
-    @patch("bulk_email_service.EmailManager")
-    @patch("bulk_email_service.EmailService")
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.database.database_factory.get_database_service")
+    @patch("src.services.bulk_email_service.EmailManager")
+    @patch("src.services.bulk_email_service.EmailService")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_emails_background_success(
         self,
         mock_bulk_email_job,
@@ -396,8 +396,8 @@ class TestBulkEmailService:
         mock_db.commit.assert_called()
         mock_db.close.assert_called_once()
 
-    @patch("database_factory.get_database_service")
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.database.database_factory.get_database_service")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_emails_background_job_not_found(
         self, mock_bulk_email_job, mock_get_db
     ):
@@ -425,8 +425,8 @@ class TestBulkEmailService:
 
         mock_db.close.assert_called_once()
 
-    @patch("database_factory.get_database_service")
-    @patch("bulk_email_service.BulkEmailJob")
+    @patch("src.database.database_factory.get_database_service")
+    @patch("src.services.bulk_email_service.BulkEmailJob")
     def test_send_emails_background_exception_handling(
         self, mock_bulk_email_job, mock_get_db
     ):

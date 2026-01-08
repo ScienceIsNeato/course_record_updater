@@ -2,8 +2,8 @@
 import pytest
 
 # Import the class we intend to test
-from adapters.base_adapter import BaseAdapter, ValidationError
-from term_utils import get_allowed_terms
+from src.adapters.base_adapter import BaseAdapter, ValidationError
+from src.utils.term_utils import get_allowed_terms
 
 # --- Test Data ---
 

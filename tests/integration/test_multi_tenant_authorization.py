@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from auth_service import Permission, UserRole
+from src.services.auth_service import Permission, UserRole
 
 
 class TestInstitutionDataIsolation:
@@ -29,7 +29,9 @@ class TestInstitutionDataIsolation:
 
         with app.test_request_context():
             # Mock institution admin user from Institution A
-            with patch("auth_service.auth_service.get_current_user") as mock_user:
+            with patch(
+                "src.services.auth_service.auth_service.get_current_user"
+            ) as mock_user:
                 mock_user.return_value = {
                     "user_id": "inst-admin-a",
                     "role": "institution_admin",
@@ -37,14 +39,16 @@ class TestInstitutionDataIsolation:
                     "accessible_institutions": ["institution-a"],
                 }
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     # Test accessing own institution's programs
-                    from api_routes import list_programs
+                    from src.api_routes import list_programs
 
                     with patch(
-                        "api_routes.get_programs_by_institution"
+                        "src.api_routes.get_programs_by_institution"
                     ) as mock_get_programs:
                         mock_get_programs.return_value = [
                             {
@@ -55,10 +59,10 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "api_routes.get_current_institution_id"
+                            "src.api_routes.get_current_institution_id"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("api_routes.jsonify") as mock_jsonify:
+                            with patch("src.api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_programs()
@@ -75,7 +79,9 @@ class TestInstitutionDataIsolation:
 
         with app.test_request_context():
             # Mock program admin from Institution A
-            with patch("auth_service.auth_service.get_current_user") as mock_user:
+            with patch(
+                "src.services.auth_service.auth_service.get_current_user"
+            ) as mock_user:
                 mock_user.return_value = {
                     "user_id": "prog-admin-a",
                     "role": "program_admin",
@@ -83,13 +89,15 @@ class TestInstitutionDataIsolation:
                     "program_ids": ["program-a1"],
                 }
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     # Test accessing courses - should be filtered by institution
-                    from api_routes import list_courses
+                    from src.api_routes import list_courses
 
-                    with patch("api_routes.get_all_courses") as mock_get_courses:
+                    with patch("src.api_routes.get_all_courses") as mock_get_courses:
                         # Mock courses from multiple institutions
                         mock_get_courses.return_value = [
                             {
@@ -105,10 +113,10 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "api_routes.get_current_institution_id"
+                            "src.api_routes.get_current_institution_id"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("api_routes.jsonify") as mock_jsonify:
+                            with patch("src.api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_courses()
@@ -124,21 +132,25 @@ class TestInstitutionDataIsolation:
 
         with app.test_request_context():
             # Mock instructor from Institution A
-            with patch("auth_service.auth_service.get_current_user") as mock_user:
+            with patch(
+                "src.services.auth_service.auth_service.get_current_user"
+            ) as mock_user:
                 mock_user.return_value = {
                     "user_id": "instructor-a",
                     "role": "instructor",
                     "institution_id": "institution-a",
                 }
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     # Test accessing sections - instructors get filtered by instructor_id
-                    from api_routes import list_sections
+                    from src.api_routes import list_sections
 
                     with patch(
-                        "api_routes.get_sections_by_instructor"
+                        "src.api_routes.get_sections_by_instructor"
                     ) as mock_get_sections:
                         mock_get_sections.return_value = [
                             {
@@ -149,10 +161,10 @@ class TestInstitutionDataIsolation:
                         ]
 
                         with patch(
-                            "api_routes.get_current_institution_id"
+                            "src.api_routes.get_current_institution_id"
                         ) as mock_inst_id:
                             mock_inst_id.return_value = "institution-a"
-                            with patch("api_routes.jsonify") as mock_jsonify:
+                            with patch("src.api_routes.jsonify") as mock_jsonify:
                                 mock_jsonify.return_value = MagicMock()
 
                                 _ = list_sections()
@@ -168,7 +180,7 @@ class TestProgramScopedAccess:
 
     def test_program_admin_scoped_to_assigned_programs(self):
         """Test that program admin can only access their assigned programs"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         # Test program admin with multiple programs
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -210,7 +222,7 @@ class TestProgramScopedAccess:
 
     def test_program_admin_cannot_access_programs_from_other_institutions(self):
         """Test that program admin cannot access programs from other institutions even if program IDs match"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -242,7 +254,9 @@ class TestCrossTenantAccessPrevention:
 
         with app.test_request_context("/api/institutions/institution-b"):
             # Mock institution admin from Institution A trying to access Institution B
-            with patch("auth_service.auth_service.get_current_user") as mock_user:
+            with patch(
+                "src.services.auth_service.auth_service.get_current_user"
+            ) as mock_user:
                 mock_user.return_value = {
                     "user_id": "inst-admin-a",
                     "role": "institution_admin",
@@ -251,7 +265,7 @@ class TestCrossTenantAccessPrevention:
                 }
 
                 # Test permission decorator with context
-                from auth_service import permission_required
+                from src.services.auth_service import permission_required
 
                 @permission_required(
                     "view_institution_data", context_keys=["institution_id"]
@@ -259,11 +273,13 @@ class TestCrossTenantAccessPrevention:
                 def test_endpoint(institution_id):
                     return f"Accessing {institution_id}"
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     # Should deny access to different institution
                     mock_has_perm.return_value = False
 
-                    with patch("auth_service.jsonify") as mock_jsonify:
+                    with patch("src.services.auth_service.jsonify") as mock_jsonify:
                         mock_jsonify.return_value = (MagicMock(), 403)
 
                         result = test_endpoint("institution-b")
@@ -278,7 +294,9 @@ class TestCrossTenantAccessPrevention:
 
         with app.test_request_context("/api/programs/program-b1"):
             # Mock program admin trying to access program outside their scope
-            with patch("auth_service.auth_service.get_current_user") as mock_user:
+            with patch(
+                "src.services.auth_service.auth_service.get_current_user"
+            ) as mock_user:
                 mock_user.return_value = {
                     "user_id": "prog-admin-a",
                     "role": "program_admin",
@@ -286,17 +304,19 @@ class TestCrossTenantAccessPrevention:
                     "program_ids": ["program-a1"],
                 }
 
-                from auth_service import permission_required
+                from src.services.auth_service import permission_required
 
                 @permission_required("view_program_data", context_keys=["program_id"])
                 def test_program_endpoint(program_id):
                     return f"Accessing program {program_id}"
 
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     # Should deny access to program outside scope
                     mock_has_perm.return_value = False
 
-                    with patch("auth_service.jsonify") as mock_jsonify:
+                    with patch("src.services.auth_service.jsonify") as mock_jsonify:
                         mock_jsonify.return_value = (MagicMock(), 403)
 
                         result = test_program_endpoint("program-b1")
@@ -311,23 +331,30 @@ class TestRoleHierarchyAccess:
 
     def test_site_admin_can_access_all_institutions(self):
         """Test that site admin can access data from any institution"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {"user_id": "site-admin", "role": "site_admin"}
 
             service = AuthService()
 
-            # Site admin should have access to any institution
-            institutions = service.get_accessible_institutions()
-            # Use the actual mock institution IDs from AuthService
-            assert "inst-123" in institutions
-            assert "inst-456" in institutions
-            assert len(institutions) >= 2
+            with patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_db_get:
+                mock_db_get.return_value = [
+                    {"institution_id": "inst-123", "name": "Inst 123"},
+                    {"institution_id": "inst-456", "name": "Inst 456"},
+                ]
+                # Site admin should have access to any institution
+                institutions = service.get_accessible_institutions()
+                # Use the actual mock institution IDs from AuthService
+                assert "inst-123" in institutions
+                assert "inst-456" in institutions
+                assert len(institutions) >= 2
 
     def test_institution_admin_hierarchy_over_program_admin(self):
         """Test that institution admin can access all programs in their institution"""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -338,16 +365,23 @@ class TestRoleHierarchyAccess:
 
             service = AuthService()
 
-            # Institution admin should access all programs in their institution
-            programs = service.get_accessible_programs()
-            # Use the actual mock program IDs from AuthService
-            assert "prog-123" in programs
-            assert "prog-456" in programs
-            assert len(programs) >= 2
+            with patch(
+                "src.database.database_service.get_programs_by_institution"
+            ) as mock_db_get:
+                mock_db_get.return_value = [
+                    {"program_id": "prog-123", "name": "Prog 123"},
+                    {"program_id": "prog-456", "name": "Prog 456"},
+                ]
+                # Institution admin should access all programs in their institution
+                programs = service.get_accessible_programs()
+                # Use the actual mock program IDs from AuthService
+                assert "prog-123" in programs
+                assert "prog-456" in programs
+                assert len(programs) >= 2
 
     def test_role_hierarchy_permission_inheritance(self):
         """Test that higher roles inherit permissions from lower roles"""
-        from auth_service import ROLE_PERMISSIONS, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, UserRole
 
         # Site admin should have all permissions
         site_admin_perms = ROLE_PERMISSIONS[UserRole.SITE_ADMIN.value]
@@ -380,16 +414,20 @@ class TestContextAwareAPIEndpoints:
         with app.test_request_context("/api/institutions/inst-123/programs"):
             from flask import request
 
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("view_program_data", context_keys=["institution_id"])
             def test_endpoint():
                 return "success"
 
             # Mock the permission checking
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = True
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     # The decorator should extract institution_id from URL
@@ -411,15 +449,19 @@ class TestContextAwareAPIEndpoints:
             method="POST",
             json={"program_id": "prog-456", "name": "Test Course"},
         ):
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required("manage_courses", context_keys=["program_id"])
             def test_create_course():
                 return "course created"
 
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = True
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     _ = test_create_course()
@@ -434,7 +476,7 @@ class TestContextAwareAPIEndpoints:
         with app.test_request_context(
             "/api/programs/prog-123/courses/course-456", method="PUT"
         ):
-            from auth_service import permission_required
+            from src.services.auth_service import permission_required
 
             @permission_required(
                 "manage_courses", context_keys=["program_id", "course_id"]
@@ -442,9 +484,13 @@ class TestContextAwareAPIEndpoints:
             def test_update_course(program_id, course_id):
                 return f"Updated course {course_id} in program {program_id}"
 
-            with patch("auth_service.auth_service.is_authenticated") as mock_auth:
+            with patch(
+                "src.services.auth_service.auth_service.is_authenticated"
+            ) as mock_auth:
                 mock_auth.return_value = True
-                with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+                with patch(
+                    "src.services.auth_service.auth_service.has_permission"
+                ) as mock_has_perm:
                     mock_has_perm.return_value = True
 
                     _ = test_update_course("prog-123", "course-456")
@@ -461,7 +507,7 @@ class TestAuthorizationSystemIntegration:
         # This would be a comprehensive end-to-end test
         # For now, we'll test the key integration points
 
-        from auth_service import AuthService, UserRole
+        from src.services.auth_service import AuthService, UserRole
 
         # Test that all components work together
         _ = AuthService()
@@ -480,7 +526,7 @@ class TestAuthorizationSystemIntegration:
 
     def test_permission_system_completeness(self):
         """Test that permission system covers all required scenarios"""
-        from auth_service import ROLE_PERMISSIONS, Permission, UserRole
+        from src.services.auth_service import ROLE_PERMISSIONS, Permission, UserRole
 
         # Test that all roles have permissions defined
         for role in UserRole:
@@ -511,7 +557,11 @@ class TestAuthorizationSystemIntegration:
 
     def test_authorization_decorators_integration(self):
         """Test that authorization decorators integrate properly with Flask"""
-        from auth_service import login_required, permission_required, role_required
+        from src.services.auth_service import (
+            login_required,
+            permission_required,
+            role_required,
+        )
 
         app = Flask(__name__)
 

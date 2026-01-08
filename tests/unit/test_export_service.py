@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pandas as pd
 import pytest
 
-from export_service import ExportConfig, ExportResult, ExportService
+from src.services.export_service import ExportConfig, ExportResult, ExportService
 
 
 class TestExportService:
@@ -61,9 +61,9 @@ class TestExportService:
         assert result.success is False
         assert "Adapter not found: nonexistent_adapter" in result.errors
 
-    @patch("export_service.get_all_courses")
-    @patch("export_service.get_all_users")
-    @patch("export_service.get_active_terms")
+    @patch("src.services.export_service.get_all_courses")
+    @patch("src.services.export_service.get_all_users")
+    @patch("src.services.export_service.get_active_terms")
     def test_fetch_export_data_empty(self, mock_terms, mock_users, mock_courses):
         """Test fetching export data when no data exists."""
         # Mock empty data
@@ -81,9 +81,9 @@ class TestExportService:
         assert "course_sections" in data
         assert "institutions" in data
 
-    @patch("export_service.get_all_courses")
-    @patch("export_service.get_all_users")
-    @patch("export_service.get_active_terms")
+    @patch("src.services.export_service.get_all_courses")
+    @patch("src.services.export_service.get_all_users")
+    @patch("src.services.export_service.get_active_terms")
     def test_fetch_export_data_with_data(self, mock_terms, mock_users, mock_courses):
         """Test fetching export data when data exists."""
         # Mock data
@@ -98,9 +98,9 @@ class TestExportService:
         assert len(data["users"]) == 1
         assert len(data["terms"]) == 1
 
-    @patch("export_service.get_all_courses")
-    @patch("export_service.get_all_users")
-    @patch("export_service.get_active_terms")
+    @patch("src.services.export_service.get_all_courses")
+    @patch("src.services.export_service.get_all_users")
+    @patch("src.services.export_service.get_active_terms")
     def test_export_no_data(self, mock_terms, mock_users, mock_courses):
         """Test export when no data exists."""
         # Mock empty data
@@ -159,9 +159,9 @@ class TestExportServiceAdapterRegistry:
         assert has_access is False
         assert "Access denied" in message  # Access check happens first
 
-    @patch("export_service.get_all_courses")
-    @patch("export_service.get_all_users")
-    @patch("export_service.get_active_terms")
+    @patch("src.services.export_service.get_all_courses")
+    @patch("src.services.export_service.get_all_users")
+    @patch("src.services.export_service.get_active_terms")
     def test_export_with_adapter_supports_export_false(
         self, mock_terms, mock_users, mock_courses
     ):
@@ -189,9 +189,9 @@ class TestExportServiceAdapterRegistry:
             assert result.success is False
             assert "does not support export functionality" in result.errors[0]
 
-    @patch("export_service.get_all_courses")
-    @patch("export_service.get_all_users")
-    @patch("export_service.get_active_terms")
+    @patch("src.services.export_service.get_all_courses")
+    @patch("src.services.export_service.get_all_users")
+    @patch("src.services.export_service.get_active_terms")
     def test_export_with_adapter_success(self, mock_terms, mock_users, mock_courses):
         """Test successful export with adapter."""
         # Mock some data
@@ -225,7 +225,7 @@ class TestExportServiceAdapterRegistry:
 
         # Mock the registry to throw an error
         with patch.object(service.registry, "get_adapter_by_id") as mock_get_adapter:
-            from adapters.adapter_registry import AdapterRegistryError
+            from src.adapters.adapter_registry import AdapterRegistryError
 
             mock_get_adapter.side_effect = AdapterRegistryError("Registry error")
 
@@ -245,7 +245,7 @@ class TestCreateExportService:
 
     def test_create_export_service(self):
         """Test the factory function creates a service."""
-        from export_service import create_export_service
+        from src.services.export_service import create_export_service
 
         service = create_export_service()
         assert isinstance(service, ExportService)

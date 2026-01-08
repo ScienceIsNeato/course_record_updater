@@ -7,15 +7,15 @@ using a test-driven development (TDD) approach.
 
 import csv
 import json
-import tempfile
 import zipfile
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 
-from adapters.generic_csv_adapter import CSV_COLUMNS, EXPORT_ORDER, GenericCSVAdapter
+from src.adapters.generic_csv_adapter import (
+    EXPORT_ORDER,
+    GenericCSVAdapter,
+)
 
 
 @pytest.mark.unit
@@ -195,7 +195,7 @@ class TestGenericCSVAdapterExport:
             assert "inst-1,Test University,TU" in lines[1]
 
     def test_export_excludes_sensitive_user_fields(self, tmp_path):
-        """User export includes password_hash (for test fixtures) but excludes active tokens."""
+        """User export excludes sensitive fields including password_hash and active tokens."""
         adapter = GenericCSVAdapter()
         output_file = tmp_path / "export.zip"
 
@@ -241,8 +241,8 @@ class TestGenericCSVAdapterExport:
             assert user["email"] == "test@example.edu"
             assert user["first_name"] == "John"
 
-            # Should have password_hash (for test fixtures)
-            assert user["password_hash"] == "$2b$12$SENSITIVE_HASH"
+            # Should NOT have password_hash (security fix)
+            assert "password_hash" not in user
 
             # Should NOT have active tokens (still sensitive)
             assert "password_reset_token" not in user

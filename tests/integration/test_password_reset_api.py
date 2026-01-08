@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import app
+from src.app import app
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def client():
 class TestPasswordResetAPI:
     """Test password reset API endpoints"""
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_forgot_password_success(self, mock_service, client):
         """Test successful password reset request"""
         # Setup
@@ -75,7 +75,7 @@ class TestPasswordResetAPI:
         assert data["success"] is False
         assert "No JSON data provided" in data["error"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_forgot_password_rate_limit(self, mock_service, client):
         """Test password reset request with rate limit exceeded"""
         # Setup
@@ -94,7 +94,7 @@ class TestPasswordResetAPI:
         assert data["success"] is False
         assert "Too many" in data["error"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_forgot_password_development_restriction(self, mock_service, client):
         """Test password reset request with development email restriction"""
         # Setup
@@ -119,7 +119,7 @@ class TestPasswordResetAPI:
 class TestResetPasswordAPI:
     """Test password reset completion API"""
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_password_success(self, mock_service, client):
         """Test successful password reset"""
         # Setup
@@ -163,7 +163,7 @@ class TestResetPasswordAPI:
         assert data["success"] is False
         assert "Missing required field: new_password" in data["error"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_password_invalid_token(self, mock_service, client):
         """Test password reset with invalid token"""
         # Setup
@@ -184,7 +184,7 @@ class TestResetPasswordAPI:
         assert data["success"] is False
         assert "Invalid token" in data["error"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_password_validation_failed(self, mock_service, client):
         """Test password reset with validation failure"""
         # Setup
@@ -207,7 +207,7 @@ class TestResetPasswordAPI:
 class TestValidateResetTokenAPI:
     """Test reset token validation API"""
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_validate_token_valid(self, mock_service, client):
         """Test validation of valid token"""
         # Setup
@@ -228,7 +228,7 @@ class TestValidateResetTokenAPI:
         assert data["email"] == "test@example.com"
         mock_service.validate_reset_token.assert_called_once_with("valid-token")
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_validate_token_invalid(self, mock_service, client):
         """Test validation of invalid token"""
         # Setup
@@ -247,7 +247,7 @@ class TestValidateResetTokenAPI:
         assert data["valid"] is False
         assert "invalid" in data["message"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_validate_token_error(self, mock_service, client):
         """Test token validation with service error"""
         # Setup
@@ -266,7 +266,7 @@ class TestValidateResetTokenAPI:
 class TestResetStatusAPI:
     """Test reset status API"""
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_status_pending(self, mock_service, client):
         """Test getting reset status when reset is pending"""
         # Setup
@@ -287,7 +287,7 @@ class TestResetStatusAPI:
         assert data["expires_at"] == "2024-12-31T23:59:59"
         mock_service.get_reset_status.assert_called_once_with("test@example.com")
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_status_no_pending(self, mock_service, client):
         """Test getting reset status when no reset is pending"""
         # Setup
@@ -306,7 +306,7 @@ class TestResetStatusAPI:
         assert data["has_pending_reset"] is False
         assert "No pending" in data["message"]
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_reset_status_error(self, mock_service, client):
         """Test reset status with service error"""
         # Setup
@@ -325,7 +325,7 @@ class TestResetStatusAPI:
 class TestPasswordResetFlowIntegration:
     """Integration tests for complete password reset flow"""
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_complete_password_reset_flow(self, mock_service, client):
         """Test complete password reset flow: request -> validate -> reset"""
 
@@ -381,7 +381,7 @@ class TestPasswordResetFlowIntegration:
         mock_service.validate_reset_token.assert_called_once()
         mock_service.reset_password.assert_called_once()
 
-    @patch("password_reset_service.PasswordResetService")
+    @patch("src.services.password_reset_service.PasswordResetService")
     def test_password_reset_with_status_check(self, mock_service, client):
         """Test password reset flow with status checking"""
 

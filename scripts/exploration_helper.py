@@ -17,37 +17,37 @@ from typing import Dict, List, Optional
 
 class ExplorationTracker:
     """Track exploration progress and findings."""
-    
+
     def __init__(self, output_dir: Path):
         self.output_dir = output_dir
         self.progress_file = output_dir / "testing_progress.json"
         self.findings_file = output_dir / "findings.json"
-        
+
         # Initialize progress tracking
         self.progress = self._load_progress()
         self.findings = self._load_findings()
-    
+
     def _load_progress(self) -> Dict:
         """Load progress from file or create new."""
         if self.progress_file.exists():
             try:
                 with open(self.progress_file, "r") as f:
                     return json.load(f)
-            except Exception:
+            except Exception:  # nosec B110 - fallback to defaults if file is corrupted
                 pass
         return {
             "pages_tested": [],
             "current_page": None,
             "start_time": None,
         }
-    
+
     def _load_findings(self) -> Dict:
         """Load findings from file or create new."""
         if self.findings_file.exists():
             try:
                 with open(self.findings_file, "r") as f:
                     return json.load(f)
-            except Exception:
+            except Exception:  # nosec B110 - fallback to defaults if file is corrupted
                 pass
         return {
             "working": [],
@@ -56,30 +56,30 @@ class ExplorationTracker:
             "coming_soon": [],
             "unknown": [],
         }
-    
+
     def save_progress(self):
         """Save progress to file."""
         with open(self.progress_file, "w") as f:
             json.dump(self.progress, f, indent=2)
-    
+
     def save_findings(self):
         """Save findings to file."""
         with open(self.findings_file, "w") as f:
             json.dump(self.findings, f, indent=2)
-    
+
     def mark_page_tested(self, page_path: str, role: str):
         """Mark a page as tested."""
         key = f"{page_path}:{role}"
         if key not in self.progress["pages_tested"]:
             self.progress["pages_tested"].append(key)
         self.save_progress()
-    
+
     def add_finding(self, category: str, finding: Dict):
         """Add a finding to the appropriate category."""
         if category in self.findings:
             self.findings[category].append(finding)
             self.save_findings()
-    
+
     def get_statistics(self) -> Dict:
         """Get testing statistics."""
         return {
@@ -114,7 +114,7 @@ def validate_test_accounts() -> Dict[str, bool]:
             "password": "TestUser123!",
         },
     }
-    
+
     # TODO: Actually validate against database
     return {role: True for role in accounts.keys()}
 
@@ -122,7 +122,7 @@ def validate_test_accounts() -> Dict[str, bool]:
 def generate_test_report(tracker: ExplorationTracker) -> str:
     """Generate a summary test report."""
     stats = tracker.get_statistics()
-    
+
     report = f"""# Testing Progress Report
 
 ## Statistics
@@ -138,42 +138,44 @@ def generate_test_report(tracker: ExplorationTracker) -> str:
 
 ### Working Features ({stats['working']})
 """
-    
+
     for finding in tracker.findings["working"][:10]:  # Show first 10
         report += f"- {finding.get('element', 'Unknown')} on {finding.get('page', 'Unknown')}\n"
-    
+
     report += f"\n### Broken Features ({stats['broken']})\n"
-    
+
     for finding in tracker.findings["broken"][:10]:  # Show first 10
         report += f"- {finding.get('element', 'Unknown')} on {finding.get('page', 'Unknown')}: {finding.get('issue', 'Unknown issue')}\n"
-    
+
     return report
 
 
 def main():
     """Main entry point for exploration helper."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="UI Exploration Helper")
-    parser.add_argument("--check-accounts", action="store_true", help="Validate test accounts")
+    parser.add_argument(
+        "--check-accounts", action="store_true", help="Validate test accounts"
+    )
     parser.add_argument("--stats", action="store_true", help="Show testing statistics")
     parser.add_argument("--report", action="store_true", help="Generate test report")
-    
+
     args = parser.parse_args()
-    
+
     project_root = Path(__file__).parent.parent
     output_dir = project_root / "logs" / "exploration"
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     tracker = ExplorationTracker(output_dir)
-    
+
     if args.check_accounts:
         accounts = validate_test_accounts()
         print("Test Account Validation:")
         for role, valid in accounts.items():
             status = "✅" if valid else "❌"
             print(f"  {status} {role}")
-    
+
     if args.stats:
         stats = tracker.get_statistics()
         print("\nTesting Statistics:")
@@ -183,7 +185,7 @@ def main():
         print(f"  Partial: {stats['partial']}")
         print(f"  Coming Soon: {stats['coming_soon']}")
         print(f"  Unknown: {stats['unknown']}")
-    
+
     if args.report:
         report = generate_test_report(tracker)
         report_file = output_dir / "testing_report.md"
@@ -194,4 +196,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

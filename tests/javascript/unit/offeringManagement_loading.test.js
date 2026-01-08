@@ -124,7 +124,10 @@ describe('Offering Management - Loading Data', () => {
         });
 
         test('should show empty-state option when no programs are available for edit dropdown', async () => {
-            mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ programs: [] }) });
+            // Mock both programs and terms fetches (Promise.all requires both)
+            mockFetch
+                .mockResolvedValueOnce({ ok: true, json: async () => ({ programs: [] }) })
+                .mockResolvedValueOnce({ ok: true, json: async () => ({ terms: [] }) });
 
             const modal = document.getElementById('editOfferingModal');
             modal.dispatchEvent(new Event('show.bs.modal'));

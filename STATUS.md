@@ -1,57 +1,145 @@
-# 🚧 Current Work Status
+# Course Record Updater - Current Status
 
-**Last Updated**: 2025-12-16 00:42 UTC
+## Latest Work: Security Audit Diagnostics (2026-01-08)
+
+**Status**: 🚧 IN PROGRESS - identify why CI security gate fails silently
+
+**Findings**:
+- `python scripts/ship_it.py --checks security` currently fails locally; the earlier assumption that it passes locally was incorrect.
+- `detect-secrets-hook` exits with status 1 when `.secrets.baseline` has unstaged changes, but `set -e` caused `maintAInability-gate.sh` to exit before printing the helpful message. This explains the blank "Failure Details" block in CI.
+- Added a `set +e`/`set -e` guard around the detect-secrets invocation so the script now captures the output and reports the actionable error.
+- After fixing the silent failure, the log clearly shows:
+  - `detect-secrets`: complains that `.secrets.baseline` is unstaged (stage or revert it before re-running).
+  - `safety`: fails because it cannot connect to Safety's API project (needs investigation/possibly new project link or offline mode).
+
+**Next Actions**:
+- Decide whether to stage/update `.secrets.baseline` or revert it so detect-secrets passes.
+- Work with infra/key owners to fix the Safety project linkage/network failure so the dependency scan can authenticate in CI.
+
+## Previous Work: Terms Panel Refresh Fix (2026-01-08)
+
+**Status**: ✅ COMPLETE - Terms panel now refreshes after creating term
+
+**Previous Work**: PR Closing Protocol Execution (2026-01-07)
+**Branch**: `feat/reorganize-repository-structure`
+
+### Terms Panel Refresh Fix ✅
+
+**Problem**: After creating a new term via dashboard "Add Term" button, Terms panel didn't update until manual page refresh.
+
+**Root Cause**: Function name collision - `termManagement.js` overwrote dashboard's `loadTerms()` refresh function with table loader that only works on dedicated terms page.
+
+**Solution**: Smart wrapper in `termManagement.js` that preserves existing `loadTerms()` if present (dashboard), otherwise uses table loader.
+
+**Files Modified**:
+- `static/termManagement.js` (lines 497-511)
+
+**Verification**:
+- ✅ All termManagement tests pass (32/32)
+- ✅ All dashboard tests pass (57/57)
+- ✅ Frontend quality checks pass
+
+### ship_it.py Verbose & Complexity Fixes ✅
+
+**Problems**:
+1. `--verbose` flag not honored in PR validation path
+2. Security check output buffering in CI
+3. Complexity check not visible (actually WAS in PR checks, just not showing due to verbose issue)
+
+**Root Causes**:
+1. `_handle_pr_validation()` created QualityGateExecutor without passing `args.verbose`
+2. `run_checks_parallel()` not receiving verbose parameter in PR validation path
+3. CI security check missing `python -u` for unbuffered output
+
+**Solutions**:
+- `scripts/ship_it.py:1786` - Pass `verbose=args.verbose` to QualityGateExecutor
+- `scripts/ship_it.py:1809` - Pass `verbose=args.verbose` to run_checks_parallel
+- `.github/workflows/quality-gate.yml:369` - Add `python -u` for unbuffered security output
+
+**Verification**:
+- ✅ Complexity confirmed in PR checks (always was, now visible with --verbose)
+- ✅ --verbose now works correctly for PR validation
+- ✅ CI will show security check output in real-time
+
+**Files Modified**:
+- `scripts/ship_it.py` (lines 1786, 1809)
+- `.github/workflows/quality-gate.yml` (line 369)
+
+### PR Closing Protocol - Successfully Executed!
+
+**Protocol Created**: New universal `pr_closing_protocol.mdc` in cursor-rules
+
+**Results from First Execution:**
+- ✅ Resolved 18 PR comments in real-time (as fixes committed)
+- ✅ Demonstrated Groundhog Day Protocol fix
+- ✅ Protocol documented and working
+- ⏳ Iterating on Loop #3 (new bot comments + CI failures)
+
+### What's Working ✅
+
+**Test Suite (Local)**:
+- Unit: 1,578 tests passing
+- Integration: 177 tests passing
+- Coverage: 83%+ (with data/ included)
+- Complexity: All functions ≤ 15
+- All quality gates passing locally
+
+**Comments Resolved**: 20+ comments across 3 loops
+
+### Current Blockers (CI Failures)
+
+**1. E2E Tests (57 errors - ALL login 401s)**
+- Issue: Database path mismatch in CI
+- Fix in progress: Use absolute paths with ${{github.workspace}}
+- Status: Uncommitted
+
+**2. Unit Tests (timeout/exit 143)**
+- Issue: Output buffering/swallowing
+- Likely: tee changes causing hangs
+- Status: Needs investigation
+
+**3. Security Check (exit 1)**
+- Issue: detect-secrets or other tool failure
+- Passes locally
+- Status: Needs CI log analysis
+
+**4. Smoke Tests**
+- Issue: Likely same DB path issue as E2E
+- Status: Will fix with E2E fix
+
+### Uncommitted Changes:
+- .github/workflows/quality-gate.yml (E2E DB paths, coverage scope)
+- data/session/manager.py (datetime storage)
+- demos files (various fixes)
+
+### Next Steps:
+1. Finish fixing all CI issues
+2. Address remaining bot comments if legitimate
+3. Commit everything as one batch
+4. Verify ALL comments resolved
+5. Push once
+6. Monitor CI (final loop)
+
+### Key Learnings:
+- PR Closing Protocol works perfectly for comment resolution
+- Need to batch commits to avoid 70s quality gate per commit
+- Bot adds new comments after each push - expected behavior
+- Must resolve ALL before pushing (no partial pushes)
 
 ---
 
-## Current Task: Monitoring CI Results for PR #37 🔬
+## Session Summary
 
-**Latest Commit**: `ec1556d` - "fix: revert breaking npm ci and sonar config changes"
+**Major Accomplishments:**
+- Fixed all CI failures from Loop #1 (complexity, integration, DB mismatches)
+- Created seed_db.py architectural refactoring
+- Completed institution branding cleanup
+- Resolved 20+ PR comments systematically
+- Created and documented PR Closing Protocol
 
-**Status**: Hotfix pushed after `f5cefea` broke CI. Changes reverted:
-- ❌ `npm ci --ignore-scripts` → ✅ `npm install` (repo has no package-lock.json)
-- ❌ Sonar single-line exclusions → ✅ Multiline format (single-line broke parsing)
-- ❌ `wget` security flags → ✅ Plain wget (flags caused issues)
+**Remaining Work:**
+- Fix E2E/unit test CI environment issues
+- Resolve remaining bot comments
+- Final push when everything green
 
-CI is running on the hotfix; being monitored via `pr_status.py --watch 37` (terminal 4).
-
----
-
-## What Was Successfully Fixed (Commit f5cefea)
-
-### Code Quality ✅
-- **GitHub Actions Security**: Pinned all actions to full commit SHAs
-- **Code Smells Eliminated**:
-  - `models_sql.py`: String literal → constant (S1192)
-  - `import_service.py`: Return-value consistency (S3516)
-  - `api_routes.py`: Unused param removal (S1172)
-  - `static/script.js`: Nested function hoisting (S7721)
-
-### Test Coverage ✅
-- Python: 84.43% (+2.57pp)
-- JavaScript: 84.88%
-- Added 100+ targeted unit tests
-- New test file: `tests/unit/test_management_routes.py`
-
-### E2E Stability ✅
-- Fixed offering creation modal test (populate required Program field)
-
----
-
-## What Broke (Reverted in ec1556d)
-
-- Attempted npm security flags broke JS dependency install
-- Attempted Sonar config "simplification" broke analysis parsing
-- **Lesson**: Security hotspot fixes need local validation before push
-
----
-
-## Known Remaining Issues (Post-CI)
-
-**Expected Sonar Failures**:
-- Coverage on New Code: 52% (target: 80%) - 193 uncovered NEW lines
-- New Duplication Density: 3.63% (target: <3%)
-
-**Next Steps** (if CI confirms):
-1. Continue coverage work OR
-2. Document Sonar metrics as "acceptable technical debt" for this PR
+**Token Usage**: ~475k/1M (approaching limit - may need fresh context soon)

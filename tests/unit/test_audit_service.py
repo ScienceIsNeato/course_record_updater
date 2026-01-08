@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from audit_service import (
+from src.services.audit_service import (
     AuditService,
     EntityType,
     OperationType,
@@ -172,8 +172,8 @@ class TestGetChangedFields:
 class TestAuditServiceLogCreate:
     """Test AuditService.log_create method"""
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_create_success(self, mock_uuid, mock_db):
         """Test successful create log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -199,8 +199,8 @@ class TestAuditServiceLogCreate:
         assert call_args["old_values"] is None
         assert json.loads(call_args["new_values"])["email"] == "test@example.com"
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_create_sanitizes_sensitive_data(self, mock_uuid, mock_db):
         """Test create log sanitizes sensitive fields"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -217,8 +217,8 @@ class TestAuditServiceLogCreate:
         new_values = json.loads(call_args["new_values"])
         assert new_values["password"] == "[REDACTED]"
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_create_with_request_context(self, mock_uuid, mock_db):
         """Test create log includes request context"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -244,7 +244,7 @@ class TestAuditServiceLogCreate:
         assert call_args["request_id"] == "req-123"
         assert call_args["session_id"] == "sess-123"
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_log_create_db_failure_returns_none(self, mock_db):
         """Test create log returns None on database failure"""
         mock_db.create_audit_log.return_value = False
@@ -257,7 +257,7 @@ class TestAuditServiceLogCreate:
 
         assert result is None
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_log_create_exception_returns_none(self, mock_db):
         """Test create log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
@@ -274,8 +274,8 @@ class TestAuditServiceLogCreate:
 class TestAuditServiceLogUpdate:
     """Test AuditService.log_update method"""
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_update_success(self, mock_uuid, mock_db):
         """Test successful update log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -302,8 +302,8 @@ class TestAuditServiceLogUpdate:
         assert "email" in changed
         assert "role" not in changed
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_update_sanitizes_both_states(self, mock_uuid, mock_db):
         """Test update log sanitizes both old and new values"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -325,7 +325,7 @@ class TestAuditServiceLogUpdate:
         assert old["password"] == "[REDACTED]"
         assert new["password"] == "[REDACTED]"
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_log_update_exception_returns_none(self, mock_db):
         """Test update log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
@@ -343,8 +343,8 @@ class TestAuditServiceLogUpdate:
 class TestAuditServiceLogDelete:
     """Test AuditService.log_delete method"""
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_delete_success(self, mock_uuid, mock_db):
         """Test successful delete log"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -369,8 +369,8 @@ class TestAuditServiceLogDelete:
         assert call_args["changed_fields"] is None
         assert json.loads(call_args["old_values"])["email"] == "test@example.com"
 
-    @patch("audit_service.db")
-    @patch("audit_service.uuid.uuid4")
+    @patch("src.services.audit_service.db")
+    @patch("src.services.audit_service.uuid.uuid4")
     def test_log_delete_sanitizes_old_values(self, mock_uuid, mock_db):
         """Test delete log sanitizes old values"""
         mock_uuid.return_value = MagicMock(hex="audit-123")
@@ -386,7 +386,7 @@ class TestAuditServiceLogDelete:
         old = json.loads(call_args["old_values"])
         assert old["password"] == "[REDACTED]"
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_log_delete_exception_returns_none(self, mock_db):
         """Test delete log returns None on exception"""
         mock_db.create_audit_log.side_effect = Exception("Database error")
@@ -403,7 +403,7 @@ class TestAuditServiceLogDelete:
 class TestAuditServiceQueryMethods:
     """Test AuditService query methods"""
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_entity_history_success(self, mock_db):
         """Test get_entity_history returns logs"""
         mock_logs = [
@@ -419,7 +419,7 @@ class TestAuditServiceQueryMethods:
             "users", "user-123", 10
         )
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_entity_history_exception_returns_empty(self, mock_db):
         """Test get_entity_history returns empty list on exception"""
         mock_db.get_audit_logs_by_entity.side_effect = Exception("Database error")
@@ -428,7 +428,7 @@ class TestAuditServiceQueryMethods:
 
         assert result == []
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_user_activity_success(self, mock_db):
         """Test get_user_activity returns logs"""
         mock_logs = [{"audit_id": "1", "entity_type": "users"}]
@@ -446,7 +446,7 @@ class TestAuditServiceQueryMethods:
             "user-123", start_date, end_date, 50
         )
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_user_activity_exception_returns_empty(self, mock_db):
         """Test get_user_activity returns empty list on exception"""
         mock_db.get_audit_logs_by_user.side_effect = Exception("Database error")
@@ -455,7 +455,7 @@ class TestAuditServiceQueryMethods:
 
         assert result == []
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_recent_activity_success(self, mock_db):
         """Test get_recent_activity returns logs"""
         mock_logs = [{"audit_id": "1"}, {"audit_id": "2"}]
@@ -466,7 +466,7 @@ class TestAuditServiceQueryMethods:
         assert result == mock_logs
         mock_db.get_recent_audit_logs.assert_called_once_with("inst-1", 25)
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_get_recent_activity_exception_returns_empty(self, mock_db):
         """Test get_recent_activity returns empty list on exception"""
         mock_db.get_recent_audit_logs.side_effect = Exception("Database error")
@@ -479,7 +479,7 @@ class TestAuditServiceQueryMethods:
 class TestAuditServiceExport:
     """Test AuditService.export_audit_log method"""
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_export_as_csv_success(self, mock_db):
         """Test export as CSV"""
         mock_logs = [
@@ -510,7 +510,7 @@ class TestAuditServiceExport:
         assert "admin@example.com" in decoded
         assert "CREATE" in decoded
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_export_as_json_success(self, mock_db):
         """Test export as JSON"""
         mock_logs = [
@@ -534,7 +534,7 @@ class TestAuditServiceExport:
         assert len(decoded) == 1
         assert decoded[0]["audit_id"] == "audit-123"
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_export_with_filters(self, mock_db):
         """Test export with entity and user filters"""
         mock_db.get_audit_logs_filtered.return_value = []
@@ -559,7 +559,7 @@ class TestAuditServiceExport:
             institution_id="inst-1",
         )
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_export_unsupported_format_returns_empty(self, mock_db):
         """Test export with unsupported format returns empty bytes"""
         mock_db.get_audit_logs_filtered.return_value = []
@@ -573,7 +573,7 @@ class TestAuditServiceExport:
 
         assert result == b""
 
-    @patch("audit_service.db")
+    @patch("src.services.audit_service.db")
     def test_export_exception_returns_empty(self, mock_db):
         """Test export returns empty bytes on exception"""
         mock_db.get_audit_logs_filtered.side_effect = Exception("Database error")

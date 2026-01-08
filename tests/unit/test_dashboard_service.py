@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from dashboard_service import DashboardService, DashboardServiceError
+from src.services.dashboard_service import DashboardService, DashboardServiceError
 
 
 @pytest.fixture
@@ -14,13 +14,13 @@ def service():
 
 
 class TestDashboardServiceSiteAdmin:
-    @patch("dashboard_service.get_all_instructors")
-    @patch("dashboard_service.get_all_users")
-    @patch("dashboard_service.get_all_courses")
-    @patch("dashboard_service.get_programs_by_institution")
-    @patch("dashboard_service.get_active_terms")
-    @patch("dashboard_service.get_all_sections")
-    @patch("dashboard_service.get_all_institutions")
+    @patch("src.services.dashboard_service.get_all_instructors")
+    @patch("src.services.dashboard_service.get_all_users")
+    @patch("src.services.dashboard_service.get_all_courses")
+    @patch("src.services.dashboard_service.get_programs_by_institution")
+    @patch("src.services.dashboard_service.get_active_terms")
+    @patch("src.services.dashboard_service.get_all_sections")
+    @patch("src.services.dashboard_service.get_all_institutions")
     def test_site_admin_aggregation(
         self,
         mock_institutions,
@@ -59,13 +59,13 @@ class TestDashboardServiceSiteAdmin:
 
 
 class TestDashboardServiceScoped:
-    @patch("dashboard_service.get_institution_by_id")
-    @patch("dashboard_service.get_all_users")
-    @patch("dashboard_service.get_all_courses")
-    @patch("dashboard_service.get_programs_by_institution")
-    @patch("dashboard_service.get_active_terms")
-    @patch("dashboard_service.get_all_instructors")
-    @patch("dashboard_service.get_all_sections")
+    @patch("src.services.dashboard_service.get_institution_by_id")
+    @patch("src.services.dashboard_service.get_all_users")
+    @patch("src.services.dashboard_service.get_all_courses")
+    @patch("src.services.dashboard_service.get_programs_by_institution")
+    @patch("src.services.dashboard_service.get_active_terms")
+    @patch("src.services.dashboard_service.get_all_instructors")
+    @patch("src.services.dashboard_service.get_all_sections")
     def test_institution_admin_scope(
         self,
         mock_sections,
@@ -120,12 +120,12 @@ class TestDashboardServiceScoped:
         assert data["program_overview"]
         assert data["faculty"][0]["user_id"] == "u1"
 
-    @patch("dashboard_service.get_all_instructors")
-    @patch("dashboard_service.get_all_sections")
-    @patch("dashboard_service.get_courses_by_program")
-    @patch("dashboard_service.get_programs_by_institution")
-    @patch("dashboard_service.get_all_users")
-    @patch("dashboard_service.get_active_terms")
+    @patch("src.services.dashboard_service.get_all_instructors")
+    @patch("src.services.dashboard_service.get_all_sections")
+    @patch("src.services.dashboard_service.get_courses_by_program")
+    @patch("src.services.dashboard_service.get_programs_by_institution")
+    @patch("src.services.dashboard_service.get_all_users")
+    @patch("src.services.dashboard_service.get_active_terms")
     def test_program_admin_scope(
         self,
         mock_terms,
@@ -187,10 +187,10 @@ class TestDashboardServiceScoped:
         assert data["sections"][0]["course_id"] == "c1"
         assert data["instructors"][0]["user_id"] == "u1"
 
-    @patch("dashboard_service.get_programs_by_institution")
-    @patch("dashboard_service.get_all_courses")
-    @patch("dashboard_service.get_active_terms")
-    @patch("dashboard_service.get_all_sections")
+    @patch("src.services.dashboard_service.get_programs_by_institution")
+    @patch("src.services.dashboard_service.get_all_courses")
+    @patch("src.services.dashboard_service.get_active_terms")
+    @patch("src.services.dashboard_service.get_all_sections")
     def test_instructor_scope(
         self,
         mock_sections,
@@ -284,7 +284,7 @@ class TestDashboardServiceOfferingRollups:
 class TestDashboardServiceCLOEnrichment:
     """Test CLO data enrichment functionality."""
 
-    @patch("dashboard_service.get_course_outcomes")
+    @patch("src.services.dashboard_service.get_course_outcomes")
     def test_enrich_courses_with_clo_data_success(self, mock_get_clos, service):
         """Test successful CLO data enrichment."""
         # Mock CLO data
@@ -312,7 +312,7 @@ class TestDashboardServiceCLOEnrichment:
         mock_get_clos.assert_any_call("course-1")
         mock_get_clos.assert_any_call("course-2")
 
-    @patch("dashboard_service.get_course_outcomes")
+    @patch("src.services.dashboard_service.get_course_outcomes")
     def test_enrich_courses_with_clo_data_no_clos(self, mock_get_clos, service):
         """Test CLO enrichment when no CLOs exist."""
         mock_get_clos.return_value = []
@@ -323,7 +323,7 @@ class TestDashboardServiceCLOEnrichment:
         assert result[0]["clo_count"] == 0
         assert result[0]["clos"] == []
 
-    @patch("dashboard_service.get_course_outcomes")
+    @patch("src.services.dashboard_service.get_course_outcomes")
     def test_enrich_courses_with_clo_data_error_handling(self, mock_get_clos, service):
         """Test CLO enrichment handles errors gracefully."""
         mock_get_clos.side_effect = Exception("Database error")

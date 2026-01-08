@@ -1,6 +1,8 @@
 """SQLite-backed database_service unit tests."""
 
-import database_service
+from datetime import date, timedelta
+
+import src.database.database_service as database_service
 
 
 def test_create_and_get_institution():
@@ -330,6 +332,14 @@ def test_get_all_programs():
     assert test_program["name"] == "Test Program"
 
 
+def _make_active_term_dates(buffer_days: int = 7) -> tuple[str, str]:
+    """Return ISO start/end dates that guarantee term is active today."""
+    today = date.today()
+    start_date = today - timedelta(days=buffer_days)
+    end_date = today + timedelta(days=90)
+    return start_date.isoformat(), end_date.isoformat()
+
+
 def test_get_all_terms():
     """Test getting all terms for an institution."""
     # Create test institution
@@ -343,12 +353,13 @@ def test_get_all_terms():
     )
 
     # Create test term
+    start_date, end_date = _make_active_term_dates()
     term_data = {
         "term_code": "FA2024",
         "term_name": "Fall 2024",
         "institution_id": inst_id,
-        "start_date": "2024-08-15",
-        "end_date": "2024-12-15",
+        "start_date": start_date,
+        "end_date": end_date,
     }
     term_id = database_service.create_term(term_data)
 
@@ -1536,7 +1547,6 @@ def test_offering_crud_operations():
         "term_id": term_id,
         "institution_id": inst_id,
         "status": "active",
-        "capacity": 30,
         "total_enrollment": 0,
     }
     offering_id = database_service.create_course_offering(offering_data)
@@ -1544,7 +1554,6 @@ def test_offering_crud_operations():
 
     # Test update_course_offering
     update_data = {
-        "capacity": 40,
         "total_enrollment": 25,
         "status": "full",
     }
@@ -1552,8 +1561,8 @@ def test_offering_crud_operations():
     assert result is True
 
     offering = database_service.get_course_offering(offering_id)
-    assert offering["capacity"] == 40
     assert offering["total_enrollment"] == 25
+    assert offering["status"] == "full"
 
     # Test delete_course_offering (CASCADE deletes sections)
     result = database_service.delete_course_offering(offering_id)
@@ -1996,7 +2005,7 @@ def test_generate_unique_course_number_increments_suffix_when_collisions():
     """Covers _generate_unique_course_number loop when -V2/-V3 already exist."""
     from unittest.mock import patch
 
-    with patch("database_service.get_course_by_number") as mock_get:
+    with patch("src.database.database_service.get_course_by_number") as mock_get:
         # Collision for V2 and V3, then available on V4
         mock_get.side_effect = [
             {"course_id": "existing"},
@@ -2012,7 +2021,7 @@ def test_generate_unique_course_number_normalizes_base_number():
     """Covers base_number normalization and default fallback."""
     from unittest.mock import patch
 
-    with patch("database_service.get_course_by_number", return_value=None):
+    with patch("src.database.database_service.get_course_by_number", return_value=None):
         assert (
             database_service._generate_unique_course_number("  cs101  ", "inst-1")
             == "CS101-V2"

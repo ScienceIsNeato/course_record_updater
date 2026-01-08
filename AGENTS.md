@@ -2,7 +2,7 @@
 
 > **⚠️ AUTO-GENERATED FILE - DO NOT EDIT DIRECTLY**
 > 
-> **Last Updated:** 2025-12-14 09:27:32 UTC  
+> **Last Updated:** 2026-01-08 06:00:45 UTC  
 > **Source:** `cursor-rules/.cursor/rules/`  
 > **To modify:** Edit source files in `cursor-rules/.cursor/rules/*.mdc` and run `cursor-rules/build_agent_instructions.sh`
 
@@ -79,7 +79,16 @@ The following core modules must always be loaded:
 
 # core_principles
 
+# Core Principles and Practices 🧠
 
+## The Council (Counteracting Training Bias)
+
+Models are trained to complete tasks, not to question whether tasks should exist. That makes them excellent at closing tickets and dangerous at long-term project health. The Council framework gives you a vocabulary for steering between execution and strategy.
+
+**Default:** 🍷 Tyrion mode (strategic oversight)
+**Override:** Set `DRACARYS=true` for 🔥 Dany mode (focused execution)
+
+Prefix your reasoning with the appropriate emoji.
 
 # development_workflow
 
@@ -204,7 +213,6 @@ Verify tests after ANY modification (source, test, or config code).
 2. **Big Wins**: Target large contiguous uncovered blocks
 3. **Meaningful Testing**: Extend existing tests vs single-purpose error tests
 4. **Value Focus**: Ensure tests add genuine value beyond coverage metrics
-
 ### Coverage Analysis Rules
 1. **ONLY use ship_it.py --checks coverage**: Never run direct pytest coverage commands
 2. **Coverage failures are UNIQUE TO THIS COMMIT**: If coverage decreased, it's due to current changeset
@@ -213,6 +221,32 @@ Verify tests after ANY modification (source, test, or config code).
 5. **Understand test failures**: When tests fail, push further to understand why - don't delete them
 6. **Fix or explain**: If a test is impossible to run, surface to user with explanation
 7. **Coverage results in scratch file**: The ship_it.py --coverage check writes full pycov results to logs/coverage_report.txt for analysis
+
+## Development Practices
+
+### SOLID Principles
+- Single responsibility
+- Open-closed
+- Liskov substitution
+- Interface segregation
+- Dependency inversion
+
+### Test-Driven Development
+- Follow the Red, Green, Refactor cycle where appropriate
+- Maintain or improve test coverage with any changes
+- Use tests to validate design and implementation
+
+### Refactoring Strategy
+1. **Identify Need:** Recognize opportunities for refactoring (code smells, duplication, performance)
+2. **Analyze Impact:** Understand scope and potential impact; use search tools to find all occurrences
+3. **Plan Approach:** Define a step-by-step plan; ensure tests cover affected code; check local history and STATUS.md to avoid repeating failed approaches
+4. **Execute & Verify:** If simple and covered by tests, execute. If complex or high-risk, present plan for confirmation. Thoroughly test after.
+
+### Verification Process
+- **Fact Verification:** Double-check retrieved facts before relying on them
+- **Assumption Validation:** Explicitly state assumptions (including references); validate where possible
+- **Change Validation:** Validate against requirements before committing (run tests, linters)
+- **Impact Assessment:** Consider full impact on other parts of the system
 
 ## Strategic PR Review Protocol
 
@@ -250,81 +284,14 @@ When ship_it.py fails due to unaddressed PR comments:
 7. **Iterate**: Re-run ship_it.py, repeat until no unaddressed comments remain
 
 ### Comment Resolution Strategy
+- **Proactive Resolution**: ALWAYS resolve addressed, stale, or irrelevant comments without asking. This is expected behavior, not optional. Use `gh api graphql` to resolve threads programmatically.
 - **Reply to Each Thread**: Address each comment in its own thread to mark as resolved
 - **Cross-Reference**: Mention related comments addressed in the same thematic fix
 - **Show Resolution**: Explain how the issue was fixed with code examples when helpful
 - **Strategic Context**: Connect individual fixes to broader conceptual themes
 
-### Comment Resolution Hygiene (Prevents Wasted Cycles)
-
-**Anti-Pattern:** Fix code → Push → Assume comment is resolved ❌
-**Correct:** Fix code → Reply to thread → Resolve thread → Push ✅
-
-**When fixing an issue from PR feedback:**
-1. Make the code fix
-2. IMMEDIATELY reply to the comment thread with what was fixed
-3. Click "Resolve conversation" (or ask reviewer to resolve if you can't)
-
-**When receiving automated tool comments (Cursor, SonarQube, etc):**
-1. Identify unique issues vs duplicates (tools often flag same issue 5x)
-2. Fix root cause once
-3. Bulk-reply to all related threads: "Fixed in [commit] - duplicate of [issue]"
-4. Resolve all duplicate threads in one pass
-
-**Before claiming PR is ready:**
-1. Run `gh pr view --comments` to list unresolved threads
-2. For each unresolved: verify fix exists OR respond with resolution
-3. Resolve all threads that have been addressed
-
-# factual_communication
-
-# Factual Communication Protocol 🎯
-
-## Core Principles
-
-### Reality-First Communication
-- Prioritize accuracy over agreement; challenge ideas with technical evidence
-- Provide context and reasoning; scale enthusiasm to actual merit
-- Push back on suboptimal approaches; suggest better alternatives
-- Validate assumptions; ask clarifying questions before proceeding
-
-### Direct Technical Exchange
-- Eliminate superlatives ("amazing", "perfect") and reflexive agreement
-- Remove self-congratulatory language; focus on actionable information
-
-## Language Guidelines
-
-### Avoid
-- "You're absolutely right!"
-- Unverified superlatives ("Perfect!", "Excellent!")
-- Reflexive agreement ("You're absolutely right!")
-- Excessive emoji or bombastic language without substance
-
-### Prefer
-- Evidence-based responses ("This approach has merit because...")
-- Measured analysis ("I see a potential issue...", "Consider...")
-- Verification before proceeding ("Let me verify...")
-
-### Response Structure
-1. **Acknowledge** factually 2. **Analyze** merit 3. **Suggest** improvements 4. **Proceed**
-
-## Implementation Standards
-
-### Success Metrics
-- Technical accuracy and efficiency
-- Code quality and reduced iteration cycles
-- NOT: Agreement level, positive language density, enthusiasm matching
-
-### Before Acting
-- Verify correctness, consider alternatives, evaluate implications
-- Understand requirements, identify issues, suggest optimizations
-
-### Communication Style
-- Treat user as technical peer; provide honest assessment
-- Maximize information density; minimize response overhead
-- Focus on optimal outcomes over validation
-
-This protocol ensures grounded technical discussions focused on best outcomes.
+### Documentation Update Rule
+**When updating project documentation or rules**: ALWAYS update files in the `cursor-rules/` repo, NOT the ephemeral `.agent/` directory. The `.agent/` dir is generated from cursor-rules via setup.sh and is gitignored. Changes there are lost.
 
 # groundhog_day_protocol
 
@@ -617,6 +584,301 @@ test_approach.txt       (original)
 - User doesn't have to figure out which file is correct
 
 **Only exception:** When explicitly told "create a new file" or when the change is so fundamental that preserving the original is necessary for comparison.
+
+# pr_closing_protocol
+
+# PR Closing Protocol 🔄
+
+## Purpose
+
+This protocol provides a systematic loop for closing PRs by addressing all feedback, CI failures, and quality issues in a coordinated manner with real-time comment resolution.
+
+## The PR Closing Loop
+
+### Step 1: Gather All Issues
+**Run your project's PR validation check to collect everything wrong.**
+
+This should generate:
+- Comprehensive checklist of all issues
+- Individual error logs for each failing check
+- List of unresolved PR comments
+- CI status summary
+
+**Example (if you have a validation script):**
+```bash
+cd ${AGENT_HOME} && python scripts/ship_it.py --validation-type PR --no-fail-fast
+```
+
+**Or manually gather:**
+- Fetch PR comments via `gh api graphql`
+- Check CI status via `gh pr checks`
+- Run local quality gates
+
+### Step 2: Create Comprehensive Plan & Resolve Stale Comments
+**Develop a planning document that maps code changes to comments:**
+
+**🔑 CRITICAL: While reviewing comments, immediately resolve any that are already fixed/outdated**
+
+```bash
+# For each unresolved comment, check:
+# - Is this already fixed in recent commits?
+# - Is the file/code mentioned no longer relevant?
+# - Has the issue been obviated by other changes?
+
+# If YES → Resolve it RIGHT NOW:
+gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_xxx"}) { thread { id isResolved }}}'
+echo "Already resolved in commit <SHA>: [explanation]" | gh pr comment <PR> --body-file -
+```
+
+Create `PR_{PR}_RESOLUTION_PLAN.md` containing:
+
+```markdown
+# PR #{PR} Resolution Plan
+
+## Already Resolved (marked during planning)
+- [x] Comment PRRT_aaa: "Database URL mismatch" 
+      → Already fixed in commit e925af5 - RESOLVED ✅
+
+## Unresolved Comments (need fixes)
+- [ ] Comment PRRT_xxx: "CI seeds data into wrong database"
+      → Fix: Update .github/workflows/quality-gate.yml lines 147, 154, 164, 184
+      → Files: .github/workflows/quality-gate.yml
+      
+- [ ] Comment PRRT_yyy: "Session stores date as string but API expects datetime"
+      → Fix: Update data/session/manager.py to store as datetime
+      → Files: data/session/manager.py, tests for verification
+
+## Failing CI Checks
+- [ ] complexity: Refactor _get_current_term_from_db (complexity 17→8)
+      → Fix: Extract helper methods
+      → Files: src/app.py
+
+## Quality Issues
+- [ ] E2E tests: Program admin login fails
+      → Fix: Use absolute database paths
+      → Files: tests/e2e/conftest.py
+
+## Resolution Mapping
+Comment PRRT_xxx will be resolved by commits:
+  - fix: standardize CI database to course_records_ci.db
+  
+Comment PRRT_yyy will be resolved by commits:
+  - fix: store session dates as datetime objects
+```
+
+**Grouping Strategy:**
+- **First**: Resolve any already-fixed comments (don't wait!)
+- Group remaining by underlying concept (not file location)
+- Identify which commits will address which comments
+- Plan comment resolution messages for each commit
+
+### Step 3: Commit Progress As You Go
+**Work incrementally with small, focused commits:**
+
+```bash
+# Fix one issue or theme
+git add <files>
+git commit -m "fix: descriptive message
+
+- What was fixed
+- How it addresses the issue
+- Reference to related PR comments if applicable"
+```
+
+**Key Principle:** Each commit should be atomic and pass quality gates.
+
+### Step 4: Resolve Comments Immediately After Each Commit
+**🔑 CRITICAL STEP - This is where the loop closes:**
+
+After EACH successful commit that addresses a PR comment:
+
+```bash
+# Get the commit SHA you just made
+COMMIT_SHA=$(git rev-parse HEAD | cut -c1-7)
+
+# Resolve the PR comment thread via GraphQL
+gh api graphql -f query='
+mutation {
+  resolveReviewThread(input: {threadId: "PRRT_xxxxxxxxxxxx"}) {
+    thread {
+      id
+      isResolved
+    }
+  }
+}'
+
+# Optional but recommended: Add a reply explaining the fix
+cat > /tmp/resolution.md << EOF
+Fixed in commit ${COMMIT_SHA}.
+
+[Brief explanation of what was changed and how it addresses the comment]
+
+Related changes: [reference other commits if this was part of a larger theme]
+EOF
+
+gh pr comment ${PR_NUMBER} --body-file /tmp/resolution.md
+rm /tmp/resolution.md
+```
+
+**Example Resolution Message:**
+```
+Fixed in commit d541c5a.
+
+Updated E2E test setup to use absolute database paths (os.path.abspath) 
+instead of relative paths. This prevents the "readonly database" error 
+which was actually a path mismatch between server and test processes.
+
+Related: Also fixed program admin credentials in conftest.py
+```
+
+**Why Resolve Before Push:**
+- Comment is addressed in local history
+- Reviewer can see progress even before CI runs
+- No risk of forgetting to resolve later
+- Creates tight feedback loop
+
+### Step 5: Push All Committed Work
+**🔑 CRITICAL: ONLY push when ALL comments resolved AND all local checks pass**
+
+**Pre-Push Verification Checklist:**
+```bash
+# 1. Check ALL comments resolved (GraphQL)
+gh api graphql -f query='query { repository(owner: "<OWNER>", name: "<REPO>") { 
+  pullRequest(number: <PR>) { 
+    reviewThreads(first: 50) { nodes { isResolved }}}}}' \
+  --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length'
+# Must return: 0
+
+# 2. Verify local quality gates ALL pass
+python scripts/ship_it.py --validation-type PR --no-fail-fast
+# Must show: All checks passed
+
+# 3. Final sanity check
+git status  # Should be clean or only PR_X_RESOLUTION_PLAN.md uncommitted
+```
+
+**ONLY push if:**
+- ✅ ALL PR comments resolved (unresolved count == 0)
+- ✅ ALL local quality checks pass
+- ✅ Plan shows all items completed
+
+**Why This Matters:**
+- Each push triggers expensive CI ($$$)
+- Pushing with unresolved comments = wasted CI cycle
+- Goal: One final push that makes PR green, not iterative push/fix/push
+- Exception: If CI reveals NEW issues we couldn't detect locally, then iterate
+
+**If verification fails:**
+- Go back to Step 3 (fix remaining issues)
+- Do NOT push yet
+- Complete ALL work first
+
+**After verification passes:**
+```bash
+git push origin <branch-name>
+```
+
+### Step 6: Monitor CI Until Complete (AUTOMATED)
+**🔑 CRITICAL: Use watch mode - it runs unattended until CI finishes (even if it takes hours/days)**
+
+```bash
+cd ${AGENT_HOME} && python3 cursor-rules/scripts/pr_status.py --watch ${PR_NUMBER}
+```
+
+**What watch mode does:**
+- Polls CI status every 30 seconds automatically
+- Shows progress updates when status changes
+- **Keeps running unattended until ALL checks complete**
+- **Automatically reports final results** (pass/fail with links)
+- Works for minutes, hours, or days - keeps polling until done
+- Ctrl+C to cancel if needed
+
+**Why This Matters:**
+- No manual checking needed
+- No breaking stride to check "is CI done yet?"
+- Script handles the waiting, you handle the fixing
+- Clear signal when ready for next iteration
+
+**Alternative (if watch script not available):**
+```bash
+gh pr checks ${PR_NUMBER}  # Manual check
+gh run watch              # Watch single run
+```
+
+**Do NOT:**
+- Manually refresh GitHub page every 5 minutes
+- Stop working while waiting for CI
+- Start fixing new issues before CI completes (wait for results first)
+
+### Step 7: Check Completion Criteria
+**When CI completes, evaluate:**
+
+```bash
+# Get current PR state (replace OWNER, REPO, PR_NUMBER)
+gh api graphql -f query='
+query {
+  repository(owner: "<OWNER>", name: "<REPO>") {
+    pullRequest(number: <PR_NUMBER>) {
+      reviewThreads(first: 50) {
+        nodes {
+          isResolved
+        }
+      }
+      commits(last: 1) {
+        nodes {
+          commit {
+            statusCheckRollup {
+              state
+            }
+          }
+        }
+      }
+    }
+  }
+}' --jq '{
+  unresolved_comments: [.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length,
+  ci_status: .data.repository.pullRequest.commits.nodes[0].commit.statusCheckRollup.state
+}'
+```
+
+**Completion Criteria:**
+- ✅ All PR comments resolved (`unresolved_comments: 0`)
+- ✅ All CI checks passing (`ci_status: SUCCESS`)
+
+**If NOT complete:**
+- New comments appeared → Go to Step 1
+- CI checks failing → Go to Step 1
+- Otherwise → Protocol complete! 🎉
+
+## Automation Helpers
+
+### Quick Resolve Script (Optional)
+Create `scripts/resolve_pr_comment.sh`:
+
+```bash
+#!/bin/bash
+THREAD_ID=$1
+MESSAGE=$2
+COMMIT_SHA=$(git rev-parse HEAD | cut -c1-7)
+
+gh api graphql -f query="
+mutation {
+  resolveReviewThread(input: {threadId: \"${THREAD_ID}\"}) {
+    thread { id isResolved }
+  }
+}"
+
+if [ -n "$MESSAGE" ]; then
+  echo "Fixed in commit ${COMMIT_SHA}. ${MESSAGE}" | gh pr comment ${PR_NUMBER} --body-file -
+fi
+
+echo "✅ Resolved thread ${THREAD_ID}"
+```
+
+Usage:
+```bash
+./scripts/resolve_pr_comment.sh PRRT_xxxx "Updated database paths to absolute"
+```
 
 # response_format
 
@@ -916,43 +1178,22 @@ _Including project rules matching:
 
 # Course Record Updater Project Rules 📚
 
-## 🚨 CRITICAL: Quality Gate Command Protocol 🚨
+## 🔄 PR Closing Protocol
 
-### ABSOLUTE PROHIBITION: NEVER PIPE OR MODIFY ship_it.py COMMANDS
+**CRITICAL**: When working on PRs, follow the **PR Closing Protocol** defined in `pr_closing_protocol.mdc`.
 
-**BEFORE running ANY ship_it.py command, STOP and verify:**
+**Key principle**: Resolve PR comments IMMEDIATELY after each commit that addresses them (Step 4).
 
-✅ **ALLOWED**:
+**Integration with ship_it.py:**
 ```bash
-python scripts/ship_it.py --checks sonar
-python scripts/ship_it.py --checks coverage
+# Step 1: Gather all issues
+python scripts/ship_it.py --validation-type PR --no-fail-fast
+
+# Step 6: Monitor CI
+python3 cursor-rules/scripts/pr_status.py --watch <PR_NUMBER>
 ```
 
-❌ **ABSOLUTELY FORBIDDEN** (causes immediate rule violation):
-```bash
-# NO piping
-python scripts/ship_it.py --checks sonar | grep "Coverage"
-python scripts/ship_it.py --checks sonar 2>&1 | tail -100
-
-# NO redirection  
-python scripts/ship_it.py --checks sonar > output.txt
-
-# NO environment manipulation before command
-rm -rf .scannerwork && python scripts/ship_it.py --checks sonar
-
-# NO combining with other commands
-cd /tmp && python scripts/ship_it.py --checks sonar
-```
-
-**WHY THIS RULE EXISTS**:
-1. Script outputs are carefully designed and complete
-2. Results are auto-saved to files (logs/sonarcloud_issues.txt, etc.)
-3. Piping breaks user experience and hides context
-4. If cleanup is needed, add it to the script itself
-
-**ENFORCEMENT**: If you catch yourself typing `|`, `>`, `&&`, or `rm -rf` before ship_it.py - STOP IMMEDIATELY and reconsider.
-
-**NO EXCEPTIONS, NO EXCUSES, NO "BUT IT WOULD BE BETTER IF..."**
+See `pr_closing_protocol.mdc` for the complete 7-step loop.
 
 
 ---

@@ -1,8 +1,0 @@
-2025-09-28 03:24:42,481 - app - INFO - Database connection established successfully (SQLite)
-2025-09-28 03:24:42 - FlaskApp - INFO - Starting Course Record Updater on port 3001 with debug mode: False
-2025-09-28 03:24:42 - FlaskApp - INFO - Access the application at http://localhost:3001
-2025-09-28 03:24:42 - FlaskApp - INFO - To use a different port, set PORT environment variable: PORT=3002 python app.py
- * Serving Flask app 'app'
- * Debug mode: off
-Address already in use
-Port 3001 is in use by another program. Either identify and stop that program, or start the server with a different port.

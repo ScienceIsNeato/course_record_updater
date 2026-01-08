@@ -76,7 +76,8 @@
                     <div class="mb-3">
                         <div class="mb-3">
                             <div class="form-label" id="readOnlyProgramsLabel">Programs (Read-Only)</div>
-                            <output id="readOnlyProgramsDisplay" class="p-3 bg-light rounded border" aria-labelledby="readOnlyProgramsLabel">
+                            <output id="readOnlyProgramsDisplay" class="p-3 bg-light rounded border"
+                                aria-labelledby="readOnlyProgramsLabel">
                                 <span class="text-muted fst-italic">None</span>
                             </output>
                             <small class="form-text text-muted">Program associations are managed via course
@@ -178,6 +179,18 @@
                 const programNames = programIds.map(id => programMap.get(id) || 'Unknown').join(', ');
                 const programsDisplay = programNames || '<span class="text-muted">No programs</span>';
 
+                // Check permissions
+                const userRole = "{{ user.role }}";
+                const canManageCourses = ["site_admin", "institution_admin", "program_admin"].includes(userRole);
+                const actionButtons = canManageCourses ? `
+                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replaceAll("'", "&apos;")}, \`${programsDisplay.replace(/`/g, "\\`")}\`)'>
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-outline-success mt-1 mt-lg-0" onclick='duplicateCourse("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
+                ` : '<span class="text-muted fst-italic">Read-only</span>';
+
                 html += `
                 <tr>
                     <td><strong>${escapeHtml(course.course_number || '-')}</strong></td>
@@ -185,14 +198,7 @@
                     <td>${course.credit_hours || '-'}</td>
                     <td>${escapeHtml(course.department || '-')}</td>
                     <td>${programsDisplay}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary" onclick='openEditCourseModal("${course.course_id}", ${JSON.stringify(course).replaceAll("'", "&apos;")}, \`${programsDisplay.replace(/`/g, "\\`")}\`)'>
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-success mt-1 mt-lg-0" onclick='duplicateCourse("${course.course_id}", ${JSON.stringify(course).replace(/'/g, "&apos;")})'>
-                            <i class="fas fa-copy"></i> Duplicate
-                        </button>
-                    </td>
+                    <td>${actionButtons}</td>
                 </tr>
             `;
             });

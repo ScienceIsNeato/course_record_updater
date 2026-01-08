@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from models import (
+from src.models.models import (
     ACCOUNT_STATUSES,
     INVITATION_STATUSES,
     ROLES,
@@ -405,7 +405,7 @@ class TestUserPasswordMethods:
 
     def test_validate_password_invalid(self):
         """Test password validation with invalid password"""
-        from password_service import PasswordValidationError
+        from src.services.password_service import PasswordValidationError
 
         with pytest.raises(PasswordValidationError):
             User.validate_password("weak")

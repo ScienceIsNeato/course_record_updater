@@ -16,7 +16,7 @@ class TestDemoFilePathSecurity:
     @pytest.fixture
     def mock_app_context(self):
         """Create a Flask app context for testing."""
-        from app import app
+        from src.app import app
 
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -35,8 +35,8 @@ class TestDemoFilePathSecurity:
     def test_path_traversal_with_double_dots_blocked(self, auth_session):
         """Path with .. should be rejected."""
         with (
-            patch("api_routes.get_current_user") as mock_user,
-            patch("api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api_routes.get_current_user") as mock_user,
+            patch("src.api_routes.get_current_institution_id") as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -53,8 +53,8 @@ class TestDemoFilePathSecurity:
     def test_path_traversal_with_absolute_path_blocked(self, auth_session):
         """Absolute paths should be rejected."""
         with (
-            patch("api_routes.get_current_user") as mock_user,
-            patch("api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api_routes.get_current_user") as mock_user,
+            patch("src.api_routes.get_current_institution_id") as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -70,8 +70,8 @@ class TestDemoFilePathSecurity:
     def test_path_outside_allowed_directories_blocked(self, auth_session):
         """Paths not in allowed directories should be rejected."""
         with (
-            patch("api_routes.get_current_user") as mock_user,
-            patch("api_routes.get_current_institution_id") as mock_inst,
+            patch("src.api_routes.get_current_user") as mock_user,
+            patch("src.api_routes.get_current_institution_id") as mock_inst,
         ):
             mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
             mock_inst.return_value = "inst-123"
@@ -92,21 +92,37 @@ class TestDemoFilePathSecurity:
         # Create a test file in demos directory
         test_file = "demos/test_import_file.xlsx"
 
-        # Skip if file doesn't exist (just testing the validation path)
-        if not os.path.exists(test_file):
-            pytest.skip(f"Test file {test_file} does not exist")
+        # Ensure demos directory exists
+        if not os.path.exists("demos"):
+            os.makedirs("demos")
 
-        with (
-            patch("api_routes.get_current_user") as mock_user,
-            patch("api_routes.get_current_institution_id") as mock_inst,
-        ):
-            mock_user.return_value = {"user_id": "test", "role": "institution_admin"}
-            mock_inst.return_value = "inst-123"
+        # Create dummy file
+        with open(test_file, "w") as f:
+            f.write("dummy content")
 
-            response = auth_session.post(
-                "/api/import/excel",
-                data={"demo_file_path": test_file, "adapter_id": "default"},
-            )
+        try:
+            with (
+                patch("src.api_routes.get_current_user") as mock_user,
+                patch("src.api_routes.get_current_institution_id") as mock_inst,
+            ):
+                mock_user.return_value = {
+                    "user_id": "test",
+                    "role": "institution_admin",
+                }
+                mock_inst.return_value = "inst-123"
+
+                response = auth_session.post(
+                    "/api/import/excel",
+                    data={"demo_file_path": test_file, "adapter_id": "default"},
+                )
+
+                # Should not fail with path validation error (400 or 500)
+                # It might return JSON with success=False if file is invalid Excel, but not HTTP error for security
+                assert response.status_code != 500
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
 
             # Should not fail with path validation error
             # (may still fail for other reasons like adapter not found)

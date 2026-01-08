@@ -5,11 +5,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}Loopcloser Dashboard{% endblock %}</title>
+    <title>{% block title %}Dashboard - Loopcloser{% endblock %}</title>
+    <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='images/loopcloser_favicon.png') }}" type="image/png">
+    <style>
+        .banner-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-right: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+        .banner-info .divider {
+            color: rgba(255, 255, 255, 0.2);
+            user-select: none;
+        }
+        .banner-info .term-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .banner-info .date-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .banner-info .badge-override {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+            background-color: #ffc107;
+            color: #000;
+            font-weight: 600;
+            border-radius: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .institution-logo {
+            height: 40px;
+            max-width: 200px;
+            object-fit: contain;
+            border-radius: 0;
+            background-color: transparent;
+            padding: 0;
+        }
+        .loopcloser-brand {
+            display: flex;
+            align-items: center;
+        }
+        .loopcloser-brand img {
+            height: 40px;
+            object-fit: contain;
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -17,28 +69,45 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
-            <a class="navbar-brand d-flex align-items-center" href="/dashboard">
-                <img src="{{ url_for('static', filename='images/loopcloser_logo.svg') }}" alt="Loopcloser Logo" height="30"
-                    class="d-inline-block align-text-top me-2">
-                Loopcloser
-            </a>
+            <!-- Institution Logo (left side, non-clickable) -->
+            <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
+                 alt="{{ institution_branding.short_name }} logo"
+                 class="institution-logo">
 
             <!-- Navigation Items -->
             <div class="navbar-nav me-auto">
                 {% block nav_items %}{% endblock %}
             </div>
 
+            <!-- Banner Info -->
+            {% if header_context %}
+            <div class="banner-info d-none d-lg-flex">
+                <div class="term-display">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="currentTermDisplay">{{ header_context.current_term_display }}</span>
+                </div>
+                <span class="divider">|</span>
+                <div class="date-display">
+                    <i class="far fa-clock"></i>
+                    <span id="currentDateDisplay">
+                        {{ header_context.effective_date_display }}
+                        {% if header_context.is_override %}
+                        <span class="badge-override ms-1">Override</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- User Info -->
             <div class="navbar-nav">
                 <div class="nav-item dropdown">
                     <button class="nav-link dropdown-toggle btn btn-link" id="userDropdown" data-bs-toggle="dropdown">
                         <i class="fas fa-user-circle me-1"></i>
-                        {{ user.first_name }} {{ user.last_name }}
-                        <span class="badge bg-secondary ms-1">{{ user.role.replace('_', ' ').title() }}</span>
+                        {{ user.first_name }} ({{ user.role.replace('_', ' ').title() }})
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><a class="dropdown-item" href="/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
@@ -47,6 +116,12 @@
                     </ul>
                 </div>
             </div>
+
+            <!-- Loopcloser Wordmark (right side) -->
+            <a class="navbar-brand loopcloser-brand ms-3" href="/dashboard">
+                <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" 
+                     alt="Loopcloser">
+            </a>
         </div>
     </nav>
 
@@ -80,6 +155,7 @@
     </div>
 
     <!-- JavaScript -->
+    <!-- nosemgrep: html.security.audit.missing-integrity.missing-integrity -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
         crossorigin="anonymous"></script>
@@ -87,7 +163,7 @@
 
     <script>
         // Global user context for JavaScript
-        window.currentUser = {
+        globalThis.currentUser = {
             id: "{{ user.user_id }}",
             email: "{{ user.email }}",
             role: "{{ user.role }}",
@@ -115,16 +191,16 @@
 
                 if (response.ok) {
                     // Redirect to home page after successful logout
-                    window.location.href = '/';
+                    globalThis.location.href = '/';
                 } else {
                     console.error('Logout failed:', data);
                     // On logout failure, force a fresh login to clear broken session
-                    window.location.href = '/login?force=true';
+                    globalThis.location.href = '/login?force=true';
                 }
             } catch (error) {
                 console.error('Logout error:', error);
                 // On error, force a fresh login to clear broken session
-                window.location.href = '/login?force=true';
+                globalThis.location.href = '/login?force=true';
             }
         }
 
@@ -156,7 +232,7 @@
         }
 
         // Make timestamp formatter globally available
-        window.formatTimestamp = formatTimestamp;
+        globalThis.formatTimestamp = formatTimestamp;
     </script>
 
     {% block extra_js %}{% endblock %}

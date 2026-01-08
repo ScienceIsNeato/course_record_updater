@@ -12,7 +12,7 @@ Focus areas (from coverage report):
 
 import pytest
 
-from database_sqlite import SQLiteDatabase
+from src.database.database_sqlite import SQLiteDatabase
 
 
 class TestInstitutionCreationMethods:

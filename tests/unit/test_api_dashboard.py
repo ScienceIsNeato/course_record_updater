@@ -9,12 +9,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-with patch("auth_service.login_required", lambda f: f):
-    if "api.routes.dashboard" in sys.modules:
-        del sys.modules["api.routes.dashboard"]
-    from api.routes.dashboard import dashboard_bp
+with patch("src.services.auth_service.login_required", lambda f: f):
+    if "src.api.routes.dashboard" in sys.modules:
+        del sys.modules["src.api.routes.dashboard"]
+    from src.api.routes.dashboard import dashboard_bp
 
-from dashboard_service import DashboardServiceError
+from src.services.dashboard_service import DashboardServiceError
 
 
 @pytest.fixture
@@ -46,8 +46,8 @@ def mock_user():
 class TestGetDashboardData:
     """Tests for GET /api/dashboard/data endpoint."""
 
-    @patch("api.routes.dashboard.DashboardService")
-    @patch("api.routes.dashboard.get_current_user")
+    @patch("src.api.routes.dashboard.DashboardService")
+    @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_success(
         self, mock_get_user, mock_service_class, client, mock_user
     ):
@@ -71,8 +71,8 @@ class TestGetDashboardData:
         assert data["data"] == mock_dashboard_data
         mock_service.get_dashboard_data.assert_called_once_with(mock_user)
 
-    @patch("api.routes.dashboard.DashboardService")
-    @patch("api.routes.dashboard.get_current_user")
+    @patch("src.api.routes.dashboard.DashboardService")
+    @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_service_error(
         self, mock_get_user, mock_service_class, client, mock_user
     ):
@@ -91,8 +91,8 @@ class TestGetDashboardData:
         assert data["success"] is False
         assert "Failed to load dashboard data" in data["error"]
 
-    @patch("api.routes.dashboard.DashboardService")
-    @patch("api.routes.dashboard.get_current_user")
+    @patch("src.api.routes.dashboard.DashboardService")
+    @patch("src.api.routes.dashboard.get_current_user")
     def test_get_dashboard_data_generic_exception(
         self, mock_get_user, mock_service_class, client, mock_user
     ):

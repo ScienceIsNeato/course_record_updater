@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from email_providers.brevo_provider import BrevoProvider
+from src.email_providers.brevo_provider import BrevoProvider
 
 
 class TestBrevoProviderConfiguration:
@@ -54,7 +54,7 @@ class TestBrevoProviderConfiguration:
 class TestBrevoProviderSending:
     """Test BrevoProvider email sending (with mocked API)"""
 
-    @patch("email_providers.brevo_provider.requests.post")
+    @patch("src.email_providers.brevo_provider.requests.post")
     def test_send_email_success(self, mock_post):
         """Test successful email sending"""
         mock_post.return_value = Mock(
@@ -80,7 +80,7 @@ class TestBrevoProviderSending:
         assert result is True
         mock_post.assert_called_once()
 
-    @patch("email_providers.brevo_provider.requests.post")
+    @patch("src.email_providers.brevo_provider.requests.post")
     def test_send_email_api_error(self, mock_post):
         """Test email sending with API error"""
         mock_post.return_value = Mock(status_code=400, text="Bad Request")

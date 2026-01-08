@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app import app
-from bulk_email_models.bulk_email_job import BulkEmailJob
+from src.app import app
+from src.bulk_email_models.bulk_email_job import BulkEmailJob
 from tests.test_utils import CommonAuthMixin
 
 
@@ -27,7 +27,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         self.client = self.app.test_client()
         self._login_site_admin()
 
-    @patch("database_service.get_all_instructors")
+    @patch("src.database.database_service.get_all_instructors")
     def test_api_endpoint_creates_job(self, mock_get_instructors):
         """Test that POST /api/bulk-email/send-instructor-reminders creates job"""
         # Mock instructors
@@ -49,7 +49,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         instructor_ids = ["inst-1", "inst-2"]
 
         # Mock email sending
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True
@@ -95,7 +97,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         data = response.get_json()
         assert data["success"] is False
 
-    @patch("database_service.get_all_instructors")
+    @patch("src.database.database_service.get_all_instructors")
     def test_job_status_endpoint(self, mock_get_instructors):
         """Test GET /api/bulk-email/job-status/{job_id}"""
         mock_get_instructors.return_value = [
@@ -107,7 +109,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True
@@ -139,7 +143,7 @@ class TestBulkEmailIntegration(CommonAuthMixin):
         assert data["success"] is False
         assert "not found" in data["error"].lower()
 
-    @patch("database_service.get_all_instructors")
+    @patch("src.database.database_service.get_all_instructors")
     def test_recent_jobs_endpoint(self, mock_get_instructors):
         """Test GET /api/bulk-email/recent-jobs"""
         mock_get_instructors.return_value = [
@@ -151,7 +155,9 @@ class TestBulkEmailIntegration(CommonAuthMixin):
             },
         ]
 
-        with patch("bulk_email_service.EmailService") as mock_email_service:
+        with patch(
+            "src.services.bulk_email_service.EmailService"
+        ) as mock_email_service:
             mock_instance = MagicMock()
             mock_email_service.return_value = mock_instance
             mock_instance._send_email.return_value = True

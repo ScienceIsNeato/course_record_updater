@@ -54,7 +54,8 @@
 }
 
 .auth-subtitle {
-    color: #4a5568; /* Darker gray-700 for better contrast (was gray-500) */
+    color: #4a5568;
+    /* Darker gray-700 for better contrast (was gray-500) */
     font-size: 1rem;
     margin-bottom: 0;
 }
@@ -111,14 +112,15 @@
     background-color: white;
 }
 
-.auth-form .form-floating > label {
+.auth-form .form-floating>label {
     padding: 1rem 1rem;
-    color: #2d3748; /* Gray-800 for better contrast */
+    color: #2d3748;
+    /* Gray-800 for better contrast */
     font-weight: 500;
 }
 
-.auth-form .form-control:focus ~ label,
-.auth-form .form-control:not(:placeholder-shown) ~ label {
+.auth-form .form-control:focus~label,
+.auth-form .form-control:not(:placeholder-shown)~label {
     color: #667eea;
     font-weight: 600;
 }
@@ -371,7 +373,6 @@
 }
 
 .invalid-feedback {
-    display: block;
     width: 100%;
     margin-top: 0.25rem;
     font-size: 0.75rem;
@@ -379,7 +380,6 @@
 }
 
 .valid-feedback {
-    display: block;
     width: 100%;
     margin-top: 0.25rem;
     font-size: 0.75rem;
@@ -396,21 +396,21 @@
     .auth-body {
         padding: 10px;
     }
-    
+
     .auth-card {
         padding: 1.5rem;
         border-radius: 12px;
         margin: 0.5rem 0;
     }
-    
+
     .auth-title {
         font-size: 1.5rem;
     }
-    
+
     .password-requirements {
         grid-template-columns: 1fr;
     }
-    
+
     .form-section {
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
@@ -422,7 +422,7 @@
         max-width: 100%;
         padding: 0 1rem;
     }
-    
+
     .auth-card-large {
         max-width: 100%;
     }
@@ -438,6 +438,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -453,6 +454,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -465,7 +467,7 @@
 }
 
 .form-control.loading {
-    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
     background-size: 200% 100%;
     animation: loading 1.5s infinite;
 }
@@ -474,6 +476,7 @@
     0% {
         background-position: -200% 0;
     }
+
     100% {
         background-position: 200% 0;
     }
@@ -491,11 +494,11 @@
     .auth-body {
         background: #000;
     }
-    
+
     .auth-card {
         border: 2px solid #fff;
     }
-    
+
     .auth-form .form-control {
         border-width: 2px;
     }

@@ -1,4 +1,5 @@
 .cursor
+.agent/
 .envrc
 .venv
 *.pyc
@@ -35,10 +36,6 @@ course_records_ci.db
 *.db
 *.db-*
 
-# SonarCloud analysis artifacts
-.scannerwork/
-.sonar_run_metadata.json
-
 .DS_Store
 
 # Node.js dependencies and artifacts
@@ -60,7 +57,11 @@ cookies.txt
 
 # Security scan reports
 bandit-report.json
+semgrep-report.json
 safety-report.txt
 
 # Demo run artifacts (generated during demos, not source)
 demo_artifacts/
+coverage-diff.json
+*.log
+.vscode

@@ -20,6 +20,7 @@ pytest-xdist>=3.6.1        # Parallel test execution (35% faster)
 # Security scanning
 bandit>=1.7.5              # Security linter for Python
 safety>=2.3.0              # Dependency vulnerability scanner
+detect-secrets>=1.4.0        # Secret detection in code
 
 # Code quality and complexity
 radon>=6.0.1               # Code complexity analysis
@@ -29,6 +30,11 @@ diff-cover>=10.0.0         # Coverage analysis on new/modified code (PR quality 
 # Development utilities
 pre-commit>=3.3.0          # Git hooks for quality checks
 tox>=4.6.0                 # Testing across multiple Python versions
+
+# Security patch minimums (safety scan)
+filelock>=3.20.1
+authlib>=1.6.5
+requests>=2.32.4
 
 # Documentation
 sphinx>=7.1.0              # Documentation generator
@@ -51,3 +57,4 @@ playwright>=1.55.0          # Modern browser automation (faster, more reliable t
 pytest-playwright>=0.7.1    # Pytest plugin for Playwright integration
 pytest-base-url>=2.1.0      # Base URL fixtures for E2E tests
 selenium>=4.15.0            # Legacy browser automation (still used by some integration tests)
+defusedxml>=0.7.1

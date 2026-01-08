@@ -21,14 +21,9 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="card-title mb-0">All Terms</h5>
-            <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-primary" onclick="openCreateTermModal()">
-                    <i class="fas fa-plus"></i> Add Term
-                </button>
-                <button class="btn btn-sm btn-outline-primary" onclick="loadTerms()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
+            <button class="btn btn-sm btn-primary" onclick="openCreateTermModal()">
+                <i class="fas fa-plus"></i> Add Term
+            </button>
         </div>
 
         <div id="termsTableContainer">
@@ -67,10 +62,6 @@
                     <label for="editTermAssessmentDueDate" class="form-label">Assessment Due Date</label>
                     <input type="date" class="form-control" id="editTermAssessmentDueDate">
                 </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="editTermActive">
-                    <label class="form-check-label" for="editTermActive">Active</label>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -105,10 +96,6 @@
                     <div class="mb-3">
                         <label for="termAssessmentDueDate" class="form-label">Assessment Due Date</label>
                         <input type="date" class="form-control" id="termAssessmentDueDate" name="assessment_due_date">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="termActive" name="active" checked>
-                        <label class="form-check-label" for="termActive">Active</label>
                     </div>
                 </div>
                 <div class="modal-footer">

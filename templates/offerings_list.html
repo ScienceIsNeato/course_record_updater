@@ -17,11 +17,11 @@
             All Course Offerings
         </h5>
         <div class="panel-actions">
+            <a href="/dashboard" class="btn btn-sm btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
             <button class="btn btn-sm btn-primary" onclick="openCreateOfferingModal()">
                 <i class="fas fa-plus"></i> Add Offering
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadOfferings()">
-                <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
     </div>
@@ -45,122 +45,7 @@
      OR import them. Since 'include' is powerful, let's replicate the modals from institution_admin.html 
      conceptually but place them here for this page. -->
 
-<!-- Create Offering Modal -->
-<div class="modal fade" id="createOfferingModal" tabindex="-1" aria-labelledby="createOfferingModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createOfferingModalLabel">Create New Course Offering</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="createOfferingForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="offeringCourseId" class="form-label">Course *</label>
-                        <select class="form-control" id="offeringCourseId" name="course_id" required>
-                            <option value="">Select Course</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="offeringTermId" class="form-label">Term *</label>
-                        <select class="form-control" id="offeringTermId" name="term_id" required>
-                            <option value="">Select Term</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="offeringProgramId" class="form-label">Program *</label>
-                        <select class="form-control" id="offeringProgramId" name="program_id" required>
-                            <option value="">Select Program</option>
-                        </select>
-                        <small class="form-text text-muted">Which program is this offering for?</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="offeringStatus" class="form-label">Status</label>
-                        <select class="form-control" id="offeringStatus" name="status">
-                            <option value="active" selected>Active</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="offeringCapacity" class="form-label">Capacity</label>
-                            <input type="number" class="form-control" id="offeringCapacity" name="capacity" min="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="createOfferingBtn">
-                        <span class="btn-text">Create Offering</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Creating...
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Offering Modal -->
-<div class="modal fade" id="editOfferingModal" tabindex="-1" aria-labelledby="editOfferingModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editOfferingModalLabel">Edit Course Offering</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="editOfferingForm">
-                <input type="hidden" id="editOfferingId">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editOfferingCourse" class="form-label">Course</label>
-                        <input type="text" class="form-control" id="editOfferingCourse" disabled>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editOfferingTerm" class="form-label">Term</label>
-                        <input type="text" class="form-control" id="editOfferingTerm" disabled>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editOfferingProgramId" class="form-label">Program *</label>
-                        <select class="form-control" id="editOfferingProgramId" required>
-                            <option value="">Select Program</option>
-                        </select>
-                        <small class="form-text text-muted">Which program is this offering for?</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editOfferingStatus" class="form-label">Status</label>
-                        <select class="form-control" id="editOfferingStatus">
-                            <option value="active">Active</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="editOfferingCapacity" class="form-label">Capacity</label>
-                            <input type="number" class="form-control" id="editOfferingCapacity" min="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Update</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Updating...
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+{% include '_offering_modals.html' %}
 
 {% endblock %}
 

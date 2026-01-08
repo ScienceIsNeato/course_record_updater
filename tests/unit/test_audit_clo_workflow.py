@@ -4,40 +4,40 @@ from unittest.mock import patch
 
 import pytest
 
-from api.routes.clo_workflow import get_clos_for_audit
-from app import app
+from src.api.routes.clo_workflow import get_clos_for_audit
+from src.app import app
 
 
 @pytest.fixture
 def mock_get_current_institution_id():
-    with patch("api.routes.clo_workflow.get_current_institution_id") as mock:
+    with patch("src.api.routes.clo_workflow.get_current_institution_id") as mock:
         mock.return_value = "inst-1"
         yield mock
 
 
 @pytest.fixture
 def mock_get_current_user():
-    with patch("api.routes.clo_workflow.get_current_user") as mock:
+    with patch("src.api.routes.clo_workflow.get_current_user") as mock:
         mock.return_value = {"role": "institution_admin", "user_id": "user-1"}
         yield mock
 
 
 @pytest.fixture
 def mock_clo_service():
-    with patch("api.routes.clo_workflow.CLOWorkflowService") as mock:
+    with patch("src.api.routes.clo_workflow.CLOWorkflowService") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_get_term_by_name():
-    with patch("api.routes.clo_workflow.get_term_by_name") as mock:
+    with patch("src.api.routes.clo_workflow.get_term_by_name") as mock:
         yield mock
 
 
 @pytest.fixture(autouse=True)
 def mock_permission_required():
     """Mock permission_required to bypass auth checks."""
-    with patch("auth_service.permission_required") as mock:
+    with patch("src.services.auth_service.permission_required") as mock:
         # Create a pass-through decorator
         def side_effect(permission):
             def decorator(f):
@@ -53,7 +53,9 @@ def test_get_clos_for_audit_with_term_id(
     mock_get_current_institution_id, mock_get_current_user, mock_clo_service
 ):
     """Test filtering CLOs by term_id."""
-    with app.test_request_context("/api/outcomes/audit?term_id=term-1"):
+    with app.test_request_context(
+        "/api/outcomes/audit?term_id=term-1&status=awaiting_approval"
+    ):
         mock_clo_service.get_clos_by_status.return_value = []
 
         response, status_code = get_clos_for_audit()
@@ -76,7 +78,9 @@ def test_get_clos_for_audit_with_term_name(
     """Test filtering CLOs by term_name (resolves to term_id)."""
     mock_get_term_by_name.return_value = {"term_id": "term-resolved"}
 
-    with app.test_request_context("/api/outcomes/audit?term_name=Fall 2024"):
+    with app.test_request_context(
+        "/api/outcomes/audit?term_name=Fall 2024&status=awaiting_approval"
+    ):
         mock_clo_service.get_clos_by_status.return_value = []
 
         response, status_code = get_clos_for_audit()
@@ -97,7 +101,9 @@ def test_get_clos_for_audit_with_program_filter(
     mock_get_current_institution_id, mock_get_current_user, mock_clo_service
 ):
     """Test filtering CLOs by program_id."""
-    with app.test_request_context("/api/outcomes/audit?program_id=prog-1"):
+    with app.test_request_context(
+        "/api/outcomes/audit?program_id=prog-1&status=awaiting_approval"
+    ):
         mock_clo_service.get_clos_by_status.return_value = []
 
         response, status_code = get_clos_for_audit()

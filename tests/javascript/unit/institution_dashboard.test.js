@@ -16,8 +16,6 @@ describe('InstitutionDashboard', () => {
       <div id="courseCount"></div>
       <div id="facultyCount"></div>
       <div id="sectionCount"></div>
-      <div id="institutionLastUpdated"></div>
-      <button id="institutionRefreshButton"></button>
       <div id="programManagementContainer"></div>
       <div id="facultyOverviewContainer"></div>
       <div id="courseSectionContainer"></div>
@@ -87,7 +85,6 @@ describe('InstitutionDashboard', () => {
     expect(document.getElementById('programCount').textContent).toBe('2');
     expect(document.getElementById('assessmentProgressContainer').querySelector('table')).not.toBeNull();
     expect(window.panelManager.createSortableTable).toHaveBeenCalled();
-    expect(document.getElementById('institutionLastUpdated').textContent).toContain('Last updated:');
   });
 
   it('shows loading and error states', () => {
@@ -227,7 +224,7 @@ describe('InstitutionDashboard', () => {
     it('tests initialization functionality', () => {
       // Test that init function exists and can be called
       expect(typeof InstitutionDashboard.init).toBe('function');
-      
+
       // Should not throw error when called
       expect(() => InstitutionDashboard.init()).not.toThrow();
     });
@@ -278,13 +275,10 @@ describe('InstitutionDashboard', () => {
       // Verify the table was created with section data
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
       expect(callArgs.data).toHaveLength(1);
-      
-      // Verify action buttons include reminder button with data-action attribute
+
+      // Actions column removed - panels are display-only
       const sectionData = callArgs.data[0];
-      expect(sectionData.actions).toContain('btn-outline-secondary');
-      expect(sectionData.actions).toContain('data-action="send-reminder"');
-      expect(sectionData.actions).toContain('data-instructor-id="inst1"');
-      expect(sectionData.actions).toContain('Dr. Smith');
+      expect(sectionData.status).toBeDefined();
     });
 
     it('does not render reminder button when instructor lacks email', () => {
@@ -313,10 +307,9 @@ describe('InstitutionDashboard', () => {
 
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
       const sectionData = callArgs.data[0];
-      
-      // Should have Edit button with data-action attribute (not onclick)
-      expect(sectionData.actions).toContain('data-action="edit-section"');
-      expect(sectionData.actions).not.toContain('send-reminder');
+
+      // Actions column removed - panels are display-only
+      expect(sectionData.status).toBeDefined();
     });
   });
 
@@ -351,17 +344,17 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.id).toBe('institution-courses-table');
       expect(callArgs.data).toHaveLength(2);
-      
+
       // Verify course data structure
       const course1 = callArgs.data[0];
       expect(course1.number).toBe('BIO101');
       expect(course1.title).toBe('Introduction to Biology');
       expect(course1.credits).toBe('3');
       expect(course1.department).toBe('Biology');
-      expect(course1.actions).toContain('data-course-id="c1"');
+      // Actions column removed - panels are display-only
     });
 
     it('renders empty state when no courses', () => {
@@ -374,9 +367,9 @@ describe('InstitutionDashboard', () => {
 
     it('handles missing container gracefully', () => {
       setBody('<div></div>'); // No courseManagementContainer
-      
+
       // Should not throw error
-      expect(() => InstitutionDashboard.renderCourses([{course_id: 'c1'}])).not.toThrow();
+      expect(() => InstitutionDashboard.renderCourses([{ course_id: 'c1' }])).not.toThrow();
       expect(window.panelManager.createSortableTable).not.toHaveBeenCalled();
     });
 
@@ -393,7 +386,7 @@ describe('InstitutionDashboard', () => {
 
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
       const courseData = callArgs.data[0];
-      
+
       // Should use defaults for missing fields
       expect(courseData.number).toBe('MATH101');
       expect(courseData.title).toBe('-'); // Default dash
@@ -431,7 +424,7 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.id).toBe('institution-programs-table');
       expect(callArgs.data).toHaveLength(2);
     });
@@ -477,10 +470,10 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.id).toBe('institution-faculty-table');
       expect(callArgs.data).toHaveLength(2);
-      
+
       const faculty1 = callArgs.data[0];
       expect(faculty1.name).toBe('Dr. Smith');
       expect(faculty1.courses).toBe('3');
@@ -525,9 +518,9 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.data).toHaveLength(2);
-      
+
       const prog1 = callArgs.data[0];
       expect(prog1.program).toBe('Computer Science');
     });
@@ -581,7 +574,7 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.id).toBe('institution-offerings-table');
       expect(callArgs.data).toHaveLength(2);
     });
@@ -596,9 +589,9 @@ describe('InstitutionDashboard', () => {
 
     it('handles missing container gracefully', () => {
       setBody('<div></div>'); // No offeringManagementContainer
-      
+
       // Should not throw error
-      expect(() => InstitutionDashboard.renderOfferings([{offering_id: 'o1'}], [], [])).not.toThrow();
+      expect(() => InstitutionDashboard.renderOfferings([{ offering_id: 'o1' }], [], [])).not.toThrow();
       expect(window.panelManager.createSortableTable).not.toHaveBeenCalled();
     });
 
@@ -652,7 +645,7 @@ describe('InstitutionDashboard', () => {
 
       expect(window.panelManager.createSortableTable).toHaveBeenCalled();
       const callArgs = window.panelManager.createSortableTable.mock.calls[0][0];
-      
+
       expect(callArgs.id).toBe('institution-terms-table');
       expect(callArgs.data).toHaveLength(2);
     });
@@ -667,9 +660,9 @@ describe('InstitutionDashboard', () => {
 
     it('handles missing container gracefully', () => {
       setBody('<div></div>'); // No termManagementContainer
-      
+
       // Should not throw error
-      expect(() => InstitutionDashboard.renderTerms([{term_id: 't1'}])).not.toThrow();
+      expect(() => InstitutionDashboard.renderTerms([{ term_id: 't1' }])).not.toThrow();
       expect(window.panelManager.createSortableTable).not.toHaveBeenCalled();
     });
   });
@@ -699,13 +692,13 @@ describe('InstitutionDashboard', () => {
 
       // Clear interval to avoid interference
       clearInterval(InstitutionDashboard.intervalId);
-      
+
       // Reset the spy after init
       loadDataSpy.mockClear();
 
       // Fast-forward past refresh interval
       InstitutionDashboard.lastFetch = Date.now() - (6 * 60 * 1000);
-      
+
       // Simulate document becoming visible (triggers load)
       Object.defineProperty(document, 'hidden', { value: false, writable: true });
       document.dispatchEvent(new Event('visibilitychange'));
@@ -716,24 +709,7 @@ describe('InstitutionDashboard', () => {
       expect(loadDataSpy).toHaveBeenCalledWith({ silent: true });
     });
 
-    it('init() sets up refresh button click listener', async () => {
-      const mockResponse = {
-        ok: true,
-        json: jest.fn().mockResolvedValue({ success: true, data: sampleData })
-      };
-      global.fetch.mockResolvedValue(mockResponse);
-
-      InstitutionDashboard.init();
-      await Promise.resolve(); // Let initial loadData complete
-
-      const refreshButton = document.getElementById('institutionRefreshButton');
-      refreshButton.click();
-
-      await Promise.resolve();
-
-      // Initial load + button click = 2 calls
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
+    // Refresh button removed from UI - data auto-refreshes after mutations
 
     it('init() sets up auto-refresh interval', async () => {
       const mockResponse = {
@@ -774,7 +750,7 @@ describe('InstitutionDashboard', () => {
     });
 
     it('cleanup() clears the interval', () => {
-      InstitutionDashboard.intervalId = setInterval(() => {}, 1000);
+      InstitutionDashboard.intervalId = setInterval(() => { }, 1000);
       const intervalId = InstitutionDashboard.intervalId;
 
       InstitutionDashboard.cleanup();
@@ -807,7 +783,7 @@ describe('InstitutionDashboard', () => {
       button.setAttribute('data-course-id', 'course-456');
       button.setAttribute('data-instructor', 'Dr. Smith');
       button.setAttribute('data-course-number', 'CS101');
-      
+
       const container = document.getElementById('courseSectionContainer');
       container.appendChild(button);
 
@@ -821,7 +797,7 @@ describe('InstitutionDashboard', () => {
 
       // Verify send reminder was called with correct parameters
       expect(sendReminderSpy).toHaveBeenCalledWith('inst-123', 'course-456', 'Dr. Smith', 'CS101');
-      
+
       sendReminderSpy.mockRestore();
     });
 
@@ -836,7 +812,7 @@ describe('InstitutionDashboard', () => {
       const button = document.createElement('button');
       button.setAttribute('data-action', 'edit-section');
       button.setAttribute('data-section-id', 'sect-789');
-      
+
       const container = document.getElementById('courseSectionContainer');
       container.appendChild(button);
 
@@ -850,7 +826,7 @@ describe('InstitutionDashboard', () => {
 
       // Verify edit section was called
       expect(editSectionSpy).toHaveBeenCalledWith(button);
-      
+
       editSectionSpy.mockRestore();
     });
 
@@ -862,7 +838,7 @@ describe('InstitutionDashboard', () => {
       const button = document.createElement('button');
       button.setAttribute('data-action', 'edit-course');
       button.setAttribute('data-course-id', 'course-123');
-      
+
       const container = document.getElementById('courseManagementContainer');
       container.appendChild(button);
 
@@ -874,7 +850,7 @@ describe('InstitutionDashboard', () => {
 
       // Verify edit course was called
       expect(editCourseSpy).toHaveBeenCalledWith(button);
-      
+
       editCourseSpy.mockRestore();
     });
 
@@ -890,7 +866,7 @@ describe('InstitutionDashboard', () => {
       button.setAttribute('data-action', 'delete-program');
       button.setAttribute('data-program-id', 'prog-456');
       button.setAttribute('data-program-name', 'Computer Science');
-      
+
       const container = document.getElementById('programManagementContainer');
       container.appendChild(button);
 
@@ -904,7 +880,7 @@ describe('InstitutionDashboard', () => {
 
       // Verify delete program was called with correct parameters
       expect(window.deleteProgram).toHaveBeenCalledWith('prog-456', 'Computer Science');
-      
+
       delete window.deleteProgram;
     });
 
@@ -916,7 +892,7 @@ describe('InstitutionDashboard', () => {
       // Create a button WITHOUT data-action attribute
       const button = document.createElement('button');
       button.setAttribute('data-course-id', 'course-123');
-      
+
       const container = document.getElementById('courseSectionContainer');
       container.appendChild(button);
 
@@ -929,7 +905,7 @@ describe('InstitutionDashboard', () => {
       // Verify no handlers were called
       expect(sendReminderSpy).not.toHaveBeenCalled();
       expect(editSectionSpy).not.toHaveBeenCalled();
-      
+
       sendReminderSpy.mockRestore();
       editSectionSpy.mockRestore();
     });
@@ -943,7 +919,7 @@ describe('InstitutionDashboard', () => {
       button.setAttribute('data-action', 'send-reminder');
       button.setAttribute('data-instructor-id', 'inst-123');
       // Missing other required attributes
-      
+
       const container = document.getElementById('courseSectionContainer');
       container.appendChild(button);
 
@@ -955,7 +931,7 @@ describe('InstitutionDashboard', () => {
 
       // Verify send reminder was NOT called due to missing parameters
       expect(sendReminderSpy).not.toHaveBeenCalled();
-      
+
       sendReminderSpy.mockRestore();
     });
 
@@ -968,7 +944,7 @@ describe('InstitutionDashboard', () => {
       button.setAttribute('data-action', 'delete-program');
       button.setAttribute('data-program-id', 'prog-456');
       button.setAttribute('data-program-name', 'Computer Science');
-      
+
       const container = document.getElementById('programManagementContainer');
       container.appendChild(button);
 
@@ -987,7 +963,7 @@ describe('InstitutionDashboard', () => {
 
     it('handleEditSection calls window.openEditSectionModal', () => {
       window.openEditSectionModal = jest.fn();
-      
+
       const button = {
         dataset: {
           sectionId: 'sect-123',
@@ -1007,7 +983,7 @@ describe('InstitutionDashboard', () => {
 
     it('handleEditSection handles missing window function gracefully', () => {
       delete window.openEditSectionModal;
-      
+
       const button = {
         dataset: {
           sectionId: 'sect-123',
@@ -1021,7 +997,7 @@ describe('InstitutionDashboard', () => {
 
     it('handleEditCourse calls window.openEditCourseModal', () => {
       window.openEditCourseModal = jest.fn();
-      
+
       const button = {
         dataset: {
           courseId: 'course-456',
@@ -1041,7 +1017,7 @@ describe('InstitutionDashboard', () => {
 
     it('handleEditCourse handles missing window function gracefully', () => {
       delete window.openEditCourseModal;
-      
+
       const button = {
         dataset: {
           courseId: 'course-456',
@@ -1260,7 +1236,7 @@ describe('InstitutionDashboard', () => {
       await InstitutionDashboard.refresh();
 
       expect(loadDataSpy).toHaveBeenCalledWith({ silent: false });
-      
+
       loadDataSpy.mockRestore();
     });
   });
@@ -1271,7 +1247,7 @@ describe('InstitutionDashboard Initialization', () => {
     jest.resetModules();
     jest.useFakeTimers();
   });
-  
+
   afterEach(() => {
     jest.useRealTimers();
   });
@@ -1280,11 +1256,11 @@ describe('InstitutionDashboard Initialization', () => {
     delete global.panelManager;
     delete window.panelManager;
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-    
+
     require('../../../static/institution_dashboard');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     jest.advanceTimersByTime(200);
-    
+
     expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Panel manager not initialized'));
   });
 });

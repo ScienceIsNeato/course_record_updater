@@ -62,14 +62,14 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Lint & Format (black, isort, flake8)
-      run: python scripts/ship_it.py --checks python-lint-format
+      run: python scripts/ship_it.py --verbose --checks python-lint-format
       env:
         PYTHONPATH: .
 
   unit-tests-with-coverage:
     runs-on: ubuntu-latest
     needs: setup
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
     - name: Set up Python ${{ env.PYTHON_VERSION }}
@@ -88,14 +88,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
-    - name: Run Unit Tests with Coverage
+    - name: Run Coverage (unit + integration)
       run: |
         echo "=== Environment Debug ==="
         echo "CI=$CI"
         echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
         echo "PYTHONPATH=$PYTHONPATH"
-        echo "=== Running unit tests with coverage (single execution) ==="
-        python scripts/ship_it.py --checks tests coverage
+        echo "=== Running coverage check via ship_it.py (tests + integration) ==="
+        # Force unbuffered output and show progress in real-time
+        python -u scripts/ship_it.py --verbose --checks coverage
+        echo "=== Coverage check complete ==="
       env:
         PYTHONPATH: .
     - name: Upload Coverage to Codecov
@@ -138,25 +140,35 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Setup SQLite Database
       run: |
-        echo "Setting up SQLite database for testing..."
-        # Create database directory if it doesn't exist
-        mkdir -p $(dirname course_records.db)
+        echo "Setting up SQLite database for smoke tests..."
         
-        # Set database environment variables for SQLite
+        # Use consistent database name throughout smoke tests
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
+        export DATABASE_URL=sqlite:///course_records_ci.db
         
-        echo "✅ SQLite database ready for testing"
+        echo "✅ SQLite database configuration ready"
+    - name: Seed Database for Smoke Tests
+      run: |
+        # Set environment variables for SQLite (consistent with runtime)
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records_ci.db
+        export ENV=ci
+        export PYTHONPATH=.
+        
+        # Seed baseline data for smoke tests using CI environment
+        # This uses course_records_ci.db as configured in DATABASE_URL
+        python scripts/seed_db.py --env ci --clear
     - name: Start Flask Server for Smoke Tests
       run: |
-        # Set environment variables for SQLite
+        # Set environment variables for SQLite (consistent with seed step)
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
+        export DATABASE_URL=sqlite:///course_records_ci.db
         export PYTHONPATH=.
         export PORT=3001  # Use default dev port in CI (no conflicts)
+        export ENV=ci
         
         # Start Flask server in background for Selenium tests
-        nohup python app.py > server.log 2>&1 &
+        nohup python -m src.app > server.log 2>&1 &
         sleep 5  # Give server time to start
         
         # Verify server is running
@@ -169,16 +181,18 @@ jobs:
         echo "✅ Flask server started successfully on port 3001"
     - name: Run Smoke Tests (using ship_it.py)
       run: |
-        # Set environment variables for SQLite
+        # Set environment variables for SQLite (consistent with seed/server)
         export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
+        export DATABASE_URL=sqlite:///course_records_ci.db
+        export ENV=ci
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
         export PORT=3001
+        export TEST_PORT=3001
         
         # Run smoke tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --checks smoke
+        python scripts/ship_it.py --verbose --checks smoke
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -216,6 +230,17 @@ jobs:
         export DATABASE_URL=sqlite:///course_records.db
         
         echo "✅ SQLite database ready for testing"
+    - name: Seed Database for Integration Tests
+      run: |
+        # Set environment variables for SQLite
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
+        export PYTHONPATH=.
+
+        # Seed baseline data for integration tests
+        # Use prod environment to match course_records.db (standard name)
+        python scripts/seed_db.py --env prod --clear
     - name: Start Flask Server for Integration Tests
       run: |
         # Set environment variables for SQLite
@@ -225,7 +250,7 @@ jobs:
         export PORT=3001  # Use default dev port in CI (no conflicts)
         
         # Start Flask server in background for integration tests
-        nohup python app.py > server.log 2>&1 &
+        nohup python -m src.app > server.log 2>&1 &
         sleep 5  # Give server time to start
         
         # Verify server is running
@@ -241,13 +266,14 @@ jobs:
         # Set environment variables for SQLite
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records.db
+        export ENV=test
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.
         export PORT=3001
         
         # Run integration tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --checks integration
+        python scripts/ship_it.py --verbose --checks integration
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -282,7 +308,9 @@ jobs:
       run: |
         # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
         export ENV="test"
-        export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+        # Use absolute path to avoid CWD issues between server and test processes
+        export DATABASE_URL="sqlite:///${{ github.workspace }}/course_records_e2e.db"
+        export DATABASE_URL_E2E="sqlite:///${{ github.workspace }}/course_records_e2e.db"
         export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
         
         # Set Ethereal credentials from GitHub secrets for email verification
@@ -297,7 +325,7 @@ jobs:
         export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@riverside.edu,*@pactech.edu,*@system.local"
         
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
-        python scripts/ship_it.py --checks e2e
+        python scripts/ship_it.py --verbose --checks e2e
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -333,9 +361,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+        pip install semgrep
     - name: Run Security Audit
       run: |
-        python scripts/ship_it.py --checks security | tee security-output.log
+        # Force unbuffered output for real-time visibility in CI
+        python -u scripts/ship_it.py --verbose --checks security | tee security-output.log
         exit ${PIPESTATUS[0]}
       env:
         PYTHONPATH: .
@@ -381,7 +411,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Static Analysis (mypy, imports)
-      run: python scripts/ship_it.py --checks python-static-analysis
+      run: python scripts/ship_it.py --verbose --checks python-static-analysis
       env:
         PYTHONPATH: .
 
@@ -407,7 +437,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Code Duplication Check
-      run: python scripts/ship_it.py --checks duplication
+      run: python scripts/ship_it.py --verbose --checks duplication
       env:
         PYTHONPATH: .
 
@@ -439,22 +469,22 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run JavaScript Lint & Format (ESLint, Prettier)
-      run: python scripts/ship_it.py --checks js-lint-format
+      run: python scripts/ship_it.py --verbose --checks js-lint-format
       env:
         PYTHONPATH: .
     - name: Run JavaScript Tests
-      run: python scripts/ship_it.py --checks js-tests
+      run: python scripts/ship_it.py --verbose --checks js-tests
       env:
         PYTHONPATH: .
     - name: Run JavaScript Coverage Analysis
-      run: python scripts/ship_it.py --checks js-coverage
+      run: python scripts/ship_it.py --verbose --checks js-coverage
       env:
         PYTHONPATH: .
 
   coverage-new-code:
     runs-on: ubuntu-latest
     needs: [setup, unit-tests-with-coverage]
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
       with:
@@ -478,14 +508,16 @@ jobs:
         pip install diff-cover
     - name: Generate coverage data
       run: |
-        # Generate fresh coverage.xml for diff-cover analysis
-        python -m pytest tests/unit/ -n auto --cov=. --cov-report=xml:coverage.xml --tb=no -q
+        # Ensure build directory exists
+        mkdir -p build
+        # Generate fresh coverage.xml for diff-cover analysis (include data/ for session code)
+        python -m pytest tests/unit/ -n auto --cov=src --cov=data --cov-report=xml:build/coverage.xml --tb=no -q
       env:
         PYTHONPATH: .
     - name: Check Coverage on New Code (80% threshold)
       run: |
         echo "📊 Checking coverage on new code vs origin/${{ github.base_ref }}"
-        diff-cover coverage.xml \
+        diff-cover build/coverage.xml \
           --compare-branch=origin/${{ github.base_ref }} \
           --fail-under=80 \
           --html-report=coverage-diff.html \
@@ -500,55 +532,20 @@ jobs:
         path: |
           coverage-diff.html
           logs/diff_coverage_report.txt
-  sonar:
+
+  complexity:
     runs-on: ubuntu-latest
     needs: setup
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Shallow clones should be disabled for better analysis
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Set up Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ needs.setup.outputs.cache-key }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install Python dependencies
+    - name: Install radon and xenon
+      run: pip install radon xenon
+    - name: Check Complexity (threshold 15)
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-    - name: Install JavaScript dependencies
-      run: npm install
-    - name: Install sonar-scanner
-      run: |
-        # Install sonar-scanner CLI
-        wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip
-        unzip -q sonar-scanner-cli-6.2.1.4610-linux-x64.zip
-        sudo mv sonar-scanner-6.2.1.4610-linux-x64 /opt/sonar-scanner
-        sudo ln -sf /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner
-        sonar-scanner --version
-    - name: Run SonarCloud Analysis (analyze + validate)
-      run: python scripts/ship_it.py --checks sonar
-      env:
-        PYTHONPATH: .
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    - name: Upload SonarCloud artifacts
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: sonarcloud-results
-        path: |
-          logs/sonarcloud_issues.txt
-          logs/pr_coverage_gaps.txt
+        echo "🧠 Checking code complexity (threshold: 15)"
+        ./scripts/maintAInability-gate.sh --complexity

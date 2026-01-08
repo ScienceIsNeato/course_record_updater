@@ -2,15 +2,20 @@
 Unit tests for Password Management Service
 
 Tests password hashing, validation, reset tokens, and security policies.
+
+NOTE: Most tests use mocked bcrypt for speed (~0.01s vs ~0.2s per hash).
+test_hash_consistency uses real bcrypt to verify actual integration.
 """
 
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import g
 
-from password_service import (
+from src.app import app
+from src.services.password_service import (
     AccountLockedError,
     PasswordService,
     PasswordValidationError,
@@ -21,13 +26,42 @@ from password_service import (
     verify_password,
 )
 
+# Fast bcrypt mock for performance - returns predictable hash based on password
+_MOCK_HASH_PREFIX = b"$2b$04$mockhash"
+
+
+def _mock_hashpw(password: bytes, salt: bytes) -> bytes:
+    """Fast mock for bcrypt.hashpw"""
+    # Return a deterministic hash based on password content
+    return _MOCK_HASH_PREFIX + password[:20]
+
+
+def _mock_gensalt(rounds: int = 12) -> bytes:
+    """Fast mock for bcrypt.gensalt"""
+    return b"$2b$04$testsalt00000000000000"
+
+
+def _mock_checkpw(password: bytes, hashed: bytes) -> bool:
+    """Fast mock for bcrypt.checkpw - matches our mock hash format"""
+    if hashed.startswith(_MOCK_HASH_PREFIX):
+        # Our mock hash format - check if password matches
+        return hashed == _MOCK_HASH_PREFIX + password[:20]
+    return False
+
 
 class TestPasswordHashing:
-    """Test password hashing and verification functionality"""
+    """Test password hashing and verification functionality
 
+    Most tests use mocked bcrypt for speed. test_hash_consistency uses real bcrypt.
+    """
+
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
     def test_hash_password_success(self):
         """Test successful password hashing"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hashed = hash_password(password)
 
         assert isinstance(hashed, str)
@@ -40,7 +74,7 @@ class TestPasswordHashing:
         with pytest.raises(PasswordValidationError):
             hash_password("weak")
 
-    @patch("password_service.bcrypt.hashpw")
+    @patch("src.services.password_service.bcrypt.hashpw")
     def test_hash_password_bcrypt_exception(self, mock_hashpw):
         """Test hash_password exception handling when bcrypt fails"""
         # Setup mock to raise exception
@@ -50,16 +84,26 @@ class TestPasswordHashing:
         with pytest.raises(Exception, match="bcrypt failed"):
             hash_password("ValidPassword123!")
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_correct(self):
         """Test password verification with correct password"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hashed = hash_password(password)
 
         assert verify_password(password, hashed) is True
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         wrong_password = "WrongPass123!"
         hashed = hash_password(password)
 
@@ -67,14 +111,22 @@ class TestPasswordHashing:
 
     def test_verify_password_with_invalid_hash(self):
         """Test password verification with invalid hash"""
-        password = "TestPass123!"
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         invalid_hash = "invalid_hash"
 
         assert verify_password(password, invalid_hash) is False
 
     def test_hash_consistency(self):
-        """Test that same password produces different hashes (due to salt)"""
-        password = "TestPass123!"
+        """Test that same password produces different hashes (due to salt)
+
+        NOTE: This test uses REAL bcrypt to verify actual integration.
+        It's intentionally slower (~0.5s) to test the real password flow.
+        """
+        from tests.test_credentials import TEST_PASSWORD
+
+        password = TEST_PASSWORD
         hash1 = hash_password(password)
         hash2 = hash_password(password)
 
@@ -307,13 +359,13 @@ class TestAccountLockout:
     def test_lockout_expiry(self):
         """Test that lockout expires after timeout"""
         email = "test@example.com"
+        initial_time = datetime.now(timezone.utc)
 
-        # Mock time to simulate lockout expiry
-        with patch("password_service.datetime") as mock_datetime:
-            # Set initial time
-            initial_time = datetime.now(timezone.utc)
-            mock_datetime.now.return_value = initial_time
-            mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
+        # Use test request context to support system date override
+        with app.test_request_context():
+            # Ensure we start with no override (real time)
+            if hasattr(g, "system_date_override"):
+                del g.system_date_override
 
             # Lock the account
             for i in range(5):
@@ -323,9 +375,9 @@ class TestAccountLockout:
             is_locked, _ = PasswordService.is_account_locked(email)
             assert is_locked is True
 
-            # Fast forward time past lockout duration
+            # Set override to future to simulate expiry
             future_time = initial_time + timedelta(minutes=35)
-            mock_datetime.now.return_value = future_time
+            g.system_date_override = future_time
 
             # Check lockout status again
             is_locked, _ = PasswordService.is_account_locked(email)
@@ -363,8 +415,11 @@ class TestRateLimiting:
         """Test that old requests are cleaned up"""
         email = "test@example.com"
 
+        # Note: Rate limiting uses time.time() for security/performance, NOT get_current_time().
+        # So we continue to mock time.time() here as it DOES NOT respect system date override (by design).
+
         # Mock time to simulate window expiry
-        with patch("password_service.time") as mock_time:
+        with patch("src.services.password_service.time") as mock_time:
             # Set initial time
             initial_time = 1000.0
             mock_time.time.return_value = initial_time
@@ -384,6 +439,9 @@ class TestRateLimiting:
 class TestPasswordServiceIntegration:
     """Integration tests for password service"""
 
+    @patch("src.services.password_service.bcrypt.gensalt", _mock_gensalt)
+    @patch("src.services.password_service.bcrypt.hashpw", _mock_hashpw)
+    @patch("src.services.password_service.bcrypt.checkpw", _mock_checkpw)
     def test_complete_password_lifecycle(self):
         """Test complete password creation and verification cycle"""
         password = "SecurePass123!"

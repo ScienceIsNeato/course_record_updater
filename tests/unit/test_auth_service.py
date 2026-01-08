@@ -6,7 +6,7 @@ import pytest
 from flask import Flask
 
 # Import the auth service components
-from auth_service import (
+from src.services.auth_service import (
     AuthService,
     admin_required,
     auth_service,
@@ -210,20 +210,22 @@ class TestUtilityFunctions:
 
     def test_get_user_role_with_no_user(self):
         """Test get_user_role when no user is available."""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             role = get_user_role()
             assert role is None
 
     def test_get_user_department_with_no_user(self):
         """Test get_user_department when no user is available."""
-        with patch("auth_service.get_current_user", return_value=None):
+        with patch("src.services.auth_service.get_current_user", return_value=None):
             department = get_user_department()
             assert department is None
 
     def test_get_user_department_with_no_department_field(self):
         """Test get_user_department when user has no department field."""
         mock_user = {"user_id": "123", "email": "test@example.com", "role": "user"}
-        with patch("auth_service.get_current_user", return_value=mock_user):
+        with patch(
+            "src.services.auth_service.get_current_user", return_value=mock_user
+        ):
             department = get_user_department()
             assert department is None
 
@@ -239,7 +241,7 @@ class TestAuthServiceIntegration:
         mock_service.has_permission.return_value = False
         mock_service.is_authenticated.return_value = False
 
-        with patch("auth_service.auth_service", mock_service):
+        with patch("src.services.auth_service.auth_service", mock_service):
             # Test that utility functions delegate to the service
             user = get_current_user()
             permission = has_permission("test")
@@ -318,8 +320,8 @@ class TestAuthBehaviorConsistency:
 class TestAuthServiceInstitutionFunctions:
     """Test auth service institution-related functions."""
 
-    @patch("database_service.get_institution_by_short_name")
-    @patch("auth_service.get_current_user")
+    @patch("src.database.database_service.get_institution_by_short_name")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_success(
         self, mock_get_user, mock_get_institution
     ):
@@ -329,15 +331,15 @@ class TestAuthServiceInstitutionFunctions:
             "institution_id": "inst-123",
         }
 
-        from auth_service import get_current_institution_id
+        from src.services.auth_service import get_current_institution_id
 
         result = get_current_institution_id()
 
         assert result == "inst-123"
         mock_get_institution.assert_not_called()
 
-    @patch("database_service.get_institution_by_short_name")
-    @patch("auth_service.get_current_user")
+    @patch("src.database.database_service.get_institution_by_short_name")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_short_name_resolution(
         self, mock_get_user, mock_get_institution
     ):
@@ -348,12 +350,12 @@ class TestAuthServiceInstitutionFunctions:
         }
         mock_get_institution.return_value = {"institution_id": "inst-demo-uuid"}
 
-        from auth_service import get_current_institution_id
+        from src.services.auth_service import get_current_institution_id
 
         assert get_current_institution_id() == "inst-demo-uuid"
         mock_get_institution.assert_called_once_with("DEMO2025")
 
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_primary_fallback(self, mock_get_user):
         """Test get_current_institution_id uses primary institution when provided."""
         mock_get_user.return_value = {
@@ -361,11 +363,11 @@ class TestAuthServiceInstitutionFunctions:
             "primary_institution_id": "inst-primary",
         }
 
-        from auth_service import get_current_institution_id
+        from src.services.auth_service import get_current_institution_id
 
         assert get_current_institution_id() == "inst-primary"
 
-    @patch("auth_service.get_current_user")
+    @patch("src.services.auth_service.get_current_user")
     def test_get_current_institution_id_missing_context(self, mock_get_user):
         """Test get_current_institution_id returns None when no context available."""
         mock_get_user.return_value = {
@@ -373,7 +375,7 @@ class TestAuthServiceInstitutionFunctions:
             "role": "site_admin",
         }
 
-        from auth_service import get_current_institution_id
+        from src.services.auth_service import get_current_institution_id
 
         assert get_current_institution_id() is None
 
@@ -381,7 +383,7 @@ class TestAuthServiceInstitutionFunctions:
         """Test permission decorator logic."""
         from flask import Flask
 
-        from auth_service import permission_required
+        from src.services.auth_service import permission_required
 
         app = Flask(__name__)
 
@@ -397,7 +399,7 @@ class TestAuthServiceInstitutionFunctions:
 
     def test_auth_service_comprehensive_functionality(self):
         """Test comprehensive auth service functionality."""
-        from auth_service import auth_service
+        from src.services.auth_service import auth_service
 
         # Test auth service instance
         assert auth_service is not None
@@ -465,7 +467,7 @@ class TestAuthServiceCoverage:
 
     def test_scoped_permission_checking(self):
         """Test scoped permission checking for different roles."""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         # Test institution admin scoped permissions
         with patch.object(AuthService, "get_current_user") as mock_get_user:
@@ -497,7 +499,7 @@ class TestAuthServiceCoverage:
 
     def test_program_admin_scoped_permissions(self):
         """Test program admin scoped permission checking."""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         with patch.object(AuthService, "get_current_user") as mock_get_user:
             mock_get_user.return_value = {
@@ -540,14 +542,16 @@ class TestAuthServiceCoverage:
 
     def test_get_accessible_institutions(self):
         """Test get_accessible_institutions for different roles."""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         service = AuthService()
 
         # Test site admin - should return all institutions
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_all_institutions") as mock_get_all_institutions,
+            patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_get_all_institutions,
         ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
@@ -579,19 +583,24 @@ class TestAuthServiceCoverage:
 
     def test_get_accessible_programs(self):
         """Test get_accessible_programs for different roles."""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         service = AuthService()
 
         # Test site admin
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_all_institutions") as mock_get_all_institutions,
-            patch("database_service.get_programs_by_institution") as mock_get_programs,
+            patch(
+                "src.database.database_service.get_all_institutions"
+            ) as mock_get_all_institutions,
+            patch(
+                "src.database.database_service.get_programs_by_institution"
+            ) as mock_get_programs,
         ):
             mock_get_user.return_value = {
                 "user_id": "site-admin-123",
                 "role": "site_admin",
+                "institution_id": "inst-123",
             }
             mock_get_all_institutions.return_value = [
                 {"institution_id": "inst-123"},
@@ -608,7 +617,9 @@ class TestAuthServiceCoverage:
         # Test institution admin
         with (
             patch.object(service, "get_current_user") as mock_get_user,
-            patch("database_service.get_programs_by_institution") as mock_get_programs,
+            patch(
+                "src.database.database_service.get_programs_by_institution"
+            ) as mock_get_programs,
         ):
             mock_get_user.return_value = {
                 "user_id": "inst-admin-123",
@@ -650,7 +661,7 @@ class TestAuthServiceCoverage:
 
     def test_has_role_hierarchy(self):
         """Test role hierarchy checking."""
-        from auth_service import AuthService
+        from src.services.auth_service import AuthService
 
         service = AuthService()
 
@@ -686,13 +697,15 @@ class TestAuthServiceCoverage:
         """Test decorator error conditions and edge cases."""
         from flask import Flask
 
-        from auth_service import permission_required, role_required
+        from src.services.auth_service import permission_required, role_required
 
         app = Flask(__name__)
 
         with app.app_context():
             # Test permission denied
-            with patch("auth_service.auth_service.has_permission") as mock_has_perm:
+            with patch(
+                "src.services.auth_service.auth_service.has_permission"
+            ) as mock_has_perm:
                 mock_has_perm.return_value = False
 
                 @permission_required("nonexistent_permission")
@@ -706,7 +719,9 @@ class TestAuthServiceCoverage:
                 assert response[1] == 403
 
             # Test role denied
-            with patch("auth_service.auth_service.has_role") as mock_has_role:
+            with patch(
+                "src.services.auth_service.auth_service.has_role"
+            ) as mock_has_role:
                 mock_has_role.return_value = False
 
                 @role_required("site_admin")
@@ -721,7 +736,7 @@ class TestAuthServiceCoverage:
 
     def test_utility_function_coverage(self):
         """Test utility functions for coverage."""
-        from auth_service import (
+        from src.services.auth_service import (
             can_access_institution,
             can_access_program,
             get_accessible_institutions,
@@ -753,7 +768,7 @@ class TestAuthServiceCoverage:
 
     def test_role_enum_methods(self):
         """Test UserRole enum methods for coverage."""
-        from auth_service import UserRole
+        from src.services.auth_service import UserRole
 
         # Test get_role_hierarchy
         hierarchy = UserRole.get_role_hierarchy()
@@ -771,7 +786,7 @@ class TestAuthServiceCoverage:
         """Test context extraction in permission decorators."""
         from flask import Flask, request, session
 
-        from auth_service import permission_required
+        from src.services.auth_service import permission_required
 
         app = Flask(__name__)
         app.config["SECRET_KEY"] = "test-secret"
@@ -793,7 +808,7 @@ class TestAuthServiceCoverage:
 
     def test_get_accessible_programs_fallback_field(self):
         """Test get_accessible_programs supports both program_ids and accessible_programs fields."""
-        from auth_service import AuthService, UserRole
+        from src.services.auth_service import AuthService, UserRole
 
         service = AuthService()
 
@@ -822,7 +837,7 @@ class TestAuthServiceCoverage:
 
     def test_get_accessible_programs_no_fields(self):
         """Test get_accessible_programs with program_admin user having no program fields."""
-        from auth_service import AuthService, UserRole
+        from src.services.auth_service import AuthService, UserRole
 
         service = AuthService()
 
@@ -841,7 +856,7 @@ def test_extract_request_value_from_json():
     """Test _extract_request_value retrieves from JSON body."""
     from flask import Flask
 
-    from auth_service import _extract_request_value
+    from src.services.auth_service import _extract_request_value
 
     app = Flask(__name__)
     with app.test_request_context(json={"test_key": "json_value"}):
@@ -853,7 +868,7 @@ def test_extract_request_value_from_form():
     """Test _extract_request_value retrieves from form data."""
     from flask import Flask
 
-    from auth_service import _extract_request_value
+    from src.services.auth_service import _extract_request_value
 
     app = Flask(__name__)
     with app.test_request_context(data={"test_key": "form_value"}, method="POST"):
@@ -865,7 +880,7 @@ def test_extract_request_value_from_args():
     """Test _extract_request_value retrieves from query parameters."""
     from flask import Flask
 
-    from auth_service import _extract_request_value
+    from src.services.auth_service import _extract_request_value
 
     app = Flask(__name__)
     with app.test_request_context(query_string="test_key=query_value"):

@@ -79,7 +79,9 @@ NOW = datetime.now(timezone.utc).isoformat()
 UPDATED_AT = NOW
 
 
-def _write_csv_to_zip(zf: zipfile.ZipFile, filename: str, rows: List[List[str]]) -> None:
+def _write_csv_to_zip(
+    zf: zipfile.ZipFile, filename: str, rows: List[List[str]]
+) -> None:
     """
     Write CSV rows to ZIP file using csv.writer for proper escaping.
 

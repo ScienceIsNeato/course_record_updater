@@ -29,12 +29,21 @@ from playwright.sync_api import (
 
 # Import shared test utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from constants import E2E_TEST_PORT
-from password_service import PasswordService
+from src.services.password_service import PasswordService
+from src.utils.constants import E2E_TEST_PORT
 from tests.conftest import get_worker_id
-
+from tests.test_credentials import (
+    INSTITUTION_ADMIN_EMAIL,
+    INSTITUTION_ADMIN_PASSWORD,
+    PROGRAM_ADMIN_EMAIL,
+    PROGRAM_ADMIN_PASSWORD,
+    SITE_ADMIN_EMAIL,
+    SITE_ADMIN_PASSWORD,
+)
 
 # E2E environment runs on dedicated port (worker-aware for parallel execution)
+
+
 def get_worker_port():
     """Get port number for current worker (3002 + worker_id)"""
     worker_id = get_worker_id()
@@ -43,7 +52,33 @@ def get_worker_port():
     return E2E_TEST_PORT + worker_id  # 3002, 3003, 3004, etc for parallel workers
 
 
-BASE_URL = f"http://localhost:{get_worker_port()}"
+class _DynamicBaseURL:
+    """
+    Dynamic BASE_URL that evaluates at runtime based on current worker ID.
+
+    This solves the issue where BASE_URL was evaluated at module import time,
+    which could be before the worker ID was set by pytest-xdist.
+
+    Now when tests use BASE_URL, they get the correct URL for their worker.
+    """
+
+    def __str__(self):
+        return f"http://localhost:{get_worker_port()}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    # Make it work directly with string operations
+    def __add__(self, other):
+        return str(self) + other
+
+    def __radd__(self, other):
+        return other + str(self)
+
+
+# BASE_URL is now dynamic - evaluates at runtime, not import time
+BASE_URL = _DynamicBaseURL()
+
 # Use generic adapter test data (institution-agnostic)
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"
@@ -52,68 +87,159 @@ TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"
 @pytest.fixture(scope="session", autouse=True)
 def setup_worker_environment(tmp_path_factory):
     """
-    Setup worker-specific E2E environment for parallel execution.
+    Setup E2E environment with proper database isolation and server management.
 
-    Each pytest-xdist worker gets:
-    - Isolated database copy (prevents test collisions)
-    - Dedicated Flask server on unique port
+    For SERIAL execution (no pytest-xdist):
+    - Creates fresh E2E database
+    - Seeds baseline test data
+    - Starts dedicated Flask server
+    - Cleans up after session
 
-    Tests create their own data programmatically via API.
+    For PARALLEL execution (pytest-xdist workers):
+    - Each worker gets isolated database copy
+    - Each worker gets dedicated Flask server on unique port
     """
     worker_id = get_worker_id()
     server_process = None
+    worker_db = None
+    worker_port = get_worker_port()
 
-    if worker_id is not None:
-        # Parallel execution - setup worker-specific environment
+    # Import seeding utilities early
+    import urllib.error
+    import urllib.request
+
+    if worker_id is None:
+        # ==============================================
+        # SERIAL EXECUTION - Full setup required
+        # ==============================================
+        print(f"\n🔧 E2E Setup: Configuring test environment on port {worker_port}")
+
+        worker_db = "course_records_e2e.db"
+
+        # Step 1: Create fresh database (remove stale state)
+        for db_file in [worker_db, f"{worker_db}-shm", f"{worker_db}-wal"]:
+            if os.path.exists(db_file):
+                try:
+                    os.remove(db_file)
+                except Exception as e:
+                    print(f"   ⚠️  Could not remove {db_file}: {e}")
+        print(f"   ✓ Fresh database: {worker_db}")
+
+        # Step 2: Seed baseline data
+        # Run seed_db.py as subprocess to ensure clean import state
+        seed_cmd = [
+            sys.executable,
+            "scripts/seed_db.py",
+            "--env",
+            "e2e",
+            "--manifest",
+            "tests/fixtures/e2e_seed_manifest.json",
+        ]
+
+        seed_result = subprocess.run(
+            seed_cmd,
+            capture_output=True,
+            text=True,
+            cwd=os.getcwd(),
+        )
+        if seed_result.returncode != 0:
+            print(f"   ❌ Database seeding failed: {seed_result.stderr}")
+            raise RuntimeError("E2E database seeding failed")
+        print(f"   ✓ Baseline data seeded")
+
+        # Step 3: Start Flask server
+        env = os.environ.copy()
+        # Use absolute path to avoid CWD ambiguity between server and test processes
+        db_abs_path = os.path.abspath(worker_db)
+        env["DATABASE_URL"] = f"sqlite:///{db_abs_path}"
+        env["DATABASE_TYPE"] = "sqlite"
+        env["PORT"] = str(worker_port)
+        env["BASE_URL"] = f"http://localhost:{worker_port}"
+        env["ENV"] = "e2e"
+        env["FLASK_ENV"] = "e2e"  # Prevents account lockout in PasswordService
+        env["WTF_CSRF_ENABLED"] = "false"  # Disable CSRF for E2E tests
+        env.pop("EMAIL_PROVIDER", None)  # Use Ethereal for E2E
+        env["EMAIL_WHITELIST"] = (
+            "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
+        )
+
+        server_log = open("server.log", "w")
+        server_process = subprocess.Popen(
+            [sys.executable, "-m", "src.app"],
+            env=env,
+            stdout=server_log,
+            stderr=subprocess.STDOUT,
+            cwd=os.getcwd(),
+        )
+
+        # Wait for server to be ready
+        max_attempts = 30
+        for attempt in range(max_attempts):
+            # Check if process died
+            if server_process.poll() is not None:
+                # Process exited early
+                raise RuntimeError(
+                    f"Server process died immediately (Return Code: {server_process.returncode}). "
+                    f"Port {worker_port} might be in use by a stale process. Check server.log."
+                )
+
+            try:
+                urllib.request.urlopen(
+                    f"http://localhost:{worker_port}/login", timeout=1
+                )
+                print(
+                    f"   ✓ Server ready on port {worker_port} (PID: {server_process.pid})"
+                )
+                break
+            except (urllib.error.URLError, ConnectionRefusedError, OSError):
+                if attempt == max_attempts - 1:
+                    print(f"   ❌ Server failed to start on port {worker_port}")
+                    if server_process:
+                        server_process.kill()
+                    raise RuntimeError("E2E server failed to start")
+                time.sleep(0.5)
+
+    else:
+        # ==============================================
+        # PARALLEL EXECUTION - Worker-specific setup
+        # ==============================================
         base_db = "course_records_e2e.db"
         worker_db = f"course_records_e2e_worker{worker_id}.db"
-        worker_port = get_worker_port()
 
         print(f"\n🔧 Worker {worker_id}: Setting up environment on port {worker_port}")
 
         # Copy base E2E database to worker-specific copy
+        # Copy base E2E database to worker-specific copy
+        # CRITICAL: Must copy WAL/SHM files if they exist to capture all transactions
         if os.path.exists(base_db):
-            import shutil
-
-            shutil.copy2(base_db, worker_db)
-            print(f"   ✓ Database copied: {worker_db}")
-
-            # Start worker-specific Flask server
-            import socket
+            for ext in ["", "-wal", "-shm"]:
+                src_file = f"{base_db}{ext}"
+                dst_file = f"{worker_db}{ext}"
+                if os.path.exists(src_file):
+                    shutil.copy2(src_file, dst_file)
+                    print(f"   ✓ Database copied: {dst_file}")
 
             env = os.environ.copy()
             env["DATABASE_URL"] = f"sqlite:///{worker_db}"
             env["DATABASE_TYPE"] = "sqlite"
             env["PORT"] = str(worker_port)
-            env["BASE_URL"] = (
-                f"http://localhost:{worker_port}"  # Fix email verification links
-            )
+            env["BASE_URL"] = f"http://localhost:{worker_port}"
             env["ENV"] = "test"
-            # Enable CSRF for E2E tests to validate full security workflow
             env["WTF_CSRF_ENABLED"] = "true"
-            # Unset EMAIL_PROVIDER so it uses Ethereal for E2E
             env.pop("EMAIL_PROVIDER", None)
-            # Ensure EMAIL_WHITELIST is set for E2E tests
-            # Allow test domains: @ethereal.email, @mocku.test, @test.edu, @test.com, @test.local, @example.com, @loopclosertests.mailtrap.io
-            if "EMAIL_WHITELIST" not in env:
-                env["EMAIL_WHITELIST"] = (
-                    "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io"
-                )
+            env["EMAIL_WHITELIST"] = (
+                "*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io,*@system.local"
+            )
 
-            # Start server in background
             server_process = subprocess.Popen(
-                ["python", "app.py"],
+                [sys.executable, "-m", "src.app"],
                 env=env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 cwd=os.getcwd(),
             )
 
-            # Wait for server to be ready - use health check endpoint
             max_attempts = 30
-            import urllib.error
-            import urllib.request
-
             for attempt in range(max_attempts):
                 try:
                     urllib.request.urlopen(
@@ -130,31 +256,37 @@ def setup_worker_environment(tmp_path_factory):
                             server_process.kill()
                         raise RuntimeError(f"Worker {worker_id} server failed to start")
                     time.sleep(0.5)
+        else:
+            print(f"   ❌ Base database {base_db} not found - run seed_db.py first")
+            raise RuntimeError(f"Base E2E database not found: {base_db}")
 
     yield
 
-    # Cleanup: Stop server and remove worker-specific databases
-    if worker_id is not None:
+    # ==============================================
+    # CLEANUP
+    # ==============================================
+    if worker_id is None:
+        print(f"\n🧹 E2E Cleanup: Stopping server...")
+    else:
         print(f"\n🧹 Worker {worker_id}: Cleaning up...")
 
-        # Stop server
-        if server_process:
-            try:
-                server_process.terminate()
-                server_process.wait(timeout=5)
-                print(f"   ✓ Server stopped (PID: {server_process.pid})")
-            except Exception:
-                server_process.kill()
-                print(f"   ⚠️  Server force-killed")
+    # Stop server
+    if server_process:
+        try:
+            server_process.terminate()
+            server_process.wait(timeout=5)
+            print(f"   ✓ Server stopped (PID: {server_process.pid})")
+        except Exception:
+            server_process.kill()
+            print(f"   ⚠️  Server force-killed")
 
-        # Remove worker database
-        worker_db = f"course_records_e2e_worker{worker_id}.db"
-        if os.path.exists(worker_db):
-            try:
-                os.remove(worker_db)
-                print(f"   ✓ Database cleaned: {worker_db}")
-            except Exception as e:
-                print(f"   ⚠️  Failed to clean database: {e}")
+    # Remove worker database (parallel mode only - keeps base for debugging)
+    if worker_id is not None and worker_db and os.path.exists(worker_db):
+        try:
+            os.remove(worker_db)
+            print(f"   ✓ Database cleaned: {worker_db}")
+        except Exception as e:
+            print(f"   ⚠️  Failed to clean database: {e}")
 
 
 @pytest.fixture(scope="session")
@@ -302,8 +434,8 @@ def authenticated_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use MockU institution admin from baseline seed
-    page.fill('input[name="email"]', "sarah.admin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -335,8 +467,8 @@ def authenticated_site_admin_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use site admin from baseline seed
-    page.fill('input[name="email"]', "siteadmin@system.local")
-    page.fill('input[name="password"]', "SiteAdmin123!")
+    page.fill('input[name="email"]', SITE_ADMIN_EMAIL)
+    page.fill('input[name="password"]', SITE_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -359,8 +491,8 @@ def authenticated_institution_admin_page(page: Page) -> Page:
     page.wait_for_load_state("networkidle")
 
     # Use MockU institution admin from baseline seed
-    page.fill('input[name="email"]', "sarah.admin@mocku.test")
-    page.fill('input[name="password"]', "InstitutionAdmin123!")
+    page.fill('input[name="email"]', INSTITUTION_ADMIN_EMAIL)
+    page.fill('input[name="password"]', INSTITUTION_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
@@ -376,6 +508,38 @@ def authenticated_institution_admin_page(page: Page) -> Page:
         return page
     except Exception as e:
         pytest.fail(f"Institution admin login failed: {str(e)}")
+
+
+@pytest.fixture(scope="function")
+def authenticated_program_admin_page(page: Page) -> Page:
+    """
+    Provides page with program admin session (MockU).
+    """
+    page.context.clear_cookies()
+    page.goto(f"{BASE_URL}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Use Bob ProgramAdmin (or Lisa) from baseline seed
+    # We use credentials from test_credentials which maps to Lisa, but role is same (Program Admin)
+    # Note: seed_db.py creates 'bob.programadmin@mocku.test' and 'lisa.prog@mocku.test'
+    # We use the imported constant for consistency.
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
+    page.click('button[type="submit"]')
+
+    try:
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)
+        page.wait_for_load_state("networkidle")
+
+        # Verify session is properly established
+        page.wait_for_function(
+            "window.currentUser && window.currentUser.institutionId && window.currentUser.institutionId.length > 0",
+            timeout=15000,
+        )
+
+        return page
+    except Exception as e:
+        pytest.fail(f"Program admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function")
@@ -398,22 +562,23 @@ def program_admin_authenticated_page(page: Page) -> Page:
     """
     Provides page with program admin session (CS program @ MockU).
 
-    Uses baseline seed account: bob.programadmin@mocku.test
+    Uses baseline seed account from test_credentials: PROGRAM_ADMIN_EMAIL
     """
     page.context.clear_cookies()
     page.goto(f"{BASE_URL}/login")
     page.wait_for_load_state("networkidle")
 
     # Use CS program admin from baseline seed
-    page.fill('input[name="email"]', "bob.programadmin@mocku.test")
-    page.fill('input[name="password"]', "ProgramAdmin123!")
+    page.fill('input[name="email"]', PROGRAM_ADMIN_EMAIL)
+    page.fill('input[name="password"]', PROGRAM_ADMIN_PASSWORD)
     page.click('button[type="submit"]')
 
     try:
-        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=5000)
+        page.wait_for_url(f"{BASE_URL}/dashboard", timeout=10000)  # Increased timeout
+        page.wait_for_load_state("networkidle")
         return page
-    except Exception:
-        pytest.fail("Program admin login failed")
+    except Exception as e:
+        pytest.fail(f"Program admin login failed: {str(e)}")
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -422,21 +587,45 @@ def reset_account_locks():
     Clear any failed login attempts before each test.
 
     Ensures tests start with clean slate for authentication testing.
+    CRITICAL: Must configure app to use the correct worker DB, as pytest process
+    is separate from the running Flask server process.
     """
-    # Clear failed login attempts for common test accounts
-    test_accounts = [
-        "siteadmin@system.local",
-        "sarah.admin@mocku.test",
-        "mike.admin@riverside.edu",
-        "admin@pactech.edu",
-    ]
+    from src.app import app
 
-    for email in test_accounts:
-        try:
-            PasswordService.clear_failed_attempts(email)
-        except Exception:
-            # Best effort - if account doesn't exist or clearing fails, continue
-            pass
+    # Determine correct DB for this worker (same logic as setup_worker_environment)
+    worker_id = get_worker_id()
+    if worker_id is not None:
+        # Parallel mode: Use worker-specific DB
+        worker_db = f"course_records_e2e_worker{worker_id}.db"
+        # Ensure absolute path to avoid CWD ambiguity
+        db_path = os.path.abspath(worker_db)
+        db_url = f"sqlite:///{db_path}"
+    else:
+        # Serial mode: Use default E2E DB
+        db_path = os.path.abspath("course_records_e2e.db")
+        db_url = f"sqlite:///{db_path}"
+
+    # Force reconfiguration of the app in this process
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+
+    # We must push an app context so DB operations work
+    with app.app_context():
+        # Clear failed login attempts for common test accounts
+        test_accounts = [
+            "siteadmin@system.local",
+            "sarah.admin@mocku.test",
+            "mike.admin@riverside.edu",
+            "admin@pactech.edu",
+            "bob.programadmin@mocku.test",
+            PROGRAM_ADMIN_EMAIL,
+        ]
+
+        for email in test_accounts:
+            try:
+                PasswordService.clear_failed_attempts(email)
+            except Exception:
+                # Best effort - if account doesn't exist or clearing fails, continue
+                pass
 
     yield
 

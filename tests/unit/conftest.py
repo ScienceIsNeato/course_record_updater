@@ -40,7 +40,7 @@ def setup_unit_test_database(tmp_path_factory, worker_id):
 
     # Initialize database tables
     # Import here to ensure environment variables are set first
-    import database_service
+    import src.database.database_service as database_service
 
     # Refresh connection to pick up new DATABASE_URL (updates module-level singleton)
     database_service.refresh_connection()
@@ -62,7 +62,7 @@ def reset_db_between_tests():
     This prevents test pollution where one test's data affects another.
     Runs automatically before each test function.
     """
-    import database_service
+    import src.database.database_service as database_service
 
     # Reset database to clean state
     database_service.reset_database()
