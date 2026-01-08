@@ -52,7 +52,33 @@ def get_worker_port():
     return E2E_TEST_PORT + worker_id  # 3002, 3003, 3004, etc for parallel workers
 
 
-BASE_URL = f"http://localhost:{get_worker_port()}"
+class _DynamicBaseURL:
+    """
+    Dynamic BASE_URL that evaluates at runtime based on current worker ID.
+
+    This solves the issue where BASE_URL was evaluated at module import time,
+    which could be before the worker ID was set by pytest-xdist.
+
+    Now when tests use BASE_URL, they get the correct URL for their worker.
+    """
+
+    def __str__(self):
+        return f"http://localhost:{get_worker_port()}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    # Make it work directly with string operations
+    def __add__(self, other):
+        return str(self) + other
+
+    def __radd__(self, other):
+        return other + str(self)
+
+
+# BASE_URL is now dynamic - evaluates at runtime, not import time
+BASE_URL = _DynamicBaseURL()
+
 # Use generic adapter test data (institution-agnostic)
 TEST_DATA_DIR = Path(__file__).parent / "fixtures"
 TEST_FILE = TEST_DATA_DIR / "generic_test_data.zip"

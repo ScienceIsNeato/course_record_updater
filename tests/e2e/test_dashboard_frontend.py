@@ -43,7 +43,7 @@ class TestDashboardFrontend:
 
     def test_dashboard_page_loads(self, page: Page):
         """Test that the main dashboard page loads without errors"""
-        page.goto(BASE_URL)
+        page.goto(str(BASE_URL))
 
         # Wait for page to load
         expect(page.locator("body")).to_be_visible(timeout=10000)

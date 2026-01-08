@@ -68,3 +68,4 @@ safety-report.txt
 demo_artifacts/
 coverage-diff.json
 *.log
+.vscode

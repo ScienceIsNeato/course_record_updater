@@ -2945,7 +2945,30 @@ def list_course_offerings():
                 section.get("enrollment") or 0
             )
 
+        # Helper mapping for programs
+        programs = get_programs_by_institution(institution_id) or []
+        program_map = {p.get("program_id") or p.get("id"): p.get("name") for p in programs}
+
+        # Helper mapping for course programs
+        courses = get_all_courses(institution_id) or []
+        course_program_map = {}
+        for c in courses:
+             p_ids = c.get("program_ids") or []
+             p_names = []
+             for pid in p_ids:
+                 if pid in program_map:
+                     p_names.append(program_map[pid])
+             course_program_map[c.get("course_id") or c.get("id")] = p_names
+
         offerings = list(offerings_dict.values())
+        
+        # Enrich offerings with program names
+        for offering in offerings:
+            c_id = offering.get("course_id")
+            if c_id and c_id in course_program_map:
+                offering["program_names"] = course_program_map[c_id]
+            else:
+                 offering["program_names"] = []
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),

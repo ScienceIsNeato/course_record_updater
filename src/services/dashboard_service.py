@@ -247,8 +247,11 @@ class DashboardService:
         courses = self._enrich_courses_with_clo_data(raw["courses"], load_clos=True)
 
         # Build indexes and mappings
-        # Create program_index first so it can be used for CLO enrichment
+        # Create program_index first so it can be used for CLO enrichment and program name resolution
         program_index = {self._get_program_id(p): p for p in raw["programs"]}
+
+        # Enrich courses with program names
+        courses = self._enrich_courses_with_program_names(courses, program_index)
 
         # Collect CLOs with program context
         all_clos = self._collect_clos_from_courses(courses, program_index)
@@ -1644,6 +1647,38 @@ class DashboardService:
             f"offering_id={offering_id}, course_id={course_id}, "
             f"in_offering_map={in_offering_map}, in_course_index={in_course_index}"
         )
+
+    def _enrich_courses_with_program_names(
+        self,
+        courses: List[Dict[str, Any]],
+        program_index: Dict[str, Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Enrich courses with program names resolved from program_ids.
+
+        Args:
+            courses: List of course dictionaries
+            program_index: Dictionary mapping program_id to program data
+
+        Returns:
+            List of courses with program_names added
+        """
+        enriched_courses = []
+        for course in courses:
+            course_copy = course.copy()
+            program_ids = course.get("program_ids") or []
+            program_names = []
+
+            for pid in program_ids:
+                if pid in program_index:
+                    program_names.append(
+                        program_index[pid].get("name") or "Unknown Program"
+                    )
+
+            course_copy["program_names"] = program_names
+            enriched_courses.append(course_copy)
+
+        return enriched_courses
 
 
 def build_dashboard_service() -> DashboardService:

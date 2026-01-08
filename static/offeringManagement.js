@@ -65,7 +65,7 @@ async function loadCoursesAndTermsForCreateDropdown() {
     const [coursesResponse, termsResponse, programsResponse] =
       await Promise.all([
         fetch("/api/courses"),
-        fetch("/api/terms"),
+        fetch("/api/terms?all=true"),
         fetch("/api/programs"),
       ]);
 
@@ -320,7 +320,7 @@ function initializeCreateOfferingModal() {
             typeof bootstrap.Modal.getOrCreateInstance === "function"
               ? bootstrap.Modal.getOrCreateInstance(modalEl)
               : bootstrap.Modal.getInstance(modalEl) ||
-                new bootstrap.Modal(modalEl);
+              new bootstrap.Modal(modalEl);
           modal.hide();
         }
 
@@ -470,7 +470,7 @@ function handleEditOfferingClick(button) {
 async function deleteOffering(offeringId, courseName, termName) {
   const confirmation = confirm(
     `Are you sure you want to delete the offering for ${courseName} in ${termName}?\n\n` +
-      "This action cannot be undone. All sections for this offering will be deleted.",
+    "This action cannot be undone. All sections for this offering will be deleted.",
   );
 
   if (!confirmation) {
@@ -549,6 +549,7 @@ async function loadOfferings() {
             <thead>
               <tr>
                 <th>Course</th>
+                <th>Program</th>
                 <th>Term</th>
                 <th>Status</th>
                 <th>Sections</th>
@@ -579,6 +580,7 @@ async function loadOfferings() {
       html += `
           <tr>
             <td><strong>${courseName}</strong></td>
+            <td>${(offering.program_names && offering.program_names.length > 0) ? offering.program_names.join(", ") : "-"}</td>
             <td>${termName}</td>
             <td>${statusBadge}</td>
             <td>${offering.section_count || 0}</td>

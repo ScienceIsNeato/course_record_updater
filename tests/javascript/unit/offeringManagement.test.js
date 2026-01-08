@@ -380,7 +380,7 @@ describe('Offering Management - Create Offering Modal', () => {
       await new Promise(resolve => setTimeout(resolve, 25));
 
       expect(global.fetch).toHaveBeenCalledWith('/api/courses');
-      expect(global.fetch).toHaveBeenCalledWith('/api/terms');
+      expect(global.fetch).toHaveBeenCalledWith('/api/terms?all=true');
       expect(global.fetch).toHaveBeenCalledWith('/api/programs');
 
       expect(document.getElementById('offeringCourseId').options.length).toBeGreaterThan(1);

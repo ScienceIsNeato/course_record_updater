@@ -157,8 +157,13 @@ function initializeCreateTermModal() {
         alert(result.message || "Term created successfully!");
 
         // Reload terms list if function exists
+        // Reload terms list if function exists
         if (typeof globalThis.loadTerms === "function") {
+          console.log("Reloading terms after creation...");
           globalThis.loadTerms();
+        } else {
+          console.warn("loadTerms function not found on globalThis");
+          setTimeout(() => location.reload(), 1000); // Fallback to full reload
         }
       } else {
         const error = await response.json();
@@ -362,7 +367,7 @@ async function loadTerms() {
   `;
 
   try {
-    const response = await fetch("/api/terms?all=true", {
+    const response = await fetch(`/api/terms?all=true&t=${Date.now()}`, {
       headers: { Accept: "application/json" },
     });
 
