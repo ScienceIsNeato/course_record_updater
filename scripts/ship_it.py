@@ -60,7 +60,7 @@ class CheckResult:
 class QualityGateExecutor:
     """Manages parallel execution of quality gate checks for Python/Flask projects."""
 
-    def __init__(self):
+    def __init__(self, verbose: bool = False):
         # Get centralized quality gate logger
         import os
 
@@ -75,6 +75,7 @@ class QualityGateExecutor:
         from src.utils.logging_config import setup_quality_gate_logger
 
         self.logger = setup_quality_gate_logger()
+        self.verbose = verbose
         self.script_path = "./scripts/maintAInability-gate.sh"
 
         # Track running subprocesses so we can terminate them on fail-fast
@@ -159,10 +160,16 @@ class QualityGateExecutor:
             check for check in self.all_checks if check not in full_commit_checks
         ]
 
-    def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
-        """Run a single quality check and return the result."""
-        import os
+    def run_single_check(self, check_flag: str, check_name: str, verbose: bool = False) -> CheckResult:
+        """Run a single quality check and return the result.
         
+        Args:
+            check_flag: The check identifier
+            check_name: Human-readable check name
+            verbose: If True, stream output directly to console (no buffering)
+        """
+        import os
+
         start_time = time.time()
 
         # Map shorthand flags to maintAInability-gate.sh flags
@@ -186,16 +193,16 @@ class QualityGateExecutor:
             else:
                 timeout_seconds = 300
 
-            # Don't use PIPE - let output stream directly to console for real-time visibility in CI
-            # Only capture for local use where we format output
-            if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
-                # CI mode: Stream output directly, no buffering
+            # Verbose mode: Stream output directly for real-time visibility
+            # Normal mode: Capture for formatted output
+            if verbose:
+                # Stream directly - no buffering, real-time output
                 process = subprocess.Popen(  # nosec
                     [self.script_path, f"--{actual_flag}"],
                     text=True,
                 )
             else:
-                # Local mode: Capture for formatted output
+                # Capture for formatted summary
                 process = subprocess.Popen(  # nosec
                     [self.script_path, f"--{actual_flag}"],
                     stdout=subprocess.PIPE,
@@ -290,6 +297,7 @@ class QualityGateExecutor:
         checks: List[Tuple[str, str]],
         max_workers: int = None,  # Use all available CPU cores
         fail_fast: bool = True,
+        verbose: bool = False,
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
         results = []
@@ -298,7 +306,7 @@ class QualityGateExecutor:
         try:
             # Submit all checks
             future_to_check = {
-                executor.submit(self.run_single_check, check_flag, check_name): (
+                executor.submit(self.run_single_check, check_flag, check_name, verbose): (
                     check_flag,
                     check_name,
                 )
@@ -669,7 +677,7 @@ class QualityGateExecutor:
             self.logger.info(
                 f"🚀 Running all checks in parallel (no fail-fast) [{', '.join(check_names)}]"
             )
-        all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast)
+        all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast, verbose=self.verbose)
 
         total_duration = time.time() - start_time
 
@@ -1891,6 +1899,7 @@ def main():
 Examples:
   python scripts/ship_it.py                                    # Fast commit validation (excludes slow checks)
   python scripts/ship_it.py --validation-type PR              # Full PR validation (fails if unaddressed comments)
+  python scripts/ship_it.py --verbose --checks tests          # Run tests with verbose output
   python scripts/ship_it.py --checks black isort lint tests   # Run only specific checks
   python scripts/ship_it.py --checks tests coverage           # Quick test + coverage check
 
@@ -1930,6 +1939,12 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
         help="Skip PR comment resolution check (run full PR gate without checking for unaddressed comments)",
     )
 
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output (show full test output including passed tests)",
+    )
+
     args = parser.parse_args()
 
     # Handle PR validation with comprehensive batch reporting
@@ -1950,7 +1965,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     validation_type = validation_type_map[args.validation_type]
 
     # Create and run the executor (for non-PR validation or PR with --skip-pr-comments)
-    executor = QualityGateExecutor()
+    executor = QualityGateExecutor(verbose=args.verbose)
     exit_code = executor.execute(checks=args.checks, validation_type=validation_type)
 
     sys.exit(exit_code)

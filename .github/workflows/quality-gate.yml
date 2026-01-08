@@ -62,7 +62,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Lint & Format (black, isort, flake8)
-      run: python scripts/ship_it.py --checks python-lint-format
+      run: python scripts/ship_it.py --verbose --checks python-lint-format
       env:
         PYTHONPATH: .
 
@@ -96,7 +96,7 @@ jobs:
         echo "PYTHONPATH=$PYTHONPATH"
         echo "=== Running coverage check via ship_it.py (tests + integration) ==="
         # Force unbuffered output and show progress in real-time
-        python -u scripts/ship_it.py --checks coverage
+        python -u scripts/ship_it.py --verbose --checks coverage
         echo "=== Coverage check complete ==="
       env:
         PYTHONPATH: .
@@ -194,7 +194,7 @@ jobs:
         export TEST_PORT=3001
         
         # Run smoke tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --checks smoke
+        python scripts/ship_it.py --verbose --checks smoke
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -274,7 +274,7 @@ jobs:
         export PORT=3001
         
         # Run integration tests using ship_it.py with SQLite backend (server already running)
-        python scripts/ship_it.py --checks integration
+        python scripts/ship_it.py --verbose --checks integration
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -326,7 +326,7 @@ jobs:
         export EMAIL_WHITELIST="*@ethereal.email,*@mocku.test,*@riverside.edu,*@pactech.edu,*@system.local"
         
         # Run E2E tests using ship_it.py (handles env setup via run_uat.sh)
-        python scripts/ship_it.py --checks e2e
+        python scripts/ship_it.py --verbose --checks e2e
       env:
         CI: true
         GITHUB_ACTIONS: true
@@ -365,7 +365,7 @@ jobs:
         pip install semgrep
     - name: Run Security Audit
       run: |
-        python scripts/ship_it.py --checks security | tee security-output.log
+        python scripts/ship_it.py --verbose --checks security | tee security-output.log
         exit ${PIPESTATUS[0]}
       env:
         PYTHONPATH: .
@@ -411,7 +411,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Python Static Analysis (mypy, imports)
-      run: python scripts/ship_it.py --checks python-static-analysis
+      run: python scripts/ship_it.py --verbose --checks python-static-analysis
       env:
         PYTHONPATH: .
 
@@ -437,7 +437,7 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run Code Duplication Check
-      run: python scripts/ship_it.py --checks duplication
+      run: python scripts/ship_it.py --verbose --checks duplication
       env:
         PYTHONPATH: .
 
@@ -469,15 +469,15 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
     - name: Run JavaScript Lint & Format (ESLint, Prettier)
-      run: python scripts/ship_it.py --checks js-lint-format
+      run: python scripts/ship_it.py --verbose --checks js-lint-format
       env:
         PYTHONPATH: .
     - name: Run JavaScript Tests
-      run: python scripts/ship_it.py --checks js-tests
+      run: python scripts/ship_it.py --verbose --checks js-tests
       env:
         PYTHONPATH: .
     - name: Run JavaScript Coverage Analysis
-      run: python scripts/ship_it.py --checks js-coverage
+      run: python scripts/ship_it.py --verbose --checks js-coverage
       env:
         PYTHONPATH: .
 
