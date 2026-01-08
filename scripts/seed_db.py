@@ -437,7 +437,6 @@ class BaselineTestSeeder(BaselineSeeder):
                     start_date=start_date.isoformat(),
                     end_date=end_date.isoformat(),
                     assessment_due_date=end_date.isoformat(),
-                    active=True,
                 )
                 # Database layer expects both 'name' and 'term_name'
                 schema["term_name"] = term_data["name"]
@@ -954,14 +953,12 @@ class DemoSeeder(BaselineTestSeeder):
             start_date = term_data.get("start_date", "2025-08-30")
             end_date = term_data.get("end_date", "2025-12-15")
             term_code = term_data.get("term_code", "FA2025")
-            active = term_data.get("active", True)
             self.log(f"   ✓ Using manifest data: {start_date} to {end_date}")
         else:
             # Fallback to hardcoded Fall 2025 semester dates
             start_date = datetime(2025, 8, 30, tzinfo=timezone.utc).isoformat()
             end_date = datetime(2025, 12, 15, tzinfo=timezone.utc).isoformat()
             term_code = "FA2025"
-            active = True
             self.log("   ⚠️  No manifest data, using fallback dates")
 
         schema = Term.create_schema(
@@ -969,7 +966,6 @@ class DemoSeeder(BaselineTestSeeder):
             start_date=start_date,
             end_date=end_date,
             assessment_due_date=end_date,
-            active=active,
         )
         schema["term_name"] = "Fall 2025"
         schema["term_code"] = term_code
@@ -1392,7 +1388,6 @@ class DemoSeeder(BaselineTestSeeder):
             start_date=term_data.get("start_date", "2025-01-01"),
             end_date=term_data.get("end_date", "2025-05-01"),
             assessment_due_date=term_data.get("end_date", "2025-05-01"),
-            active=term_data.get("active", False),
         )
         schema_term["term_name"] = term_data.get("name")
         schema_term["term_code"] = "HIST2025"

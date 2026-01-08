@@ -53,6 +53,7 @@ from src.database.database_service import (
     delete_user,
     duplicate_course_record,
     get_active_terms,
+    get_all_course_offerings,
     get_all_courses,
     get_all_institutions,
     get_all_instructors,
@@ -2866,7 +2867,6 @@ def create_course_offering_endpoint():
             "term_id": data["term_id"],
             "program_id": data.get("program_id"),
             "institution_id": get_current_institution_id(),
-            "status": data.get("status", "active"),
         }
 
         # Calculate section count
@@ -2923,32 +2923,20 @@ def _filter_sections_by_params(sections, term_id, course_id):
 
 
 def _aggregate_offerings_from_sections(sections):
-    """Extract unique offerings from sections and aggregate enrollment data"""
-    offerings_dict = {}
+    """Compute section/enrollment stats per offering."""
+    stats: Dict[str, Dict[str, int]] = {}
     for section in sections:
         offering_id = section.get("offering_id")
         if not offering_id:
             continue
 
-        if offering_id not in offerings_dict:
-            offerings_dict[offering_id] = {
-                "offering_id": offering_id,
-                "course_id": section.get("course_id"),
-                "term_id": section.get("term_id"),
-                "status": section.get("status", "active"),
-                "course_number": section.get("course_number"),
-                "course_title": section.get("course_title"),
-                "term_name": section.get("term_name"),
-                "section_count": 0,
-                "total_enrollment": 0,
-            }
-
-        offerings_dict[offering_id]["section_count"] += 1
-        offerings_dict[offering_id]["total_enrollment"] += (
-            section.get("enrollment") or 0
+        entry = stats.setdefault(
+            offering_id, {"section_count": 0, "total_enrollment": 0}
         )
+        entry["section_count"] += 1
+        entry["total_enrollment"] += section.get("enrollment") or 0
 
-    return offerings_dict
+    return stats
 
 
 def _build_course_program_map(courses, program_map):
@@ -2962,11 +2950,16 @@ def _build_course_program_map(courses, program_map):
     return course_program_map
 
 
-def _enrich_offerings_with_programs(offerings, course_program_map):
-    """Add program_names to each offering based on course_id"""
+def _enrich_offerings_with_programs(offerings, course_program_map, program_map):
+    """Add program_names to each offering based on explicit selection or course defaults."""
     for offering in offerings:
-        c_id = offering.get("course_id")
-        offering["program_names"] = course_program_map.get(c_id, []) if c_id else []
+        names: List[str] = []
+        program_id = offering.get("program_id")
+        if program_id and program_id in program_map:
+            names = [program_map[program_id]]
+        elif offering.get("course_id"):
+            names = course_program_map.get(offering["course_id"], [])
+        offering["program_names"] = names
 
 
 @api.route("/offerings", methods=["GET"])
@@ -2978,26 +2971,60 @@ def list_course_offerings():
         course_id = request.args.get("course_id")
         institution_id = get_current_institution_id()
 
-        # Get all sections and filter by parameters
-        sections = get_all_sections(institution_id)
+        sections = get_all_sections(institution_id) or []
         sections = _filter_sections_by_params(sections, term_id, course_id)
+        section_stats = _aggregate_offerings_from_sections(sections)
 
-        # Aggregate sections into offerings
-        offerings_dict = _aggregate_offerings_from_sections(sections)
-
-        # Build program mapping
         programs = get_programs_by_institution(institution_id) or []
         program_map = {
             p.get("program_id") or p.get("id"): p.get("name") for p in programs
         }
 
-        # Build course-to-program mapping
         courses = get_all_courses(institution_id) or []
         course_program_map = _build_course_program_map(courses, program_map)
+        course_lookup = {
+            course.get("course_id") or course.get("id"): course for course in courses
+        }
 
-        # Convert to list and enrich with program names
-        offerings = list(offerings_dict.values())
-        _enrich_offerings_with_programs(offerings, course_program_map)
+        terms = get_all_terms(institution_id) or []
+        term_lookup = {
+            term.get("term_id")
+            or term.get("id"): term.get("name")
+            or term.get("term_name")
+            for term in terms
+        }
+
+        offerings = get_all_course_offerings(institution_id) or []
+
+        if term_id:
+            offerings = [o for o in offerings if o.get("term_id") == term_id]
+        if course_id:
+            offerings = [o for o in offerings if o.get("course_id") == course_id]
+
+        for offering in offerings:
+            stats = section_stats.get(
+                offering.get("offering_id"), {"section_count": 0, "total_enrollment": 0}
+            )
+            offering["section_count"] = stats["section_count"]
+            offering["total_enrollment"] = stats["total_enrollment"]
+
+            course = course_lookup.get(offering.get("course_id"))
+            if course:
+                offering["course_number"] = course.get("course_number")
+                offering["course_title"] = course.get("course_title")
+                offering["course_name"] = course.get("course_title") or course.get(
+                    "course_number"
+                )
+                offering["department"] = course.get("department")
+            else:
+                offering.setdefault("course_name", "Unknown Course")
+
+            term_name = term_lookup.get(offering.get("term_id"))
+            offering["term_name"] = (
+                term_name or offering.get("term_name") or "Unknown Term"
+            )
+
+        _enrich_offerings_with_programs(offerings, course_program_map, program_map)
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
@@ -3037,7 +3064,7 @@ def update_course_offering_endpoint(offering_id: str):
     """
     Update course offering details
 
-    Allows updating capacity, total_enrollment, status, etc.
+    Allows updating capacity and enrollment counts.
     """
     try:
         data = request.get_json(silent=True)
@@ -3052,6 +3079,7 @@ def update_course_offering_endpoint(offering_id: str):
                 404,
             )
 
+        data.pop("status", None)
         success = update_course_offering(offering_id, data)
 
         if success:

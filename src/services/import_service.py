@@ -1069,7 +1069,6 @@ class ImportService:
                 course_id=course_id,
                 term_id=term_id,
                 institution_id=institution_id,
-                status="active",
             )
 
             offering_id = create_course_offering(offering_schema)
@@ -1111,7 +1110,6 @@ class ImportService:
             course_id=course_id,
             term_id=term_id,
             institution_id=institution_id,
-            status="active",
         )
         offering_id = create_course_offering(offering_schema)
 

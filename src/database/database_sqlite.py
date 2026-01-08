@@ -817,6 +817,7 @@ class SQLiteDatabase(DatabaseInterface):
 
     def create_course_offering(self, offering_data: Dict[str, Any]) -> Optional[str]:
         payload = dict(offering_data)
+        payload.pop("status", None)
         offering_id = _ensure_uuid(payload.pop("offering_id", None))
         offering = CourseOffering(
             id=offering_id,
@@ -824,7 +825,6 @@ class SQLiteDatabase(DatabaseInterface):
             term_id=payload.get("term_id"),
             institution_id=payload.get("institution_id"),
             program_id=payload.get("program_id"),
-            status=payload.get("status", "active"),
             total_enrollment=payload.get("total_enrollment", 0),
             section_count=payload.get("section_count", 0),
             extras={**payload, "offering_id": offering_id},
@@ -844,6 +844,8 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in offering_data.items():
+                    if key == "status":
+                        continue
                     if hasattr(offering, key) and key != "id":
                         setattr(offering, key, value)
 
@@ -919,7 +921,6 @@ class SQLiteDatabase(DatabaseInterface):
             start_date=payload.get("start_date"),
             end_date=payload.get("end_date"),
             assessment_due_date=payload.get("assessment_due_date"),
-            active=payload.get("active", True),
             institution_id=payload.get("institution_id"),
             extras={**payload, "term_id": term_id},
         )
@@ -944,10 +945,6 @@ class SQLiteDatabase(DatabaseInterface):
         except Exception as e:
             logger.error(f"Failed to update term: {e}")
             return False
-
-    def archive_term(self, term_id: str) -> bool:
-        """Archive term (soft delete - set active=False)."""
-        return self.update_term(term_id, {"active": False})
 
     def delete_term(self, term_id: str) -> bool:
         """Delete term (CASCADE deletes offerings and sections)."""
@@ -986,7 +983,6 @@ class SQLiteDatabase(DatabaseInterface):
                     select(Term).where(
                         and_(
                             Term.institution_id == institution_id,
-                            Term.active.is_(True),
                             func.date(Term.start_date) <= current_date_str,
                             func.date(Term.end_date) >= current_date_str,
                         )

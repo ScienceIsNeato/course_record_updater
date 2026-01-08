@@ -8,6 +8,15 @@
  * - API communication with CSRF protection
  */
 
+function publishSectionMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "sections",
+    action,
+    metadata,
+    source: "sectionManagement",
+  });
+}
+
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   initializeCreateSectionModal();
@@ -32,6 +41,8 @@ function initializeCreateSectionModal() {
       "sectionInstructorId",
     ).value;
     const enrollmentValue = document.getElementById("sectionEnrollment").value;
+    const capacityValue = document.getElementById("sectionCapacity")?.value;
+    const dueDateValue = document.getElementById("sectionDueDate")?.value;
 
     const sectionData = {
       offering_id: document.getElementById("sectionOfferingId").value,
@@ -40,6 +51,12 @@ function initializeCreateSectionModal() {
       enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById("sectionStatus").value,
     };
+    if (capacityValue !== undefined && capacityValue !== "") {
+      sectionData.capacity = Number.parseInt(capacityValue);
+    }
+    if (dueDateValue) {
+      sectionData.due_date = dueDateValue;
+    }
 
     const createBtn = document.getElementById("createSectionBtn");
     const btnText = createBtn.querySelector(".btn-text");
@@ -77,6 +94,7 @@ function initializeCreateSectionModal() {
         form.reset();
 
         alert(result.message || "Section created successfully!");
+        publishSectionMutation("create", { sectionId: result.section_id });
 
         // Reload sections list if function exists
         if (typeof globalThis.loadSections === "function") {
@@ -128,6 +146,14 @@ function initializeEditSectionModal() {
       enrollment: enrollmentValue ? Number.parseInt(enrollmentValue) : null,
       status: document.getElementById("editSectionStatus").value,
     };
+    const capacityInput = document.getElementById("editSectionCapacity");
+    if (capacityInput && capacityInput.value !== "") {
+      updateData.capacity = Number.parseInt(capacityInput.value) || 0;
+    }
+    const dueDateInput = document.getElementById("editSectionDueDate");
+    if (dueDateInput && dueDateInput.value) {
+      updateData.due_date = dueDateInput.value;
+    }
 
     const saveBtn = this.querySelector('button[type="submit"]');
     const btnText = saveBtn.querySelector(".btn-text");
@@ -163,6 +189,7 @@ function initializeEditSectionModal() {
         }
 
         alert(result.message || "Section updated successfully!");
+        publishSectionMutation("update", { sectionId });
 
         // Reload sections list
         if (typeof globalThis.loadSections === "function") {
@@ -197,7 +224,24 @@ async function openEditSectionModal(sectionId, sectionData) {
   document.getElementById("editSectionEnrollment").value =
     sectionData.enrollment || "";
   document.getElementById("editSectionStatus").value =
-    sectionData.status || "assigned";
+    sectionData.status || "scheduled";
+  const capacityInput = document.getElementById("editSectionCapacity");
+  if (capacityInput) {
+    const capacity =
+      sectionData.capacity ??
+      sectionData.enrollment_capacity ??
+      sectionData.capacity_limit;
+    capacityInput.value =
+      typeof capacity === "number" && !Number.isNaN(capacity) ? capacity : "";
+  }
+  const dueDateInput = document.getElementById("editSectionDueDate");
+  if (dueDateInput) {
+    const dueValue =
+      sectionData.due_date ||
+      sectionData.assessment_due_date ||
+      sectionData.assessmentDueDate;
+    dueDateInput.value = dueValue ? dueValue.split("T")[0] : "";
+  }
 
   // Populate instructor dropdown
   const instructorSelect = document.getElementById("editSectionInstructorId");
@@ -260,6 +304,7 @@ async function deleteSection(sectionId, courseName, sectionNumber) {
 
     if (response.ok) {
       alert(`Section ${sectionNumber} of ${courseName} deleted successfully.`);
+      publishSectionMutation("delete", { sectionId });
 
       if (typeof globalThis.loadSections === "function") {
         globalThis.loadSections();

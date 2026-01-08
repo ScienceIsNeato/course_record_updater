@@ -3,8 +3,10 @@ Term utilities for dynamic academic term generation.
 Replaces hardcoded ALLOWED_TERMS with flexible term management.
 """
 
-from datetime import datetime
-from typing import List, Optional
+from datetime import date, datetime
+from typing import List, Optional, Union
+
+from src.utils.time_utils import get_current_time
 
 
 class TermGenerator:
@@ -137,3 +139,66 @@ def get_current_term() -> str:
 def get_term_display_name(term: str) -> str:
     """Get human-readable display name for a term (convenience function)."""
     return default_term_generator.get_term_display_name(term)
+
+
+# ---------------------------------------------------------------------------
+# Term status helpers
+# ---------------------------------------------------------------------------
+
+TERM_STATUS_PASSED = "PASSED"
+TERM_STATUS_ACTIVE = "ACTIVE"
+TERM_STATUS_SCHEDULED = "SCHEDULED"
+TERM_STATUS_UNKNOWN = "UNKNOWN"
+
+
+def _coerce_to_date(value: Union[str, datetime, date, None]) -> Optional[date]:
+    """Convert ISO string/datetime/date to a date object."""
+    if value is None:
+        return None
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, datetime):
+        return value.date()
+
+    try:
+        # Attempt to parse full ISO string first
+        return datetime.fromisoformat(value).date()
+    except (TypeError, ValueError):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return None
+
+
+def get_term_status(
+    start_date: Union[str, datetime, date, None],
+    end_date: Union[str, datetime, date, None],
+    reference_date: Optional[date] = None,
+) -> str:
+    """
+    Compute a term's status.
+
+    Returns:
+        PASSED | ACTIVE | SCHEDULED | UNKNOWN
+    """
+    start = _coerce_to_date(start_date)
+    end = _coerce_to_date(end_date)
+    ref = reference_date or get_current_time().date()
+
+    if not start or not end:
+        return TERM_STATUS_UNKNOWN
+
+    if ref < start:
+        return TERM_STATUS_SCHEDULED
+    if ref > end:
+        return TERM_STATUS_PASSED
+    return TERM_STATUS_ACTIVE
+
+
+def is_term_active(
+    start_date: Union[str, datetime, date, None],
+    end_date: Union[str, datetime, date, None],
+    reference_date: Optional[date] = None,
+) -> bool:
+    """Return True if the term is currently active."""
+    return get_term_status(start_date, end_date, reference_date) == TERM_STATUS_ACTIVE

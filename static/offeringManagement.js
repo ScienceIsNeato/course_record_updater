@@ -9,6 +9,38 @@
  * - API communication with CSRF protection
  */
 
+const OFFERING_STATUS_BADGES = {
+  ACTIVE: { label: "Active", className: "badge bg-success" },
+  SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+  PASSED: { label: "Passed", className: "badge bg-secondary" },
+  UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+};
+
+function renderOfferingStatusBadge(status) {
+  const normalized = (status || "UNKNOWN").toUpperCase();
+  const config =
+    OFFERING_STATUS_BADGES[normalized] || OFFERING_STATUS_BADGES.UNKNOWN;
+  return `<span class="${config.className}">${config.label}</span>`;
+}
+
+function resolveOfferingStatus(offering) {
+  return (
+    offering?.status ||
+    offering?.timeline_status ||
+    offering?.term_status ||
+    (offering?.is_active ? "ACTIVE" : "UNKNOWN")
+  );
+}
+
+function publishOfferingMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "offerings",
+    action,
+    metadata,
+    source: "offeringManagement",
+  });
+}
+
 function initOfferingManagement() {
   // Only initialize forms if they exist (handling both dashboard and full list page)
   const createForm = document.getElementById("createOfferingForm");
@@ -348,6 +380,7 @@ function initializeCreateOfferingModal() {
         form.reset();
 
         alert(result.message || "Offering created successfully!");
+        publishOfferingMutation("create", { offeringId: result.offering_id });
 
         // Reload offerings list if function exists
         if (typeof globalThis.loadOfferings === "function") {
@@ -417,6 +450,7 @@ function initializeEditOfferingModal() {
         }
 
         alert(result.message || "Offering updated successfully!");
+        publishOfferingMutation("update", { offeringId });
 
         // Reload offerings list
         if (typeof globalThis.loadOfferings === "function") {
@@ -455,21 +489,18 @@ function openEditOfferingModal(offeringId, offeringData) {
   // Helper to set value when options might be loaded async
   const setSelectValue = (select, value) => {
     if (!select) return;
-    if (select.options.length > 1) {
-      select.value = value;
-    } else {
-      // Retry if not populated yet
-      setTimeout(() => setSelectValue(select, value), 500);
-    }
+    const attemptSet = () => {
+      if (select.options.length > 1) {
+        select.value = value || "";
+      } else {
+        setTimeout(attemptSet, 300);
+      }
+    };
+    attemptSet();
   };
 
-  if (offeringData.program_id && programSelect) {
-    setSelectValue(programSelect, offeringData.program_id);
-  }
-
-  if (offeringData.term_id && termSelect) {
-    setSelectValue(termSelect, offeringData.term_id);
-  }
+  setSelectValue(programSelect, offeringData.program_id || "");
+  setSelectValue(termSelect, offeringData.term_id || "");
 
   const modal = new bootstrap.Modal(
     document.getElementById("editOfferingModal"),
@@ -523,6 +554,7 @@ async function deleteOffering(offeringId, courseName, termName) {
 
     if (response.ok) {
       alert(`Offering for ${courseName} in ${termName} deleted successfully.`);
+      publishOfferingMutation("delete", { offeringId });
 
       if (typeof globalThis.loadOfferings === "function") {
         globalThis.loadOfferings();
@@ -598,10 +630,8 @@ async function loadOfferings() {
         offering.course_number ||
         "Unknown Course";
       const termName = offering.term_name || offering.term || "Unknown Term";
-      const statusBadge =
-        offering.status === "active"
-          ? '<span class="badge bg-success">Active</span>'
-          : `<span class="badge bg-secondary">${offering.status}</span>`;
+      const statusValue = resolveOfferingStatus(offering);
+      const statusBadge = renderOfferingStatusBadge(statusValue);
 
       // Safe JSON stringify for the edit button
       const offeringJson = JSON.stringify(offering)

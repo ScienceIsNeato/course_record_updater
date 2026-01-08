@@ -254,7 +254,7 @@ describe('InstitutionDashboard', () => {
           instructor_name: 'Dr. Smith',
           instructor_email: 'smith@test.edu',
           enrollment: 30,
-          status: 'active'
+          status: 'ACTIVE'
         }
       ];
 
@@ -548,7 +548,7 @@ describe('InstitutionDashboard', () => {
           term_id: 't1',
           sections: 2,
           enrollment: 50,
-          status: 'active'
+          status: 'ACTIVE'
         },
         {
           offering_id: 'off2',

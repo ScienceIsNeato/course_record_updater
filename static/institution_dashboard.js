@@ -25,13 +25,30 @@
     return div.innerHTML;
   }
 
+  const TERM_STATUS_BADGES = {
+    ACTIVE: { label: "Active", className: "badge bg-success" },
+    SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+    PASSED: { label: "Passed", className: "badge bg-secondary" },
+    UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+  };
+
+  function renderTermStatus(status) {
+    const normalized = (status || "UNKNOWN").toUpperCase();
+    const config = TERM_STATUS_BADGES[normalized] || TERM_STATUS_BADGES.UNKNOWN;
+    return `<span class="${config.className}">${config.label}</span>`;
+  }
+
   const InstitutionDashboard = {
     cache: null,
     lastFetch: 0,
     refreshInterval: 5 * 60 * 1000,
     intervalId: null,
+    refreshDebounceMs: 400,
+    refreshTimeoutId: null,
+    mutationUnsubscribe: null,
 
     init() {
+      this.registerMutationListener();
       document.addEventListener("visibilitychange", () => {
         if (
           !document.hidden &&
@@ -114,10 +131,48 @@
         clearInterval(this.intervalId);
         this.intervalId = null;
       }
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+        this.refreshTimeoutId = null;
+      }
+      if (typeof this.mutationUnsubscribe === "function") {
+        this.mutationUnsubscribe();
+        this.mutationUnsubscribe = null;
+      }
     },
 
     async refresh() {
       return this.loadData({ silent: false });
+    },
+
+    registerMutationListener() {
+      if (!globalThis.DashboardEvents?.subscribeToMutations) {
+        return;
+      }
+
+      if (this.mutationUnsubscribe) {
+        this.mutationUnsubscribe();
+      }
+
+      this.mutationUnsubscribe =
+        globalThis.DashboardEvents.subscribeToMutations((detail) => {
+          if (!detail) return;
+          this.scheduleRefresh({
+            silent: true,
+            reason: `${detail.entity || "unknown"}:${detail.action || "change"}`,
+          });
+        });
+    },
+
+    scheduleRefresh(options = {}) {
+      const { silent = true } = options;
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+      }
+      this.refreshTimeoutId = setTimeout(() => {
+        this.refreshTimeoutId = null;
+        this.loadData({ silent });
+      }, this.refreshDebounceMs);
     },
 
     async loadData(options = {}) {
@@ -512,6 +567,9 @@
           const endDate = term.end_date
             ? new Date(term.end_date).toLocaleDateString()
             : "N/A";
+          const statusValue = (
+            term.status || (term.active ? "ACTIVE" : "UNKNOWN")
+          ).toUpperCase();
 
           return {
             name: term.name || term.term_name || "Unnamed Term",
@@ -526,11 +584,8 @@
             start_date_sort: term.start_date || "",
             end_date: endDate,
             end_date_sort: term.end_date || "",
-            status:
-              term.active || term.is_active
-                ? '<span class="badge bg-success">Active</span>'
-                : '<span class="badge bg-secondary">Inactive</span>',
-            status_sort: term.active || term.is_active ? "1" : "0",
+            status: renderTermStatus(statusValue),
+            status_sort: statusValue,
           };
         }),
       });
@@ -590,6 +645,12 @@
             offering.program_names || course.program_names || [];
           const programDisplay =
             programNames.length > 0 ? programNames.join(", ") : "-";
+          const statusValue = (
+            offering.status ||
+            offering.timeline_status ||
+            offering.term_status ||
+            (offering.is_active ? "ACTIVE" : "UNKNOWN")
+          ).toUpperCase();
 
           return {
             course: course.course_number || "Unknown Course",
@@ -599,11 +660,8 @@
             sections_sort: sectionCount.toString(),
             enrollment: enrollmentCount.toString(),
             enrollment_sort: enrollmentCount.toString(),
-            status:
-              offering.status === "active"
-                ? '<span class="badge bg-success">Active</span>'
-                : '<span class="badge bg-secondary">Inactive</span>',
-            status_sort: offering.status === "active" ? "1" : "0",
+            status: renderTermStatus(statusValue),
+            status_sort: statusValue,
           };
         }),
       });

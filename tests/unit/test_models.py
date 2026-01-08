@@ -2,6 +2,8 @@
 Unit tests for the data models module.
 """
 
+from datetime import date
+
 import pytest
 
 from src.models.models import (
@@ -189,7 +191,15 @@ class TestTerm:
         assert term["start_date"] == "2024-08-26"
         assert term["end_date"] == "2024-12-13"
         assert term["assessment_due_date"] == "2024-12-20"
-        assert term["active"] is True
+
+    def test_term_status_helper(self):
+        """Term status helper computes values from dates."""
+        status = Term.get_status(
+            "2024-01-01",
+            "2024-06-01",
+            reference_date=date(2024, 2, 1),
+        )
+        assert status == "ACTIVE"
 
 
 class TestCourseSection:
@@ -567,7 +577,6 @@ class TestCourseOfferingAdditional:
         assert schema["term_id"] == "term456"
         assert schema["institution_id"] == "inst789"
         assert "offering_id" in schema
-        assert schema["status"] == "active"
         assert schema["capacity"] is None
 
 

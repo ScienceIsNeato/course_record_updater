@@ -1,6 +1,20 @@
 # Course Record Updater - Current Status
 
-## Latest Work: Security Audit Diagnostics (2026-01-08)
+## Latest Work: Dashboard Refresh Event Bus (2026-01-08)
+
+**Status**: ✅ COMPLETE - dashboards auto-refresh on every CRUD mutation without global name collisions.
+
+**Highlights**:
+- Added a shared `DashboardEvents` bus (in `static/script.js`) and registered all dashboards to debounce-refresh when they receive mutation events.
+- Updated every management script loaded on the institution dashboard (programs, courses, terms, offerings, sections, outcomes) to publish events after create/update/delete operations while still refreshing their dedicated tables.
+- Refactored `termManagement.js` so the table renderer no longer overrides the dashboard's `loadTerms()` function; it now emits `terms` mutations and only touches `globalThis.loadTerms` on the dedicated terms page.
+- Institution/Program/Instructor dashboards clean up listeners on unload and no longer rely on hard-coded refresh hooks.
+- Standardized the standalone users/sections pages to reuse the shared management scripts, eliminating inline `saveEdited*` handlers that silently regressed after the dashboard refresh work.
+
+**Verification**:
+- ✅ `npm run test:js -- termManagement`
+
+## Previous Work: Security Audit Diagnostics (2026-01-08)
 
 **Status**: 🚧 IN PROGRESS - identify why CI security gate fails silently
 

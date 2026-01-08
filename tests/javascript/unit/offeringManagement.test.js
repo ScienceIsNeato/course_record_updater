@@ -489,7 +489,7 @@ describe('Offering Management - Edit / Delete / Listing Helpers', () => {
             offering_id: 'off-1',
             course_title: 'Intro',
             term_name: 'Fall 2024',
-            status: 'active',
+            status: 'ACTIVE',
             section_count: 2,
             total_enrollment: 30
           }
@@ -699,4 +699,3 @@ describe('Offering Management - Delete Offering', () => {
     );
   });
 });
-

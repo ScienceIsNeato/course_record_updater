@@ -399,9 +399,14 @@ describe('User Management - Edit User Modal', () => {
         document.body.innerHTML = `
             <form id="editUserForm">
                 <input type="hidden" id="editUserId" />
+                <input type="email" id="editUserEmail" />
                 <input type="text" id="editFirstName" required />
                 <input type="text" id="editLastName" required />
                 <input type="text" id="editDisplayName" />
+                <select id="editUserRole">
+                    <option value="instructor">Instructor</option>
+                    <option value="program_admin">Program Admin</option>
+                </select>
                 <button type="submit">
                     <span class="btn-text">Save</span>
                     <span class="btn-spinner d-none">Saving...</span>
@@ -475,6 +480,48 @@ describe('User Management - Edit User Modal', () => {
             })
         );
         expect(global.loadUsers).toHaveBeenCalled();
+    });
+
+    test('should PATCH role when changed and editor has permissions', async () => {
+        mockFetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ success: true, message: 'User updated' })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ success: true })
+            });
+
+        global.currentUser = { role: 'institution_admin' };
+
+        const form = document.getElementById('editUserForm');
+        document.getElementById('editUserId').value = 'user-123';
+        document.getElementById('editFirstName').value = 'Jane';
+        document.getElementById('editLastName').value = 'Smith';
+        const roleSelect = document.getElementById('editUserRole');
+        roleSelect.dataset.originalRole = 'instructor';
+        roleSelect.value = 'program_admin';
+
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(submitEvent);
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        expect(mockFetch).toHaveBeenNthCalledWith(
+            1,
+            '/api/users/user-123/profile',
+            expect.any(Object)
+        );
+        expect(mockFetch).toHaveBeenNthCalledWith(
+            2,
+            '/api/users/user-123/role',
+            expect.objectContaining({
+                method: 'PATCH',
+                body: JSON.stringify({ role: 'program_admin' })
+            })
+        );
+        delete global.currentUser;
     });
 });
 
@@ -606,4 +653,3 @@ describe('User Management - Deactivate & Delete', () => {
         });
     });
 });
-

@@ -8,6 +8,15 @@
  * - API communication with CSRF protection
  */
 
+function publishOutcomeMutation(action, metadata = {}) {
+  globalThis.DashboardEvents?.publishMutation({
+    entity: "outcomes",
+    action,
+    metadata,
+    source: "outcomeManagement",
+  });
+}
+
 // Initialize when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   initializeCreateOutcomeModal();
@@ -76,6 +85,7 @@ function initializeCreateOutcomeModal() {
         form.reset();
 
         alert(result.message || "Outcome created successfully!");
+        publishOutcomeMutation("create", { outcomeId: result.outcome_id });
 
         // Reload outcomes list if function exists
         if (typeof globalThis.loadOutcomes === "function") {
@@ -159,6 +169,7 @@ function initializeEditOutcomeModal() {
         }
 
         alert(result.message || "Outcome updated successfully!");
+        publishOutcomeMutation("update", { outcomeId });
 
         // Reload outcomes list
         if (typeof globalThis.loadOutcomes === "function") {
@@ -232,6 +243,7 @@ async function deleteOutcome(outcomeId, courseName, cloNumber) {
 
     if (response.ok) {
       alert(`${cloNumber} for ${courseName} deleted successfully.`);
+      publishOutcomeMutation("delete", { outcomeId });
 
       if (typeof globalThis.loadOutcomes === "function") {
         globalThis.loadOutcomes();

@@ -28,7 +28,7 @@ describe('Offering Management - Loading Data', () => {
                             offering_id: 'o1',
                             course_name: 'CS101',
                             term_name: 'Fall 2024',
-                            status: 'active',
+                            status: 'ACTIVE',
                             section_count: 2,
                             total_enrollment: 50
                         }

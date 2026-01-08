@@ -208,99 +208,13 @@ document.addEventListener('click', function(e) {
     const btn = e.target.closest('.edit-user-btn');
     if (btn) {
         const userData = JSON.parse(btn.dataset.user);
-        openEditUserModal(userData);
+        if (typeof globalThis.openEditUserModal === 'function') {
+            globalThis.openEditUserModal(userData);
+        }
     }
 });
-
-function openEditUserModal(user) {
-    document.getElementById('editUserId').value = user.user_id;
-    document.getElementById('editUserFirstName').value = user.first_name || '';
-    document.getElementById('editUserLastName').value = user.last_name || '';
-    document.getElementById('editUserEmail').value = user.email || '';
-    const roleSelect = document.getElementById('editUserRole');
-    roleSelect.value = user.role || 'instructor';
-    // Remember original role so we can avoid unnecessary role updates (and avoid 403s for non-admins)
-    roleSelect.dataset.originalRole = roleSelect.value;
-
-    // Only institution/site admins should be able to change roles.
-    // Instructors (and other non-admins) can still update their own profile fields.
-    const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
-    const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
-    roleSelect.disabled = !canEditRoles;
-    
-    const modalEl = document.getElementById('editUserModal');
-    const modal =
-        typeof bootstrap.Modal.getOrCreateInstance === 'function'
-            ? bootstrap.Modal.getOrCreateInstance(modalEl)
-            : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-    modal.show();
-}
-
-async function saveEditedUser() {
-    const userId = document.getElementById('editUserId').value;
-    const firstName = document.getElementById('editUserFirstName').value;
-    const lastName = document.getElementById('editUserLastName').value;
-    const roleSelect = document.getElementById('editUserRole');
-    const role = roleSelect.value;
-    
-    try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-        
-        // Update profile (name)
-        const profileResponse = await fetch(`/api/users/${userId}/profile`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken || ''
-            },
-            body: JSON.stringify({
-                first_name: firstName,
-                last_name: lastName
-            })
-        });
-        
-        if (!profileResponse.ok) {
-            const error = await profileResponse.json();
-            alert('Error updating user profile: ' + (error.error || 'Unknown error'));
-            return;
-        }
-        
-        // Update role (separate endpoint) - only if current user is allowed AND role actually changed.
-        const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
-        const canEditRoles = currentUserRole === 'institution_admin' || currentUserRole === 'site_admin';
-        const originalRole = roleSelect.dataset.originalRole || role;
-        if (canEditRoles && role !== originalRole) {
-            const roleResponse = await fetch(`/api/users/${userId}/role`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken || ''
-                },
-                body: JSON.stringify({ role })
-            });
-            
-            if (!roleResponse.ok) {
-                const error = await roleResponse.json();
-                alert('Error updating user role: ' + (error.error || 'Unknown error'));
-                return;
-            }
-        }
-        
-        // Success - close modal and reload
-        const modalEl = document.getElementById('editUserModal');
-        const modal =
-            typeof bootstrap.Modal.getOrCreateInstance === 'function'
-                ? bootstrap.Modal.getOrCreateInstance(modalEl)
-                : bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-        modal.hide();
-        await loadUsers();
-        
-    } catch (error) {
-        console.error('Error updating user:', error);
-        alert('Error updating user: ' + error.message);
-    }
-}
-</script>
+    </script>
+<script src="{{ url_for('static', filename='userManagement.js') }}"></script>
 
 <!-- Edit User Modal -->
 <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
@@ -310,37 +224,44 @@ async function saveEditedUser() {
                 <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <form id="editUserForm">
                 <input type="hidden" id="editUserId">
-                <div class="mb-3">
-                    <label for="editUserEmail" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="editUserEmail" readonly>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editUserEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editUserEmail" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editFirstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="editFirstName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editLastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="editLastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUserRole" class="form-label">Role</label>
+                        <select class="form-select" id="editUserRole" required>
+                            <option value="instructor">Instructor</option>
+                            <option value="program_admin">Program Admin</option>
+                            <option value="institution_admin">Institution Admin</option>
+                        </select>
+                        <div class="form-text">Change user's role to promote/demote privileges</div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="editUserFirstName" class="form-label">First Name</label>
-                    <input type="text" class="form-control" id="editUserFirstName" required>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Save Changes</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            Saving...
+                        </span>
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label for="editUserLastName" class="form-label">Last Name</label>
-                    <input type="text" class="form-control" id="editUserLastName" required>
-                </div>
-                <div class="mb-3">
-                    <label for="editUserRole" class="form-label">Role</label>
-                    <select class="form-select" id="editUserRole" required>
-                        <option value="instructor">Instructor</option>
-                        <option value="program_admin">Program Admin</option>
-                        <option value="institution_admin">Institution Admin</option>
-                    </select>
-                    <div class="form-text">Change user's role to promote/demote privileges</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveEditedUser()">Save Changes</button>
-            </div>
+            </form>
         </div>
     </div>
 </div>
 
 {% endblock %}
-

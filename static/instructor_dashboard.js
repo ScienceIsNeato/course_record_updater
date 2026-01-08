@@ -17,8 +17,13 @@
     cache: null,
     lastFetch: 0,
     refreshInterval: 5 * 60 * 1000,
+    intervalId: null,
+    refreshDebounceMs: 400,
+    refreshTimeoutId: null,
+    mutationUnsubscribe: null,
 
     init() {
+      this.registerMutationListener();
       document.addEventListener("visibilitychange", () => {
         if (
           !document.hidden &&
@@ -31,11 +36,62 @@
       // Data auto-refreshes after mutations - no manual refresh button needed
 
       this.loadData();
-      setInterval(() => this.loadData({ silent: true }), this.refreshInterval);
+      this.intervalId = setInterval(
+        () => this.loadData({ silent: true }),
+        this.refreshInterval,
+      );
+
+      globalThis.addEventListener("beforeunload", () => this.cleanup());
+      globalThis.addEventListener("pagehide", () => this.cleanup());
+    },
+
+    cleanup() {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+        this.refreshTimeoutId = null;
+      }
+      if (typeof this.mutationUnsubscribe === "function") {
+        this.mutationUnsubscribe();
+        this.mutationUnsubscribe = null;
+      }
     },
 
     async refresh() {
       return this.loadData({ silent: false });
+    },
+
+    registerMutationListener() {
+      if (!globalThis.DashboardEvents?.subscribeToMutations) {
+        return;
+      }
+
+      if (this.mutationUnsubscribe) {
+        this.mutationUnsubscribe();
+      }
+
+      this.mutationUnsubscribe =
+        globalThis.DashboardEvents.subscribeToMutations((detail) => {
+          if (!detail) return;
+          this.scheduleRefresh({
+            silent: true,
+            reason: `${detail.entity || "unknown"}:${detail.action || "change"}`,
+          });
+        });
+    },
+
+    scheduleRefresh(options = {}) {
+      const { silent = true } = options;
+      if (this.refreshTimeoutId) {
+        clearTimeout(this.refreshTimeoutId);
+      }
+      this.refreshTimeoutId = setTimeout(() => {
+        this.refreshTimeoutId = null;
+        this.loadData({ silent });
+      }, this.refreshDebounceMs);
     },
 
     async loadData(options = {}) {

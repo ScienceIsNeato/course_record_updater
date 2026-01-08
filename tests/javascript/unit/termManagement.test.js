@@ -44,6 +44,11 @@ describe('Term Management - Create Term Modal', () => {
       <meta name="csrf-token" content="test-csrf-token">
     `;
 
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
+
     // Mock fetch
     mockFetch = jest.fn();
     global.fetch = mockFetch;
@@ -454,7 +459,14 @@ describe('Term Management - Create Term Modal', () => {
 
       // Form should be reset
       expect(nameInput.value).toBe('');
-      expect(global.loadTerms).toHaveBeenCalled();
+      expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entity: 'terms',
+          action: 'create',
+          metadata: { termId: 'term-123' },
+          source: 'termManagement'
+        })
+      );
     });
 
     test('should display error message on API failure', async () => {
@@ -609,6 +621,11 @@ describe('Term Management - Edit Term Modal', () => {
       <meta name="csrf-token" content="test-csrf-token">
     `;
 
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
+
     mockFetch = jest.fn();
     global.fetch = mockFetch;
 
@@ -687,7 +704,14 @@ describe('Term Management - Edit Term Modal', () => {
     const body = JSON.parse(callArgs[1].body);
     expect(body.end_date).toBe('2025-05-20');
     expect(body.name).toBe('Spring 2025');
-    expect(global.loadTerms).toHaveBeenCalled();
+    expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: 'terms',
+        action: 'update',
+        metadata: { termId: 'term-123' },
+        source: 'termManagement'
+      })
+    );
   });
 });
 
@@ -703,6 +727,10 @@ describe('Term Management - Delete Term', () => {
     confirmSpy = jest.spyOn(window, 'confirm');
     alertSpy = jest.spyOn(window, 'alert').mockImplementation();
     global.loadTerms = jest.fn();
+    global.DashboardEvents = {
+      publishMutation: jest.fn(),
+      subscribeToMutations: jest.fn(),
+    };
   });
 
   afterEach(() => {
@@ -733,7 +761,14 @@ describe('Term Management - Delete Term', () => {
     expect(alertSpy).toHaveBeenCalledWith(
       expect.stringContaining('deleted successfully')
     );
-    expect(global.loadTerms).toHaveBeenCalled();
+    expect(global.DashboardEvents.publishMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entity: 'terms',
+        action: 'delete',
+        metadata: { termId: 'term-123' },
+        source: 'termManagement'
+      })
+    );
   });
 
   test('should not delete if user cancels confirmation', async () => {
@@ -768,4 +803,3 @@ describe('Term Management - Delete Term', () => {
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('try again'));
   });
 });
-

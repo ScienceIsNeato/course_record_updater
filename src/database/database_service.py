@@ -20,6 +20,7 @@ from src.utils.constants import (
     TERMS_COLLECTION,
     USERS_COLLECTION,
 )
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,27 @@ def sanitize_for_logging(value: Any, max_length: int = 100) -> str:
         char if ord(char) >= 32 or char == "\t" else f"\\x{ord(char):02x}"
         for char in sanitized
     )
+
+
+def _with_term_status(term: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Attach computed status metadata to a term record."""
+    if not term:
+        return None
+
+    enriched = deepcopy(term)
+    status = get_term_status(enriched.get("start_date"), enriched.get("end_date"))
+    enriched["status"] = status
+    enriched["is_active"] = status == TERM_STATUS_ACTIVE
+    return enriched
+
+
+def _with_term_status_list(
+    terms: Optional[List[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
+    """Vectorized helper for term lists."""
+    if not terms:
+        return []
+    return [t for t in (_with_term_status(term) for term in terms) if t]
 
 
 # ---------------------------------------------------------------------------
@@ -507,19 +529,19 @@ def delete_term(term_id: str) -> bool:
 def get_term_by_name(
     name: str, institution_id: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
-    return _db_service.get_term_by_name(name, institution_id)
+    return _with_term_status(_db_service.get_term_by_name(name, institution_id))
 
 
 def get_active_terms(institution_id: str) -> List[Dict[str, Any]]:
-    return _db_service.get_active_terms(institution_id)
+    return _with_term_status_list(_db_service.get_active_terms(institution_id))
 
 
 def get_all_terms(institution_id: str) -> List[Dict[str, Any]]:
-    return _db_service.get_all_terms(institution_id)
+    return _with_term_status_list(_db_service.get_all_terms(institution_id))
 
 
 def get_term_by_id(term_id: str) -> Optional[Dict[str, Any]]:
-    return _db_service.get_term_by_id(term_id)
+    return _with_term_status(_db_service.get_term_by_id(term_id))
 
 
 def get_sections_by_term(term_id: str) -> List[Dict[str, Any]]:

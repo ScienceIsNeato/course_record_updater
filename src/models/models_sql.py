@@ -20,6 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship
 
+from src.utils.term_utils import TERM_STATUS_ACTIVE, get_term_status
 from src.utils.time_utils import get_current_time
 
 Base = declarative_base()  # type: ignore[valid-type,misc]
@@ -227,7 +228,6 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     start_date = Column(String)
     end_date = Column(String)
     assessment_due_date = Column(String)
-    active = Column(Boolean, default=True)
     institution_id = Column(String, ForeignKey(INSTITUTIONS_ID))
     extras = Column(PickleType, default=dict)
 
@@ -237,6 +237,10 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
         back_populates="term",
         cascade=CASCADE_OPTIONS,
     )
+
+    def get_status(self, reference_date: datetime | None = None) -> str:
+        """Return computed status for this term."""
+        return get_term_status(self.start_date, self.end_date, reference_date)
 
 
 class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
@@ -251,7 +255,6 @@ class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     program_id = Column(
         String, ForeignKey(PROGRAMS_ID), nullable=True
     )  # Link to specific program context
-    status = Column(String, default="active")
     total_enrollment = Column(Integer, default=0)
     section_count = Column(Integer, default=0)
     extras = Column(PickleType, default=dict)
@@ -579,6 +582,7 @@ def _course_to_dict(model: Course) -> Dict[str, Any]:
 
 def _term_to_dict(model: Term) -> Dict[str, Any]:
     """Convert Term model to dictionary."""
+    status = model.get_status()
     return {
         "term_id": model.id,
         "term_name": model.term_name,
@@ -586,7 +590,8 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
         "start_date": model.start_date,
         "end_date": model.end_date,
         "assessment_due_date": model.assessment_due_date,
-        "active": model.active,
+        "status": status,
+        "is_active": status == TERM_STATUS_ACTIVE,
         "institution_id": model.institution_id,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
@@ -595,12 +600,29 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
 
 def _course_offering_to_dict(model: CourseOffering) -> Dict[str, Any]:
     """Convert CourseOffering model to dictionary."""
+    term = getattr(model, "term", None)
+    term_start = None
+    term_end = None
+    if term:
+        term_start = term.start_date
+        term_end = term.end_date
+    elif hasattr(model, "extras") and model.extras:
+        term_start = model.extras.get("term_start_date")
+        term_end = model.extras.get("term_end_date")
+
+    status = get_term_status(term_start, term_end)
     return {
         "offering_id": model.id,
         "course_id": model.course_id,
         "term_id": model.term_id,
         "institution_id": model.institution_id,
-        "status": model.status,
+        "program_id": model.program_id,
+        "status": status,
+        "term_status": status,
+        "timeline_status": status,
+        "is_active": status == TERM_STATUS_ACTIVE,
+        "term_start_date": term_start,
+        "term_end_date": term_end,
         "total_enrollment": model.total_enrollment,
         "section_count": model.section_count,
         "created_at": model.created_at,

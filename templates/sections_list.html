@@ -49,32 +49,53 @@
                 <h5 class="modal-title" id="editSectionModalLabel">Edit Course Section</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <form id="editSectionForm">
                 <input type="hidden" id="editSectionId">
-                <div class="mb-3">
-                    <label for="editSectionNumber" class="form-label">Section Number</label>
-                    <input type="text" class="form-control" id="editSectionNumber" readonly>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editSectionNumber" class="form-label">Section Number *</label>
+                        <input type="text" class="form-control" id="editSectionNumber" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSectionInstructorId" class="form-label">Instructor</label>
+                        <select class="form-control" id="editSectionInstructorId" name="instructor_id">
+                            <option value="">Unassigned</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSectionEnrollment" class="form-label">Enrollment</label>
+                        <input type="number" class="form-control" id="editSectionEnrollment" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSectionStatus" class="form-label">Status</label>
+                        <select class="form-control" id="editSectionStatus">
+                            <option value="scheduled">Scheduled</option>
+                            <option value="active">Active</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSectionCapacity" class="form-label">Enrollment Capacity</label>
+                        <input type="number" class="form-control" id="editSectionCapacity" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editSectionDueDate" class="form-label">Assessment Due Date</label>
+                        <input type="date" class="form-control" id="editSectionDueDate">
+                        <div class="form-text">Optional: When the instructor should submit their assessment</div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="editSectionInstructorId" class="form-label">Instructor</label>
-                    <select class="form-control" id="editSectionInstructorId" name="instructor_id">
-                        <option value="">Unassigned</option>
-                    </select>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Save Changes</span>
+                        <span class="btn-spinner d-none">
+                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                            Saving...
+                        </span>
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label for="editSectionCapacity" class="form-label">Enrollment Capacity</label>
-                    <input type="number" class="form-control" id="editSectionCapacity" min="0">
-                </div>
-                <div class="mb-3">
-                    <label for="editSectionDueDate" class="form-label">Assessment Due Date</label>
-                    <input type="date" class="form-control" id="editSectionDueDate">
-                    <div class="form-text">Optional: When the instructor should submit their assessment</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveEditedSection()">Save Changes</button>
-            </div>
+            </form>
         </div>
     </div>
 </div>
@@ -240,7 +261,9 @@ async function loadSections() {
             if (btn) {
                 const row = btn.closest('tr');
                 const sectionData = JSON.parse(row.dataset.section);
-                editSection(btn.dataset.sectionId, sectionData);
+                if (typeof globalThis.openEditSectionModal === 'function') {
+                    globalThis.openEditSectionModal(btn.dataset.sectionId, sectionData);
+                }
             }
         });
         
@@ -252,80 +275,6 @@ async function loadSections() {
                 Error loading sections: ${escapeHtml(error.message)}
             </div>
         `;
-    }
-}
-
-async function editSection(sectionId, sectionData) {
-    // Open the edit modal and populate with section data
-    const modal = document.getElementById('editSectionModal');
-    if (!modal) return;
-    
-    // Populate form fields
-    document.getElementById('editSectionId').value = sectionId;
-    document.getElementById('editSectionNumber').value = sectionData.section_number || '';
-    document.getElementById('editSectionCapacity').value = sectionData.enrollment_capacity || '';
-    document.getElementById('editSectionDueDate').value = sectionData.due_date ? sectionData.due_date.split('T')[0] : '';
-    
-    // Load instructors for dropdown
-    try {
-        const response = await fetch('/api/users?role=instructor');
-        if (response.ok) {
-            const data = await response.json();
-            const instructorSelect = document.getElementById('editSectionInstructorId');
-            instructorSelect.innerHTML = '<option value="">Unassigned</option>';
-            (data.users || []).forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.user_id;
-                option.textContent = `${user.first_name} ${user.last_name}`;
-                if (user.user_id === sectionData.instructor_id) {
-                    option.selected = true;
-                }
-                instructorSelect.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Error loading instructors:', error);
-    }
-    
-    // Show modal
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
-}
-
-async function saveEditedSection() {
-    const sectionId = document.getElementById('editSectionId').value;
-    const instructorId = document.getElementById('editSectionInstructorId').value;
-    const capacity = document.getElementById('editSectionCapacity').value;
-    const dueDate = document.getElementById('editSectionDueDate').value;
-    
-    try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-        const response = await fetch(`/api/sections/${sectionId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken || ''
-            },
-            body: JSON.stringify({
-                instructor_id: instructorId || null,
-                enrollment_capacity: Number.parseInt(capacity) || 0,
-                due_date: dueDate || null
-            })
-        });
-        
-        if (response.ok) {
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editSectionModal'));
-            modal.hide();
-            // Reload sections list
-            await loadSections();
-        } else {
-            const error = await response.json();
-            alert('Error updating section: ' + (error.error || 'Unknown error'));
-        }
-    } catch (error) {
-        console.error('Error updating section:', error);
-        alert('Error updating section: ' + error.message);
     }
 }
 
@@ -388,4 +337,3 @@ document.getElementById('createSectionModal')?.addEventListener('show.bs.modal',
 </script>
 <script src="{{ url_for('static', filename='sectionManagement.js') }}"></script>
 {% endblock %}
-

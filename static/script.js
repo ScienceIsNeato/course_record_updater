@@ -1,5 +1,64 @@
 // static/script.js
 
+// --- Dashboard Event Bus (shared across all dashboards/panels) ---
+(function initDashboardEventBus(global) {
+  if (!global || global.DashboardEvents) {
+    return;
+  }
+
+  const EVENT_NAME = "dashboard:dataChanged";
+  const listeners = new Set();
+
+  const dispatch = typeof global.dispatchEvent === "function";
+
+  function publishMutation(detail = {}) {
+    const payload = {
+      entity: detail.entity || "unknown",
+      action: detail.action || "unknown",
+      source: detail.source || "unknown",
+      metadata: detail.metadata || {},
+      timestamp: Date.now(),
+    };
+
+    if (dispatch) {
+      global.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: payload }));
+    } else {
+      listeners.forEach((handler) => {
+        try {
+          handler(payload);
+        } catch (error) {
+          console.error("DashboardEvents handler error:", error); // eslint-disable-line no-console
+        }
+      });
+    }
+  }
+
+  function subscribeToMutations(handler) {
+    if (typeof handler !== "function") {
+      return () => {};
+    }
+
+    if (typeof global.addEventListener === "function") {
+      const wrapper = (event) => handler(event.detail || {});
+      global.addEventListener(EVENT_NAME, wrapper);
+      return () => {
+        if (typeof global.removeEventListener === "function") {
+          global.removeEventListener(EVENT_NAME, wrapper);
+        }
+      };
+    }
+
+    listeners.add(handler);
+    return () => listeners.delete(handler);
+  }
+
+  global.DashboardEvents = Object.freeze({
+    EVENT_NAME,
+    publishMutation,
+    subscribeToMutations,
+  });
+})(typeof globalThis !== "undefined" ? globalThis : window);
+
 // --- Helper Functions (Module Scope) ---
 
 function isFieldRequired(fieldName) {

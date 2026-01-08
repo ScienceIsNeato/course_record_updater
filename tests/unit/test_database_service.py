@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 
 import src.database.database_service as database_service
+from src.utils.term_utils import get_term_status
 
 
 def test_create_and_get_institution():
@@ -371,6 +372,8 @@ def test_get_all_terms():
     test_term = next((t for t in terms if t["term_id"] == term_id), None)
     assert test_term is not None
     assert test_term["term_code"] == "FA2024"
+    assert test_term["status"] == "ACTIVE"
+    assert test_term["is_active"] is True
 
 
 def test_refresh_connection():
@@ -1531,12 +1534,14 @@ def test_offering_crud_operations():
         }
     )
 
+    term_start = "2025-01-01"
+    term_end = "2025-05-15"
     term_id = database_service.create_term(
         {
             "term_name": "SP2025",
             "name": "Spring 2025",
-            "start_date": "2025-01-01",
-            "end_date": "2025-05-15",
+            "start_date": term_start,
+            "end_date": term_end,
             "active": True,
             "institution_id": inst_id,
         }
@@ -1546,7 +1551,6 @@ def test_offering_crud_operations():
         "course_id": course_id,
         "term_id": term_id,
         "institution_id": inst_id,
-        "status": "active",
         "total_enrollment": 0,
     }
     offering_id = database_service.create_course_offering(offering_data)
@@ -1555,14 +1559,13 @@ def test_offering_crud_operations():
     # Test update_course_offering
     update_data = {
         "total_enrollment": 25,
-        "status": "full",
     }
     result = database_service.update_course_offering(offering_id, update_data)
     assert result is True
 
     offering = database_service.get_course_offering(offering_id)
     assert offering["total_enrollment"] == 25
-    assert offering["status"] == "full"
+    assert offering["status"] == get_term_status(term_start, term_end)
 
     # Test delete_course_offering (CASCADE deletes sections)
     result = database_service.delete_course_offering(offering_id)
