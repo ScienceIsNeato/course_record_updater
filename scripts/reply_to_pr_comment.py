@@ -25,6 +25,54 @@ if parent_dir not in sys.path:
 from scripts.ship_it import reply_to_pr_comment
 
 
+def validate_arguments(args, parser):
+    """Validate command-line arguments."""
+    if not args.thread_id and not args.comment_id:
+        parser.error("Must provide either --thread-id or --comment-id")
+
+    if args.thread_id and args.comment_id:
+        parser.error("Cannot provide both --thread-id and --comment-id")
+
+
+def get_body_text(args):
+    """Extract body text from arguments or file."""
+    body = args.body
+    if args.body_file:
+        if args.body_file == "-":
+            body = sys.stdin.read()
+        else:
+            with open(args.body_file, "r", encoding="utf-8") as f:
+                body = f.read()
+
+    if not body.strip():
+        print("❌ Error: Reply body cannot be empty")
+        return None
+
+    return body
+
+
+def handle_reply(args, body):
+    """Send reply and return success status."""
+    resolve_thread = not args.no_resolve if args.thread_id else False
+
+    success = reply_to_pr_comment(
+        comment_id=args.comment_id,
+        body=body,
+        thread_id=args.thread_id,
+        resolve_thread=resolve_thread,
+    )
+
+    if success:
+        action = "replied to"
+        if args.thread_id and resolve_thread:
+            action = "replied to and resolved"
+        print(f"✅ Successfully {action} comment")
+        return 0
+
+    print("❌ Failed to reply to comment")
+    return 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Reply to PR comments and optionally auto-resolve threads",
@@ -72,44 +120,15 @@ Examples:
     args = parser.parse_args()
 
     # Validate arguments
-    if not args.thread_id and not args.comment_id:
-        parser.error("Must provide either --thread-id or --comment-id")
-
-    if args.thread_id and args.comment_id:
-        parser.error("Cannot provide both --thread-id and --comment-id")
+    validate_arguments(args, parser)
 
     # Get body text
-    body = args.body
-    if args.body_file:
-        if args.body_file == "-":
-            body = sys.stdin.read()
-        else:
-            with open(args.body_file, "r", encoding="utf-8") as f:
-                body = f.read()
-
-    if not body.strip():
-        print("❌ Error: Reply body cannot be empty")
+    body = get_body_text(args)
+    if body is None:
         return 1
 
     # Reply to comment
-    resolve_thread = not args.no_resolve if args.thread_id else False
-
-    success = reply_to_pr_comment(
-        comment_id=args.comment_id,
-        body=body,
-        thread_id=args.thread_id,
-        resolve_thread=resolve_thread,
-    )
-
-    if success:
-        action = "replied to"
-        if args.thread_id and resolve_thread:
-            action = "replied to and resolved"
-        print(f"✅ Successfully {action} comment")
-        return 0
-    else:
-        print("❌ Failed to reply to comment")
-        return 1
+    return handle_reply(args, body)
 
 
 if __name__ == "__main__":

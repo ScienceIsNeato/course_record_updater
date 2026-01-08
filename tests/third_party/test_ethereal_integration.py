@@ -68,9 +68,9 @@ def test_ethereal_send_and_receive():
     msg.attach(part1)
     msg.attach(part2)
 
-    # Send via SMTP with STARTTLS
+    # Send via SMTP with STARTTLS (10s timeout to prevent hanging)
     try:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
             server.starttls()
             server.login(ethereal_user, ethereal_pass)
             server.send_message(msg)
@@ -88,8 +88,8 @@ def test_ethereal_send_and_receive():
         print(f"   Attempt {attempt}/{max_attempts}...")
 
         try:
-            # Connect to IMAP server
-            mail = imaplib.IMAP4_SSL(imap_host, imap_port)
+            # Connect to IMAP server (10s timeout to prevent hanging)
+            mail = imaplib.IMAP4_SSL(imap_host, imap_port, timeout=10)
             mail.login(ethereal_user, ethereal_pass)
             mail.select("INBOX")
 

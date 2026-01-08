@@ -1007,6 +1007,7 @@ for r in d.get('results',[])[:5]:
         if [[ -f .secrets.baseline ]]; then
             # Exclude build artifacts, dependencies, and generated files
             # Keep source code, tests, and demos so we can add pragma comments
+            set +e  # detect-secrets uses non-zero exit codes for findings; capture output instead of exiting
             SECRETS_OUTPUT=$(git ls-files -z | \
                 grep -zvE '(venv/|\.venv/|node_modules/|\.git/|build/|coverage/|htmlcov/|\.pyc$|\.pyo$|__pycache__/|\.scannerwork/)' | \
                 xargs -0 detect-secrets-hook \
@@ -1014,6 +1015,7 @@ for r in d.get('results',[])[:5]:
                     --exclude-files 'venv/.*|\.venv/.*|node_modules/.*|\.git/.*|build/.*|coverage/.*|htmlcov/.*|__pycache__/.*|\.scannerwork/.*' \
                     2>&1)
             SECRETS_EXIT=$?
+            set -e
             if [[ $SECRETS_EXIT -eq 0 ]]; then
                 echo "PASS" > "$SECRETS_OUT"
                 echo "  ✅ detect-secrets: No secrets found" >> "$SECRETS_OUT"
@@ -1303,28 +1305,35 @@ except Exception as e:
   # --max-average B: Average project complexity at B or better
   echo ""
   echo "  🔧 Running xenon complexity threshold check..."
-  
+
   XENON_OUTPUT=$(xenon --max-absolute C --max-modules B --max-average B \
-    --exclude "venv,tests,.venv,node_modules,cursor-rules,demos,archives" \
+    --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" \
     . 2>&1) || XENON_FAILED=true
-  
+
   if [[ "$XENON_FAILED" == "true" ]]; then
-    echo "  ⚠️ Some functions exceed complexity thresholds:"
-    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | head -10 | sed 's/^/    /'
+    echo "  ❌ Some functions exceed complexity thresholds:"
+    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | sed 's/^/    /'
     echo ""
-    echo "  💡 These functions should be refactored to reduce complexity."
+    echo "  💡 These functions must be refactored to reduce complexity."
+    COMPLEXITY_PASSED=false
   else
     echo "  ✅ All functions within acceptable complexity thresholds"
   fi
-  
+
   # Final result
   echo ""
   if [[ "$COMPLEXITY_PASSED" == "true" ]]; then
     echo "✅ Complexity Analysis: PASSED (Average: $AVG_COMPLEXITY)"
     add_success "Complexity Analysis" "Average complexity: $AVG_COMPLEXITY, all functions ≤ 15"
   else
-    echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
-    add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
+    if [[ "$XENON_FAILED" == "true" ]]; then
+      XENON_COUNT=$(echo "$XENON_OUTPUT" | grep -c "ERROR" || echo "0")
+      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed radon threshold, $XENON_COUNT modules exceed xenon threshold)"
+      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15 and $XENON_COUNT modules with complexity > C" "Refactor functions to complexity ≤ 15"
+    else
+      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
+      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
+    fi
   fi
   echo ""
 fi

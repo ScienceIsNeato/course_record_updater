@@ -56,7 +56,7 @@ class TestEtherealProviderReadEmail:
         assert result["subject"] == "Test Subject"
         assert result["from"] == "sender@test.com"
         assert result["to"] == "test@ethereal.email"
-        mock_imap_class.assert_called_once_with("imap.ethereal.email", 993)
+        mock_imap_class.assert_called_once_with("imap.ethereal.email", 993, timeout=10)
         mock_mail.login.assert_called_once_with("test@ethereal.email", "testpass")
 
     @patch("src.email_providers.ethereal_provider.imaplib.IMAP4_SSL")

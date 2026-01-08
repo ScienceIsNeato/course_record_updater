@@ -379,8 +379,8 @@ def clear_ethereal_inbox() -> bool:
     try:
         print("🧹 Clearing Ethereal inbox...")
 
-        # Connect to IMAP server
-        mail = imaplib.IMAP4_SSL(ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT)
+        # Connect to IMAP server (15s timeout to prevent hanging)
+        mail = imaplib.IMAP4_SSL(ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT, timeout=15)
         mail.login(ETHEREAL_USER, ETHEREAL_PASS)
         mail.select("INBOX")
 

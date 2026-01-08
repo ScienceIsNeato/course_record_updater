@@ -1,6 +1,22 @@
 # Course Record Updater - Current Status
 
-## Latest Work: Terms Panel Refresh Fix (2026-01-08)
+## Latest Work: Security Audit Diagnostics (2026-01-08)
+
+**Status**: 🚧 IN PROGRESS - identify why CI security gate fails silently
+
+**Findings**:
+- `python scripts/ship_it.py --checks security` currently fails locally; the earlier assumption that it passes locally was incorrect.
+- `detect-secrets-hook` exits with status 1 when `.secrets.baseline` has unstaged changes, but `set -e` caused `maintAInability-gate.sh` to exit before printing the helpful message. This explains the blank "Failure Details" block in CI.
+- Added a `set +e`/`set -e` guard around the detect-secrets invocation so the script now captures the output and reports the actionable error.
+- After fixing the silent failure, the log clearly shows:
+  - `detect-secrets`: complains that `.secrets.baseline` is unstaged (stage or revert it before re-running).
+  - `safety`: fails because it cannot connect to Safety's API project (needs investigation/possibly new project link or offline mode).
+
+**Next Actions**:
+- Decide whether to stage/update `.secrets.baseline` or revert it so detect-secrets passes.
+- Work with infra/key owners to fix the Safety project linkage/network failure so the dependency scan can authenticate in CI.
+
+## Previous Work: Terms Panel Refresh Fix (2026-01-08)
 
 **Status**: ✅ COMPLETE - Terms panel now refreshes after creating term
 

@@ -170,7 +170,8 @@ class EtherealProvider(EmailProvider):
     def _connect_to_imap(self) -> Optional[imaplib.IMAP4_SSL]:
         """Connect to IMAP server and select INBOX"""
         try:
-            mail = imaplib.IMAP4_SSL(self._imap_host, self._imap_port)
+            # Add 10s timeout to prevent infinite hang on connection issues
+            mail = imaplib.IMAP4_SSL(self._imap_host, self._imap_port, timeout=10)
             mail.login(self._username, self._password)
             mail.select("INBOX")
             return mail
