@@ -161,6 +161,8 @@ class QualityGateExecutor:
 
     def run_single_check(self, check_flag: str, check_name: str) -> CheckResult:
         """Run a single quality check and return the result."""
+        import os
+        
         start_time = time.time()
 
         # Map shorthand flags to maintAInability-gate.sh flags
@@ -184,12 +186,22 @@ class QualityGateExecutor:
             else:
                 timeout_seconds = 300
 
-            process = subprocess.Popen(  # nosec
-                [self.script_path, f"--{actual_flag}"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            # Don't use PIPE - let output stream directly to console for real-time visibility in CI
+            # Only capture for local use where we format output
+            if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
+                # CI mode: Stream output directly, no buffering
+                process = subprocess.Popen(  # nosec
+                    [self.script_path, f"--{actual_flag}"],
+                    text=True,
+                )
+            else:
+                # Local mode: Capture for formatted output
+                process = subprocess.Popen(  # nosec
+                    [self.script_path, f"--{actual_flag}"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
 
             self._register_process(process)
 
@@ -197,13 +209,13 @@ class QualityGateExecutor:
                 stdout, stderr = process.communicate(timeout=timeout_seconds)
             except subprocess.TimeoutExpired:
                 process.kill()
-                stdout, stderr = process.communicate()
+                stdout, stderr = process.communicate() if process.stdout else ("", "")
                 duration = time.time() - start_time
                 return CheckResult(
                     name=check_name,
                     status=CheckStatus.FAILED,
                     duration=duration,
-                    output=stdout,
+                    output=stdout or "",
                     error=f"Check timed out after {timeout_seconds}s",
                 )
             finally:
@@ -216,15 +228,15 @@ class QualityGateExecutor:
                     name=check_name,
                     status=CheckStatus.PASSED,
                     duration=duration,
-                    output=stdout,
+                    output=stdout or "",
                 )
             else:
                 return CheckResult(
                     name=check_name,
                     status=CheckStatus.FAILED,
                     duration=duration,
-                    output=stdout,
-                    error=stderr,
+                    output=stdout or "",
+                    error=stderr or "",
                 )
 
         except subprocess.TimeoutExpired:
