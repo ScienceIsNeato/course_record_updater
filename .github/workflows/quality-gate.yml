@@ -95,7 +95,9 @@ jobs:
         echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
         echo "PYTHONPATH=$PYTHONPATH"
         echo "=== Running coverage check via ship_it.py (tests + integration) ==="
-        python scripts/ship_it.py --checks coverage
+        # Force unbuffered output and show progress in real-time
+        python -u scripts/ship_it.py --checks coverage
+        echo "=== Coverage check complete ==="
       env:
         PYTHONPATH: .
     - name: Upload Coverage to Codecov
