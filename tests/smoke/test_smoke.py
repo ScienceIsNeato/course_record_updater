@@ -38,14 +38,37 @@ class TestSystemSmoke:
         """Create an authenticated session for API checking"""
         session = requests.Session()
 
-        # Use JSON login API endpoint
+        # 1) Fetch login page to obtain CSRF token (and session cookie)
+        login_page = session.get(f"{smoke_target_url}/login", timeout=10)
+        csrf_token = None
+        csrf_match = re.search(
+            r'name="csrf_token" value="([^"]+)"', login_page.text, re.IGNORECASE
+        )
+        if csrf_match:
+            csrf_token = csrf_match.group(1)
+        else:
+            meta_match = re.search(
+                r'name="csrf-token" content="([^"]+)"', login_page.text, re.IGNORECASE
+            )
+            if meta_match:
+                csrf_token = meta_match.group(1)
+
+        if not csrf_token:
+            print("Login page did not contain a CSRF token")
+            pytest.fail("Could not obtain CSRF token for login")
+
+        # 2) POST to JSON login API with CSRF token header
         login_url = f"{smoke_target_url}/api/auth/login"
         payload = {
             "email": os.getenv("SMOKE_ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL),
             "password": os.getenv("SMOKE_ADMIN_PASSWORD", DEFAULT_ADMIN_PASSWORD),
             "remember_me": False,
         }
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrf_token,
+            "Referer": f"{smoke_target_url}/login",
+        }
 
         response = session.post(
             login_url, json=payload, headers=headers, allow_redirects=True, timeout=10
@@ -67,7 +90,7 @@ class TestSystemSmoke:
             pytest.fail("Login failed - unexpected response format")
 
         # Verify we're actually logged in by checking the dashboard
-        dash_resp = session.get(f"{smoke_target_url}/dashboard")
+        dash_resp = session.get(f"{smoke_target_url}/dashboard", timeout=10)
         if dash_resp.status_code != 200 or "login" in dash_resp.url:
             print(f"Dashboard access failed with status {dash_resp.status_code}")
             print(f"Dashboard URL: {dash_resp.url}")

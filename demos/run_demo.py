@@ -94,8 +94,11 @@ class DemoRunner:
         if working_directory:
             candidate = Path(working_directory)
             if not candidate.is_absolute():
+                # Resolve relative to demo file's directory
                 candidate = (self.demo_file.parent / candidate).resolve()
+            # If it's already absolute, use as-is
         else:
+            # Default to demo file's directory
             candidate = self.demo_file.parent
 
         if not candidate.exists():
@@ -352,10 +355,11 @@ class DemoRunner:
         
         print(f"{CYAN}🔍 Post-Step Verification:{NC}")
         for cmd_spec in commands:
-            cmd = cmd_spec.get('command', '')
+            cmd = self._substitute_variables(cmd_spec.get('command', ''))
             purpose = cmd_spec.get('purpose', '')
             expected = cmd_spec.get('expected_output', '')
             expected_contains = cmd_spec.get('expected_output_contains', '')
+            capture_as = cmd_spec.get('capture_output_as', '') or cmd_spec.get('capture_as', '')
             
             print(f"  ✓ {purpose}...")
             print(f"    $ {CYAN}{cmd}{NC}")
@@ -374,6 +378,11 @@ class DemoRunner:
                 continue
             
             output = result.strip()
+            
+            # Store captured output as context variable if requested
+            if capture_as:
+                self.context_vars[capture_as] = output
+                print(f"    📝 Captured as {{{{capture_as}}}}")
             
             # Check expectations
             if expected:
@@ -552,7 +561,15 @@ class DemoRunner:
     def execute_browser_action(self, action: str, config: Dict) -> bool:
         """Execute an automated action via API (when --auto) or skip (human does UI)."""
         try:
-            if action == 'api_check':
+            if action == 'sequence':
+                # Execute a sequence of sub-actions
+                sub_actions = config.get('actions', [])
+                for sub_action in sub_actions:
+                    sub_action_type = sub_action.get('action', '')
+                    if not self.execute_browser_action(sub_action_type, sub_action):
+                        return False
+                return True
+            elif action == 'api_check':
                 endpoint = config.get('endpoint', '/api/health')
                 return self.api_check(endpoint)
             elif action == 'api_post':
