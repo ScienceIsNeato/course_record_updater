@@ -2944,7 +2944,9 @@ def _aggregate_offerings_from_sections(sections):
             }
 
         offerings_dict[offering_id]["section_count"] += 1
-        offerings_dict[offering_id]["total_enrollment"] += section.get("enrollment") or 0
+        offerings_dict[offering_id]["total_enrollment"] += (
+            section.get("enrollment") or 0
+        )
 
     return offerings_dict
 
@@ -2964,9 +2966,7 @@ def _enrich_offerings_with_programs(offerings, course_program_map):
     """Add program_names to each offering based on course_id"""
     for offering in offerings:
         c_id = offering.get("course_id")
-        offering["program_names"] = (
-            course_program_map.get(c_id, []) if c_id else []
-        )
+        offering["program_names"] = course_program_map.get(c_id, []) if c_id else []
 
 
 @api.route("/offerings", methods=["GET"])
