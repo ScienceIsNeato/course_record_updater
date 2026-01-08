@@ -154,6 +154,8 @@ jobs:
         export DATABASE_URL=sqlite:///course_records_ci.db
         export ENV=test
         export PYTHONPATH=.
+        # Override internal seed_db.py database selection
+        export DATABASE_PATH=course_records_ci.db
         
         # Seed baseline data for smoke tests
         python scripts/seed_db.py --env dev --clear
@@ -304,7 +306,9 @@ jobs:
       run: |
         # Set E2E environment manually (don't source .envrc.template - it has placeholder credentials)
         export ENV="test"
-        export DATABASE_URL_E2E="sqlite:///course_records_e2e.db"
+        # Use absolute path to avoid CWD issues between server and test processes
+        export DATABASE_URL="sqlite:///${{ github.workspace }}/course_records_e2e.db"
+        export DATABASE_URL_E2E="sqlite:///${{ github.workspace }}/course_records_e2e.db"
         export LOOPCLOSER_DEFAULT_PORT_E2E="3002"
         
         # Set Ethereal credentials from GitHub secrets for email verification
@@ -503,8 +507,8 @@ jobs:
       run: |
         # Ensure build directory exists
         mkdir -p build
-        # Generate fresh coverage.xml for diff-cover analysis
-        python -m pytest tests/unit/ -n auto --cov=src --cov-report=xml:build/coverage.xml --tb=no -q
+        # Generate fresh coverage.xml for diff-cover analysis (include data/ for session code)
+        python -m pytest tests/unit/ -n auto --cov=src --cov=data --cov-report=xml:build/coverage.xml --tb=no -q
       env:
         PYTHONPATH: .
     - name: Check Coverage on New Code (80% threshold)

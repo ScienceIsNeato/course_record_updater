@@ -124,7 +124,7 @@ class DemoRunner:
             sys.exit(1)
 
     def _extract_manifest_path(self, setup_commands: List[str]) -> Optional[Path]:
-        """Extract manifest path from setup commands."""
+        """Extract manifest path from setup commands (handles --manifest=path and --manifest path)."""
         for cmd in setup_commands:
             try:
                 parts = shlex.split(cmd)
@@ -132,6 +132,14 @@ class DemoRunner:
                 continue
 
             for index, part in enumerate(parts):
+                # Handle --manifest=path format
+                if part.startswith('--manifest='):
+                    manifest_path = part.split('=', 1)[1]
+                    manifest_candidate = Path(manifest_path)
+                    if not manifest_candidate.is_absolute():
+                        manifest_candidate = (self.working_dir / manifest_candidate).resolve()
+                    return manifest_candidate
+                # Handle --manifest path format
                 if part == '--manifest' and index + 1 < len(parts):
                     manifest_candidate = Path(parts[index + 1])
                     if not manifest_candidate.is_absolute():

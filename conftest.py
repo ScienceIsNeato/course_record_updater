@@ -105,6 +105,7 @@ def _configure_csrf_for_testing():
         client = original_test_client(*args, **kwargs)
 
         # Wrap POST/PUT/PATCH/DELETE methods with CSRF injection
+        # Wrap all mutation methods with CSRF injection
         client.post = _make_csrf_wrapper(client, client.post)
         client.put = _make_csrf_wrapper(client, client.put)
         client.patch = _make_csrf_wrapper(client, client.patch)
