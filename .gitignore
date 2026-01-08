@@ -36,10 +36,6 @@ course_records_ci.db
 *.db
 *.db-*
 
-# SonarCloud analysis artifacts
-.scannerwork/
-.sonar_run_metadata.json
-
 .DS_Store
 
 # Node.js dependencies and artifacts
