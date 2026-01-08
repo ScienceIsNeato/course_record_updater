@@ -94,12 +94,13 @@ class DemoRunner:
         if working_directory:
             candidate = Path(working_directory)
             if not candidate.is_absolute():
-                # Resolve relative to demo file's directory
-                candidate = (self.demo_file.parent / candidate).resolve()
+                # Resolve relative to CWD (where the script is invoked from)
+                # NOT relative to the demo file location
+                candidate = (Path.cwd() / candidate).resolve()
             # If it's already absolute, use as-is
         else:
-            # Default to demo file's directory
-            candidate = self.demo_file.parent
+            # Default to CWD
+            candidate = Path.cwd()
 
         if not candidate.exists():
             self.print_error(f"Configured working directory does not exist: {candidate}")

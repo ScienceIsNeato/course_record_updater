@@ -160,9 +160,11 @@ class QualityGateExecutor:
             check for check in self.all_checks if check not in full_commit_checks
         ]
 
-    def run_single_check(self, check_flag: str, check_name: str, verbose: bool = False) -> CheckResult:
+    def run_single_check(
+        self, check_flag: str, check_name: str, verbose: bool = False
+    ) -> CheckResult:
         """Run a single quality check and return the result.
-        
+
         Args:
             check_flag: The check identifier
             check_name: Human-readable check name
@@ -306,7 +308,9 @@ class QualityGateExecutor:
         try:
             # Submit all checks
             future_to_check = {
-                executor.submit(self.run_single_check, check_flag, check_name, verbose): (
+                executor.submit(
+                    self.run_single_check, check_flag, check_name, verbose
+                ): (
                     check_flag,
                     check_name,
                 )
@@ -677,7 +681,9 @@ class QualityGateExecutor:
             self.logger.info(
                 f"🚀 Running all checks in parallel (no fail-fast) [{', '.join(check_names)}]"
             )
-        all_results = self.run_checks_parallel(checks_to_run, fail_fast=fail_fast, verbose=self.verbose)
+        all_results = self.run_checks_parallel(
+            checks_to_run, fail_fast=fail_fast, verbose=self.verbose
+        )
 
         total_duration = time.time() - start_time
 

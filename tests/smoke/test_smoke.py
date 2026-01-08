@@ -79,7 +79,7 @@ class TestSystemSmoke:
             response = session.post(
                 login_url, json=payload, allow_redirects=True, timeout=10
             )
-        
+
         if response.status_code != 200:
             print(f"Login failed with status {response.status_code}")
             print(f"Response text: {response.text[:500]}...")
