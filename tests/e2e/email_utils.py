@@ -416,8 +416,8 @@ def wait_for_email_via_imap(
     recipient_email: str,
     subject_substring: Optional[str] = None,
     unique_identifier: Optional[str] = None,
-    timeout: int = 30,
-    poll_interval: int = 2,
+    timeout: int = 60,
+    poll_interval: int = 3,
 ) -> Optional[Dict[str, Any]]:
     """
     Wait for an email to appear in Ethereal inbox via IMAP.
@@ -426,8 +426,8 @@ def wait_for_email_via_imap(
         recipient_email: Email address to look for (usually ETHEREAL_USER)
         subject_substring: Optional substring to match in subject
         unique_identifier: Optional unique string to find in email body/subject
-        timeout: Maximum seconds to wait
-        poll_interval: Seconds between polling attempts
+        timeout: Maximum seconds to wait (default 60s, increased for CI)
+        poll_interval: Seconds between polling attempts (default 3s)
 
     Returns:
         Email dictionary if found, None otherwise
@@ -444,13 +444,17 @@ def wait_for_email_via_imap(
         print(f"   Unique ID: {unique_identifier}")
 
     max_attempts = timeout // poll_interval
+    connection_timeout = 15  # Socket timeout for IMAP operations
 
     for attempt in range(1, max_attempts + 1):
         print(f"   Attempt {attempt}/{max_attempts}...")
 
+        mail = None
         try:
-            # Connect to IMAP server
-            mail = imaplib.IMAP4_SSL(ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT)
+            # Connect to IMAP server with timeout
+            mail = imaplib.IMAP4_SSL(
+                ETHEREAL_IMAP_HOST, ETHEREAL_IMAP_PORT, timeout=connection_timeout
+            )
             mail.login(ETHEREAL_USER, ETHEREAL_PASS)
             mail.select("INBOX")
 
@@ -526,11 +530,30 @@ def wait_for_email_via_imap(
                             "html_body": html_body,
                         }
 
-            mail.close()
-            mail.logout()
+            # Close connection properly
+            if mail:
+                try:
+                    mail.close()
+                    mail.logout()
+                except Exception:
+                    pass  # Ignore errors during cleanup
 
+        except imaplib.IMAP4.abort as e:
+            print(f"   ⚠️  IMAP connection aborted: {e}")
+            # Connection issue - will retry
+        except imaplib.IMAP4.error as e:
+            print(f"   ⚠️  IMAP protocol error: {e}")
+            # Protocol error - will retry
         except Exception as e:
-            print(f"   ⚠️  IMAP error: {e}")
+            print(f"   ⚠️  IMAP error: {type(e).__name__}: {e}")
+            # Generic error - will retry
+        finally:
+            # Ensure connection cleanup
+            if mail:
+                try:
+                    mail.logout()
+                except Exception:
+                    pass  # Ignore errors during cleanup
 
         # Wait before next attempt
         if attempt < max_attempts:

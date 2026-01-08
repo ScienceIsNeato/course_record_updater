@@ -140,34 +140,32 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Setup SQLite Database
       run: |
-        echo "Setting up SQLite database for testing..."
-        # Create database directory if it doesn't exist
-        mkdir -p $(dirname course_records.db)
+        echo "Setting up SQLite database for smoke tests..."
         
-        # Set database environment variables for SQLite
-        export DATABASE_TYPE=sqlite
-        export DATABASE_URL=sqlite:///course_records.db
-        
-        echo "✅ SQLite database ready for testing"
-    - name: Seed Database for Smoke Tests
-      run: |
-        # Set environment variables for SQLite
+        # Use consistent database name throughout smoke tests
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records_ci.db
-        export ENV=test
-        export PYTHONPATH=.
-        # Override internal seed_db.py database selection
-        export DATABASE_PATH=course_records_ci.db
         
-        # Seed baseline data for smoke tests
-        python scripts/seed_db.py --env dev --clear
+        echo "✅ SQLite database configuration ready"
+    - name: Seed Database for Smoke Tests
+      run: |
+        # Set environment variables for SQLite (consistent with runtime)
+        export DATABASE_TYPE=sqlite
+        export DATABASE_URL=sqlite:///course_records_ci.db
+        export ENV=ci
+        export PYTHONPATH=.
+        
+        # Seed baseline data for smoke tests using CI environment
+        # This uses course_records_ci.db as configured in DATABASE_URL
+        python scripts/seed_db.py --env ci --clear
     - name: Start Flask Server for Smoke Tests
       run: |
-        # Set environment variables for SQLite
+        # Set environment variables for SQLite (consistent with seed step)
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records_ci.db
         export PYTHONPATH=.
         export PORT=3001  # Use default dev port in CI (no conflicts)
+        export ENV=ci
         
         # Start Flask server in background for Selenium tests
         nohup python -m src.app > server.log 2>&1 &
@@ -183,10 +181,10 @@ jobs:
         echo "✅ Flask server started successfully on port 3001"
     - name: Run Smoke Tests (using ship_it.py)
       run: |
-        # Set environment variables for SQLite
+        # Set environment variables for SQLite (consistent with seed/server)
         export DATABASE_TYPE=sqlite
         export DATABASE_URL=sqlite:///course_records_ci.db
-        export ENV=test
+        export ENV=ci
         export SELENIUM_IMPLICIT_WAIT=3
         export SELENIUM_PAGE_LOAD_TIMEOUT=8
         export PYTHONPATH=.

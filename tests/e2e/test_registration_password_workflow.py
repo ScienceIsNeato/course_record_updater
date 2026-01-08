@@ -125,10 +125,11 @@ class TestRegistrationAndPasswordManagement:
 
         if not SKIP_EMAIL_VERIFICATION:
             # Wait for verification email to arrive via Ethereal IMAP
+            # Increased timeout for CI environments where email delivery may be slower
             verification_email = wait_for_email_via_imap(
                 recipient_email=self.TEST_EMAIL,
                 subject_substring="Verify",
-                timeout=30,
+                timeout=60,
             )
 
             assert verification_email is not None, "Verification email not received"
@@ -270,10 +271,11 @@ class TestRegistrationAndPasswordManagement:
         # ====================================================================
 
         # Wait for password reset email via Ethereal IMAP
+        # Increased timeout for CI environments where email delivery may be slower
         reset_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="Reset",  # Matches "Reset your Course Record Updater password"
-            timeout=30,
+            timeout=60,
         )
 
         assert reset_email is not None, "Password reset email not received"
@@ -335,10 +337,11 @@ class TestRegistrationAndPasswordManagement:
         # ====================================================================
 
         # Wait for confirmation email via Ethereal IMAP
+        # Increased timeout for CI environments where email delivery may be slower
         confirmation_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
             subject_substring="password",
-            timeout=30,
+            timeout=60,
         )
 
         assert (

@@ -2913,6 +2913,62 @@ def create_course_offering_endpoint():
         )
 
 
+def _filter_sections_by_params(sections, term_id, course_id):
+    """Filter sections by term_id and course_id if specified"""
+    if term_id:
+        sections = [s for s in sections if s.get("term_id") == term_id]
+    if course_id:
+        sections = [s for s in sections if s.get("course_id") == course_id]
+    return sections
+
+
+def _aggregate_offerings_from_sections(sections):
+    """Extract unique offerings from sections and aggregate enrollment data"""
+    offerings_dict = {}
+    for section in sections:
+        offering_id = section.get("offering_id")
+        if not offering_id:
+            continue
+
+        if offering_id not in offerings_dict:
+            offerings_dict[offering_id] = {
+                "offering_id": offering_id,
+                "course_id": section.get("course_id"),
+                "term_id": section.get("term_id"),
+                "status": section.get("status", "active"),
+                "course_number": section.get("course_number"),
+                "course_title": section.get("course_title"),
+                "term_name": section.get("term_name"),
+                "section_count": 0,
+                "total_enrollment": 0,
+            }
+
+        offerings_dict[offering_id]["section_count"] += 1
+        offerings_dict[offering_id]["total_enrollment"] += section.get("enrollment") or 0
+
+    return offerings_dict
+
+
+def _build_course_program_map(courses, program_map):
+    """Build mapping of course_id to list of program names"""
+    course_program_map = {}
+    for course in courses:
+        p_ids = course.get("program_ids") or []
+        p_names = [program_map[pid] for pid in p_ids if pid in program_map]
+        course_id = course.get("course_id") or course.get("id")
+        course_program_map[course_id] = p_names
+    return course_program_map
+
+
+def _enrich_offerings_with_programs(offerings, course_program_map):
+    """Add program_names to each offering based on course_id"""
+    for offering in offerings:
+        c_id = offering.get("course_id")
+        offering["program_names"] = (
+            course_program_map.get(c_id, []) if c_id else []
+        )
+
+
 @api.route("/offerings", methods=["GET"])
 @permission_required("view_program_data")
 def list_course_offerings():
@@ -2922,71 +2978,26 @@ def list_course_offerings():
         course_id = request.args.get("course_id")
         institution_id = get_current_institution_id()
 
-        # For now, we'll return all sections which include offering information
+        # Get all sections and filter by parameters
         sections = get_all_sections(institution_id)
+        sections = _filter_sections_by_params(sections, term_id, course_id)
 
-        # Filter by term if specified
-        if term_id:
-            sections = [s for s in sections if s.get("term_id") == term_id]
+        # Aggregate sections into offerings
+        offerings_dict = _aggregate_offerings_from_sections(sections)
 
-        # Filter by course if specified
-        if course_id:
-            sections = [s for s in sections if s.get("course_id") == course_id]
-
-        # Extract unique offerings and aggregate data
-        offerings_dict = {}
-        for section in sections:
-            offering_id = section.get("offering_id")
-            if not offering_id:
-                continue
-
-            if offering_id not in offerings_dict:
-                offerings_dict[offering_id] = {
-                    "offering_id": offering_id,
-                    "course_id": section.get("course_id"),
-                    "term_id": section.get("term_id"),
-                    "status": section.get("status", "active"),
-                    # Enriched fields for dashboard display
-                    "course_number": section.get("course_number"),
-                    "course_title": section.get("course_title"),
-                    "term_name": section.get("term_name"),
-                    # Aggregated fields
-                    "section_count": 0,
-                    "total_enrollment": 0,
-                }
-
-            # Aggregate counts
-            offerings_dict[offering_id]["section_count"] += 1
-            offerings_dict[offering_id]["total_enrollment"] += (
-                section.get("enrollment") or 0
-            )
-
-        # Helper mapping for programs
+        # Build program mapping
         programs = get_programs_by_institution(institution_id) or []
         program_map = {
             p.get("program_id") or p.get("id"): p.get("name") for p in programs
         }
 
-        # Helper mapping for course programs
+        # Build course-to-program mapping
         courses = get_all_courses(institution_id) or []
-        course_program_map = {}
-        for c in courses:
-            p_ids = c.get("program_ids") or []
-            p_names = []
-            for pid in p_ids:
-                if pid in program_map:
-                    p_names.append(program_map[pid])
-            course_program_map[c.get("course_id") or c.get("id")] = p_names
+        course_program_map = _build_course_program_map(courses, program_map)
 
+        # Convert to list and enrich with program names
         offerings = list(offerings_dict.values())
-
-        # Enrich offerings with program names
-        for offering in offerings:
-            c_id = offering.get("course_id")
-            if c_id and c_id in course_program_map:
-                offering["program_names"] = course_program_map[c_id]
-            else:
-                offering["program_names"] = []
+        _enrich_offerings_with_programs(offerings, course_program_map)
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
