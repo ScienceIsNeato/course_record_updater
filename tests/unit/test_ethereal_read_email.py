@@ -17,7 +17,7 @@ from src.email_providers.ethereal_provider import EtherealProvider
 # calls than local execution and fix properly instead of skipping.
 SKIP_IN_CI = pytest.mark.skipif(
     os.getenv("CI") == "true",
-    reason="TODO: Fix time.time() mock exhaustion in CI - StopIteration bug"
+    reason="TODO: Fix time.time() mock exhaustion in CI - StopIteration bug",
 )
 
 

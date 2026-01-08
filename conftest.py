@@ -44,6 +44,7 @@ def _get_csrf_token_from_session_or_generate(client):
     except Exception as e:
         # Log error for debugging instead of silently returning None
         import warnings
+
         warnings.warn(f"Failed to generate CSRF token in test: {e}")
         return None
 
