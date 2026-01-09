@@ -397,18 +397,18 @@
       const programs = programOverview.length
         ? programOverview
         : rawPrograms.map((program) => ({
-          program_id: program.program_id || program.id,
-          program_name: program.name,
-          course_count: program.course_count || 0,
-          faculty_count: program.faculty_count || 0,
-          student_count: program.student_count || 0,
-          section_count: program.section_count || 0,
-          assessment_progress: program.assessment_progress || {
-            percent_complete: 0,
-            completed: 0,
-            total: 0,
-          },
-        }));
+            program_id: program.program_id || program.id,
+            program_name: program.name,
+            course_count: program.course_count || 0,
+            faculty_count: program.faculty_count || 0,
+            student_count: program.student_count || 0,
+            section_count: program.section_count || 0,
+            assessment_progress: program.assessment_progress || {
+              percent_complete: 0,
+              completed: 0,
+              total: 0,
+            },
+          }));
 
       const table = globalThis.panelManager.createSortableTable({
         id: "institution-programs-table",
@@ -437,7 +437,7 @@
           );
           const facultyCount = Number(
             program.faculty_count ??
-            (program.faculty ? program.faculty.length : 0),
+              (program.faculty ? program.faculty.length : 0),
           );
           const studentCount = Number(program.student_count ?? 0);
           const sectionCount = Number(program.section_count ?? 0);
@@ -472,20 +472,23 @@
       const facultyRecords = assignments.length
         ? assignments
         : fallbackFaculty.map((member) => ({
-          user_id: member.user_id,
-          full_name:
-            member.full_name ||
-            [member.first_name, member.last_name].filter(Boolean).join(" ") ||
-            member.email,
-          program_ids: member.program_ids || [],
-          course_count: member.course_count || 0,
-          section_count: member.section_count || 0,
-          enrollment: member.enrollment || 0,
-          role: member.role || "instructor",
-          status: (member.account_status && member.account_status !== "undefined")
-            ? member.account_status
-            : (member.status && member.status !== "undefined" ? member.status : "active"),
-        }));
+            user_id: member.user_id,
+            full_name:
+              member.full_name ||
+              [member.first_name, member.last_name].filter(Boolean).join(" ") ||
+              member.email,
+            program_ids: member.program_ids || [],
+            course_count: member.course_count || 0,
+            section_count: member.section_count || 0,
+            enrollment: member.enrollment || 0,
+            role: member.role || "instructor",
+            status:
+              member.account_status && member.account_status !== "undefined"
+                ? member.account_status
+                : member.status && member.status !== "undefined"
+                  ? member.status
+                  : "active",
+          }));
 
       if (!facultyRecords.length) {
         container.innerHTML = "";
@@ -529,14 +532,18 @@
             students: studentCount.toString(),
             students_sort: studentCount.toString(),
             role: this.formatRole(record.role || "instructor"),
-            status: `<span class="badge ${(record.status || "active").toLowerCase() === "active"
+            status: `<span class="badge ${
+              (record.status || "active").toLowerCase() === "active"
                 ? "bg-success"
-                : ["invited", "pending"].includes((record.status || "").toLowerCase())
+                : ["invited", "pending"].includes(
+                      (record.status || "").toLowerCase(),
+                    )
                   ? "bg-warning text-dark"
                   : "bg-secondary"
-              }">${(record.status || "active").charAt(0).toUpperCase() +
+            }">${
+              (record.status || "active").charAt(0).toUpperCase() +
               (record.status || "active").slice(1)
-              }</span>`,
+            }</span>`,
           };
         }),
       });
@@ -758,8 +765,8 @@
               course.course_number && course.course_title
                 ? `${course.course_number} — ${course.course_title}`
                 : course.course_number ||
-                course.course_title ||
-                "Unknown Course",
+                  course.course_title ||
+                  "Unknown Course",
             program: programDisplay,
             term: term.term_name || term.name || "Unknown Term",
             sections: sectionCount.toString(),

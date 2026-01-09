@@ -668,7 +668,9 @@ async function loadOfferings() {
       const statusValue = resolveOfferingStatus(offering);
       const statusBadge = renderOfferingStatusBadge(statusValue);
       const termId = offering.term_id || "";
-      const programId = offering.program_id || "";
+      // Support multiple programs - use program_ids array from API
+      const programIds = offering.program_ids || [];
+      const programIdsStr = programIds.join(",");
 
       // Safe JSON stringify for the edit button
       const offeringJson = JSON.stringify(offering)
@@ -676,7 +678,7 @@ async function loadOfferings() {
         .replace(/"/g, "&quot;");
 
       html += `
-          <tr class="offering-row" data-term-id="${termId}" data-program-id="${programId}">
+          <tr class="offering-row" data-term-id="${termId}" data-program-ids="${programIdsStr}">
             <td><strong>${courseName}</strong></td>
             <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
             <td>${termName}</td>
@@ -773,6 +775,8 @@ async function populateFilters() {
 
 /**
  * Filter offerings table rows
+ * Supports filtering by term and program (including multi-program offerings)
+ * Supports both old data-program-id (single) and new data-program-ids (multiple) for backward compatibility
  */
 function applyFilters() {
   const termId = document.getElementById("filterTerm")?.value;
@@ -782,11 +786,27 @@ function applyFilters() {
 
   rows.forEach((row) => {
     const rowTermId = row.getAttribute("data-term-id");
+    
+    // Support both old (single) and new (multiple) program attributes
+    const rowProgramIds = row.getAttribute("data-program-ids");
     const rowProgramId = row.getAttribute("data-program-id");
 
-    // Simple exact match for filtering
+    // Term filter: simple exact match
     const showTerm = !termId || rowTermId === termId;
-    const showProgram = !programId || rowProgramId === programId;
+
+    // Program filter: check if selected program matches
+    let showProgram = !programId;
+    if (programId) {
+      // Try new format first (comma-separated list)
+      if (rowProgramIds !== null) {
+        const programIdsArray = rowProgramIds.split(",").filter((id) => id.trim());
+        showProgram = programIdsArray.includes(programId);
+      } 
+      // Fall back to old format (single value)
+      else if (rowProgramId !== null) {
+        showProgram = rowProgramId === programId;
+      }
+    }
 
     row.style.display = showTerm && showProgram ? "" : "none";
   });

@@ -2909,26 +2909,31 @@ def _aggregate_offerings_from_sections(sections):
 
 
 def _build_course_program_map(courses, program_map):
-    """Build mapping of course_id to list of program names"""
+    """Build mapping of course_id to list of program names and IDs"""
     course_program_map = {}
     for course in courses:
         p_ids = course.get("program_ids") or []
         p_names = [program_map[pid] for pid in p_ids if pid in program_map]
         course_id = course.get("course_id") or course.get("id")
-        course_program_map[course_id] = p_names
+        course_program_map[course_id] = {"names": p_names, "ids": p_ids}
     return course_program_map
 
 
 def _enrich_offerings_with_programs(offerings, course_program_map, program_map):
-    """Add program_names to each offering based on explicit selection or course defaults."""
+    """Add program_names and program_ids to each offering based on explicit selection or course defaults."""
     for offering in offerings:
         names: List[str] = []
+        ids: List[str] = []
         program_id = offering.get("program_id")
         if program_id and program_id in program_map:
             names = [program_map[program_id]]
+            ids = [program_id]
         elif offering.get("course_id"):
-            names = course_program_map.get(offering["course_id"], [])
+            course_data = course_program_map.get(offering["course_id"], {"names": [], "ids": []})
+            names = course_data.get("names", [])
+            ids = course_data.get("ids", [])
         offering["program_names"] = names
+        offering["program_ids"] = ids
 
 
 def _strip_term_status_fields(payload: Dict[str, Any]) -> None:
