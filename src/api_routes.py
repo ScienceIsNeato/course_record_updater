@@ -2997,16 +2997,21 @@ def list_course_offerings():
         terms = get_all_terms(institution_id) or []
         term_lookup: Dict[str, Dict[str, Any]] = {}
         for term in terms:
-            term_id = term.get("term_id") or term.get("id")
-            if term_id:
-                term_lookup[term_id] = term
+            tid = term.get("term_id") or term.get("id")
+            if tid:
+                term_lookup[tid] = term
 
         offerings = get_all_course_offerings(institution_id) or []
+        logger.info(
+            f"[/api/offerings] Retrieved {len(offerings)} offerings from database"
+        )
 
         if term_id:
             offerings = [o for o in offerings if o.get("term_id") == term_id]
         if course_id:
             offerings = [o for o in offerings if o.get("course_id") == course_id]
+
+        logger.info(f"[/api/offerings] After filtering: {len(offerings)} offerings")
 
         for offering in offerings:
             stats = section_stats.get(
@@ -3040,6 +3045,17 @@ def list_course_offerings():
             _annotate_offering_status(offering, term)
 
         _enrich_offerings_with_programs(offerings, course_program_map, program_map)
+
+        # Log program enrichment results
+        offerings_with_programs = [o for o in offerings if o.get("program_ids")]
+        offerings_without_programs = [o for o in offerings if not o.get("program_ids")]
+        logger.info(
+            f"[/api/offerings] After enrichment: {len(offerings_with_programs)} with programs, {len(offerings_without_programs)} without programs"
+        )
+        if offerings_without_programs:
+            logger.warning(
+                f"[/api/offerings] Offerings without programs: {[o.get('course_name', 'Unknown') for o in offerings_without_programs]}"
+            )
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
