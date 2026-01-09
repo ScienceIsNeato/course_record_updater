@@ -82,11 +82,13 @@ def run_generate_logs(app, db):
             )
 
             if invitation_data:
-                sent = InvitationService.send_invitation(invitation_data)
-                if sent:
+                sent, email_error = InvitationService.send_invitation(invitation_data)
+                if sent and not email_error:
                     logger.info(f"Invitation sent to {new_email}")
                 else:
-                    logger.error("Failed to send invitation email")
+                    logger.error(
+                        f"Failed to send invitation email{f': {email_error}' if email_error else ''}"
+                    )
             else:
                 logger.error("Failed to create invitation record")
         except Exception as e:

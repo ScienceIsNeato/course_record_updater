@@ -51,8 +51,8 @@
         }
 
         .institution-logo {
-            height: 40px;
-            max-width: 200px;
+            height: 80px;
+            width: auto;
             object-fit: contain;
             border-radius: 0;
             background-color: transparent;
@@ -65,8 +65,20 @@
         }
 
         .loopcloser-brand img {
-            height: 40px;
+            height: 80px;
             object-fit: contain;
+        }
+        .navbar-nav .nav-link {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.1rem;
+            font-size: 0.8rem;
+            padding-top: 0.1rem;
+            padding-bottom: 0.1rem;
+        }
+        .navbar-nav .nav-link i {
+            font-size: 1.2rem;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -83,7 +95,11 @@
 
             <!-- Navigation Items -->
             <div class="navbar-nav me-auto">
-                {% block nav_items %}{% endblock %}
+                {% if user and user.role == 'institution_admin' %}
+                    {% include 'components/institution_nav_items.html' %}
+                {% else %}
+                    {% block nav_items %}{% endblock %}
+                {% endif %}
             </div>
 
             <!-- Banner Info -->

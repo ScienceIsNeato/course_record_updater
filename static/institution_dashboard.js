@@ -379,7 +379,10 @@
           (item) => item && computeTimelineStatus(item) === "ACTIVE",
         ) || (data.terms || [])[0];
       const termName = term && term.name ? term.name : "--";
-      document.getElementById(SELECTORS.currentTerm).textContent = termName;
+      const termElement = document.getElementById(SELECTORS.currentTerm);
+      if (termElement) {
+        termElement.textContent = termName;
+      }
     },
 
     renderPrograms(programOverview, rawPrograms) {

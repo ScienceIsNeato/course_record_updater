@@ -1,7 +1,10 @@
 {
     "institutions": [
         {
+            "name": "Demo University",
             "short_name": "DEMO2025",
+            "admin_email": "demo2025.admin@example.com",
+            "website_url": "https://demo.example.com",
             "logo_path": "images/MockU.png"
         }
     ],
@@ -14,6 +17,12 @@
             "active": true
         }
     ],
+    "demo_admin": {
+        "email": "demo2025.admin@example.com",
+        "first_name": "Demo",
+        "last_name": "Admin",
+        "password_env_var": "DEMO_PASSWORD"
+    },
     "institution_admins": [
         {
             "email": "sarah.admin@mocku.test",
@@ -23,23 +32,233 @@
             "password_env_var": "DEFAULT_PASSWORD"
         }
     ],
+    "programs": [
+        {
+            "name": "Biological Sciences",
+            "code": "BIOL"
+        },
+        {
+            "name": "Zoology",
+            "code": "ZOOL"
+        }
+    ],
+    "courses": [
+        {
+            "program_code": "BIOL",
+            "code": "BIOL-101",
+            "name": "Introduction to Biology",
+            "credits": 4
+        },
+        {
+            "program_code": "BIOL",
+            "code": "BIOL-201",
+            "name": "Cellular Biology",
+            "credits": 4
+        },
+        {
+            "program_code": "BIOL",
+            "code": "BIOL-301",
+            "name": "Genetics",
+            "credits": 3
+        },
+        {
+            "program_code": "ZOOL",
+            "code": "ZOOL-101",
+            "name": "Animal Diversity",
+            "credits": 4
+        },
+        {
+            "program_code": "ZOOL",
+            "code": "ZOOL-205",
+            "name": "Vertebrate Anatomy",
+            "credits": 4
+        },
+        {
+            "program_code": "ZOOL",
+            "code": "ZOOL-310",
+            "name": "Animal Behavior",
+            "credits": 3
+        }
+    ],
+    "users": [
+        {
+            "email": "dr.morgan@demo.example.com",
+            "first_name": "Alex",
+            "last_name": "Morgan",
+            "role": "instructor",
+            "program_code": "BIOL"
+        },
+        {
+            "email": "prof.chen@demo.example.com",
+            "first_name": "Sarah",
+            "last_name": "Chen",
+            "role": "instructor",
+            "program_code": "BIOL"
+        },
+        {
+            "email": "dr.patel@demo.example.com",
+            "first_name": "Raj",
+            "last_name": "Patel",
+            "role": "instructor",
+            "program_code": "ZOOL"
+        }
+    ],
+    "clo_templates": {
+        "BIOL": [
+            {
+                "num": 1,
+                "desc": "Apply scientific method to biological questions",
+                "method": "Lab Report"
+            },
+            {
+                "num": 2,
+                "desc": "Analyze cellular and molecular processes",
+                "method": "Written Exam"
+            },
+            {
+                "num": 3,
+                "desc": "Evaluate biological systems and interactions",
+                "method": "Research Paper"
+            }
+        ],
+        "ZOOL": [
+            {
+                "num": 1,
+                "desc": "Identify and classify animal species",
+                "method": "Field Observation"
+            },
+            {
+                "num": 2,
+                "desc": "Analyze animal behavior patterns",
+                "method": "Lab Report"
+            },
+            {
+                "num": 3,
+                "desc": "Evaluate ecological relationships",
+                "method": "Final Exam"
+            }
+        ]
+    },
+    "offerings": [
+        {
+            "course_code": "BIOL-101",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 25,
+                    "status": "assigned",
+                    "instructor_idx": 0
+                },
+                {
+                    "section_number": "002",
+                    "enrollment": 25,
+                    "status": "assigned",
+                    "instructor_idx": 1
+                },
+                {
+                    "section_number": "003",
+                    "enrollment": 13,
+                    "status": "assigned",
+                    "instructor_idx": 2
+                },
+                {
+                    "section_number": "004",
+                    "enrollment": 0,
+                    "status": "unassigned",
+                    "instructor_idx": null
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-201",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 22,
+                    "status": "assigned",
+                    "instructor_idx": 0
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-301",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "assigned",
+                    "instructor_idx": 1
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 28,
+                    "status": "assigned",
+                    "instructor_idx": 2
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-205",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 20,
+                    "status": "assigned",
+                    "instructor_idx": 0
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-310",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 15,
+                    "status": "assigned",
+                    "instructor_idx": 1
+                }
+            ]
+        }
+    ],
     "historical_data": {
         "term": {
             "name": "Spring 2025",
+            "term_code": "SP2025",
             "start_date": "2025-01-10",
             "end_date": "2025-05-15",
             "active": false
         },
+        "courses": [
+            {
+                "code": "HIST-101",
+                "name": "History of Science",
+                "credits": 3,
+                "department": "History",
+                "program_idx": 0
+            }
+        ],
+        "clos": [
+            {
+                "course_code": "HIST-101",
+                "clo_number": 1,
+                "description": "Analyze historical scientific events",
+                "assessment_method": "Essay"
+            }
+        ],
         "offerings": [
             {
-                "course_idx": 0,
-                "section_numbers": [
-                    "001",
-                    "002"
-                ],
-                "enrollments": [
-                    28,
-                    22
+                "course_code": "HIST-101",
+                "sections": [
+                    {
+                        "section_number": "001",
+                        "enrollment": 42,
+                        "status": "completed"
+                    }
                 ]
             }
         ]
@@ -50,16 +269,25 @@
             "clo_number": "4",
             "description": "Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
             "assessment_method": "Midterm Exam",
-            "status": "submitted"
+            "status": "needs_rework"
         },
         "nci": {
             "course_number": "ZOOL-101",
             "clo_number": "5",
             "description": "Analyze long-term migration patterns of unicorns",
             "assessment_method": "Dream Journal",
-            "status": "awaiting_approval"
+            "status": "never_coming_in"
         }
     },
+    "demo_clos": [
+        {
+            "course_idx": 0,
+            "clo_number": "99",
+            "description": "Bonus unassigned learning outcome for audit testing",
+            "assessment_method": "Project",
+            "status": "unassigned"
+        }
+    ],
     "system_settings": {
         "admin_date_override": "2025-12-23T09:00:00",
         "auto_progress": {

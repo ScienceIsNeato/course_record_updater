@@ -4976,7 +4976,7 @@ def create_invitation_public_api():
             replace_existing=replace_existing,
         )
 
-        email_sent = InvitationService.send_invitation(invitation)
+        email_sent, email_error = InvitationService.send_invitation(invitation)
 
         return (
             jsonify(
@@ -4985,9 +4985,10 @@ def create_invitation_public_api():
                     "invitation_id": invitation["id"],
                     "message": (
                         INVITATION_CREATED_AND_SENT_MSG
-                        if email_sent
+                        if email_sent and not email_error
                         else INVITATION_CREATED_EMAIL_FAILED_MSG
                     ),
+                    **({"email_error": email_error} if email_error else {}),
                 }
             ),
             201,

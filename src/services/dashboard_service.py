@@ -1017,14 +1017,32 @@ class DashboardService:
         return is_submitted or (has_took and has_passed and has_tool)
 
     def _calculate_course_clo_metrics(
-        self, course_clos: List[Dict[str, Any]]
+        self,
+        course_clos: List[Dict[str, Any]],
+        linked_sections: Sequence[Dict[str, Any]],
     ) -> tuple[int, int, float]:
-        """Calculate CLO progress: total, completed, and percent complete."""
+        """Calculate CLO progress: total, completed, and percent complete.
+
+        A course cannot be 100% complete unless:
+        - All CLO required fields are populated (took, passed, assessment_tool), and
+        - Course-level required fields are populated (students_passed, students_dfic).
+        """
         total_clos = len(course_clos)
         completed_clos = sum(1 for clo in course_clos if self._is_clo_completed(clo))
         percent_complete = (
             round((completed_clos / total_clos) * 100, 1) if total_clos else 0
         )
+
+        # Require course-level required fields before declaring full completion
+        course_fields_complete = all(
+            section.get("students_passed") is not None
+            and section.get("students_dfic") is not None
+            for section in linked_sections
+        )
+        if percent_complete == 100 and not course_fields_complete:
+            # Prevent showing 100% complete until course-level fields are filled
+            percent_complete = 99.0
+
         return total_clos, completed_clos, percent_complete
 
     def _build_teaching_assignments(
@@ -1047,7 +1065,9 @@ class DashboardService:
 
             linked_sections = sections_by_course.get(course_id, [])
             total_clos, completed_clos, percent_complete = (
-                self._calculate_course_clo_metrics(course.get("clos", []))
+                self._calculate_course_clo_metrics(
+                    course.get("clos", []), linked_sections
+                )
             )
 
             assignments.append(

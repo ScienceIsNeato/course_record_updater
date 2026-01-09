@@ -477,7 +477,7 @@ class TestInvitationEndpoints:
             "invitee_role": "instructor",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         response = self.client.post(
             "/api/auth/invite",
@@ -610,7 +610,7 @@ class TestInvitationEndpoints:
             "invitee_role": "program_admin",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         response = self.client.post(
             "/api/auth/invite",
@@ -641,7 +641,7 @@ class TestInvitationEndpoints:
             "invitee_role": "instructor",
             "status": "sent",
         }
-        mock_invitation_service.send_invitation.return_value = True
+        mock_invitation_service.send_invitation.return_value = (True, None)
 
         # Use alias fields email/role
         response = self.client.post(
