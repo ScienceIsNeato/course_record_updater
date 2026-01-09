@@ -181,7 +181,7 @@
                     <i class="fas fa-user-plus"></i> Invite
                 </button>
             ` : '';
-            
+
                 // Get status badge
                 const status = section.status || 'scheduled';
                 const statusBadges = {
@@ -232,12 +232,16 @@
                         globalThis.openEditSectionModal(editBtn.dataset.sectionId, sectionData);
                     }
                 } else if (inviteBtn) {
-                    const sectionId = inviteBtn.dataset.sectionId;
-                    const courseDisplay = inviteBtn.dataset.courseDisplay;
+                } else if (inviteBtn) {
+                    const row = inviteBtn.closest('tr');
+                    const section = JSON.parse(row.dataset.section);
+
                     if (typeof globalThis.openInviteFacultyModal === 'function') {
                         globalThis.openInviteFacultyModal({
-                            sectionId: sectionId,
-                            sectionName: courseDisplay
+                            sectionId: section.section_id,
+                            sectionName: `Section ${section.section_number}`,
+                            termName: section.term_name,
+                            courseName: `${section.course_number} — ${section.course_title}`
                         });
                     } else {
                         console.warn('openInviteFacultyModal is not defined. Invitation functionality may be missing.');
@@ -273,7 +277,7 @@
         // Get the term select to determine which term's offerings to show
         const termSelect = document.getElementById('sectionTermId');
         const offeringSelect = document.getElementById('sectionOfferingId');
-        
+
         // Wait for terms to load (sectionManagement.js handles this)
         // Then load offerings for the selected term
         setTimeout(async () => {
@@ -282,7 +286,7 @@
                 offeringSelect.innerHTML = '<option value="">Please select a term first</option>';
                 return;
             }
-            
+
             offeringSelect.innerHTML = '<option value="">Loading offerings...</option>';
 
             try {

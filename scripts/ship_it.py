@@ -103,7 +103,7 @@ class QualityGateExecutor:
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
             self.security_check,
-            ("complexity", "🧠 Complexity Analysis (radon/xenon)"),
+            ("we", "🧠 Complexity Analysis (radon/xenon)"),
             ("duplication", "🔄 Code Duplication Check"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),

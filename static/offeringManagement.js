@@ -641,6 +641,54 @@ async function loadOfferings() {
       return;
     }
 
+    // VALIDATION: Check for offerings with missing program associations
+    // All offerings MUST have at least one program association
+    const orphanedOfferings = offerings.filter(
+      (offering) =>
+        !offering.program_ids || offering.program_ids.length === 0,
+    );
+
+    if (orphanedOfferings.length > 0) {
+      console.error(
+        "Offerings found with no program associations:",
+        orphanedOfferings,
+      );
+
+      // Display error message with list of orphaned offerings
+      const orphanedList = orphanedOfferings
+        .map((o) => {
+          const courseName =
+            o.course_name || o.course_title || o.course_number || "Unknown";
+          const termName = o.term_name || "Unknown Term";
+          return `<li><strong>${courseName}</strong> (${termName})</li>`;
+        })
+        .join("");
+
+      // nosemgrep
+      container.innerHTML = `
+          <div class="alert alert-danger">
+            <h5 class="alert-heading">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Data Integrity Issue
+            </h5>
+            <p>
+              Found ${orphanedOfferings.length} offering${orphanedOfferings.length > 1 ? "s" : ""} with no program associations.
+              All course offerings must be associated with at least one program.
+            </p>
+            <hr>
+            <h6>Affected Offerings:</h6>
+            <ul class="mb-3">
+              ${orphanedList}
+            </ul>
+            <p class="mb-0">
+              <strong>Action Required:</strong> Please associate each course with a program,
+              or contact your system administrator to resolve this data issue.
+            </p>
+          </div>
+        `;
+      return;
+    }
+
     let html = `
         <div class="table-responsive">
           <table class="table table-striped table-hover">
@@ -779,8 +827,10 @@ async function populateFilters() {
  * Supports both old data-program-id (single) and new data-program-ids (multiple) for backward compatibility
  */
 function applyFilters() {
-  const termId = document.getElementById("filterTerm")?.value;
-  const programId = document.getElementById("filterProgram")?.value;
+  const termFilter = document.getElementById("filterTerm");
+  const programFilter = document.getElementById("filterProgram");
+  const termId = termFilter?.value;
+  const programId = programFilter?.value;
 
   const rows = document.querySelectorAll(".offering-row");
 
@@ -798,14 +848,14 @@ function applyFilters() {
     let showProgram = !programId;
     if (programId) {
       // Try new format first (comma-separated list)
-      if (rowProgramIds !== null) {
+      if (rowProgramIds !== null && rowProgramIds !== undefined) {
         const programIdsArray = rowProgramIds
           .split(",")
           .filter((id) => id.trim());
         showProgram = programIdsArray.includes(programId);
       }
       // Fall back to old format (single value)
-      else if (rowProgramId !== null) {
+      else if (rowProgramId !== null && rowProgramId !== undefined) {
         showProgram = rowProgramId === programId;
       }
     }
