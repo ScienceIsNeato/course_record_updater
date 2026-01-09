@@ -786,7 +786,7 @@ function applyFilters() {
 
   rows.forEach((row) => {
     const rowTermId = row.getAttribute("data-term-id");
-    
+
     // Support both old (single) and new (multiple) program attributes
     const rowProgramIds = row.getAttribute("data-program-ids");
     const rowProgramId = row.getAttribute("data-program-id");
@@ -799,9 +799,11 @@ function applyFilters() {
     if (programId) {
       // Try new format first (comma-separated list)
       if (rowProgramIds !== null) {
-        const programIdsArray = rowProgramIds.split(",").filter((id) => id.trim());
+        const programIdsArray = rowProgramIds
+          .split(",")
+          .filter((id) => id.trim());
         showProgram = programIdsArray.includes(programId);
-      } 
+      }
       // Fall back to old format (single value)
       else if (rowProgramId !== null) {
         showProgram = rowProgramId === programId;

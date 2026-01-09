@@ -165,6 +165,7 @@
                             <th>Instructor</th>
                             <th>Term</th>
                             <th>Enrollment</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -180,6 +181,18 @@
                     <i class="fas fa-user-plus"></i> Invite
                 </button>
             ` : '';
+            
+                // Get status badge
+                const status = section.status || 'scheduled';
+                const statusBadges = {
+                    'scheduled': '<span class="badge bg-info">Scheduled</span>',
+                    'active': '<span class="badge bg-success">Active</span>',
+                    'completed': '<span class="badge bg-secondary">Completed</span>',
+                    'cancelled': '<span class="badge bg-danger">Cancelled</span>',
+                    'assigned': '<span class="badge bg-success">Assigned</span>',
+                    'unassigned': '<span class="badge bg-warning text-dark">Unassigned</span>'
+                };
+                const statusBadge = statusBadges[status.toLowerCase()] || `<span class="badge bg-secondary">${escapeHtml(status)}</span>`;
 
                 html += `
                 <tr data-section='${JSON.stringify(section).replace(/'/g, '&apos;')}'>
@@ -188,6 +201,7 @@
                     <td>${escapeHtml(section.instructor_name || '-')}</td>
                     <td>${escapeHtml(section.term_name || '-')}</td>
                     <td>${section.enrollment || 0}</td>
+                    <td>${statusBadge}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary edit-section-btn" data-section-id="${section.section_id}">
                             <i class="fas fa-edit"></i> Edit
@@ -256,32 +270,49 @@
 
     // Load course offerings when modal is shown
     document.getElementById('createSectionModal')?.addEventListener('show.bs.modal', async () => {
-        const select = document.getElementById('sectionOfferingId');
-        select.innerHTML = '<option value="">Loading offerings...</option>';
-
-        try {
-            const response = await fetch('/api/offerings');
-            if (response.ok) {
-                const data = await response.json();
-                const offerings = data.offerings || [];
-
-                if (offerings.length === 0) {
-                    select.innerHTML = '<option value="">No offerings available</option>';
-                    return;
-                }
-
-                select.innerHTML = '<option value="">Select an offering...</option>';
-                offerings.forEach(offering => {
-                    const option = document.createElement('option');
-                    option.value = offering.offering_id;
-                    option.textContent = `${offering.course_number || ''} - ${offering.term_name || ''} (${offering.status || ''})`;
-                    select.appendChild(option);
-                });
+        // Get the term select to determine which term's offerings to show
+        const termSelect = document.getElementById('sectionTermId');
+        const offeringSelect = document.getElementById('sectionOfferingId');
+        
+        // Wait for terms to load (sectionManagement.js handles this)
+        // Then load offerings for the selected term
+        setTimeout(async () => {
+            const selectedTermId = termSelect?.value;
+            if (!selectedTermId) {
+                offeringSelect.innerHTML = '<option value="">Please select a term first</option>';
+                return;
             }
-        } catch (error) {
-            console.error('Failed to load offerings:', error);
-            select.innerHTML = '<option value="">Error loading offerings</option>';
-        }
+            
+            offeringSelect.innerHTML = '<option value="">Loading offerings...</option>';
+
+            try {
+                // Filter by term_id
+                const response = await fetch(`/api/offerings?term_id=${encodeURIComponent(selectedTermId)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const offerings = data.offerings || [];
+
+                    if (offerings.length === 0) {
+                        offeringSelect.innerHTML = '<option value="">No offerings available for this term</option>';
+                        return;
+                    }
+
+                    offeringSelect.innerHTML = '<option value="">Select an offering...</option>';
+                    offerings.forEach(offering => {
+                        const option = document.createElement('option');
+                        option.value = offering.offering_id;
+                        const courseDisplay = `${offering.course_number || ''} - ${offering.course_title || offering.course_name || ''}`;
+                        const status = offering.status || offering.timeline_status || '';
+                        const statusTag = status ? ` (${status})` : '';
+                        option.textContent = `${courseDisplay}${statusTag}`;
+                        offeringSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load offerings:', error);
+                offeringSelect.innerHTML = '<option value="">Error loading offerings</option>';
+            }
+        }, 100); // Small delay to let sectionManagement.js populate terms
 
         // Load instructors
         const instructorSelect = document.getElementById('sectionInstructorId');

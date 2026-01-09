@@ -2929,7 +2929,9 @@ def _enrich_offerings_with_programs(offerings, course_program_map, program_map):
             names = [program_map[program_id]]
             ids = [program_id]
         elif offering.get("course_id"):
-            course_data = course_program_map.get(offering["course_id"], {"names": [], "ids": []})
+            course_data = course_program_map.get(
+                offering["course_id"], {"names": [], "ids": []}
+            )
             names = course_data.get("names", [])
             ids = course_data.get("ids", [])
         offering["program_names"] = names

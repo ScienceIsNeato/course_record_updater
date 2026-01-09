@@ -577,6 +577,7 @@
         columns: [
           { key: "course", label: "Course", sortable: true },
           { key: "section", label: "Section", sortable: true },
+          { key: "term", label: "Term", sortable: true },
           { key: "faculty", label: "Faculty", sortable: true },
           { key: "enrollment", label: "Enrollment", sortable: true },
           { key: "status", label: "Status", sortable: true },
@@ -593,10 +594,12 @@
             section.instructor_name || section.instructor || "Unassigned";
           const enrollment = section.enrollment ?? 0;
           const status = section.status || "scheduled";
+          const term = section.term_name || section.term || "—";
 
           return {
             course: number ? `${number} — ${title || ""}` : title || "Course",
             section: section.section_number || section.section_id || "—",
+            term: term,
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
