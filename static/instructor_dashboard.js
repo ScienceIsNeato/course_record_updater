@@ -221,13 +221,16 @@
               : `<a href="${url}" class="text-decoration-none fw-bold">${assignment.course_title || "Course"}</a>`,
             clos: cloCount.toString(),
             clos_sort: cloCount.toString(),
-            progress: `<div class="d-flex align-items-center">
+            progress:
+              cloCount > 0
+                ? `<div class="d-flex align-items-center">
                 <div class="progress flex-grow-1 me-2" style="height: 10px;">
                   <div class="progress-bar" role="progressbar" style="width: ${Math.min(percent, 100)}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 <span class="small text-muted">${percent}% (${completed}/${cloCount})</span>
-              </div>`,
-            progress_sort: percent,
+              </div>`
+                : '<span class="text-muted small">No defined CLOs</span>',
+            progress_sort: cloCount > 0 ? percent : -1,
           };
         }),
       });

@@ -922,13 +922,29 @@ class SQLiteDatabase(DatabaseInterface):
             offerings = (
                 session.execute(
                     select(CourseOffering)
-                    .options(selectinload(CourseOffering.term))
+                    .options(
+                        selectinload(CourseOffering.term),
+                        selectinload(CourseOffering.course),
+                    )
                     .where(CourseOffering.institution_id == institution_id)
                 )
                 .scalars()
                 .all()
             )
-            return [to_dict(offering) for offering in offerings]
+
+            # Enrich with course details
+            result = []
+            for offering in offerings:
+                offering_dict = to_dict(offering)
+
+                # Add course_number and course_title from the course relationship
+                if offering.course:
+                    offering_dict["course_number"] = offering.course.course_number
+                    offering_dict["course_title"] = offering.course.course_title
+
+                result.append(offering_dict)
+
+            return result
 
     # ------------------------------------------------------------------
     # Term operations

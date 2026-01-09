@@ -622,6 +622,11 @@ async function loadOfferings() {
     }
     const data = await response.json();
 
+    // Populate filters if they exist
+    populateFilters().catch((err) =>
+      console.error("Failed to populate filters", err),
+    );
+
     // Look for the offerings list in multiple possible keys for robustness
     const offerings = data.offerings || data || [];
 
@@ -662,6 +667,8 @@ async function loadOfferings() {
       const termName = offering.term_name || offering.term || "Unknown Term";
       const statusValue = resolveOfferingStatus(offering);
       const statusBadge = renderOfferingStatusBadge(statusValue);
+      const termId = offering.term_id || "";
+      const programId = offering.program_id || "";
 
       // Safe JSON stringify for the edit button
       const offeringJson = JSON.stringify(offering)
@@ -669,14 +676,13 @@ async function loadOfferings() {
         .replace(/"/g, "&quot;");
 
       html += `
-          <tr>
+          <tr class="offering-row" data-term-id="${termId}" data-program-id="${programId}">
             <td><strong>${courseName}</strong></td>
             <td>${offering.program_names && offering.program_names.length > 0 ? offering.program_names.join(", ") : "-"}</td>
             <td>${termName}</td>
             <td>${statusBadge}</td>
             <td>${offering.section_count || 0}</td>
             <td>${offering.total_enrollment || 0}</td>
-            <td>
             <td>
               <button class="btn btn-sm btn-outline-secondary" 
                       data-offering='${offeringJson}'
@@ -705,10 +711,92 @@ async function loadOfferings() {
   }
 }
 
+/**
+ * Populate Term and Program filters
+ */
+async function populateFilters() {
+  const termSelect = document.getElementById("filterTerm");
+  const programSelect = document.getElementById("filterProgram");
+
+  if (!termSelect || !programSelect) return;
+
+  // Only fetch if empty (except for placeholder)
+  if (termSelect.options.length > 1 && programSelect.options.length > 1) return;
+
+  try {
+    const [termsResponse, programsResponse] = await Promise.all([
+      fetch("/api/terms?all=true"),
+      fetch("/api/programs"),
+    ]);
+
+    if (termsResponse.ok) {
+      const termsData = await termsResponse.json();
+      const terms = termsData.terms || [];
+
+      // Preserve current selection if any
+      const currentTerm = termSelect.value;
+
+      // Clear except first
+      termSelect.innerHTML = '<option value="">All Terms</option>';
+
+      terms.forEach((term) => {
+        const option = document.createElement("option");
+        option.value = term.term_id;
+        option.textContent = term.name;
+        termSelect.appendChild(option);
+      });
+
+      if (currentTerm) termSelect.value = currentTerm;
+    }
+
+    if (programsResponse.ok) {
+      const programsData = await programsResponse.json();
+      const programs = programsData.programs || [];
+
+      const currentProgram = programSelect.value;
+
+      programSelect.innerHTML = '<option value="">All Programs</option>';
+
+      programs.forEach((program) => {
+        const option = document.createElement("option");
+        option.value = program.program_id || program.id;
+        option.textContent = program.name || program.program_name;
+        programSelect.appendChild(option);
+      });
+
+      if (currentProgram) programSelect.value = currentProgram;
+    }
+  } catch (error) {
+    console.error("Error populating filters", error);
+  }
+}
+
+/**
+ * Filter offerings table rows
+ */
+function applyFilters() {
+  const termId = document.getElementById("filterTerm")?.value;
+  const programId = document.getElementById("filterProgram")?.value;
+
+  const rows = document.querySelectorAll(".offering-row");
+
+  rows.forEach((row) => {
+    const rowTermId = row.getAttribute("data-term-id");
+    const rowProgramId = row.getAttribute("data-program-id");
+
+    // Simple exact match for filtering
+    const showTerm = !termId || rowTermId === termId;
+    const showProgram = !programId || rowProgramId === programId;
+
+    row.style.display = showTerm && showProgram ? "" : "none";
+  });
+}
+
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditOfferingModal = openEditOfferingModal;
 globalThis.deleteOffering = deleteOffering;
 globalThis.loadOfferings = loadOfferings;
+globalThis.applyFilters = applyFilters;
 globalThis.openCreateOfferingModal = () => {
   if (typeof loadCoursesAndTermsForCreateDropdown === "function") {
     loadCoursesAndTermsForCreateDropdown();
@@ -734,6 +822,7 @@ if (typeof window !== "undefined") {
   window.handleEditOfferingClick = handleEditOfferingClick;
   window.deleteOffering = deleteOffering;
   window.loadOfferings = loadOfferings;
+  window.applyFilters = applyFilters;
 }
 
 // Export for testing
@@ -745,5 +834,6 @@ if (typeof module !== "undefined" && module.exports) {
     loadOfferings,
     resolveOfferingStatus,
     deriveStatusFromDates,
+    applyFilters,
   };
 }

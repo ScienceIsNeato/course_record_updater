@@ -595,6 +595,7 @@ def _term_to_dict(model: Term) -> Dict[str, Any]:
         "institution_id": model.institution_id,
         "created_at": model.created_at,
         "last_modified": model.updated_at,
+        "offerings_count": len(model.offerings) if model.offerings else 0,
     }
 
 

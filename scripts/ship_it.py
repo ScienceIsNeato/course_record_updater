@@ -24,6 +24,7 @@ is always enabled for rapid development cycles.
 
 import argparse
 import concurrent.futures
+import os
 import re
 import subprocess  # nosec B404
 import sys
@@ -160,6 +161,169 @@ class QualityGateExecutor:
             check for check in self.all_checks if check not in full_commit_checks
         ]
 
+    def _show_js_coverage_report(self) -> None:
+        """Show JavaScript coverage report when coverage check fails."""
+        import json
+        import os
+
+        coverage_file = "coverage/coverage-final.json"
+        if not os.path.exists(coverage_file):
+            self.logger.warning(f"Coverage file not found: {coverage_file}")
+            return
+
+        try:
+            with open(coverage_file, "r") as f:
+                data = json.load(f)
+
+            # Calculate total coverage from statement map
+            total_statements = 0
+            covered_statements = 0
+            files_below_threshold = []
+
+            for filepath, file_data in data.items():
+                # Get statement coverage
+                s_data = file_data.get("s", {})
+                if s_data:
+                    total_statements += len(s_data)
+                    covered_statements += sum(
+                        1 for count in s_data.values() if count > 0
+                    )
+
+                    # Calculate file coverage percentage
+                    file_total = len(s_data)
+                    file_covered = sum(1 for count in s_data.values() if count > 0)
+                    file_pct = (
+                        (file_covered / file_total * 100) if file_total > 0 else 100
+                    )
+
+                    # Track files below 80%
+                    if file_pct < 80:
+                        short_path = filepath.replace(
+                            "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                            "",
+                        ).replace(
+                            "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                            "tests/",
+                        )
+                        files_below_threshold.append((short_path, file_pct))
+
+            overall_pct = (
+                (covered_statements / total_statements * 100)
+                if total_statements > 0
+                else 0
+            )
+            needed_statements = int(total_statements * 0.8) - covered_statements
+
+            self.logger.info("\n📊 JavaScript Coverage Analysis:")
+            self.logger.info("━" * 60)
+            self.logger.info(
+                f"Overall: {overall_pct:.2f}% ({covered_statements}/{total_statements} statements)"
+            )
+            self.logger.info(
+                f"Target:  80.00% ({int(total_statements * 0.8)} statements)"
+            )
+            self.logger.info(
+                f"Gap:     {needed_statements} more statements needed to reach threshold"
+            )
+
+            if files_below_threshold:
+                files_below_threshold.sort(key=lambda x: x[1])
+                self.logger.info(
+                    f"\n📉 Files Below 80% Threshold ({len(files_below_threshold)} files):"
+                )
+                for filepath, pct in files_below_threshold[:15]:
+                    self.logger.info(f"  {pct:5.1f}% - {filepath}")
+                if len(files_below_threshold) > 15:
+                    self.logger.info(
+                        f"  ... and {len(files_below_threshold) - 15} more files"
+                    )
+
+            self.logger.info("━" * 60)
+
+        except Exception as e:
+            self.logger.warning(f"Failed to parse coverage report: {e}")
+
+    def _format_js_coverage_report(self) -> List[str]:
+        """Format JavaScript coverage report as lines for inclusion in output."""
+        import json
+        import os
+
+        coverage_file = "coverage/coverage-final.json"
+        if not os.path.exists(coverage_file):
+            return ["     ⚠️  Coverage report file not found"]
+
+        try:
+            with open(coverage_file, "r") as f:
+                data = json.load(f)
+
+            # Calculate total coverage from statement map
+            total_statements = 0
+            covered_statements = 0
+            files_below_threshold = []
+
+            for filepath, file_data in data.items():
+                # Get statement coverage
+                s_data = file_data.get("s", {})
+                if s_data:
+                    total_statements += len(s_data)
+                    covered_statements += sum(
+                        1 for count in s_data.values() if count > 0
+                    )
+
+                    # Calculate file coverage percentage
+                    file_total = len(s_data)
+                    file_covered = sum(1 for count in s_data.values() if count > 0)
+                    file_pct = (
+                        (file_covered / file_total * 100) if file_total > 0 else 100
+                    )
+
+                    # Track files below 80%
+                    if file_pct < 80:
+                        short_path = filepath.replace(
+                            "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                            "",
+                        ).replace(
+                            "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                            "tests/",
+                        )
+                        files_below_threshold.append((short_path, file_pct))
+
+            overall_pct = (
+                (covered_statements / total_statements * 100)
+                if total_statements > 0
+                else 0
+            )
+            needed_statements = int(total_statements * 0.8) - covered_statements
+
+            lines = []
+            lines.append("     ")
+            lines.append("     📊 Coverage Analysis:")
+            lines.append(
+                f"       Overall: {overall_pct:.2f}% ({covered_statements}/{total_statements} statements)"
+            )
+            lines.append(
+                f"       Target:  80.00% ({int(total_statements * 0.8)} statements)"
+            )
+            lines.append(f"       Gap:     {needed_statements} more statements needed")
+
+            if files_below_threshold:
+                files_below_threshold.sort(key=lambda x: x[1])
+                lines.append(f"       ")
+                lines.append(
+                    f"       📉 Files Below 80% ({len(files_below_threshold)} files):"
+                )
+                for filepath, pct in files_below_threshold[:10]:
+                    lines.append(f"         {pct:5.1f}% - {filepath}")
+                if len(files_below_threshold) > 10:
+                    lines.append(
+                        f"         ... and {len(files_below_threshold) - 10} more files"
+                    )
+
+            return lines
+
+        except Exception as e:
+            return [f"     ⚠️  Failed to parse coverage report: {e}"]
+
     def run_single_check(
         self, check_flag: str, check_name: str, verbose: bool = False
     ) -> CheckResult:
@@ -280,7 +444,12 @@ class QualityGateExecutor:
         with self._process_lock:
             self._running_processes.pop(process.pid, None)
 
-    def _terminate_running_processes(self) -> None:
+    def _terminate_running_processes(self, wait_timeout: float = 1.0) -> None:
+        """Terminate all running subprocesses.
+
+        Args:
+            wait_timeout: How long to wait for graceful termination before killing (default 1.0s)
+        """
         with self._process_lock:
             processes = list(self._running_processes.values())
             self._running_processes.clear()
@@ -292,7 +461,7 @@ class QualityGateExecutor:
                 except Exception:  # nosec B110 - Process may already be dead
                     pass
                 try:
-                    proc.wait(timeout=5)
+                    proc.wait(timeout=wait_timeout)
                 except subprocess.TimeoutExpired:
                     try:
                         proc.kill()
@@ -345,12 +514,22 @@ class QualityGateExecutor:
                         self.logger.info(result.output)
                         self.logger.info("━" * 60)
 
-                        # Cancel all remaining futures and shutdown immediately
+                        # If JS coverage failed, show the coverage report
+                        if "JavaScript Coverage" in result.name:
+                            self._show_js_coverage_report()
+
+                        # Terminate all running processes FIRST (before canceling futures)
+                        self._terminate_running_processes()
+
+                        # Cancel all remaining futures
                         for f in future_to_check:
                             f.cancel()
-                        self._terminate_running_processes()
-                        executor.shutdown(wait=False)
-                        sys.exit(1)
+
+                        # Shutdown executor immediately without waiting for threads
+                        executor.shutdown(wait=False, cancel_futures=True)
+
+                        # Force exit immediately - don't wait for anything
+                        os._exit(1)  # More forceful than sys.exit(1), bypasses cleanup
 
                 except (concurrent.futures.TimeoutError, RuntimeError) as exc:
                     # Handle any exceptions from the future
@@ -476,6 +655,11 @@ class QualityGateExecutor:
             lines.append(f"     Error: {result.error}")
 
         lines.extend(self._format_check_output(result))
+
+        # If JavaScript coverage failed, include the detailed coverage report
+        if "JavaScript Coverage" in result.name:
+            lines.extend(self._format_js_coverage_report())
+
         lines.append("")
 
         return lines

@@ -21,20 +21,24 @@
             color: rgba(255, 255, 255, 0.9);
             font-size: 0.9rem;
         }
+
         .banner-info .divider {
             color: rgba(255, 255, 255, 0.2);
             user-select: none;
         }
+
         .banner-info .term-display {
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
+
         .banner-info .date-display {
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
+
         .banner-info .badge-override {
             font-size: 0.7rem;
             padding: 0.25rem 0.5rem;
@@ -45,6 +49,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
         .institution-logo {
             height: 40px;
             max-width: 200px;
@@ -53,10 +58,12 @@
             background-color: transparent;
             padding: 0;
         }
+
         .loopcloser-brand {
             display: flex;
             align-items: center;
         }
+
         .loopcloser-brand img {
             height: 40px;
             object-fit: contain;
@@ -70,9 +77,9 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container-fluid">
             <!-- Institution Logo (left side, non-clickable) -->
-            <img src="{{ url_for('static', filename=institution_branding.logo_path) }}" 
-                 alt="{{ institution_branding.short_name }} logo"
-                 class="institution-logo">
+            <img src="{{ url_for('static', filename=institution_branding.logo_path if institution_branding and institution_branding.logo_path else 'images/mocku_logo.png') }}"
+                alt="{{ institution_branding.short_name if institution_branding else 'Institution' }} logo"
+                class="institution-logo">
 
             <!-- Navigation Items -->
             <div class="navbar-nav me-auto">
@@ -119,8 +126,7 @@
 
             <!-- Loopcloser Wordmark (right side) -->
             <a class="navbar-brand loopcloser-brand ms-3" href="/dashboard">
-                <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" 
-                     alt="Loopcloser">
+                <img src="{{ url_for('static', filename='images/loopcloser_wordmark.png') }}" alt="Loopcloser">
             </a>
         </div>
     </nav>

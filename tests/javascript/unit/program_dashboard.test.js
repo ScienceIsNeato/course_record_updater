@@ -8,6 +8,10 @@ const ProgramDashboard = require('../../../static/program_dashboard');
 const { setBody } = require('../helpers/dom');
 
 describe('ProgramDashboard', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
   beforeEach(() => {
     setBody(`
       <div id="programAdminTitle"></div>
@@ -61,7 +65,38 @@ describe('ProgramDashboard', () => {
     ProgramDashboard.render(sampleData);
 
     expect(document.getElementById('programCourseCount').textContent).toBe('4');
-    expect(document.getElementById('programAssessmentContainer').querySelector('table')).not.toBeNull();
+    const result = document.getElementById('programAssessmentContainer').querySelector('table');
+    expect(result).not.toBeNull();
+  });
+
+  it('loadData success renders and sets cache', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: sampleData })
+    });
+
+    await ProgramDashboard.loadData();
+    expect(global.fetch).toHaveBeenCalled();
+    expect(ProgramDashboard.cache).toEqual(sampleData);
+  });
+
+  it('loadData failure calls setErrorState', async () => {
+    const errorSpy = jest.spyOn(global, 'setErrorState');
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'boom' })
+    });
+    await ProgramDashboard.loadData();
+    expect(errorSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('scheduleRefresh sets interval and cleanup clears it', () => {
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    ProgramDashboard.scheduleRefresh(5000);
+    ProgramDashboard.cleanup();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    clearTimeoutSpy.mockRestore();
   });
 
   it('handles null and undefined programs in assessment results', () => {

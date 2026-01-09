@@ -26,6 +26,18 @@
         </div>
     </div>
     <div class="panel-content">
+        <div class="row mb-3 g-2">
+            <div class="col-md-3">
+                <select id="filterTerm" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">All Terms</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filterProgram" class="form-select form-select-sm" onchange="applyFilters()">
+                    <option value="">All Programs</option>
+                </select>
+            </div>
+        </div>
         <div id="offeringsTableContainer">
             <!-- Table populated by JS -->
             <output class="d-flex justify-content-center p-5" aria-live="polite">

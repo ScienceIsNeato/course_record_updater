@@ -588,6 +588,42 @@ describe('Term Management - Create Term Modal', () => {
   });
 });
 
+describe('resolveTermStatus helper', () => {
+  const { resolveTermStatus } = global.termManagementTestHelpers;
+  const referenceDate = new Date('2025-01-15T00:00:00Z');
+
+  test('returns direct status when present on term record', () => {
+    expect(resolveTermStatus({ status: 'passed' })).toBe('PASSED');
+  });
+
+  test('returns UNKNOWN when start/end dates missing', () => {
+    expect(resolveTermStatus({})).toBe('UNKNOWN');
+  });
+
+  test('computes ACTIVE/SCHEDULED/PASSED based on dates', () => {
+    expect(
+      resolveTermStatus({
+        start_date: '2024-12-01',
+        end_date: '2025-02-01'
+      }, referenceDate)
+    ).toBe('ACTIVE');
+
+    expect(
+      resolveTermStatus({
+        start_date: '2025-03-01',
+        end_date: '2025-04-01'
+      }, referenceDate)
+    ).toBe('SCHEDULED');
+
+    expect(
+      resolveTermStatus({
+        start_date: '2024-01-01',
+        end_date: '2024-05-01'
+      }, referenceDate)
+    ).toBe('PASSED');
+  });
+});
+
 describe('Term Management - Edit Term Modal', () => {
   let mockFetch;
 

@@ -8,8 +8,8 @@ module.exports = {
   collectCoverageFrom: [
     'static/**/*.js'
   ],
-  coverageDirectory: '<rootDir>/build/coverage',
-  coverageReporters: ['lcov', 'text-summary'],
+  coverageDirectory: '<rootDir>/coverage',
+  coverageReporters: ['lcov', 'text-summary', 'json'],
   coverageThreshold: {
     global: {
       lines: 80

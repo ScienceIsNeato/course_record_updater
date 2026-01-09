@@ -38,7 +38,47 @@
     return `<span class="${config.className}">${config.label}</span>`;
   }
 
-  function fallbackTimelineStatus(record, startKeys = [], endKeys = []) {
+  const SECTION_STATUS_BADGES = {
+    ASSIGNED: { label: "Assigned", className: "badge bg-success" },
+    UNASSIGNED: {
+      label: "Unassigned",
+      className: "badge bg-warning text-dark",
+    },
+    SCHEDULED: { label: "Scheduled", className: "badge bg-info text-dark" },
+    ACTIVE: { label: "Active", className: "badge bg-success" },
+    COMPLETED: { label: "Completed", className: "badge bg-secondary" },
+    CANCELLED: { label: "Cancelled", className: "badge bg-danger" },
+    UNKNOWN: { label: "Unknown", className: "badge bg-dark" },
+  };
+
+  function renderSectionStatus(status) {
+    const normalized = (status || "UNKNOWN").toUpperCase();
+    const config =
+      SECTION_STATUS_BADGES[normalized] || SECTION_STATUS_BADGES.UNKNOWN;
+    return `<span class="${config.className}">${config.label}</span>`;
+  }
+
+  function normalizeReferenceDate(referenceDate) {
+    if (referenceDate instanceof Date) {
+      return Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+    }
+
+    if (referenceDate !== undefined && referenceDate !== null) {
+      const parsed = new Date(referenceDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return new Date();
+  }
+
+  function fallbackTimelineStatus(
+    record,
+    startKeys = [],
+    endKeys = [],
+    referenceDate = null,
+  ) {
     if (!record) return "UNKNOWN";
 
     const direct =
@@ -71,7 +111,7 @@
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return "UNKNOWN";
     }
-    const now = new Date();
+    const now = normalizeReferenceDate(referenceDate);
     if (now < start) return "SCHEDULED";
     if (now > end) return "PASSED";
     return "ACTIVE";
@@ -85,6 +125,7 @@
       record,
       options.startKeys || ["start_date", "term_start_date"],
       options.endKeys || ["end_date", "term_end_date"],
+      options.referenceDate || null,
     );
   }
 
@@ -174,6 +215,10 @@
       // Cleanup on page unload
       globalThis.addEventListener("beforeunload", () => this.cleanup());
       globalThis.addEventListener("pagehide", () => this.cleanup());
+      document.addEventListener("item-created", () => this.loadData());
+      document.addEventListener("item-updated", () => this.loadData());
+      document.addEventListener("item-deleted", () => this.loadData());
+      document.addEventListener("faculty-invited", () => this.loadData());
     },
 
     cleanup() {
@@ -352,18 +397,18 @@
       const programs = programOverview.length
         ? programOverview
         : rawPrograms.map((program) => ({
-            program_id: program.program_id || program.id,
-            program_name: program.name,
-            course_count: program.course_count || 0,
-            faculty_count: program.faculty_count || 0,
-            student_count: program.student_count || 0,
-            section_count: program.section_count || 0,
-            assessment_progress: program.assessment_progress || {
-              percent_complete: 0,
-              completed: 0,
-              total: 0,
-            },
-          }));
+          program_id: program.program_id || program.id,
+          program_name: program.name,
+          course_count: program.course_count || 0,
+          faculty_count: program.faculty_count || 0,
+          student_count: program.student_count || 0,
+          section_count: program.section_count || 0,
+          assessment_progress: program.assessment_progress || {
+            percent_complete: 0,
+            completed: 0,
+            total: 0,
+          },
+        }));
 
       const table = globalThis.panelManager.createSortableTable({
         id: "institution-programs-table",
@@ -392,7 +437,7 @@
           );
           const facultyCount = Number(
             program.faculty_count ??
-              (program.faculty ? program.faculty.length : 0),
+            (program.faculty ? program.faculty.length : 0),
           );
           const studentCount = Number(program.student_count ?? 0);
           const sectionCount = Number(program.section_count ?? 0);
@@ -427,17 +472,20 @@
       const facultyRecords = assignments.length
         ? assignments
         : fallbackFaculty.map((member) => ({
-            user_id: member.user_id,
-            full_name:
-              member.full_name ||
-              [member.first_name, member.last_name].filter(Boolean).join(" ") ||
-              member.email,
-            program_ids: member.program_ids || [],
-            course_count: member.course_count || 0,
-            section_count: member.section_count || 0,
-            enrollment: member.enrollment || 0,
-            role: member.role || "instructor",
-          }));
+          user_id: member.user_id,
+          full_name:
+            member.full_name ||
+            [member.first_name, member.last_name].filter(Boolean).join(" ") ||
+            member.email,
+          program_ids: member.program_ids || [],
+          course_count: member.course_count || 0,
+          section_count: member.section_count || 0,
+          enrollment: member.enrollment || 0,
+          role: member.role || "instructor",
+          status: (member.account_status && member.account_status !== "undefined")
+            ? member.account_status
+            : (member.status && member.status !== "undefined" ? member.status : "active"),
+        }));
 
       if (!facultyRecords.length) {
         container.innerHTML = "";
@@ -456,6 +504,7 @@
           { key: "sections", label: "Sections", sortable: true },
           { key: "students", label: "Students", sortable: true },
           { key: "role", label: "Role", sortable: true },
+          { key: "status", label: "Status", sortable: true },
         ],
         data: facultyRecords.map((record) => {
           const courseCount = Number(record.course_count ?? 0);
@@ -480,6 +529,14 @@
             students: studentCount.toString(),
             students_sort: studentCount.toString(),
             role: this.formatRole(record.role || "instructor"),
+            status: `<span class="badge ${(record.status || "active").toLowerCase() === "active"
+                ? "bg-success"
+                : ["invited", "pending"].includes((record.status || "").toLowerCase())
+                  ? "bg-warning text-dark"
+                  : "bg-secondary"
+              }">${(record.status || "active").charAt(0).toUpperCase() +
+              (record.status || "active").slice(1)
+              }</span>`,
           };
         }),
       });
@@ -528,7 +585,7 @@
           const instructor =
             section.instructor_name || section.instructor || "Unassigned";
           const enrollment = section.enrollment ?? 0;
-          const status = (section.status || "scheduled").replace(/_/g, " ");
+          const status = section.status || "scheduled";
 
           return {
             course: number ? `${number} — ${title || ""}` : title || "Course",
@@ -536,7 +593,7 @@
             faculty: instructor,
             enrollment: enrollment.toString(),
             enrollment_sort: enrollment.toString(),
-            status: status.charAt(0).toUpperCase() + status.slice(1),
+            status: renderSectionStatus(status),
           };
         }),
       });
@@ -697,7 +754,12 @@
           const statusValue = computeTimelineStatus(offering);
 
           return {
-            course: course.course_number || "Unknown Course",
+            course:
+              course.course_number && course.course_title
+                ? `${course.course_number} — ${course.course_title}`
+                : course.course_number ||
+                course.course_title ||
+                "Unknown Course",
             program: programDisplay,
             term: term.term_name || term.name || "Unknown Term",
             sections: sectionCount.toString(),
@@ -981,6 +1043,15 @@
         alert("❌ Failed to send reminder. Please try again.");
       }
     },
+  };
+
+  InstitutionDashboard.__testHelpers = {
+    computeTimelineStatus,
+    fallbackTimelineStatus,
+    normalizeReferenceDate,
+    renderTermStatus,
+    renderSectionStatus,
+    escapeHtml,
   };
 
   // Expose InstitutionDashboard to window immediately so onclick handlers work

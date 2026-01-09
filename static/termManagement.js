@@ -24,9 +24,24 @@ function renderTermStatusBadge(status) {
   return `<span class="badge ${config.className}">${config.label}</span>`;
 }
 
-function resolveTermStatus(term) {
+function normalizeReferenceDate(referenceDate) {
+  if (referenceDate instanceof Date) {
+    return Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+  }
+  if (referenceDate !== undefined && referenceDate !== null) {
+    const parsed = new Date(referenceDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return new Date();
+}
+
+function resolveTermStatus(term, referenceDate = null) {
   if (typeof globalThis.resolveTimelineStatus === "function") {
-    return globalThis.resolveTimelineStatus(term);
+    return globalThis.resolveTimelineStatus(term, {
+      referenceDate,
+    });
   }
 
   if (!term) return "UNKNOWN";
@@ -45,11 +60,15 @@ function resolveTermStatus(term) {
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
     return "UNKNOWN";
   }
-  const now = new Date();
+  const now = normalizeReferenceDate(referenceDate);
   if (now < startDate) return "SCHEDULED";
   if (now > endDate) return "PASSED";
   return "ACTIVE";
 }
+
+globalThis.termManagementTestHelpers = {
+  resolveTermStatus,
+};
 
 function publishTermMutation(action, metadata = {}) {
   globalThis.DashboardEvents?.publishMutation({

@@ -458,56 +458,8 @@
 
 {% include '_offering_modals.html' %}
 
-<!-- Section Management Modals -->
-<div class="modal fade" id="createSectionModal" tabindex="-1" aria-labelledby="createSectionModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createSectionModalLabel">Create New Course Section</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="createSectionForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="sectionOfferingId" class="form-label">Course Offering *</label>
-                        <select class="form-control" id="sectionOfferingId" name="offering_id" required>
-                            <option value="">Select Offering</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="sectionName" class="form-label">Section Name *</label>
-                        <input type="text" class="form-control" id="sectionName" name="name" required
-                            placeholder="e.g., Section A">
-                    </div>
-                    <div class="mb-3">
-                        <label for="sectionInstructorId" class="form-label">Instructor</label>
-                        <select class="form-control" id="sectionInstructorId" name="instructor_id">
-                            <option value="">Unassigned</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="sectionEnrolled" class="form-label">Currently Enrolled</label>
-                            <input type="number" class="form-control" id="sectionEnrolled" name="enrolled" min="0"
-                                value="0">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">Create Section</span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Creating...
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- Section Management Modal -->
+{% include "components/section_modal.html" %}
 
 <div class="modal fade" id="editSectionModal" tabindex="-1" aria-labelledby="editSectionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -644,90 +596,7 @@
 </div>
 
 <!-- Invite Faculty Modal -->
-<div class="modal fade" id="inviteFacultyModal" tabindex="-1" aria-labelledby="inviteFacultyModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteFacultyModalLabel">Invite New Instructor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="inviteFacultyForm">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="inviteFacultyEmail" class="form-label">Email Address *</label>
-                        <input type="email" class="form-control" id="inviteFacultyEmail" required
-                            placeholder="instructor@example.com">
-                        <div class="form-text">Instructor will receive an invitation email at this address</div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="inviteFacultyFirstName" class="form-label">First Name *</label>
-                            <input type="text" class="form-control" id="inviteFacultyFirstName" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="inviteFacultyLastName" class="form-label">Last Name *</label>
-                            <input type="text" class="form-control" id="inviteFacultyLastName" required>
-                        </div>
-                    </div>
-
-                    <hr class="my-3">
-                    <h6 class="mb-3">Course Assignment (Optional)</h6>
-
-                    <div class="mb-3">
-                        <label for="inviteFacultyTerm" class="form-label">Term</label>
-                        <select class="form-control" id="inviteFacultyTerm">
-                            <option value="">No course assignment</option>
-                        </select>
-                        <div class="form-text">Select a term to assign this instructor to a section</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="inviteFacultyOffering" class="form-label">Course Offering</label>
-                        <select class="form-control" id="inviteFacultyOffering" disabled>
-                            <option value="">Select term first</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="inviteFacultySection" class="form-label">Section</label>
-                        <select class="form-control" id="inviteFacultySection" disabled>
-                            <option value="">Select offering first</option>
-                        </select>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="inviteFacultyReplaceExisting">
-                        <label class="form-check-label" for="inviteFacultyReplaceExisting">
-                            Replace existing instructor (if section already has one assigned)
-                        </label>
-                    </div>
-
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle"></i>
-                        The instructor will receive an email with a link to complete their registration and set their
-                        password.
-                        If a section is selected, they will be automatically assigned to it upon accepting the
-                        invitation.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="btn-text">
-                            <i class="fas fa-paper-plane"></i> Send Invitation
-                        </span>
-                        <span class="btn-spinner d-none">
-                            <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-                            Sending...
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+{% include 'modals/invite_faculty_modal.html' %}
 
 {% endblock %}
 

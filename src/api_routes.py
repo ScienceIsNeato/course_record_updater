@@ -4312,6 +4312,10 @@ def create_invitation_api():
             institution_id=institution_id,
             program_ids=data.get("program_ids", []),
             personal_message=data.get("personal_message"),
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+            section_id=data.get("section_id"),
+            replace_existing=data.get("replace_existing", False),
         )
 
         # Send invitation email
