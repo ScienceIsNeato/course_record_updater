@@ -34,6 +34,37 @@ function initializeCreateOutcomeModal() {
     return; // Form not on this page
   }
 
+  // Auto-populate courses when modal opens
+  const modalEl = document.getElementById("createOutcomeModal");
+  if (modalEl) {
+    modalEl.addEventListener("show.bs.modal", async () => {
+      const select = document.getElementById("outcomeCourseId");
+      // Only load if empty or just has placeholder
+      if (select && select.options.length <= 1) {
+        try {
+          const resp = await fetch("/api/courses");
+          if (resp.ok) {
+            const data = await resp.json();
+            const courses = data.courses || [];
+            // sort by name
+            courses.sort((a, b) =>
+              (a.course_number || "").localeCompare(b.course_number || ""),
+            );
+
+            courses.forEach((c) => {
+              const opt = document.createElement("option");
+              opt.value = c.course_id;
+              opt.textContent = `${c.course_number} - ${c.course_title}`;
+              select.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load courses for dropdown", e);
+        }
+      }
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -261,3 +292,161 @@ async function deleteOutcome(outcomeId, courseName, cloNumber) {
 // Expose functions to window for inline onclick handlers and testing
 globalThis.openEditOutcomeModal = openEditOutcomeModal;
 globalThis.deleteOutcome = deleteOutcome;
+
+/**
+ * Load outcomes with filters
+ * Fetches from /api/outcomes and renders table
+ */
+async function loadOutcomes() {
+  const container = document.getElementById("outcomesTableContainer");
+  if (!container) return; // Not on list page
+
+  // Show loading
+  container.innerHTML = `
+      <div class="d-flex justify-content-center p-5">
+          <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+          </div>
+      </div>
+  `;
+
+  try {
+    // Build query params
+    const params = new URLSearchParams();
+    const programId = document.getElementById("filterProgram")?.value;
+    const courseId = document.getElementById("filterCourse")?.value;
+    const status = document.getElementById("filterStatus")?.value;
+
+    if (programId) params.append("program_id", programId);
+    if (courseId) params.append("course_id", courseId);
+    if (status) params.append("status", status);
+
+    const response = await fetch(`/api/outcomes?${params.toString()}`);
+    if (!response.ok) throw new Error("Failed to fetch outcomes");
+
+    const data = await response.json();
+    const outcomes = data.outcomes || [];
+
+    renderOutcomesTable(outcomes, container);
+  } catch (error) {
+    console.error("Error loading outcomes:", error);
+    container.innerHTML = `
+          <div class="alert alert-danger">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              Failed to load outcomes. Please try again.
+          </div>
+      `;
+  }
+}
+
+/**
+ * Render the outcomes table
+ */
+function renderOutcomesTable(outcomes, container) {
+  if (outcomes.length === 0) {
+    container.innerHTML = `
+          <div class="text-center p-5 text-muted">
+              <i class="fas fa-clipboard-check mb-3" style="font-size: 2rem;"></i>
+              <p>No outcomes found matching the current filters.</p>
+          </div>
+      `;
+    return;
+  }
+
+  const tableHtml = `
+      <div class="table-responsive">
+          <table class="table table-hover align-middle">
+              <thead class="table-light">
+                  <tr>
+                      <th style="width: 15%">Course</th>
+                      <th style="width: 10%">CLO #</th>
+                      <th style="width: 40%">Description</th>
+                      <th style="width: 20%">Assessment Method</th>
+                      <th style="width: 10%">Status</th>
+                      <th style="width: 5%">Actions</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  ${outcomes
+                    .map((outcome) => {
+                      // Attempt to resolve course name if present, else default
+                      // Note: API might need improvement to ensure course data is always eager loaded
+                      const courseName =
+                        outcome.course_number ||
+                        outcome.course?.course_number ||
+                        "Unknown - " + outcome.course_id.substring(0, 8);
+
+                      const activeStatus =
+                        outcome.active !== false ? "active" : "archived";
+
+                      return `
+                      <tr data-outcome-id="${outcome.outcome_id}">
+                          <td class="fw-bold text-secondary">
+                              ${courseName}
+                          </td>
+                          <td>${outcome.clo_number}</td>
+                          <td>
+                              <div class="text-wrap" style="max-width: 500px;">
+                                  ${escapeHtml(outcome.description)}
+                              </div>
+                          </td>
+                          <td>${escapeHtml(outcome.assessment_method || "-")}</td>
+                          <td>
+                              ${getStatusBadge(activeStatus)}
+                          </td>
+                          <td>
+                              <div class="btn-group btn-group-sm">
+                                  <button class="btn btn-outline-primary" 
+                                          onclick='openEditOutcomeModal("${
+                                            outcome.outcome_id
+                                          }", ${JSON.stringify(outcome).replace(
+                                            /'/g,
+                                            "&apos;",
+                                          )})'
+                                          title="Edit">
+                                      <i class="fas fa-edit"></i>
+                                  </button>
+                                  <button class="btn btn-outline-danger" 
+                                          onclick='deleteOutcome("${
+                                            outcome.outcome_id
+                                          }", "${courseName}", "CLO ${
+                                            outcome.clo_number
+                                          }")'
+                                          title="Delete">
+                                      <i class="fas fa-trash"></i>
+                                  </button>
+                              </div>
+                          </td>
+                      </tr>
+                      `;
+                    })
+                    .join("")}
+              </tbody>
+          </table>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-3">
+          <small class="text-muted">Showing ${outcomes.length} outcomes</small>
+      </div>
+  `;
+
+  container.innerHTML = tableHtml;
+}
+
+// Helper for status badge
+function getStatusBadge(status) {
+  if (status === "active")
+    return '<span class="badge bg-success">Active</span>';
+  if (status === "archived")
+    return '<span class="badge bg-secondary">Archived</span>';
+  return `<span class="badge bg-light text-dark border">${status}</span>`;
+}
+
+// Helper to escape HTML to prevent XSS
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+globalThis.loadOutcomes = loadOutcomes;

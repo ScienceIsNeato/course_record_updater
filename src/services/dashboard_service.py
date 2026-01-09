@@ -1016,7 +1016,7 @@ class DashboardService:
 
         return is_submitted or (has_took and has_passed and has_tool)
 
-    def _calculate_clo_progress(
+    def _calculate_course_clo_metrics(
         self, course_clos: List[Dict[str, Any]]
     ) -> tuple[int, int, float]:
         """Calculate CLO progress: total, completed, and percent complete."""
@@ -1046,8 +1046,8 @@ class DashboardService:
                 continue
 
             linked_sections = sections_by_course.get(course_id, [])
-            total_clos, completed_clos, percent_complete = self._calculate_clo_progress(
-                course.get("clos", [])
+            total_clos, completed_clos, percent_complete = (
+                self._calculate_course_clo_metrics(course.get("clos", []))
             )
 
             assignments.append(

@@ -219,7 +219,7 @@
             course: assignment.course_number
               ? `<a href="${url}" class="text-decoration-none fw-bold">${assignment.course_number} — ${assignment.course_title || ""}</a>`
               : `<a href="${url}" class="text-decoration-none fw-bold">${assignment.course_title || "Course"}</a>`,
-            clos: cloCount.toString(),
+            clos: cloCount > 0 ? cloCount.toString() : "None",
             clos_sort: cloCount.toString(),
             progress:
               cloCount > 0

@@ -99,9 +99,11 @@ class QualityGateExecutor:
             ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
             ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
             ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
             ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
-            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
+            (
+                "js-coverage",
+                "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
+            ),
             self.security_check,
             ("we", "🧠 Complexity Analysis (radon/xenon)"),
             ("duplication", "🔄 Code Duplication Check"),
@@ -127,8 +129,10 @@ class QualityGateExecutor:
                 "coverage",
                 "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
             ),  # Includes test execution
-            ("js-tests", "🧪 JavaScript Test Suite (Jest)"),
-            ("js-coverage", "📊 JavaScript Coverage Analysis (80% threshold)"),
+            (
+                "js-coverage",
+                "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
+            ),
             # Zero tolerance (safety skipped for speed)
             # Security checks moved to PR-only as requested by user
             # Duplication, complexity excluded from commit (slower or PR-level)

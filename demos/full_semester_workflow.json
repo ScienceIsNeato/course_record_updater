@@ -23,12 +23,12 @@
   "steps": [
     {
       "step_number": 1,
-      "phase": "Act 1: Planning (Oct 2025)",
+      "phase": "Act 1: Planning (Dec 2025)",
       "name": "Verify Environment & Date",
-      "purpose": "Confirm date override is active for the Fall 2025 planning phase",
+      "purpose": "Confirm the late-December override is active so the Fall semester and CLO closeout feel complete",
       "pre_commands": [],
       "instructions": {
-        "human": "The server has been seeded with the Institution Admin date set to Oct 15, 2025.\n\nLogin as 'demo2025.admin@example.com' (Password: Demo2025!).\nNotice the yellow 'System Date Override' banner.",
+        "human": "The server has been seeded with the Institution Admin date set to Dec 23, 2025 (right after classes ended and before CLO due dates).\n\nLogin as 'demo2025.admin@example.com' (Password: Demo2025!).\nNotice the yellow 'System Date Override' banner and the busy Fall 2025 summary.",
         "automated": {
           "action": "api_post",
           "endpoint": "/api/auth/login",
@@ -52,7 +52,7 @@
       },
       "expected_results": [
         "Dashboard loads",
-        "Banner shows: 'System Date Override Active: Oct 15, 2025'"
+        "Banner shows: 'System Date Override Active: Dec 23, 2025'"
       ],
       "post_commands": [],
       "verification": {
@@ -264,11 +264,11 @@
     {
       "step_number": 6,
       "phase": "Act 3: Semester End (Dec 2025)",
-      "name": "Time Jump: Dec 20, 2025",
-      "purpose": "Advance timeline to end of Fall semester to audit previous terms",
+      "name": "Time Jump: Dec 23, 2025",
+      "purpose": "Advance timeline to the last stretch between the Fall 2025 end of classes and the CLO due date",
       "pre_commands": [],
       "instructions": {
-        "human": "Logout Dr. New Guy.\nLogin as 'demo2025.admin@example.com' (Demo2025!).\n\nUse the Date Override feature to jump to: December 20, 2025.\nThis simulates the end of the Fall 2025 semester for auditing purposes.",
+        "human": "Logout Dr. New Guy.\nLogin as 'demo2025.admin@example.com' (Demo2025!).\n\nUse the Date Override feature to jump to: December 23, 2025.\nThis simulates the busy window after final exams but before CLO due dates.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -289,7 +289,7 @@
               "action": "api_post",
               "endpoint": "/api/profile/system-date",
               "data": {
-                "system_date": "2025-12-20T09:00:00"
+            "system_date": "2025-12-23T09:00:00"
               }
             }
           ]
@@ -297,11 +297,12 @@
       },
       "urls": [],
       "inputs": {
-        "date": "2025-12-20"
+        "date": "2025-12-23"
       },
       "expected_results": [
-        "Date Banner: Dec 20, 2025",
-        "Audit tasks become visible"
+        "Date Banner: Dec 23, 2025",
+        "Audit tasks become visible",
+        "CLO progress cards reflect ~85% completion"
       ],
       "post_commands": [],
       "verification": {
@@ -330,7 +331,8 @@
       "urls": [],
       "inputs": {},
       "expected_results": [
-        "Audit table loaded"
+        "Audit table loaded",
+        "Progress summary shows ~85% of CLOs completed"
       ],
       "post_commands": [],
       "verification": {
@@ -427,9 +429,63 @@
     },
     {
       "step_number": 10,
-      "phase": "Act 5: Closeout (Jan 2026)",
-      "name": "Final Approvals",
-      "purpose": "Admin approves fixed data and closes non-compliant items",
+      "phase": "Act 5: Follow-up (Feb 2026)",
+      "name": "Time Jump: Feb 10, 2026",
+      "purpose": "Return to the new year when Spring 2026 prep and CLO closeout wrap up",
+      "pre_commands": [],
+      "instructions": {
+        "human": "Logout the instructor session.\nLogin as 'demo2025.admin@example.com'.\n\nUse the Date Override feature to jump to: February 10, 2026.\nThis puts us into the term reset where the new offering should be visible and the audit queue readies for final decisions.",
+        "automated": {
+          "action": "sequence",
+          "steps": [
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/logout",
+              "data": {}
+            },
+            {
+              "action": "api_post",
+              "endpoint": "/api/auth/login",
+              "data": {
+                "email": "demo2025.admin@example.com",
+                "password": "Demo2025!"
+              }
+            },
+            {
+              "action": "api_post",
+              "endpoint": "/api/profile/system-date",
+              "data": {
+                "system_date": "2026-02-10T09:00:00"
+              }
+            }
+          ]
+        }
+      },
+      "urls": [],
+      "inputs": {
+        "date": "2026-02-10"
+      },
+      "expected_results": [
+        "Date Banner: Feb 10, 2026",
+        "Spring 2026 offering is now visible in the dashboard summaries",
+        "Audit queue still shows the outstanding Needs Rework/NCI items from December"
+      ],
+      "post_commands": [],
+      "verification": {
+        "type": "ui_check"
+      },
+      "artifacts": {
+        "screenshots": [
+          "05_act5_date_jump.png"
+        ]
+      },
+      "pause_for_human": true
+    },
+    {
+      "step_number": 11,
+      "phase": "Act 5: Follow-up (Feb 2026)",
+      "name": "Final Approvals & Follow-up",
+      "purpose": "Admin ties up the December audit thread, sends a follow-up invitation, and confirms Spring 2026 is ready",
       "pre_commands": [
         {
           "command": "sqlite3 course_records_dev.db \"SELECT id FROM course_outcomes WHERE clo_number='5' AND description LIKE '%unicorns%' LIMIT 1\"",
@@ -438,7 +494,7 @@
         }
       ],
       "instructions": {
-        "human": "Logout Dr. Morgan.\nLogin as 'demo2025.admin@example.com'.\n\nNavigate to Audit.\n1. Verify CLO #4 is fixed. Click 'Approve'.\n2. Locate ZOOL-101 CLO #5. Click 'Mark NCI' (Never Coming In). Comment: 'Faculty unreachable'.\n\nAudit queue should be clear.",
+        "human": "Logout Dr. Morgan.\nLogin as 'demo2025.admin@example.com'.\n\nNavigate to 'Course Sections' and verify the Spring 2026 offering now shows (feel free to reopen that section's row).\nClick the green 'Invite' button on BIOL-101 Section 001 to reopen the unified invite modal and send Dr. New Guy a follow-up message.\nThen go to the Audit page.\n1. Verify CLO #4 is fixed. Click 'Approve'.\n2. Locate ZOOL-101 CLO #5. Click 'Mark NCI' (Never Coming In). Comment: 'Faculty unreachable'.\n\nAudit queue should be empty and Spring 2026 prep is complete.",
         "automated": {
           "action": "sequence",
           "steps": [
@@ -476,7 +532,8 @@
       "inputs": {},
       "expected_results": [
         "Items removed from queue",
-        "Fall 2025 closeout complete"
+        "Spring 2026 checklist looks ready and the follow-up email was sent",
+        "Fall 2025 closeout and straggler NCI/approval decisions are reflected in the audit summary"
       ],
       "post_commands": [],
       "verification": {
@@ -490,13 +547,13 @@
       "pause_for_human": true
     },
     {
-      "step_number": 11,
+      "step_number": 12,
       "phase": "Completion",
       "name": "Demo Complete",
-      "purpose": "Wrap up",
+      "purpose": "Wrap up the multi-beat story that traveled from late Dec 2025 through Feb 2026",
       "pre_commands": [],
       "instructions": {
-        "human": "Demo successfully completed. \nShown: Planning (SP26), Onboarding (Invite/Register), and Audit (FA25 Closeout).",
+        "human": "Demo successfully completed.\nShown: Planning (SP26), Onboarding (Invite/Register), the December audit loop, plus the February follow-up finishing Spring 2026 prep.",
         "automated": {
           "action": "none"
         }

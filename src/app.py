@@ -588,7 +588,11 @@ def sections_list():
     if not user:
         return redirect(url_for("login"))
 
-    return render_template("sections_list.html", user=user)
+    return render_template(
+        "sections_list.html",
+        user=user,
+        current_user=user,
+    )
 
 
 @app.route("/terms")
@@ -634,8 +638,11 @@ def faculty_list():
 @app.route("/outcomes")
 @login_required
 def outcomes_page():
-    """Redirect to assessments/outcomes page"""
-    return redirect(url_for("assessments_page"))
+    """Display course outcomes management page"""
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+    return render_template("outcomes_list.html", user=user)
 
 
 # Health check endpoint for parallel E2E testing

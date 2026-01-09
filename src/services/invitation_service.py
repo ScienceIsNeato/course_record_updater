@@ -11,7 +11,7 @@ Handles user invitation functionality including:
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Constants for datetime formatting
 UTC_OFFSET = "+00:00"
@@ -165,7 +165,7 @@ class InvitationService:
             raise InvitationError(f"Failed to create invitation: {str(e)}")
 
     @staticmethod
-    def send_invitation(invitation_data: Dict[str, Any]) -> bool:
+    def send_invitation(invitation_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         """
         Send invitation email to invitee
 
@@ -192,6 +192,7 @@ class InvitationService:
                 role=invitation_data["role"],
                 personal_message=invitation_data.get("personal_message"),
             )
+            email_error = EmailService.pop_last_error_message()
 
             if success:
                 # Update invitation status to sent
@@ -206,12 +207,11 @@ class InvitationService:
                 logger.info(
                     f"[Invitation Service] Sent invitation email to {invitation_data['email']}"
                 )
-                return True
-            else:
-                logger.error(
-                    f"[Invitation Service] Failed to send invitation email to {invitation_data['email']}"
-                )
-                return False
+                return True, email_error
+            logger.error(
+                f"[Invitation Service] Failed to send invitation email to {invitation_data['email']}"
+            )
+            return False, email_error
 
         except Exception as e:
             logger.error(
@@ -453,7 +453,7 @@ class InvitationService:
             )
 
     @staticmethod
-    def resend_invitation(invitation_id: str) -> bool:
+    def resend_invitation(invitation_id: str) -> Tuple[bool, Optional[str]]:
         """
         Resend an existing invitation
 

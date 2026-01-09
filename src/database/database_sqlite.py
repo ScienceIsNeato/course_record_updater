@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import and_, func, select
@@ -45,12 +45,39 @@ OFFERING_STATUS_FIELDS: Tuple[str, ...] = (
     "is_active",
     "active",
 )
+SECTION_DATETIME_FIELDS: Tuple[str, ...] = (
+    "due_date",
+    "assigned_date",
+    "completed_date",
+)
 
 
 def _remove_fields(payload: Dict[str, Any], keys: Tuple[str, ...]) -> None:
     """Remove status-ish fields from payload dictionaries to avoid persistence."""
     for key in keys:
         payload.pop(key, None)
+
+
+def _normalize_section_datetime(value: Any) -> Any:
+    """Convert section datetime inputs into native datetime objects."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            try:
+                parsed = datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return value
+        if isinstance(parsed, date) and not isinstance(parsed, datetime):
+            parsed = datetime.combine(parsed, datetime.min.time())
+        return parsed
+    return value
 
 
 class SQLiteDatabase(DatabaseInterface):
@@ -694,6 +721,7 @@ class SQLiteDatabase(DatabaseInterface):
             query = (
                 select(CourseOutcome)
                 .join(Course, CourseOutcome.course_id == Course.id)
+                .options(selectinload(CourseOutcome.course))
                 .where(Course.institution_id == institution_id)
             )
 
@@ -1095,9 +1123,9 @@ class SQLiteDatabase(DatabaseInterface):
             narrative_changes=payload.get("narrative_changes"),
             # Workflow fields
             status=payload.get("status", "assigned"),
-            due_date=payload.get("due_date"),
-            assigned_date=payload.get("assigned_date"),
-            completed_date=payload.get("completed_date"),
+            due_date=_normalize_section_datetime(payload.get("due_date")),
+            assigned_date=_normalize_section_datetime(payload.get("assigned_date")),
+            completed_date=_normalize_section_datetime(payload.get("completed_date")),
             extras={**payload, "section_id": section_id},
         )
         with self.sqlite.session_scope() as session:
@@ -1148,8 +1176,13 @@ class SQLiteDatabase(DatabaseInterface):
                     return False
 
                 for key, value in section_data.items():
+                    normalized_value = (
+                        _normalize_section_datetime(value)
+                        if key in SECTION_DATETIME_FIELDS
+                        else value
+                    )
                     if hasattr(section, key) and key != "id":
-                        setattr(section, key, value)
+                        setattr(section, key, normalized_value)
 
                 section.updated_at = get_current_time()
                 return True

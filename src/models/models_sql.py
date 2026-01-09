@@ -662,7 +662,7 @@ def _course_section_to_dict(model: CourseSection) -> Dict[str, Any]:
 
 def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
     """Convert CourseOutcome model to dictionary."""
-    return {
+    base_dict = {
         "outcome_id": model.id,
         "course_id": model.course_id,
         "clo_number": model.clo_number,
@@ -685,6 +685,28 @@ def _course_outcome_to_dict(model: CourseOutcome) -> Dict[str, Any]:
         "feedback_comments": model.feedback_comments,
         "feedback_provided_at": model.feedback_provided_at,
     }
+
+    # Add course info if relationship satisfies (is loaded)
+    # Note: simple check 'if model.course' might trigger lazy load which fails if detached.
+    # But since we use selectinload, it should be available.
+    # Safe approach: check dict or inspect.
+    # For now, we wrap in try/except or rely on explicit loading.
+    try:
+        if model.course:
+            base_dict.update(
+                {
+                    "course_number": model.course.course_number,
+                    "course_title": model.course.course_title,
+                    "course": {
+                        "course_number": model.course.course_number,
+                        "course_title": model.course.course_title,
+                    },
+                }
+            )
+    except Exception:
+        pass  # Relationship not loaded or detached
+
+    return base_dict
 
 
 def _user_invitation_to_dict(model: UserInvitation) -> Dict[str, Any]:

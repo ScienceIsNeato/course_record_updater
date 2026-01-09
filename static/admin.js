@@ -15,6 +15,44 @@ let filters = {
   status: "",
 };
 
+function hasUserManagementView() {
+  return document.getElementById("usersTableBody") !== null;
+}
+
+function hasInvitationsView() {
+  return document.getElementById("invitationsTableBody") !== null;
+}
+
+const inviteModalWorkflows = new Map();
+const DEFAULT_INVITE_WORKFLOW = "default";
+const INVITATION_EMAIL_FAILED_MESSAGE =
+  "Invitation created but email failed to send";
+
+function registerInviteModalWorkflow(name, { reset, setup } = {}) {
+  inviteModalWorkflows.set(name, {
+    reset: typeof reset === "function" ? reset : () => {},
+    setup: typeof setup === "function" ? setup : () => {},
+  });
+}
+
+function _getInviteModalWorkflow(name) {
+  return (
+    inviteModalWorkflows.get(name) ||
+    inviteModalWorkflows.get(DEFAULT_INVITE_WORKFLOW) || {
+      reset: () => {},
+      setup: () => {},
+    }
+  );
+}
+
+function __resetInviteModalWorkflows() {
+  inviteModalWorkflows.clear();
+}
+
+function __getInviteModalWorkflows() {
+  return Array.from(inviteModalWorkflows.keys());
+}
+
 // DOM Content Loaded
 document.addEventListener("DOMContentLoaded", () => {
   initializeAdminInterface();
@@ -22,69 +60,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Initialize Admin Interface
 function initializeAdminInterface() {
+  // Check if we're on the user management page
+  const isUserManagementPage = hasUserManagementView();
+
   initializeEventListeners();
-  initializeFilters();
-  initializeTabs();
+
+  // Only initialize user management features if on that page
+  if (isUserManagementPage) {
+    initializeFilters();
+    initializeTabs();
+
+    // Load initial data
+    loadUsers();
+    loadInvitations();
+  }
+
+  // Initialize modals (available on all pages with admin.js)
   initializeModals();
 
-  // Load initial data
-  loadUsers();
-  loadInvitations();
+  // Load programs (needed for invite modal on all pages)
   loadPrograms();
 }
 
 // Event Listeners
 function initializeEventListeners() {
-  // Search and filters
-  document
-    .getElementById("searchInput")
-    .addEventListener("input", debounce(handleSearchChange, 300));
-  document
-    .getElementById("roleFilter")
-    .addEventListener("change", handleFilterChange);
-  document
-    .getElementById("statusFilter")
-    .addEventListener("change", handleFilterChange);
-  document
-    .getElementById("clearFilters")
-    .addEventListener("click", clearFilters);
+  // Only initialize user management page elements if they exist
+  const searchInput = document.getElementById("searchInput");
+  const roleFilter = document.getElementById("roleFilter");
+  const statusFilter = document.getElementById("statusFilter");
+  const clearFiltersBtn = document.getElementById("clearFilters");
+  const selectAllUsers = document.getElementById("selectAllUsers");
+  const selectAllInvitations = document.getElementById("selectAllInvitations");
+  const bulkResendInvitations = document.getElementById(
+    "bulkResendInvitations",
+  );
 
-  // Bulk selection
-  document
-    .getElementById("selectAllUsers")
-    .addEventListener("change", handleSelectAllUsers);
-  document
-    .getElementById("selectAllInvitations")
-    .addEventListener("change", handleSelectAllInvitations);
+  const editUserForm = document.getElementById("editUserForm");
+  const usersTableBody = document.getElementById("usersTableBody");
 
-  // Bulk actions
-  document
-    .getElementById("bulkResendInvitations")
-    .addEventListener("click", handleBulkResendInvitations);
-  document
-    .getElementById("bulkCancelInvitations")
-    .addEventListener("click", handleBulkCancelInvitations);
-  document
-    .getElementById("bulkDeactivateUsers")
-    .addEventListener("click", handleBulkDeactivateUsers);
+  // Search and filters (only on user management page)
+  if (searchInput) {
+    searchInput.addEventListener("input", debounce(handleSearchChange, 300));
+  }
+  if (roleFilter) {
+    roleFilter.addEventListener("change", handleFilterChange);
+  }
+  if (statusFilter) {
+    statusFilter.addEventListener("change", handleFilterChange);
+  }
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener("click", clearFilters);
+  }
 
-  // Forms
-  document
-    .getElementById("inviteUserForm")
-    .addEventListener("submit", handleInviteUser);
-  document
-    .getElementById("editUserForm")
-    .addEventListener("submit", handleEditUser);
+  // Bulk selection (only on user management page)
+  if (selectAllUsers) {
+    selectAllUsers.addEventListener("change", handleSelectAllUsers);
+  }
+  if (selectAllInvitations) {
+    selectAllInvitations.addEventListener("change", handleSelectAllInvitations);
+  }
 
-  // Role selection for program assignment
-  document
-    .getElementById("inviteRole")
-    .addEventListener("change", handleRoleSelectionChange);
+  // Bulk actions (only on user management page)
+  if (bulkResendInvitations) {
+    bulkResendInvitations.addEventListener(
+      "click",
+      handleBulkResendInvitations,
+    );
+  }
 
-  // Event delegation for user action buttons (instead of inline onclick handlers)
-  document
-    .getElementById("usersTableBody")
-    .addEventListener("click", (event) => {
+  // Forms - inviteUserForm should exist on all pages with the modal
+  const inviteUserForm = document.getElementById("inviteUserForm");
+  if (inviteUserForm) {
+    inviteUserForm.addEventListener("submit", handleInviteUser);
+  }
+
+  if (editUserForm) {
+    editUserForm.addEventListener("submit", handleEditUser);
+  }
+
+  // Role selection for program assignment (in invite modal)
+  const inviteRole = document.getElementById("inviteRole");
+  if (inviteRole) {
+    inviteRole.addEventListener("change", handleRoleSelectionChange);
+  }
+
+  // Event delegation for user action buttons (only on user management page)
+  if (usersTableBody) {
+    usersTableBody.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
 
@@ -97,11 +159,12 @@ function initializeEventListeners() {
         toggleUserStatus(userId);
       }
     });
+  }
 
   // Event delegation for invitation action buttons
-  document
-    .getElementById("invitationsTableBody")
-    .addEventListener("click", (event) => {
+  const invitationsTableBody = document.getElementById("invitationsTableBody");
+  if (invitationsTableBody) {
+    invitationsTableBody.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
 
@@ -114,18 +177,27 @@ function initializeEventListeners() {
         cancelInvitation(invitationId);
       }
     });
+  }
 }
 
 // Initialize Filters
 function initializeFilters() {
+  const searchInput = document.getElementById("searchInput");
+  const roleFilter = document.getElementById("roleFilter");
+  const statusFilter = document.getElementById("statusFilter");
+
+  if (!searchInput || !roleFilter || !statusFilter) {
+    return; // Not on user management page
+  }
+
   const urlParams = new URLSearchParams(globalThis.location.search);
   filters.search = urlParams.get("search") || "";
   filters.role = urlParams.get("role") || "";
   filters.status = urlParams.get("status") || "";
 
-  document.getElementById("searchInput").value = filters.search;
-  document.getElementById("roleFilter").value = filters.role;
-  document.getElementById("statusFilter").value = filters.status;
+  searchInput.value = filters.search;
+  roleFilter.value = filters.role;
+  statusFilter.value = filters.status;
 }
 
 // Initialize Tabs
@@ -145,22 +217,23 @@ function initializeTabs() {
 
 // Initialize Modals
 function initializeModals() {
-  // Clear forms when modals are hidden
-  document
-    .getElementById("inviteUserModal")
-    .addEventListener("hidden.bs.modal", () => {
-      document.getElementById("inviteUserForm").reset();
-      document
-        .getElementById("inviteUserForm")
-        .classList.remove("was-validated");
+  const inviteUserModalEl = document.getElementById("inviteUserModal");
+  const inviteUserFormEl = document.getElementById("inviteUserForm");
+  if (inviteUserModalEl && inviteUserFormEl) {
+    inviteUserModalEl.addEventListener("hidden.bs.modal", () => {
+      inviteUserFormEl.reset();
+      inviteUserFormEl.classList.remove("was-validated");
     });
+  }
 
-  document
-    .getElementById("editUserModal")
-    .addEventListener("hidden.bs.modal", () => {
-      document.getElementById("editUserForm").reset();
-      document.getElementById("editUserForm").classList.remove("was-validated");
+  const editUserModalEl = document.getElementById("editUserModal");
+  const editUserFormEl = document.getElementById("editUserForm");
+  if (editUserModalEl && editUserFormEl) {
+    editUserModalEl.addEventListener("hidden.bs.modal", () => {
+      editUserFormEl.reset();
+      editUserFormEl.classList.remove("was-validated");
     });
+  }
 }
 
 // Load Users
@@ -190,6 +263,10 @@ async function loadUsers() {
 
 // Load Invitations
 async function loadInvitations() {
+  if (!hasInvitationsView()) {
+    return;
+  }
+
   try {
     showLoading("invitations");
 
@@ -201,8 +278,10 @@ async function loadInvitations() {
     const data = await response.json();
     if (data.success) {
       currentInvitations = data.invitations || [];
-      document.getElementById("invitationsCount").textContent =
-        currentInvitations.length;
+      const invitationsCountEl = document.getElementById("invitationsCount");
+      if (invitationsCountEl) {
+        invitationsCountEl.textContent = currentInvitations.length;
+      }
       updateDisplay();
     } else {
       throw new Error(data.error || "Failed to load invitations");
@@ -222,6 +301,7 @@ async function loadPrograms() {
       const data = await response.json();
       if (data.success) {
         const programSelect = document.getElementById("invitePrograms");
+        if (!programSelect) return;
         programSelect.innerHTML = ""; // nosemgrep
 
         data.programs.forEach((program) => {
@@ -551,44 +631,10 @@ async function handleBulkResendInvitations() {
       await resendInvitation(invitationId, false);
     }
     selectedInvitations.clear();
-    loadInvitations();
-    showSuccess(`Successfully resent ${selectedInvitations.size} invitations.`);
-  }
-}
-
-async function handleBulkCancelInvitations() {
-  if (selectedInvitations.size === 0) return;
-
-  const confirmed = await showConfirmation(
-    "Cancel Invitations",
-    `Are you sure you want to cancel ${selectedInvitations.size} invitation(s)? This action cannot be undone.`,
-  );
-
-  if (confirmed) {
-    for (const invitationId of selectedInvitations) {
-      await cancelInvitation(invitationId, false);
+    if (hasInvitationsView()) {
+      loadInvitations();
     }
-    selectedInvitations.clear();
-    loadInvitations();
-    showSuccess(
-      `Successfully cancelled ${selectedInvitations.size} invitations.`,
-    );
-  }
-}
-
-async function handleBulkDeactivateUsers() {
-  if (selectedUsers.size === 0) return;
-
-  const confirmed = await showConfirmation(
-    "Deactivate Users",
-    `Are you sure you want to deactivate ${selectedUsers.size} user(s)? They will lose access to the system.`,
-  );
-
-  if (confirmed) {
-    // Implementation would go here
-    selectedUsers.clear();
-    loadUsers();
-    showSuccess(`Successfully deactivated ${selectedUsers.size} users.`);
+    showSuccess(`Successfully resent ${selectedInvitations.size} invitations.`);
   }
 }
 
@@ -605,7 +651,7 @@ async function handleInviteUser(event) {
     return;
   }
 
-  setLoadingState(submitBtn, true);
+  setButtonLoadingState(submitBtn, true);
 
   try {
     const data = {
@@ -613,6 +659,14 @@ async function handleInviteUser(event) {
       invitee_role: formData.get("invitee_role"),
       personal_message: formData.get("personal_message") || undefined,
     };
+    const firstName = formData.get("first_name");
+    const lastName = formData.get("last_name");
+    if (firstName) {
+      data.first_name = firstName;
+    }
+    if (lastName) {
+      data.last_name = lastName;
+    }
 
     // Add program IDs if role is program_admin
     if (data.invitee_role === "program_admin") {
@@ -622,6 +676,12 @@ async function handleInviteUser(event) {
       if (programIds.length > 0) {
         data.program_ids = programIds;
       }
+    }
+
+    // Add section ID if provided (for section assignment)
+    const sectionId = formData.get("section_id");
+    if (sectionId) {
+      data.section_id = sectionId;
     }
 
     // Get CSRF token
@@ -640,11 +700,14 @@ async function handleInviteUser(event) {
     const result = await response.json();
 
     if (response.ok && result.success) {
-      showSuccess(result.message || "Invitation sent successfully!");
+      const successMessage = result.message || "Invitation sent successfully!";
+      displayInvitationResult(successMessage, result.email_error);
       bootstrap.Modal.getInstance(
         document.getElementById("inviteUserModal"),
       ).hide();
-      loadInvitations();
+      if (hasInvitationsView()) {
+        loadInvitations();
+      }
     } else {
       throw new Error(result.error || "Failed to send invitation");
     }
@@ -652,22 +715,147 @@ async function handleInviteUser(event) {
     console.error("Error sending invitation:", error); // eslint-disable-line no-console
     showError("Failed to send invitation: " + error.message);
   } finally {
-    setLoadingState(submitBtn, false);
+    setButtonLoadingState(submitBtn, false);
   }
 }
+
+/**
+ * Unified function to open the invite user modal with optional pre-population
+ * @param {Object} options - Configuration options
+ * @param {string} options.sectionId - Section ID to assign instructor to (optional)
+ * @param {string} options.prefillRole - Role to pre-select (optional)
+ * @param {string} options.programId - Program ID to pre-select for program_admin (optional)
+ */
+function openInviteModal(options = {}) {
+  const modalElement = document.getElementById("inviteUserModal");
+  if (!modalElement) {
+    console.warn("Invite modal is not present in the current DOM.");
+    return;
+  }
+
+  const workflowName = options.workflow || DEFAULT_INVITE_WORKFLOW;
+  const workflow = _getInviteModalWorkflow(workflowName);
+  const context = {
+    modal: modalElement,
+    form: document.getElementById("inviteUserForm"),
+    sectionGroup: document.getElementById("sectionAssignmentGroup"),
+    sectionIdField: document.getElementById("inviteSectionId"),
+    roleSelect: document.getElementById("inviteRole"),
+    firstNameField: document.getElementById("inviteFirstName"),
+    lastNameField: document.getElementById("inviteLastName"),
+    programSelection: document.getElementById("programSelection"),
+    inviteProgramsSelect: document.getElementById("invitePrograms"),
+    options,
+  };
+
+  workflow.reset(context);
+  workflow.setup(context);
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
+// Make function globally available for onclick handlers
+globalThis.openInviteModal = openInviteModal;
 
 function handleRoleSelectionChange(event) {
-  const programSelection = document.getElementById("programSelection");
   const selectedRole = event.target.value;
 
-  if (selectedRole === "program_admin") {
+  setProgramSelectionVisibility(selectedRole);
+}
+
+function setProgramSelectionVisibility(role) {
+  const programSelection = document.getElementById("programSelection");
+  const invitePrograms = document.getElementById("invitePrograms");
+  if (!programSelection || !invitePrograms) return;
+
+  if (role === "program_admin") {
     programSelection.style.display = "block";
-    document.getElementById("invitePrograms").required = true;
+    invitePrograms.required = true;
   } else {
     programSelection.style.display = "none";
-    document.getElementById("invitePrograms").required = false;
+    invitePrograms.required = false;
   }
 }
+
+registerInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW, {
+  reset({ form, sectionGroup, sectionIdField, roleSelect }) {
+    if (form) {
+      form.reset();
+      form.classList.remove("was-validated");
+    }
+    if (sectionGroup) {
+      sectionGroup.style.display = "none";
+    }
+    if (sectionIdField) {
+      sectionIdField.value = "";
+    }
+    if (roleSelect) {
+      roleSelect.value = "instructor";
+      setProgramSelectionVisibility("instructor");
+    }
+  },
+  setup({
+    options = {},
+    sectionGroup,
+    sectionIdField,
+    roleSelect,
+    inviteProgramsSelect,
+    firstNameField,
+    lastNameField,
+  }) {
+    const hasSection = Boolean(options.sectionId);
+    if (hasSection && sectionGroup) {
+      sectionGroup.style.display = "block";
+      if (sectionIdField) {
+        sectionIdField.value = options.sectionId;
+      }
+    }
+
+    const roleToApply =
+      options.prefillRole ||
+      (hasSection ? "instructor" : roleSelect?.value) ||
+      "instructor";
+    if (roleSelect) {
+      roleSelect.value = roleToApply;
+    }
+    setProgramSelectionVisibility(roleToApply);
+
+    if (firstNameField) {
+      firstNameField.value = options.firstName || "";
+    }
+    if (lastNameField) {
+      lastNameField.value = options.lastName || "";
+    }
+
+    if (
+      options.programId &&
+      roleToApply === "program_admin" &&
+      inviteProgramsSelect
+    ) {
+      const applySelection = () => {
+        Array.from(inviteProgramsSelect.options).forEach((opt) => {
+          opt.selected = opt.value === options.programId;
+        });
+      };
+      if (inviteProgramsSelect.options.length === 0) {
+        setTimeout(applySelection, 50);
+      } else {
+        applySelection();
+      }
+    }
+  },
+});
+
+registerInviteModalWorkflow("sectionAssignment", {
+  reset: _getInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW).reset,
+  setup(context) {
+    const defaultWorkflow = _getInviteModalWorkflow(DEFAULT_INVITE_WORKFLOW);
+    defaultWorkflow.setup(context);
+    if (context.modal) {
+      context.modal.dataset.workflow = "sectionAssignment";
+    }
+  },
+});
 
 async function editUser(userId) {
   const user = currentUsers.find((u) => u.id === userId);
@@ -698,7 +886,7 @@ async function handleEditUser(event) {
     return;
   }
 
-  setLoadingState(submitBtn, true);
+  setButtonLoadingState(submitBtn, true);
 
   try {
     const userId = formData.get("user_id");
@@ -733,7 +921,7 @@ async function handleEditUser(event) {
     console.error("Error updating user:", error); // eslint-disable-line no-console
     showError("Failed to update user: " + error.message);
   } finally {
-    setLoadingState(submitBtn, false);
+    setButtonLoadingState(submitBtn, false);
   }
 }
 
@@ -774,8 +962,12 @@ async function resendInvitation(invitationId, showFeedback = true) {
 
     if (response.ok && result.success) {
       if (showFeedback) {
-        showSuccess("Invitation resent successfully!");
-        loadInvitations();
+        if (showFeedback) {
+          showSuccess("Invitation resent successfully!");
+          if (hasInvitationsView()) {
+            loadInvitations();
+          }
+        }
       }
       return true;
     } else {
@@ -802,8 +994,12 @@ async function cancelInvitation(invitationId, showFeedback = true) {
 
     if (response.ok && result.success) {
       if (showFeedback) {
-        showSuccess("Invitation cancelled successfully!");
-        loadInvitations();
+        if (showFeedback) {
+          showSuccess("Invitation cancelled successfully!");
+          if (hasInvitationsView()) {
+            loadInvitations();
+          }
+        }
       }
       return true;
     } else {
@@ -909,23 +1105,41 @@ function updateURL() {
 }
 
 function showLoading(type) {
-  document.getElementById(`${type}Loading`).style.display = "block";
-  document.getElementById(`${type}Empty`).classList.add("d-none");
+  const loadingEl = document.getElementById(`${type}Loading`);
+  if (loadingEl) {
+    loadingEl.style.display = "block";
+  }
+  const emptyEl = document.getElementById(`${type}Empty`);
+  if (emptyEl) {
+    emptyEl.classList.add("d-none");
+  }
 }
 
 function hideLoading(type) {
-  document.getElementById(`${type}Loading`).style.display = "none";
+  const loadingEl = document.getElementById(`${type}Loading`);
+  if (loadingEl) {
+    loadingEl.style.display = "none";
+  }
 }
 
 function showEmpty(type) {
-  document.getElementById(`${type}Empty`).classList.remove("d-none");
+  const emptyEl = document.getElementById(`${type}Empty`);
+  if (emptyEl) {
+    emptyEl.classList.remove("d-none");
+  }
 }
 
 function hideEmpty(type) {
-  document.getElementById(`${type}Empty`).classList.add("d-none");
+  const emptyEl = document.getElementById(`${type}Empty`);
+  if (emptyEl) {
+    emptyEl.classList.add("d-none");
+  }
 }
 
-function setLoadingState(button, loading) {
+function setButtonLoadingState(button, loading) {
+  if (!button) {
+    return;
+  }
   if (loading) {
     button.classList.add("loading");
     button.disabled = true;
@@ -1014,6 +1228,10 @@ function showSuccess(message) {
   showMessage(message, "success");
 }
 
+function showWarning(message) {
+  showMessage(message, "warning");
+}
+
 function showError(message) {
   showMessage(message, "error");
 }
@@ -1025,7 +1243,9 @@ function showMessage(message, type) {
 
   // Create new message
   const messageDiv = document.createElement("div");
-  messageDiv.className = `alert alert-${type === "error" ? "danger" : "success"} alert-dismissible fade show admin-message-dynamic`;
+  const alertType =
+    type === "error" ? "danger" : type === "warning" ? "warning" : "success";
+  messageDiv.className = `alert alert-${alertType} alert-dismissible fade show admin-message-dynamic`;
   // nosemgrep
   messageDiv.innerHTML = `
         ${message}
@@ -1034,10 +1254,43 @@ function showMessage(message, type) {
 
   // Insert at top of container
   const container = document.querySelector(".container-fluid");
-  const firstChild = container.children[1]; // After header
-  firstChild.before(messageDiv);
+  const targetContainer = container || document.body;
+  const firstChild =
+    container && container.children.length > 1
+      ? container.children[1]
+      : container
+        ? container.firstElementChild
+        : null;
+
+  if (firstChild) {
+    firstChild.before(messageDiv);
+  } else {
+    targetContainer.prepend(messageDiv);
+  }
 
   messageDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function isInvitationDeliveryFailedMessage(message) {
+  return message === INVITATION_EMAIL_FAILED_MESSAGE;
+}
+
+function displayInvitationResult(message, detail) {
+  if (isInvitationDeliveryFailedMessage(message)) {
+    showWarning(message);
+  } else {
+    showSuccess(message);
+  }
+
+  if (detail) {
+    const alert = document.querySelector(".admin-message-dynamic");
+    if (alert) {
+      const detailEl = document.createElement("div");
+      detailEl.className = "text-muted small mt-1";
+      detailEl.textContent = `Reason: ${detail}`;
+      alert.appendChild(detailEl);
+    }
+  }
 }
 
 async function showConfirmation(title, message) {
@@ -1179,19 +1432,20 @@ const adminTestExports = {
   handleInvitationSelection,
   updateBulkActions,
   handleBulkResendInvitations,
-  handleBulkCancelInvitations,
-  handleBulkDeactivateUsers,
   toggleUserStatus,
   resendInvitation,
   cancelInvitation,
   handleInviteUser,
+  openInviteModal,
+  editUser,
   handleEditUser,
   handleRoleSelectionChange,
+  setProgramSelectionVisibility,
   showSuccess,
   showError,
   showMessage,
   showConfirmation,
-  setLoadingState,
+  setButtonLoadingState,
   showLoading,
   hideLoading,
   showEmpty,
@@ -1206,6 +1460,16 @@ const adminTestExports = {
   formatExpiryDate,
   escapeHtml,
   debounce,
+  registerInviteModalWorkflow,
+  __resetInviteModalWorkflows,
+  __getInviteModalWorkflows,
+  _getInviteModalWorkflow,
+  DEFAULT_INVITE_WORKFLOW,
+  showWarning,
+  INVITATION_EMAIL_FAILED_MESSAGE,
+  displayInvitationResult,
+  isInvitationDeliveryFailedMessage,
+  applyUserStatusFilter,
 };
 
 if (typeof module !== "undefined" && module.exports) {

@@ -17,7 +17,7 @@ Features:
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from urllib.parse import urljoin
 
 from flask import current_app
@@ -25,6 +25,7 @@ from flask import current_app
 # Import email provider infrastructure
 from src.email_providers import create_email_provider
 from src.email_providers.base_provider import EmailProvider
+from src.email_providers.brevo_provider import BrevoProvider
 
 # Import constants to avoid duplication
 from src.utils.constants import DEFAULT_BASE_URL
@@ -62,6 +63,8 @@ class EmailService:
         "coastalcarolina.edu",
         # Add other protected domains as needed
     ]
+
+    _last_error_message: Optional[str] = None
 
     @staticmethod
     def _is_protected_email(email: Optional[str]) -> bool:
@@ -390,6 +393,7 @@ class EmailService:
     ) -> bool:
         """Send email using configured email provider"""
         try:
+            EmailService._last_error_message = None
             # CRITICAL PROTECTION: Block protected domains in non-production environments
             is_production = current_app.config.get(
                 "ENV"
@@ -436,9 +440,16 @@ class EmailService:
                 logger.info(
                     f"[Email Service] Email sent successfully to {logger.sanitize(to_email)}"
                 )
+                EmailService._last_error_message = None
             else:
                 logger.error(
                     f"[Email Service] Provider reported failure sending to {logger.sanitize(to_email)}"
+                )
+                EmailService._last_error_message = (
+                    f"Provider reported failure sending to {to_email}"
+                )
+                EmailService._maybe_send_via_ethereal_fallback(
+                    provider, to_email, subject, html_body, text_body
                 )
 
             return success
@@ -465,6 +476,10 @@ class EmailService:
                 html_body=html_body,
                 status="FAILED",
                 error_message=str(e),
+            )
+            EmailService._last_error_message = str(e)
+            EmailService._maybe_send_via_ethereal_fallback(
+                provider, to_email, subject, html_body, text_body
             )
             return False
 
@@ -552,6 +567,77 @@ class EmailService:
             logger.debug(
                 "[Email Service] Unable to write email preview log: %s", log_error
             )
+
+    @staticmethod
+    def _maybe_send_via_ethereal_fallback(
+        provider: EmailProvider,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        text_body: str,
+    ) -> None:
+        """
+        When Brevo fails in non-production environments, retry via Ethereal
+        so local/E2E runs still have an inspectable copy of the email.
+        """
+        try:
+            env = current_app.config.get("ENV", "development")
+            is_production = env == "production"
+        except RuntimeError:
+            env = "development"
+            is_production = False
+
+        if is_production or not isinstance(provider, BrevoProvider):
+            return
+
+        ethereal_user = os.getenv("ETHEREAL_USER")
+        if not ethereal_user:
+            logger.warning(
+                "[Email Service] Ethereal fallback requested but ETHEREAL_USER is not configured"
+            )
+            return
+
+        try:
+            logger.warning(
+                "[Email Service] Brevo delivery failed in %s, retrying via Ethereal",
+                env,
+            )
+            fallback_provider = create_email_provider("ethereal")
+            fallback_success = fallback_provider.send_email(
+                to_email, subject, html_body, text_body
+            )
+            EmailService._log_email_preview(
+                to_email=to_email,
+                subject=subject,
+                text_body=text_body,
+                html_body=html_body,
+                status="FALLBACK",
+                error_message=(
+                    "Delivered to Ethereal after Brevo failure"
+                    if fallback_success
+                    else "Ethereal fallback also failed"
+                ),
+            )
+            if fallback_success:
+                logger.warning(
+                    "[Email Service] Ethereal fallback delivered the message"
+                )
+            else:
+                logger.error("[Email Service] Ethereal fallback failed as well")
+        except Exception as fallback_error:
+            logger.error(
+                "[Email Service] Ethereal fallback threw an exception: %s",
+                fallback_error,
+            )
+
+    @staticmethod
+    def pop_last_error_message() -> Optional[str]:
+        """
+        Return the last captured error message (if any) and clear it.
+        """
+        message = EmailService._last_error_message
+        EmailService._last_error_message = None
+        return message
 
     @staticmethod
     def _build_verification_url(token: str) -> str:

@@ -1906,6 +1906,22 @@ if [[ "$RUN_JS_COVERAGE" == "true" ]]; then
               echo "📊 Coverage Results:"
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               
+              # Check for test execution failures
+              if echo "$JS_COVERAGE_OUTPUT" | grep -q "FAIL"; then
+                  echo "❌ Test Execution Failed!"
+                  echo "📋 Failed Tests:"
+                  echo "$JS_COVERAGE_OUTPUT" | grep -A 5 "FAIL " | sed 's/^/  /'
+                  echo ""
+                  
+                  # Extract test summary
+                  TEST_SUMMARY=$(echo "$JS_COVERAGE_OUTPUT" | grep -E "Test Suites:|Tests:|Snapshots:|Time:" | sed 's/^/  /')
+                  if [[ -n "$TEST_SUMMARY" ]]; then
+                    echo "📊 Test Summary:"
+                    echo "$TEST_SUMMARY"
+                    echo ""
+                  fi
+              fi
+
               # Extract and display coverage summary table
               COVERAGE_TABLE=$(echo "$JS_COVERAGE_OUTPUT" | sed -n '/All files/,/^$/p' | head -10 | sed 's/^/  /')
               if [[ -n "$COVERAGE_TABLE" ]]; then

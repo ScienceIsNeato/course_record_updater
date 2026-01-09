@@ -125,6 +125,45 @@
     font-weight: 600;
 }
 
+/* Read-only fields */
+.auth-form .readonly-field {
+    background-color: #e2e8f0 !important;
+    cursor: not-allowed;
+    color: #4a5568;
+}
+
+.auth-form .readonly-field:focus {
+    background-color: #e2e8f0 !important;
+    border-color: #cbd5e0;
+    box-shadow: none;
+}
+
+/* Password input group alignment */
+.input-group .form-floating.flex-grow-1 {
+    flex: 1 1 auto;
+}
+
+.password-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: none;
+    padding: 0 1rem;
+    min-width: 52px;
+}
+
+.password-toggle-btn:hover {
+    background-color: #f8fafc;
+}
+
+.input-group .invalid-feedback.w-100 {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
 /* Password Toggle */
 .password-toggle {
     position: absolute;

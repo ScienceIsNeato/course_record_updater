@@ -1,6 +1,52 @@
 # Course Record Updater - Current Status
 
-## Latest Work: Dashboard Refresh Event Bus (2026-01-08)
+## Latest Work: Unified Invite Modal System (2026-01-08)
+
+**Status**: ✅ COMPLETE - Single invite modal now works across all pages
+
+**Problem**: "Send Invite" button on sections page was completely unresponsive
+- No network traffic, no console errors, no visual feedback
+- Root cause: Two competing invite systems (inviteUserModal WORKING, inviteFacultyModal BROKEN)
+
+**Solution**: Consolidated to single unified invite modal system
+- ✅ Enhanced inviteUserModal with optional section assignment fields
+- ✅ Created `openInviteModal(options)` function in admin.js with context-aware pre-population
+- ✅ Updated handleInviteUser() to send section_id to API when provided
+- ✅ Changed sections_list.html to use unified modal and openInviteModal()
+- ✅ Updated institution_admin.html dashboard to use unified modal and admin.js
+- ✅ Updated script includes to load admin.js instead of inviteFaculty.js
+- ✅ Deleted deprecated files (inviteFaculty.js, invite_faculty_modal.html, inviteFaculty.test.js)
+
+**How It Works**:
+- Single modal (`inviteUserModal`) used across all pages
+- Pre-population via `openInviteModal({sectionId, prefillRole, programId})`
+- From sections page: `openInviteModal({sectionId: X, prefillRole: 'instructor'})`
+- From user management: `openInviteModal()` (no pre-fills)
+- From institution dashboard: `openInviteModal()` (no pre-fills)
+
+**Templates Updated**:
+- `templates/sections_list.html` - Uses unified modal
+- `templates/dashboard/institution_admin.html` - Uses unified modal
+- `templates/admin/user_management.html` - Original location of unified modal
+
+**Next Steps**:
+1. Test invite flow from all pages (sections, dashboard, user management)
+2. Run ship_it.py quality checks
+3. Consider extracting modal HTML to reusable component (currently duplicated)
+
+## Latest Fix: Invitation guard (2026-01-08)
+
+**Status**: ✅ COMPLETE - `loadInvitations()` and related helpers now early‑exit when the user management widgets are not present, so sending invites from the sections page no longer throws `Cannot set properties of null`.
+
+**Verification**: `npm run test:js -- admin`
+
+## Latest Work: Email fallback docs + UI warnings (2026-01-09)
+
+**Status**: ✅ COMPLETE - Documented the prod/dev/e2e/local email provider mapping in `docs/email_delivery.md`, added an Ethereal retry within `EmailService._send_email()` so Brevo rejects still surface a loggable fallback in non-production, and taught the admin invite flow to show a warning alert whenever `INVITATION_CREATED_EMAIL_FAILED_MSG` is returned.
+
+**Verification**: `npm run test:js -- admin`
+
+## Previous Work: Dashboard Refresh Event Bus (2026-01-08)
 
 **Status**: ✅ COMPLETE - dashboards auto-refresh on every CRUD mutation without global name collisions.
 

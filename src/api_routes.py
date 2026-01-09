@@ -3526,6 +3526,99 @@ def delete_section_endpoint(section_id: str):
 # ========================================
 
 
+@api.route("/outcomes", methods=["GET"])
+@permission_required("view_program_data")
+def list_all_outcomes_endpoint():
+    """
+    Get all outcomes for the institution, optionally filtered.
+    """
+    institution_id = get_current_institution_id()
+    program_id = request.args.get("program_id")
+    course_id = request.args.get("course_id")
+    status = request.args.get("status") or None  # Allow 'active', 'archived', etc.
+
+    try:
+        # If course_id is provided, just use the existing helper logic?
+        # But we want a generic filter.
+        # Use get_outcomes_by_status which supports filtering
+
+        # If filtering by course_id, we need a way to filter by course.
+        # get_outcomes_by_status filters by program_id and status, and term?
+        # It handles term via offering checks. It does NOT seem to directly handle course_id
+        # unless we modify it or filter in memory.
+
+        # Let's check get_outcomes_by_status implementation again.
+        # It joins with Course.
+
+        # If we need course filtering, likely best to fetch for course if course_id is present.
+        if course_id:
+            outcomes = get_course_outcomes(course_id)
+            # Filter by status if needed
+            if status:
+                outcomes = [
+                    o
+                    for o in outcomes
+                    if o.get("status") == status
+                    or (status == "active" and o.get("active") == True)
+                ]
+        else:
+            # Use the bulk fetcher
+            outcomes = database_service.get_outcomes_by_status(
+                institution_id, status, program_id=program_id
+            )
+
+        return (
+            jsonify({"success": True, "outcomes": outcomes, "count": len(outcomes)}),
+            200,
+        )
+
+    except Exception as e:
+        return handle_api_error(e, "List outcomes", "Failed to list outcomes")
+
+
+@api.route("/outcomes", methods=["POST"])
+@permission_required("manage_courses")
+def create_outcome_endpoint():
+    """
+    Create a new course outcome (generic endpoint).
+    Requires course_id in body.
+    """
+    try:
+        data = request.get_json(silent=True)
+        if not data or "course_id" not in data:
+            return jsonify({"success": False, "error": "course_id is required"}), 400
+        if "description" not in data:
+            return jsonify({"success": False, "error": "description is required"}), 400
+
+        # Verify course access
+        course = get_course_by_id(data["course_id"])
+        institution_id = get_current_institution_id()
+        if not course or course.get("institution_id") != institution_id:
+            return jsonify({"success": False, "error": COURSE_NOT_FOUND_MSG}), 404
+
+        outcome_id = database_service.create_course_outcome(data)
+
+        if outcome_id:
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "outcome_id": outcome_id,
+                        "message": "Course outcome created successfully",
+                    }
+                ),
+                201,
+            )
+        else:
+            return (
+                jsonify({"success": False, "error": "Failed to create course outcome"}),
+                500,
+            )
+
+    except Exception as e:
+        return handle_api_error(e, "Create outcome", "Failed to create outcome")
+
+
 @api.route("/courses/<course_id>/outcomes", methods=["GET"])
 @permission_required("view_program_data")
 def list_course_outcomes_endpoint(course_id: str):
@@ -4342,22 +4435,21 @@ def create_invitation_api():
         )
 
         # Send invitation email
-        email_sent = InvitationService.send_invitation(invitation)
+        email_sent, email_error = InvitationService.send_invitation(invitation)
 
-        return (
-            jsonify(
-                {
-                    "success": True,
-                    "invitation_id": invitation["id"],
-                    "message": (
-                        INVITATION_CREATED_AND_SENT_MSG
-                        if email_sent
-                        else INVITATION_CREATED_EMAIL_FAILED_MSG
-                    ),
-                }
+        response_body = {
+            "success": True,
+            "invitation_id": invitation["id"],
+            "message": (
+                INVITATION_CREATED_AND_SENT_MSG
+                if email_sent and not email_error
+                else INVITATION_CREATED_EMAIL_FAILED_MSG
             ),
-            201,
-        )
+        }
+        if email_error:
+            response_body["email_error"] = email_error
+
+        return jsonify(response_body), 201
 
     except Exception as e:
         logger.error(f"Error creating invitation: {e}")
@@ -4491,18 +4583,32 @@ def resend_invitation_api(invitation_id):
         from src.services.invitation_service import InvitationService
 
         # Resend invitation
-        success = InvitationService.resend_invitation(invitation_id)
+        success, email_error = InvitationService.resend_invitation(invitation_id)
+
+        response_body = {
+            "success": True,
+            "message": "Invitation resent successfully",
+        }
+        if email_error:
+            response_body.update(
+                {
+                    "message": INVITATION_CREATED_EMAIL_FAILED_MSG,
+                    "email_error": email_error,
+                }
+            )
 
         if success:
-            return (
-                jsonify({"success": True, "message": "Invitation resent successfully"}),
-                200,
-            )
-        else:
-            return (
-                jsonify({"success": False, "error": "Failed to resend invitation"}),
-                500,
-            )
+            return jsonify(response_body), 200
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Failed to resend invitation",
+                    "email_error": email_error,
+                }
+            ),
+            500,
+        )
 
     except Exception as e:
         logger.error(f"Error resending invitation: {e}")

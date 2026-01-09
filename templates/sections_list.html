@@ -103,7 +103,89 @@
 
 {% include "components/section_modal.html" %}
 
-{% include 'modals/invite_faculty_modal.html' %}
+<!-- Invite User Modal (unified) -->
+<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteUserModalLabel">
+                    <i class="fas fa-user-plus"></i> Invite New User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="inviteUserForm">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="inviteEmail" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="inviteEmail" name="invitee_email" required>
+                            <div class="invalid-feedback">
+                                Please enter a valid email address.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="inviteRole" class="form-label">Role</label>
+                            <select class="form-select" id="inviteRole" name="invitee_role" required>
+                                <option value="">Select Role</option>
+                                <option value="instructor">Instructor</option>
+                                <option value="program_admin">Program Admin</option>
+                                {% if current_user.role == 'site_admin' %}
+                                <option value="institution_admin">Institution Admin</option>
+                                {% endif %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select a role.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="inviteFirstName" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="inviteFirstName" name="first_name" placeholder="First name">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="inviteLastName" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="inviteLastName" name="last_name" placeholder="Last name">
+                        </div>
+                        <div class="col-12" id="programSelection" style="display: none;">
+                            <label for="invitePrograms" class="form-label">Programs (for Program Admin)</label>
+                            <select class="form-select" id="invitePrograms" name="program_ids" multiple>
+                                <!-- Programs will be loaded here -->
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple programs.</div>
+                        </div>
+                        
+                        <!-- Section Assignment (Optional - for inviting from sections page) -->
+                        <div class="col-12" id="sectionAssignmentGroup" style="display: none;">
+                            <hr class="my-3">
+                            <h6 class="mb-3">Section Assignment (Optional)</h6>
+                            <input type="hidden" id="inviteSectionId" name="section_id">
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle"></i>
+                                If a section is pre-selected, the instructor will be automatically assigned to it upon accepting the invitation.
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="inviteMessage" class="form-label">Personal Message (Optional)</label>
+                            <textarea class="form-control" id="inviteMessage" name="personal_message" rows="3" placeholder="Welcome to our team! We're excited to have you join us."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="sendInviteBtn">
+                        <span class="btn-text">
+                            <i class="fas fa-paper-plane"></i> Send Invitation
+                        </span>
+                        <span class="btn-spinner d-none">
+                            <i class="fas fa-spinner fa-spin"></i> Sending...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -223,28 +305,28 @@
             // Add event delegation for edit buttons and invite buttons
             container.addEventListener('click', function (e) {
                 const editBtn = e.target.closest('.edit-section-btn');
-                const inviteBtn = e.target.closest('.invite-instructor-btn');
-
                 if (editBtn) {
                     const row = editBtn.closest('tr');
                     const sectionData = JSON.parse(row.dataset.section);
                     if (typeof globalThis.openEditSectionModal === 'function') {
                         globalThis.openEditSectionModal(editBtn.dataset.sectionId, sectionData);
                     }
-                } else if (inviteBtn) {
-                } else if (inviteBtn) {
+                    return;
+                }
+
+                const inviteBtn = e.target.closest('.invite-instructor-btn');
+                if (inviteBtn) {
                     const row = inviteBtn.closest('tr');
                     const section = JSON.parse(row.dataset.section);
 
-                    if (typeof globalThis.openInviteFacultyModal === 'function') {
-                        globalThis.openInviteFacultyModal({
+                    if (typeof globalThis.openInviteModal === 'function') {
+                        globalThis.openInviteModal({
+                            workflow: 'sectionAssignment',
                             sectionId: section.section_id,
-                            sectionName: `Section ${section.section_number}`,
-                            termName: section.term_name,
-                            courseName: `${section.course_number} — ${section.course_title}`
+                            prefillRole: 'instructor'
                         });
                     } else {
-                        console.warn('openInviteFacultyModal is not defined. Invitation functionality may be missing.');
+                        console.warn('openInviteModal is not defined. Invitation functionality may be missing.');
                     }
                 }
             });
@@ -339,6 +421,6 @@
         }
     });
 </script>
-<script src="{{ url_for('static', filename='inviteFaculty.js') }}"></script>
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
 <script src="{{ url_for('static', filename='sectionManagement.js') }}"></script>
 {% endblock %}

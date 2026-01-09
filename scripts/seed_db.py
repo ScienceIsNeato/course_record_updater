@@ -8,6 +8,7 @@ Tests create their own specific data (users, sections) via API calls.
 
 import argparse
 import json
+import math
 import os
 import random
 import sys
@@ -1244,6 +1245,72 @@ class DemoSeeder(BaselineTestSeeder):
                         f"   ✓ Created 'NCI' scenario (CLO #{nci_data.get('clo_number')})"
                     )
 
+    def _apply_demo_clo_completion(self, course_ids, manifest):
+        """Apply automatic CLO completion markers based on manifest target."""
+        progress_settings = manifest.get("system_settings", {}).get("auto_progress", {})
+        target_percent = progress_settings.get("clo_completion_target_percent")
+        if target_percent is None:
+            return
+
+        try:
+            percent_value = float(target_percent)
+        except (TypeError, ValueError):
+            self.log(
+                f"   ⚠️ Invalid CLO completion percent '{target_percent}' - skipping automated progress"
+            )
+            return
+
+        percent_value = max(0.0, min(100.0, percent_value))
+        if percent_value <= 0 or not course_ids:
+            return
+
+        enrollment_clos = []
+        for course_id in course_ids:
+            outcomes = database_service.db.get_course_outcomes(course_id)
+            for clo in outcomes:
+                clo_number = clo.get("clo_number")
+                if not clo_number or not str(clo_number).isdigit():
+                    continue
+                num = int(clo_number)
+                if 1 <= num <= 3:
+                    enrollment_clos.append(clo)
+
+        total_clos = len(enrollment_clos)
+        if not total_clos:
+            return
+
+        target_count = min(total_clos, math.ceil(total_clos * (percent_value / 100.0)))
+        enrollment_clos.sort(
+            key=lambda clo: (
+                clo.get("course_number", ""),
+                int(clo.get("clo_number") or 0),
+            )
+        )
+
+        tools = ["Final Exam", "Capstone Project", "Lab Report", "Portfolio Review"]
+
+        updated = 0
+        for idx, clo in enumerate(enrollment_clos[:target_count]):
+            took = 22 + (idx % 4) * 3
+            pass_delta = idx % 3
+            passed = max(1, took - pass_delta)
+            if passed > took:
+                passed = took
+
+            tool = tools[idx % len(tools)]
+            if database_service.update_outcome_assessment(
+                clo["outcome_id"],
+                students_took=took,
+                students_passed=passed,
+                assessment_tool=tool,
+            ):
+                updated += 1
+
+        if updated:
+            self.log(
+                f"   ✅ Marked {updated} demo CLOs as completed ({percent_value}% target)"
+            )
+
     def set_admin_date_override(self):
         """Set system date override for the demo admin"""
         self.log("⏰ Setting initial date override for admin...")
@@ -1355,7 +1422,10 @@ class DemoSeeder(BaselineTestSeeder):
         # Create narrative-specific scenarios (Rework, NCI)
         self.create_scenario_specific_clos(course_ids, instructor_ids)
 
-        # Set initial date override for admin to start the story in Oct 2025
+        # Apply automated CLO progress based on manifest guidance
+        self._apply_demo_clo_completion(course_ids, manifest)
+
+        # Set initial date override for admin to start the story in late Dec 2025
         self.set_admin_date_override()
 
         self.create_historical_data(

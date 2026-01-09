@@ -146,12 +146,9 @@ class BrevoProvider(EmailProvider):
                     f"(Message ID: {message_id})"
                 )
                 return True
-            else:
-                logger.error(
-                    f"[Brevo Provider] Failed to send email: "
-                    f"HTTP {response.status_code} - {response.text}"
-                )
-                return False
+            raise RuntimeError(
+                f"Brevo returned HTTP {response.status_code}: {response.text}"
+            )
 
         except requests.exceptions.RequestException as e:
             logger.error(f"[Brevo Provider] API request failed: {e}")
