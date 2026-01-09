@@ -1,4 +1,4 @@
-# Course Record Updater - Pre-commit Configuration
+# LoopCloser - Pre-commit Configuration
 # Uses ship_it.py for consistent quality checks between local and CI
 
 repos:

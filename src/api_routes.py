@@ -2970,6 +2970,69 @@ def _annotate_offering_status(
     offering["is_active"] = status == TERM_STATUS_ACTIVE
 
 
+def _build_term_lookup(terms: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    lookup: Dict[str, Dict[str, Any]] = {}
+    for term in terms:
+        tid = term.get("term_id") or term.get("id")
+        if tid:
+            lookup[tid] = term
+    return lookup
+
+
+def _filter_offerings_by_term(
+    offerings: List[Dict[str, Any]], term_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not term_id:
+        return offerings
+    return [o for o in offerings if o.get("term_id") == term_id]
+
+
+def _filter_offerings_by_course(
+    offerings: List[Dict[str, Any]], course_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    if not course_id:
+        return offerings
+    return [o for o in offerings if o.get("course_id") == course_id]
+
+
+def _populate_offering_metadata(
+    offering: Dict[str, Any],
+    section_stats: Dict[str, Dict[str, int]],
+    course_lookup: Dict[str, Dict[str, Any]],
+    term_lookup: Dict[str, Dict[str, Any]],
+) -> None:
+    stats = section_stats.get(
+        offering.get("offering_id"),
+        {"section_count": 0, "total_enrollment": 0},
+    )
+    offering["section_count"] = stats["section_count"]
+    offering["total_enrollment"] = stats["total_enrollment"]
+
+    course = course_lookup.get(offering.get("course_id"))
+    if course:
+        offering["course_number"] = course.get("course_number")
+        offering["course_title"] = course.get("course_title")
+        offering["course_name"] = course.get("course_title") or course.get(
+            "course_number"
+        )
+        offering["department"] = course.get("department")
+    else:
+        offering.setdefault("course_name", "Unknown Course")
+
+    term = term_lookup.get(offering.get("term_id"))
+    if term:
+        offering["term_name"] = (
+            term.get("name")
+            or term.get("term_name")
+            or offering.get("term_name")
+            or "Unknown Term"
+        )
+    else:
+        offering["term_name"] = offering.get("term_name") or "Unknown Term"
+
+    _annotate_offering_status(offering, term)
+
+
 @api.route("/offerings", methods=["GET"])
 @permission_required("view_program_data")
 def list_course_offerings():
@@ -2979,83 +3042,24 @@ def list_course_offerings():
         course_id = request.args.get("course_id")
         institution_id = get_current_institution_id()
 
-        sections = get_all_sections(institution_id) or []
-        sections = _filter_sections_by_params(sections, term_id, course_id)
-        section_stats = _aggregate_offerings_from_sections(sections)
+        (
+            section_stats,
+            course_lookup,
+            term_lookup,
+            course_program_map,
+            program_map,
+        ) = _build_offering_context(institution_id, term_id, course_id)
 
-        programs = get_programs_by_institution(institution_id) or []
-        program_map = {
-            p.get("program_id") or p.get("id"): p.get("name") for p in programs
-        }
-
-        courses = get_all_courses(institution_id) or []
-        course_program_map = _build_course_program_map(courses, program_map)
-        course_lookup = {
-            course.get("course_id") or course.get("id"): course for course in courses
-        }
-
-        terms = get_all_terms(institution_id) or []
-        term_lookup: Dict[str, Dict[str, Any]] = {}
-        for term in terms:
-            tid = term.get("term_id") or term.get("id")
-            if tid:
-                term_lookup[tid] = term
-
-        offerings = get_all_course_offerings(institution_id) or []
-        logger.info(
-            f"[/api/offerings] Retrieved {len(offerings)} offerings from database"
-        )
-
-        if term_id:
-            offerings = [o for o in offerings if o.get("term_id") == term_id]
-        if course_id:
-            offerings = [o for o in offerings if o.get("course_id") == course_id]
-
+        offerings = _get_filtered_offerings(institution_id, term_id, course_id)
         logger.info(f"[/api/offerings] After filtering: {len(offerings)} offerings")
 
         for offering in offerings:
-            stats = section_stats.get(
-                offering.get("offering_id"), {"section_count": 0, "total_enrollment": 0}
+            _populate_offering_metadata(
+                offering, section_stats, course_lookup, term_lookup
             )
-            offering["section_count"] = stats["section_count"]
-            offering["total_enrollment"] = stats["total_enrollment"]
-
-            course = course_lookup.get(offering.get("course_id"))
-            if course:
-                offering["course_number"] = course.get("course_number")
-                offering["course_title"] = course.get("course_title")
-                offering["course_name"] = course.get("course_title") or course.get(
-                    "course_number"
-                )
-                offering["department"] = course.get("department")
-            else:
-                offering.setdefault("course_name", "Unknown Course")
-
-            term = term_lookup.get(offering.get("term_id"))
-            if term:
-                offering["term_name"] = (
-                    term.get("name")
-                    or term.get("term_name")
-                    or offering.get("term_name")
-                    or "Unknown Term"
-                )
-            else:
-                offering["term_name"] = offering.get("term_name") or "Unknown Term"
-
-            _annotate_offering_status(offering, term)
 
         _enrich_offerings_with_programs(offerings, course_program_map, program_map)
-
-        # Log program enrichment results
-        offerings_with_programs = [o for o in offerings if o.get("program_ids")]
-        offerings_without_programs = [o for o in offerings if not o.get("program_ids")]
-        logger.info(
-            f"[/api/offerings] After enrichment: {len(offerings_with_programs)} with programs, {len(offerings_without_programs)} without programs"
-        )
-        if offerings_without_programs:
-            logger.warning(
-                f"[/api/offerings] Offerings without programs: {[o.get('course_name', 'Unknown') for o in offerings_without_programs]}"
-            )
+        _log_offering_program_enrichment(offerings)
 
         return (
             jsonify({"success": True, "offerings": offerings, "count": len(offerings)}),
@@ -3065,6 +3069,47 @@ def list_course_offerings():
     except Exception as e:
         return handle_api_error(
             e, "List course offerings", "Failed to retrieve course offerings"
+        )
+
+
+def _build_offering_context(
+    institution_id: str, term_id: Optional[str], course_id: Optional[str]
+):
+    sections = get_all_sections(institution_id) or []
+    section_stats = _aggregate_offerings_from_sections(
+        _filter_sections_by_params(sections, term_id, course_id)
+    )
+    courses = get_all_courses(institution_id) or []
+    programs = get_programs_by_institution(institution_id) or []
+    program_map = {p.get("program_id") or p.get("id"): p.get("name") for p in programs}
+    course_program_map = _build_course_program_map(courses, program_map)
+    course_lookup = {
+        course.get("course_id") or course.get("id"): course for course in courses
+    }
+    term_lookup = _build_term_lookup(get_all_terms(institution_id) or [])
+    return section_stats, course_lookup, term_lookup, course_program_map, program_map
+
+
+def _get_filtered_offerings(
+    institution_id: str, term_id: Optional[str], course_id: Optional[str]
+) -> List[Dict[str, Any]]:
+    offerings = get_all_course_offerings(institution_id) or []
+    if term_id:
+        offerings = _filter_offerings_by_term(offerings, term_id)
+    if course_id:
+        offerings = _filter_offerings_by_course(offerings, course_id)
+    return offerings
+
+
+def _log_offering_program_enrichment(offerings: List[Dict[str, Any]]):
+    offerings_with_programs = [o for o in offerings if o.get("program_ids")]
+    offerings_without_programs = [o for o in offerings if not o.get("program_ids")]
+    logger.info(
+        f"[/api/offerings] After enrichment: {len(offerings_with_programs)} with programs, {len(offerings_without_programs)} without programs"
+    )
+    if offerings_without_programs:
+        logger.warning(
+            f"[/api/offerings] Offerings without programs: {[o.get('course_name', 'Unknown') for o in offerings_without_programs]}"
         )
 
 

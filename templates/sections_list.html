@@ -1,6 +1,6 @@
 {% extends "dashboard/base_dashboard.html" %}
 
-{% block title %}Sections - Course Record Updater{% endblock %}
+{% block title %}Sections - LoopCloser{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
@@ -139,11 +139,13 @@
                         </div>
                         <div class="col-md-6">
                             <label for="inviteFirstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="inviteFirstName" name="first_name" placeholder="First name">
+                            <input type="text" class="form-control" id="inviteFirstName" name="first_name"
+                                placeholder="First name">
                         </div>
                         <div class="col-md-6">
                             <label for="inviteLastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="inviteLastName" name="last_name" placeholder="Last name">
+                            <input type="text" class="form-control" id="inviteLastName" name="last_name"
+                                placeholder="Last name">
                         </div>
                         <div class="col-12" id="programSelection" style="display: none;">
                             <label for="invitePrograms" class="form-label">Programs (for Program Admin)</label>
@@ -152,7 +154,7 @@
                             </select>
                             <div class="form-text">Hold Ctrl/Cmd to select multiple programs.</div>
                         </div>
-                        
+
                         <!-- Section Assignment (Optional - for inviting from sections page) -->
                         <div class="col-12" id="sectionAssignmentGroup" style="display: none;">
                             <hr class="my-3">
@@ -160,13 +162,15 @@
                             <input type="hidden" id="inviteSectionId" name="section_id">
                             <div class="alert alert-info mb-0">
                                 <i class="fas fa-info-circle"></i>
-                                If a section is pre-selected, the instructor will be automatically assigned to it upon accepting the invitation.
+                                If a section is pre-selected, the instructor will be automatically assigned to it upon
+                                accepting the invitation.
                             </div>
                         </div>
-                        
+
                         <div class="col-12">
                             <label for="inviteMessage" class="form-label">Personal Message (Optional)</label>
-                            <textarea class="form-control" id="inviteMessage" name="personal_message" rows="3" placeholder="Welcome to our team! We're excited to have you join us."></textarea>
+                            <textarea class="form-control" id="inviteMessage" name="personal_message" rows="3"
+                                placeholder="Welcome to our team! We're excited to have you join us."></textarea>
                         </div>
                     </div>
                 </div>

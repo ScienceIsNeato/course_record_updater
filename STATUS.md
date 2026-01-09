@@ -1,4 +1,4 @@
-# Course Record Updater - Current Status
+# LoopCloser - Current Status
 
 ## Latest Work: Unified Invite Modal System (2026-01-08)
 

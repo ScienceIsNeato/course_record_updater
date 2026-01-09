@@ -42,6 +42,7 @@
 {% block page_subtitle %}View and update outcome assessments for your sections{% endblock %}
 
 {% block content %}
+{% set can_edit_due_date = user.role in ['institution_admin', 'site_admin'] %}
 <div class="container mt-4">
     <!-- Course Selector -->
     <div class="mb-4">
@@ -83,8 +84,20 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold" for="courseDueDate">Assessment Due Date:</label>
-                    <input type="text" class="form-control-plaintext" id="courseDueDate" readonly>
-                    <small class="text-muted">Set by program admin</small>
+                    <input
+                        type="{{ 'date' if can_edit_due_date else 'text' }}"
+                        class="form-control{{ '' if can_edit_due_date else ' form-control-plaintext' }}"
+                        id="courseDueDate"
+                        {% if not can_edit_due_date %}readonly{% endif %}
+                        {% if can_edit_due_date %}placeholder="YYYY-MM-DD"{% endif %}
+                    >
+                    <small class="text-muted">
+                        {% if can_edit_due_date %}
+                            Editable by institution admins
+                        {% else %}
+                            Set by program admin
+                        {% endif %}
+                    </small>
                 </div>
             </div>
 
@@ -1055,9 +1068,11 @@
 
         // Course-Level Assessment Section Handlers (NEW from CEI demo feedback)
         const courseLevelSection = document.getElementById('courseLevelSection');
+        const courseDueDateInput = document.getElementById('courseDueDate');
         const cannotReconcileCheckbox = document.getElementById('cannotReconcile');
         const reconciliationNoteContainer = document.getElementById('reconciliationNoteContainer');
         const saveCourseDataBtn = document.getElementById('saveCourseData');
+        const canEditDueDate = {{ 'true' if can_edit_due_date else 'false' }};
 
         // Toggle reconciliation note visibility
         if (cannotReconcileCheckbox) {
@@ -1080,11 +1095,22 @@
                     document.getElementById('courseWithdrawals').value = section.withdrawals || 0;
 
                     // Format and display due date (added from CEI demo feedback)
-                    if (section.due_date) {
-                        const dueDate = new Date(section.due_date);
-                        document.getElementById('courseDueDate').value = dueDate.toLocaleDateString();
-                    } else {
-                        document.getElementById('courseDueDate').value = 'Not set';
+                    if (courseDueDateInput) {
+                        const dueValue = section.due_date || section.assessment_due_date || '';
+                        if (dueValue) {
+                            const dueDate = new Date(dueValue);
+                            if (canEditDueDate) {
+                                courseDueDateInput.value = isNaN(dueDate.getTime())
+                                    ? ''
+                                    : dueDate.toISOString().split('T')[0];
+                            } else {
+                                courseDueDateInput.value = isNaN(dueDate.getTime())
+                                    ? 'Not set'
+                                    : dueDate.toLocaleDateString();
+                            }
+                        } else {
+                            courseDueDateInput.value = canEditDueDate ? '' : 'Not set';
+                        }
                     }
 
                     // Populate instructor input fields (if they exist)
@@ -1147,6 +1173,10 @@
                         narrative_challenges: document.getElementById('narrativeChallenges').value.trim() || null,
                         narrative_changes: document.getElementById('narrativeChanges').value.trim() || null
                     };
+
+                    if (canEditDueDate && courseDueDateInput) {
+                        data.assessment_due_date = courseDueDateInput.value || null;
+                    }
 
                     const response = await fetch(`/api/sections/${section.section_id}`, {
                         method: 'PUT',

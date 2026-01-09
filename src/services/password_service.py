@@ -2,7 +2,7 @@
 Password Management Service
 
 Provides secure password hashing, validation, and reset token functionality
-for the Course Record Updater authentication system.
+for the LoopCloser authentication system.
 
 Features:
 - bcrypt password hashing with cost factor 12

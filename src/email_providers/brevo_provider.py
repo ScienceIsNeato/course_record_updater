@@ -53,7 +53,7 @@ class BrevoProvider(EmailProvider):
         self._api_key = config.get("api_key") or os.getenv("BREVO_API_KEY")
         self._sender_email = config.get("sender_email") or config.get("default_sender")
         self._sender_name = config.get("sender_name") or config.get(
-            "default_sender_name", "Course Record Updater"
+            "default_sender_name", "LoopCloser"
         )
 
         if not self._api_key:

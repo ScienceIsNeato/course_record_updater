@@ -50,8 +50,8 @@ class TestNewUserRegistrationFlow:
         - Email contains correct user name
         - Email contains valid verification link
         - Link format: {BASE_URL}/verify?token=<token>
-        - Email subject: "Verify your Course Record Updater account"
-        - From: Course Record Updater <noreply@courserecord.app>
+        - Email subject: "Verify your LoopCloser account"
+        - From: LoopCloser <noreply@courserecord.app>
         """
         # 1. Navigate to registration page
         # browser.goto(f"{base_url}/register")
@@ -338,7 +338,7 @@ class TestInvitationFlow:
         - Email contains role being invited to
         - Email contains personal message (if provided)
         - Link format: {BASE_URL}/accept-invitation?token=<token>
-        - Subject: "You're invited to join <Institution> on Course Record Updater"
+        - Subject: "You're invited to join <Institution> on LoopCloser"
         """
         # Setup: Log in as institution admin
         _admin_email = "alice.chen@loopclosertests.mailtrap.io"  # noqa: F841

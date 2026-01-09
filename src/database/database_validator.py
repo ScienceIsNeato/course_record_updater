@@ -1,4 +1,4 @@
-"""Database schema validation utility for Course Record Updater.
+"""Database schema validation utility for LoopCloser.
 
 This module validates that SQLAlchemy models match the actual database schema,
 catching column name typos and schema mismatches at startup before they cause

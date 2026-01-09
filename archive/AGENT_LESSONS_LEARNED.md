@@ -1,6 +1,6 @@
 # Agent Lessons Learned (Regenerated – September 2025)
 
-This log captures practical guidance for automation agents working inside the Course Record Updater codebase. Lessons below synthesize the latest architecture decisions, planning artifacts, and implementation gaps surfaced during the post-auth planning pass.
+This log captures practical guidance for automation agents working inside the LoopCloser codebase. Lessons below synthesize the latest architecture decisions, planning artifacts, and implementation gaps surfaced during the post-auth planning pass.
 
 ## 1. Quality Gates & Validation Workflow
 - **Default mindset**: treat `python scripts/ship_it.py` without flags as the fast commit path (security & sonar skipped) and reserve `--validation-type PR` for full coverage before merges.

@@ -692,7 +692,6 @@ class TestInstitutionAdminAccess(IntegrationTestBase):
         # ), f"Data leakage! MockU and RCC courses overlap: {course_overlap}"
 
 
-
 @pytest.mark.integration
 class TestProgramAdminAccess(IntegrationTestBase):
     """SCENARIO 3: Program Admin - Program-Scoped Access"""

@@ -1,5 +1,5 @@
 """
-End-to-End (E2E) Tests for Course Record Updater
+End-to-End (E2E) Tests for LoopCloser
 
 This package contains automated browser-based tests that simulate real user
 interactions with the application. These tests validate complete workflows

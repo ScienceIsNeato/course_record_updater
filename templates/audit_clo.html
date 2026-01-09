@@ -2,17 +2,14 @@
 
 {% block title %}CLO Audit & Approval{% endblock %}
 
+{% block page_header %}{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1>CLO Audit & Approval</h1>
             <p class="text-muted">Review and approve submitted Course Learning Outcomes</p>
-        </div>
-        <div>
-            <button class="btn btn-outline-secondary" onclick="globalThis.history.back()">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </button>
         </div>
     </div>
 
@@ -76,11 +73,23 @@
         </div>
     </div>
 
-    <!-- Filters: Single row with Status, Program, Term -->
+    <!-- Filters: Term first, Program center, Status right -->
     <div class="card mb-4">
         <div class="card-body py-3">
             <div class="row g-3 align-items-end">
                 <div class="col-md-4">
+                    <label for="termFilter" class="form-label mb-1">Term</label>
+                    <select class="form-select form-select-sm" id="termFilter">
+                        <option value="">All Terms</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="programFilter" class="form-label mb-1">Program</label>
+                    <select class="form-select form-select-sm" id="programFilter">
+                        <option value="">All Programs</option>
+                    </select>
+                </div>
+                <div class="col-md-4 text-md-end">
                     <label for="statusFilter" class="form-label mb-1">Status</label>
                     <select class="form-select form-select-sm" id="statusFilter">
                         <option value="all" selected>All Statuses</option>
@@ -91,18 +100,6 @@
                         <option value="awaiting_approval">Awaiting Approval</option>
                         <option value="approved">Approved</option>
                         <option value="never_coming_in">Never Coming In</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="programFilter" class="form-label mb-1">Program</label>
-                    <select class="form-select form-select-sm" id="programFilter">
-                        <option value="">All Programs</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="termFilter" class="form-label mb-1">Term</label>
-                    <select class="form-select form-select-sm" id="termFilter">
-                        <option value="">All Terms</option>
                     </select>
                 </div>
             </div>
@@ -200,6 +197,33 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning">Send for Rework</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Assign Instructor Modal -->
+<div class="modal fade" id="assignInstructorModal" tabindex="-1" aria-labelledby="assignInstructorModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignInstructorModalLabel">Assign Instructor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="assignInstructorForm">
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Assign an instructor to this course section.</p>
+                    <div class="mb-3">
+                        <label for="assignInstructorSelect" class="form-label">Select Instructor</label>
+                        <select class="form-select" id="assignInstructorSelect" required>
+                            <option value="">Loading instructors...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveAssignmentBtn">Assign</button>
                 </div>
             </form>
         </div>

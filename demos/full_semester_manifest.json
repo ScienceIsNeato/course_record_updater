@@ -10,26 +10,18 @@
     ],
     "terms": [
         {
+            "name": "Spring 2025",
+            "term_code": "SP2025",
+            "start_date": "2025-01-10",
+            "end_date": "2025-05-15",
+            "active": false
+        },
+        {
             "name": "Fall 2025",
             "term_code": "FA2025",
             "start_date": "2025-08-30",
             "end_date": "2025-12-15",
             "active": true
-        }
-    ],
-    "demo_admin": {
-        "email": "demo2025.admin@example.com",
-        "first_name": "Demo",
-        "last_name": "Admin",
-        "password_env_var": "DEMO_PASSWORD"
-    },
-    "institution_admins": [
-        {
-            "email": "sarah.admin@mocku.test",
-            "first_name": "Sarah",
-            "last_name": "Chen",
-            "institution_idx": 0,
-            "password_env_var": "DEFAULT_PASSWORD"
         }
     ],
     "programs": [
@@ -42,7 +34,53 @@
             "code": "ZOOL"
         }
     ],
+    "users": [
+        {
+            "email": "demo2025.admin@example.com",
+            "first_name": "Demo",
+            "last_name": "Admin",
+            "role": "institution_admin",
+            "password_env_var": "DEMO_PASSWORD",
+            "system_date_override": "2025-12-23T09:00:00"
+        },
+        {
+            "email": "sarah.admin@mocku.test",
+            "first_name": "Sarah",
+            "last_name": "Chen",
+            "role": "institution_admin",
+            "institution_idx": 0,
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "dr.morgan@demo.example.com",
+            "first_name": "Alex",
+            "last_name": "Morgan",
+            "role": "instructor",
+            "program_code": "BIOL"
+        },
+        {
+            "email": "prof.chen@demo.example.com",
+            "first_name": "Sarah",
+            "last_name": "Chen",
+            "role": "instructor",
+            "program_code": "BIOL"
+        },
+        {
+            "email": "dr.patel@demo.example.com",
+            "first_name": "Raj",
+            "last_name": "Patel",
+            "role": "instructor",
+            "program_code": "ZOOL"
+        }
+    ],
     "courses": [
+        {
+            "program_code": "BIOL",
+            "code": "HIST-101",
+            "name": "History of Science",
+            "credits": 3,
+            "deparment": "History"
+        },
         {
             "program_code": "BIOL",
             "code": "BIOL-101",
@@ -78,29 +116,6 @@
             "code": "ZOOL-310",
             "name": "Animal Behavior",
             "credits": 3
-        }
-    ],
-    "users": [
-        {
-            "email": "dr.morgan@demo.example.com",
-            "first_name": "Alex",
-            "last_name": "Morgan",
-            "role": "instructor",
-            "program_code": "BIOL"
-        },
-        {
-            "email": "prof.chen@demo.example.com",
-            "first_name": "Sarah",
-            "last_name": "Chen",
-            "role": "instructor",
-            "program_code": "BIOL"
-        },
-        {
-            "email": "dr.patel@demo.example.com",
-            "first_name": "Raj",
-            "last_name": "Patel",
-            "role": "instructor",
-            "program_code": "ZOOL"
         }
     ],
     "clo_templates": {
@@ -139,27 +154,278 @@
             }
         ]
     },
-    "offerings": [
+    "clos": [
+        {
+            "course_code": "HIST-101",
+            "clo_number": 1,
+            "description": "Analyze historical scientific events",
+            "assessment_method": "Essay",
+            "status": "approved",
+            "submitted_at": "2025-12-10T14:30:00",
+            "students_took": 40,
+            "students_passed": 38,
+            "assessment_tool": "Term Paper"
+        },
         {
             "course_code": "BIOL-101",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-23T09:00:00",
+            "students_took": 25,
+            "students_passed": 23,
+            "assessment_tool": "Scientific Method Lab"
+        },
+        {
+            "course_code": "BIOL-101",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-23T09:00:00",
+            "students_took": 24,
+            "students_passed": 21,
+            "assessment_tool": "Cell Biology Analysis"
+        },
+        {
+            "course_code": "BIOL-101",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-23T09:00:00",
+            "students_took": 25,
+            "students_passed": 25,
+            "assessment_tool": "Ecosystem Project"
+        },
+        {
+            "course_code": "BIOL-101",
+            "clo_number": 4,
+            "description": "Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
+            "assessment_method": "Midterm Exam",
+            "status": "needs_rework",
+            "students_took": 25,
+            "students_passed": 0,
+            "assessment_tool": "incorrectly pasted data"
+        },
+        {
+            "course_code": "BIOL-101",
+            "clo_number": 99,
+            "description": "Bonus unassigned learning outcome for audit testing",
+            "assessment_method": "Project",
+            "status": "unassigned"
+        },
+        {
+            "course_code": "BIOL-201",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-12T10:00:00",
+            "students_took": 20,
+            "students_passed": 20,
+            "assessment_tool": "Microscope Lab"
+        },
+        {
+            "course_code": "BIOL-201",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-13T11:00:00",
+            "students_took": 21,
+            "students_passed": 19,
+            "assessment_tool": "Metabolism Quiz"
+        },
+        {
+            "course_code": "BIOL-201",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-14T09:00:00",
+            "students_took": 20,
+            "students_passed": 18,
+            "assessment_tool": "Final Project"
+        },
+        {
+            "course_code": "BIOL-301",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-15T13:00:00",
+            "students_took": 15,
+            "students_passed": 14,
+            "assessment_tool": "Genetic Map"
+        },
+        {
+            "course_code": "BIOL-301",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-15T13:00:00",
+            "students_took": 15,
+            "students_passed": 12,
+            "assessment_tool": "DNA Analysis"
+        },
+        {
+            "course_code": "BIOL-301",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-15T13:00:00",
+            "students_took": 15,
+            "students_passed": 15,
+            "assessment_tool": "Research Grant"
+        },
+        {
+            "course_code": "ZOOL-101",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-08T15:00:00",
+            "students_took": 25,
+            "students_passed": 24,
+            "assessment_tool": "Zoo Visit"
+        },
+        {
+            "course_code": "ZOOL-101",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-08T15:00:00",
+            "students_took": 26,
+            "students_passed": 20,
+            "assessment_tool": "Ethogram"
+        },
+        {
+            "course_code": "ZOOL-101",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-08T15:00:00",
+            "students_took": 25,
+            "students_passed": 25,
+            "assessment_tool": "Species Exam"
+        },
+        {
+            "course_code": "ZOOL-101",
+            "clo_number": 5,
+            "description": "Analyze long-term migration patterns of unicorns",
+            "assessment_method": "Dream Journal",
+            "status": "never_coming_in"
+        },
+        {
+            "course_code": "ZOOL-205",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-18T16:00:00",
+            "students_took": 18,
+            "students_passed": 18,
+            "assessment_tool": "Dissection 1"
+        },
+        {
+            "course_code": "ZOOL-205",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-18T16:00:00",
+            "students_took": 18,
+            "students_passed": 16,
+            "assessment_tool": "Dissection 2"
+        },
+        {
+            "course_code": "ZOOL-205",
+            "clo_number": 3,
+            "status": "approved",
+            "submitted_at": "2025-12-20T10:00:00",
+            "students_took": 18,
+            "students_passed": 15,
+            "assessment_tool": "Anatomy Final"
+        },
+        {
+            "course_code": "BIOL-201",
+            "clo_number": 4,
+            "description": "Demonstrate application of lab safety procedures",
+            "assessment_method": "Lab Practicum",
+            "status": "awaiting_approval",
+            "students_took": 20,
+            "students_passed": 18,
+            "assessment_tool": "Lab Safety Debrief"
+        },
+        {
+            "course_code": "BIOL-301",
+            "clo_number": 4,
+            "description": "Design a genetics experiment",
+            "assessment_method": "Project Proposal",
+            "status": "awaiting_approval",
+            "students_took": 16,
+            "students_passed": 15,
+            "assessment_tool": "Proposal Draft"
+        },
+        {
+            "course_code": "ZOOL-205",
+            "clo_number": 4,
+            "description": "Evaluate animal anatomy through dissection",
+            "assessment_method": "Lab Observation",
+            "status": "awaiting_approval",
+            "students_took": 19,
+            "students_passed": 17,
+            "assessment_tool": "Dissection Reflection"
+        },
+        {
+            "course_code": "BIOL-101",
+            "clo_number": 5,
+            "description": "Apply statistical analysis to lab results",
+            "assessment_method": "Data Assignment",
+            "status": "assigned"
+        },
+        {
+            "course_code": "ZOOL-101",
+            "clo_number": 4,
+            "description": "Conduct field experiments with guidance",
+            "assessment_method": "Field Report",
+            "status": "assigned"
+        },
+        {
+            "course_code": "ZOOL-310",
+            "clo_number": 1,
+            "status": "approved",
+            "submitted_at": "2025-12-05T09:00:00",
+            "students_took": 12,
+            "students_passed": 12,
+            "assessment_tool": "Behavior Study"
+        },
+        {
+            "course_code": "ZOOL-310",
+            "clo_number": 2,
+            "status": "approved",
+            "submitted_at": "2025-12-19T14:00:00",
+            "students_took": 12,
+            "students_passed": 10,
+            "assessment_tool": "Field Data"
+        },
+        {
+            "course_code": "ZOOL-310",
+            "clo_number": 3,
+            "status": "unassigned"
+        }
+    ],
+    "offerings": [
+        {
+            "course_code": "HIST-101",
+            "term_code": "SP2025",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 42,
+                    "status": "completed"
+                }
+            ]
+        },
+        {
+            "course_code": "BIOL-101",
+            "term_code": "FA2025",
             "sections": [
                 {
                     "section_number": "001",
                     "enrollment": 25,
                     "status": "assigned",
-                    "instructor_idx": 0
+                    "instructor_idx": 2
                 },
                 {
                     "section_number": "002",
                     "enrollment": 25,
                     "status": "assigned",
-                    "instructor_idx": 1
+                    "instructor_idx": 3
                 },
                 {
                     "section_number": "003",
                     "enrollment": 13,
                     "status": "assigned",
-                    "instructor_idx": 2
+                    "instructor_idx": 4
                 },
                 {
                     "section_number": "004",
@@ -171,127 +437,64 @@
         },
         {
             "course_code": "BIOL-201",
+            "term_code": "FA2025",
             "sections": [
                 {
                     "section_number": "001",
                     "enrollment": 22,
-                    "status": "assigned",
-                    "instructor_idx": 0
-                }
-            ]
-        },
-        {
-            "course_code": "BIOL-301",
-            "sections": [
-                {
-                    "section_number": "001",
-                    "enrollment": 18,
-                    "status": "assigned",
-                    "instructor_idx": 1
-                }
-            ]
-        },
-        {
-            "course_code": "ZOOL-101",
-            "sections": [
-                {
-                    "section_number": "001",
-                    "enrollment": 28,
                     "status": "assigned",
                     "instructor_idx": 2
                 }
             ]
         },
         {
+            "course_code": "BIOL-301",
+            "term_code": "FA2025",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 18,
+                    "status": "assigned",
+                    "instructor_idx": 3
+                }
+            ]
+        },
+        {
+            "course_code": "ZOOL-101",
+            "term_code": "FA2025",
+            "sections": [
+                {
+                    "section_number": "001",
+                    "enrollment": 28,
+                    "status": "assigned",
+                    "instructor_idx": 4
+                }
+            ]
+        },
+        {
             "course_code": "ZOOL-205",
+            "term_code": "FA2025",
             "sections": [
                 {
                     "section_number": "001",
                     "enrollment": 20,
                     "status": "assigned",
-                    "instructor_idx": 0
+                    "instructor_idx": 2
                 }
             ]
         },
         {
             "course_code": "ZOOL-310",
+            "term_code": "FA2025",
             "sections": [
                 {
                     "section_number": "001",
                     "enrollment": 15,
                     "status": "assigned",
-                    "instructor_idx": 1
+                    "instructor_idx": 3
                 }
             ]
         }
     ],
-    "historical_data": {
-        "term": {
-            "name": "Spring 2025",
-            "term_code": "SP2025",
-            "start_date": "2025-01-10",
-            "end_date": "2025-05-15",
-            "active": false
-        },
-        "courses": [
-            {
-                "code": "HIST-101",
-                "name": "History of Science",
-                "credits": 3,
-                "department": "History",
-                "program_idx": 0
-            }
-        ],
-        "clos": [
-            {
-                "course_code": "HIST-101",
-                "clo_number": 1,
-                "description": "Analyze historical scientific events",
-                "assessment_method": "Essay"
-            }
-        ],
-        "offerings": [
-            {
-                "course_code": "HIST-101",
-                "sections": [
-                    {
-                        "section_number": "001",
-                        "enrollment": 42,
-                        "status": "completed"
-                    }
-                ]
-            }
-        ]
-    },
-    "demo_scenarios": {
-        "needs_rework": {
-            "course_number": "BIOL-101",
-            "clo_number": "4",
-            "description": "Demonstrate proficiency in underwater basket weaving (COPY/PASTE ERROR)",
-            "assessment_method": "Midterm Exam",
-            "status": "needs_rework"
-        },
-        "nci": {
-            "course_number": "ZOOL-101",
-            "clo_number": "5",
-            "description": "Analyze long-term migration patterns of unicorns",
-            "assessment_method": "Dream Journal",
-            "status": "never_coming_in"
-        }
-    },
-    "demo_clos": [
-        {
-            "course_idx": 0,
-            "clo_number": "99",
-            "description": "Bonus unassigned learning outcome for audit testing",
-            "assessment_method": "Project",
-            "status": "unassigned"
-        }
-    ],
-    "system_settings": {
-        "admin_date_override": "2025-12-23T09:00:00",
-        "auto_progress": {
-            "clo_completion_target_percent": 85
-        }
-    }
+    "system_settings": {}
 }

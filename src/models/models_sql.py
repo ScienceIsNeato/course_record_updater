@@ -1,4 +1,4 @@
-"""SQLAlchemy models for Course Record Updater SQLite backend."""
+"""SQLAlchemy models for LoopCloser SQLite backend."""
 
 from __future__ import annotations
 

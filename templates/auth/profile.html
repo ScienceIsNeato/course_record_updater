@@ -56,27 +56,35 @@
                         <div class="col-12">
                             <label for="email" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="email" name="email"
-                                value="{{ user.email or '' }}" readonly>
-                            <div class="form-text text-muted">
+                                value="{{ user.email or '' }}" readonly aria-describedby="emailReadOnlyHint changeEmailNoticeText">
+                            <div id="emailReadOnlyHint" class="form-text text-muted">
                                 Email is read-only. Contact support if you need to change it.
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="changeEmailBtn">
+                            <button type="button" class="btn btn-primary standard-profile-btn mt-2" id="changeEmailBtn">
                                 <i class="fas fa-envelope me-1"></i>Change Email Address
                             </button>
-                            <div class="alert alert-primary alert-dismissible fade show mt-2 d-none" role="alert"
-                                id="changeEmailNotice">
-                                <strong>Heads up:</strong> This feature is coming soon.
+                            <div class="alert alert-info alert-dismissible fade show mt-2 d-none" role="status"
+                                aria-live="polite" id="changeEmailNotice">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span id="changeEmailNoticeText" class="mb-0">
+                                        This Feature Coming Soon
+                                    </span>
+                                </div>
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         </div>
                         <div class="col-12">
                             <label for="role" class="form-label">Role</label>
-                            <input type="text" class="form-control" id="role" value="{{ user.role | title }}" readonly>
-                            <div class="form-text text-muted">Role is assigned by administrators and cannot be edited.</div>
+                            <input type="text" class="form-control" id="role" value="{{ user.role | title }}" readonly
+                                aria-describedby="roleReadOnlyHint">
+                            <div id="roleReadOnlyHint" class="form-text text-muted">
+                                Role is assigned by administrators and cannot be edited.
+                            </div>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-primary" id="updateProfileBtn">
+                        <button type="submit" class="btn btn-primary standard-profile-btn" id="updateProfileBtn">
                             <span class="btn-text">Update Profile</span>
                             <span class="btn-spinner d-none">
                                 <i class="fas fa-spinner fa-spin"></i> Updating...
@@ -130,21 +138,21 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="confirmNewPassword"
-                                name="confirmNewPassword" required>
-                            <button class="btn btn-outline-secondary" type="button" id="toggleConfirmNewPassword">
-                                <i class="fas fa-eye"></i>
-                            </button>
+                        <div class="mb-3">
+                            <label for="confirmNewPassword" class="form-label">Confirm New Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="confirmNewPassword"
+                                    name="confirmNewPassword" data-primary-password="newPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmNewPassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback">
+                                Passwords do not match.
+                            </div>
                         </div>
-                        <div class="invalid-feedback">
-                            Passwords do not match.
-                        </div>
-                    </div>
                     <div class="mt-3">
-                        <button type="submit" class="btn btn-warning" id="changePasswordBtn">
+                        <button type="submit" class="btn btn-primary standard-profile-btn" id="changePasswordBtn">
                             <span class="btn-text">Change Password</span>
                             <span class="btn-spinner d-none">
                                 <i class="fas fa-spinner fa-spin"></i> Changing...
@@ -192,7 +200,7 @@
                             value="{{ user.system_date_override.strftime('%Y-%m-%dT%H:%M') if current_user.system_date_override else '' }}">
                         <div class="form-text" id="dateOverrideStatus">
                             {% if current_user.system_date_override %}
-                            <span class="text-warning"><i class="fas fa-clock me-1"></i>Override active: {{
+                            <span class="override-status-text"><i class="fas fa-clock me-1"></i>Override active: {{
                                 current_user.system_date_override.strftime('%B %d, %Y at %I:%M %p') }}</span>
                             {% else %}
                             <span class="text-muted"><i class="fas fa-clock me-1"></i>Using live system
@@ -201,10 +209,10 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <button type="button" class="btn btn-primary me-2" id="setDateOverrideBtn">
+                        <button type="button" class="btn btn-primary standard-profile-btn me-2" id="setDateOverrideBtn">
                             <i class="fas fa-save me-1"></i>Set Override
                         </button>
-                        <button type="button" class="btn btn-outline-secondary" id="clearDateOverrideBtn" {% if not
+                        <button type="button" class="btn btn-primary standard-profile-btn" id="clearDateOverrideBtn" {% if not
                             current_user.system_date_override %}disabled{% endif %}>
                             <i class="fas fa-undo me-1"></i>Reset to Live
                         </button>
@@ -244,7 +252,7 @@
                     </div>
                     <div class="col-md-6">
                         <h6 class="fw-bold small text-muted mb-1">Member Since</h6>
-                        <div class="form-control-plaintext">{{ user.created_at or 'Not available' }}</div>
+                        <div class="form-control-plaintext">{{ member_since_display or 'Not available' }}</div>
                     </div>
                 </div>
             </div>
@@ -259,8 +267,12 @@
     document.addEventListener("DOMContentLoaded", function () {
         const changeEmailBtn = document.getElementById("changeEmailBtn");
         const changeEmailNotice = document.getElementById("changeEmailNotice");
+        const changeEmailNoticeText = document.getElementById("changeEmailNoticeText");
         if (changeEmailBtn && changeEmailNotice) {
             changeEmailBtn.addEventListener("click", function () {
+                if (changeEmailNoticeText) {
+                    changeEmailNoticeText.textContent = "This Feature Coming Soon";
+                }
                 changeEmailNotice.classList.remove("d-none");
                 changeEmailNotice.classList.add("show");
             });

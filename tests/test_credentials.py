@@ -32,6 +32,7 @@ SITE_ADMIN_PASSWORD = "SiteAdmin123!"  # pragma: allowlist secret
 INSTITUTION_ADMIN_PASSWORD = "InstitutionAdmin123!"  # pragma: allowlist secret
 # Note: seed_db.py uses DEFAULT_PASSWORD (InstitutionAdmin123!) for all seeded users
 PROGRAM_ADMIN_PASSWORD = "InstitutionAdmin123!"  # pragma: allowlist secret
+DEFAULT_PASSWORD = INSTITUTION_ADMIN_PASSWORD  # pragma: allowlist secret
 
 # ============================================================================
 # User Account Passwords

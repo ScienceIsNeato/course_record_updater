@@ -1,6 +1,6 @@
 # Email delivery stack
 
-This page describes how Course Record Updater sends transactional mail across different environments and what happens when the primary provider fails.
+This page describes how LoopCloser sends transactional mail across different environments and what happens when the primary provider fails.
 
 ## Environment -> provider mapping
 

@@ -59,7 +59,7 @@ class TestAdminInstructorReminderSingleRecipient:
         - Email contains direct link to course submission page
         - Email includes deadline (if applicable)
         - Subject: "Reminder: Please submit your course data for [Term]"
-        - From: Course Record Updater <noreply@courserecord.app>
+        - From: LoopCloser <noreply@courserecord.app>
         - Reply-To: Program admin's email (optional)
         """
         # Setup: Log in as program admin

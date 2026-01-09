@@ -1,6 +1,6 @@
 # Demo System
 
-Deterministic, automated demo orchestration system for showcasing Course Record Updater workflows.
+Deterministic, automated demo orchestration system for showcasing LoopCloser workflows.
 
 ## Quick Start
 

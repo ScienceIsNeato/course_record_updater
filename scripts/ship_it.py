@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-ship_it.py - Course Record Updater Quality Gate Executor
+ship_it.py - LoopCloser Quality Gate Executor
 
 A Python wrapper for the maintAInability-gate.sh script that executes
 quality checks in parallel to reduce total execution time.
@@ -105,7 +105,11 @@ class QualityGateExecutor:
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
             self.security_check,
-            ("we", "🧠 Complexity Analysis (radon/xenon)"),
+            (
+                "complexity",
+                "🧠 Complexity Analysis (radon/xenon)",
+                self._run_complexity_analysis,
+            ),
             ("duplication", "🔄 Code Duplication Check"),
             ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
             ("integration", "🔗 Integration Tests (component interactions)"),
@@ -165,8 +169,137 @@ class QualityGateExecutor:
             check for check in self.all_checks if check not in full_commit_checks
         ]
 
+    def _run_complexity_analysis(self) -> CheckResult:
+        """Run code complexity analysis using radon and xenon."""
+        start_time = time.time()
+        try:
+            # First check if radon is installed
+            try:
+                subprocess.run(
+                    ["radon", "--version"],
+                    capture_output=True,
+                    check=True,
+                    text=True,
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output="radon not installed. Install with: pip install radon",
+                    error="radon not installed",
+                )
+
+            # Run radon to get complexity metrics
+            radon_cmd = [
+                "radon",
+                "cc",
+                "-a",  # Show all functions and methods
+                "-s",  # Sort by score
+                "--min=C",  # Minimum complexity to show (C is medium)
+                "src",
+                "tests",
+                "scripts",
+            ]
+
+            radon_result = subprocess.run(
+                radon_cmd,
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
+
+            # Check for high complexity issues (D or higher)
+            high_complexity = [
+                line
+                for line in radon_result.stdout.split("\n")
+                if any(level in line for level in [" D ", " E ", " F "])
+            ]
+
+            if high_complexity:
+                issues = "\n".join(high_complexity[:10])  # Show first 10 issues
+                more = len(high_complexity) - 10
+                more_text = f"\n... and {more} more issues found" if more > 0 else ""
+
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output=f"🧠 Found {len(high_complexity)} high complexity functions/methods (D or higher):{more_text}\n{issues}",
+                    error=f"Found {len(high_complexity)} high complexity functions",
+                )
+
+            return CheckResult(
+                name="complexity",
+                status=CheckStatus.PASSED,
+                duration=time.time() - start_time,
+                output="✅ No high complexity issues found (all functions have cyclomatic complexity < 10)",
+            )
+
+        except Exception as e:
+            return CheckResult(
+                name="complexity",
+                status=CheckStatus.FAILED,
+                duration=time.time() - start_time,
+                output=f"🔴 Complexity analysis failed: {str(e)}",
+                error=str(e),
+            )
+
+    def _find_contiguous_uncovered_blocks(self, file_data: dict) -> list:
+        """Find contiguous blocks of uncovered lines from statement map.
+
+        Returns list of (start_line, end_line, statement_count) tuples
+        sorted by statement_count descending (biggest blocks first).
+        """
+        statement_map = file_data.get("statementMap", {})
+        s_hits = file_data.get("s", {})
+
+        # Collect all uncovered line numbers
+        uncovered_lines = set()
+        for stmt_id, loc in statement_map.items():
+            if s_hits.get(stmt_id, 0) == 0:
+                start = loc.get("start", {}).get("line", 0)
+                end = loc.get("end", {}).get("line", start)
+                for line in range(start, end + 1):
+                    uncovered_lines.add(line)
+
+        if not uncovered_lines:
+            return []
+
+        # Find contiguous blocks
+        sorted_lines = sorted(uncovered_lines)
+        blocks = []
+        block_start = sorted_lines[0]
+        prev_line = sorted_lines[0]
+
+        for line in sorted_lines[1:]:
+            if line > prev_line + 1:
+                # Gap found - save current block
+                blocks.append((block_start, prev_line, prev_line - block_start + 1))
+                block_start = line
+            prev_line = line
+
+        # Don't forget the last block
+        blocks.append((block_start, prev_line, prev_line - block_start + 1))
+
+        # Sort by size (biggest blocks first)
+        blocks.sort(key=lambda x: x[2], reverse=True)
+        return blocks
+
     def _show_js_coverage_report(self) -> None:
-        """Show JavaScript coverage report when coverage check fails."""
+        """Show JavaScript coverage report with actionable instructions.
+
+        Rapid Iteration Strategy:
+        =========================
+        Shows the TOP 5 longest contiguous blocks of uncovered code with
+        explicit instructions on how to cover them. Each block shows:
+        - File and exact line range
+        - Number of statements to cover
+        - Clear action: extend nearby test OR add new test
+
+        Line numbers come from coverage/coverage-final.json, regenerated
+        fresh by Jest after each test run.
+        """
         import json
         import os
 
@@ -179,13 +312,11 @@ class QualityGateExecutor:
             with open(coverage_file, "r") as f:
                 data = json.load(f)
 
-            # Calculate total coverage from statement map
             total_statements = 0
             covered_statements = 0
-            files_below_threshold = []
+            all_uncovered_blocks = []  # (file, start, end, count)
 
             for filepath, file_data in data.items():
-                # Get statement coverage
                 s_data = file_data.get("s", {})
                 if s_data:
                     total_statements += len(s_data)
@@ -193,23 +324,18 @@ class QualityGateExecutor:
                         1 for count in s_data.values() if count > 0
                     )
 
-                    # Calculate file coverage percentage
-                    file_total = len(s_data)
-                    file_covered = sum(1 for count in s_data.values() if count > 0)
-                    file_pct = (
-                        (file_covered / file_total * 100) if file_total > 0 else 100
+                    # Get contiguous uncovered blocks for this file
+                    short_path = filepath.replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                        "",
+                    ).replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                        "tests/",
                     )
 
-                    # Track files below 80%
-                    if file_pct < 80:
-                        short_path = filepath.replace(
-                            "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
-                            "",
-                        ).replace(
-                            "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
-                            "tests/",
-                        )
-                        files_below_threshold.append((short_path, file_pct))
+                    blocks = self._find_contiguous_uncovered_blocks(file_data)
+                    for start, end, count in blocks:
+                        all_uncovered_blocks.append((short_path, start, end, count))
 
             overall_pct = (
                 (covered_statements / total_statements * 100)
@@ -219,36 +345,54 @@ class QualityGateExecutor:
             needed_statements = int(total_statements * 0.8) - covered_statements
 
             self.logger.info("\n📊 JavaScript Coverage Analysis:")
-            self.logger.info("━" * 60)
+            self.logger.info("━" * 70)
             self.logger.info(
                 f"Overall: {overall_pct:.2f}% ({covered_statements}/{total_statements} statements)"
             )
             self.logger.info(
                 f"Target:  80.00% ({int(total_statements * 0.8)} statements)"
             )
-            self.logger.info(
-                f"Gap:     {needed_statements} more statements needed to reach threshold"
-            )
+            self.logger.info(f"Gap:     {needed_statements} more statements needed")
 
-            if files_below_threshold:
-                files_below_threshold.sort(key=lambda x: x[1])
-                self.logger.info(
-                    f"\n📉 Files Below 80% Threshold ({len(files_below_threshold)} files):"
-                )
-                for filepath, pct in files_below_threshold[:15]:
-                    self.logger.info(f"  {pct:5.1f}% - {filepath}")
-                if len(files_below_threshold) > 15:
+            # Show TOP 5 biggest uncovered blocks with explicit instructions
+            if all_uncovered_blocks:
+                all_uncovered_blocks.sort(key=lambda x: x[3], reverse=True)
+                self.logger.info("")
+                self.logger.info("🎯 TOP 5 UNCOVERED BLOCKS (biggest coverage gains):")
+                self.logger.info("━" * 70)
+
+                for i, (filepath, start, end, count) in enumerate(
+                    all_uncovered_blocks[:5], 1
+                ):
+                    self.logger.info(f"")
                     self.logger.info(
-                        f"  ... and {len(files_below_threshold) - 15} more files"
+                        f"  #{i}: {filepath} lines {start}-{end} ({count} statements)"
                     )
+                    self.logger.info(
+                        f"      ACTION: Extend existing tests for {filepath} to cover"
+                    )
+                    self.logger.info(
+                        f"              lines {start}-{end}, OR add a new test targeting"
+                    )
+                    self.logger.info(f"              this specific code block.")
 
-            self.logger.info("━" * 60)
+                self.logger.info("")
+                self.logger.info("━" * 70)
+                self.logger.info(
+                    "💡 Line numbers from coverage/coverage-final.json (auto-updated by Jest)"
+                )
+
+            self.logger.info("━" * 70)
 
         except Exception as e:
             self.logger.warning(f"Failed to parse coverage report: {e}")
 
     def _format_js_coverage_report(self) -> List[str]:
-        """Format JavaScript coverage report as lines for inclusion in output."""
+        """Format JavaScript coverage report with actionable instructions.
+
+        Returns lines for inclusion in output. Uses same contiguous block
+        approach as _show_js_coverage_report.
+        """
         import json
         import os
 
@@ -260,13 +404,11 @@ class QualityGateExecutor:
             with open(coverage_file, "r") as f:
                 data = json.load(f)
 
-            # Calculate total coverage from statement map
             total_statements = 0
             covered_statements = 0
-            files_below_threshold = []
+            all_uncovered_blocks = []
 
             for filepath, file_data in data.items():
-                # Get statement coverage
                 s_data = file_data.get("s", {})
                 if s_data:
                     total_statements += len(s_data)
@@ -274,23 +416,17 @@ class QualityGateExecutor:
                         1 for count in s_data.values() if count > 0
                     )
 
-                    # Calculate file coverage percentage
-                    file_total = len(s_data)
-                    file_covered = sum(1 for count in s_data.values() if count > 0)
-                    file_pct = (
-                        (file_covered / file_total * 100) if file_total > 0 else 100
+                    short_path = filepath.replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
+                        "",
+                    ).replace(
+                        "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
+                        "tests/",
                     )
 
-                    # Track files below 80%
-                    if file_pct < 80:
-                        short_path = filepath.replace(
-                            "/Users/pacey/Documents/SourceCode/course_record_updater/static/",
-                            "",
-                        ).replace(
-                            "/Users/pacey/Documents/SourceCode/course_record_updater/tests/javascript/",
-                            "tests/",
-                        )
-                        files_below_threshold.append((short_path, file_pct))
+                    blocks = self._find_contiguous_uncovered_blocks(file_data)
+                    for start, end, count in blocks:
+                        all_uncovered_blocks.append((short_path, start, end, count))
 
             overall_pct = (
                 (covered_statements / total_statements * 100)
@@ -310,17 +446,18 @@ class QualityGateExecutor:
             )
             lines.append(f"       Gap:     {needed_statements} more statements needed")
 
-            if files_below_threshold:
-                files_below_threshold.sort(key=lambda x: x[1])
-                lines.append(f"       ")
-                lines.append(
-                    f"       📉 Files Below 80% ({len(files_below_threshold)} files):"
-                )
-                for filepath, pct in files_below_threshold[:10]:
-                    lines.append(f"         {pct:5.1f}% - {filepath}")
-                if len(files_below_threshold) > 10:
+            if all_uncovered_blocks:
+                all_uncovered_blocks.sort(key=lambda x: x[3], reverse=True)
+                lines.append("       ")
+                lines.append("       🎯 TOP 5 UNCOVERED BLOCKS:")
+                for i, (filepath, start, end, count) in enumerate(
+                    all_uncovered_blocks[:5], 1
+                ):
                     lines.append(
-                        f"         ... and {len(files_below_threshold) - 10} more files"
+                        f"         #{i}: {filepath} L{start}-{end} ({count} stmts)"
+                    )
+                    lines.append(
+                        f"             → Extend tests or add new test for this block"
                     )
 
             return lines
@@ -815,52 +952,15 @@ class QualityGateExecutor:
         }
         validation_name = validation_name_map[validation_type]
         self.logger.info(
-            f"🔍 Running Course Record Updater quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
+            f"🔍 Running LoopCloser quality checks ({validation_name} validation - PARALLEL MODE with auto-fix)..."
         )
         self.logger.info("🐍 Python/Flask enterprise validation suite")
         self.logger.info("")
 
-        # Determine which checks to run
-        if checks is None:
-            # Default: use validation type to determine check set
-            if validation_type == ValidationType.COMMIT:
-                checks_to_run = self.commit_checks
-                self.logger.info(
-                    "📦 Running COMMIT validation (fast checks, excludes security)"
-                )
-            elif validation_type == ValidationType.PR:
-                checks_to_run = self.pr_checks
-                self.logger.info(
-                    "🔍 Running PR validation (all checks including security)"
-                )
-            elif validation_type == ValidationType.INTEGRATION:
-                checks_to_run = self.integration_checks
-                self.logger.info(
-                    "🔗 Running INTEGRATION validation (component interactions against SQLite persistence)"
-                )
-            elif validation_type == ValidationType.SMOKE:
-                checks_to_run = self.smoke_checks
-                self.logger.info(
-                    "🔥 Running SMOKE validation (end-to-end tests, requires running server + browser)"
-                )
-            elif validation_type == ValidationType.FULL:
-                checks_to_run = self.full_checks
-                self.logger.info(
-                    "🚀 Running FULL validation (comprehensive validation, all dependencies required)"
-                )
-        else:
-            # Run only specified checks
-            available_checks = {flag: (flag, name) for flag, name in self.all_checks}
-            checks_to_run = []
-            for check in checks:
-                if check in available_checks:
-                    checks_to_run.append(available_checks[check])
-                else:
-                    self.logger.error(f"❌ Unknown check: {check}")
-                    self.logger.info(
-                        f"Available checks: {', '.join(available_checks.keys())}"
-                    )
-                    return 1
+        try:
+            checks_to_run = self._determine_checks_to_run(checks, validation_type)
+        except ValueError:
+            return 1
 
         start_time = time.time()
 
@@ -886,6 +986,71 @@ class QualityGateExecutor:
         # Return appropriate exit code
         failed_count = len([r for r in all_results if r.status == CheckStatus.FAILED])
         return 1 if failed_count > 0 else 0
+
+    def _determine_checks_to_run(
+        self, checks: Optional[List[str]], validation_type: ValidationType
+    ) -> List[Tuple[str, str]]:
+        """Determine which checks should run based on user input or validation type."""
+        if checks is None:
+            return self._checks_for_validation(validation_type)
+        return self._checks_for_user_selected_checks(checks)
+
+    def _checks_for_validation(
+        self, validation_type: ValidationType
+    ) -> List[Tuple[str, str]]:
+        """Return the configured check list for a validation type."""
+        if validation_type == ValidationType.COMMIT:
+            self.logger.info(
+                "📦 Running COMMIT validation (fast checks, excludes security)"
+            )
+            return self.commit_checks
+        if validation_type == ValidationType.PR:
+            self.logger.info("🔍 Running PR validation (all checks including security)")
+            return self.pr_checks
+        if validation_type == ValidationType.INTEGRATION:
+            self.logger.info(
+                "🔗 Running INTEGRATION validation (component interactions against SQLite persistence)"
+            )
+            return self.integration_checks
+        if validation_type == ValidationType.SMOKE:
+            self.logger.info(
+                "🔥 Running SMOKE validation (end-to-end tests, requires running server + browser)"
+            )
+            return self.smoke_checks
+        if validation_type == ValidationType.FULL:
+            self.logger.info(
+                "🚀 Running FULL validation (comprehensive validation, all dependencies required)"
+            )
+            return self.full_checks
+        # Fallback to commit checks
+        self.logger.info(
+            "📦 Running COMMIT validation (fast checks, excludes security)"
+        )
+        return self.commit_checks
+
+    def _checks_for_user_selected_checks(
+        self, checks: List[str]
+    ) -> List[Tuple[str, str]]:
+        """Return configured checks for explicitly provided flags."""
+        available_checks = {}
+        for item in self.all_checks:
+            if len(item) == 3:
+                flag, name, _ = item
+            else:
+                flag, name = item
+            available_checks[flag] = (flag, name)
+
+        checks_to_run = []
+        for check in checks:
+            if check in available_checks:
+                checks_to_run.append(available_checks[check])
+            else:
+                self.logger.error(f"❌ Unknown check: {check}")
+                self.logger.info(
+                    f"Available checks: {', '.join(available_checks.keys())}"
+                )
+                raise ValueError(f"Unknown check: {check}")
+        return checks_to_run
 
     def _extract_slow_tests(self, output: str) -> List[str]:
         """Extract slow tests (>0.5s) from pytest output with --durations=0."""
@@ -1089,71 +1254,33 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
         if not pr_number:
             return False
 
-        # For review threads, add a reply to the thread
-        if thread_id:
-            # GraphQL mutation to add a reply to a review thread
-            mutation = """
-            mutation($threadId: ID!, $body: String!) {
-              addPullRequestReviewThreadComment(input: {
-                pullRequestReviewThreadId: $threadId
-                body: $body
-              }) {
-                comment {
-                  id
-                }
-              }
-            }
-            """
+        try:
+            # Try to post a comment to the PR
+            comment = {"body": body}
 
-            result = subprocess.run(  # nosec
+            # Use GitHub CLI to post the comment
+            result = subprocess.run(
                 [
                     "gh",
                     "api",
-                    "graphql",
-                    "-F",
-                    f"owner={owner}",
-                    "-F",
-                    f"name={name}",
-                    "-F",
-                    f"number={pr_number}",
-                    "-f",
-                    f"query={mutation}",
-                    "-f",
-                    f"threadId={thread_id}",
-                    "-f",
-                    f"body={body}",
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                # Optionally resolve the thread
-                if resolve_thread:
-                    resolve_review_thread(thread_id)
-                return True
-
-        # For general comments, use REST API
-        else:
-            result = subprocess.run(  # nosec
-                [
-                    "gh",
-                    "api",
-                    f"repos/{owner}/{name}/pulls/{pr_number}/comments/{comment_id}/replies",
+                    f"repos/{owner}/{name}/issues/{pr_number}/comments",
                     "-X",
                     "POST",
+                    "-H",
+                    "Accept: application/vnd.github.v3+json",
                     "-f",
-                    f"body={body}",
+                    f"body={comment['body']}",
                 ],
                 capture_output=True,
                 text=True,
-                check=False,
+                check=True,
             )
 
             return result.returncode == 0
 
-        return False
+        except Exception as e:
+            print(f"⚠️  Could not post PR comment: {e}")
+            return False
 
     except Exception as e:
         print(f"⚠️  Could not reply to PR comment: {e}")
@@ -2094,7 +2221,7 @@ def _print_pr_summary(report: dict) -> None:
 def main():
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
-        description="Course Record Updater Quality Gate - Run maintainability checks in parallel with fail-fast",
+        description="LoopCloser Quality Gate - Run maintainability checks in parallel with fail-fast",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

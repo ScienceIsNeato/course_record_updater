@@ -406,11 +406,6 @@
             faculty_count: program.faculty_count || 0,
             student_count: program.student_count || 0,
             section_count: program.section_count || 0,
-            assessment_progress: program.assessment_progress || {
-              percent_complete: 0,
-              completed: 0,
-              total: 0,
-            },
           }));
 
       const table = globalThis.panelManager.createSortableTable({
@@ -421,16 +416,8 @@
           { key: "faculty", label: "Faculty", sortable: true },
           { key: "students", label: "Students", sortable: true },
           { key: "sections", label: "Sections", sortable: true },
-          { key: "progress", label: "Progress", sortable: true },
         ],
         data: programs.map((program) => {
-          const progress = program.assessment_progress || {};
-          const percent =
-            typeof progress.percent_complete === "number"
-              ? progress.percent_complete
-              : 0;
-          const completed = progress.completed ?? 0;
-          const total = progress.total ?? 0;
           const coursesLength =
             program.courses && program.courses.length
               ? program.courses.length
@@ -455,17 +442,31 @@
             students_sort: studentCount.toString(),
             sections: sectionCount.toString(),
             sections_sort: sectionCount.toString(),
-            progress: `<div class="progress">
-                <div class="progress-bar" role="progressbar" style="width: ${Math.min(percent, 100)}%">${percent}%</div>
-              </div>
-              <small class="text-muted">${completed}/${total} complete</small>`,
-            progress_sort: percent,
           };
         }),
       });
 
       container.innerHTML = "";
       container.appendChild(table);
+    },
+
+    normalizeProgressPercent(progress = {}) {
+      const percentRaw = progress.percent_complete;
+      const asNumber =
+        typeof percentRaw === "number" ? percentRaw : parseFloat(percentRaw);
+
+      if (!Number.isNaN(asNumber)) {
+        return asNumber;
+      }
+
+      const completed = Number(progress.completed ?? 0);
+      const total = Number(progress.total ?? 0);
+
+      if (total > 0) {
+        return Number(((completed / total) * 100).toFixed(1));
+      }
+
+      return 0;
     },
 
     renderFaculty(assignments, fallbackFaculty) {
@@ -928,7 +929,7 @@
         data: programOverview.map((program) => {
           const progress = program.assessment_progress || {};
           const total = progress.total ?? 0;
-          const percent = progress.percent_complete ?? 0;
+          const percent = this.normalizeProgressPercent(progress);
           const sectionCount = program.section_count ?? 0;
           return {
             program: program.program_name || program.name || "Program",

@@ -121,7 +121,7 @@ MAIL_USE_SSL=false
 MAIL_USERNAME=<your-mailtrap-username>
 MAIL_PASSWORD=<your-mailtrap-password>
 MAIL_DEFAULT_SENDER=system@loopclosertests.mailtrap.io
-MAIL_DEFAULT_SENDER_NAME=Course Record Updater (Test)
+MAIL_DEFAULT_SENDER_NAME=LoopCloser (Test)
 MAIL_SUPPRESS_SEND=false  # Enable real sending to Mailtrap
 
 # ===== OPTIONAL: Bella's Gmail for live testing =====
@@ -205,8 +205,8 @@ python scripts/test_gmail_smtp.py
 
 3. Check Bella's inbox:
 - Login to `lassie.tests.instructor1.test@gmail.com`
-- Look for email from "Course Record Updater (Test)"
-- Subject: "Verify your Course Record Updater account"
+- Look for email from "LoopCloser (Test)"
+- Subject: "Verify your LoopCloser account"
 
 **Note:** For most testing, stick with Mailtrap. Only use Gmail when you need to verify actual delivery.
 

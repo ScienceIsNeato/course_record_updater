@@ -315,6 +315,7 @@ class SQLiteDatabase(DatabaseInterface):
             oauth_id=payload.get("oauth_id"),
             password_reset_token=payload.get("password_reset_token"),
             password_reset_expires_at=payload.get("password_reset_expires_at"),
+            system_date_override=payload.get("system_date_override"),
             extras={**payload, "user_id": user_id},
         )
 
@@ -613,6 +614,14 @@ class SQLiteDatabase(DatabaseInterface):
             "created_at",
             "last_modified",
             "updated_at",
+            # Workflow fields
+            "submitted_at",
+            "submitted_by_user_id",
+            "reviewed_at",
+            "reviewed_by_user_id",
+            "approval_status",
+            "feedback_comments",
+            "feedback_provided_at",
             # Deprecated fields (removed in CEI demo follow-ups) - explicitly exclude
             "assessment_data",
             "narrative",
@@ -634,6 +643,14 @@ class SQLiteDatabase(DatabaseInterface):
             students_took=payload.get("students_took"),
             students_passed=payload.get("students_passed"),
             assessment_tool=payload.get("assessment_tool"),
+            # Workflow fields
+            approval_status=payload.get("approval_status", "pending"),
+            submitted_at=payload.get("submitted_at"),
+            submitted_by_user_id=payload.get("submitted_by_user_id"),
+            reviewed_at=payload.get("reviewed_at"),
+            reviewed_by_user_id=payload.get("reviewed_by_user_id"),
+            feedback_comments=payload.get("feedback_comments"),
+            feedback_provided_at=payload.get("feedback_provided_at"),
             extras=extras_dict,
         )
 
@@ -1154,7 +1171,20 @@ class SQLiteDatabase(DatabaseInterface):
 
                     for template in templates:
                         instance = CourseSectionOutcome(
-                            section_id=section_id, outcome_id=template.id
+                            section_id=section_id,
+                            outcome_id=template.id,
+                            # Copy status and workflow data (useful for seeding)
+                            status=template.status,
+                            approval_status=template.approval_status,
+                            submitted_at=template.submitted_at,
+                            submitted_by=template.submitted_by_user_id,
+                            reviewed_at=template.reviewed_at,
+                            reviewed_by=template.reviewed_by_user_id,
+                            feedback_comments=template.feedback_comments,
+                            # Copy assessment data (useful for seeding)
+                            students_took=template.students_took,
+                            students_passed=template.students_passed,
+                            assessment_tool=template.assessment_tool,
                         )
                         session.add(instance)
 

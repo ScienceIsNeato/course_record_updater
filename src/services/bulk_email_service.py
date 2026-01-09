@@ -341,7 +341,7 @@ class BulkEmailService:
             <p>Thank you for your cooperation!</p>
         </div>
         <div class="footer">
-            <p>This is an automated reminder from the Course Record Updater system.</p>
+            <p>This is an automated reminder from the LoopCloser system.</p>
         </div>
     </div>
 </body>
@@ -387,7 +387,7 @@ class BulkEmailService:
         text += "If you have any questions or need assistance, please don't hesitate to reach out to your program administrator.\n\n"
         text += "Thank you for your cooperation!\n\n"
         text += "---\n"
-        text += "This is an automated reminder from the Course Record Updater system."
+        text += "This is an automated reminder from the LoopCloser system."
 
         return text
 

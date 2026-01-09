@@ -11,8 +11,8 @@ This document outlines the port allocation strategy to avoid conflicts between m
 - **Port 8080**: FogOfDog application
 - **Port 3000**: Common React/Node.js applications
 
-### Course Record Updater Ports
-- **Port 3001**: Default port for Course Record Updater
+### LoopCloser Ports
+- **Port 3001**: Default port for LoopCloser
 - **Port 3002-3004**: Fallback ports if 3001 is occupied
 
 ## Starting the Server
@@ -61,7 +61,7 @@ If you encounter port conflicts:
 ## Application URLs
 
 Once started, access the applications at:
-- **Course Record Updater**: http://localhost:3001 (or your chosen port)
+- **LoopCloser**: http://localhost:3001 (or your chosen port)
 - **FogOfDog**: http://localhost:8080
 - **Other React apps**: http://localhost:3000
 
@@ -78,7 +78,7 @@ Once started, access the applications at:
 cd /path/to/fogofdog
 npm start  # or whatever starts FogOfDog
 
-# Terminal 2: Start Course Record Updater (port 3001)
+# Terminal 2: Start LoopCloser (port 3001)
 cd /path/to/course_record_updater
 ./restart_server.sh
 

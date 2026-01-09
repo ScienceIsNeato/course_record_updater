@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# maintAInability-gate - Course Record Updater Quality Framework
+# maintAInability-gate - LoopCloser Quality Framework
 # This script ensures code maintainability through comprehensive quality checks
 # Mirrors Git Hooks & CI exactly - if this passes, your commit WILL succeed
 #
@@ -144,7 +144,7 @@ else
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
       --verbose) VERBOSE=true ;;
       --help)
-        echo "maintAInability-gate - Course Record Updater Quality Framework"
+        echo "maintAInability-gate - LoopCloser Quality Framework"
         echo ""
         echo "Usage:"
         echo "  ./scripts/maintAInability-gate.sh           # All atomic checks (strict mode with auto-fix)"
@@ -240,7 +240,7 @@ check_venv() {
   fi
 }
 
-echo "🔍 Running Course Record Updater quality checks (STRICT MODE with auto-fix)..."
+echo "🔍 Running LoopCloser quality checks (STRICT MODE with auto-fix)..."
 echo "🐍 Python/Flask enterprise validation suite"
 echo ""
 
@@ -2218,7 +2218,7 @@ if [[ $FAILED_CHECKS -eq 0 ]]; then
   echo "🎉 ALL CHECKS PASSED!"
   echo "✅ Ready to commit with confidence!"
   echo ""
-  echo "🚀 Course Record Updater quality validation completed successfully!"
+  echo "🚀 LoopCloser quality validation completed successfully!"
   exit 0
 else
   echo "❌ QUALITY GATE FAILED"

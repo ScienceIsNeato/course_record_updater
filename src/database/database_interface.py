@@ -1,4 +1,4 @@
-"""Abstract database interface for Course Record Updater."""
+"""Abstract database interface for LoopCloser."""
 
 from __future__ import annotations
 

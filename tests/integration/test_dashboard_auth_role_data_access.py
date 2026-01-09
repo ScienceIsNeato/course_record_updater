@@ -230,7 +230,10 @@ class TestDashboardAuthRoleDataAccess:
 
         # Instructor should only see courses they teach (if any exist)
         for course in courses:
-            assert course.get("instructor_id") in [None, self.john_instructor["user_id"]]
+            assert course.get("instructor_id") in [
+                None,
+                self.john_instructor["user_id"],
+            ]
 
     def test_unauthenticated_dashboard_access_denied(self):
         """

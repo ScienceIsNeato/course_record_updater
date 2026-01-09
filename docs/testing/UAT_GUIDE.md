@@ -1,5 +1,5 @@
 # User Acceptance Testing (UAT) Guide
-## Course Record Updater System Validation Protocol
+## LoopCloser System Validation Protocol
 
 ### Document Information
 - **Version**: 1.1
@@ -13,7 +13,7 @@
 ## 📋 Testing Overview
 
 ### Scope
-This UAT guide covers the complete Course Record Updater system including:
+This UAT guide covers the complete LoopCloser system including:
 - Multi-tenant user registration and onboarding
 - 4-tier role-based access control (Site Admin → Institution Admin → Program Admin → Instructor)
 - Session management and security features

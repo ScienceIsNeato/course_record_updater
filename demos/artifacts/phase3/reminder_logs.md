@@ -22,6 +22,6 @@ If you have any questions or need assistance, please don't hesitate to reach out
 Thank you for your cooperation!
 
 ---
-This is an automated reminder from the Course Record Updater system.
+This is an automated reminder from the LoopCloser system.
 ```
 

@@ -1,5 +1,5 @@
 """
-Global pytest configuration for course record updater.
+Global pytest configuration for LoopCloser.
 
 This file provides pytest fixtures and configuration that are available
 to all test modules.

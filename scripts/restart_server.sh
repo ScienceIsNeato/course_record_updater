@@ -39,7 +39,7 @@ export APP_ENV="$ENV_ARG"
 
 mkdir -p logs
 
-echo -e "${BLUE}🎯 Course Record Updater - Environment-aware Restart${NC}"
+echo -e "${BLUE}🎯 LoopCloser - Environment-aware Restart${NC}"
 echo -e "${BLUE}=====================================================${NC}"
 
 # Save any pre-set environment variables that should not be overridden

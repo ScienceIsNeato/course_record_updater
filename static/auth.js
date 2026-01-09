@@ -6,6 +6,11 @@ const INPUT_TYPES = {
   TEXT: "text",
 };
 
+const CONFIRM_PASSWORD_TARGETS = {
+  confirmPassword: "password",
+  confirmNewPassword: "newPassword",
+};
+
 // CSRF Token Helper
 function getCSRFToken() {
   // Try to get from form first
@@ -609,8 +614,15 @@ function validateForm(form) {
       fieldValid = validateEmail.call(input);
     } else if (input.type === "password" && input.id === "password") {
       fieldValid = validatePassword.call(input);
-    } else if (input.type === "password" && input.id.includes("confirm")) {
-      fieldValid = validatePasswordMatch();
+    } else if (
+      input.type === "password" &&
+      input.id.toLowerCase().includes("confirm")
+    ) {
+      const primaryId =
+        CONFIRM_PASSWORD_TARGETS[input.id] ||
+        input.dataset.primaryPassword ||
+        "password";
+      fieldValid = validatePasswordMatch(primaryId, input.id);
     } else if (input.type === "url") {
       fieldValid = validateUrl.call(input);
     } else if (input.type === "checkbox") {

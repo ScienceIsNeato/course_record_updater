@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Loopcloser (internally: Course Record Updater) is an enterprise-grade Flask web application for managing course learning outcomes and assessment data. It serves educational institutions with multi-tenancy, role-based authentication, and comprehensive quality gates maintaining 80% test coverage.
+Loopcloser (internally: LoopCloser) is an enterprise-grade Flask web application for managing course learning outcomes and assessment data. It serves educational institutions with multi-tenancy, role-based authentication, and comprehensive quality gates maintaining 80% test coverage.
 
 **Key Technologies:**
 - Backend: Python 3.13 (Flask 3.1+), SQLAlchemy 2.0+

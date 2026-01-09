@@ -1,5 +1,5 @@
 """
-API package for Course Record Updater.
+API package for LoopCloser.
 
 This package contains all REST API endpoints organized by domain.
 Each domain has its own route module for better organization and testability.

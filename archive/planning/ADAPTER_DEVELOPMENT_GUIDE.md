@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides comprehensive instructions for developing custom import/export adapters for the Course Record Updater system. Each adapter is purpose-built for a specific institution's data formats and requirements.
+This guide provides comprehensive instructions for developing custom import/export adapters for the LoopCloser system. Each adapter is purpose-built for a specific institution's data formats and requirements.
 
 ## Adapter Development Process
 

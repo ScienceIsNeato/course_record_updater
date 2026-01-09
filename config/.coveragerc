@@ -1,4 +1,4 @@
-# Course Record Updater - Coverage Configuration
+# LoopCloser - Coverage Configuration
 # 80% coverage threshold for enterprise quality gate
 
 [run]
@@ -73,7 +73,7 @@ exclude_lines =
 
 [html]
 directory = htmlcov
-title = Course Record Updater Coverage Report
+title = LoopCloser Coverage Report
 
 [xml]
 output = coverage.xml

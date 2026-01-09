@@ -366,12 +366,41 @@ def profile():
                 current_user.get("user_id"),
             )
 
+    member_since_display = _format_member_since(current_user.get("created_at"))
     return render_template(
         "auth/profile.html",
         current_user=current_user,
         user=current_user,
         date_override_banner_prefix=DATE_OVERRIDE_BANNER_PREFIX,
+        member_since_display=member_since_display,
     )
+
+
+def _format_member_since(created_at_value):
+    """Build a human-readable 'Member Since' string for profiles."""
+    if not created_at_value:
+        return None
+
+    parsed = None
+    if isinstance(created_at_value, str):
+        try:
+            parsed = datetime.fromisoformat(created_at_value.replace("Z", "+00:00"))
+        except ValueError:
+            logger.warning(
+                "Unable to parse profile created_at value '%s'", created_at_value
+            )
+            return None
+    elif isinstance(created_at_value, datetime):
+        parsed = created_at_value
+    else:
+        return None
+
+    if parsed.tzinfo:
+        parsed = parsed.astimezone(timezone.utc)
+    else:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    return parsed.strftime("%B %d, %Y")
 
 
 # Admin Routes
@@ -490,6 +519,16 @@ def get_header_context(user):
         "effective_date_display": effective_date_display,
         "is_override": bool(user.get("system_date_override")),
     }
+
+
+@app.context_processor
+def inject_header_context():
+    """Always inject current term/date info into dashboard pages."""
+    user = get_current_user()
+    if not user:
+        return {}
+    header_context = get_header_context(user)
+    return {"header_context": header_context}
 
 
 @app.route("/dashboard")
@@ -675,9 +714,7 @@ if __name__ == "__main__":
     use_debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
     logger = get_app_logger()
-    logger.info(
-        "Starting Course Record Updater on port %s with debug mode: %s", port, use_debug
-    )
+    logger.info("Starting LoopCloser on port %s with debug mode: %s", port, use_debug)
     logger.info("Access the application at http://localhost:%s", port)
     logger.info(
         "To use a different port, set PORT environment variable: PORT=3002 python app.py"

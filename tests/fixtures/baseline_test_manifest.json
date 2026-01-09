@@ -127,6 +127,13 @@
     ],
     "users": [
         {
+            "email_env_var": "SITE_ADMIN_EMAIL",
+            "first_name": "Site",
+            "last_name": "Administrator",
+            "role": "site_admin",
+            "password_env_var": "SITE_ADMIN_PASSWORD"
+        },
+        {
             "email_env_var": "INSTRUCTOR_EMAIL",
             "first_name": "John",
             "last_name": "Smith",
@@ -149,29 +156,30 @@
             "role": "program_admin",
             "institution_idx": 0,
             "program_idx": 0
-        }
-    ],
-    "institution_admins": [
+        },
         {
-            "email_env_var": "INST_ADMIN_EMAIL",
-            "first_name": "Admin",
-            "last_name": "MockU",
+            "email_env_var": "INSTITUTION_ADMIN_EMAIL",
+            "first_name": "Sarah",
+            "last_name": "Admin",
+            "role": "institution_admin",
             "institution_idx": 0,
-            "password_env_var": "INST_ADMIN_PASSWORD"
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
         },
         {
             "email": "admin@riverside.test",
             "first_name": "Admin",
             "last_name": "Riverside",
+            "role": "institution_admin",
             "institution_idx": 1,
-            "password_env_var": "DEFAULT_ADMIN_PASSWORD"
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
         },
         {
             "email": "admin@pactech.test",
             "first_name": "Admin",
             "last_name": "PacTech",
+            "role": "institution_admin",
             "institution_idx": 2,
-            "password_env_var": "DEFAULT_ADMIN_PASSWORD"
+            "password_env_var": "INSTITUTION_ADMIN_PASSWORD"
         }
     ],
     "offerings": [

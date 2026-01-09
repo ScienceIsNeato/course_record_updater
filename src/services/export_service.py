@@ -1,5 +1,5 @@
 """
-Export Service for Course Record Updater
+Export Service for LoopCloser
 
 Provides bidirectional export functionality using pluggable adapters to convert
 database records back to institution-specific Excel formats. Enables roundtrip

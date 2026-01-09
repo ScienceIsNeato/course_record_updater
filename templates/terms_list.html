@@ -1,6 +1,6 @@
 {% extends "dashboard/base_dashboard.html" %}
 
-{% block title %}Terms - Course Record Updater{% endblock %}
+{% block title %}Terms - LoopCloser{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
@@ -50,7 +50,8 @@
                     <input type="hidden" id="editTermId">
                     <div class="mb-3">
                         <label for="editTermName" class="form-label">Term Name *</label>
-                        <input type="text" class="form-control" id="editTermName" required placeholder="e.g., Fall 2025">
+                        <input type="text" class="form-control" id="editTermName" required
+                            placeholder="e.g., Fall 2025">
                     </div>
                     <div class="mb-3">
                         <label for="editTermStartDate" class="form-label">Start Date *</label>

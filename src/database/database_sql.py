@@ -1,4 +1,4 @@
-"""SQLite engine and session management for Course Record Updater."""
+"""SQLite engine and session management for LoopCloser."""
 
 from __future__ import annotations
 

@@ -181,7 +181,7 @@ class TestRegistrationAndPasswordManagement:
                 f"🔗 Manual verification: Log into https://ethereal.email/ to check inbox"
             )
             print("   Expected: Verification email sent to", self.TEST_EMAIL)
-            print("   Subject: 'Verify your Course Record Updater account'")
+            print("   Subject: 'Verify your LoopCloser account'")
             print("\n🔒 Testing security: Unverified user should NOT be able to log in")
 
             # Try to login with unverified account
@@ -274,7 +274,7 @@ class TestRegistrationAndPasswordManagement:
         # Increased timeout for CI environments where email delivery may be slower
         reset_email = wait_for_email_via_imap(
             recipient_email=self.TEST_EMAIL,
-            subject_substring="Reset",  # Matches "Reset your Course Record Updater password"
+            subject_substring="Reset",  # Matches "Reset your LoopCloser password"
             timeout=60,
         )
 

@@ -859,5 +859,6 @@ if (typeof module !== "undefined" && module.exports) {
     resolveOfferingStatus,
     deriveStatusFromDates,
     applyFilters,
+    populateFilters,
   };
 }

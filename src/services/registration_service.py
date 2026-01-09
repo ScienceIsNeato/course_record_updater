@@ -259,9 +259,7 @@ class RegistrationService:
 
             # Get institution for welcome email
             institution = db.get_institution_by_id(user["institution_id"])
-            institution_name = (
-                institution["name"] if institution else "Course Record Updater"
-            )
+            institution_name = institution["name"] if institution else "LoopCloser"
 
             # Send welcome email
             display_name = (

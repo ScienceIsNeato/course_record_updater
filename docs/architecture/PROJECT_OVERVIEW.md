@@ -1,4 +1,4 @@
-# Project Overview: Course Record Updater
+# Project Overview: LoopCloser
 
 ## 1. Goal
 

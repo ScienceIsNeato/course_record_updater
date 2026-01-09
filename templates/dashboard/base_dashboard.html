@@ -103,24 +103,23 @@
             </div>
 
             <!-- Banner Info -->
-            {% if header_context %}
+            {% set header_ctx = header_context or {} %}
             <div class="banner-info d-none d-lg-flex">
                 <div class="term-display">
                     <i class="fas fa-calendar-alt"></i>
-                    <span id="currentTermDisplay">{{ header_context.current_term_display }}</span>
+                    <span id="currentTermDisplay">{{ header_ctx.current_term_display or 'Term unavailable' }}</span>
                 </div>
                 <span class="divider">|</span>
                 <div class="date-display">
                     <i class="far fa-clock"></i>
                     <span id="currentDateDisplay">
-                        {{ header_context.effective_date_display }}
-                        {% if header_context.is_override %}
+                        {{ header_ctx.effective_date_display or 'Date unavailable' }}
+                        {% if header_ctx.is_override %}
                         <span class="badge-override ms-1">Override</span>
                         {% endif %}
                     </span>
                 </div>
             </div>
-            {% endif %}
 
             <!-- User Info -->
             <div class="navbar-nav">
@@ -162,6 +161,7 @@
         {% endwith %}
 
         <!-- Page Header -->
+        {% block page_header %}
         <div class="row mb-4">
             <div class="col">
                 <h1 class="h2">
@@ -171,6 +171,7 @@
                 </h1>
             </div>
         </div>
+        {% endblock %}
 
         <!-- Main Content -->
         {% block content %}{% endblock %}

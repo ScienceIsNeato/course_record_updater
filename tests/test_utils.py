@@ -1,5 +1,5 @@
 """
-Test utilities for course record updater tests.
+Test utilities for LoopCloser tests.
 Provides authentication helpers and test data for consistent testing.
 """
 

@@ -1176,7 +1176,7 @@ _Including project rules matching:
 ✓ Including: course_record_updater.mdc
 # course_record_updater
 
-# Course Record Updater Project Rules 📚
+# LoopCloser Project Rules 📚
 
 ## 🔄 PR Closing Protocol
 

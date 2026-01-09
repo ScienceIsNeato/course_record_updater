@@ -1,6 +1,6 @@
 {% extends "dashboard/base_dashboard.html" %}
 
-{% block title %}Users - Course Record Updater{% endblock %}
+{% block title %}Users - LoopCloser{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='panels.css') }}">
@@ -34,9 +34,10 @@
                 </button>
             </div>
         </div>
-        
+
         <div id="usersTableContainer">
-            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
+            <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;"
+                aria-live="polite">
                 <div class="spinner-border" aria-hidden="true">
                     <span class="visually-hidden">Loading users...</span>
                 </div>
@@ -48,82 +49,82 @@
 
 {% block extra_js %}
 <script>
-// Load users on page load
-document.addEventListener('DOMContentLoaded', function() {
-    loadUsers();
-});
+    // Load users on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        loadUsers();
+    });
 
-async function loadUsers() {
-    const container = document.getElementById('usersTableContainer');
-    container.innerHTML = `
+    async function loadUsers() {
+        const container = document.getElementById('usersTableContainer');
+        container.innerHTML = `
         <output class="d-flex justify-content-center align-items-center" style="min-height: 200px;" aria-live="polite">
             <div class="spinner-border" aria-hidden="true">
                 <span class="visually-hidden">Loading users...</span>
             </div>
         </output>
     `;
-    
-    try {
-        const response = await fetch('/api/users', {
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to load users');
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to load users');
-        }
-        
-        let users = data.users || [];
-        
-        // Filter users: role-based visibility
-        // - Site admins: see everyone
-        // - Institution admins: see everyone at their institution
-        // - Program admins: see instructors, other program admins, institution admins
-        // - Instructors: see other instructors, program admins, institution admins
-        const roleHierarchy = {
-            'site_admin': 4,
-            'institution_admin': 3,
-            'program_admin': 2,
-            'instructor': 1
-        };
-        
-        const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
-        const currentUserLevel = roleHierarchy[currentUserRole] || 1;
-        
-        // Institution admins and site admins see everyone (no filtering)
-        // Others see users at their level AND lower (colleagues + subordinates)
-        if (currentUserRole !== 'institution_admin' && currentUserRole !== 'site_admin') {
-            users = users.filter(user => {
-                const userLevel = roleHierarchy[user.role] || 0;
-                return userLevel <= currentUserLevel;
+
+        try {
+            const response = await fetch('/api/users', {
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
-        }
-        
-        // Apply role filter if selected
-        const roleFilter = document.getElementById('roleFilter');
-        if (roleFilter && roleFilter.value) {
-            users = users.filter(user => user.role === roleFilter.value);
-        }
-        
-        if (users.length === 0) {
-            container.innerHTML = `
+
+            if (!response.ok) {
+                throw new Error('Failed to load users');
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load users');
+            }
+
+            let users = data.users || [];
+
+            // Filter users: role-based visibility
+            // - Site admins: see everyone
+            // - Institution admins: see everyone at their institution
+            // - Program admins: see instructors, other program admins, institution admins
+            // - Instructors: see other instructors, program admins, institution admins
+            const roleHierarchy = {
+                'site_admin': 4,
+                'institution_admin': 3,
+                'program_admin': 2,
+                'instructor': 1
+            };
+
+            const currentUserRole = globalThis.currentUser ? globalThis.currentUser.role : 'instructor';
+            const currentUserLevel = roleHierarchy[currentUserRole] || 1;
+
+            // Institution admins and site admins see everyone (no filtering)
+            // Others see users at their level AND lower (colleagues + subordinates)
+            if (currentUserRole !== 'institution_admin' && currentUserRole !== 'site_admin') {
+                users = users.filter(user => {
+                    const userLevel = roleHierarchy[user.role] || 0;
+                    return userLevel <= currentUserLevel;
+                });
+            }
+
+            // Apply role filter if selected
+            const roleFilter = document.getElementById('roleFilter');
+            if (roleFilter && roleFilter.value) {
+                users = users.filter(user => user.role === roleFilter.value);
+            }
+
+            if (users.length === 0) {
+                container.innerHTML = `
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     No users found at your access level. Import user data to get started.
                 </div>
             `;
-            return;
-        }
-        
-        // Build table
-        let html = `
+                return;
+            }
+
+            // Build table
+            let html = `
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
                     <thead>
@@ -137,13 +138,13 @@ async function loadUsers() {
                     </thead>
                     <tbody>
         `;
-        
-        users.forEach(user => {
-            const roleBadgeClass = getRoleBadgeClass(user.role);
-            const statusBadgeClass = user.active ? 'badge bg-success' : 'badge bg-secondary';
-            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || '-';
-            
-            html += `
+
+            users.forEach(user => {
+                const roleBadgeClass = getRoleBadgeClass(user.role);
+                const statusBadgeClass = user.active ? 'badge bg-success' : 'badge bg-secondary';
+                const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || '-';
+
+                html += `
                 <tr>
                     <td>${escapeHtml(user.email || '-')}</td>
                     <td>${escapeHtml(fullName)}</td>
@@ -156,64 +157,64 @@ async function loadUsers() {
                     </td>
                 </tr>
             `;
-        });
-        
-        html += `
+            });
+
+            html += `
                     </tbody>
                 </table>
             </div>
         `;
-        
-        container.innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error loading users:', error);
-        container.innerHTML = `
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading users:', error);
+            container.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 Error loading users: ${escapeHtml(error.message)}
             </div>
         `;
-    }
-}
-
-function getRoleBadgeClass(role) {
-    const roleClasses = {
-        'site_admin': 'badge bg-danger',
-        'institution_admin': 'badge bg-warning text-dark',
-        'program_admin': 'badge bg-info',
-        'instructor': 'badge bg-primary'
-    };
-    return roleClasses[role] || 'badge bg-secondary';
-}
-
-function formatRole(role) {
-    if (!role) return '-';
-    return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-function viewUser(userId) {
-    alert('User details view coming soon for user: ' + userId);
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Handle Edit button clicks
-document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.edit-user-btn');
-    if (btn) {
-        const userData = JSON.parse(btn.dataset.user);
-        if (typeof globalThis.openEditUserModal === 'function') {
-            globalThis.openEditUserModal(userData);
         }
     }
-});
-    </script>
+
+    function getRoleBadgeClass(role) {
+        const roleClasses = {
+            'site_admin': 'badge bg-danger',
+            'institution_admin': 'badge bg-warning text-dark',
+            'program_admin': 'badge bg-info',
+            'instructor': 'badge bg-primary'
+        };
+        return roleClasses[role] || 'badge bg-secondary';
+    }
+
+    function formatRole(role) {
+        if (!role) return '-';
+        return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function viewUser(userId) {
+        alert('User details view coming soon for user: ' + userId);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Handle Edit button clicks
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.edit-user-btn');
+        if (btn) {
+            const userData = JSON.parse(btn.dataset.user);
+            if (typeof globalThis.openEditUserModal === 'function') {
+                globalThis.openEditUserModal(userData);
+            }
+        }
+    });
+</script>
 <script src="{{ url_for('static', filename='userManagement.js') }}"></script>
 
 <!-- Edit User Modal -->

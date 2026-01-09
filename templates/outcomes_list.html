@@ -2,6 +2,8 @@
 
 {% block title %}Course Learning Outcomes - Loopcloser{% endblock %}
 
+{% block page_header %}{% endblock %}
+
 {% block page_title %}🎯 Course Learning Outcomes{% endblock %}
 {% block page_subtitle %}Manage learning outcomes for all courses{% endblock %}
 
@@ -17,15 +19,12 @@
             Course Outcomes
         </h5>
         <div class="panel-actions">
-            <a href="/dashboard" class="btn btn-sm btn-outline-secondary me-2">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
             <button class="btn btn-sm btn-primary" onclick="createOutcome()">
                 <i class="fas fa-plus"></i> Add Outcome
             </button>
         </div>
     </div>
-    <div class="panel-content">
+        <div class="panel-content">
         <div class="row mb-3 g-2">
             <div class="col-md-3">
                 <select id="filterProgram" class="form-select form-select-sm" onchange="loadOutcomes()">

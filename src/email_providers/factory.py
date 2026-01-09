@@ -112,9 +112,7 @@ def _load_config_from_environment() -> Dict[str, Any]:
     # Build base config with explicit Any type
     config: Dict[str, Any] = {
         "default_sender": os.getenv("MAIL_DEFAULT_SENDER", "noreply@courserecord.app"),
-        "default_sender_name": os.getenv(
-            "MAIL_DEFAULT_SENDER_NAME", "Course Record Updater"
-        ),
+        "default_sender_name": os.getenv("MAIL_DEFAULT_SENDER_NAME", "LoopCloser"),
     }
 
     # Add Brevo-specific settings if Brevo is configured

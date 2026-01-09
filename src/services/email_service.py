@@ -39,7 +39,7 @@ logger = get_logger(__name__)
 
 # Email configuration
 DEFAULT_FROM_EMAIL = "noreply@courserecord.app"
-DEFAULT_FROM_NAME = "Course Record Updater"
+DEFAULT_FROM_NAME = "LoopCloser"
 
 
 class EmailServiceError(Exception):
@@ -159,7 +159,7 @@ class EmailService:
 
         verification_url = EmailService._build_verification_url(verification_token)
 
-        subject = "Verify your Course Record Updater account"
+        subject = "Verify your LoopCloser account"
 
         html_body = EmailService._render_verification_email_html(
             user_name=user_name, verification_url=verification_url, email=email
@@ -192,7 +192,7 @@ class EmailService:
 
         reset_url = EmailService._build_password_reset_url(reset_token)
 
-        subject = "Reset your Course Record Updater password"
+        subject = "Reset your LoopCloser password"
 
         html_body = EmailService._render_password_reset_email_html(
             user_name=user_name, reset_url=reset_url, email=email
@@ -261,7 +261,7 @@ class EmailService:
 
         invitation_url = EmailService._build_invitation_url(invitation_token)
 
-        subject = f"You're invited to join {institution_name} on Course Record Updater"
+        subject = f"You're invited to join {institution_name} on LoopCloser"
 
         html_body = EmailService._render_invitation_email_html(
             email=email,
@@ -304,7 +304,7 @@ class EmailService:
 
         dashboard_url = EmailService._build_dashboard_url()
 
-        subject = f"Welcome to Course Record Updater, {user_name}!"
+        subject = f"Welcome to LoopCloser, {user_name}!"
 
         html_body = EmailService._render_welcome_email_html(
             user_name=user_name,
@@ -696,11 +696,11 @@ class EmailService:
 <body>
     <div class="container">
         <div class="header">
-            <h1>Course Record Updater</h1>
+            <h1>LoopCloser</h1>
         </div>
         <div class="content">
             <h2>Welcome, {user_name}!</h2>
-            <p>Thank you for registering with Course Record Updater. To complete your registration, please verify your email address by clicking the button below:</p>
+            <p>Thank you for registering with LoopCloser. To complete your registration, please verify your email address by clicking the button below:</p>
             
             <p style="text-align: center;">
                 <a href="{verification_url}" class="button">Verify Email Address</a>
@@ -715,7 +715,7 @@ class EmailService:
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} LoopCloser. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -728,11 +728,11 @@ class EmailService:
     ) -> str:
         """Render text verification email template"""
         return f"""
-Course Record Updater - Email Verification
+LoopCloser - Email Verification
 
 Welcome, {user_name}!
 
-Thank you for registering with Course Record Updater. To complete your registration, please verify your email address by visiting this link:
+Thank you for registering with LoopCloser. To complete your registration, please verify your email address by visiting this link:
 
 {verification_url}
 
@@ -742,7 +742,7 @@ If you didn't create this account, you can safely ignore this email.
 
 This email was sent to {email}
 
-© {get_current_time().year} Course Record Updater. All rights reserved.
+© {get_current_time().year} LoopCloser. All rights reserved.
         """
 
     @staticmethod
@@ -772,7 +772,7 @@ This email was sent to {email}
         </div>
         <div class="content">
             <h2>Hello, {user_name}</h2>
-            <p>We received a request to reset your password for your Course Record Updater account.</p>
+            <p>We received a request to reset your password for your LoopCloser account.</p>
             
             <p style="text-align: center;">
                 <a href="{reset_url}" class="button">Reset Password</a>
@@ -787,7 +787,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} LoopCloser. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -800,11 +800,11 @@ This email was sent to {email}
     ) -> str:
         """Render text password reset email template"""
         return f"""
-Course Record Updater - Password Reset
+LoopCloser - Password Reset
 
 Hello, {user_name}
 
-We received a request to reset your password for your Course Record Updater account.
+We received a request to reset your password for your LoopCloser account.
 
 To reset your password, visit this link:
 
@@ -816,7 +816,7 @@ If you didn't request this password reset, you can safely ignore this email. You
 
 This email was sent to {email}
 
-© {get_current_time().year} Course Record Updater. All rights reserved.
+© {get_current_time().year} LoopCloser. All rights reserved.
         """
 
     @staticmethod
@@ -847,7 +847,7 @@ This email was sent to {email}
         <div class="content">
             <div class="success-icon">✅</div>
             <p>Hello, {user_name}</p>
-            <p>Your password has been successfully reset for your Course Record Updater account.</p>
+            <p>Your password has been successfully reset for your LoopCloser account.</p>
             <p><strong>Account:</strong> {email}</p>
             <p><strong>Reset completed:</strong> {get_current_time().strftime('%Y-%m-%d at %H:%M UTC')}</p>
             
@@ -870,7 +870,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>© {get_current_time().year} Course Record Updater. All rights reserved.</p>
+            <p>© {get_current_time().year} LoopCloser. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -883,11 +883,11 @@ This email was sent to {email}
     ) -> str:
         """Render text password reset confirmation email template"""
         return f"""
-Course Record Updater - Password Reset Successful
+LoopCloser - Password Reset Successful
 
 Hello, {user_name}
 
-Your password has been successfully reset for your Course Record Updater account.
+Your password has been successfully reset for your LoopCloser account.
 
 Account: {email}
 Reset completed: {get_current_time().strftime('%Y-%m-%d at %H:%M UTC')}
@@ -907,7 +907,7 @@ For security reasons, we recommend:
 
 This email was sent to {email}
 
-© {get_current_time().year} Course Record Updater. All rights reserved.
+© {get_current_time().year} LoopCloser. All rights reserved.
         """
 
     @staticmethod
@@ -951,7 +951,7 @@ This email was sent to {email}
         </div>
         <div class="content">
             <h2>Join {institution_name}</h2>
-            <p>{inviter_name} has invited you to join <strong>{institution_name}</strong> as a <strong>{role.replace('_', ' ').title()}</strong> on Course Record Updater.</p>
+            <p>{inviter_name} has invited you to join <strong>{institution_name}</strong> as a <strong>{role.replace('_', ' ').title()}</strong> on LoopCloser.</p>
             
             {personal_message_html}
             
@@ -968,7 +968,7 @@ This email was sent to {email}
         </div>
         <div class="footer">
             <p>This email was sent to {email}</p>
-            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} LoopCloser. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -994,11 +994,11 @@ Personal message from {inviter_name}:
 """
 
         return f"""
-Course Record Updater - You're Invited!
+LoopCloser - You're Invited!
 
 Join {institution_name}
 
-{inviter_name} has invited you to join {institution_name} as a {role.replace('_', ' ').title()} on Course Record Updater.
+{inviter_name} has invited you to join {institution_name} as a {role.replace('_', ' ').title()} on LoopCloser.
 
 {personal_message_text}To accept this invitation, visit:
 
@@ -1010,7 +1010,7 @@ If you're not sure why you received this invitation, please contact {inviter_nam
 
 This email was sent to {email}
 
-© {get_current_time().year} Course Record Updater. All rights reserved.
+© {get_current_time().year} LoopCloser. All rights reserved.
         """
 
     @staticmethod
@@ -1036,17 +1036,16 @@ This email was sent to {email}
 <body>
     <div class="container">
         <div class="header">
-            <h1>Welcome to Course Record Updater!</h1>
+            <h1>Welcome to LoopCloser!</h1>
         </div>
         <div class="content">
             <h2>Hello, {user_name}!</h2>
-            <p>Your email has been verified and your account is now active. Welcome to <strong>{institution_name}</strong> on Course Record Updater!</p>
+            <p>Your email has been verified and your account is now active. Welcome to <strong>{institution_name}</strong> on LoopCloser!</p>
             
             <p>You can now access your dashboard to:</p>
             <ul>
                 <li>Manage your courses and sections</li>
                 <li>Track student outcomes and assessments</li>
-                <li>Import course data from Excel files</li>
                 <li>Generate reports and analytics</li>
             </ul>
             
@@ -1059,7 +1058,7 @@ This email was sent to {email}
             <p>We're excited to have you on board!</p>
         </div>
         <div class="footer">
-            <p>&copy; {get_current_time().year} Course Record Updater. All rights reserved.</p>
+            <p>&copy; {get_current_time().year} LoopCloser. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -1072,16 +1071,15 @@ This email was sent to {email}
     ) -> str:
         """Render text welcome email template"""
         return f"""
-Course Record Updater - Welcome!
+LoopCloser - Welcome!
 
 Hello, {user_name}!
 
-Your email has been verified and your account is now active. Welcome to {institution_name} on Course Record Updater!
+Your email has been verified and your account is now active. Welcome to {institution_name} on LoopCloser!
 
 You can now access your dashboard to:
 - Manage your courses and sections
 - Track student outcomes and assessments
-- Import course data from Excel files
 - Generate reports and analytics
 
 Visit your dashboard: {dashboard_url}
@@ -1090,7 +1088,7 @@ If you have any questions or need help getting started, don't hesitate to reach 
 
 We're excited to have you on board!
 
-© {get_current_time().year} Course Record Updater. All rights reserved.
+© {get_current_time().year} LoopCloser. All rights reserved.
         """
 
     @staticmethod
@@ -1221,7 +1219,7 @@ We're excited to have you on board!
             <p>Thank you for your continued dedication to student success!</p>
         </div>
         <div class="footer">
-            <p>This is an automated reminder from the Course Record Updater system.</p>
+            <p>This is an automated reminder from the LoopCloser system.</p>
             <p>© {get_current_time().year} {escape(institution_name)}. All rights reserved.</p>
         </div>
     </div>
@@ -1264,7 +1262,7 @@ The link above will take you directly to the assessment page for this course. If
 Thank you for your continued dedication to student success!
 
 ---
-This is an automated reminder from the Course Record Updater system.
+This is an automated reminder from the LoopCloser system.
 © {get_current_time().year} {institution_name}. All rights reserved.
         """
 

@@ -2,7 +2,7 @@
 Session Management Package
 
 Provides secure session management using Flask-Session with comprehensive
-security features for the Course Record Updater authentication system.
+security features for the LoopCloser authentication system.
 
 Features:
 - Flask-Session integration with secure configuration
