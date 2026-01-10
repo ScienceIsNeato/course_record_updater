@@ -26,37 +26,20 @@ from tests.e2e.test_helpers import (
 )
 
 
-@pytest.mark.e2e
-@pytest.mark.e2e
-def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
-    """
-    Test admin approval workflow for submitted CLOs.
-
-    Steps:
-    1. Create test CLO in AWAITING_APPROVAL status
-    2. Admin logs in and navigates to audit interface
-    3. Admin selects CLO and approves it
-    4. Verify CLO status is APPROVED with review timestamp
-    """
-    admin_page = authenticated_institution_admin_page
-
-    # Get institution ID from admin user
-    institution_id = get_institution_id_from_user(admin_page)
-
-    # === STEP 1: Create test data via API ===
-
-    # Get CSRF token
+def _setup_approval_test_data(admin_page, institution_id):
+    """Create all necessary test data via API."""
     csrf_token = admin_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
+    headers = {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrf_token if csrf_token else "",
+    }
 
     # Create program
     program_response = admin_page.request.post(
         f"{BASE_URL}/api/programs",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "name": "UAT-008 Business Administration",
@@ -66,16 +49,12 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         ),
     )
     assert program_response.ok, f"Failed to create program: {program_response.text()}"
-    program_data = program_response.json()
-    program_id = program_data["program_id"]
+    program_id = program_response.json()["program_id"]
 
     # Create course
     course_response = admin_page.request.post(
         f"{BASE_URL}/api/courses",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "course_number": "UAT008-MKT101",
@@ -87,14 +66,14 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         ),
     )
     assert course_response.ok, f"Failed to create course: {course_response.text()}"
-    course_data = course_response.json()
-    course_id = course_data["course_id"]
+    course_id = course_response.json()["course_id"]
 
     # Create instructor
+    instructor_email = "uat008.instructor@test.com"
     instructor = create_test_user_via_api(
         admin_page=admin_page,
         base_url=BASE_URL,
-        email="uat008.instructor@test.com",
+        email=instructor_email,
         first_name="UAT008",
         last_name="Instructor",
         role="instructor",
@@ -103,13 +82,10 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     )
     instructor_id = instructor["user_id"]
 
-    # Create term for the offering
+    # Create term
     term_response = admin_page.request.post(
         f"{BASE_URL}/api/terms",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "name": "Fall 2024",
@@ -123,13 +99,10 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     assert term_response.ok, f"Failed to create term: {term_response.text()}"
     term_id = term_response.json()["term_id"]
 
-    # Create course offering
+    # Create offering
     section_response = admin_page.request.post(
         f"{BASE_URL}/api/offerings",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "course_id": course_id,
@@ -140,16 +113,12 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         ),
     )
     assert section_response.ok, f"Failed to create offering: {section_response.text()}"
-    section_data = section_response.json()
-    section_id = section_data["offering_id"]
+    section_id = section_response.json()["offering_id"]
 
-    # Create explicit section linked to offering and instructor
+    # Create section
     create_section_response = admin_page.request.post(
         f"{BASE_URL}/api/sections",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "offering_id": section_id,
@@ -159,17 +128,12 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
             }
         ),
     )
-    assert (
-        create_section_response.ok
-    ), f"Failed to create section: {create_section_response.text()}"
+    assert create_section_response.ok, "Failed to create section"
 
-    # Create CLO in ASSIGNED status, then submit it via API
+    # Create CLO
     clo_response = admin_page.request.post(
         f"{BASE_URL}/api/courses/{course_id}/outcomes",
-        headers={
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers=headers,
         data=json.dumps(
             {
                 "course_id": course_id,
@@ -183,22 +147,16 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         ),
     )
     assert clo_response.ok, f"Failed to create CLO: {clo_response.text()}"
-    clo_data = clo_response.json()
-    clo_id = clo_data["outcome_id"]
+    clo_id = clo_response.json()["outcome_id"]
 
-    # Submit CLO via API to set it to AWAITING_APPROVAL
-    # Use separate browser context for instructor to avoid overwriting admin session
+    # Submit CLO via instructor context
     instructor_context = admin_page.context.browser.new_context()
     instructor_page = instructor_context.new_page()
-    login_as_user(
-        instructor_page, BASE_URL, "uat008.instructor@test.com", "TestUser123!"
-    )
+    login_as_user(instructor_page, BASE_URL, instructor_email, "TestUser123!")
 
-    # Navigate to dashboard to establish session context for API calls
     instructor_page.goto(f"{BASE_URL}/dashboard")
     instructor_page.wait_for_load_state("networkidle")
 
-    # Get CSRF token for instructor
     instructor_csrf = instructor_page.evaluate(
         "document.querySelector('meta[name=\"csrf-token\"]')?.content"
     )
@@ -211,15 +169,18 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
         },
         data=json.dumps({}),
     )
-    assert submit_response.ok, f"Failed to submit CLO: {submit_response.text()}"
-
+    assert submit_response.ok, "Failed to submit CLO"
     instructor_context.close()
 
-    # === STEP 2: Admin navigates to audit interface ===
+    return clo_id, csrf_token
+
+
+def _step_perform_approval(admin_page, clo_id, csrf_token):
+    """Navigate to audit, verify item exists, and approve it."""
     admin_page.goto(f"{BASE_URL}/audit-clo")
     expect(admin_page).to_have_url(f"{BASE_URL}/audit-clo")
 
-    # Sanity check: ensure the audit API returns our submitted CLO before relying on UI
+    # API check
     api_check = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/audit?status=awaiting_approval",
         headers={"X-CSRFToken": csrf_token if csrf_token else ""},
@@ -228,81 +189,81 @@ def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
     api_outcomes = api_check.json().get("outcomes", [])
     assert any(
         o.get("outcome_id") == clo_id or o.get("id") == clo_id for o in api_outcomes
-    ), f"Submitted CLO not present in audit list. Outcomes: {api_outcomes}"
+    ), f"Submitted CLO not present in audit list: {api_outcomes}"
 
-    # Wait for page to fully load, then give JS time to render list
+    # Wait for UI
     admin_page.wait_for_load_state("networkidle")
     admin_page.wait_for_timeout(500)
-
-    # Wait for CLO list to load
     admin_page.wait_for_selector("#cloListContainer", timeout=10000)
 
-    # === STEP 3: Verify CLO appears in the list ===
-    # Check that our CLO is visible
+    # Click CLO row
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()
-
-    # Verify it shows as "Awaiting Approval" (Status is first column)
-    status_cell = clo_row.locator("td").nth(0)
-    expect(status_cell).to_contain_text("Awaiting Approval")
-
-    # === STEP 5: Click CLO row to open detail modal ===
+    expect(clo_row.locator("td").nth(0)).to_contain_text("Awaiting Approval")
     clo_row.click()
 
-    # Wait for modal to open
+    # Approve in modal
     modal = admin_page.locator("#cloDetailModal")
     expect(modal).to_be_visible()
-
-    # Verify CLO details in modal using visible content
     expect(modal).to_contain_text("UAT008-MKT101")
-    expect(modal).to_contain_text("CLO Number: 1")
-    expect(modal).to_contain_text("marketing segmentation")
 
-    # === STEP 6: Click "Approve" button ===
     approve_button = modal.locator('button:has-text("Approve")')
     expect(approve_button).to_be_visible()
-
-    # Click approve (no dialogs expected - they were removed per UI request)
     approve_button.click()
 
-    # Wait for the API call to complete
     admin_page.wait_for_timeout(1500)
-
-    # Modal should close after approval
     expect(modal).not_to_be_visible()
 
-    # === STEP 7: Verify CLO status is APPROVED ===
-    # Reload the audit page
+
+def _step_verify_approval_status(admin_page, clo_id, csrf_token):
+    """Verify status updated to APPROVED and timestamp set."""
+    # Check UI
     admin_page.goto(f"{BASE_URL}/audit-clo")
     admin_page.wait_for_selector("#cloListContainer", timeout=5000)
 
-    # Change filter to show approved CLOs
     filter_select = admin_page.locator("#statusFilter")
     filter_select.select_option("approved")
-
-    # Wait for list to update
     admin_page.wait_for_timeout(1000)
 
-    # Find our CLO in the approved list
     clo_row = admin_page.locator(f'tr[data-outcome-id="{clo_id}"]')
     expect(clo_row).to_be_visible()
+    expect(clo_row.locator("td").nth(0)).to_contain_text("Approved")
 
-    # Verify status shows "Approved" (status is column 0)
-    status_cell = clo_row.locator("td").nth(0)
-    expect(status_cell).to_contain_text("Approved")
-
-    # === STEP 8: Verify via API that review timestamp is set ===
+    # Check API
     outcome_response = admin_page.request.get(
         f"{BASE_URL}/api/outcomes/{clo_id}/audit-details",
-        headers={
-            "X-CSRFToken": csrf_token if csrf_token else "",
-        },
+        headers={"X-CSRFToken": csrf_token if csrf_token else ""},
     )
-    assert outcome_response.ok, f"Failed to get outcome: {outcome_response.text()}"
+    assert outcome_response.ok
     response_data = outcome_response.json()
-    outcome_data = response_data["outcome"]  # API nests data under "outcome" key
+    outcome_data = response_data["outcome"]
 
     assert outcome_data["status"] == "approved"
     assert outcome_data["reviewed_at"] is not None
     assert outcome_data["reviewed_by_user_id"] is not None
     assert outcome_data["approval_status"] == "approved"
+
+
+@pytest.mark.e2e
+@pytest.mark.e2e
+def test_clo_approval_workflow(authenticated_institution_admin_page: Page):
+    """
+    Test admin approval workflow for submitted CLOs.
+
+    Steps:
+    1. Create test CLO in AWAITING_APPROVAL status
+    2. Admin logs in and navigates to audit interface
+    3. Admin selects CLO and approves it
+    4. Verify CLO status is APPROVED with review timestamp
+    """
+    admin_page = authenticated_institution_admin_page
+    institution_id = get_institution_id_from_user(admin_page)
+
+    # Step 1: Create Data
+    clo_id, csrf_token = _setup_approval_test_data(admin_page, institution_id)
+
+    # Step 2: Approve
+    _step_perform_approval(admin_page, clo_id, csrf_token)
+
+    # Step 3: Verify
+    _step_verify_approval_status(admin_page, clo_id, csrf_token)

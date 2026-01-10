@@ -702,16 +702,9 @@ class TestGenericCSVAdapterImport:
             assert entity in result
             assert len(result[entity]) > 0
 
-    def test_comprehensive_realistic_export_import_roundtrip(self, tmp_path):
-        """
-        Comprehensive test with realistic data exercising all entity types,
-        relationships, JSON fields, booleans, NULLs, and edge cases.
-        """
-        adapter = GenericCSVAdapter()
-        output_file = tmp_path / "comprehensive_export.zip"
-
-        # Create realistic mini-university dataset
-        data = {
+    def _create_comprehensive_test_data(self):
+        """Create realistic mini-university dataset."""
+        return {
             "institutions": [
                 {
                     "id": "hogwarts-001",
@@ -968,17 +961,15 @@ class TestGenericCSVAdapterImport:
             ],
         }
 
-        # Export
-        success, msg, count = adapter.export_data(data, str(output_file), {})
+    def _find_by_id(self, collection, entity_id):
+        """Helper to find entity by ID."""
+        for item in collection:
+            if item.get("id") == entity_id:
+                return item
+        return None
 
-        assert success is True
-        # Total: 2 inst + 3 prog + 3 users + 4 user_prog + 4 courses + 4 course_prog + 2 terms + 2 offerings + 3 sections + 3 outcomes + 2 invites = 32
-        assert count == 32
-
-        # Import back
-        result = adapter.parse_file(str(output_file), {})
-
-        # Verify all entities imported
+    def _verify_counts(self, result):
+        """Verify entity counts."""
         assert len(result["institutions"]) == 2
         assert len(result["programs"]) == 3
         assert len(result["users"]) == 3
@@ -991,25 +982,29 @@ class TestGenericCSVAdapterImport:
         assert len(result["course_outcomes"]) == 3
         assert len(result["user_invitations"]) == 2
 
-        # Verify data integrity - spot checks
-        hogwarts = result["institutions"][0]
+    def _verify_data_integrity(self, result):
+        """Verify content of specific records."""
+        hogwarts = self._find_by_id(result["institutions"], "hogwarts-001")
         assert hogwarts["name"] == "Hogwarts School of Witchcraft"
-        assert hogwarts["is_active"] is True  # Boolean
+        assert hogwarts["is_active"] is True
 
-        hermione = [u for u in result["users"] if u["id"] == "user-hermione"][0]
+        hermione = self._find_by_id(result["users"], "user-hermione")
         assert hermione["display_name"] == "Prof. Granger"
         assert hermione["oauth_provider"] == "google"
 
-        harry = [u for u in result["users"] if u["id"] == "user-harry"][0]
-        assert harry["display_name"] is None  # NULL preserved
+        harry = self._find_by_id(result["users"], "user-harry")
+        assert harry["display_name"] is None
 
-        # Verify many-to-many relationships
+    def _verify_relationships(self, result):
+        """Verify many-to-many relationships."""
         harry_programs = [
             up for up in result["user_programs"] if up["user_id"] == "user-harry"
         ]
-        assert len(harry_programs) == 2  # Harry in 2 programs
+        assert len(harry_programs) == 2
 
-        # Verify JSON deserialization
+    def _verify_json_and_special_fields(self, result):
+        """Verify JSON, boolean, and other special field handling."""
+        # JSON deserialization
         section = result["course_sections"][0]
         assert isinstance(section["grade_distribution"], dict)
         assert "O" in section["grade_distribution"]
@@ -1019,14 +1014,39 @@ class TestGenericCSVAdapterImport:
         assert outcome["assessment_data"]["pass_rate"] == 0.95
 
         # Verify NULL JSON
-        inactive_outcome = [
-            o for o in result["course_outcomes"] if o["id"] == "outcome-def-clo2"
-        ][0]
+        inactive_outcome = self._find_by_id(
+            result["course_outcomes"], "outcome-def-clo2"
+        )
         assert inactive_outcome["assessment_data"] is None
 
         # Verify inactive/active flags
-        old_course = [c for c in result["courses"] if c["id"] == "course-old"][0]
+        old_course = self._find_by_id(result["courses"], "course-old")
         assert old_course["active"] is False
+
+    def test_comprehensive_realistic_export_import_roundtrip(self, tmp_path):
+        """
+        Comprehensive test with realistic data exercising all entity types,
+        relationships, JSON fields, booleans, NULLs, and edge cases.
+        """
+        adapter = GenericCSVAdapter()
+        output_file = tmp_path / "comprehensive_export.zip"
+
+        # Create realistic mini-university dataset
+        data = self._create_comprehensive_test_data()
+
+        # Export
+        success, msg, count = adapter.export_data(data, str(output_file), {})
+        assert success is True
+        assert count == 32
+
+        # Import back
+        result = adapter.parse_file(str(output_file), {})
+
+        # Verify broken down steps
+        self._verify_counts(result)
+        self._verify_data_integrity(result)
+        self._verify_relationships(result)
+        self._verify_json_and_special_fields(result)
 
 
 @pytest.mark.unit

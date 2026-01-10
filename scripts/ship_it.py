@@ -24,6 +24,7 @@ is always enabled for rapid development cycles.
 
 import argparse
 import concurrent.futures
+import json
 import os
 import re
 import subprocess  # nosec B404
@@ -217,13 +218,14 @@ class QualityGateExecutor:
             radon_cmd = [
                 "radon",
                 "cc",
-                "-a",  # Show all functions and methods
-                "-s",  # Sort by score
-                "--min=C",  # Minimum complexity to show (C is medium)
+                "-j",  # JSON output for reliable parsing
+                "--min",
+                "D",  # Minimum rank to show (D or higher)
                 "src",
                 "tests",
                 "scripts",
             ]
+            radon_cmd_display = "radon cc --min D -s -a --md src tests scripts"
 
             radon_result = subprocess.run(  # nosec B603,B607
                 radon_cmd,
@@ -232,15 +234,49 @@ class QualityGateExecutor:
                 cwd=self.project_root,
             )
 
-            # Check for high complexity issues (D or higher)
-            high_complexity = [
-                line
-                for line in radon_result.stdout.split("\n")
-                if any(level in line for level in [" D ", " E ", " F "])
-            ]
+            try:
+                radon_payload = json.loads(radon_result.stdout or "{}")
+            except json.JSONDecodeError as exc:
+                return CheckResult(
+                    name="complexity",
+                    status=CheckStatus.FAILED,
+                    duration=time.time() - start_time,
+                    output=(
+                        "🔴 Complexity analysis failed: could not parse radon output "
+                        f"({exc})"
+                    ),
+                    error="radon output parse error",
+                )
+
+            high_complexity = []
+            for path, entries in radon_payload.items():
+                for entry in entries:
+                    if entry.get("rank") in {"D", "E", "F"}:
+                        high_complexity.append(
+                            {
+                                "path": path,
+                                "name": entry.get("name", "<unknown>"),
+                                "rank": entry.get("rank", "?"),
+                                "line": entry.get("lineno", 0),
+                                "col": entry.get("col_offset", 0),
+                                "complexity": entry.get("complexity", 0),
+                            }
+                        )
+
+            high_complexity.sort(
+                key=lambda item: (item["complexity"], item["rank"]), reverse=True
+            )
 
             if high_complexity:
-                issues = "\n".join(high_complexity[:10])  # Show first 10 issues
+                issues = "\n".join(
+                    [
+                        (
+                            f"{item['rank']} {item['path']}:{item['line']}:{item['col']} "
+                            f"{item['name']} ({item['complexity']})"
+                        )
+                        for item in high_complexity[:10]
+                    ]
+                )
                 more = len(high_complexity) - 10
                 more_text = f"\n... and {more} more issues found" if more > 0 else ""
 
@@ -248,7 +284,12 @@ class QualityGateExecutor:
                     name="complexity",
                     status=CheckStatus.FAILED,
                     duration=time.time() - start_time,
-                    output=f"🧠 Found {len(high_complexity)} high complexity functions/methods (D or higher):{more_text}\n{issues}",
+                    output=(
+                        "🧠 Found "
+                        f"{len(high_complexity)} high complexity functions/methods (D or higher):"
+                        f"{more_text}\n{issues}\nTo see full complexity output, run: "
+                        f"{radon_cmd_display}"
+                    ),
                     error=f"Found {len(high_complexity)} high complexity functions",
                 )
 
@@ -1093,15 +1134,8 @@ class QualityGateExecutor:
         except ValueError:
             return 1
 
-        # Ensure dev server is running if needed for frontend/E2E checks
-        if not self._ensure_server_running(checks_to_run):
-            self.logger.error(
-                "❌ Failed to start dev server. Frontend/E2E checks require a running server."
-            )
-            self.logger.info(
-                "💡 Try starting manually: bash scripts/restart_server.sh dev | e2e | smoke"
-            )
-            return 1
+        # Note: Each check manages its own server/resources independently
+        # No shared server startup needed - checks are self-contained
 
         start_time = time.time()
 
@@ -2308,13 +2342,8 @@ def _handle_pr_validation(args: Any) -> Optional[int]:
     else:
         print("ℹ️ Fail-fast disabled: collecting results for all checks.")
 
-    # Ensure dev server is running if needed for frontend/E2E checks
-    if not executor._ensure_server_running(checks_to_run):
-        print(
-            "❌ Failed to start dev server. Frontend/E2E checks require a running server."
-        )
-        print("💡 Try starting manually: bash scripts/restart_server.sh dev")
-        return 1
+    # Note: Each check manages its own server/resources independently
+    # No shared server startup needed - checks are self-contained
 
     # Run checks (may exit early when fail-fast is enabled)
     start_time = time.time()

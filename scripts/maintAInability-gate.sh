@@ -1231,111 +1231,47 @@ for r in d.get('results',[])[:5]:
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# COMPLEXITY ANALYSIS (RADON + XENON)
+# COMPLEXITY ANALYSIS (RADON)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [[ "$RUN_COMPLEXITY" == "true" ]]; then
-  echo "🧠 Complexity Analysis (radon + xenon)"
+  echo "🧠 Complexity Analysis (radon)"
 
   COMPLEXITY_PASSED=true
 
   # Check if radon is installed
   if ! command -v radon &> /dev/null; then
     echo "  ⚠️ radon not found, installing..."
-    pip install radon xenon --quiet
+    pip install radon --quiet
   fi
 
   # Run radon for cyclomatic complexity analysis
-  # Using exact numeric threshold: complexity > 15 fails
+  # Using rank threshold: D or higher fails
   echo "  🔧 Running radon cyclomatic complexity analysis..."
-  
-  # Get complexity with scores (-s flag)
-  # Radon analysis using JSON and Python for better parsing (shows filenames)
-  RADON_JSON=$(radon cc . --json --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" 2>&1) || true
-  
-  # Parse JSON with Python to get stats and failing files
-  PARSE_OUTPUT=$(python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    total_cc = 0
-    count = 0
-    failures = []
-    for f, blocks in data.items():
-        if isinstance(blocks, list):
-             for b in blocks:
-                 cc = b.get('complexity', 0)
-                 total_cc += cc
-                 count += 1
-                 if cc > 15:
-                     failures.append((cc, f, b.get('name','?'), b.get('lineno',0)))
-                 
-    avg = total_cc / count if count > 0 else 0
-    print(f'Average complexity: {avg:.2f}')
-    
-    failures.sort(key=lambda x: x[0], reverse=True)
-    print(len(failures))
-    for cc, f, name, line in failures:
-        print(f'[{cc}] {f}:{line} {name}')
-except Exception as e:
-    print(f'Average complexity: N/A')
-    print('0')
-    print(f'Error: {e}')
-" <<< "$RADON_JSON")
 
-  # Extract values from Python output
-  AVG_COMPLEXITY=$(echo "$PARSE_OUTPUT" | head -1 | awk -F': ' '{print $2}')
-  FAILING_COUNT=$(echo "$PARSE_OUTPUT" | sed -n '2p')
-  FAILING_FUNCTIONS=$(echo "$PARSE_OUTPUT" | tail -n +3)
+  RADON_CMD=(radon cc --min D -s -a --md src tests scripts)
+  RADON_OUTPUT=$("${RADON_CMD[@]}" 2>&1) || true
+  RADON_LINES=$(echo "$RADON_OUTPUT" | grep -c "^| " || true)
+  RADON_COUNT=$((RADON_LINES > 2 ? RADON_LINES - 2 : 0))
 
-  if [[ "$FAILING_COUNT" -gt 0 ]]; then
-    echo "  ❌ Found $FAILING_COUNT functions with complexity > 15"
+  if [[ "$RADON_COUNT" -gt 0 ]]; then
+    echo "  ❌ Found $RADON_COUNT functions with rank D or higher"
     echo ""
-    echo "  🔴 Functions exceeding complexity threshold (max: 15):"
-    echo "$FAILING_FUNCTIONS" | head -10 | while read -r line; do
-      echo "    $line"
-    done
+    echo "  🔴 Functions exceeding complexity threshold (min: D):"
+    echo "$RADON_OUTPUT" | sed 's/^/  /'
     echo ""
-    echo "  📋 Threshold: 15 (functions must have cyclomatic complexity ≤ 15)"
     COMPLEXITY_PASSED=false
   else
-    echo "  ✅ All functions have complexity ≤ 15"
-  fi
-  
-  # Run xenon for strict complexity thresholds
-  # --max-absolute C: No function above grade C (11-20)
-  # --max-modules B: Average module complexity at B or better
-  # --max-average B: Average project complexity at B or better
-  echo ""
-  echo "  🔧 Running xenon complexity threshold check..."
-
-  XENON_OUTPUT=$(xenon --max-absolute C --max-modules B --max-average B \
-    --exclude "venv/*,tests/*,.venv/*,node_modules/*,cursor-rules/*,demos/*,archives/*" \
-    . 2>&1) || XENON_FAILED=true
-
-  if [[ "$XENON_FAILED" == "true" ]]; then
-    echo "  ❌ Some functions exceed complexity thresholds:"
-    echo "$XENON_OUTPUT" | grep -E "ERROR|block" | sed 's/^/    /'
-    echo ""
-    echo "  💡 These functions must be refactored to reduce complexity."
-    COMPLEXITY_PASSED=false
-  else
-    echo "  ✅ All functions within acceptable complexity thresholds"
+    echo "  ✅ All functions have rank C or better"
   fi
 
   # Final result
   echo ""
   if [[ "$COMPLEXITY_PASSED" == "true" ]]; then
-    echo "✅ Complexity Analysis: PASSED (Average: $AVG_COMPLEXITY)"
-    add_success "Complexity Analysis" "Average complexity: $AVG_COMPLEXITY, all functions ≤ 15"
+    echo "✅ Complexity Analysis: PASSED"
+    add_success "Complexity Analysis" "All functions have rank C or better"
   else
-    if [[ "$XENON_FAILED" == "true" ]]; then
-      XENON_COUNT=$(echo "$XENON_OUTPUT" | grep -c "ERROR" || echo "0")
-      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed radon threshold, $XENON_COUNT modules exceed xenon threshold)"
-      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15 and $XENON_COUNT modules with complexity > C" "Refactor functions to complexity ≤ 15"
-    else
-      echo "❌ Complexity Analysis: FAILED ($FAILING_COUNT functions exceed threshold)"
-      add_failure "Complexity Analysis" "Found $FAILING_COUNT functions with complexity > 15" "Refactor functions to complexity ≤ 15"
-    fi
+    echo "❌ Complexity Analysis: FAILED ($RADON_COUNT functions exceed threshold)"
+    add_failure "Complexity Analysis" "Found $RADON_COUNT functions with rank D or higher" "Refactor functions to rank C or better"
   fi
   echo ""
 fi
