@@ -2,6 +2,8 @@
 
 # check_frontend.sh - Quick frontend validation for development workflow
 # This is a lightweight version of smoke tests for rapid feedback
+# Usage: ./scripts/check_frontend.sh [port]
+#   port - Optional port number (default: 3001, or from LOOPCLOSER_DEFAULT_PORT_DEV env var)
 
 set -e
 
@@ -12,12 +14,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Get port from argument, environment variable, or default to 3001
+PORT="${1:-${LOOPCLOSER_DEFAULT_PORT_DEV:-3001}}"
+BASE_URL="http://localhost:${PORT}"
+
 echo -e "${BLUE}🔍 Quick Frontend Check${NC}"
 echo -e "${BLUE}=====================${NC}"
+echo -e "${BLUE}   Target: ${BASE_URL}${NC}"
 
 # Check if server is running
-if ! curl -s http://localhost:3001 > /dev/null 2>&1; then
-    echo -e "${RED}❌ Server not running on port 3001${NC}"
+if ! curl -s "${BASE_URL}" > /dev/null 2>&1; then
+    echo -e "${RED}❌ Server not running on port ${PORT}${NC}"
     echo -e "${YELLOW}💡 Start server with: bash scripts/restart_server.sh${NC}"
     exit 1
 fi
@@ -26,7 +33,7 @@ echo -e "${GREEN}✅ Server is running${NC}"
 
 # Check for basic HTML structure (login page since root redirects)
 echo -e "${BLUE}🔍 Checking HTML structure...${NC}"
-RESPONSE=$(curl -s http://localhost:3001/login)
+RESPONSE=$(curl -s "${BASE_URL}/login")
 
 # Check for required elements (authentication system)
 REQUIRED_ELEMENTS=(
@@ -65,7 +72,7 @@ STATIC_ASSETS=(
 )
 
 for asset in "${STATIC_ASSETS[@]}"; do
-    if ! curl -s -f "http://localhost:3001$asset" > /dev/null; then
+    if ! curl -s -f "${BASE_URL}${asset}" > /dev/null; then
         echo -e "${RED}❌ Static asset not found: $asset${NC}"
         exit 1
     fi
@@ -75,7 +82,7 @@ echo -e "${GREEN}✅ All static assets loading${NC}"
 
 # Check API health
 echo -e "${BLUE}🔍 Checking API health...${NC}"
-if ! curl -s http://localhost:3001/api/health > /dev/null 2>&1; then
+if ! curl -s "${BASE_URL}/api/health" > /dev/null 2>&1; then
     echo -e "${RED}❌ API health check failed${NC}"
     exit 1
 fi

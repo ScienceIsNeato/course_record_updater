@@ -198,7 +198,7 @@ class QualityGateExecutor:
         try:
             # First check if radon is installed
             try:
-                subprocess.run(
+                subprocess.run(  # nosec B603,B607
                     ["radon", "--version"],
                     capture_output=True,
                     check=True,
@@ -225,7 +225,7 @@ class QualityGateExecutor:
                 "scripts",
             ]
 
-            radon_result = subprocess.run(
+            radon_result = subprocess.run(  # nosec B603,B607
                 radon_cmd,
                 capture_output=True,
                 text=True,
@@ -1398,7 +1398,7 @@ def reply_to_pr_comment(
             comment = {"body": body}
 
             # Use GitHub CLI to post the comment
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603,B607
                 [
                     "gh",
                     "api",
@@ -2307,6 +2307,14 @@ def _handle_pr_validation(args: Any) -> Optional[int]:
         )
     else:
         print("ℹ️ Fail-fast disabled: collecting results for all checks.")
+
+    # Ensure dev server is running if needed for frontend/E2E checks
+    if not executor._ensure_server_running(checks_to_run):
+        print(
+            "❌ Failed to start dev server. Frontend/E2E checks require a running server."
+        )
+        print("💡 Try starting manually: bash scripts/restart_server.sh dev")
+        return 1
 
     # Run checks (may exit early when fail-fast is enabled)
     start_time = time.time()

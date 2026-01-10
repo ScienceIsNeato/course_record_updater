@@ -2,12 +2,12 @@
 
 // Constants for input types to avoid hard-coded strings
 const INPUT_TYPES = {
-  PASSWORD: "password",
+  PASSWORD: "password", // pragma: allowlist secret
   TEXT: "text",
 };
 
 const CONFIRM_PASSWORD_TARGETS = {
-  confirmPassword: "password",
+  confirmPassword: "password", // pragma: allowlist secret
   confirmNewPassword: "newPassword",
 };
 
