@@ -1088,9 +1088,10 @@ class DemoSeeder(BaselineSeeder):
 
     DEFAULT_MANIFEST_PATH = "demos/full_semester_manifest.json"
 
-    def __init__(self, manifest_path: Optional[str] = None) -> None:
+    def __init__(self, manifest_path: Optional[str] = None, env: str = "dev") -> None:
         super().__init__()
         self.manifest_path = manifest_path
+        self.env = env
         self._manifest_cache: Optional[Dict[str, Any]] = None
 
     def seed(self) -> bool:
@@ -1224,20 +1225,28 @@ class DemoSeeder(BaselineSeeder):
 
     def print_summary(self) -> None:
         """Print demo seeding summary"""
+        # Environment-aware configuration
+        env_config = {
+            "dev": {"port": 3001, "env_name": "dev"},
+            "e2e": {"port": 3002, "env_name": "e2e"},
+            "smoke": {"port": 3003, "env_name": "smoke"},
+            "ci": {"port": 3001, "env_name": "ci"},
+            "prod": {"port": 3001, "env_name": "prod"},
+        }
+
+        config = env_config.get(self.env, {"port": 3001, "env_name": "dev"})
+        port = config["port"]
+        env_name = config["env_name"]
+
         self.log("")
         self.log("📊 Demo Environment Ready:")
         self.log(f"   Institutions: {len(self.created['institutions'])} created")
         self.log(f"   Users: {len(self.created['users'])} created")
         self.log(f"   Terms: {len(self.created['terms'])} created")
         self.log(f"   Courses: {len(self.created['courses'])} created")
-        self.log("")
-        self.log("🔑 Demo Account Credentials:")
-        self.log("   Email:    demo2025.admin@example.com")
-        self.log("   Password: Demo2025!")
-        self.log("")
         self.log("🎬 Next Steps:")
-        self.log("   1. Start server: ./restart_server.sh dev")
-        self.log("   2. Navigate to: http://localhost:3001")
+        self.log(f"   1. Start server: ./restart_server.sh {env_name}")
+        self.log(f"   2. Navigate to: http://localhost:{port}")
         self.log("   3. Login with the credentials above")
 
 
@@ -1259,9 +1268,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--env",
-        choices=["dev", "e2e", "ci", "prod"],
+        choices=["dev", "e2e", "smoke", "ci", "prod"],
         default="prod",
-        help="Environment to seed (dev, e2e, ci, or prod). Determines which database file to use.",
+        help="Environment to seed (dev, e2e, smoke, ci, or prod). Determines which database file to use.",
     )
     parser.add_argument(
         "--manifest",
@@ -1283,6 +1292,7 @@ def main() -> None:
     db_mapping = {
         "dev": "sqlite:///course_records_dev.db",
         "e2e": "sqlite:///course_records_e2e.db",
+        "smoke": "sqlite:///course_records_smoke.db",
         "ci": "sqlite:///course_records_ci.db",
         "prod": "sqlite:///course_records.db",
     }
@@ -1318,7 +1328,7 @@ def main() -> None:
     globals()["hash_password"] = hash_password
 
     if args.demo:
-        demo_seeder = DemoSeeder(manifest_path=args.manifest)
+        demo_seeder = DemoSeeder(manifest_path=args.manifest, env=args.env)
 
         if args.clear:
             demo_seeder.log("🧹 Clearing database...")

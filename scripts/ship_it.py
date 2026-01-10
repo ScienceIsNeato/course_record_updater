@@ -114,7 +114,7 @@ class QualityGateExecutor:
             CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
             CheckDef("coverage", "📊 Test Coverage Analysis (80% threshold)"),
             CheckDef(
-                "js-coverage",
+                "js-tests-and-coverage",
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
             self.security_check,
@@ -153,7 +153,7 @@ class QualityGateExecutor:
                 "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
             ),  # Includes test execution
             CheckDef(
-                "js-coverage",
+                "js-tests-and-coverage",
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
             # Zero tolerance (safety skipped for speed)
@@ -523,6 +523,9 @@ class QualityGateExecutor:
             else:
                 timeout_seconds = 900
 
+            if check_flag == "smoke":
+                os.environ.setdefault("LOOPCLOSER_DEFAULT_PORT_SMOKE", "3003")
+
             # Build command with verbose flag if enabled
             cmd = [self.script_path, f"--{actual_flag}"]
             if verbose:
@@ -644,6 +647,20 @@ class QualityGateExecutor:
         except Exception:
             return False
 
+    def _get_problem_env(self, check_flags: set[str]) -> str:
+        if "smoke" in check_flags:
+            return "smoke"
+        if "e2e" in check_flags:
+            return "e2e"
+        return "dev"
+
+    def _resolve_server_port(self, env: str) -> int:
+        if env == "smoke":
+            return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_SMOKE", "3003"))
+        if env == "e2e":
+            return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_E2E", "3002"))
+        return int(os.getenv("LOOPCLOSER_DEFAULT_PORT_DEV", "3001"))
+
     def _ensure_server_running(self, checks_to_run: Sequence[CheckDef]) -> bool:
         """Ensure dev server is running if checks require it.
 
@@ -665,18 +682,27 @@ class QualityGateExecutor:
         if not needs_server:
             return True
 
+        server_env = self._get_problem_env(check_flags)
+        server_port = self._resolve_server_port(server_env)
+
         # Check if server is already running
-        if self._is_server_running():
-            self.logger.info("✅ Dev server already running on port 3001")
+        if self._is_server_running(server_port):
+            self.logger.info(
+                f"✅ Server already running on port {server_port} (env={server_env})"
+            )
             return True
 
         # Server not running, start it
-        self.logger.info("🚀 Starting dev server for frontend/E2E checks...")
+        self.logger.info(
+            f"🚀 Starting {server_env} server for frontend/E2E checks on port {server_port}..."
+        )
 
         try:
             # Start server in background
+            # Note: restart_server.sh starts the Flask server in background and exits immediately
+            # This is CORRECT behavior - we wait for the port to respond, not for the script to finish
             process = subprocess.Popen(  # nosec
-                ["bash", "scripts/restart_server.sh", "dev"],
+                ["bash", "scripts/restart_server.sh", server_env],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -689,20 +715,23 @@ class QualityGateExecutor:
             start_time = time.time()
 
             while time.time() - start_time < max_wait:
-                if self._is_server_running():
+                if self._is_server_running(server_port):
                     self.logger.info(
-                        f"✅ Dev server started in {time.time() - start_time:.1f}s"
+                        f"✅ {server_env.capitalize()} server started in {time.time() - start_time:.1f}s"
                     )
                     return True
                 time.sleep(0.5)
 
-            # Check if process failed
-            if process.poll() is not None:
+            # Timeout - check if the restart script itself failed
+            # The script exits immediately after starting background server, so poll() will be non-None
+            # Only treat as script failure if it exited with non-zero code within first few seconds
+            if process.poll() is not None and process.returncode != 0:
                 _, stderr = process.communicate()
-                self.logger.error(f"❌ Server failed to start: {stderr}")
+                self.logger.error(f"❌ Restart script failed: {stderr}")
                 return False
 
             self.logger.error(f"❌ Server failed to start within {max_wait}s")
+            self.logger.error("💡 Check logs/server.log for details")
             return False
 
         except Exception as e:
@@ -1070,7 +1099,7 @@ class QualityGateExecutor:
                 "❌ Failed to start dev server. Frontend/E2E checks require a running server."
             )
             self.logger.info(
-                "💡 Try starting manually: bash scripts/restart_server.sh dev"
+                "💡 Try starting manually: bash scripts/restart_server.sh dev | e2e | smoke"
             )
             return 1
 
@@ -2396,7 +2425,7 @@ Validation Types:
   commit - Fast checks for development cycle (~40s savings)
   PR     - Full validation for pull requests (all checks including security)
 
-Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check
+Available checks: python-lint-format, js-lint-format, python-static-analysis, tests, coverage, js-tests-and-coverage, security, duplication, e2e, integration, smoke, frontend-check
 
 By default, runs COMMIT validation for fast development cycles.
 Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
@@ -2419,7 +2448,7 @@ Fail-fast behavior is ALWAYS enabled - exits immediately on first failure.
     parser.add_argument(
         "--checks",
         nargs="+",
-        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, js-tests, coverage, js-coverage, security, duplication, e2e, integration, smoke, frontend-check",
+        help="Run specific checks only (e.g. --checks python-lint-format tests). Available: python-lint-format, js-lint-format, python-static-analysis, tests, coverage, js-tests-and-coverage, security, duplication, e2e, integration, smoke, frontend-check",
     )
 
     parser.add_argument(

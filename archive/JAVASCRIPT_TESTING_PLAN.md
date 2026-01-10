@@ -292,15 +292,14 @@ JavaScript tests are now fully integrated into the existing `ship_it.py` quality
    ```python
    available_checks = {
        # ... existing checks ...
-       "js-tests": check_javascript_tests,
-       "js-coverage": check_javascript_coverage,
+       "js-tests-and-coverage": check_javascript_coverage,
    }
    ```
 
 4. **Update Default Check Groups**
    ```python
    # Add to default quality gate pipeline
-   default_checks = ["black", "isort", "lint", "mypy", "tests", "js-tests", "js-coverage", "coverage"]
+   default_checks = ["black", "isort", "lint", "mypy", "tests", "js-tests-and-coverage", "coverage"]
    ```
 
 ### GitHub Actions Integration ⏳ **PENDING**

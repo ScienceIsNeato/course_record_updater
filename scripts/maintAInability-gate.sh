@@ -138,7 +138,7 @@ else
       --js-lint) RUN_JS_LINT=true ;;
       --js-format) RUN_JS_FORMAT=true ;;
       --js-tests) RUN_JS_TESTS=true ;;
-      --js-coverage) RUN_JS_COVERAGE=true ;;
+      --js-tests-and-coverage) RUN_JS_COVERAGE=true ;;
       --coverage-new-code) RUN_COVERAGE_NEW_CODE=true ;;
       --smoke-tests) RUN_SMOKE_TESTS=true ;;
       --frontend-check) RUN_FRONTEND_CHECK=true ;;
@@ -157,8 +157,7 @@ else
         echo "  ./scripts/maintAInability-gate.sh --security # Check security vulnerabilities"
         echo "  ./scripts/maintAInability-gate.sh --sonar-analyze # Trigger new SonarCloud analysis and save run metadata"
         echo "  ./scripts/maintAInability-gate.sh --sonar-status  # Fetch results from most recent analysis"
-        echo "  ./scripts/maintAInability-gate.sh --js-tests # Run JavaScript test suite (Jest)"
-        echo "  ./scripts/maintAInability-gate.sh --js-coverage # Run JavaScript coverage analysis"
+        echo "  ./scripts/maintAInability-gate.sh --js-tests-and-coverage # Run JavaScript coverage analysis"
         echo "  ./scripts/maintAInability-gate.sh --duplication # Check code duplication"
         echo "  ./scripts/maintAInability-gate.sh --imports # Check import organization"
         echo "  ./scripts/maintAInability-gate.sh --complexity # Check code complexity"
@@ -1994,8 +1993,11 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   BLUE='\033[0;34m'
   NC='\033[0m' # No Color
   
-  # Test configuration - use TEST_PORT if set, otherwise default to 3001
-  TEST_PORT=${TEST_PORT:-3001}
+  # Test configuration - use dedicated port 3003 for smoke tests
+  # This avoids conflicts with:
+  #   - Dev server (port 3001)
+  #   - E2E tests (port 3002)
+  TEST_PORT=${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3003}
   TEST_URL="http://localhost:$TEST_PORT"
   SERVER_PID=""
   
@@ -2033,38 +2035,17 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   
   # Function to start test server
   start_test_server() {
-    echo -e "${BLUE}🚀 Starting test server on port $TEST_PORT...${NC}"
-
-    # Load environment variables
-    if [ -f ".envrc" ]; then
-      source .envrc
-    fi
+    echo -e "${BLUE}🚀 Starting smoke server via restart_server.sh setup...${NC}"
     
-    # Force test environment and database AFTER sourcing any env files
-    export ENV="test"
-    export FLASK_ENV="test"
-    export DATABASE_URL="sqlite:///course_records_e2e.db"
-    
-    # Activate virtual environment if it exists
-    if [ -d "venv" ]; then
-      source venv/bin/activate
-    fi
-    
-    # Start server on test port in background
-    PORT=$TEST_PORT python -m src.app > logs/test_server.log 2>&1 &
-    SERVER_PID=$!
-    
-    # Wait for server to start
-    echo -e "${BLUE}⏳ Waiting for server to start...${NC}"
-    for i in {1..30}; do
-      if curl -s "$TEST_URL" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Test server started successfully${NC}"
+    # Delegate to the robust restart script
+    if ./scripts/restart_server.sh smoke; then
+        echo -e "${GREEN}✅ Smoke server started successfully${NC}"
         return 0
-      fi
-      sleep 1
-    done
-    
-    echo -e "${RED}❌ Test server failed to start${NC}"
+    else
+        echo -e "${RED}❌ Smoke server failed to start${NC}"
+        return 1
+    fi
+
     kill $SERVER_PID 2>/dev/null || true
     return 1
   }
@@ -2072,26 +2053,28 @@ if [[ "$RUN_SMOKE_TESTS" == "true" ]]; then
   # Function to stop test server
   stop_test_server() {
     if [ ! -z "$SERVER_PID" ]; then
-      echo -e "${BLUE}🛑 Stopping test server...${NC}"
+      echo -e "${BLUE}🛑 Stopping smoke server PID $SERVER_PID...${NC}"
       kill $SERVER_PID 2>/dev/null || true
-      
-      # Wait for process to terminate
       for i in {1..10}; do
         if ! kill -0 $SERVER_PID 2>/dev/null; then
           break
         fi
         sleep 1
       done
-      
-      # Force kill if still running
       kill -9 $SERVER_PID 2>/dev/null || true
-      echo -e "${GREEN}✅ Test server stopped${NC}"
+      echo -e "${GREEN}✅ Smoke server stopped${NC}"
+    else
+      pkill -f "python -m src.app" 2>/dev/null || true
     fi
+    rm -f logs/server_smoke.pid
   }
   
   # Function to run smoke tests
   run_smoke_tests() {
     echo -e "${BLUE}🧪 Running smoke tests...${NC}"
+    
+    # Export TEST_PORT so pytest can see it
+    export TEST_PORT="${TEST_PORT}"
     
     # Install test dependencies if needed
     pip install -q pytest selenium requests 2>/dev/null || true
@@ -2143,18 +2126,19 @@ except Exception as e:
   
   # SQLite is used for persistence; no external emulator required.
 
-  # Ensure we use the e2e database for both seeding and server
-  export DATABASE_URL="sqlite:///course_records_e2e.db"
+  echo -e "${BLUE}🧹 Ensuring clean state before seeding...${NC}"
+  pkill -f "python.*src.app" || true
+  sleep 1
 
-  # Ensure test database is seeded
-  echo -e "${BLUE}🌱 Seeding test database...${NC}"
-  python scripts/seed_db.py --clear --env e2e || {
-    echo -e "${RED}❌ Failed to seed test database${NC}"
-    add_failure "Smoke Tests" "Failed to seed test database" "Check database connection and seed script"
+  # Seed smoke database with manifest data
+  echo -e "${BLUE}🌱 Seeding smoke database from manifest...${NC}"
+  if ! ./venv/bin/python scripts/seed_db.py --demo --clear --env smoke --manifest "tests/fixtures/smoke_manifest.json"; then
+    echo -e "${RED}❌ Failed to seed smoke database${NC}"
+    add_failure "Smoke Tests" "Failed to seed test database" "Check manifest and database paths"
     echo ""
     return
-  }
-  
+  fi
+
   # Start test server
   if ! start_test_server; then
     add_failure "Smoke Tests" "Test server failed to start" "Check server logs and ensure port $TEST_PORT is available"

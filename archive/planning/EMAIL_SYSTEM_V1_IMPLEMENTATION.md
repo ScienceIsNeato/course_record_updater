@@ -23,7 +23,6 @@ Implementing swappable email infrastructure for MockU demo with Gmail SMTP integ
 - Zero breaking changes
 - Swappable email providers (Gmail → SendGrid/Mailgun later)
 - Clean separation of concerns (templates vs. transport)
-- Easier testing with ConsoleProvider
 
 ### Testing
 - All 36 email service unit tests pass

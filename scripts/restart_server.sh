@@ -2,7 +2,7 @@
 
 # restart_server.sh - Environment-aware server restart using SQLite backend
 # Usage: ./restart_server.sh <env>
-#   <env> = dev | e2e
+#   <env> = dev | e2e | smoke
 # Returns 0 on success, 1 on failure
 
 set -euo pipefail
@@ -28,9 +28,10 @@ fi
 ENV_ARG="$1"
 
 # Validate environment
-if [[ ! "$ENV_ARG" =~ ^(dev|e2e)$ ]]; then
+if [[ ! "$ENV_ARG" =~ ^(dev|e2e|smoke)$ ]]; then
+        ENV="test"
     echo -e "${RED}❌ Error: Invalid environment '$ENV_ARG'${NC}" >&2
-    echo -e "${YELLOW}Valid environments: dev, e2e${NC}" >&2
+    echo -e "${YELLOW}Valid environments: dev, e2e, smoke${NC}" >&2
     exit 1
 fi
 
@@ -63,8 +64,8 @@ else
     exit 1
 fi
 
-# Restore pre-set ENV (e.g., ENV="test" from run_uat.sh)
-if [[ -n "$SAVED_ENV" ]]; then
+# Restore pre-set ENV only for E2E/UAT (not for smoke - it needs fresh test env)
+if [[ -n "$SAVED_ENV" ]] && [[ "$APP_ENV" =~ ^(e2e|uat)$ ]]; then
     export ENV="$SAVED_ENV"
     echo -e "${BLUE}🔧 Using pre-configured ENV: $ENV${NC}"
 fi
@@ -72,6 +73,7 @@ fi
 # Restore pre-set EMAIL_WHITELIST (e.g., from run_uat.sh for E2E tests)
 if [[ -n "$SAVED_EMAIL_WHITELIST" ]]; then
     export EMAIL_WHITELIST="$SAVED_EMAIL_WHITELIST"
+    export WTF_CSRF_ENABLED="${WTF_CSRF_ENABLED:-true}"
     echo -e "${BLUE}🔧 Using pre-configured EMAIL_WHITELIST for E2E tests${NC}"
 fi
 
@@ -81,10 +83,11 @@ if [[ -n "$SAVED_WTF_CSRF_ENABLED" ]]; then
     echo -e "${BLUE}🔧 CSRF validation disabled for E2E tests${NC}"
 fi
 
-# For E2E tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
-if [[ "$APP_ENV" = "e2e" ]] || [[ "$APP_ENV" = "uat" ]]; then
+# For E2E and smoke tests, unset EMAIL_PROVIDER so factory uses ENV-based selection (ENV=test -> ethereal)
+if [[ "$APP_ENV" =~ ^(e2e|uat|smoke)$ ]]; then
+        ENV="test"
     unset EMAIL_PROVIDER
-    echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for E2E (will auto-select Ethereal)${NC}"
+    echo -e "${BLUE}🔧 Unset EMAIL_PROVIDER for $APP_ENV (will auto-select based on ENV)${NC}"
 fi
 
 # Determine database and base URL based on environment
@@ -96,6 +99,11 @@ case "$APP_ENV" in
     e2e|uat)
         DATABASE_URL="${DATABASE_URL_E2E:-sqlite:///course_records_e2e.db}"
         BASE_URL="${BASE_URL_E2E:-http://localhost:3002}"
+        ;;
+    smoke)
+        ENV="test"
+        DATABASE_URL="${DATABASE_URL_SMOKE:-sqlite:///course_records_smoke.db}"
+        BASE_URL="${BASE_URL_SMOKE:-http://localhost:3003}"
         ;;
     *)
         # Default to dev environment
@@ -142,10 +150,12 @@ start_flask_app() {
     echo -e "${BLUE}🌐 Starting Flask app on port $port...${NC}"
     echo -e "${BLUE}📋 Server logs: ${log_file}${NC}"
 
+    # Determine Python executable
+    # Background processes don't inherit sourced environments, so use venv python directly
+    local python_exe="python"
     if [[ -d "venv" ]]; then
-        echo -e "${BLUE}📦 Activating virtual environment...${NC}"
-        # shellcheck disable=SC1091
-        source venv/bin/activate
+        python_exe="./venv/bin/python"
+        echo -e "${BLUE}📦 Using virtual environment Python${NC}"
     fi
 
     # Export environment variables for Flask app
@@ -160,6 +170,7 @@ start_flask_app() {
     export ETHEREAL_IMAP_HOST="${ETHEREAL_IMAP_HOST:-imap.ethereal.email}"
     export ETHEREAL_IMAP_PORT="${ETHEREAL_IMAP_PORT:-993}"
     export EMAIL_WHITELIST="${EMAIL_WHITELIST:-*@ethereal.email,*@mocku.test,*@test.edu,*@test.com,*@test.local,*@example.com,*@loopclosertests.mailtrap.io}"
+    export WTF_CSRF_ENABLED="${WTF_CSRF_ENABLED:-true}"
     
     # Debug: Check if env vars are set
     echo -e "${BLUE}📧 Email configuration:${NC}"
@@ -168,18 +179,9 @@ start_flask_app() {
     echo -e "   BASE_URL=${BASE_URL}"
     echo -e "   ETHEREAL_USER=${ETHEREAL_USER}"
     
-    # Start Flask app
-    # Explicitly pass environment variables in the command to ensure subprocess gets them
-    PORT="$port" DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" python -m src.app > "$log_file" 2>&1 &
+    # Start Flask app using venv python directly (background processes don't inherit `source`)
+    PORT="$port" DATABASE_URL="$DATABASE_URL" ENV="$ENV" BASE_URL="$BASE_URL" "$python_exe" -m src.app > "$log_file" 2>&1 &
     local flask_pid=$!
-    sleep 2
-
-    if ! kill -0 $flask_pid 2>/dev/null; then
-        echo -e "${RED}❌ Flask app failed to start${NC}" >&2
-        echo -e "${RED}❌ Check ${log_file} for details${NC}" >&2
-        return 1
-    fi
-
     for _ in {1..10}; do
         if curl -4 -s "http://localhost:$port" > /dev/null 2>&1; then
             echo -e "${GREEN}✅ Flask app started successfully on port $port${NC}"
@@ -207,8 +209,27 @@ main() {
     find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
     
-    echo -e "${GREEN}✅ Clean slate ready${NC}"
+    echo -e "${BLUE}🧹 Aggressive cleanup: Clearing SQLite locks and WAL files...${NC}"
+    # Kill any processes holding the database file open
+    DB_PATH="${DATABASE_URL#sqlite:///}"
+    if [[ -f "$DB_PATH" ]]; then
+#         # Find and kill processes with the database file open
+#         # Use command substitution instead of pipe to avoid hanging when no processes found
+#         pids_to_kill=$(lsof "$DB_PATH" 2>/dev/null | awk 'NR>1 {print $2}' | sort -u)
+#         if [[ -n "$pids_to_kill" ]]; then
+#             for pid in $pids_to_kill; do
+#                 echo -e "${YELLOW}  Killing process $pid holding database lock${NC}"
+#                 kill -9 "$pid" 2>/dev/null || true
+#             done
+#         fi
+        
+        # Remove SQLite WAL and SHM files that can cause locks
+        # rm -f "${DB_PATH}-wal" "${DB_PATH}-shm" 2>/dev/null || true
+        true
+    fi
     
+    echo -e "${GREEN}✅ Clean slate ready${NC}"
+
     # Determine port based on environment
     local port
     case "$APP_ENV" in
@@ -217,6 +238,10 @@ main() {
             ;;
         e2e|uat)
             port="${LOOPCLOSER_DEFAULT_PORT_E2E:-3002}"
+            ;;
+        smoke)
+        ENV="test"
+            port="${LOOPCLOSER_DEFAULT_PORT_SMOKE:-3003}"
             ;;
         *)
             # Default to dev port

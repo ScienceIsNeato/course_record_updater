@@ -392,6 +392,7 @@ class EmailService:
         to_email: str, subject: str, html_body: str, text_body: str
     ) -> bool:
         """Send email using configured email provider"""
+        provider = None
         try:
             EmailService._last_error_message = None
             # CRITICAL PROTECTION: Block protected domains in non-production environments
@@ -570,7 +571,7 @@ class EmailService:
 
     @staticmethod
     def _maybe_send_via_ethereal_fallback(
-        provider: EmailProvider,
+        provider: Optional[EmailProvider],
         to_email: str,
         subject: str,
         html_body: str,
