@@ -124,7 +124,7 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def update_user_role(
-        self, user_id: str, new_role: str, program_ids: List[str] = None
+        self, user_id: str, new_role: str, program_ids: Optional[List[str]] = None
     ) -> bool:
         """Update user's role and program associations"""
         raise NotImplementedError
@@ -211,11 +211,11 @@ class DatabaseInterface(ABC):
     def get_outcomes_by_status(
         self,
         institution_id: str,
-        status: str,
+        status: Optional[str],
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Get course outcomes filtered by status"""
+        """Get course outcomes filtered by status (or all if status is None)"""
         raise NotImplementedError
 
     @abstractmethod
@@ -302,6 +302,10 @@ class DatabaseInterface(ABC):
 
     @abstractmethod
     def get_active_terms(self, institution_id: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_all_terms(self, institution_id: str) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
     @abstractmethod

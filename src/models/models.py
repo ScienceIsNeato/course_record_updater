@@ -121,7 +121,7 @@ class DataModel:
         return str(uuid.uuid4())
 
     @staticmethod
-    def current_timestamp():
+    def current_timestamp() -> datetime:
         """Get current timestamp for persistence operations"""
         return datetime.now(timezone.utc)
 

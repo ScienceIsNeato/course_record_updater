@@ -33,7 +33,7 @@ class SessionService:
     """
 
     @staticmethod
-    def configure_app(app) -> None:
+    def configure_app(app: Any) -> None:
         """
         Configure Flask app with secure session settings
 

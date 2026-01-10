@@ -7,7 +7,7 @@ including role-based access control and permission management.
 
 from enum import Enum
 from functools import wraps
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Constants for error messages
 AUTH_REQUIRED_MSG = "Authentication required"
@@ -349,6 +349,8 @@ class AuthService:
             return False
 
         user_role = user.get("role")
+        if not user_role:
+            return False
         return UserRole.has_role_or_higher(user_role, required_role)
 
     def get_accessible_institutions(self) -> List[str]:
@@ -367,8 +369,9 @@ class AuthService:
                 institutions = db.get_all_institutions()
                 # Handle potential key difference (id vs institution_id)
                 return [
-                    inst.get("institution_id") or inst.get("id")
+                    str(inst.get("institution_id") or inst.get("id"))
                     for inst in institutions
+                    if inst.get("institution_id") or inst.get("id")
                 ]
             except Exception as e:
                 logger.error(f"Error fetching institutions for site admin: {e}")
@@ -383,7 +386,11 @@ class AuthService:
             import src.database.database_service as db
 
             programs = db.get_programs_by_institution(institution_id)
-            return [p.get("program_id") or p.get("id") for p in programs]
+            return [
+                str(p.get("program_id") or p.get("id"))
+                for p in programs
+                if p.get("program_id") or p.get("id")
+            ]
         except Exception as e:
             logger.error(f"Error fetching programs: {e}")
             return []
@@ -441,11 +448,11 @@ auth_service = AuthService()
 
 
 # Authentication and Authorization Decorators
-def login_required(f):
+def login_required(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to require authentication with smart response handling."""
 
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if not auth_service.is_authenticated():
             logger.warning(UNAUTHORIZED_ACCESS_MSG, f.__name__)
 
@@ -488,12 +495,14 @@ def login_required(f):
     return decorated_function
 
 
-def role_required(required_role: str):
+def role_required(
+    required_role: str,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to require a specific role or higher."""
 
-    def decorator(f):
+    def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args: Any, **kwargs: Any) -> Any:
             if not auth_service.is_authenticated():
                 logger.warning(UNAUTHORIZED_ACCESS_MSG, f.__name__)
                 return (
@@ -509,8 +518,10 @@ def role_required(required_role: str):
 
             if not auth_service.has_role(required_role):
                 user = auth_service.get_current_user()
+                user_id = user.get("user_id") if user else "unknown"
+                user_role = user.get("role") if user else "unknown"
                 logger.warning(
-                    f"Insufficient role: User {user.get('user_id')} with role {user.get('role')} attempted to access {f.__name__} requiring {required_role}"
+                    f"Insufficient role: User {user_id} with role {user_role} attempted to access {f.__name__} requiring {required_role}"
                 )
                 return (
                     jsonify(
@@ -533,7 +544,7 @@ def role_required(required_role: str):
 
 def permission_required(
     required_permission: str, context_keys: Optional[List[str]] = None
-):
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator to require a specific permission.
 
@@ -542,9 +553,9 @@ def permission_required(
         context_keys: List of request parameter keys to extract for context (e.g., ['institution_id', 'program_id'])
     """
 
-    def decorator(f):
+    def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(f)
-        def decorated_function(*args, **kwargs):
+        def decorated_function(*args: Any, **kwargs: Any) -> Any:
             # Check authentication first
             auth_response = _check_authentication(f.__name__)
             if auth_response:
@@ -567,7 +578,7 @@ def permission_required(
     return decorator
 
 
-def _check_authentication(function_name: str):
+def _check_authentication(function_name: str) -> Optional[Tuple[Any, int]]:
     """Check if user is authenticated, return error response if not."""
     if not auth_service.is_authenticated():
         logger.warning(UNAUTHORIZED_ACCESS_MSG, function_name)
@@ -607,7 +618,7 @@ def _extract_request_value(key: str) -> Optional[str]:
             return value
 
     # Try JSON body
-    if request.is_json:
+    if request.is_json and request.json is not None:
         value = request.json.get(key)
         if value:
             return value
@@ -624,12 +635,13 @@ def _extract_request_value(key: str) -> Optional[str]:
 
 def _check_permission(
     required_permission: str, context: Dict[str, Any], function_name: str
-):
+) -> Optional[Tuple[Any, int]]:
     """Check if user has required permission, return error response if not."""
     if not auth_service.has_permission(required_permission, context):
         user = auth_service.get_current_user()
+        user_id = user.get("user_id") if user else "unknown"
         logger.warning(
-            f"Permission denied: User {user.get('user_id')} attempted to access {function_name} requiring {required_permission}"
+            f"Permission denied: User {user_id} attempted to access {function_name} requiring {required_permission}"
         )
         return (
             jsonify(
@@ -645,11 +657,11 @@ def _check_permission(
     return None
 
 
-def admin_required(f):
+def admin_required(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to require site admin role."""
 
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         return role_required(UserRole.SITE_ADMIN.value)(f)(*args, **kwargs)
 
     return decorated_function

@@ -174,7 +174,9 @@ class CLOWorkflowService:
             return False
 
     @staticmethod
-    def mark_as_nci(outcome_id: str, reviewer_id: str, reason: str = None) -> bool:
+    def mark_as_nci(
+        outcome_id: str, reviewer_id: str, reason: Optional[str] = None
+    ) -> bool:
         """
         Mark a CLO as "Never Coming In" (NCI) - added from CEI demo feedback.
 
@@ -409,7 +411,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def validate_course_submission(
-        course_id: str, section_id: str = None
+        course_id: str, section_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Validate all CLOs and course-level data are complete before submission.
@@ -463,7 +465,7 @@ class CLOWorkflowService:
 
     @staticmethod
     def submit_course_for_approval(
-        course_id: str, user_id: str, section_id: str = None
+        course_id: str, user_id: str, section_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Submit all CLOs for a course for approval after validation.
@@ -491,7 +493,9 @@ class CLOWorkflowService:
             submitted_count = 0
             for outcome in outcomes:
                 outcome_id = outcome.get("outcome_id") or outcome.get("id")
-                if CLOWorkflowService.submit_clo_for_approval(outcome_id, user_id):
+                if outcome_id and CLOWorkflowService.submit_clo_for_approval(
+                    str(outcome_id), user_id
+                ):
                     submitted_count += 1
 
             return {
@@ -727,7 +731,8 @@ class CLOWorkflowService:
             if not outcome:
                 return None
 
-            course_id = outcome.get("course_id")
+            raw_course_id = outcome.get("course_id")
+            course_id = raw_course_id if isinstance(raw_course_id, str) else None
             course = db.get_course(course_id) if course_id else None
 
             instructor_name = None
@@ -735,7 +740,7 @@ class CLOWorkflowService:
             program_name = None
             term_name = None
 
-            if course:
+            if course and course_id:
                 (
                     instructor_name,
                     instructor_email,

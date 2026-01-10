@@ -1,3 +1,4 @@
+# mypy: disable-error-code=no-untyped-def
 """
 CLO Workflow API routes.
 
@@ -90,10 +91,13 @@ def submit_clo_for_approval(outcome_id: str):
 
         # Verify user has access (owns the course section)
         user_id = session.get("user_id")
+        if not user_id or not isinstance(user_id, str):
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
         institution_id = get_current_institution_id()
 
         # Verify institution access through course
-        course = get_course_by_id(outcome.get("course_id"))
+        course_id = outcome.get("course_id")
+        course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
@@ -207,12 +211,15 @@ def approve_clo(outcome_id: str):
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        course_id = outcome.get("course_id")
+        course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Get reviewer ID
         user_id = session.get("user_id")
+        if not user_id or not isinstance(user_id, str):
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Approve the CLO
         success = CLOWorkflowService.approve_clo(outcome_id, user_id)
@@ -272,12 +279,15 @@ def request_clo_rework(outcome_id: str):
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        course_id = outcome.get("course_id")
+        course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 
         # Get reviewer ID
         user_id = session.get("user_id")
+        if not user_id or not isinstance(user_id, str):
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
 
         # Request rework
         success = CLOWorkflowService.request_rework(
@@ -323,7 +333,11 @@ def mark_clo_as_nci(outcome_id: str):
         reason = data.get("reason") if data else None
 
         user = get_current_user()
+        if not user:
+            return jsonify({"success": False, "error": "User not authenticated"}), 401
         user_id = user.get("user_id")
+        if not user_id or not isinstance(user_id, str):
+            return jsonify({"success": False, "error": "User ID not found"}), 401
 
         # Verify outcome exists and belongs to current institution (efficient O(1) lookup)
         outcome = get_course_outcome(outcome_id)
@@ -332,7 +346,8 @@ def mark_clo_as_nci(outcome_id: str):
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        course_id = outcome.get("course_id")
+        course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": "Outcome not found"}), 404
 
@@ -375,7 +390,8 @@ def get_clo_audit_details(outcome_id: str):
 
         # Verify institution access
         institution_id = get_current_institution_id()
-        course = get_course_by_id(outcome.get("course_id"))
+        course_id = outcome.get("course_id")
+        course = get_course_by_id(course_id) if course_id else None
         if not course or course.get("institution_id") != institution_id:
             return jsonify({"success": False, "error": OUTCOME_NOT_FOUND_MSG}), 404
 

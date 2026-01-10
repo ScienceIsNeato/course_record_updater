@@ -32,7 +32,14 @@ import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
+
+
+@dataclass
+class CheckDef:
+    flag: str
+    name: str
+    custom: Optional[Callable[[], "CheckResult"]] = None
 
 
 class CheckStatus(Enum):
@@ -72,6 +79,7 @@ class QualityGateExecutor:
 
         # Change to project root so all relative paths work regardless of where script is invoked
         os.chdir(parent_dir)
+        self.project_root = parent_dir
 
         from src.utils.logging_config import setup_quality_gate_logger
 
@@ -83,57 +91,68 @@ class QualityGateExecutor:
         self._process_lock = threading.Lock()
         self._running_processes: dict[int, subprocess.Popen] = {}
 
-        self.security_check = (
-            "security",
-            "🔒 Security Audit (bandit, semgrep, safety)",
+        self.security_check: CheckDef = CheckDef(
+            flag="security", name="🔒 Security Audit (bandit, semgrep, safety)"
         )
-        self.security_local_check = (
-            "security-local",
-            "🔒 Security Audit (bandit, semgrep)",
+        self.security_local_check: CheckDef = CheckDef(
+            flag="security-local",
+            name="🔒 Security Audit (bandit, semgrep)",
         )
 
         # Define all quality checks - adapted for Python/Flask
         # Ordered by importance and speed, broken down into atomic checks
-        self.all_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
-            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("coverage", "📊 Test Coverage Analysis (80% threshold)"),
-            (
+        self.all_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef(
+                "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+            ),
+            CheckDef(
+                "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("coverage", "📊 Test Coverage Analysis (80% threshold)"),
+            CheckDef(
                 "js-coverage",
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
             self.security_check,
-            (
+            CheckDef(
                 "complexity",
                 "🧠 Complexity Analysis (radon/xenon)",
                 self._run_complexity_analysis,
             ),
-            ("duplication", "🔄 Code Duplication Check"),
-            ("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
-            ("integration", "🔗 Integration Tests (component interactions)"),
-            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
-            (
+            CheckDef("duplication", "🔄 Code Duplication Check"),
+            CheckDef("e2e", "🎭 End-to-End Tests (Playwright browser automation)"),
+            CheckDef("integration", "🔗 Integration Tests (component interactions)"),
+            CheckDef("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+            CheckDef(
                 "coverage-new-code",
                 "📊 Coverage on New Code (80% threshold on PR changes)",
             ),
-            ("frontend-check", "🌐 Frontend Check (quick UI validation)"),
+            CheckDef("frontend-check", "🌐 Frontend Check (quick UI validation)"),
         ]
 
         # Fast checks for commit validation (optimized for <40s total time)
         # Key optimization: Run coverage instead of tests (coverage includes tests)
         # This saves ~28s by avoiding duplicate test execution
         # Security runs in parallel, so doesn't add to total time
-        self.commit_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"),
-            ("python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"),
-            (
+        self.commit_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef(
+                "js-lint-format", "🎨 JavaScript Lint & Format (ESLint, Prettier)"
+            ),
+            CheckDef(
+                "python-static-analysis", "🔍 Python Static Analysis (mypy, imports)"
+            ),
+            CheckDef(
                 "coverage",
                 "🧪 Python Unit Tests & 📊 Coverage Analysis (80% threshold)",
             ),  # Includes test execution
-            (
+            CheckDef(
                 "js-coverage",
                 "🧪 JavaScript Tests & 📊 JavaScript Coverage Analysis (80% threshold)",
             ),
@@ -143,29 +162,33 @@ class QualityGateExecutor:
         ]
 
         # Full checks for PR validation (all checks)
-        self.pr_checks = list(self.all_checks)
+        self.pr_checks: List[CheckDef] = list(self.all_checks)
 
         # Integration test validation (component interactions using SQLite persistence)
-        self.integration_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("integration", "🔗 Integration Tests (component interactions)"),
+        self.integration_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("integration", "🔗 Integration Tests (component interactions)"),
         ]
 
         # Smoke test validation (requires running server + browser)
-        self.smoke_checks = [
-            ("python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"),
-            ("tests", "🧪 Test Suite Execution (pytest)"),
-            ("smoke", "🔥 Smoke Tests (end-to-end validation)"),
+        self.smoke_checks: List[CheckDef] = [
+            CheckDef(
+                "python-lint-format", "🎨 Python Lint & Format (black, isort, flake8)"
+            ),
+            CheckDef("tests", "🧪 Test Suite Execution (pytest)"),
+            CheckDef("smoke", "🔥 Smoke Tests (end-to-end validation)"),
         ]
 
         # Full validation (everything)
         # Full validation prefers the full security scan over the lightweight variant
-        full_commit_checks = [
+        full_commit_checks: List[CheckDef] = [
             self.security_check if check == self.security_local_check else check
             for check in self.commit_checks
         ]
-        self.full_checks = full_commit_checks + [
+        self.full_checks: List[CheckDef] = full_commit_checks + [
             check for check in self.all_checks if check not in full_commit_checks
         ]
 
@@ -609,32 +632,111 @@ class QualityGateExecutor:
                     except Exception:  # nosec B110 - Process may already be dead
                         pass
 
+    def _is_server_running(self, port: int = 3001) -> bool:
+        """Check if the dev server is running on the specified port."""
+        import socket
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)
+                result = s.connect_ex(("localhost", port))
+                return result == 0
+        except Exception:
+            return False
+
+    def _ensure_server_running(self, checks_to_run: Sequence[CheckDef]) -> bool:
+        """Ensure dev server is running if checks require it.
+
+        Args:
+            checks_to_run: List of check tuples to examine
+
+        Returns:
+            True if server is ready (or not needed), False if server failed to start
+        """
+        # Checks that require the dev server
+        server_dependent_checks = {"frontend-check", "e2e", "smoke"}
+
+        # Extract check flags from tuples (handles both 2 and 3 element tuples)
+        check_flags = {check.flag for check in checks_to_run}
+
+        # Check if any server-dependent checks are in the list
+        needs_server = bool(check_flags & server_dependent_checks)
+
+        if not needs_server:
+            return True
+
+        # Check if server is already running
+        if self._is_server_running():
+            self.logger.info("✅ Dev server already running on port 3001")
+            return True
+
+        # Server not running, start it
+        self.logger.info("🚀 Starting dev server for frontend/E2E checks...")
+
+        try:
+            # Start server in background
+            process = subprocess.Popen(  # nosec
+                ["bash", "scripts/restart_server.sh", "dev"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            # Wait for server to be ready (max 30 seconds)
+            import time
+
+            max_wait = 30
+            start_time = time.time()
+
+            while time.time() - start_time < max_wait:
+                if self._is_server_running():
+                    self.logger.info(
+                        f"✅ Dev server started in {time.time() - start_time:.1f}s"
+                    )
+                    return True
+                time.sleep(0.5)
+
+            # Check if process failed
+            if process.poll() is not None:
+                _, stderr = process.communicate()
+                self.logger.error(f"❌ Server failed to start: {stderr}")
+                return False
+
+            self.logger.error(f"❌ Server failed to start within {max_wait}s")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"❌ Failed to start server: {e}")
+            return False
+
     def run_checks_parallel(
         self,
-        checks: List[Tuple[str, str]],
-        max_workers: int = None,  # Use all available CPU cores
+        checks: List[CheckDef],
+        max_workers: Optional[int] = None,  # Use all available CPU cores
         fail_fast: bool = True,
         verbose: bool = False,
     ) -> List[CheckResult]:
         """Run multiple checks in parallel using ThreadPoolExecutor."""
-        results = []
+        results: List[CheckResult] = []
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
 
         try:
             # Submit all checks
-            future_to_check = {
-                executor.submit(
-                    self.run_single_check, check_flag, check_name, verbose
-                ): (
-                    check_flag,
-                    check_name,
-                )
-                for check_flag, check_name in checks
-            }
+            # Build future_to_check mapping - checks can have optional custom functions
+            future_to_check: dict[concurrent.futures.Future[CheckResult], CheckDef] = {}
+            for check in checks:
+                if check.custom is not None:
+                    future = executor.submit(check.custom)
+                else:
+                    future = executor.submit(
+                        self.run_single_check, check.flag, check.name, verbose
+                    )
+                future_to_check[future] = check
 
             # Collect results as they complete
             for future in concurrent.futures.as_completed(future_to_check):
-                _, check_name = future_to_check[future]
+                check_info = future_to_check[future]
+                check_name = check_info.name
                 try:
                     result = future.result()
                     results.append(result)
@@ -817,9 +919,9 @@ class QualityGateExecutor:
 
     def _get_check_flag(self, result_name: str) -> str:
         """Get the command-line flag for a specific check result."""
-        for flag, name in self.all_checks:
-            if name == result_name:
-                return flag
+        for check in self.all_checks:
+            if check.name == result_name:
+                return check.flag
         return "unknown"
 
     def _format_success_summary(self) -> List[str]:
@@ -859,7 +961,7 @@ class QualityGateExecutor:
 
         return lines
 
-    def _extract_coverage_failure_reason(self, output: str) -> str:
+    def _extract_coverage_failure_reason(self, output: str) -> Optional[str]:
         """Extract coverage failure details from output."""
         output_lower = output.lower()
         if "coverage" not in output_lower:
@@ -938,7 +1040,7 @@ class QualityGateExecutor:
 
     def execute(
         self,
-        checks: List[str] = None,
+        checks: Optional[List[str]] = None,
         validation_type: ValidationType = ValidationType.COMMIT,
         fail_fast: bool = True,
     ) -> int:
@@ -962,10 +1064,21 @@ class QualityGateExecutor:
         except ValueError:
             return 1
 
+        # Ensure dev server is running if needed for frontend/E2E checks
+        if not self._ensure_server_running(checks_to_run):
+            self.logger.error(
+                "❌ Failed to start dev server. Frontend/E2E checks require a running server."
+            )
+            self.logger.info(
+                "💡 Try starting manually: bash scripts/restart_server.sh dev"
+            )
+            return 1
+
         start_time = time.time()
 
         # Run all checks in parallel (with or without fail-fast)
-        check_names = [flag for flag, _ in checks_to_run]
+        # Use indexing instead of unpacking - checks can be 2 or 3 element tuples
+        check_names = [check.flag for check in checks_to_run]
         if fail_fast:
             self.logger.info(
                 f"🚀 Running checks in parallel with fail-fast [{', '.join(check_names)}]"
@@ -989,15 +1102,13 @@ class QualityGateExecutor:
 
     def _determine_checks_to_run(
         self, checks: Optional[List[str]], validation_type: ValidationType
-    ) -> List[Tuple[str, str]]:
+    ) -> List[CheckDef]:
         """Determine which checks should run based on user input or validation type."""
         if checks is None:
             return self._checks_for_validation(validation_type)
         return self._checks_for_user_selected_checks(checks)
 
-    def _checks_for_validation(
-        self, validation_type: ValidationType
-    ) -> List[Tuple[str, str]]:
+    def _checks_for_validation(self, validation_type: ValidationType) -> List[CheckDef]:
         """Return the configured check list for a validation type."""
         if validation_type == ValidationType.COMMIT:
             self.logger.info(
@@ -1028,17 +1139,11 @@ class QualityGateExecutor:
         )
         return self.commit_checks
 
-    def _checks_for_user_selected_checks(
-        self, checks: List[str]
-    ) -> List[Tuple[str, str]]:
+    def _checks_for_user_selected_checks(self, checks: List[str]) -> List[CheckDef]:
         """Return configured checks for explicitly provided flags."""
-        available_checks = {}
-        for item in self.all_checks:
-            if len(item) == 3:
-                flag, name, _ = item
-            else:
-                flag, name = item
-            available_checks[flag] = (flag, name)
+        available_checks: dict[str, CheckDef] = {
+            check.flag: check for check in self.all_checks
+        }
 
         checks_to_run = []
         for check in checks:
@@ -1069,7 +1174,7 @@ class QualityGateExecutor:
         return sorted(slow_tests, key=lambda x: float(x.split("s")[0]), reverse=True)
 
 
-def _get_pr_context():
+def _get_pr_context() -> Tuple[Optional[int], Optional[str], Optional[str]]:
     """
     Get PR number and repository info from environment or git context.
 
@@ -1111,13 +1216,13 @@ def _get_pr_context():
         repo_data = json.loads(repo_result.stdout)
         owner = repo_data.get("owner", {}).get("login", "")
         name = repo_data.get("name", "")
-        return pr_number, owner, name
+        return int(pr_number), owner, name
     except:
         print("⚠️  Could not detect repository info")
         return None, None, None
 
 
-def _load_tracked_comments(pr_number):
+def _load_tracked_comments(pr_number: int) -> set[str]:
     """
     Load previously tracked comment IDs from file.
 
@@ -1138,7 +1243,7 @@ def _load_tracked_comments(pr_number):
     return set()
 
 
-def _save_tracked_comments(pr_number, comment_ids):
+def _save_tracked_comments(pr_number: int, comment_ids: set[str]) -> None:
     """
     Save tracked comment IDs to file.
 
@@ -1165,7 +1270,7 @@ def _save_tracked_comments(pr_number, comment_ids):
         print(f"⚠️  Could not save tracked comments: {e}")
 
 
-def resolve_review_thread(thread_id):
+def resolve_review_thread(thread_id: str) -> bool:
     """
     Resolve a review thread via GitHub GraphQL API.
 
@@ -1233,7 +1338,12 @@ def resolve_review_thread(thread_id):
         return False
 
 
-def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
+def reply_to_pr_comment(
+    comment_id: str,
+    body: str,
+    thread_id: Optional[str] = None,
+    resolve_thread: bool = False,
+) -> bool:
     """
     Reply to a PR comment and optionally resolve the thread.
 
@@ -1287,7 +1397,7 @@ def reply_to_pr_comment(comment_id, body, thread_id=None, resolve_thread=False):
         return False
 
 
-def check_pr_comments():
+def check_pr_comments() -> Tuple[List[Any], List[Any]]:
     """
     Check for unresolved PR comments (both review threads and general PR comments).
 
@@ -1413,7 +1523,11 @@ def check_pr_comments():
         new_comments = [c for c in all_unresolved if c.get("id") not in tracked_ids]
 
         # Update tracking file with all current comment IDs
-        current_ids = {c.get("id") for c in all_unresolved if c.get("id")}
+        current_ids: set[str] = set()
+        for c in all_unresolved:
+            comment_id = c.get("id")
+            if comment_id is not None and isinstance(comment_id, str):
+                current_ids.add(comment_id)
         if current_ids:
             _save_tracked_comments(pr_number, current_ids | tracked_ids)
 
@@ -1424,11 +1538,13 @@ def check_pr_comments():
         return [], []
 
 
-def _parse_rollup_items(statuses):
+def _parse_rollup_items(
+    statuses: List[Any],
+) -> Tuple[List[str], List[str], List[str]]:
     """Parse statusCheckRollup items to categorize jobs."""
-    failed = []
-    in_progress = []
-    pending = []
+    failed: List[str] = []
+    in_progress: List[str] = []
+    pending: List[str] = []
 
     for status in statuses:
         state = status.get("state", "").lower() if status.get("state") else None
@@ -1455,7 +1571,9 @@ def _parse_rollup_items(statuses):
     return failed, in_progress, pending
 
 
-def _get_ci_status_from_rollup(pr_number):
+def _get_ci_status_from_rollup(
+    pr_number: int,
+) -> Optional[Any]:
     """Try to get CI status from GitHub statusCheckRollup."""
     try:
         import json
@@ -1496,7 +1614,7 @@ def _get_ci_status_from_rollup(pr_number):
     return None
 
 
-def _get_ci_status_fallback(pr_number, owner, name):
+def _get_ci_status_fallback(pr_number: int, owner: str, name: str) -> Optional[Any]:
     """Fallback to workflow runs API if rollup fails."""
     import json
     import subprocess  # nosec
@@ -1554,7 +1672,7 @@ def _get_ci_status_fallback(pr_number, owner, name):
     }
 
 
-def check_ci_status():
+def check_ci_status() -> Optional[Any]:
     """
     Check GitHub Actions CI status for the current PR.
 
@@ -1563,7 +1681,7 @@ def check_ci_status():
     """
     try:
         pr_number, owner, name = _get_pr_context()
-        if not pr_number:
+        if not pr_number or not owner or not name:
             return {
                 "all_passed": None,
                 "failed_jobs": [],
@@ -1603,7 +1721,7 @@ def check_ci_status():
         }
 
 
-def _get_current_commit_sha():
+def _get_current_commit_sha() -> Optional[str]:
     """Get the current git commit SHA."""
     import subprocess  # nosec
 
@@ -1619,9 +1737,14 @@ def _get_current_commit_sha():
         return "unknown"
 
 
-def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
+def _save_check_error_logs(
+    failed_checks: List[CheckResult],
+    pr_number: int,
+    commit_sha: str,
+    timestamp: str,
+) -> dict[str, str]:
     """Save full error output for each failed check to log files."""
-    error_log_files = {}
+    error_log_files: dict[str, str] = {}
     for check in failed_checks:
         check_flag = _get_check_flag_for_result(check.name)
         error_log_file = f"logs/pr_{pr_number}_error_{check_flag}_{commit_sha[:8]}.log"
@@ -1651,8 +1774,12 @@ def _save_check_error_logs(failed_checks, pr_number, commit_sha, timestamp):
 
 
 def _write_checklist_ci_section(
-    f, ci_status, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    ci_status: Any,
+    checklist_state: Any,
+    checklist_items: List[dict[str, Any]],
+    item_number: int,
+) -> int:
     """Write CI Status section to the checklist."""
     if ci_status.get("all_passed") is not False:
         return item_number
@@ -1693,7 +1820,7 @@ def _write_checklist_ci_section(
     return item_number + 1
 
 
-def _resolve_comment_location(comment):
+def _resolve_comment_location(comment: Any) -> str:
     """Resolve location string for a comment."""
     if comment.get("path") and comment.get("line"):
         return f"`{comment['path']}:{comment['line']}`"
@@ -1703,8 +1830,13 @@ def _resolve_comment_location(comment):
 
 
 def _write_single_comment_item(
-    f, comment, location, is_new, checklist_state, checklist_items
-):
+    f: Any,
+    comment: Any,
+    location: str,
+    is_new: bool,
+    checklist_state: Any,
+    checklist_items: List[Any],
+) -> None:
     """Write a single comment item to the checklist."""
     author = comment["author"]
     body = comment["body"]
@@ -1729,8 +1861,12 @@ def _write_single_comment_item(
 
 
 def _write_checklist_comments_section(
-    f, comments_data, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    checklist_state: Any,
+    checklist_items: List[Any],
+    item_number: int,
+) -> int:
     """Write PR Comments section to the checklist."""
     all_comments, new_comments = comments_data
     if not all_comments:
@@ -1772,8 +1908,13 @@ def _write_checklist_comments_section(
 
 
 def _write_checklist_quality_section(
-    f, failed_checks, error_log_files, checklist_state, checklist_items, item_number
-):
+    f: Any,
+    failed_checks: List[CheckResult],
+    error_log_files: dict[str, str],
+    checklist_state: Any,
+    checklist_items: List[Any],
+    item_number: int,
+) -> int:
     """Write Quality Gate Failures section to the checklist."""
     if not failed_checks:
         return item_number
@@ -1814,8 +1955,13 @@ def _write_checklist_quality_section(
 
 
 def _write_report_summary(
-    f, checklist_items, ci_status, comments_data, passed_checks, failed_checks
-):
+    f: Any,
+    checklist_items: List[Any],
+    ci_status: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    passed_checks: List[CheckResult],
+    failed_checks: List[CheckResult],
+) -> None:
     """Write the report summary section."""
     all_comments, new_comments = comments_data
     f.write("---\n\n")
@@ -1834,7 +1980,12 @@ def _write_report_summary(
     )
 
 
-def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
+def _write_detailed_sections(
+    f: Any,
+    ci_status: Any,
+    failed_checks: List[CheckResult],
+    error_log_files: dict[str, str],
+) -> None:
     """Write the detailed information sections."""
     f.write("---\n\n")
     f.write("## 📋 Detailed Information\n\n")
@@ -1883,8 +2034,11 @@ def _write_detailed_sections(f, ci_status, failed_checks, error_log_files):
 
 
 def generate_pr_issues_report(
-    ci_status, comments_data, quality_check_results, pr_number
-):
+    ci_status: Any,
+    comments_data: Tuple[List[Any], List[Any]],
+    quality_check_results: List[CheckResult],
+    pr_number: int,
+) -> dict[str, Any]:
     """
     Generate a comprehensive PR issues report with checklist format.
 
@@ -1902,7 +2056,7 @@ def generate_pr_issues_report(
     from datetime import datetime
 
     all_comments, new_comments = comments_data
-    commit_sha = _get_current_commit_sha()
+    commit_sha = _get_current_commit_sha() or "unknown"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # Ensure logs directory exists
@@ -1925,10 +2079,10 @@ def generate_pr_issues_report(
 
     # Save full error output for each failed check
     error_log_files = _save_check_error_logs(
-        failed_checks, pr_number, commit_sha, timestamp
+        failed_checks, pr_number, commit_sha or "unknown", timestamp
     )
 
-    checklist_items = []
+    checklist_items: List[dict[str, Any]] = []
 
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(f"# Outstanding PR Issues Report\n\n")
@@ -1985,13 +2139,15 @@ def _get_check_flag_for_result(result_name: str) -> str:
     """Get the command-line flag for a specific check result name."""
     # Map of result names to check flags
     executor = QualityGateExecutor()
-    for flag, name in executor.all_checks:
+    for check in executor.all_checks:
+        flag = check.flag
+        name = check.name
         if name == result_name:
             return flag
     return "unknown"
 
 
-def _get_item_status(checklist_state, item_text):
+def _get_item_status(checklist_state: Any, item_text: str) -> str:
     """Get status of a checklist item from state."""
     if not checklist_state or "items" not in checklist_state:
         return "pending"
@@ -2004,7 +2160,9 @@ def _get_item_status(checklist_state, item_text):
     return "pending"
 
 
-def write_pr_comments_scratch(comments, new_comments=None):
+def write_pr_comments_scratch(
+    comments: List[Any], new_comments: Optional[List[Any]] = None
+) -> None:
     """Write detailed PR comments to scratch file for AI analysis."""
     try:
         with open("pr_comments_scratch.md", "w") as f:
@@ -2080,11 +2238,11 @@ def write_pr_comments_scratch(comments, new_comments=None):
         print(f"⚠️  Could not write scratch file: {e}")
 
 
-def _handle_pr_validation(args) -> int:
+def _handle_pr_validation(args: Any) -> Optional[int]:
     """Handle PR validation with comprehensive batch reporting.
 
     Returns:
-        Exit code (0 for success, 1 for failures)
+        Exit code (0 for success, 1 for failures, None to fall through)
     """
     pr_number, _, _ = _get_pr_context()
     if not pr_number:
@@ -2101,10 +2259,13 @@ def _handle_pr_validation(args) -> int:
     executor = QualityGateExecutor(verbose=args.verbose)
 
     # Determine which checks to run
+    checks_to_run: List[CheckDef]
     if args.checks is None:
         checks_to_run = executor.pr_checks
     else:
-        available_checks = {flag: (flag, name) for flag, name in executor.all_checks}
+        available_checks: dict[str, CheckDef] = {
+            check.flag: check for check in executor.all_checks
+        }
         checks_to_run = [
             available_checks[c] for c in args.checks if c in available_checks
         ]
@@ -2218,7 +2379,7 @@ def _print_pr_summary(report: dict) -> None:
     print()
 
 
-def main():
+def main() -> None:
     """Main entry point for the parallel quality gate executor."""
     parser = argparse.ArgumentParser(
         description="LoopCloser Quality Gate - Run maintainability checks in parallel with fail-fast",

@@ -20,7 +20,7 @@ from src.database.database_service import (
 from src.services.export_service import ExportConfig, ExportService
 
 
-def test_export():
+def test_export() -> bool:
     """Test export functionality with simple test data."""
 
     print("🧪 Testing Export Service")

@@ -393,7 +393,7 @@ class PasswordService:
         """
         is_locked, locked_until = PasswordService.is_account_locked(email)
 
-        if is_locked:
+        if is_locked and locked_until:
             minutes_remaining = int(
                 (locked_until - get_current_time()).total_seconds() / 60
             )

@@ -18,7 +18,7 @@ import src.database.database_service as database_service
 from src.services.export_service import ExportConfig, ExportService
 
 
-def main():
+def main() -> bool:
     print("📦 Exporting seeded database to canonical CSV format...")
 
     # Create service

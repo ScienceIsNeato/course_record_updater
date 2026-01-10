@@ -8,9 +8,10 @@ This keeps CEI-specific logic separate from the generic import system.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
+from openpyxl.worksheet.worksheet import Worksheet
 
 from src.models.models import validate_course_number
 
@@ -457,7 +458,7 @@ class CEIExcelAdapter(FileBaseAdapter):
     MAX_FILE_SIZE_MB = 500
     MAX_RECORDS_TO_PROCESS = 500000
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize CEI Excel adapter with format specifications."""
         super().__init__()
 
@@ -550,7 +551,9 @@ class CEIExcelAdapter(FileBaseAdapter):
 
         return True, "Basic file validation passed"
 
-    def _read_excel_sample(self, file_path: str):
+    def _read_excel_sample(
+        self, file_path: str
+    ) -> Union[pd.DataFrame, Tuple[bool, str]]:
         """Read Excel file sample for validation."""
         try:
             df = pd.read_excel(file_path, nrows=10)  # Sample first 10 rows
@@ -560,7 +563,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         except Exception as e:
             return False, f"Cannot read Excel file: {str(e)}"
 
-    def _check_format_compatibility(self, df) -> Tuple[bool, str]:
+    def _check_format_compatibility(self, df: pd.DataFrame) -> Tuple[bool, str]:
         """Check if DataFrame matches any supported CEI format."""
         # Check original format
         has_original_required = all(
@@ -592,7 +595,7 @@ class CEIExcelAdapter(FileBaseAdapter):
         else:
             return False, self._build_format_error_message(df)
 
-    def _build_format_error_message(self, df) -> str:
+    def _build_format_error_message(self, df: pd.DataFrame) -> str:
         """Build detailed error message for format mismatch."""
         missing_original_required = [
             col for col in self.original_format_required if col not in df.columns
@@ -631,7 +634,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             f"Missing for hybrid format: {missing_hybrid}."
         )
 
-    def _validate_data_patterns(self, df, format_type: str) -> List[str]:
+    def _validate_data_patterns(self, df: pd.DataFrame, format_type: str) -> List[str]:
         """Validate data patterns in key columns."""
         validation_errors = []
 
@@ -653,7 +656,7 @@ class CEIExcelAdapter(FileBaseAdapter):
 
         return validation_errors
 
-    def _validate_course_column(self, df) -> Optional[str]:
+    def _validate_course_column(self, df: pd.DataFrame) -> Optional[str]:
         """Validate course column data patterns."""
         if "course" not in df.columns:
             return None
@@ -668,7 +671,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             return "No valid course numbers found"
         return None
 
-    def _validate_term_column(self, df) -> Optional[str]:
+    def _validate_term_column(self, df: pd.DataFrame) -> Optional[str]:
         """Validate term column data patterns for original format."""
         if "effterm_c" not in df.columns:
             return None
@@ -681,7 +684,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             return "No valid term codes found (expected format: 2024FA, 2025SP)"
         return None
 
-    def _validate_student_count_column(self, df) -> Optional[str]:
+    def _validate_student_count_column(self, df: pd.DataFrame) -> Optional[str]:
         """Validate student count column data patterns."""
         student_col = None
         if ENROLLED_STUDENTS_COLUMN in df.columns:
@@ -991,6 +994,7 @@ class CEIExcelAdapter(FileBaseAdapter):
             # Create workbook
             workbook = Workbook()
             worksheet = workbook.active
+            assert worksheet is not None, "Workbook should have an active worksheet"
             worksheet.title = "CEI Export Data"
 
             # Build CEI-specific records by combining the data
@@ -1024,10 +1028,10 @@ class CEIExcelAdapter(FileBaseAdapter):
                 worksheet.cell(row=row, column=6, value=record.get("email", ""))
 
             # Auto-size columns
+            from openpyxl.utils import get_column_letter
+
             for col in range(1, len(headers) + 1):
-                worksheet.column_dimensions[
-                    worksheet.cell(row=1, column=col).column_letter
-                ].width = 15
+                worksheet.column_dimensions[get_column_letter(col)].width = 15
 
             # Save the workbook
             workbook.save(output_path)

@@ -1038,12 +1038,12 @@ class TestResendVerificationEndpoints:
         with app.test_client() as client:
             response = client.post("/api/auth/resend-verification")
 
-            assert (
-                response.status_code == 500
-            )  # Flask returns 500 for UnsupportedMediaType
+            # API uses get_json(silent=True) or {} so missing JSON returns empty dict
+            # This results in 400 "Email address is required" not 500
+            assert response.status_code == 400
             data = json.loads(response.data)
             assert data["success"] is False
-            assert "Failed to resend verification email" in data["error"]
+            assert "Email address is required" in data["error"]
 
     def test_resend_verification_missing_email(self):
         """Test resend verification with missing email."""

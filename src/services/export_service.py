@@ -54,7 +54,7 @@ class ExportResult:
     warnings: Optional[List[str]] = None
     export_timestamp: Optional[datetime] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.errors is None:
             self.errors = []
         if self.warnings is None:
@@ -66,7 +66,7 @@ class ExportResult:
 class ExportService:
     """Service for exporting database records to institution-specific formats using adapter registry."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.registry = get_adapter_registry()
 
     def validate_export_access(
@@ -85,7 +85,11 @@ class ExportService:
         try:
             # Check if user has access to this adapter
             user_role = user.get("role")
+            if not user_role or not isinstance(user_role, str):
+                return False, "User role is required"
             user_institution_id = user.get("institution_id")
+            if not user_institution_id or not isinstance(user_institution_id, str):
+                return False, "User institution ID is required"
 
             if not self.registry.validate_adapter_access(
                 adapter_id, user_role, user_institution_id

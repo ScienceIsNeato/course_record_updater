@@ -1,5 +1,6 @@
 import importlib
 import os
+from typing import Any, List, Optional
 
 import docx
 
@@ -26,7 +27,7 @@ class FileAdapterDispatcher:
     # Files to exclude during discovery
     EXCLUDE_FILES = ["__init__.py", "base_adapter.py", "file_adapter_dispatcher.py"]
 
-    def __init__(self, use_base_validation=True):
+    def __init__(self, use_base_validation: bool = True) -> None:
         """
         Initializes the dispatcher.
 
@@ -35,14 +36,13 @@ class FileAdapterDispatcher:
                                  on the data returned by the specific file adapter.
         """
         self._use_base_validation = use_base_validation
-        if use_base_validation:
-            self._base_validator = BaseAdapter()  # Instantiate for validation
-        else:
-            self._base_validator = None
+        self._base_validator: Optional[BaseAdapter] = (
+            BaseAdapter() if use_base_validation else None
+        )
         # Cache discovered adapters maybe?
         # self._available_adapters = self.discover_adapters()
 
-    def discover_adapters(self):
+    def discover_adapters(self) -> List[str]:
         """
         Finds available adapter modules in the adapter directory.
 
@@ -77,7 +77,9 @@ class FileAdapterDispatcher:
         logger.info(f"Discovered adapters: {adapter_names}")
         return adapter_names
 
-    def process_file(self, document: docx.document.Document, adapter_name: str):
+    def process_file(
+        self, document: docx.document.Document, adapter_name: str
+    ) -> List[dict[str, Any]]:
         """
         Loads the specified adapter, calls its parse function, and optionally validates.
 
@@ -112,7 +114,7 @@ class FileAdapterDispatcher:
                 f"Error processing with adapter '{adapter_name}': {e}"
             )
 
-    def _load_adapter(self, adapter_name: str):
+    def _load_adapter(self, adapter_name: str) -> Any:
         """Load and instantiate the specified adapter."""
         # Dynamically import the adapter module
         module_path = f"src.adapters.{adapter_name}"
@@ -140,7 +142,9 @@ class FileAdapterDispatcher:
 
         return adapter_instance
 
-    def _parse_document(self, adapter_instance, document: docx.document.Document):
+    def _parse_document(
+        self, adapter_instance: Any, document: docx.document.Document
+    ) -> List[dict[str, Any]]:
         """Parse the document using the adapter instance."""
         class_name = adapter_instance.__class__.__name__
         logger.info(f"Parsing document with {class_name}...")
@@ -150,7 +154,9 @@ class FileAdapterDispatcher:
 
         return parsed_data_list
 
-    def _apply_validation(self, parsed_data_list):
+    def _apply_validation(
+        self, parsed_data_list: List[dict[str, Any]]
+    ) -> List[dict[str, Any]]:
         """Apply base validation if requested."""
         if not (self._use_base_validation and self._base_validator):
             return parsed_data_list  # Return raw parsed data

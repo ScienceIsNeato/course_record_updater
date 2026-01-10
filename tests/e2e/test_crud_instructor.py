@@ -83,8 +83,8 @@ def test_tc_crud_inst_001_update_own_profile(
     instructor_page.wait_for_selector("#editUserModal", state="visible")
 
     # Update first and last name
-    instructor_page.fill("#editUserFirstName", "Updated")
-    instructor_page.fill("#editUserLastName", "Instructor")
+    instructor_page.fill("#editFirstName", "Updated")
+    instructor_page.fill("#editLastName", "Instructor")
 
     # Click Save Changes
     instructor_page.click("#editUserModal button:has-text('Save Changes')")

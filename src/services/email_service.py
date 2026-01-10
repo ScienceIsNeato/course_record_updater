@@ -17,10 +17,10 @@ Features:
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Mapping, Optional, Tuple
 from urllib.parse import urljoin
 
-from flask import current_app
+from flask import Flask, current_app
 
 # Import email provider infrastructure
 from src.email_providers import create_email_provider
@@ -97,7 +97,7 @@ class EmailService:
         return False
 
     @staticmethod
-    def configure_app(app) -> None:
+    def configure_app(app: Flask) -> None:
         """
         Configure Flask app with email settings
 
@@ -489,15 +489,15 @@ class EmailService:
         Determine the log file destination for email previews.
         """
         try:
-            config = current_app.config
+            cfg: "Mapping[str, Any]" = current_app.config
         except RuntimeError:
-            config = {}
+            cfg = {}
 
-        log_override = config.get("EMAIL_LOG_PATH")
+        log_override = cfg.get("EMAIL_LOG_PATH")
         if log_override:
             return Path(log_override)
 
-        log_dir = config.get("LOG_DIR")
+        log_dir = cfg.get("LOG_DIR")
         if log_dir:
             return Path(log_dir) / "email.log"
 

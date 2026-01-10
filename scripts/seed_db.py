@@ -13,7 +13,7 @@ import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -50,8 +50,8 @@ class BaselineSeeder(ABC):
     See SEED_DB_REFACTOR_PLAN.md for migration strategy.
     """
 
-    def __init__(self):
-        self.created = {
+    def __init__(self) -> None:
+        self.created: Dict[str, List[Any]] = {
             "institutions": [],
             "users": [],
             "programs": [],
@@ -59,7 +59,18 @@ class BaselineSeeder(ABC):
             "courses": [],
         }
 
-    def log(self, message: str):
+    @staticmethod
+    def _coerce_to_str(value: Any) -> Optional[str]:
+        """Return a string representation for IDs when possible."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        if isinstance(value, int):
+            return str(value)
+        return None
+
+    def log(self, message: str) -> None:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
@@ -195,7 +206,7 @@ class BaselineSeeder(ABC):
 
     def create_programs_from_manifest(
         self,
-        institution_id_or_ids,
+        institution_id_or_ids: Union[str, List[str]],
         programs_data: List[Dict[str, Any]],
     ) -> List[str]:
         """
@@ -209,11 +220,18 @@ class BaselineSeeder(ABC):
             List of created program IDs
         """
         # Normalize to list
-        institution_ids = (
+        raw_institution_ids = (
             institution_id_or_ids
             if isinstance(institution_id_or_ids, list)
             else [institution_id_or_ids]
         )
+        institution_ids: List[str] = []
+        for inst_id in raw_institution_ids:
+            normalized = self._coerce_to_str(inst_id)
+            if normalized:
+                institution_ids.append(normalized)
+        if not institution_ids:
+            return []
 
         program_ids = []
         for prog_data in programs_data:
@@ -242,9 +260,9 @@ class BaselineSeeder(ABC):
 
     def create_courses_from_manifest(
         self,
-        institution_id_or_ids,
+        institution_id_or_ids: Union[str, List[str]],
         courses_data: List[Dict[str, Any]],
-        program_ids_or_map,
+        program_ids_or_map: Union[List[str], Dict[str, str]],
     ) -> List[str]:
         """
         Create courses from manifest data.
@@ -258,19 +276,28 @@ class BaselineSeeder(ABC):
             List of created course IDs
         """
         # Normalize institutions
-        institution_ids = (
+        raw_institution_ids = (
             institution_id_or_ids
             if isinstance(institution_id_or_ids, list)
             else [institution_id_or_ids]
         )
+        institution_ids: List[str] = []
+        for inst_id in raw_institution_ids:
+            normalized = self._coerce_to_str(inst_id)
+            if normalized:
+                institution_ids.append(normalized)
+        if not institution_ids:
+            return []
 
         # Normalize program reference - can be dict (code->id) or list (by index)
-        program_map = (
-            program_ids_or_map if isinstance(program_ids_or_map, dict) else None
-        )
-        program_list = (
-            program_ids_or_map if isinstance(program_ids_or_map, list) else None
-        )
+        if isinstance(program_ids_or_map, dict):
+            program_map: Optional[Dict[str, str]] = cast(
+                Dict[str, str], program_ids_or_map
+            )
+            program_list: Optional[List[str]] = None
+        else:
+            program_map = None
+            program_list = cast(List[str], program_ids_or_map)
 
         course_ids = []
         for course_data in courses_data:
@@ -291,9 +318,11 @@ class BaselineSeeder(ABC):
 
             # Get institution from program if we have multiple
             program = database_service.db.get_program_by_id(program_id)
-            institution_id = (
-                program.get("institution_id") if program else institution_ids[0]
+            institution_id = self._coerce_to_str(
+                program.get("institution_id") if program else None
             )
+            if institution_id is None:
+                institution_id = institution_ids[0]
 
             schema = Course.create_schema(
                 course_number=course_data["code"],
@@ -321,9 +350,9 @@ class BaselineSeeder(ABC):
 
     def create_users_from_manifest(
         self,
-        institution_id_or_ids,
+        institution_id_or_ids: Union[str, List[str]],
         users_data: List[Dict[str, Any]],
-        program_ids_or_map,
+        program_ids_or_map: Union[Dict[str, str], List[str]],
         default_password_hash: str,
     ) -> List[str]:
         """
@@ -372,7 +401,7 @@ class BaselineSeeder(ABC):
 
             # Site admins use special institution ID
             if role == "site_admin":
-                inst_id = SITE_ADMIN_INSTITUTION_ID
+                inst_id = str(SITE_ADMIN_INSTITUTION_ID)
             else:
                 inst_id = (
                     institution_ids[inst_idx]
@@ -474,7 +503,7 @@ class BaselineSeeder(ABC):
     def create_offerings_from_manifest(
         self,
         institution_id: str,
-        term_id_or_map,
+        term_id_or_map: Union[str, Dict[str, str]],
         offerings_data: List[Dict[str, Any]],
         course_map: Dict[str, str],
         instructor_ids: List[str],
@@ -534,18 +563,20 @@ class BaselineSeeder(ABC):
     def _resolve_course_id_from_manifest(
         self, offering_data: Dict[str, Any], course_map: Dict[str, str]
     ) -> Optional[str]:
-        course_code = offering_data.get("course_code")
-        course_id = course_map.get(course_code)
-        if course_id:
-            return course_id
+        course_code = self._coerce_to_str(offering_data.get("course_code"))
+        if course_code:
+            course_id = course_map.get(course_code)
+            if course_id:
+                return course_id
 
-        course_id = offering_data.get("course_id")
-        if course_id:
-            return course_id
+        course_id_from_manifest = self._coerce_to_str(offering_data.get("course_id"))
+        if course_id_from_manifest:
+            return course_id_from_manifest
 
-        for code, cid in course_map.items():
-            if code == course_code:
-                return cid
+        if course_code is not None:
+            for code, cid in course_map.items():
+                if code == course_code:
+                    return cid
         self.log(f"   ⚠️  Course code '{course_code}' not found, skipping offering")
         return None
 
@@ -653,8 +684,9 @@ class BaselineSeeder(ABC):
             if not course:
                 continue
             course_map[cid] = course
-            if course.get("course_number"):
-                course_map[course.get("course_number")] = course
+            course_number = self._coerce_to_str(course.get("course_number"))
+            if course_number:
+                course_map[course_number] = course
         return course_map
 
     def _create_clo_templates(
@@ -667,19 +699,22 @@ class BaselineSeeder(ABC):
 
         clo_count = 0
         for course in course_map.values():
-            course_num = course.get("course_number", "")
+            course_num = self._coerce_to_str(course.get("course_number")) or ""
             prefix = course_num.split("-")[0] if "-" in course_num else ""
             templates = clo_templates.get(prefix, [])
             if not templates:
                 continue
-            existing = database_service.db.get_course_outcomes(course.get("id"))
+            course_id = self._coerce_to_str(course.get("id") or course.get("course_id"))
+            if not course_id:
+                continue
+            existing = database_service.db.get_course_outcomes(course_id)
             existing_numbers = {str(c.get("clo_number")) for c in existing or []}
             for template in templates:
                 template_num = str(template["num"])
                 if template_num in existing_numbers:
                     continue
                 schema = CourseOutcome.create_schema(
-                    course_id=course.get("id") or course.get("course_id"),
+                    course_id=course_id,
                     clo_number=template_num,
                     description=template["desc"],
                     assessment_method=template["method"],
@@ -709,7 +744,14 @@ class BaselineSeeder(ABC):
                     f"   ⚠️  Target course not found for CLO #{clo_data.get('clo_number')}"
                 )
                 continue
-            target_id = target_course.get("id") or target_course.get("course_id")
+            target_id = self._coerce_to_str(
+                target_course.get("id") or target_course.get("course_id")
+            )
+            if not target_id:
+                self.log(
+                    f"   ⚠️  Missing course ID for CLO #{clo_data.get('clo_number')}, skipping"
+                )
+                continue
             status_str = clo_data.get("status", "assigned")
             status_enum, approval_status = status_lookup.get(
                 status_str, (CLOStatus.ASSIGNED, None)
@@ -800,8 +842,8 @@ class BaselineSeeder(ABC):
         course_ids: List[str],
         course_map: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
-        course_code = clo_data.get("course_code")
-        target_course = course_map.get(course_code)
+        course_code = self._coerce_to_str(clo_data.get("course_code"))
+        target_course = course_map.get(course_code) if course_code else None
         if not target_course and "course_idx" in clo_data:
             idx = clo_data["course_idx"]
             if 0 <= idx < len(course_ids):
@@ -818,7 +860,8 @@ class BaselineSeeder(ABC):
         assessment_tool: Optional[str],
     ) -> Dict[str, Any]:
         updates: Dict[str, Any] = {}
-        if status_enum and status_enum.name != "ASSIGNED":
+        status_name = status_enum.name if hasattr(status_enum, "name") else status_enum
+        if status_enum and status_name != "ASSIGNED":
             updates["status"] = status_enum
         if approval_status:
             updates["approval_status"] = approval_status
@@ -849,11 +892,13 @@ class BaselineSeeder(ABC):
         students_passed: Optional[int],
         assessment_tool: Optional[str],
     ) -> Dict[str, Any]:
+        description = self._coerce_to_str(clo_data.get("description")) or ""
+        assessment_method = self._coerce_to_str(clo_data.get("assessment_method")) or ""
         schema = CourseOutcome.create_schema(
             course_id=course_id,
             clo_number=str(clo_data.get("clo_number")),
-            description=clo_data.get("description"),
-            assessment_method=clo_data.get("assessment_method"),
+            description=description,
+            assessment_method=assessment_method,
         )
         schema["status"] = status_enum
         if approval_status:
@@ -875,7 +920,7 @@ class BaselineSeeder(ABC):
         return schema
 
     @abstractmethod
-    def seed(self):
+    def seed(self) -> bool:
         """Implement seeding logic in subclasses"""
         pass
 
@@ -890,15 +935,15 @@ class BaselineTestSeeder(BaselineSeeder):
 
     DEFAULT_MANIFEST_PATH = "tests/fixtures/baseline_test_manifest.json"
 
-    def __init__(self, manifest_path=None):
+    def __init__(self, manifest_path: Optional[str] = None) -> None:
         super().__init__()
         self.manifest_path = manifest_path
 
-    def seed(self):
+    def seed(self) -> bool:
         """Implementation of abstract seed method"""
         return self.seed_baseline()
 
-    def _get_manifest_path(self):
+    def _get_manifest_path(self) -> str:
         """Get the manifest path, relative to project root"""
         if self.manifest_path:
             return self.manifest_path
@@ -907,7 +952,7 @@ class BaselineTestSeeder(BaselineSeeder):
         project_root = os.path.dirname(script_dir)
         return os.path.join(project_root, self.DEFAULT_MANIFEST_PATH)
 
-    def seed_baseline(self, manifest_data=None):
+    def seed_baseline(self, manifest_data: Optional[Dict[str, Any]] = None) -> bool:
         """Seed baseline data from manifest - REQUIRED"""
         self.log("🌱 Seeding baseline E2E infrastructure...")
 
@@ -1003,7 +1048,7 @@ class BaselineTestSeeder(BaselineSeeder):
         self.print_summary()
         return True
 
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print seeding summary"""
         self.log("")
         self.log("📊 Summary:")
@@ -1024,11 +1069,11 @@ class DatabaseSeeder:
     to BaselineTestSeeder.seed_baseline() for E2E tests. This provides backward compatibility.
     """
 
-    def __init__(self, verbose=True):
+    def __init__(self, verbose: bool = True) -> None:
         self.seeder = BaselineTestSeeder()
         self.verbose = verbose
 
-    def seed_full_dataset(self):
+    def seed_full_dataset(self) -> bool:
         """Seed the full baseline dataset (compatibility method)"""
         return self.seeder.seed_baseline()
 
@@ -1043,20 +1088,20 @@ class DemoSeeder(BaselineSeeder):
 
     DEFAULT_MANIFEST_PATH = "demos/full_semester_manifest.json"
 
-    def __init__(self, manifest_path=None):
+    def __init__(self, manifest_path: Optional[str] = None) -> None:
         super().__init__()
         self.manifest_path = manifest_path
-        self._manifest_cache = None
+        self._manifest_cache: Optional[Dict[str, Any]] = None
 
-    def seed(self):
+    def seed(self) -> bool:
         """Implementation of abstract seed method - calls seed_demo()"""
         return self.seed_demo()
 
-    def log(self, message: str):
+    def log(self, message: str) -> None:
         """Log with [SEED] prefix"""
         print(f"[SEED] {message}")
 
-    def load_demo_manifest(self):
+    def load_demo_manifest(self) -> Dict[str, Any]:
         """Load demo data from external JSON (cached)"""
         if self._manifest_cache is not None:
             return self._manifest_cache
@@ -1084,7 +1129,7 @@ class DemoSeeder(BaselineSeeder):
             self._manifest_cache = {}
             return {}
 
-    def seed_demo(self):
+    def seed_demo(self) -> bool:
         """Seed complete data for product demo - manifest required."""
         self.log("🎬 Seeding demo environment...")
 
@@ -1177,7 +1222,7 @@ class DemoSeeder(BaselineSeeder):
         self.print_summary()
         return True
 
-    def print_summary(self):
+    def print_summary(self) -> None:
         """Print demo seeding summary"""
         self.log("")
         self.log("📊 Demo Environment Ready:")
@@ -1196,7 +1241,7 @@ class DemoSeeder(BaselineSeeder):
         self.log("   3. Login with the credentials above")
 
 
-def main():
+def main() -> None:
     """Main seeding entry point"""
     parser = argparse.ArgumentParser(
         description="Seed baseline E2E test data",
@@ -1273,21 +1318,21 @@ def main():
     globals()["hash_password"] = hash_password
 
     if args.demo:
-        seeder = DemoSeeder(manifest_path=args.manifest)
+        demo_seeder = DemoSeeder(manifest_path=args.manifest)
 
         if args.clear:
-            seeder.log("🧹 Clearing database...")
+            demo_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
 
             reset_database()
 
-        success = seeder.seed_demo()
+        success = demo_seeder.seed_demo()
         sys.exit(0 if success else 1)
     else:
-        seeder = BaselineTestSeeder()
+        baseline_seeder = BaselineTestSeeder()
 
         if args.clear:
-            seeder.log("🧹 Clearing database...")
+            baseline_seeder.log("🧹 Clearing database...")
             from src.database.database_service import reset_database
 
             reset_database()
@@ -1298,12 +1343,12 @@ def main():
             try:
                 with open(args.manifest, "r") as f:
                     manifest_data = json.load(f)
-                seeder.log(f"📄 Loaded custom manifest: {args.manifest}")
+                baseline_seeder.log(f"📄 Loaded custom manifest: {args.manifest}")
             except Exception as e:
                 print(f"❌ Failed to load manifest: {e}")
                 sys.exit(1)
 
-        success = seeder.seed_baseline(manifest_data)
+        success = baseline_seeder.seed_baseline(manifest_data)
         sys.exit(0 if success else 1)
 
 

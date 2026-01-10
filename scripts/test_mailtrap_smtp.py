@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.email_providers.email_manager import EmailManager
 
 
-def test_mailtrap_api():
+def test_mailtrap_api() -> bool:
     """Test Mailtrap API by sending verification emails"""
 
     print("\n🔍 Testing Mailtrap API with EmailManager...")

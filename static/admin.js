@@ -313,7 +313,7 @@ async function loadPrograms() {
       }
     }
   } catch (error) {
-    console.error("Error loading programs:", error); // eslint-disable-line no-console
+    console.warn("Error loading programs:", error); // eslint-disable-line no-console
   }
 }
 

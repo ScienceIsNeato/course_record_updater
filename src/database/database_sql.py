@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Any, Iterator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -17,6 +17,7 @@ class SQLiteService:
 
     def __init__(self, db_path: str | None = None) -> None:
         db_url = db_path or os.getenv("DATABASE_URL", "sqlite:///course_records.db")
+        assert db_url is not None, "DATABASE_URL must be set"
         connect_args = (
             {"check_same_thread": False} if db_url.startswith("sqlite") else {}
         )
@@ -28,7 +29,7 @@ class SQLiteService:
             sessionmaker(bind=self.engine, expire_on_commit=False, autoflush=False)
         )
 
-    def get_session(self):
+    def get_session(self) -> Any:
         return self._session_factory()
 
     def remove_session(self) -> None:

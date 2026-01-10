@@ -18,7 +18,7 @@ from flask import Flask
 from src.services.email_service import EmailService
 
 
-def test_gmail_smtp():
+def test_gmail_smtp() -> bool:
     """Test Gmail SMTP by sending verification email"""
 
     print("\n🔍 Testing Gmail SMTP Configuration...")

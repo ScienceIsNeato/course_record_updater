@@ -44,7 +44,7 @@ class EmailWhitelist:
             whitelist_emails: List of allowed email addresses/patterns
                              Defaults to EMAIL_WHITELIST environment variable
         """
-        self.env = (env or os.getenv("ENV", "local")).lower()
+        self.env = (env or os.getenv("ENV", "local") or "local").lower()
 
         # Load whitelist from environment or use provided list
         if whitelist_emails is None:

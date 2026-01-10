@@ -23,9 +23,10 @@ import os
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 
-def get_pr_number():
+def get_pr_number() -> Optional[int]:
     """Get current PR number from git context."""
     try:
         result = subprocess.run(  # nosec
@@ -40,7 +41,7 @@ def get_pr_number():
         return None
 
 
-def get_current_commit():
+def get_current_commit() -> Optional[str]:
     """Get current commit SHA."""
     try:
         result = subprocess.run(  # nosec
@@ -54,13 +55,13 @@ def get_current_commit():
         return None
 
 
-def get_checklist_state_file(pr_number, commit_sha):
+def get_checklist_state_file(pr_number: int, commit_sha: str) -> str:
     """Get path to checklist state file."""
     os.makedirs("logs", exist_ok=True)
     return f"logs/pr_{pr_number}_checklist_state_{commit_sha}.json"
 
 
-def load_checklist_state(pr_number, commit_sha):
+def load_checklist_state(pr_number: int, commit_sha: str) -> Dict[str, Any]:
     """Load checklist state from file."""
     state_file = get_checklist_state_file(pr_number, commit_sha)
     if os.path.exists(state_file):
@@ -78,7 +79,7 @@ def load_checklist_state(pr_number, commit_sha):
     }
 
 
-def save_checklist_state(state):
+def save_checklist_state(state: Dict[str, Any]) -> str:
     """Save checklist state to file."""
     state_file = get_checklist_state_file(state["pr_number"], state["commit_sha"])
     from datetime import datetime
@@ -91,7 +92,9 @@ def save_checklist_state(state):
     return state_file
 
 
-def find_checklist_item(state, item_text):
+def find_checklist_item(
+    state: Dict[str, Any], item_text: str
+) -> Tuple[str, Dict[str, Any]]:
     """Find checklist item by text (fuzzy match)."""
     item_text_lower = item_text.lower()
 
@@ -104,7 +107,7 @@ def find_checklist_item(state, item_text):
     return item_id, {"text": item_text, "status": "pending"}
 
 
-def update_item_status(state, item_text, status):
+def update_item_status(state: Dict[str, Any], item_text: str, status: str) -> str:
     """Update status of a checklist item."""
     item_id, item_data = find_checklist_item(state, item_text)
     item_data["status"] = status
@@ -113,7 +116,7 @@ def update_item_status(state, item_text, status):
     return item_id
 
 
-def print_status(state):
+def print_status(state: Dict[str, Any]) -> None:
     """Print current checklist status."""
     print(
         f"\n📋 PR #{state['pr_number']} Checklist Status (Commit: {state['commit_sha'][:8]})\n"
@@ -151,7 +154,7 @@ def print_status(state):
         print()
 
 
-def _setup_parser():
+def _setup_parser() -> argparse.ArgumentParser:
     """Setup argument parser."""
     parser = argparse.ArgumentParser(
         description="Update PR issues checklist as items are completed",
@@ -212,7 +215,7 @@ def _setup_parser():
     return parser
 
 
-def _handle_completion(state, args):
+def _handle_completion(state: Dict[str, Any], args: argparse.Namespace) -> int:
     """Handle item completion and optional PR comment reply."""
     update_item_status(state, args.complete, "completed")
     save_checklist_state(state)
@@ -261,7 +264,7 @@ def _handle_completion(state, args):
     return 0
 
 
-def main():
+def main() -> int:
     parser = _setup_parser()
     args = parser.parse_args()
 

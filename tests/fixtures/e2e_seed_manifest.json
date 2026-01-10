@@ -43,6 +43,7 @@
             "role": "program_admin",
             "institution_short_name": "MockU",
             "program_code": "CS",
+            "program_idx": 0,
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
@@ -52,6 +53,7 @@
             "role": "instructor",
             "institution_short_name": "MockU",
             "program_code": "CS",
+            "program_idx": 0,
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
@@ -61,6 +63,17 @@
             "role": "instructor",
             "institution_short_name": "MockU",
             "program_code": "EE",
+            "program_idx": 1,
+            "password_env_var": "DEFAULT_PASSWORD"
+        },
+        {
+            "email": "alex.mentor@mocku.test",
+            "first_name": "Alex",
+            "last_name": "Mentor",
+            "role": "instructor",
+            "institution_short_name": "MockU",
+            "program_code": "BA",
+            "program_idx": 2,
             "password_env_var": "DEFAULT_PASSWORD"
         },
         {
@@ -106,6 +119,13 @@
             "program_code": "EE",
             "program_idx": 1,
             "credits": 3
+        },
+        {
+            "code": "BA-201",
+            "name": "Business Finance",
+            "program_code": "BA",
+            "program_idx": 2,
+            "credits": 3
         }
     ],
     "offerings": [
@@ -128,6 +148,17 @@
                     "section_number": "001",
                     "instructor_idx": 4,
                     "enrollment": 20
+                }
+            ]
+        },
+        {
+            "course_idx": 2,
+            "term_idx": 0,
+            "sections": [
+                {
+                    "section_number": "001",
+                    "instructor_idx": 5,
+                    "enrollment": 18
                 }
             ]
         }

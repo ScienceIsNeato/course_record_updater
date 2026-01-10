@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# mypy: disable-error-code=no-untyped-def
 """
 Import Command Line Interface
 

@@ -18,8 +18,11 @@ import logging
 import os
 import sys
 import time
+from types import ModuleType
+from typing import Any, Optional
 
 import pandas as pd
+from flask import Flask
 
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,7 +37,7 @@ logging.basicConfig(
 logger = logging.getLogger("demo_advancer")
 
 
-def setup_env(env_name="dev"):
+def setup_env(env_name: str = "dev") -> None:
     db_mapping = {
         "dev": "sqlite:///course_records_dev.db",
         "e2e": "sqlite:///course_records_e2e.db",
@@ -46,7 +49,7 @@ def setup_env(env_name="dev"):
     logger.info(f"Using database: {url}")
 
 
-def run_generate_logs(app, db):
+def run_generate_logs(app: Flask, db: ModuleType) -> None:
     """Simulates Phase 2/3 actions (Invites, Imports) to generate log artifacts."""
     from src.services.auth_service import UserRole
     from src.services.import_service import ConflictStrategy, ImportService
@@ -129,7 +132,7 @@ def run_generate_logs(app, db):
         logger.error(f"Import failed: {e}")
 
 
-def run_semester_end(app, db):
+def run_semester_end(app: Flask, db: ModuleType) -> None:
     """Fast-forwards to Phase 4 (Submissions, Duplications, Reminders)."""
     from src.models.models import CourseOutcome
     from src.services.bulk_email_service import BulkEmailService
@@ -172,11 +175,18 @@ def run_semester_end(app, db):
     logger.info("Found users and courses. Creating CLOs...")
 
     # 3. Create CLOs (if not exist)
-    def ensure_clo(course_id, clo_num, desc, method="Exam Question"):
+    def ensure_clo(
+        course_id: str,
+        clo_num: Any,
+        desc: str,
+        method: str = "Exam Question",
+    ) -> str:
         existing = db.get_course_outcomes(course_id)
         for clo in existing:
             if str(clo.get("clo_number")) == str(clo_num):
-                return clo.get("outcome_id") or clo.get("id")
+                outcome_id = clo.get("outcome_id") or clo.get("id")
+                assert outcome_id is not None
+                return outcome_id
 
         schema = CourseOutcome.create_schema(
             course_id=course_id,
@@ -187,6 +197,7 @@ def run_semester_end(app, db):
         schema["status"] = CLOStatus.ASSIGNED
 
         outcome_id = db.create_course_outcome(schema)
+        assert outcome_id is not None
         logger.info(f"Created CLO {clo_num} for course {course_id}")
         return outcome_id
 
@@ -298,7 +309,7 @@ def run_semester_end(app, db):
         logger.error(f"Failed to trigger reminders: {e}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Demo State Advancer")
     parser.add_argument(
         "target",

@@ -14,7 +14,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import defusedxml.ElementTree as ET  # B314: Use defusedxml instead of xml.etree
 
@@ -81,7 +81,7 @@ def get_repo_metadata() -> str:
         return f"⚠️  Could not generate metadata: {e}\n\n"
 
 
-def _get_raw_diff_output(base_branch):
+def _get_raw_diff_output(base_branch: str) -> subprocess.CompletedProcess[str]:
     """Get raw diff output using gh pr diff or git diff."""
     # Try to get PR number and use gh pr diff (matches GitHub/SonarCloud view)
     pr_result = subprocess.run(  # nosec
@@ -112,7 +112,7 @@ def _get_raw_diff_output(base_branch):
     )
 
 
-def _parse_hunk_header(line):
+def _parse_hunk_header(line: str) -> Optional[int]:
     """Parse unified diff hunk header to extract new start line."""
     try:
         # Extract new file starting line number: @@ -old,count +new,count @@
@@ -125,7 +125,7 @@ def _parse_hunk_header(line):
         return None
 
 
-def _parse_diff_lines(diff_text):
+def _parse_diff_lines(diff_text: str) -> Dict[str, Set[int]]:
     """Parse diff output to find added lines."""
     added_lines = defaultdict(set)
     current_file = None
@@ -208,19 +208,29 @@ def get_uncovered_lines_from_xml(
     try:
         tree = ET.parse(coverage_file)
         root = tree.getroot()
+        if root is None:
+            return {}, set()
 
-        uncovered_lines = defaultdict(set)
-        all_covered_files = set()
+        uncovered_lines: Dict[str, Set[int]] = defaultdict(set)
+        all_covered_files: Set[str] = set()
 
         # Parse coverage.xml format
-        for package in root.findall(".//package"):
+        packages = root.findall(".//package")
+        if packages is None:
+            return {}, set()
+        for package in packages:
             for cls in package.findall("classes/class"):
                 filename = cls.get("filename")
+                if filename is None:
+                    continue
                 all_covered_files.add(filename)
 
                 for line in cls.findall("lines/line"):
-                    line_num = int(line.get("number"))
-                    hits = int(line.get("hits", 0))
+                    line_num_str = line.get("number")
+                    if line_num_str is None:
+                        continue
+                    line_num = int(line_num_str)
+                    hits = int(line.get("hits", "0"))
 
                     # Track completely uncovered lines
                     if hits == 0:
@@ -254,7 +264,7 @@ def get_uncovered_lines_from_xml(
         return {}, set()
 
 
-def _resolve_lcov_filename(line):
+def _resolve_lcov_filename(line: str) -> str:
     """Extract and normalize filename from LCOV SF record."""
     abs_path = line[3:]  # Remove 'SF:' prefix
     # Convert to relative path (remove workspace prefix if present)
@@ -266,7 +276,9 @@ def _resolve_lcov_filename(line):
     return current_file
 
 
-def _process_lcov_da(line, current_file, uncovered_lines):
+def _process_lcov_da(
+    line: str, current_file: str, uncovered_lines: Dict[str, Set[int]]
+) -> None:
     """Process LCOV DA (Line Coverage) record."""
     try:
         parts = line[3:].split(",")  # Remove 'DA:' and split
@@ -279,7 +291,9 @@ def _process_lcov_da(line, current_file, uncovered_lines):
         pass
 
 
-def _process_lcov_brda(line, current_file, uncovered_lines):
+def _process_lcov_brda(
+    line: str, current_file: str, uncovered_lines: Dict[str, Set[int]]
+) -> None:
     """Process LCOV BRDA (Branch Coverage) record."""
     try:
         parts = line[5:].split(",")  # Remove 'BRDA:' and split
@@ -305,8 +319,8 @@ def get_uncovered_lines_from_lcov(
         return {}, set()  # Silent fail for cleaner output if missing
 
     try:
-        uncovered_lines = defaultdict(set)
-        all_covered_files = set()
+        uncovered_lines: Dict[str, Set[int]] = defaultdict(set)
+        all_covered_files: Set[str] = set()
         current_file = None
 
         with open(lcov_file, "r") as f:
@@ -370,7 +384,9 @@ def cross_reference_coverage(
     return pr_coverage_gaps
 
 
-def print_report(pr_coverage_gaps: Dict[str, Set[int]], output_file: str = None):
+def print_report(
+    pr_coverage_gaps: Dict[str, Set[int]], output_file: Optional[str] = None
+) -> None:
     """Print or save a formatted report of coverage gaps."""
 
     if not pr_coverage_gaps:
@@ -499,7 +515,7 @@ def format_line_ranges(line_numbers: Set[int]) -> str:
     return ", ".join(ranges)
 
 
-def main():
+def main() -> int:
     """Main entry point."""
     import argparse
 

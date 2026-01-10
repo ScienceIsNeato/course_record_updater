@@ -343,7 +343,8 @@ if [[ "$RUN_PYTHON_STATIC_ANALYSIS" == "true" ]]; then
   if mypy src/ scripts/ conftest.py --exclude tests/ --ignore-missing-imports --disallow-untyped-defs 2>&1; then
     add_success "mypy" "Type checking passed"
   else
-    echo "⚠️  mypy found type issues (non-blocking)"
+    add_failure "mypy" "Type checking failed" "Fix mypy type errors"
+    GROUPED_PASSED=false
   fi
   
   # Run import analysis
@@ -1025,8 +1026,9 @@ for r in d.get('results',[])[:5]:
                 echo "$SECRETS_OUTPUT" >> "$SECRETS_OUT"
             fi
         else
-            echo "PASS" > "$SECRETS_OUT"
-            echo "  ⚠️  No .secrets.baseline. Skipping." >> "$SECRETS_OUT"
+            echo "FAIL" > "$SECRETS_OUT"
+            echo "  ❌ No .secrets.baseline found. This is required." >> "$SECRETS_OUT"
+            echo "  💡 Create baseline with: detect-secrets scan > .secrets.baseline" >> "$SECRETS_OUT"
         fi
     else
         echo "FAIL" > "$SECRETS_OUT"
@@ -1216,8 +1218,8 @@ for r in d.get('results',[])[:5]:
 
   if [[ "$SECURITY_PASSED" == "true" ]]; then
     if [[ "$RUN_SECURITY_LOCAL" == "true" ]]; then
-      echo "✅ Security Check: PASSED (bandit + semgrep) [local mode]"
-      add_success "Security Check" "No security vulnerabilities found (local mode - safety skipped)"
+      echo "❌ Security Check: FAILED (safety skipped in local mode)"
+      add_failure "Security Check" "safety check skipped in local mode" "Run with network access or install safety: pip install safety"
     else
       echo "✅ Security Check: PASSED (bandit + semgrep + safety)"
       add_success "Security Check" "No security vulnerabilities found"
@@ -1649,9 +1651,9 @@ if [[ "$RUN_DUPLICATION" == "true" ]]; then
 
   # Check if npx is available for jscpd
   if ! command -v npx &> /dev/null; then
-    echo "⚠️  npx not found, delegating to SonarCloud"
-    echo "✅ Duplication Check: DELEGATED TO SONARCLOUD"
-    add_success "Duplication Check" "npx unavailable, duplication analysis delegated to SonarCloud"
+    echo "❌ npx not found - Code duplication check REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "Duplication Check" "npx not found" "Install Node.js and npm to run duplication checks"
   else
     echo "🔧 Running jscpd code duplication analysis..."
     
@@ -1723,9 +1725,9 @@ if [[ "$RUN_JS_LINT" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript linting"
-    echo "✅ JavaScript Lint Check: SKIPPED (npm not available)"
-    add_success "JavaScript Lint Check" "npm not available, JavaScript linting skipped"
+    echo "❌ npm not found - JavaScript linting REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Lint Check" "npm not found" "Install Node.js and npm to run JavaScript checks"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1762,9 +1764,9 @@ if [[ "$RUN_JS_FORMAT" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript formatting"
-    echo "✅ JavaScript Format Check: SKIPPED (npm not available)"
-    add_success "JavaScript Format Check" "npm not available, JavaScript formatting skipped"
+    echo "❌ npm not found - JavaScript formatting REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Format Check" "npm not found" "Install Node.js and npm to run JavaScript checks"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then
@@ -1801,9 +1803,9 @@ if [[ "$RUN_JS_TESTS" == "true" ]]; then
 
   # Check if Node.js and npm are available
   if ! command -v npm &> /dev/null; then
-    echo "⚠️  npm not found, skipping JavaScript tests"
-    echo "✅ JavaScript Tests: SKIPPED (npm not available)"
-    add_success "JavaScript Tests" "npm not available, JavaScript tests skipped"
+    echo "❌ npm not found - JavaScript tests REQUIRED"
+    echo "💡 Install Node.js: https://nodejs.org/"
+    add_failure "JavaScript Tests" "npm not found" "Install Node.js and npm to run JavaScript tests"
   else
     # Check if node_modules exists, if not install dependencies
     if [ ! -d "node_modules" ]; then

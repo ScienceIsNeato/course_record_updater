@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.database.database_factory import get_database_service, refresh_database_service
+from src.database.database_interface import DatabaseInterface
 from src.models.models_sql import Base
 from src.utils.constants import (
     COURSE_OFFERINGS_COLLECTION,
@@ -31,7 +32,7 @@ _db_service = get_database_service()
 db = _db_service
 
 
-def refresh_connection():
+def refresh_connection() -> DatabaseInterface:
     """Reinitialize the database service (primarily for tests)."""
     global _db_service, db
     _db_service = refresh_database_service()
@@ -50,7 +51,7 @@ def reset_database() -> bool:
     return False
 
 
-def db_operation_timeout():
+def db_operation_timeout() -> AbstractContextManager[Any]:
     """
     Legacy no-op helper retained for API compatibility.
 
@@ -214,7 +215,7 @@ def update_user_profile(user_id: str, profile_data: Dict[str, Any]) -> bool:
 
 
 def update_user_role(
-    user_id: str, new_role: str, program_ids: List[str] = None
+    user_id: str, new_role: str, program_ids: Optional[List[str]] = None
 ) -> bool:
     return _db_service.update_user_role(user_id, new_role, program_ids)
 
@@ -672,7 +673,7 @@ def list_invitations(
 
 def get_outcomes_by_status(
     institution_id: str,
-    status: str,
+    status: Optional[str],
     program_id: Optional[str] = None,
     term_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
@@ -681,7 +682,7 @@ def get_outcomes_by_status(
 
     Args:
         institution_id: Institution ID to filter by
-        status: CLO status to filter by
+        status: CLO status to filter by (None for all statuses)
         program_id: Optional program ID to further filter results
         term_id: Optional term ID to further filter results
 

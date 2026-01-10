@@ -181,7 +181,7 @@ start_flask_app() {
     fi
 
     for _ in {1..10}; do
-        if curl -s "http://localhost:$port" > /dev/null 2>&1; then
+        if curl -4 -s "http://localhost:$port" > /dev/null 2>&1; then
             echo -e "${GREEN}✅ Flask app started successfully on port $port${NC}"
             echo -e "${GREEN}📱 Access at http://localhost:$port${NC}"
             echo -e "${GREEN}🗄️  SQLite database at ${DB_PATH}${NC}"

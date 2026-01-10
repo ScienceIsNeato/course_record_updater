@@ -56,8 +56,9 @@ class LoginService:
             "deactivated": "Account has been deactivated. Please contact support.",
         }
 
+        status_key = str(account_status) if account_status else ""
         error_msg = status_messages.get(
-            account_status, "Account is not available for login"
+            status_key, "Account is not available for login"
         )
         raise LoginError(error_msg)
 

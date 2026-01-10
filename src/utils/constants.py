@@ -125,6 +125,7 @@ class CLOStatus:
     NEVER_COMING_IN = (
         "never_coming_in"  # Instructor left/non-responsive (CEI demo feedback)
     )
+    COMPLETED = "completed"  # Deprecated alias for approved/completed workflows
 
 
 # CLO Approval Status constants

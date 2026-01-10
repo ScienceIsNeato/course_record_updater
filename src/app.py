@@ -2,9 +2,11 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from typing import Any, Optional, Union
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.wrappers import Response
 
 from src.database.database_service import check_db_connection, db
 from src.database.database_validator import validate_schema_or_exit
@@ -61,7 +63,7 @@ from flask_wtf.csrf import CSRFError
 
 
 @app.errorhandler(CSRFError)
-def handle_csrf_error(e):
+def handle_csrf_error(e: CSRFError) -> tuple[Any, int]:
     """Handle CSRF validation errors"""
     from flask import jsonify, request
 
@@ -87,14 +89,14 @@ def handle_csrf_error(e):
 
 # Make CSRF token available in templates
 @app.context_processor
-def inject_csrf_token():
+def inject_csrf_token() -> dict[str, Any]:
     from flask_wtf.csrf import generate_csrf
 
     return dict(csrf_token=generate_csrf)
 
 
 @app.context_processor
-def inject_institution_branding():
+def inject_institution_branding() -> dict[str, Any]:
     """Provide institution branding data to all templates."""
     user = get_current_user()
     institution_id = user.get("institution_id") if user else None
@@ -103,7 +105,7 @@ def inject_institution_branding():
 
 
 # Configure logging to ensure consistent output
-def setup_logging():
+def setup_logging() -> None:
     """Configure logging to write to both console and file"""
     # Create logs directory if it doesn't exist
     os.makedirs("logs", exist_ok=True)
@@ -138,7 +140,7 @@ EmailService.configure_app(app)
 
 
 @app.before_request
-def load_system_date_override():
+def load_system_date_override() -> None:
     """Load system date override from current user into global context."""
     from datetime import datetime, timezone
 
@@ -176,7 +178,7 @@ else:
 
 
 @app.route("/")
-def index():
+def index() -> str:
     """Render the splash page - marketing/showcase page for the application."""
     # Always show splash page for unauthenticated users
     # Authenticated users should go directly to /dashboard
@@ -185,7 +187,7 @@ def index():
 
 # Authentication Routes
 @app.route("/login")
-def login():
+def login() -> Union[str, Response]:
     """Login page (supports deep linking via ?next parameter)"""
     # Allow forcing login page even if authenticated (for broken sessions)
     force_login = request.args.get("force") == "true"
@@ -211,7 +213,7 @@ def login():
 
 
 @app.route("/reminder-login")
-def reminder_login():
+def reminder_login() -> Union[str, Response]:
     """
     Special login page for email reminders.
     Logs out any existing session to prevent wrong-user login.
@@ -247,7 +249,7 @@ def reminder_login():
 
 
 @app.route("/logout")
-def logout_view():
+def logout_view() -> Response:
     """
     Simple GET endpoint to clear the current session and redirect to login.
 
@@ -262,7 +264,7 @@ def logout_view():
 
 
 @app.route("/register")
-def register():
+def register() -> Union[str, Response]:
     """Registration page"""
     # Redirect to dashboard if already authenticated
     if is_authenticated():
@@ -272,19 +274,19 @@ def register():
 
 
 @app.route("/terms-of-service")
-def terms_of_service():
+def terms_of_service() -> str:
     """Terms of Service page"""
     return render_template("legal/terms.html")
 
 
 @app.route("/privacy")
-def privacy_policy():
+def privacy_policy() -> str:
     """Privacy Policy page"""
     return render_template("legal/privacy.html")
 
 
 @app.route("/register/accept/<token>")
-def register_accept_invitation(token):
+def register_accept_invitation(token: str) -> str:
     """Accept invitation and complete registration"""
     # If user is logged in, log them out first to accept the new invitation
     if is_authenticated():
@@ -298,7 +300,7 @@ def register_accept_invitation(token):
 
 
 @app.route("/forgot-password")
-def forgot_password():
+def forgot_password() -> Union[str, Response]:
     """Forgot password page"""
     # Redirect to dashboard if already authenticated
     if is_authenticated():
@@ -308,7 +310,7 @@ def forgot_password():
 
 
 @app.route("/reset-password/<token>")
-def reset_password_form(token):
+def reset_password_form(token: str) -> Union[str, Response]:
     """
     Password reset form page - handles reset link from email
 
@@ -344,7 +346,7 @@ def reset_password_form(token):
 
 @app.route("/profile")
 @login_required
-def profile():
+def profile() -> Union[str, Response]:
     """User profile/account settings page"""
     current_user = get_current_user()
     if not current_user:
@@ -376,7 +378,7 @@ def profile():
     )
 
 
-def _format_member_since(created_at_value):
+def _format_member_since(created_at_value: Any) -> Optional[str]:
     """Build a human-readable 'Member Since' string for profiles."""
     if not created_at_value:
         return None
@@ -406,7 +408,7 @@ def _format_member_since(created_at_value):
 # Admin Routes
 @app.route("/admin/users")
 @login_required
-def admin_users():
+def admin_users() -> Union[str, Response]:
     """Admin user management page"""
     # TODO: Add comprehensive UAT test cases for admin user management panel including:
     # - User creation, editing, and deactivation workflows
@@ -425,7 +427,7 @@ def admin_users():
 
 
 # Dashboard Routes
-def _parse_date_to_naive(date_value):
+def _parse_date_to_naive(date_value: Any) -> Any:
     """Parse a date value to timezone-naive datetime for comparison."""
     if isinstance(date_value, str):
         return datetime.fromisoformat(date_value.replace("Z", "+00:00")).replace(
@@ -436,7 +438,9 @@ def _parse_date_to_naive(date_value):
     return date_value
 
 
-def _find_matching_term(terms, effective_date_naive):
+def _find_matching_term(
+    terms: list[dict[str, Any]], effective_date_naive: datetime
+) -> Optional[str]:
     """Find term where effective_date falls within start/end dates."""
     for term in terms:
         start_date = term.get("start_date")
@@ -454,7 +458,7 @@ def _find_matching_term(terms, effective_date_naive):
     return None
 
 
-def _get_current_term_from_db(user, effective_date):
+def _get_current_term_from_db(user: dict[str, Any], effective_date: Any) -> str:
     """
     Find the current term based on effective date by querying the database.
 
@@ -482,7 +486,7 @@ def _get_current_term_from_db(user, effective_date):
         return get_term_display_name(get_current_term())
 
 
-def get_header_context(user):
+def get_header_context(user: dict[str, Any]) -> dict[str, Any]:
     """
     Generate header context with current term and date information
 
@@ -522,7 +526,7 @@ def get_header_context(user):
 
 
 @app.context_processor
-def inject_header_context():
+def inject_header_context() -> dict[str, Any]:
     """Always inject current term/date info into dashboard pages."""
     user = get_current_user()
     if not user:
@@ -533,7 +537,7 @@ def inject_header_context():
 
 @app.route("/dashboard")
 @login_required
-def dashboard():
+def dashboard() -> Union[str, Response]:
     """
     Role-based dashboard - returns different views based on user role
     """
@@ -565,7 +569,7 @@ def dashboard():
 
 @app.route("/courses")
 @login_required
-def courses_list():
+def courses_list() -> Union[str, Response]:
     """Display all courses for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -576,7 +580,7 @@ def courses_list():
 
 @app.route("/users")
 @login_required
-def users_list():
+def users_list() -> Union[str, Response]:
     """Display all users for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -587,7 +591,7 @@ def users_list():
 
 @app.route("/assessments")
 @login_required
-def assessments_page():
+def assessments_page() -> Union[str, Response]:
     """Display assessment/outcomes page for instructors"""
     user = get_current_user()
     if not user:
@@ -598,7 +602,7 @@ def assessments_page():
 @app.route("/audit-clo")
 @login_required
 @permission_required("audit_clo")
-def audit_clo_page():
+def audit_clo_page() -> str:
     """
     Display CLO audit and approval page for admins.
 
@@ -611,7 +615,7 @@ def audit_clo_page():
 @app.route("/audit-logs")
 @login_required
 @permission_required("manage_institution_users")
-def audit_logs_page():
+def audit_logs_page() -> str:
     """
     Display full audit log viewer page for admins.
     """
@@ -621,7 +625,7 @@ def audit_logs_page():
 
 @app.route("/sections")
 @login_required
-def sections_list():
+def sections_list() -> Union[str, Response]:
     """Display all course sections for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -636,7 +640,7 @@ def sections_list():
 
 @app.route("/terms")
 @login_required
-def terms_list():
+def terms_list() -> Union[str, Response]:
     """Display all terms for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -647,7 +651,7 @@ def terms_list():
 
 @app.route("/offerings")
 @login_required
-def offerings_list():
+def offerings_list() -> Union[str, Response]:
     """Display all course offerings for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -658,7 +662,7 @@ def offerings_list():
 
 @app.route("/programs")
 @login_required
-def programs_list():
+def programs_list() -> Union[str, Response]:
     """Display all programs for the current user's institution"""
     user = get_current_user()
     if not user:
@@ -669,14 +673,14 @@ def programs_list():
 
 @app.route("/faculty")
 @login_required
-def faculty_list():
+def faculty_list() -> Response:
     """Redirect to users list filtered for faculty/instructors"""
     return redirect(url_for("users_list", role="instructor"))
 
 
 @app.route("/outcomes")
 @login_required
-def outcomes_page():
+def outcomes_page() -> Union[str, Response]:
     """Display course outcomes management page"""
     user = get_current_user()
     if not user:
@@ -688,7 +692,7 @@ def outcomes_page():
 # This endpoint is registered AFTER all other initialization, so when it responds
 # we know Flask is fully ready to serve requests (not just that the port is open)
 @app.route("/health")
-def health_check():
+def health_check() -> tuple[dict[str, Any], int]:
     """
     Health check endpoint for E2E test infrastructure.
     Returns 200 OK when Flask is fully initialized and ready to serve requests.

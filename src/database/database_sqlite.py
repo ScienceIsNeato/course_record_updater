@@ -194,13 +194,21 @@ class SQLiteDatabase(DatabaseInterface):
         return institution_id, user_id
 
     def create_new_institution_simple(
-        self, name: str, short_name: str, active: bool = True
+        self,
+        name: str,
+        short_name: str,
+        active: bool = True,
+        *,
+        website_url: Optional[str] = None,
+        logo_path: Optional[str] = None,
     ) -> Optional[str]:
         """Create a new institution without creating an admin user (site admin workflow)"""
         institution_data = {
             "name": name,
             "short_name": short_name,
             "active": active,
+            "website_url": website_url,
+            "logo_path": logo_path,
         }
         return self.create_institution(institution_data)
 

@@ -240,7 +240,10 @@ class Term(Base, TimestampMixin):  # type: ignore[valid-type,misc]
 
     def get_status(self, reference_date: datetime | None = None) -> str:
         """Return computed status for this term."""
-        return get_term_status(self.start_date, self.end_date, reference_date)
+        # Cast Column types to their runtime values for type checker
+        start = str(self.start_date) if self.start_date else None
+        end = str(self.end_date) if self.end_date else None
+        return get_term_status(start, end, reference_date)
 
 
 class CourseOffering(Base, TimestampMixin):  # type: ignore[valid-type,misc]

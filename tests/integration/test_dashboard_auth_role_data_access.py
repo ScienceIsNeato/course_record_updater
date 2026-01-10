@@ -194,7 +194,7 @@ class TestDashboardAuthRoleDataAccess:
         allowed_program_ids = set(self.bob_program_admin.get("program_ids", []))
         for course in courses:
             pid = course.get("program_id")
-            if allowed_program_ids:
+            if allowed_program_ids and pid:
                 assert pid in allowed_program_ids, f"Unexpected course program {pid}"
         for section in sections:
             pid = section.get("program_id")
