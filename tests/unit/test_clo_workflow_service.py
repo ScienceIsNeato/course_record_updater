@@ -475,6 +475,7 @@ class TestGetCLOsByStatus:
             status=status,
             program_id=None,
             term_id=None,
+            course_id=None,
         )
 
     @patch(
@@ -501,6 +502,7 @@ class TestGetCLOsByStatus:
             status=status,
             program_id=program_id,
             term_id=None,
+            course_id=None,
         )
 
     @patch("src.services.clo_workflow_service.db")

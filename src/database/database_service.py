@@ -682,6 +682,7 @@ def get_outcomes_by_status(
     status: Optional[str],
     program_id: Optional[str] = None,
     term_id: Optional[str] = None,
+    course_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Get course outcomes filtered by status.
@@ -691,12 +692,13 @@ def get_outcomes_by_status(
         status: CLO status to filter by (None for all statuses)
         program_id: Optional program ID to further filter results
         term_id: Optional term ID to further filter results
+        course_id: Optional course ID to further filter results
 
     Returns:
         List of course outcome dictionaries
     """
     return _db_service.get_outcomes_by_status(
-        institution_id, status, program_id, term_id
+        institution_id, status, program_id, term_id, course_id
     )
 
 

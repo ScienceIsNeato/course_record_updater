@@ -679,6 +679,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sortOrder = document.getElementById("sortOrder");
   const programFilter = document.getElementById("programFilter");
   const termFilter = document.getElementById("termFilter");
+  const courseFilter = document.getElementById("courseFilter");
   const exportButton = document.getElementById("exportCsvBtn");
   const cloListContainer = document.getElementById("cloListContainer");
   const cloDetailModal = document.getElementById("cloDetailModal");
@@ -705,6 +706,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (termFilter) {
     termFilter.addEventListener("change", loadCLOs);
+  }
+  if (courseFilter) {
+    courseFilter.addEventListener("change", loadCLOs);
   }
   if (exportButton) {
     exportButton.addEventListener("click", () => {
@@ -776,6 +780,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Load courses
+      const courseResponse = await fetch("/api/courses");
+      if (courseResponse.ok) {
+        const data = await courseResponse.json();
+        const courses = data.courses || [];
+        if (courseFilter) {
+          // Sort by course number
+          courses.sort((a, b) =>
+            (a.course_number || "").localeCompare(b.course_number || ""),
+          );
+
+          courses.forEach((course) => {
+            const option = document.createElement("option");
+            option.value = course.course_id || course.id;
+            option.textContent = `${course.course_number} - ${course.course_title}`;
+            courseFilter.appendChild(option);
+          });
+        }
+      }
+
       // Initial load of CLOs
       await loadCLOs();
     } catch (error) {
@@ -806,11 +830,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const status = statusFilter.value;
       const programId = programFilter ? programFilter.value : "";
       const termId = termFilter ? termFilter.value : "";
+      const courseId = courseFilter ? courseFilter.value : "";
 
       const params = new URLSearchParams();
       if (status !== "all") params.append("status", status);
       if (programId) params.append("program_id", programId);
       if (termId) params.append("term_id", termId);
+      if (courseId) params.append("course_id", courseId);
 
       const queryString = params.toString();
       const url = queryString
@@ -947,7 +973,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tableResp.className = "table-responsive";
 
     const table = document.createElement("table");
-    table.className = "table table-hover";
+    table.className = "table table-hover align-middle";
 
     // Header
     const thead = document.createElement("thead");
@@ -955,6 +981,7 @@ document.addEventListener("DOMContentLoaded", () => {
     [
       "Status",
       "Course",
+      "Section",
       "CLO #",
       "Description",
       "Instructor",
@@ -970,121 +997,181 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Body
     const tbody = document.createElement("tbody");
+
+    // Grouping Logic
+    const groupedData = {};
     sorted.forEach((clo) => {
-      const outcomeId =
-        clo.outcome_id || clo.id || clo.OutcomeId || clo.outcomeId || "";
-      const tr = document.createElement("tr");
-      tr.className = "clo-row";
-      tr.style.cursor = "pointer";
-      tr.dataset.outcomeId = outcomeId;
+      const courseKey = `${clo.course_number || "Unknown"} - ${clo.course_title || ""}`;
+      if (!groupedData[courseKey]) groupedData[courseKey] = {};
 
-      // Status
-      const tdStatus = document.createElement("td");
-      tdStatus.appendChild(getStatusBadge(clo.status));
-      tr.appendChild(tdStatus);
+      const sectionKey = clo.section_number
+        ? `Section ${clo.section_number}`
+        : "Unassigned Section";
+      if (!groupedData[courseKey][sectionKey])
+        groupedData[courseKey][sectionKey] = [];
 
-      // Course
-      const tdCourse = document.createElement("td");
-      const strong = document.createElement("strong");
-      strong.textContent = clo.course_number || "N/A";
-      tdCourse.appendChild(strong);
-      tr.appendChild(tdCourse);
-
-      // CLO #
-      const tdCloNum = document.createElement("td");
-      tdCloNum.textContent = clo.clo_number || "N/A";
-      tr.appendChild(tdCloNum);
-
-      // Description
-      const tdDesc = document.createElement("td");
-      tdDesc.textContent = truncateText(clo.description, 60);
-      tr.appendChild(tdDesc);
-
-      // Instructor
-      const tdInst = document.createElement("td");
-      tdInst.textContent = clo.instructor_name || "N/A";
-      tr.appendChild(tdInst);
-
-      // Submitted
-      const tdSub = document.createElement("td");
-      const small = document.createElement("small");
-      small.textContent = clo.submitted_at
-        ? formatDate(clo.submitted_at)
-        : "N/A";
-      tdSub.appendChild(small);
-      tr.appendChild(tdSub);
-
-      // Actions
-      const tdActions = document.createElement("td");
-      tdActions.className = "clo-actions";
-
-      const btnGroup = document.createElement("div");
-      btnGroup.className = "btn-group btn-group-sm";
-
-      let actionBtn = null;
-
-      if (clo.status === "awaiting_approval") {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-success text-white";
-        btn.title = "Approve Outcome";
-        btn.innerHTML = '<i class="fas fa-check"></i> Approve';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          approveOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (clo.status === "unassigned") {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-primary text-white";
-        btn.title = "Assign Instructor";
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Assign';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          assignOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (["approved", "never_coming_in"].includes(clo.status)) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-warning text-dark";
-        btn.title = "Reopen Outcome";
-        btn.innerHTML = '<i class="fas fa-undo"></i> Reopen';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          reopenOutcome(clo.outcome_id);
-        };
-        actionBtn = btn;
-      } else if (
-        ["in_progress", "approval_pending", "assigned"].includes(clo.status)
-      ) {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-info text-white";
-        btn.title = "Send Reminder";
-        btn.innerHTML = '<i class="fas fa-bell"></i> Remind';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          remindOutcome(clo.outcome_id, clo.instructor_id, clo.course_id);
-        };
-        actionBtn = btn;
-      } else {
-        // Fallback View
-        const btn = document.createElement("button");
-        btn.className = "btn btn-outline-secondary";
-        btn.dataset.outcomeId = clo.outcome_id;
-        btn.title = "View Details";
-        btn.innerHTML = '<i class="fas fa-eye"></i> View';
-        btn.onclick = (e) => {
-          e.stopPropagation();
-          globalThis.showCLODetails(clo.outcome_id);
-        };
-        actionBtn = btn;
-      }
-
-      if (actionBtn) btnGroup.appendChild(actionBtn);
-      tdActions.appendChild(btnGroup);
-      tr.appendChild(tdActions);
-
-      tbody.appendChild(tr);
+      groupedData[courseKey][sectionKey].push(clo);
     });
+
+    Object.keys(groupedData)
+      .sort()
+      .forEach((courseKey) => {
+        const safeKey = courseKey.replace(/[^a-zA-Z0-9]/g, "");
+
+        // Course Header Row
+        const courseRow = document.createElement("tr");
+        courseRow.className = "table-light";
+        const courseCell = document.createElement("td");
+        courseCell.colSpan = 8;
+        courseCell.innerHTML = `
+            <div class="d-flex align-items-center" style="cursor: pointer" data-bs-toggle="collapse" data-bs-target=".group-${safeKey}">
+                <i class="fas fa-chevron-down me-2"></i>
+                <strong>${courseKey}</strong>
+            </div>
+        `;
+        courseRow.appendChild(courseCell);
+        tbody.appendChild(courseRow);
+
+        const sectionGroups = groupedData[courseKey];
+        Object.keys(sectionGroups)
+          .sort()
+          .forEach((sectionKey) => {
+            // Section Header
+            const sectionRow = document.createElement("tr");
+            sectionRow.className = `table-white group-${safeKey} collapse show`; // Collapsible
+            const sectionCell = document.createElement("td");
+            sectionCell.colSpan = 8;
+            sectionCell.style.paddingLeft = "30px";
+            sectionCell.innerHTML = `
+                <strong class="text-secondary">${sectionKey}</strong>
+            `;
+            sectionRow.appendChild(sectionCell);
+            tbody.appendChild(sectionRow);
+
+            // CLO Rows
+            sectionGroups[sectionKey].forEach((clo) => {
+              const outcomeId = clo.outcome_id || clo.id || "";
+              const tr = document.createElement("tr");
+              tr.className = `clo-row group-${safeKey} collapse show`; // Collapsible
+              tr.style.cursor = "pointer";
+              tr.dataset.outcomeId = outcomeId;
+
+              // Status
+              const tdStatus = document.createElement("td");
+              tdStatus.appendChild(getStatusBadge(clo.status));
+              tr.appendChild(tdStatus);
+
+              // Course (Redundant but requested)
+              const tdCourse = document.createElement("td");
+              tdCourse.textContent = clo.course_number || "N/A";
+              tr.appendChild(tdCourse);
+
+              // Section (Requested)
+              const tdSection = document.createElement("td");
+              tdSection.textContent = clo.section_number || "N/A";
+              tr.appendChild(tdSection);
+
+              // CLO #
+              const tdCloNum = document.createElement("td");
+              tdCloNum.textContent = clo.clo_number || "N/A";
+              tr.appendChild(tdCloNum);
+
+              // Description
+              const tdDesc = document.createElement("td");
+              tdDesc.textContent = truncateText(clo.description, 40);
+              tdDesc.title = clo.description;
+              tr.appendChild(tdDesc);
+
+              // Instructor
+              const tdInst = document.createElement("td");
+              tdInst.textContent = clo.instructor_name || "N/A";
+              tr.appendChild(tdInst);
+
+              // Submitted
+              const tdSub = document.createElement("td");
+              const small = document.createElement("small");
+              small.textContent = clo.submitted_at
+                ? formatDate(clo.submitted_at)
+                : "N/A";
+              tdSub.appendChild(small);
+              tr.appendChild(tdSub);
+
+              // Actions (same as before)
+              const tdActions = document.createElement("td");
+              tdActions.className = "clo-actions";
+              const btnGroup = document.createElement("div");
+              btnGroup.className = "btn-group btn-group-sm";
+
+              let actionBtn = null;
+              if (clo.status === "awaiting_approval") {
+                const btn = document.createElement("button");
+                btn.className = "btn btn-success text-white";
+                btn.title = "Approve Outcome";
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  approveOutcome(clo.outcome_id);
+                };
+                actionBtn = btn;
+              } else if (clo.status === "unassigned") {
+                const btn = document.createElement("button");
+                btn.className = "btn btn-primary text-white";
+                btn.title = "Assign Instructor";
+                btn.innerHTML = '<i class="fas fa-user-plus"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  assignOutcome(clo.outcome_id);
+                };
+                actionBtn = btn;
+              } else if (["approved", "never_coming_in"].includes(clo.status)) {
+                const btn = document.createElement("button");
+                btn.className = "btn btn-warning text-dark";
+                btn.title = "Reopen Outcome";
+                btn.innerHTML = '<i class="fas fa-undo"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  reopenOutcome(clo.outcome_id);
+                };
+                actionBtn = btn;
+              } else if (
+                ["in_progress", "approval_pending", "assigned"].includes(
+                  clo.status,
+                )
+              ) {
+                const btn = document.createElement("button");
+                btn.className = "btn btn-info text-white";
+                btn.title = "Send Reminder";
+                btn.innerHTML = '<i class="fas fa-bell"></i>';
+                btn.onclick = (e) => {
+                  e.stopPropagation();
+                  remindOutcome(
+                    clo.outcome_id,
+                    clo.instructor_id,
+                    clo.course_id,
+                  );
+                };
+                actionBtn = btn;
+              }
+
+              const viewBtn = document.createElement("button");
+              viewBtn.className = "btn btn-outline-secondary";
+              viewBtn.dataset.outcomeId = clo.outcome_id;
+              viewBtn.title = "View Details";
+              viewBtn.innerHTML = '<i class="fas fa-eye"></i>';
+              viewBtn.onclick = (e) => {
+                e.stopPropagation();
+                globalThis.showCLODetails(clo.outcome_id);
+              };
+
+              if (actionBtn) btnGroup.appendChild(actionBtn);
+              btnGroup.appendChild(viewBtn);
+              tdActions.appendChild(btnGroup);
+              tr.appendChild(tdActions);
+
+              tbody.appendChild(tr);
+            });
+          });
+      });
 
     table.appendChild(tbody);
     tableResp.appendChild(table);
@@ -1251,7 +1338,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Show success
       alert(
         "Rework request sent successfully!" +
-          (sendEmail ? " Email notification sent." : ""),
+        (sendEmail ? " Email notification sent." : ""),
       );
 
       // Reload list

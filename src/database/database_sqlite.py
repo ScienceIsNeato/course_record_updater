@@ -739,6 +739,7 @@ class SQLiteDatabase(DatabaseInterface):
         status: Optional[str],
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status (or all if status is None)."""
         with self.sqlite.session_scope() as session:
@@ -769,6 +770,10 @@ class SQLiteDatabase(DatabaseInterface):
                 query = query.join(
                     CourseOffering, Course.id == CourseOffering.course_id
                 ).where(CourseOffering.term_id == term_id)
+
+            # Add course filter if specified
+            if course_id:
+                query = query.where(Course.id == course_id)
 
             # Use distinct to prevent duplicates when joining through multiple sections
             outcomes = session.execute(query.distinct()).scalars().all()

@@ -560,6 +560,7 @@ class CLOWorkflowService:
         institution_id: str,
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Get CLOs filtered by status.
@@ -569,6 +570,7 @@ class CLOWorkflowService:
             institution_id: The institution ID to filter by
             program_id: Optional program ID to filter by
             term_id: Optional term ID to filter by
+            course_id: Optional course ID to filter by
 
         Returns:
             List of CLO dictionaries with enriched data
@@ -579,6 +581,7 @@ class CLOWorkflowService:
                 status=status,
                 program_id=program_id,
                 term_id=term_id,
+                course_id=course_id,
             )
 
             # Enrich with course and instructor details
@@ -755,6 +758,12 @@ class CLOWorkflowService:
                     course_id
                 )
 
+            section_number = None
+            if section_id:
+                section = db.get_section_by_id(section_id)
+                if section:
+                    section_number = section.get("section_number")
+
             return {
                 **outcome,
                 "course_number": course.get("course_number") if course else None,
@@ -763,6 +772,7 @@ class CLOWorkflowService:
                 "instructor_email": instructor_email,
                 "instructor_id": instructor_id,
                 "section_id": section_id,
+                "section_number": section_number,
                 "program_name": program_name,
                 "term_name": term_name,
             }

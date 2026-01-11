@@ -1,5 +1,12 @@
 # LoopCloser - Current Status
 
+## Latest Work: Assessments layout tweak (2026-01-09)
+
+**Status**: ✅ COMPLETE - moved the CLO status summary banner above the course selector on the assessments page.
+
+**Files Modified**:
+- `templates/assessments.html`
+
 ## Latest Work: Unified Invite Modal System (2026-01-08)
 
 **Status**: ✅ COMPLETE - Single invite modal now works across all pages

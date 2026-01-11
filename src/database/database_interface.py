@@ -214,6 +214,7 @@ class DatabaseInterface(ABC):
         status: Optional[str],
         program_id: Optional[str] = None,
         term_id: Optional[str] = None,
+        course_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get course outcomes filtered by status (or all if status is None)"""
         raise NotImplementedError

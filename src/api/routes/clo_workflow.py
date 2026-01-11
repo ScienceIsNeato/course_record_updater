@@ -154,6 +154,7 @@ def get_clos_for_audit():
         program_id = request.args.get("program_id")
         term_id = request.args.get("term_id")
         term_name = request.args.get("term_name")
+        course_id = request.args.get("course_id")
 
         if not term_id and term_name:
             term = get_term_by_name(term_name, institution_id)
@@ -182,6 +183,7 @@ def get_clos_for_audit():
             institution_id=institution_id,
             program_id=program_id,
             term_id=term_id,
+            course_id=course_id,
         )
 
         return (

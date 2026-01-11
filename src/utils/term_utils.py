@@ -202,3 +202,128 @@ def is_term_active(
 ) -> bool:
     """Return True if the term is currently active."""
     return get_term_status(start_date, end_date, reference_date) == TERM_STATUS_ACTIVE
+
+
+# ---------------------------------------------------------------------------
+# Context-aware term status (holds active until successor starts)
+# ---------------------------------------------------------------------------
+
+
+def get_all_term_statuses(
+    terms: List[dict],
+    reference_date: Optional[Union[str, datetime, date]] = None,
+) -> dict:
+    """
+    Compute statuses for all terms using the "holds active" rule.
+
+    The "holds active" rule: A term remains ACTIVE even after its end_date
+    passes, UNTIL another term's start_date has also passed. This prevents
+    gaps where no term appears active during the transition period.
+
+    Args:
+        terms: List of term dicts with 'term_id', 'start_date', 'end_date'
+        reference_date: Date to compute status against (defaults to get_current_time())
+
+    Returns:
+        Dict mapping term_id to status (PASSED | ACTIVE | SCHEDULED | UNKNOWN)
+    """
+    ref = (
+        _coerce_to_date(reference_date) if reference_date else get_current_time().date()
+    )
+
+    # Parse all terms and classify them
+    parsed_terms = []
+    for term in terms:
+        term_id = term.get("term_id") or term.get("id")
+        start = _coerce_to_date(term.get("start_date"))
+        end = _coerce_to_date(term.get("end_date"))
+
+        # Basic status using simple date logic
+        if not start or not end:
+            basic_status = TERM_STATUS_UNKNOWN
+        elif ref < start:
+            basic_status = TERM_STATUS_SCHEDULED
+        elif ref > end:
+            basic_status = TERM_STATUS_PASSED
+        else:
+            basic_status = TERM_STATUS_ACTIVE
+
+        parsed_terms.append(
+            {
+                "term_id": term_id,
+                "start": start,
+                "end": end,
+                "basic_status": basic_status,
+            }
+        )
+
+    # Find terms that have started (ref >= start) and sort by start_date desc
+    started_terms = [t for t in parsed_terms if t["start"] and t["start"] <= ref]
+    started_terms.sort(key=lambda t: t["start"], reverse=True)
+
+    # The most recently started term(s) are ACTIVE (handle ties)
+    # All other started terms are PASSED
+    most_recent_start_date = started_terms[0]["start"] if started_terms else None
+    most_recent_started_ids = (
+        {t["term_id"] for t in started_terms if t["start"] == most_recent_start_date}
+        if most_recent_start_date
+        else set()
+    )
+
+    # Build result
+    result = {}
+    for t in parsed_terms:
+        term_id = t["term_id"]
+
+        if t["basic_status"] == TERM_STATUS_UNKNOWN:
+            result[term_id] = TERM_STATUS_UNKNOWN
+        elif t["basic_status"] == TERM_STATUS_SCHEDULED:
+            result[term_id] = TERM_STATUS_SCHEDULED
+        elif t["basic_status"] == TERM_STATUS_ACTIVE:
+            # Within dates - always ACTIVE
+            result[term_id] = TERM_STATUS_ACTIVE
+        else:
+            # basic_status is PASSED (end_date has passed)
+            # Check if this is one of the most recently started terms
+            if term_id in most_recent_started_ids:
+                # This term "holds active" until a successor starts
+                result[term_id] = TERM_STATUS_ACTIVE
+            else:
+                result[term_id] = TERM_STATUS_PASSED
+
+    return result
+
+
+def get_term_status_with_context(
+    start_date: Union[str, datetime, date, None],
+    end_date: Union[str, datetime, date, None],
+    all_terms: List[dict],
+    reference_date: Optional[Union[str, datetime, date]] = None,
+) -> str:
+    """
+    Compute a single term's status considering all other terms.
+
+    Uses the "holds active" rule: A term remains ACTIVE even after its
+    end_date until another term's start_date has passed.
+
+    Args:
+        start_date: The term's start date
+        end_date: The term's end date
+        all_terms: List of all term dicts for context
+        reference_date: Date to compute status against
+
+    Returns:
+        PASSED | ACTIVE | SCHEDULED | UNKNOWN
+    """
+    # Create a temporary term entry for lookup
+    temp_term_id = "__target_term__"
+    terms_with_target = list(all_terms) + [
+        {
+            "term_id": temp_term_id,
+            "start_date": start_date,
+            "end_date": end_date,
+        }
+    ]
+
+    statuses = get_all_term_statuses(terms_with_target, reference_date)
+    return statuses.get(temp_term_id, TERM_STATUS_UNKNOWN)

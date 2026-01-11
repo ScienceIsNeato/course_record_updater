@@ -330,14 +330,22 @@
     },
 
     render(data) {
-      this.updateHeader(data);
+      // Extract server's reference date for status calculations (respects date override)
+      const referenceDate =
+        data.metadata && data.metadata.reference_date
+          ? data.metadata.reference_date
+          : null;
+      this.referenceDate = referenceDate;
+
+      this.updateHeader(data, referenceDate);
       this.renderPrograms(data.program_overview || [], data.programs || []);
       this.renderCourses(data.courses || []);
-      this.renderTerms(data.terms || []);
+      this.renderTerms(data.terms || [], referenceDate);
       this.renderOfferings(
         data.offerings || [],
         data.courses || [],
         data.terms || [],
+        referenceDate,
       );
       this.renderCLOs(data.clos || []);
       this.renderFaculty(data.faculty_assignments || [], data.faculty || []);
@@ -355,7 +363,7 @@
       this.updateLastUpdated(lastUpdated);
     },
 
-    updateHeader(data) {
+    updateHeader(data, referenceDate = null) {
       const summary = data.summary || {};
       document.getElementById(SELECTORS.programCount).textContent =
         summary.programs ?? 0;
@@ -376,7 +384,8 @@
 
       const term =
         (data.terms || []).find(
-          (item) => item && computeTimelineStatus(item) === "ACTIVE",
+          (item) =>
+            item && computeTimelineStatus(item, { referenceDate }) === "ACTIVE",
         ) || (data.terms || [])[0];
       const termName = term && term.name ? term.name : "--";
       const termElement = document.getElementById(SELECTORS.currentTerm);
@@ -658,7 +667,7 @@
       coursesContainer.appendChild(table);
     },
 
-    renderTerms(terms) {
+    renderTerms(terms, referenceDate = null) {
       const container = document.getElementById("termManagementContainer");
       if (!container) return;
 
@@ -689,7 +698,7 @@
           const endDate = term.end_date
             ? new Date(term.end_date).toLocaleDateString()
             : "N/A";
-          const statusValue = computeTimelineStatus(term);
+          const statusValue = computeTimelineStatus(term, { referenceDate });
 
           return {
             name: term.name || term.term_name || "Unnamed Term",
@@ -714,7 +723,7 @@
       container.appendChild(table);
     },
 
-    renderOfferings(offerings, courses, terms) {
+    renderOfferings(offerings, courses, terms, referenceDate = null) {
       const container = document.getElementById("offeringManagementContainer");
       if (!container) return;
 
@@ -765,7 +774,11 @@
             offering.program_names || course.program_names || [];
           const programDisplay =
             programNames.length > 0 ? programNames.join(", ") : "-";
-          const statusValue = computeTimelineStatus(offering);
+          // Use term's context-aware status if available (for "holds active" behavior)
+          // Fall back to computing from dates if no term found
+          const statusValue = term.status
+            ? String(term.status).toUpperCase()
+            : computeTimelineStatus(offering, { referenceDate });
 
           return {
             course:

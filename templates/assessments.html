@@ -44,6 +44,9 @@
 {% block content %}
 {% set can_edit_due_date = user.role in ['institution_admin', 'site_admin'] %}
 <div class="container mt-4">
+    <!-- CLO Status Summary (instructor view) -->
+    <div id="statusSummaryContainer" class="mb-3"></div>
+
     <!-- Course Selector -->
     <div class="mb-4">
         <label for="courseSelect" class="form-label">Select Course:</label>
@@ -54,9 +57,6 @@
 
     <!-- Success Message Alert -->
     <div id="saveStatus" class="alert" style="display: none;" role="alert"></div>
-
-    <!-- CLO Status Summary (instructor view) -->
-    <div id="statusSummaryContainer" class="mb-3"></div>
 
     <!-- Outcomes List (CLOs shown FIRST) -->
     <div id="outcomesContainer">

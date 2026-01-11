@@ -66,6 +66,7 @@ def test_get_clos_for_audit_with_term_id(
             institution_id="inst-1",
             program_id=None,
             term_id="term-1",
+            course_id=None,
         )
 
 
@@ -94,6 +95,7 @@ def test_get_clos_for_audit_with_term_name(
             institution_id="inst-1",
             program_id=None,
             term_id="term-resolved",
+            course_id=None,
         )
 
 
@@ -114,4 +116,5 @@ def test_get_clos_for_audit_with_program_filter(
             institution_id="inst-1",
             program_id="prog-1",
             term_id=None,
+            course_id=None,
         )
